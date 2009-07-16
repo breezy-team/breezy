@@ -16,11 +16,29 @@ Compatibility Breaks
 New Features
 ************
 
+* ``merge --interactive`` applies a user-selected portion of the merge.  The UI
+  is similar to ``shelve``.  (Aaron Bentley)
+
 Bug Fixes
 *********
 
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
+
+* ``bzr commit`` no longer saves the unversioning of missing files until
+  the commit has completed on the branch. This means that aborting a
+  commit that found a missing file will leave the tree unedited.
+  (Robert Collins, #282402)
+
+* ``bzr mv`` no longer takes out branch locks, which allows it to work
+  when the branch is readonly. (Robert Collins, #216541)
+
+* Fixed spurious "Source branch does not support stacking" warning when
+  pushing. (Andrew Bennetts, #388908)
+  
+* ``WorkingTree4.unversion`` will no longer fail to unversion ids which
+  were present in a parent tree but renamed in the working tree.
+  (Robert Collins, #187207)
 
 Improvements
 ************
@@ -32,6 +50,9 @@ Documentation
 
 API Changes
 ***********
+
+* New TransformPreview.commit() allows committing without a working tree.
+  (Aaron Bentley)
 
 Internals
 *********
@@ -83,6 +104,11 @@ New Features
   configuration option ``send_strict`` can be used to set the default for this
   behavior.
   (Vincent Ladeuil, #206577)
+
+* ``bzr switch --create-branch/-b`` can now be used to create and switch
+  to a new branch. Supplying a name without a ``/`` will create the branch
+  relative to the existing branch. (similar to how ``bzr switch name``
+  works when the branch already exists.) (John Arbash Meinel)
 
 
 Bug Fixes
