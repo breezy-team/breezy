@@ -35,12 +35,84 @@ from bzrlib import (
 )
 
 
+class ShelfReporter(object):
+
+    vocab = {'add file': 'Shelve adding file "%(path)s"?',
+             'binary': 'Shelve binary changes?',
+             'change kind': 'Shelve changing "%s" from %(other)s'
+             ' to %(this)s?',
+             'delete file': 'Shelve removing file "%(path)s"?',
+             'final': 'Shelve %d change(s)?',
+             'hunk': 'Shelve?',
+             'modify target': 'Shelve changing target of'
+             ' "%(path)s" from "%(other)s" to "%(this)s"?',
+             'rename': 'Shelve renaming "%(other)s" =>'
+                        ' "%(this)s"?'
+             }
+
+    invert_diff = False
+
+    def __init__(self):
+        self.delta_reporter = delta._ChangeReporter()
+
+    def no_changes(self):
+        """Report that no changes were selected to apply."""
+        trace.warning('No changes to shelve.')
+
+    def shelved_id(self, shelf_id):
+        """Report the id changes were shelved to."""
+        trace.note('Changes shelved with id "%d".' % shelf_id)
+
+    def changes_destroyed(self):
+        """Report that changes were made without shelving."""
+        trace.note('Selected changes destroyed.')
+
+    def selected_changes(self, transform):
+        """Report the changes that were selected."""
+        trace.note("Selected changes:")
+        changes = transform.iter_changes()
+        delta.report_changes(changes, self.delta_reporter)
+
+    def prompt_change(self, change):
+        """Determine the prompt for a change to apply."""
+        if change[0] == 'rename':
+            vals = {'this': change[3], 'other': change[2]}
+        elif change[0] == 'change kind':
+            vals = {'path': change[4], 'other': change[2], 'this': change[3]}
+        elif change[0] == 'modify target':
+            vals = {'path': change[2], 'other': change[3], 'this': change[4]}
+        else:
+            vals = {'path': change[3]}
+        prompt = self.vocab[change[0]] % vals
+        return prompt
+
+
+class ApplyReporter(ShelfReporter):
+
+    vocab = {'add file': 'Delete file "%(path)s"?',
+             'binary': 'Apply binary changes?',
+             'change kind': 'Change "%(path)s" from %(this)s'
+             ' to %(other)s?',
+             'delete file': 'Add file "%(path)s"?',
+             'final': 'Apply %d change(s)?',
+             'hunk': 'Apply change?',
+             'modify target': 'Change target of'
+             ' "%(path)s" from "%(this)s" to "%(other)s"?',
+             'rename': 'Rename "%(this)s" => "%(other)s"?',
+             }
+
+    invert_diff = True
+
+    def changes_destroyed(self):
+        pass
+
+
 class Shelver(object):
     """Interactively shelve the changes in a working tree."""
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False):
+                 destroy=False, manager=None, reporter=None):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -52,18 +124,25 @@ class Shelver(object):
         :param message: The message to associate with the shelved changes.
         :param destroy: Change the working tree without storing the shelved
             changes.
+        :param manager: The shelf manager to use.
+        :param reporter: Object for reporting changes to user.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.diff_writer = diff_writer
         if self.diff_writer is None:
             self.diff_writer = sys.stdout
-        self.manager = work_tree.get_shelf_manager()
+        if manager is None:
+            manager = work_tree.get_shelf_manager()
+        self.manager = manager
         self.auto = auto
         self.auto_apply = auto_apply
         self.file_list = file_list
         self.message = message
         self.destroy = destroy
+        if reporter is None:
+            reporter = ShelfReporter()
+        self.reporter = reporter
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -98,65 +177,48 @@ class Shelver(object):
                         changes_shelved += self.handle_modify_text(creator,
                                                                    change[1])
                     except errors.BinaryFile:
-                        if self.prompt_bool('Shelve binary changes?'):
+                        if self.prompt_bool(self.reporter.vocab['binary']):
                             changes_shelved += 1
                             creator.shelve_content_change(change[1])
-                if change[0] == 'add file':
-                    if self.prompt_bool('Shelve adding file "%s"?'
-                                        % change[3]):
-                        creator.shelve_creation(change[1])
-                        changes_shelved += 1
-                if change[0] == 'delete file':
-                    if self.prompt_bool('Shelve removing file "%s"?'
-                                        % change[3]):
-                        creator.shelve_deletion(change[1])
-                        changes_shelved += 1
-                if change[0] == 'change kind':
-                    if self.prompt_bool('Shelve changing "%s" from %s to %s? '
-                                        % (change[4], change[2], change[3])):
-                        creator.shelve_content_change(change[1])
-                        changes_shelved += 1
-                if change[0] == 'rename':
-                    if self.prompt_bool('Shelve renaming "%s" => "%s"?' %
-                                   change[2:]):
-                        creator.shelve_rename(change[1])
-                        changes_shelved += 1
-                if change[0] == 'modify target':
-                    if self.prompt_bool('Shelve changing target of "%s" '
-                            'from "%s" to "%s"?' % change[2:]):
-                        creator.shelve_modify_target(change[1])
+                else:
+                    if self.prompt_bool(self.reporter.prompt_change(change)):
+                        creator.shelve_change(change)
                         changes_shelved += 1
             if changes_shelved > 0:
-                trace.note("Selected changes:")
-                changes = creator.work_transform.iter_changes()
-                reporter = delta._ChangeReporter()
-                delta.report_changes(changes, reporter)
+                self.reporter.selected_changes(creator.work_transform)
                 if (self.auto_apply or self.prompt_bool(
-                    'Shelve %d change(s)?' % changes_shelved)):
+                    self.reporter.vocab['final'] % changes_shelved)):
                     if self.destroy:
                         creator.transform()
-                        trace.note('Selected changes destroyed.')
+                        self.reporter.changes_destroyed()
                     else:
                         shelf_id = self.manager.shelve_changes(creator,
                                                                self.message)
-                        trace.note('Changes shelved with id "%d".' % shelf_id)
+                        self.reporter.shelved_id(shelf_id)
             else:
-                trace.warning('No changes to shelve.')
+                self.reporter.no_changes()
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
 
-    def get_parsed_patch(self, file_id):
+    def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
         :param file_id: The id of the file to generate a patch for.
+        :param invert: If True, provide an inverted patch (insertions displayed
+            as removals, removals displayed as insertions).
         :return: A patches.Patch.
         """
-        old_path = self.target_tree.id2path(file_id)
-        new_path = self.work_tree.id2path(file_id)
         diff_file = StringIO()
-        text_differ = diff.DiffText(self.target_tree, self.work_tree,
-                                    diff_file)
+        if invert:
+            old_tree = self.work_tree
+            new_tree = self.target_tree
+        else:
+            old_tree = self.target_tree
+            new_tree = self.work_tree
+        old_path = old_tree.id2path(file_id)
+        new_path = new_tree.id2path(file_id)
+        text_differ = diff.DiffText(old_tree, new_tree, diff_file)
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -203,30 +265,44 @@ class Shelver(object):
     def handle_modify_text(self, creator, file_id):
         """Provide diff hunk selection for modified text.
 
+        If self.reporter.invert_diff is True, the diff is inverted so that
+        insertions are displayed as removals and vice versa.
+
         :param creator: a ShelfCreator
         :param file_id: The id of the file to shelve.
         :return: number of shelved hunks.
         """
-        target_lines = self.target_tree.get_file_lines(file_id)
+        if self.reporter.invert_diff:
+            target_lines = self.work_tree.get_file_lines(file_id)
+        else:
+            target_lines = self.target_tree.get_file_lines(file_id)
         textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
         textfile.check_text_lines(target_lines)
-        parsed = self.get_parsed_patch(file_id)
+        parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
         final_hunks = []
         if not self.auto:
             offset = 0
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                if not self.prompt_bool('Shelve?'):
+                selected = self.prompt_bool(self.reporter.vocab['hunk'])
+                if not self.reporter.invert_diff:
+                    selected = (not selected)
+                if selected:
                     hunk.mod_pos += offset
                     final_hunks.append(hunk)
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
         sys.stdout.flush()
-        if len(parsed.hunks) == len(final_hunks):
+        if not self.reporter.invert_diff and (
+            len(parsed.hunks) == len(final_hunks)):
+            return 0
+        if self.reporter.invert_diff and len(final_hunks) == 0:
             return 0
         patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
         creator.shelve_lines(file_id, list(patched))
+        if self.reporter.invert_diff:
+            return len(final_hunks)
         return len(parsed.hunks) - len(final_hunks)
 
 

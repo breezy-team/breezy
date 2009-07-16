@@ -66,29 +66,29 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
 class TestRepository(TestCaseWithRepository):
 
+    def assertFormatAttribute(self, attribute, allowed_values):
+        """Assert that the format has an attribute 'attribute'."""
+        repo = self.make_repository('repo')
+        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+
     def test_attribute__fetch_order(self):
         """Test the the _fetch_order attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_order in ('topological', 'unordered'))
+        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
         """Test the the _fetch_uses_deltas attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
+        self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format.fast_deltas in (True, False))
+        self.assertFormatAttribute('fast_deltas', (True, False))
 
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_reconcile in (True, False))
+        self.assertFormatAttribute('_fetch_reconcile', (True, False))
+
+    def test_attribute_format_pack_compresses(self):
+        self.assertFormatAttribute('pack_compresses', (True, False))
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""

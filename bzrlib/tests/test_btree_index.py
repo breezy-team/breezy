@@ -43,7 +43,7 @@ def load_tests(standard_tests, module, loader):
     if CompiledBtreeParserFeature.available():
         # Is there a way to do this that gets missing feature failures rather
         # than no indication to the user?
-        import bzrlib._btree_serializer_c as c_module
+        import bzrlib._btree_serializer_pyx as c_module
         scenarios.append(('C', {'parse_btree': c_module}))
     return multiply_tests(node_tests, scenarios, others)
 
@@ -51,13 +51,13 @@ def load_tests(standard_tests, module, loader):
 class _CompiledBtreeParserFeature(tests.Feature):
     def _probe(self):
         try:
-            import bzrlib._btree_serializer_c
+            import bzrlib._btree_serializer_pyx
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._btree_serializer_c'
+        return 'bzrlib._btree_serializer_pyx'
 
 CompiledBtreeParserFeature = _CompiledBtreeParserFeature()
 

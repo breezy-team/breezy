@@ -43,6 +43,42 @@ from bzrlib import (
 """)
 
 
+_valid_boolean_strings = dict(yes=True, no=False,
+                              y=True, n=False,
+                              on=True, off=False,
+                              true=True, false=False)
+_valid_boolean_strings['1'] = True
+_valid_boolean_strings['0'] = False
+
+
+def bool_from_string(s, accepted_values=None):
+    """Returns a boolean if the string can be interpreted as such.
+
+    Interpret case insensitive strings as booleans. The default values
+    includes: 'yes', 'no, 'y', 'n', 'true', 'false', '0', '1', 'on',
+    'off'. Alternative values can be provided with the 'accepted_values'
+    parameter.
+
+    :param s: A string that should be interpreted as a boolean. It should be of
+        type string or unicode.
+
+    :param accepted_values: An optional dict with accepted strings as keys and
+        True/False as values. The strings will be tested against a lowered
+        version of 's'.
+
+    :return: True or False for accepted strings, None otherwise.
+    """
+    if accepted_values is None:
+        accepted_values = _valid_boolean_strings
+    val = None
+    if type(s) in (str, unicode):
+        try:
+            val = accepted_values[s.lower()]
+        except KeyError:
+            pass
+    return val
+
+
 class UIFactory(object):
     """UI abstraction.
 
@@ -156,15 +192,16 @@ class CLIUIFactory(UIFactory):
         self.stdout = stdout or sys.stdout
         self.stderr = stderr or sys.stderr
 
+    _accepted_boolean_strings = dict(y=True, n=False, yes=True, no=False)
+
     def get_boolean(self, prompt):
-        # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
-            if line in ('y\n', 'yes\n'):
-                return True
-            if line in ('n\n', 'no\n'):
-                return False
+            line = line.rstrip('\n')
+            val = bool_from_string(line, self._accepted_boolean_strings)
+            if val is not None:
+                return val
 
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)

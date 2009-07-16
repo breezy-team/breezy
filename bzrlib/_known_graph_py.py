@@ -63,18 +63,12 @@ class KnownGraph(object):
         - ghosts will have a parent_keys = None,
         - all nodes found will also have .child_keys populated with all known
           child_keys,
-        - self._tails will list all the nodes without parents.
         """
-        tails = self._tails = set()
         nodes = self._nodes
         for key, parent_keys in parent_map.iteritems():
             if key in nodes:
                 node = nodes[key]
                 node.parent_keys = parent_keys
-                if parent_keys:
-                    # This node has been added before being seen in parent_map
-                    # (see below)
-                    tails.remove(node)
             else:
                 node = _KnownGraphNode(key, parent_keys)
                 nodes[key] = node
@@ -84,17 +78,18 @@ class KnownGraph(object):
                 except KeyError:
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
-                    # Potentially a tail, if we're wrong we'll remove it later
-                    # (see above)
-                    tails.add(parent_node)
                 parent_node.child_keys.append(key)
+
+    def _find_tails(self):
+        return [node for node in self._nodes.itervalues()
+                if not node.parent_keys]
 
     def _find_gdfo(self):
         nodes = self._nodes
         known_parent_gdfos = {}
         pending = []
 
-        for node in self._tails:
+        for node in self._find_tails():
             node.gdfo = 1
             pending.append(node)
 
@@ -144,9 +139,6 @@ class KnownGraph(object):
             # No or only one candidate
             return frozenset(candidate_nodes)
         heads_key = frozenset(candidate_nodes)
-        if heads_key != frozenset(keys):
-            # Mention duplicates
-            note('%s != %s', heads_key, frozenset(keys))
         # Do we have a cached result ?
         try:
             heads = self._known_heads[heads_key]
