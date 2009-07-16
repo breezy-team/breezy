@@ -25,8 +25,17 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* StreamSource generates rich roots from non-rich root sources correctly
+  now.  (Andrew Bennetts, #368921)
+
 Improvements
 ************
+
+* Cross-format fetches (such as between 1.9-rich-root and 2a) via the
+  smart server are more efficient now.  They send inventory deltas rather
+  than full inventories.  The smart server has two new requests,
+  ``Repository.get_stream_1.18`` and ``Repository.insert_stream_1.18`` to
+  support this.  (Andrew Bennetts, #374738, #385826)
 
 Documentation
 *************
@@ -41,6 +50,9 @@ API Changes
 
 Internals
 *********
+
+* InterDifferingSerializer has been removed.  The transformations it
+  provided are now done automatically by StreamSource.  (Andrew Bennetts)
 
 
 bzr 1.17rc1 "So late it's brunch" 2009-07-13
