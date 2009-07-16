@@ -1708,7 +1708,10 @@ class RemoteStreamSink(repository.StreamSink):
         self._last_inv_record = None
         self._last_substream = None
         if required_version < (1, 18):
-            # Remote side doesn't support inventory deltas.
+            # Remote side doesn't support inventory deltas.  Wrap the stream to
+            # make sure we don't send any.  If the stream contains inventory
+            # deltas we'll interrupt the smart insert_stream request and
+            # fallback to VFS.
             stream = self._stop_stream_if_inventory_delta(stream)
         byte_stream = smart_repo._stream_to_byte_stream(
             stream, src_format)
