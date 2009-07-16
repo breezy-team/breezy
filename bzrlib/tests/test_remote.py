@@ -231,6 +231,11 @@ class FakeClient(_SmartClient):
     def add_unknown_method_response(self, verb):
         self.responses.append(('unknown', verb))
 
+    def finished_test(self):
+        if self._expected_calls:
+            raise AssertionError("%r finished but was still expecting %r"
+                % (self, self._expected_calls[0]))
+
     def _get_next_response(self):
         try:
             response_tuple = self.responses.pop(0)
@@ -338,9 +343,7 @@ class TestRemote(tests.TestCaseWithMemoryTransport):
 
     def assertFinished(self, fake_client):
         """Assert that all of a FakeClient's expected calls have occurred."""
-        if fake_client._expected_calls:
-            raise AssertionError("%r finished but was still expecting %r"
-                % (fake_client, fake_client._expected_calls[0]))
+        fake_client.finished_test()
 
 
 class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
