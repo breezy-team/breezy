@@ -181,16 +181,6 @@ class InventoryDeltaContentFactory(ContentFactory):
             serializer.require_flags(*self._format_flags)
             return ''.join(serializer.delta_to_lines(
                 self._basis_id, self.key, self._delta))
-        elif storage_kind == 'inventory-delta-bytes-from-null':
-            if self._repo is None:
-                raise errors.UnavailableRepresentation(self.key, storage_kind,
-                    self.storage_kind)
-            null_inv = inventory.Inventory(None)
-            my_inv = self._repo.get_inventory(self.key)
-            delta = my_inv._make_delta(null_inv)
-            serializer.require_flags(*self._format_flags)
-            return serializer.delta_to_lines(
-                revision.NULL_REVISION, self.key, delta)
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 
