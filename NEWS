@@ -30,6 +30,9 @@ Bug Fixes
   commit that found a missing file will leave the tree unedited.
   (Robert Collins, #282402)
 
+* Fixed spurious "Source branch does not support stacking" warning when
+  pushing. (Andrew Bennetts, #388908)
+  
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
