@@ -2423,6 +2423,9 @@ class DirState(object):
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(1,
                 "set_state_from_inventory called; please mutate the tree instead")
+        tracing = 'dirstate' in debug.debug_flags
+        if tracing:
+            trace.mutter("set_state_from_inventory trace:")
         self._read_dirblocks_if_needed()
         # sketch:
         # Two iterators: current data and new data, both in dirblock order.
@@ -2441,7 +2444,7 @@ class DirState(object):
         # more complex. Using a shallow copy results in all entries being seen
         # but the state of the entries being wrong, and that leads to stale
         # entries being left behind.
-        old_iterator = iter(deepcopy(list(self._iter_entries())))
+        old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
         current_old = old_iterator.next()
@@ -2480,12 +2483,19 @@ class DirState(object):
             # we make both end conditions explicit
             if not current_old:
                 # old is finished: insert current_new into the state.
+                if tracing:
+                    trace.mutter("Appending from new '%s'.",
+                        new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
+                if tracing:
+                    trace.mutter("Truncating from old '%s/%s'.",
+                        current_old[0][0].decode('utf'),
+                        current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
@@ -2498,6 +2508,9 @@ class DirState(object):
                 # kind has changed.
                 if (current_old[1][0][3] != current_new[1].executable or
                     current_old[1][0][0] != current_new_minikind):
+                    if tracing:
+                        trace.mutter("Updating in-place change '%s'.",
+                            new_path_utf8.decode('utf8'))
                     self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
                         path_utf8=new_path_utf8, fingerprint=fingerprint)
@@ -2509,6 +2522,9 @@ class DirState(object):
                       and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
                 # add a entry for this and advance new
+                if tracing:
+                    trace.mutter("Inserting from new '%s'.",
+                        new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
@@ -2516,11 +2532,17 @@ class DirState(object):
             else:
                 # we've advanced past the place where the old key would be,
                 # without seeing it in the new list.  so it must be gone.
+                if tracing:
+                    trace.mutter("Deleting from old '%s/%s'.",
+                        current_old[0][0].decode('utf'),
+                        current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = None
         self._packed_stat_index = None
+        if tracing:
+            trace.mutter("set_state_from_inventory complete.")
 
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
