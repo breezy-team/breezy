@@ -168,9 +168,9 @@ class Serializer_v8(XMLSerializer):
         :raises: AssertionError if an error has occurred.
         """
         if inv.revision_id is None:
-            raise AssertionError()
+            raise AssertionError("inv.revision_id is None")
         if inv.root.revision is None:
-            raise AssertionError()
+            raise AssertionError("inv.root.revision is None")
 
     def _check_cache_size(self, inv_size, entry_cache):
         """Check that the entry_cache is large enough.

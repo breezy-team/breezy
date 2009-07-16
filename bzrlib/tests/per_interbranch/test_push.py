@@ -43,7 +43,7 @@ from bzrlib.transport.local import LocalURLServer
 
 
 # These tests are based on similar tests in 
-# bzrlib.tests.branch_implementations.test_push.
+# bzrlib.tests.per_branch.test_push.
 
 
 class TestPush(TestCaseWithInterBranch):
