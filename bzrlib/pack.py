@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -159,17 +159,32 @@ class ContainerWriter(object):
 
 
 class ReadVFile(object):
-    """Adapt a readv result iterator to a file like protocol."""
+    """Adapt a readv result iterator to a file like protocol.
+    
+    The readv result must support the iterator protocol returning (offset,
+    data_bytes) pairs.
+    """
+
+    # XXX: This could be a generic transport class, as other code may want to
+    # gradually consume the readv result.
 
     def __init__(self, readv_result):
+        """Construct a new ReadVFile wrapper.
+
+        :seealso: make_readv_reader
+
+        :param readv_result: the most recent readv result - list or generator
+        """
+        # readv can return a sequence or an iterator, but we require an
+        # iterator to know how much has been consumed.
+        readv_result = iter(readv_result)
         self.readv_result = readv_result
-        # the most recent readv result block
         self._string = None
 
     def _next(self):
         if (self._string is None or
             self._string.tell() == self._string_length):
-            length, data = self.readv_result.next()
+            offset, data = self.readv_result.next()
             self._string_length = len(data)
             self._string = StringIO(data)
 
@@ -177,7 +192,9 @@ class ReadVFile(object):
         self._next()
         result = self._string.read(length)
         if len(result) < length:
-            raise errors.BzrError('request for too much data from a readv hunk.')
+            raise errors.BzrError('wanted %d bytes but next '
+                'hunk only contains %d: %r...' %
+                (length, len(result), result[:20]))
         return result
 
     def readline(self):
@@ -185,7 +202,8 @@ class ReadVFile(object):
         self._next()
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1] != '\n':
-            raise errors.BzrError('short readline in the readvfile hunk.')
+            raise errors.BzrError('short readline in the readvfile hunk: %r'
+                % (readline, ))
         return result
 
 
@@ -406,8 +424,11 @@ class ContainerPushParser(object):
         # the buffer.
         last_buffer_length = None
         cur_buffer_length = len(self._buffer)
-        while cur_buffer_length != last_buffer_length:
+        last_state_handler = None
+        while (cur_buffer_length != last_buffer_length
+               or last_state_handler != self._state_handler):
             last_buffer_length = cur_buffer_length
+            last_state_handler = self._state_handler
             self._state_handler()
             cur_buffer_length = len(self._buffer)
 

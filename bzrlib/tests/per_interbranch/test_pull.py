@@ -27,7 +27,7 @@ from bzrlib.tests.per_interbranch import TestCaseWithInterBranch
 
 
 # The tests here are based on the tests in 
-# bzrlib.tests.branch_implementations.test_pull
+# bzrlib.tests.per_branch.test_pull
 
 
 class TestPull(TestCaseWithInterBranch):

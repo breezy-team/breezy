@@ -6,8 +6,357 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+
 In Development
 ##############
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+* ``merge --interactive`` applies a user-selected portion of the merge.  The UI
+  is similar to ``shelve``.  (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* BranchBuilder now accepts timezone to avoid test failures in countries far
+  from GMT. (Vincent Ladeuil, #397716)
+
+Improvements
+************
+
+Documentation
+*************
+
+* Added Bazaar 2.0 Upgrade Guide. (Ian Clatworthy)
+
+API Changes
+***********
+
+* New TransformPreview.commit() allows committing without a working tree.
+  (Aaron Bentley)
+
+Internals
+*********
+
+
+bzr 1.17rc1 "So late it's brunch" 2009-07-13
+############################################
+
+Bazaar continues to blaze a straight and shining path to the 2.0 release and
+the elevation of the ``2a`` beta format to the full glory of "supported and
+stable".
+
+Highlights in this release include greatly reduced memory consumption during
+commits, faster ``ls``, faster ``annotate``, faster network operations if
+you're specifying a revision number and the final destruction of those
+annoying progress bar artifacts.
+
+
+Compatibility Breaks
+********************
+
+* ``bzr register-branch`` from the Launchpad plugin now refers to "project"
+  instead of "product" which is the correct Launchpad terminology.  The
+  --product option is deprecated and users should switch to using --project.
+  (Neil Martinsen-Burrell, #238764)
+
+
+New Features
+************
+
+* ``bzr push`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree (if one is present) and no revision is
+  speified. The configuration option ``push_strict`` can be used to set the
+  default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
+
+* ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
+  show revision info for the working tree instead of the branch.
+  (Matthew Fuller, John Arbash Meinel)
+
+* ``bzr send`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree and no revision is specified. The
+  configuration option ``send_strict`` can be used to set the default for this
+  behavior.
+  (Vincent Ladeuil, #206577)
+
+* ``bzr switch --create-branch/-b`` can now be used to create and switch
+  to a new branch. Supplying a name without a ``/`` will create the branch
+  relative to the existing branch. (similar to how ``bzr switch name``
+  works when the branch already exists.) (John Arbash Meinel)
+
+
+Bug Fixes
+*********
+
+* Accept uppercase "Y/N" to prompts such as from break lock. 
+  (#335182, Tim Powell, Martin Pool)
+
+* Add documentation about diverged branches and how to fix them in the
+  centralized workflow with local commits.  Mention ``bzr help
+  diverged-branches`` when a push fails because the branches have
+  diverged.  (Neil Martinsen-Burrell, #269477)
+
+* Annotate would sometimes 'latch on' to trivial lines, causing important
+  lines to be incorrectly annotated. (John Arbash Meinel, #387952)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
+* Avoid progress bar artifacts being left behind on the screen.
+  (Martin Pool, #321935)
+
+* Better message in ``bzr split`` error suggesting a rich root format.
+  (Neil Martinsen-Burrell, #220067)
+
+* ``Branch.set_append_revisions_only`` now works with branches on a smart
+  server. (Andrew Bennetts, #365865)
+
+* By default, ``bzr branch`` will fail if the target directory exists, but
+  does not already have a control directory.  The flag ``--use-existing-dir``
+  will allow operation to proceed.  (Alexander Belchenko, #307554)
+
+* ``bzr ls DIR --from-root`` now shows only things in DIR, not everything.
+  (Ian Clatworthy)
+
+* Fetch between repositories does not error if they have inconsistent data
+  that should be irrelevant to the fetch operation. (Aaron Bentley)
+
+* Fix ``AttributeError`` exception when reconfiguring lightweight checkout 
+  of a remote repository.
+  (Jelmer Vernooij, #332194)
+
+* Fix bug in decoding v3 smart server messages when receiving multiple
+  lots of excess bytes after an end-of-message.
+  (Andrew Bennetts)
+
+* Force deletion of readonly files during merge, update and other tree
+  transforms.
+  (Craig Hewetson, Martin Pool, #218206)
+
+* Force socket shutdown in threaded http test servers to avoid client hangs
+  (pycurl).  (Vincent Ladeuil, #383920).
+
+* ``LRUCache`` will maintain the linked list pointers even if a nodes
+  cleanup function raises an exception. (John Arbash Meinel, #396838)
+
+* Progress bars are now suppressed again when the environment variable
+  ``BZR_PROGRESS_BAR`` is set to ``none``.
+  (Martin Pool, #339385)
+
+* Reduced memory consumption during ``bzr commit`` of large files. For
+  pre 2a formats, should be down to ~3x the size of a file.
+  For ``--2a`` format repositories, it is down to the size of the file
+  content plus the size of the compressed text.  Related to bug #109114.
+  (John Arbash Meinel)
+
+* Set hidden attribute on .bzr directory below unicode path should never
+  fail with error. The operation should succeed even if bzr unable to set 
+  the attribute.  (Alexander Belchenko, related to bug #335362).
+  
+* Stacking will no longer accept requests to stack on the same
+  branch/repository. Existing branches that incorrectly reference the same
+  repository in a stacking configuration will now raise
+  UnstackableLocationError when the branch is opened. This can be fixed by
+  removing the stacking location inside ``.bzr/branch``.
+  (Robert Collins, #376243)
+
+* The ``log+`` decorator, useful in debugging or profiling, could cause
+  "AttributeError: 'list' object has no attribute 'next'".  This is now
+  fixed.  The log decorator no longer shows the elapsed time or transfer
+  rate because they're available in the log prefixes and the transport
+  activity display respectively.
+  (Martin Pool, #340347)
+
+* Unshelve works correctly when multiple zero-length files are present on
+  the shelf. (Aaron Bentley, #363444)
+
+* Progress bars no longer show the network transport scheme or direction.
+  (Martin Pool)
+
+* launchpad-login now respects the 'verbose' option.
+  (Jonathan Lange, #217031)
+
+
+Internals
+*********
+
+* ``bzrlib.user_encoding`` is now officially deprecated. It is not
+  possible to write a deprecation wrapper, but the variable will be
+  removed in the near future. Use ``bzrlib.osutils.get_user_encoding()``
+  instead. (Alexander Belchenko)
+
+* Command lookup has had hooks added. ``bzrlib.Command.hooks`` has
+  three new hook points: ``get_command``, ``get_missing_command`` and
+  ``list_commands``, which allow just-in-time command name provision
+  rather than requiring all command names be known a-priori.
+  (Robert Collins)
+
+* ``get_app_path`` from win32utils.py now supports REG_EXPAND_SZ data type
+  and can read path to wordpad.exe. (Alexander Belchenko, #392046)
+
+* ``graph.KnownGraph`` has been added. This is a class that can give
+  answers to ``heads()`` very quickly. However, it has the assumption that
+  the whole graph has already been loaded. This is true during
+  ``annotate`` so it is used there with good success (as much as 2x faster
+  for files with long ancestry and 'cherrypicked' changes.)
+  (John Arbash Meinel, Vincent Ladeuil)
+
+* OS file locks are now taken out using ``CreateFile`` rather than
+  ``LockFileEx`` on Windows. The locking remains exclusive with
+  ``LockFileEx`` but now it also works on older versions of Windows (such
+  as Win98). (Martin <gzlist>)
+
+* pack <=> pack fetching is now done via a ``PackStreamSource`` rather
+  than the ``Packer`` code. The user visible change is that we now
+  properly fetch the minimum number of texts for non-smart fetching.
+  (John Arbash Meinel)
+
+
+* ``VersionedFiles._add_text`` is a new api that lets us insert text into
+  the repository as a single string, rather than a list of lines. This can
+  improve memory overhead and performance of committing large files.
+  (Currently a private api, used only by commit). (John Arbash Meinel)
+
+
+Improvements
+************
+
+* ``bzr annotate`` can now be significantly faster. The time for
+  ``bzr annotate NEWS`` is down to 7s from 22s in 1.16. Files with long
+  histories and lots of 'duplicate insertions' will be improved more than
+  others. (John Arbash Meinel, Vincent Ladeuil)
+
+* ``bzr ls`` is now faster. On OpenOffice.org, the time drops from 2.4
+  to 1.1 seconds. The improvement for ``bzr ls -r-1`` is more
+  substantial dropping from 54.3 to 1.1 seconds. (Ian Clatworthy)
+
+* Improve "Path(s) are not versioned" error reporting for some commands.
+  (Benoît PIERRE)
+
+* Initial commit performance in ``--2a`` repositories has been improved by
+  making it cheaper to build the initial CHKMap. (John Arbash Meinel)
+
+* Resolving a revno to a revision id on a branch accessed via ``bzr://``
+  or ``bzr+ssh://`` is now much faster and involves no VFS operations.
+  This speeds up commands like ``bzr pull -r 123``.  (Andrew Bennetts)
+
+* ``revision-info`` now properly aligns the revnos/revids in the output
+  and doesn't traceback when given revisions not in the current branch.
+  Performance is also significantly improved when requesting multiple revs
+  at once.  (Matthew Fuller, John Arbash Meinel)
+
+* Tildes are no longer escaped by Transports. (Andy Kilner)
+
+
+Documentation
+*************
+
+* Avoid bad text wrapping in generated documentation.  Slightly better
+  formatting in the user reference.
+  (Martin Pool, #249908)
+
+* Minor clarifications to the help for End-Of-Line conversions.
+  (Ian Clatworthy)
+
+API Changes
+***********
+
+* Removed overspecific error class ``InvalidProgressBarType``.
+  (Martin Pool)
+
+* The method ``ProgressView._show_transport_activity`` is now
+  ``show_transport_activity`` because it's part of the contract between
+  this class and the UI.  (Martin Pool)
+
+
+bzr 1.16.1 2009-06-26
+#####################
+
+End user testing of the 2a format revealed two serious bugs. The first,
+#365615, caused bzr to raise AbsentContentFactory errors when autopacking.
+This meant that commits or pushes to 2a-format repositories failed
+intermittently.
+
+The second bug, #390563, caused the smart server to raise AbsentContentFactory
+when streaming 2a stacked 2a-format branches. This particularly affected
+branches stored on Launchpad in the 2a format.
+
+Both of these bugs cause command failures only, neither of them cause data
+corruption or data loss. And, of course, both of these bugs are now fixed.
+
+Bug Fixes
+*********
+
+* We now properly request a more minimal set of file texts when fetching
+  multiple revisions. (Robert Collins, John Arbash Meinel, #390563)
+
+* Repositories using CHK pages (which includes the new 2a format) will no
+  longer error during commit or push operations when an autopack operation
+  is triggered. (Robert Collins, #365615)
+
+* ``chk_map.iter_interesting_nodes`` now properly uses the *intersection*
+  of referenced nodes rather than the *union* to determine what
+  uninteresting pages we still need to look at. Prior to this,
+  incrementally pushing to stacked branch would push the minimal data, but
+  fetching everything would request extra texts. There are some unhandled
+  cases wrt trees of different depths, but this fixes the common cases.
+  (Robert Collins, John Arbash Meinel, #390563)
+
+* ``GroupCompress`` repositories now take advantage of the pack hints
+  parameter to permit cross-format fetching to incrementally pack the
+  converted data. (Robert Collins)
+
+* ``Repository.commit_write_group`` now returns opaque data about what
+  was committed, for passing to the ``Repository.pack``. Repositories
+  without atomic commits will still return None. (Robert Collins)
+
+* ``Repository.pack`` now takes an optional ``hint`` parameter
+  which will support doing partial packs for repositories that can do
+  that. (Robert Collins)
+
+* RepositoryFormat has a new attribute 'pack_compresses' which is True
+  when doing a pack operation changes the compression of content in the
+  repository. (Robert Collins)
+
+* ``StreamSink`` and ``InterDifferingSerialiser`` will call
+  ``Repository.pack`` with the hint returned by
+  ``Repository.commit_write_group`` if the formats were different and the
+  repository can increase compression by doing a pack operation.
+  (Robert Collins, #376748)
+
+
+bzr 1.16 "It's yesterday in California" 2009-06-18
+##################################################
+:Codename: yesterday-in-california
+:1.16rc1: 2009-06-11
+:1.16: 2009-06-18
+
+This version of Bazaar contains the beta release of the new ``2a`` repository
+format, suitable for testing by fearless, advanced users. This format or an
+updated version of it will become the default format in Bazaar 2.0. Please
+read the NEWS entry before even thinking about upgrading to the new format.
+
+Also included are speedups for many operations on huge projects, a bug fix for
+pushing stacked new stacked branches to smart servers and the usual bevy of
+bug fixes and improvements.
+
+
+Changes from 1.16rc1 to 1.16final
+*********************************
+
+* Fix the nested tree flag check so that upgrade from development formats to
+  2a can work correctly.
+  (Jelmer Vernooij, #388727)
+
+* Automatic format upgrades triggered by default stacking policies on a
+  1.16rc1 (or later) smart server work again.
+  (Andrew Bennetts, #388675)
+
 
 Compatibility Breaks
 ********************
@@ -20,13 +369,31 @@ Compatibility Breaks
 New Features
 ************
 
+* A new repository format ``2a`` has been added.  This is a beta release
+  of the the brisbane-core (aka group-compress) project.  This format now
+  suitable for wider testing by advanced users willing to deal with some
+  bugs.  We would appreciate test reports, either positive or negative.
+  Format 2a is substantially smaller and faster for many operations on
+  many trees.  This format or an updated version will become the default
+  in bzr 2.0.
+
+  This is a rich-root format, so this repository format can be used with
+  bzr-svn.  Bazaar branches in previous non-rich-root formats can be
+  converted (including by merge, push and pull) to format 2a, but not vice
+  versa.  We recommend upgrading previous development formats to 2a.
+
+  Upgrading to this format can take considerable time because it expands
+  and more concisely repacks the full history.
+
+  If you use stacked branches, you must upgrade the stacked branches
+  before the stacked-on branches.  (See <https://bugs.launchpad.net/bugs/374735>)
+
 * ``--development7-rich-root`` is a new dev format, similar to ``--dev6``
   but using a Revision serializer using bencode rather than XML.
   (Jelmer Vernooij, John Arbash Meinel)
 
 * mail_client=claws now supports --body (and message body hooks).  Also uses
   configured from address.  (Barry Warsaw)
-
 
 Improvements
 ************
@@ -55,8 +422,8 @@ Improvements
   (Ian Clatworthy)
 
 * Pyrex version of ``bencode`` support. This provides optimized support
-  for both encoding and decoding, and is now found at ``bzrlib.bencode``,
-  rather than ``bzrlib.utils.bencode``.
+  for both encoding and decoding, and is now found at ``bzrlib.bencode``.
+  ``bzrlib.utils.bencode`` is now deprecated.
   (Alexander Belchenko, Jelmer Vernooij, John Arbash Meinel)
 
 
@@ -69,6 +436,10 @@ Bug Fixes
 * Better message in ``bzr add`` output suggesting using ``bzr ignored`` to
   see which files can also be added.  (Jason Spashett, #76616)
 
+* ``bzr pull -r 123`` from a stacked branch on a smart server no longer fails.
+  Also, the ``Branch.revision_history()`` API now works in the same
+  situation.  (Andrew Bennetts, #380314)
+  
 * ``bzr serve`` on Windows no longer displays a traceback simply because a
   TCP client disconnected. (Andrew Bennetts)
 
@@ -81,8 +452,23 @@ Bug Fixes
   the fetched revisions, not in the stacked-on ancestry.
   (John Arbash Meinel)
 
+* Fix status and commit to work with content filtered trees, addressing
+  numerous bad bugs with line-ending support. (Ian Clatworthy, #362030)
+
 * Fix problem of "directory not empty" when contending for a lock over
   sftp.  (Martin Pool, #340352)
+
+* Fix rule handling so that eol is optional, not mandatory.
+  (Ian Clatworthy, #379370)
+
+* Pushing a new stacked branch to a 1.15 smart server was broken due to a
+  bug in the ``BzrDirFormat.initialize_ex`` smart verb.  This is fixed in
+  1.16, but required changes to the network protocol, so the
+  ``BzrDirFormat.initialize_ex`` verb has been removed and replaced with a
+  corrected ``BzrDirFormat.initialize_ex_1.16`` verb.  1.15 clients will
+  still work with a 1.16 server as they will fallback to slower (and
+  bug-free) methods.
+  (Jonathan Lange, Robert Collins, Andrew Bennetts, #385132)
 
 * Reconcile can now deal with text revisions that originated in revisions 
   that are ghosts. (Jelmer Vernooij, #336749)
@@ -104,6 +490,10 @@ Bug Fixes
 Documentation
 *************
 
+* Added directory structure and started translation of docs in Russian.
+  (Alexey Shtokalo, Alexander Iljin, Alexander Belchenko, Dmitry Vasiliev,
+  Volodymyr Kotulskyi)
+
 API Changes
 ***********
 
@@ -116,6 +506,9 @@ API Changes
 * ``graph.StackedParentsProvider`` is now a public API, replacing
   ``graph._StackedParentsProvider``. The api is now considered stable and ready
   for external users. (Gary van der Merwe)
+
+* ``bzrlib.user_encoding`` is deprecated in favor of
+  ``get_user_encoding``.  (Alexander Belchenko)
 
 * TreeTransformBase no longer assumes that limbo is provided via disk.
   DiskTreeTransform now provides disk functionality.  (Aaron Bentley)
@@ -140,11 +533,26 @@ bzr 1.15
 ########
 :1.15rc1: 2009-05-16
 :1.15: 2009-05-22
+:1.15.1: 2009-06-09
 
 The smart server will no longer raise 'NoSuchRevision' when streaming content
 with a size mismatch in a reconstructed graph search. New command ``bzr
 dpush``. Plugins can now define their own annotation tie-breaker when two
 revisions introduce the exact same line.
+
+Changes from 1.15.1 to 1.15.2
+*****************************
+
+* Use zdll on Windows to build ``_chk_map_pyx`` extension.
+  (Alexander Belchenko)
+
+Changes from 1.15final to 1.15.1
+*********************************
+
+* Translate errors received from a smart server in response to a
+  ``BzrDirFormat.initialize`` or ``BzrDirFormat.initialize_ex`` request.
+  This was causing tracebacks even for mundane errors like
+  ``PermissionDenied``.  (Andrew Bennetts, #381329)
 
 Changes from 1.15rc1 to 1.15final
 *********************************
@@ -7272,7 +7680,7 @@ Bug Fixes
 * Avoid circular imports by creating a deprecated function for
   ``bzrlib.tree.RevisionTree``. Callers should have been using
   ``bzrlib.revisontree.RevisionTree`` anyway. (John Arbash Meinel,
-  #63360, #66349)
+  #66349)
 
 * Don't use ``socket.MSG_WAITALL`` as it doesn't exist on all
   platforms. (Martin Pool, #66356)

@@ -579,6 +579,23 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
 
+    def test_iter_changes_unversioned_error(self):
+        """ Check if a PathsNotVersionedError is correctly raised and the
+            paths list contains all unversioned entries only.
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/bar', '')])
+        tree.add(['bar'], ['bar-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        tree_iter_changes = lambda files: [
+            c for c in tree.iter_changes(tree.basis_tree(), specific_files=files,
+                                         require_versioned=True)
+        ]
+        e = self.assertRaises(errors.PathsNotVersionedError,
+                              tree_iter_changes, ['bar', 'foo'])
+        self.assertEqual(e.paths, ['foo'])
+
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])

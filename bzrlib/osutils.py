@@ -722,7 +722,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, unicode):
-        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+        date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -927,13 +927,31 @@ def link_or_copy(src, dest):
         shutil.copyfile(src, dest)
 
 
-# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-# Forgiveness than Permission (EAFP) because:
-# - root can damage a solaris file system by using unlink,
-# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-#   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
-    """Delete a file or directory."""
+    """Delete a file, symlink or directory.  
+    
+    Will delete even if readonly.
+    """
+    try:
+       _delete_file_or_dir(path)
+    except (OSError, IOError), e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            # make writable and try again
+            try:
+                make_writable(path)
+            except (OSError, IOError):
+                pass
+            _delete_file_or_dir(path)
+        else:
+            raise
+
+
+def _delete_file_or_dir(path):
+    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+    # Forgiveness than Permission (EAFP) because:
+    # - root can damage a solaris file system by using unlink,
+    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+    #   EACCES, OSX: EPERM) when invoked on a directory.
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:

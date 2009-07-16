@@ -208,6 +208,8 @@ class TestRevisionMethods(TestCase):
         self.assertEqual('a', r.get_summary())
         r.message = '\na\nb'
         self.assertEqual('a', r.get_summary())
+        r.message = None
+        self.assertEqual('', r.get_summary())
 
     def test_get_apparent_author(self):
         r = revision.Revision('1')

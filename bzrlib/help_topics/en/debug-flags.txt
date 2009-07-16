@@ -15,6 +15,8 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
 -Dhpss            Trace smart protocol requests and responses.
+-Dhpssdetail      More hpss details.
+-Dhpssvfs         Traceback on vfs access to Remote objects.
 -Dhttp            Trace http connections, requests and responses
 -Dindex           Trace major index operations.
 -Dknit            Trace knit operations.

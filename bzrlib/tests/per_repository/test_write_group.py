@@ -68,11 +68,14 @@ class TestWriteGroup(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-    def test_commit_write_group_gets_None(self):
+    def test_commit_write_group_does_not_error(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        self.assertEqual(None, repo.commit_write_group())
+        # commit_write_group can either return None (for repositories without
+        # isolated transactions) or a hint for pack(). So we only check it
+        # works in this interface test, because all repositories are exercised.
+        repo.commit_write_group()
         repo.unlock()
 
     def test_unlock_in_write_group(self):
