@@ -30,6 +30,9 @@ Bug Fixes
   commit that found a missing file will leave the tree unedited.
   (Robert Collins, #282402)
 
+* ``bzr mv`` no longer takes out branch locks, which allows it to work
+  when the branch is readonly. (Robert Collins, #216541)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
   

@@ -799,7 +799,7 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
-        tree.lock_write()
+        tree.lock_tree_write()
         try:
             self._run(tree, names_list, rel_names, after)
         finally:
@@ -813,7 +813,7 @@ class cmd_mv(Command):
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
-        work_tree.lock_write()
+        work_tree.lock_tree_write()
         try:
             rename_map.RenameMap.guess_renames(work_tree, dry_run)
         finally:
