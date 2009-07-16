@@ -422,6 +422,8 @@ class NewPack(Pack):
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
+        # no name until we finish writing the content
+        self.name = None
 
     def abort(self):
         """Cancel creating this pack."""
@@ -448,6 +450,14 @@ class NewPack(Pack):
             self.signature_index.key_count() or
             (self.chk_index is not None and self.chk_index.key_count()))
 
+    def finish_content(self):
+        if self.name is not None:
+            return
+        self._writer.end()
+        if self._buffer[1]:
+            self._write_data('', flush=True)
+        self.name = self._hash.hexdigest()
+
     def finish(self, suspend=False):
         """Finish the new pack.
 
@@ -459,10 +469,7 @@ class NewPack(Pack):
          - stores the index size tuple for the pack in the index_sizes
            attribute.
         """
-        self._writer.end()
-        if self._buffer[1]:
-            self._write_data('', flush=True)
-        self.name = self._hash.hexdigest()
+        self.finish_content()
         if not suspend:
             self._check_references()
         # write indices

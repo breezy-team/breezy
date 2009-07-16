@@ -154,6 +154,8 @@ class GCPack(NewPack):
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
+        # no name until we finish writing the content
+        self.name = None
 
     def _check_references(self):
         """Make sure our external references are present.
@@ -466,6 +468,13 @@ class GCCHKPacker(Packer):
         if not self._use_pack(self.new_pack):
             self.new_pack.abort()
             return None
+        self.new_pack.finish_content()
+        if len(self.packs) == 1:
+            old_pack = self.packs[0]
+            if old_pack.name == self.new_pack._hash.hexdigest():
+                # The single old pack was already optimally packed.
+                self.new_pack.abort()
+                return None
         self.pb.update('finishing repack', 6, 7)
         self.new_pack.finish()
         self._pack_collection.allocate(self.new_pack)
