@@ -25,9 +25,18 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
-* Fixed spurious "Source branch does not support stacking warning" when
+* ``bzr commit`` no longer saves the unversioning of missing files until
+  the commit has completed on the branch. This means that aborting a
+  commit that found a missing file will leave the tree unedited.
+  (Robert Collins, #282402)
+
+* Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
   
+* ``WorkingTree4.unversion`` will no longer fail to unversion ids which
+  were present in a parent tree but renamed in the working tree.
+  (Robert Collins, #187207)
+
 Improvements
 ************
 
