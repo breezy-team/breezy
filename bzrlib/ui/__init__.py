@@ -202,7 +202,11 @@ class CLIUIFactory(UIFactory):
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
 
-    This is the default UI, if another one is never registered.
+    This is the default UI, if another one is never registered by a program
+    using bzrlib, and it's also active for example inside 'bzr serve'.
+
+    Methods that try to read from the user raise an error; methods that do
+    output do nothing.
     """
 
     def __init__(self):
@@ -210,6 +214,9 @@ class SilentUIFactory(UIFactory):
 
     def note(self, msg):
         pass
+
+    def get_username(self, prompt, **kwargs):
+        return None
 
 
 class CannedInputUIFactory(SilentUIFactory):
@@ -219,6 +226,12 @@ class CannedInputUIFactory(SilentUIFactory):
         self.responses = responses
 
     def get_boolean(self, prompt):
+        return self.responses.pop(0)
+
+    def get_password(self, prompt='', **kwargs):
+        return self.responses.pop(0)
+
+    def get_username(self, prompt, **kwargs):
         return self.responses.pop(0)
 
 
