@@ -203,7 +203,6 @@ desired.
 
 import bisect
 import binascii
-from copy import deepcopy
 import errno
 import os
 from stat import S_IEXEC
@@ -2440,10 +2439,9 @@ class DirState(object):
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
-        # list using a deep copy so that forward changes don't make the logic
-        # more complex. Using a shallow copy results in all entries being seen
-        # but the state of the entries being wrong, and that leads to stale
-        # entries being left behind.
+        # list using a copy so that we see every original item and don't have
+        # to adjust the position when items are inserted or deleted in the
+        # underlying dirstate.
         old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
@@ -2494,7 +2492,7 @@ class DirState(object):
                 # new is finished
                 if tracing:
                     trace.mutter("Truncating from old '%s/%s'.",
-                        current_old[0][0].decode('utf'),
+                        current_old[0][0].decode('utf8'),
                         current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
@@ -2534,7 +2532,7 @@ class DirState(object):
                 # without seeing it in the new list.  so it must be gone.
                 if tracing:
                     trace.mutter("Deleting from old '%s/%s'.",
-                        current_old[0][0].decode('utf'),
+                        current_old[0][0].decode('utf8'),
                         current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
@@ -2638,7 +2636,8 @@ class DirState(object):
                 # grab one of them and use it to generate parent
                 # relocation/absent entries.
                 new_entry = key, [new_details]
-                for other_key in existing_keys:
+                # existing_keys can be changed as we iterate.
+                for other_key in tuple(existing_keys):
                     # change the record at other to be a pointer to this new
                     # record. The loop looks similar to the change to
                     # relocations when updating an existing record but its not:
@@ -2649,26 +2648,32 @@ class DirState(object):
                     if not present:
                         raise AssertionError('could not find block for %s' % (
                             other_key,))
-                    other_entry_index, present = self._find_entry_index(other_key,
-                                            self._dirblocks[other_block_index][1])
+                    other_block = self._dirblocks[other_block_index][1]
+                    other_entry_index, present = self._find_entry_index(
+                        other_key, other_block)
                     if not present:
-                        raise AssertionError('could not find entry for %s' % (
-                            other_key,))
+                        raise AssertionError(
+                            'update_minimal: could not find other entry for %s'
+                            % (other_key,))
                     if path_utf8 is None:
                         raise AssertionError('no path')
-                    other_block = self._dirblocks[other_block_index][1]
                     # Turn this other location into a reference to the new
-                    # location. This also updates the aliased iterator that
-                    # set_state_from_inventory uses so that the old entry, if
-                    # not already examined, is skipped over.
-                    other_block[other_entry_index][1][0] = \
-                        ('r', path_utf8, 0, False, '')
-                    if len(other_block[other_entry_index][1]) == 1:
-                        # We only have one tree in use, so an 'r' record is not
-                        # needed: remove it.
-                        other_block.pop(other_entry_index)
+                    # location. This also updates the aliased iterator
+                    # (current_old in set_state_from_inventory) so that the old
+                    # entry, if not already examined, is skipped over by that
+                    # loop.
+                    other_entry = other_block[other_entry_index]
+                    other_entry[1][0] = ('r', path_utf8, 0, False, '')
+                    self._maybe_remove_row(other_block, other_entry_index,
+                        id_index)
 
+                # This loop:
+                # adds a tuple to the new details for each column
+                #  - either by copying an existing relocation pointer inside that column
+                #  - or by creating a new pointer to the right row inside that column
                 num_present_parents = self._num_present_parents()
+                if num_present_parents:
+                    other_key = list(existing_keys)[0]
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
                     # TODO: optimise this to reduce memory use in highly
@@ -2681,7 +2686,7 @@ class DirState(object):
                     update_entry_index, present = \
                         self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
                     if not present:
-                        raise AssertionError('could not find entry for %s' % (other_key,))
+                        raise AssertionError('update_minimal: could not find entry for %s' % (other_key,))
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
                     if update_details[0] in 'ar': # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
@@ -2732,6 +2737,21 @@ class DirState(object):
                 self._dirblocks.insert(block_index, (subdir_key[0], []))
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def _maybe_remove_row(self, block, index, id_index):
+        """Remove index if it is absent or relocated across the row.
+        
+        id_index is updated accordingly.
+        """
+        present_in_row = False
+        entry = block[index]
+        for column in entry[1]:
+            if column[0] not in 'ar':
+                present_in_row = True
+                break
+        if not present_in_row:
+            block.pop(index)
+            id_index[entry[0][2]].remove(entry[0])
 
     def _validate(self):
         """Check that invariants on the dirblock are correct.
