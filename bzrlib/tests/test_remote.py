@@ -58,6 +58,7 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
+    KnownFailure,
     )
 from bzrlib.transport import get_transport, http
 from bzrlib.transport.memory import MemoryTransport
@@ -152,6 +153,23 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.assertTrue(r._format.supports_external_lookups)
         r = BzrDir.open_from_transport(t.clone('stackable')).open_repository()
         self.assertTrue(r._format.supports_external_lookups)
+
+    def test_remote_branch_set_append_revisions_only(self):
+        # Make a format 1.9 branch, which supports append_revisions_only
+        branch = self.make_branch('branch', format='1.9')
+        config = branch.get_config()
+        branch.set_append_revisions_only(True)
+        self.assertEqual(
+            'True', config.get_user_option('append_revisions_only'))
+        branch.set_append_revisions_only(False)
+        self.assertEqual(
+            'False', config.get_user_option('append_revisions_only'))
+
+    def test_remote_branch_set_append_revisions_only_upgrade_reqd(self):
+        branch = self.make_branch('branch', format='knit')
+        config = branch.get_config()
+        self.assertRaises(
+            errors.UpgradeRequired, branch.set_append_revisions_only, True)
 
 
 class FakeProtocol(object):

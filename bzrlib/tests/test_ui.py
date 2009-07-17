@@ -23,10 +23,10 @@ import re
 import sys
 import time
 
-import bzrlib
-import bzrlib.errors as errors
-from bzrlib.progress import (
-    ProgressTask,
+from bzrlib import (
+    errors,
+    tests,
+    ui as _mod_ui,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -53,11 +53,26 @@ from bzrlib.ui.text import (
     )
 
 
-class UITests(TestCase):
+class UITests(tests.TestCase):
+
+    def test_silent_factory(self):
+        ui = _mod_ui.SilentUIFactory()
+        stdout = StringIO()
+        self.assertEqual(None,
+                         self.apply_redirected(None, stdout, stdout,
+                                               ui.get_password))
+        self.assertEqual('', stdout.getvalue())
+        self.assertEqual(None,
+                         self.apply_redirected(None, stdout, stdout,
+                                               ui.get_password,
+                                               u'Hello\u1234 %(user)s',
+                                               user=u'some\u1234'))
+        self.assertEqual('', stdout.getvalue())
 
     def test_text_factory_ascii_password(self):
-        ui = TestUIFactory(stdin='secret\n', stdout=StringIOWrapper(),
-                           stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin='secret\n',
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -78,9 +93,9 @@ class UITests(TestCase):
         We can't predict what encoding users will have for stdin, so we force
         it to utf8 to test that we transport the password correctly.
         """
-        ui = TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper(),
-                           stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
         pb = ui.nested_progress_bar()
         try:
@@ -199,7 +214,10 @@ class UITests(TestCase):
     def assert_get_bool_acceptance_of_user_input(self, factory):
         factory.stdin = StringIO("y\nyes with garbage\n"
                                  "yes\nn\nnot an answer\n"
-                                 "no\nfoo\n")
+                                 "no\n"
+                                 "N\nY\n"
+                                 "foo\n"
+                                )
         factory.stdout = StringIO()
         factory.stderr = StringIO()
         # there is no output from the base factory
@@ -207,7 +225,24 @@ class UITests(TestCase):
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(False, factory.get_boolean(""))
+        self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual("foo\n", factory.stdin.read())
+        # stdin should be empty
+        self.assertEqual('', factory.stdin.readline())
+
+    def test_silent_ui_getbool(self):
+        factory = _mod_ui.SilentUIFactory()
+        self.assert_get_bool_acceptance_of_user_input(factory)
+
+    def test_silent_factory_prompts_silently(self):
+        factory = _mod_ui.SilentUIFactory()
+        stdout = StringIO()
+        factory.stdin = StringIO("y\n")
+        self.assertEqual(True,
+                         self.apply_redirected(None, stdout, stdout,
+                                               factory.get_boolean, "foo"))
+        self.assertEqual("", stdout.getvalue())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
@@ -272,8 +307,9 @@ class UITests(TestCase):
         self.assertEqual('', factory.stdin.readline())
 
     def test_text_ui_getusername_utf8(self):
-        ui = TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
-                           stdout=StringIOWrapper(), stderr=StringIOWrapper())
+        ui = tests.TestUIFactory(stdin=u'someuser\u1234'.encode('utf8'),
+                                 stdout=tests.StringIOWrapper(),
+                                 stderr=tests.StringIOWrapper())
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = "utf8"
         pb = ui.nested_progress_bar()
         try:
@@ -316,3 +352,62 @@ class SilentUITests(TestCase):
             NotImplementedError,
             self.apply_redirected,
             None, stdout, stdout, factory.get_boolean, "foo")
+
+
+class TestTextProgressView(tests.TestCase):
+    """Tests for text display of progress bars.
+    """
+    # XXX: These might be a bit easier to write if the rendering and
+    # state-maintaining parts of TextProgressView were more separate, and if
+    # the progress task called back directly to its own view not to the ui
+    # factory. -- mbp 20090312
+    
+    def _make_factory(self):
+        out = StringIO()
+        uif = TextUIFactory(stderr=out)
+        uif._progress_view._width = 80
+        return out, uif
+
+    def test_render_progress_easy(self):
+        """Just one task and one quarter done"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 5, 20)
+        self.assertEqual(
+'\r[####/               ] reticulating splines 5/20                               \r'
+            , out.getvalue())
+
+    def test_render_progress_nested(self):
+        """Tasks proportionally contribute to overall progress"""
+        out, uif = self._make_factory()
+        task = uif.nested_progress_bar()
+        task.update('reticulating splines', 0, 2)
+        task2 = uif.nested_progress_bar()
+        task2.update('stage2', 1, 2)
+        # so we're in the first half of the main task, and half way through
+        # that
+        self.assertEqual(
+r'[####\               ] reticulating splines:stage2 1/2'
+            , uif._progress_view._render_line())
+        # if the nested task is complete, then we're all the way through the
+        # first half of the overall work
+        task2.update('stage2', 2, 2)
+        self.assertEqual(
+r'[#########|          ] reticulating splines:stage2 2/2'
+            , uif._progress_view._render_line())
+
+    def test_render_progress_sub_nested(self):
+        """Intermediate tasks don't mess up calculation."""
+        out, uif = self._make_factory()
+        task_a = uif.nested_progress_bar()
+        task_a.update('a', 0, 2)
+        task_b = uif.nested_progress_bar()
+        task_b.update('b')
+        task_c = uif.nested_progress_bar()
+        task_c.update('c', 1, 2)
+        # the top-level task is in its first half; the middle one has no
+        # progress indication, just a label; and the bottom one is half done,
+        # so the overall fraction is 1/4
+        self.assertEqual(
+            r'[####|               ] a:b:c 1/2'
+            , uif._progress_view._render_line())

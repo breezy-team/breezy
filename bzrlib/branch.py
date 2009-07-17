@@ -35,7 +35,6 @@ from bzrlib import (
         symbol_versioning,
         transport,
         tsort,
-        ui,
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
@@ -105,6 +104,8 @@ class Branch(object):
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
+        if repo.has_same_location(self.repository):
+            raise errors.UnstackableLocationError(self.base, url)
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -520,6 +521,16 @@ class Branch(object):
         """
         raise errors.UpgradeRequired(self.base)
 
+    def set_append_revisions_only(self, enabled):
+        if not self._format.supports_set_append_revisions_only():
+            raise errors.UpgradeRequired(self.base)
+        if enabled:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
+
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
@@ -764,10 +775,6 @@ class Branch(object):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
-
-    def set_append_revisions_only(self, enabled):
-        """Older format branches are never restricted to append-only"""
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
@@ -1378,6 +1385,8 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    can_set_append_revisions_only = True
+
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1535,6 +1544,10 @@ class BranchFormat(object):
     @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
+
+    def supports_set_append_revisions_only(self):
+        """True if this format supports set_append_revisions_only."""
+        return False
 
     def supports_stacking(self):
         """True if this format records a stacked-on branch."""
@@ -1823,6 +1836,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
 
 
 class BzrBranchFormat8(BranchFormatMetadir):
@@ -1857,6 +1872,9 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
+
     def supports_stacking(self):
         return True
 
@@ -1890,6 +1908,9 @@ class BzrBranchFormat7(BzrBranchFormat8):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
+
+    def supports_set_append_revisions_only(self):
+        return True
 
     supports_reference_locations = False
 
@@ -2619,14 +2640,6 @@ class BzrBranch8(BzrBranch5):
             raise errors.NotStacked(self)
         return stacked_url
 
-    def set_append_revisions_only(self, enabled):
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
-
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
         return value == 'True'
@@ -2895,7 +2908,7 @@ class InterBranch(InterObject):
     @staticmethod
     def _get_branch_formats_to_test():
         """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(self._get_branch_formats_to_test)
+        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
@@ -3056,7 +3069,6 @@ class GenericInterBranch(InterBranch):
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
-        return result
 
     def _push_with_bound_branches(self, overwrite, stop_revision,
             _override_hook_source_branch=None):

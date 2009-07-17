@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -995,18 +995,15 @@ class DiskTreeTransform(TreeTransformBase):
                        self._new_contents.iteritems()]
             entries.sort(reverse=True)
             for path, trans_id, kind in entries:
-                if kind == "directory":
-                    os.rmdir(path)
-                else:
-                    os.unlink(path)
+                delete_any(path)
             try:
-                os.rmdir(self._limbodir)
+                delete_any(self._limbodir)
             except OSError:
                 # We don't especially care *why* the dir is immortal.
                 raise ImmortalLimbo(self._limbodir)
             try:
                 if self._deletiondir is not None:
-                    os.rmdir(self._deletiondir)
+                    delete_any(self._deletiondir)
             except OSError:
                 raise errors.ImmortalPendingDeletion(self._deletiondir)
         finally:
@@ -1748,7 +1745,7 @@ class _PreviewTree(tree.Tree):
             if self._transform.final_file_id(trans_id) is None:
                 yield self._final_paths._determine_path(trans_id)
 
-    def _make_inv_entries(self, ordered_entries, specific_file_ids):
+    def _make_inv_entries(self, ordered_entries, specific_file_ids=None):
         for trans_id, parent_file_id in ordered_entries:
             file_id = self._transform.final_file_id(trans_id)
             if file_id is None:
@@ -1791,14 +1788,41 @@ class _PreviewTree(tree.Tree):
                                                       specific_file_ids):
             yield unicode(self._final_paths.get_path(trans_id)), entry
 
-    def list_files(self, include_root=False):
-        """See Tree.list_files."""
+    def _iter_entries_for_dir(self, dir_path):
+        """Return path, entry for items in a directory without recursing down."""
+        dir_file_id = self.path2id(dir_path)
+        ordered_ids = []
+        for file_id in self.iter_children(dir_file_id):
+            trans_id = self._transform.trans_id_file_id(file_id)
+            ordered_ids.append((trans_id, file_id))
+        for entry, trans_id in self._make_inv_entries(ordered_ids):
+            yield unicode(self._final_paths.get_path(trans_id)), entry
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """See WorkingTree.list_files."""
         # XXX This should behave like WorkingTree.list_files, but is really
         # more like RevisionTree.list_files.
-        for path, entry in self.iter_entries_by_dir():
-            if entry.name == '' and not include_root:
-                continue
-            yield path, 'V', entry.kind, entry.file_id, entry
+        if recursive:
+            prefix = None
+            if from_dir:
+                prefix = from_dir + '/'
+            entries = self.iter_entries_by_dir()
+            for path, entry in entries:
+                if entry.name == '' and not include_root:
+                    continue
+                if prefix:
+                    if not path.startswith(prefix):
+                        continue
+                    path = path[len(prefix):]
+                yield path, 'V', entry.kind, entry.file_id, entry
+        else:
+            if from_dir is None and include_root is True:
+                root_entry = inventory.make_entry('directory', '',
+                    ROOT_PARENT, self.get_root_id())
+                yield '', 'V', 'directory', root_entry.file_id, root_entry
+            entries = self._iter_entries_for_dir(from_dir or '')
+            for path, entry in entries:
+                yield path, 'V', entry.kind, entry.file_id, entry
 
     def kind(self, file_id):
         trans_id = self._transform.trans_id_file_id(file_id)
@@ -1938,6 +1962,13 @@ class _PreviewTree(tree.Tree):
             return old_annotation
         if not changed_content:
             return old_annotation
+        # TODO: This is doing something similar to what WT.annotate_iter is
+        #       doing, however it fails slightly because it doesn't know what
+        #       the *other* revision_id is, so it doesn't know how to give the
+        #       other as the origin for some lines, they all get
+        #       'default_revision'
+        #       It would be nice to be able to use the new Annotator based
+        #       approach, as well.
         return annotate.reannotate([old_annotation],
                                    self.get_file(file_id).readlines(),
                                    default_revision)
