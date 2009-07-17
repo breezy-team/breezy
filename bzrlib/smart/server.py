@@ -313,7 +313,7 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     from bzrlib.transport.chroot import ChrootServer
     chroot_server = ChrootServer(transport)
     chroot_server.setUp()
-    t = get_transport(chroot_server.get_url())
+    transport = get_transport(chroot_server.get_url())
     if inet:
         smart_server = medium.SmartServerPipeStreamMedium(
             sys.stdin, sys.stdout, transport)
@@ -322,8 +322,7 @@ def serve_bzr(transport, host=None, port=None, inet=False):
             host = medium.BZR_DEFAULT_INTERFACE
         if port is None:
             port = medium.BZR_DEFAULT_PORT
-        smart_server = SmartTCPServer(
-            transport, host=host, port=port)
+        smart_server = SmartTCPServer(transport, host=host, port=port)
         trace.note('listening on port: %s' % smart_server.port)
     # For the duration of this server, no UI output is permitted. note
     # that this may cause problems with blackbox tests. This should be
