@@ -1733,7 +1733,10 @@ class CHKInventory(CommonInventory):
             # to spend less time calculating the delta.
             delta_list = []
             for key, (old_key, value) in parent_id_basename_delta.iteritems():
-                delta_list.append((old_key, key, value))
+                if value:
+                    delta_list.append((old_key, key, value))
+                else:
+                    delta_list.append((old_key, None, None))
             result.parent_id_basename_to_file_id.apply_delta(delta_list)
         parents.discard(('', None))
         for parent_path, parent in parents:
