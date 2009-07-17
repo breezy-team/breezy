@@ -457,6 +457,8 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.assertEqual(1, len(tried))
         self.assertEqual(1, len(worked))
         self.assertEqual(0, len(issues))
+        self.failUnlessExists('branch1')
+        self.failUnlessExists('branch1/.bzr')
         self.failIfExists('branch1/backup.bzr')
 
     def make_repo_with_branches(self):
@@ -483,6 +485,8 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.assertEqual(3, len(tried))
         self.assertEqual(3, len(worked))
         self.assertEqual(0, len(issues))
+        self.failUnlessExists('repo')
+        self.failUnlessExists('repo/.bzr')
         self.failIfExists('repo/backup.bzr')
         self.failIfExists('repo/branch1/backup.bzr')
         self.failIfExists('repo/branch2/backup.bzr')

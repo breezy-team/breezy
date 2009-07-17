@@ -102,13 +102,9 @@ class Convert(object):
 
         This removes the backup.bzr directory.
         """
-        backup = self.backup_newpath
-        if backup.startswith("file://"):
-            osutils.rmtree(backup[len("file://"):])
-        else:
-            # TODO: Use transport.delete_tree() so works on remote URLs
-            raise AssertionError(
-                "cannot clean-up after upgrading a remote URL yet")
+        transport = self.transport
+        backup_relpath = transport.relpath(self.backup_newpath)
+        transport.delete_tree(backup_relpath)
 
 
 def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
@@ -229,10 +225,10 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
     exceptions = []
     for control_dir in items:
         # Do the conversion
+        location = control_dir.root_transport.base
         bzr_object, bzr_label = control_dir.get_object_and_label()
         if verbose:
             type_label = label or bzr_label
-            location = control_dir.root_transport.base
             note("Upgrading %s %s ...", type_label, location)
         try:
             if not dry_run:
