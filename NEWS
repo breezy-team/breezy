@@ -57,6 +57,10 @@ API Changes
 Internals
 *********
 
+* ``CHKInventory.path2id`` uses the parent_id to basename hash to avoid
+  reading the entries along the path, reducing work to lookup ids from
+  paths. (Robert Collins)
+
 * ``CHKMap.apply_delta`` now raises ``InconsistentDelta`` if a delta adds
   as new a key which was already mapped. (Robert Collins)
 

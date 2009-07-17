@@ -1480,6 +1480,7 @@ class CHKInventory(CommonInventory):
         self._fileid_to_entry_cache = {}
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
+        self.root_id = None
 
     def __eq__(self, other):
         """Compare two sets by comparing their contents."""
@@ -2014,11 +2015,34 @@ class CHKInventory(CommonInventory):
 
     def path2id(self, name):
         """See CommonInventory.path2id()."""
+        # TODO: perhaps support negative hits?
         result = self._path_to_fileid_cache.get(name, None)
-        if result is None:
-            result = CommonInventory.path2id(self, name)
-            self._path_to_fileid_cache[name] = result
-        return result
+        if result is not None:
+            return result
+        if isinstance(name, basestring):
+            names = osutils.splitpath(name)
+        else:
+            names = name
+        current_id = self.root_id
+        if current_id is None:
+            return None
+        parent_id_index = self.parent_id_basename_to_file_id
+        for basename in names:
+            # TODO: Cache each path we figure out in this function.
+            basename_utf8 = basename.encode('utf8')
+            key_filter = [(current_id, basename_utf8)]
+            file_id = None
+            for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
+                key_filter=key_filter):
+                if parent_id != current_id or name_utf8 != basename_utf8:
+                    raise errors.BzrError("corrupt inventory  lookup! "
+                        "%r %r %r %r" % (parent_id, current_id, name_utf8,
+                        basename_utf8))
+            if file_id is None:
+                return None
+            current_id = file_id
+        self._path_to_fileid_cache[name] = current_id
+        return current_id
 
     def to_lines(self):
         """Serialise the inventory to lines."""
