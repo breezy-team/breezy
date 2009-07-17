@@ -226,7 +226,7 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
     for control_dir in items:
         # Do the conversion
         location = control_dir.root_transport.base
-        bzr_object, bzr_label = control_dir.get_object_and_label()
+        bzr_object, bzr_label = control_dir._get_object_and_label()
         if verbose:
             type_label = label or bzr_label
             note("Upgrading %s %s ...", type_label, location)

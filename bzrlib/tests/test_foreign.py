@@ -249,7 +249,7 @@ class DummyForeignVcsDir(BzrDirMeta1):
         self._control_files = lockable_files.LockableFiles(self.transport,
             "lock", lockable_files.TransportLock)
 
-    def open_branch(self, ignore_fallbacks=True):
+    def open_branch(self, unsupported=False, ignore_fallbacks=True):
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):

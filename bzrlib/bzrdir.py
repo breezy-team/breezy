@@ -1292,41 +1292,32 @@ class BzrDir(object):
                 push_result.branch_push_result.target_branch
         return push_result
 
-    def get_object_and_label(self):
+    def _get_object_and_label(self):
         """Return the primary object and type label for a control directory.
 
         :return: object, label where
           object is a Branch, Repository or WorkingTree and
           label is one of:
-            branch            - an unstacked branch
-            stacked branch    - a branch stacked on another
-            repository        - an unshared repository
-            shared repository - a shared repository
+            branch            - a branch
+            repository        - a repository
             tree              - a lightweight checkout
         """
         try:
-            # XXX: Is unsupported=True needed here as well?
-            br = self.open_branch(ignore_fallbacks=True)
+            try:
+                br = self.open_branch(unsupported=True, ignore_fallbacks=True)
+            except TypeError:
+                # RemoteRepository doesn't support the unsupported parameter
+                br = self.open_branch(ignore_fallbacks=True)
         except errors.NotBranchError:
             pass
         else:
-            try:
-                br.get_stacked_on_url()
-            except errors.NotStacked:
-                return br, "branch"
-            except errors.UnstackableBranchFormat:
-                return br, "branch"
-            else:
-                return br, "stacked branch"
+            return br, "branch"
         try:
             repo = self.open_repository()
         except errors.NoRepositoryPresent:
             pass
         else:
-            if repo.is_shared():
-                return repo, "shared repository"
-            else:
-                return repo, "repository"
+            return repo, "repository"
         try:
             wt = self.open_workingtree()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
