@@ -1356,12 +1356,12 @@ class DirState(object):
             # Validate parents
             self._after_delta_check_parents(parents, 0)
         except errors.BzrError, e:
+            self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that 
             # fits the behaviour we trigger.
-            self._changes_aborted = True
             raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
     def _apply_removals(self, removals):
@@ -1373,12 +1373,15 @@ class DirState(object):
             try:
                 entry = self._dirblocks[block_i][1][entry_i]
             except IndexError:
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(path, file_id,
                     "Wrong path for old path.")
             if not f_present or entry[1][0][0] in 'ar':
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(path, file_id,
                     "Wrong path for old path.")
             if file_id != entry[0][2]:
+                self._changes_aborted = True
                 raise errors.InconsistentDelta(path, file_id,
                     "Attempt to remove path has wrong id - found %r."
                     % entry[0][2])
@@ -1395,6 +1398,7 @@ class DirState(object):
                 # be due to it being in a parent tree, or a corrupt delta.
                 for child_entry in self._dirblocks[block_i][1]:
                     if child_entry[1][0][0] not in ('r', 'a'):
+                        self._changes_aborted = True
                         raise errors.InconsistentDelta(path, entry[0][2],
                             "The file id was deleted but its children were "
                             "not deleted.")
@@ -1405,6 +1409,7 @@ class DirState(object):
                 self.update_minimal(key, minikind, executable, fingerprint,
                                     path_utf8=path_utf8)
         except errors.NotVersionedError:
+            self._changes_aborted = True
             raise errors.InconsistentDelta(path_utf8.decode('utf8'), key[2],
                 "Missing parent")
 
@@ -1540,6 +1545,7 @@ class DirState(object):
             # Validate parents
             self._after_delta_check_parents(parents, 1)
         except errors.BzrError, e:
+            self._changes_aborted = True
             if 'integrity error' not in str(e):
                 raise
             # _get_entry raises BzrError when a request is inconsistent; we
@@ -1547,7 +1553,6 @@ class DirState(object):
             # fits the behaviour we trigger. Partof this is driven by dirstate
             # only supporting deltas that turn the basis into a closer fit to
             # the active tree.
-            self._changes_aborted = True
             raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
@@ -1648,6 +1653,7 @@ class DirState(object):
         null = DirState.NULL_PARENT_DETAILS
         for old_path, new_path, file_id, _, real_delete in deletes:
             if real_delete != (new_path is None):
+                self._changes_aborted = True
                 raise AssertionError("bad delete delta")
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
