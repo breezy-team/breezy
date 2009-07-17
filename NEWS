@@ -33,6 +33,9 @@ Bug Fixes
 * ``bzr mv`` no longer takes out branch locks, which allows it to work
   when the branch is readonly. (Robert Collins, #216541)
 
+* ``bzr revert .`` no longer generates an InconsistentDelta error when
+  there are missing subtrees. (Robert Collins, #367632)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
   

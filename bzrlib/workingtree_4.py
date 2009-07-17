@@ -435,6 +435,11 @@ class DirStateWorkingTree(WorkingTree3):
         return osutils.lexists(pathjoin(
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
+    def has_or_had_id(self, file_id):
+        state = self.current_dirstate()
+        row, parents = self._get_entry(file_id=file_id)
+        return row is not None
+
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
