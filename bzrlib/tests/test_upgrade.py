@@ -433,10 +433,8 @@ _upgrade_dir_template = [
 
 class TestSmartUpgrade(TestCaseWithTransport):
 
-    # We use 1.9 here instead of pack-0.92 so we can test that stacked
-    # branches get upgraded before unstacked ones
-    from_format = "1.6"
-    to_format = bzrdir.format_registry.make_bzrdir("1.9")
+    from_format = "pack-0.92"
+    to_format = bzrdir.format_registry.make_bzrdir("2a")
 
     def make_standalone_branch(self):
         wt = self.make_branch_and_tree("branch1", format=self.from_format)
