@@ -3129,8 +3129,8 @@ class cmd_upgrade(Command):
     during other operations to upgrade.
     """
 
-    _see_also = ['check']
-    takes_args = ['url*']
+    _see_also = ['check', 'reconcile']
+    takes_args = ['url?']
     takes_options = [
         RegistryOption('format',
             help='Upgrade to a specific format.  See "bzr help'
@@ -3146,12 +3146,10 @@ class cmd_upgrade(Command):
             help="Show what would be done, but don't actually do anything."),
     ]
 
-    def run(self, url_list=[], format=None, clean=False, pack=False,
+    def run(self, url='.', format=None, clean=False, pack=False,
         dry_run=False):
         from bzrlib.upgrade import upgrade
-        if url_list == []:
-            url_list = ['.']
-        exceptions = upgrade(url_list, format, clean_up=clean, pack=pack,
+        exceptions = upgrade(url, format, clean_up=clean, pack=pack,
             dry_run=dry_run)
         if exceptions:
             if len(exceptions) == 1:
