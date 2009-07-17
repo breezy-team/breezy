@@ -261,6 +261,9 @@ easy
 hpss 
     bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.
 
+hpssvfs 
+    bugs for causes of VFS methods of the smart server
+
 launchpad 
     bugs about interactions with launchpad (typically this means bzrlib.plugins.launchpad).
 
