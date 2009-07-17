@@ -895,7 +895,8 @@ class TestCHKInventory(TestCaseWithTransport):
         inv.add_path("", "directory", "myrootid", None)
         inv.revision_id = "expectedid"
         reference_inv = CHKInventory.from_inventory(chk_bytes, inv)
-        delta = [(None, "",  "myrootid", inv.root)]
+        delta = [("", None, base_inv.root.file_id, None),
+            (None, "",  "myrootid", inv.root)]
         new_inv = base_inv.create_by_apply_delta(delta, "expectedid")
         self.assertEquals(reference_inv.root, new_inv.root)
 
