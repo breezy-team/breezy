@@ -36,6 +36,10 @@ Bug Fixes
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
   
+* Requests for unknown methods no longer cause the smart server to log
+  lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
+  ``do_end``.  (Andrew Bennetts, #338561)
+  
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
