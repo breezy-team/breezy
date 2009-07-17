@@ -3122,14 +3122,33 @@ class cmd_check(Command):
 
 
 class cmd_upgrade(Command):
-    """Upgrade branch storage to current format.
+    """Upgrade a repository, branch or working tree to a newer format.
 
-    The check command or bzr developers may sometimes advise you to run
-    this command. When the default format has changed you may also be warned
-    during other operations to upgrade.
+    The check command or Bazaar developers may sometimes advise you to run
+    this command. When the default format has changed after a major new
+    release of Bazaar, you may also be warned during other operations
+    that you should upgrade.
+
+    If the location given is a shared repository, dependent branches
+    are also converted provided the repository converts successfully.
+    If the conversion of a branch fails, remaining branches are still tried.
+
+    A backup.bzr directory is created at the start of the conversion
+    process. By default, this is left there on completion. If the
+    conversion fails, delete the new .bzr directory and rename this
+    one back in its place. Use the --clean option to ask for the
+    backup.bzr directory to be removed on successful conversion.
+    Alternatively, you can delete it by hand if everything looks
+    good afterwards.
+
+    It is often a good idea to pack the repository after an upgrade.
+    Use the --pack option to request this or do it separately using
+    the pack command.
+
+    For more information on upgrades, see the Bazaar 2.0 Upgrade Guide.
     """
 
-    _see_also = ['check', 'reconcile']
+    _see_also = ['check', 'reconcile', 'pack']
     takes_args = ['url?']
     takes_options = [
         RegistryOption('format',

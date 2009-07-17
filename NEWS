@@ -19,6 +19,17 @@ New Features
 * ``merge --interactive`` applies a user-selected portion of the merge.  The UI
   is similar to ``shelve``.  (Aaron Bentley)
 
+* ``upgrade`` now upgrades dependent branches when a shared repository is
+  specified. It also supports several new options:
+
+  * --dry-run for showing what will happen
+
+  * --clean to remove the backup.dir directory on successful completion
+
+  * --pack to pack the repository on successful completion.
+
+  (Ian Clatworthy)
+
 Bug Fixes
 *********
 
