@@ -25,6 +25,7 @@ from bzrlib import (
     index as _mod_index,
     osutils,
     tests,
+    trace,
     versionedfile,
     )
 from bzrlib.osutils import sha_string
@@ -474,11 +475,12 @@ class TestGroupCompressBlock(tests.TestCase):
 class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 
     def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
-                     dir='.'):
+                     dir='.', inconsistency_fatal=True):
         t = self.get_transport(dir)
         t.ensure_base()
         vf = groupcompress.make_pack_factory(graph=create_graph,
-            delta=False, keylength=keylength)(t)
+            delta=False, keylength=keylength,
+            inconsistency_fatal=inconsistency_fatal)(t)
         if do_cleanup:
             self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
@@ -657,6 +659,47 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         self.assertEqual(
             frozenset([('parent-1',), ('parent-2',)]),
             index.get_missing_parents())
+
+    def make_source_with_b(self, a_parent, path):
+        source = self.make_test_vf(True, dir=path)
+        source.add_lines(('a',), (), ['lines\n'])
+        if a_parent:
+            b_parents = (('a',),)
+        else:
+            b_parents = ()
+        source.add_lines(('b',), b_parents, ['lines\n'])
+        return source
+
+    def do_inconsistent_inserts(self, inconsistency_fatal):
+        target = self.make_test_vf(True, dir='target',
+                                   inconsistency_fatal=inconsistency_fatal)
+        for x in range(2):
+            source = self.make_source_with_b(x==1, 'source%s' % x)
+            target.insert_record_stream(source.get_record_stream(
+                [('b',)], 'unordered', False))
+
+    def test_inconsistent_redundant_inserts_warn(self):
+        """Should not insert a record that is already present."""
+        warnings = []
+        def warning(template, args):
+            warnings.append(template % args)
+        _trace_warning = trace.warning
+        trace.warning = warning
+        try:
+            self.do_inconsistent_inserts(inconsistency_fatal=False)
+        finally:
+            trace.warning = _trace_warning
+        self.assertEqual(["inconsistent details in skipped record: ('b',)"
+                          " ('42 32 0 8', ((),)) ('74 32 0 8', ((('a',),),))"],
+                         warnings)
+
+    def test_inconsistent_redundant_inserts_raises(self):
+        e = self.assertRaises(errors.KnitCorrupt, self.do_inconsistent_inserts,
+                              inconsistency_fatal=True)
+        self.assertContainsRe(str(e), "Knit.* corrupt: inconsistent details"
+                              " in add_records:"
+                              " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
+                              " 0 8', \(\(\('a',\),\),\)\)")
 
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):

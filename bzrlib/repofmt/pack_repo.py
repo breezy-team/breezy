@@ -36,10 +36,7 @@ from bzrlib import (
     )
 from bzrlib.index import (
     CombinedGraphIndex,
-    GraphIndex,
-    GraphIndexBuilder,
     GraphIndexPrefixAdapter,
-    InMemoryGraphIndex,
     )
 from bzrlib.knit import (
     KnitPlainFactory,
@@ -55,7 +52,6 @@ from bzrlib import (
     lockable_files,
     lockdir,
     revision as _mod_revision,
-    symbol_versioning,
     )
 
 from bzrlib.decorators import needs_write_lock
@@ -75,7 +71,6 @@ from bzrlib.repository import (
     RootCommitBuilder,
     StreamSource,
     )
-import bzrlib.revision as _mod_revision
 from bzrlib.trace import (
     mutter,
     warning,

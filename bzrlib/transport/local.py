@@ -204,7 +204,8 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
-            fp.write(bytes)
+            if bytes:
+                fp.write(bytes)
             fp.commit()
         finally:
             fp.close()
@@ -285,7 +286,8 @@ class LocalTransport(Transport):
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         def writer(fd):
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
@@ -370,7 +372,8 @@ class LocalTransport(Transport):
         file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
             result = self._check_mode_and_size(file_abspath, fd, mode=mode)
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         finally:
             os.close(fd)
         return result

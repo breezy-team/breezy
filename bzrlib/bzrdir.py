@@ -70,7 +70,6 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
-    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -3270,6 +3269,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             remote_repo = None
             policy = None
+        bzrdir._format.set_branch_format(self.get_branch_format())
         if require_stacking:
             # The repo has already been created, but we need to make sure that
             # we'll make a stackable branch.

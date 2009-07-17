@@ -2093,11 +2093,16 @@ class ImmortalPendingDeletion(BzrError):
 
 class OutOfDateTree(BzrError):
 
-    _fmt = "Working tree is out of date, please run 'bzr update'."
+    _fmt = "Working tree is out of date, please run 'bzr update'.%(more)s"
 
-    def __init__(self, tree):
+    def __init__(self, tree, more=None):
+        if more is None:
+            more = ''
+        else:
+            more = ' ' + more
         BzrError.__init__(self)
         self.tree = tree
+        self.more = more
 
 
 class PublicBranchOutOfDate(BzrError):
@@ -2154,6 +2159,18 @@ class InconsistentDelta(BzrError):
         BzrError.__init__(self)
         self.path = path
         self.file_id = file_id
+        self.reason = reason
+
+
+class InconsistentDeltaDelta(InconsistentDelta):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied: %(delta)r"
+            "\nreason: %(reason)s")
+
+    def __init__(self, delta, reason):
+        BzrError.__init__(self)
+        self.delta = delta
         self.reason = reason
 
 
@@ -2778,13 +2795,18 @@ class NoBindLocation(BzrDirError):
 
 class UncommittedChanges(BzrError):
 
-    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+    _fmt = ('Working tree "%(display_url)s" has uncommitted changes'
+            ' (See bzr status).%(more)s')
 
-    def __init__(self, tree):
+    def __init__(self, tree, more=None):
+        if more is None:
+            more = ''
+        else:
+            more = ' ' + more
         import bzrlib.urlutils as urlutils
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
-        BzrError.__init__(self, tree=tree, display_url=display_url)
+        BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
 class MissingTemplateVariable(BzrError):

@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for the python and pyrex extensions of groupcompress"""
+"""Tests for the python and pyrex extensions of KnownGraph"""
 
 from bzrlib import (
     errors,
@@ -61,6 +61,16 @@ class _CompiledKnownGraphFeature(tests.Feature):
         return 'bzrlib._known_graph_pyx'
 
 CompiledKnownGraphFeature = _CompiledKnownGraphFeature()
+
+
+#  a
+#  |\
+#  b |
+#  | |
+#  c |
+#   \|
+#    d
+alt_merge = {'a': [], 'b': ['a'], 'c': ['b'], 'd': ['a', 'c']}
 
 
 class TestKnownGraph(tests.TestCase):
@@ -202,6 +212,10 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['z']), graph.heads(['w', 's', 'z']))
         self.assertEqual(set(['w', 'q']), graph.heads(['w', 's', 'q']))
         self.assertEqual(set(['z']), graph.heads(['s', 'z']))
+
+    def test_heads_alt_merge(self):
+        graph = self.make_known_graph(alt_merge)
+        self.assertEqual(set(['c']), graph.heads(['a', 'c']))
 
     def test_heads_with_ghost(self):
         graph = self.make_known_graph(test_graph.with_ghost)

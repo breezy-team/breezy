@@ -382,6 +382,23 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
         # lying around.
         self.daemon_threads = True
 
+    def process_request_thread(self, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Under some circumstances (as in bug #383920), we need to force the
+        # shutdown as python delays it until gc occur otherwise and the client
+        # may hang.
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            request.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
+
 
 class HttpServer(transport.Server):
     """A test server for http transports.

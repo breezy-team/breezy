@@ -16,7 +16,7 @@
 
 """Tests for the BzrDir facility and any format specific tests.
 
-For interface contract tests, see tests/bzr_dir_implementations.
+For interface contract tests, see tests/per_bzr_dir.
 """
 
 import os
