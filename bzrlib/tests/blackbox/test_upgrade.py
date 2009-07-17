@@ -145,6 +145,21 @@ finished
         self.run_bzr('init-repository --format=metaweave repo')
         self.run_bzr('upgrade --format=knit repo')
 
+    def _assert_option_legal(self, option_str):
+        # Confirm that an option is legal. (Lower level tests are
+        # expected to validate the actual functionality.)
+        self.run_bzr('init --format=pack-0.92 branch-foo')
+        self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
+
+    def test_upgrade_clean_supported(self):
+        self._assert_option_legal('--clean')
+
+    def test_upgrade_pack_supported(self):
+        self._assert_option_legal('--pack')
+
+    def test_upgrade_dry_run_supported(self):
+        self._assert_option_legal('--dry-run')
+
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""

@@ -17,7 +17,7 @@
 """bzr upgrade logic."""
 
 
-from bzrlib import osutils
+from bzrlib import osutils, repository
 from bzrlib.bzrdir import BzrDir, BzrDirFormat, format_registry
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
@@ -257,7 +257,7 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
 
         # Do any required post processing
         succeeded.append(control_dir)
-        if pack and isinstance(bzr_object, Repository):
+        if pack and isinstance(bzr_object, repository.Repository):
             note("Packing ...")
             try:
                 if not dry_run:
