@@ -178,7 +178,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
 
     See smart_upgrade for parameter details.
     """
-    # If the URL is a shared repository, find the dependent branches & trees
+    # If the URL is a shared repository, find the dependent branches
     dependents = None
     try:
         repo = control_dir.open_repository()
@@ -187,34 +187,22 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
         pass
     else:
         # The URL is a repository. If it successfully upgrades,
-        # then upgrade the dependent branches and trees as well.
+        # then upgrade the dependent branches as well.
         if repo.is_shared():
-            dependents = _find_repo_dependents(repo)
+            dependents = repo.find_branches()
 
     # Do the conversions
     attempted = [control_dir]
     succeeded, exceptions = _convert_items([control_dir], format, clean_up,
         pack, dry_run, verbose=dependents)
     if succeeded and dependents:
-        branches, trees = dependents
-        note("Found %d dependents: %d branches, %d trees - upgrading ...",
-            len(dependents), len(branches), len(trees))
+        note("Found %d dependent branches - upgrading ...", len(dependents))
 
         # Convert dependent branches
-        branch_cdirs = [b.bzrdir for b in branches]
+        branch_cdirs = [b.bzrdir for b in dependents]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
             pack, dry_run, label="branch")
         attempted.extend(branch_cdirs)
-        succeeded.extend(successes)
-        exceptions.extend(problems)
-
-        # Convert dependent trees
-        # TODO: Filter trees so that we don't attempt to convert trees
-        # referring to branches that failed.
-        tree_cdirs = [t.bzrdir for t in trees]
-        successes, problems = _convert_items(tree_cdirs, format, clean_up,
-            pack, dry_run, label="tree")
-        attempted.extend(tree_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
 
@@ -283,17 +271,3 @@ def _verbose_warning(verbose, msg):
     mutter(msg)
     if verbose:
         warning(msg)
-
-
-# TODO: move this helper method into repository.py once it supports trees ...
-def _find_repo_dependents(repo):
-    """Find the branches using a shared repository and trees using the branches.
-
-    :return: (branches, trees) or None if none.
-    """
-    # TODO: find trees (lightweight checkouts), not just branches
-    branches = repo.find_branches()
-    if branches:
-        return (branches, [])
-    else:
-        return None
