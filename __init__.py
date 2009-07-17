@@ -27,10 +27,11 @@ import sys
 import bzrlib
 import bzrlib.api
 
-# versions ending in 'exp' mean experimental mappings
-# versions ending in 'dev' mean development version
-# versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 4, 1, 'dev', 0)
+from info import (
+    bzr_compatible_versions,
+    bzr_plugin_version as version_info,
+    dulwich_minimum_version,
+    )
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -38,10 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-MINIMUM_DULWICH_VERSION = (0, 3, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0), (1, 16, 0), (1, 17, 0)]
-
-bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
+bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 
 from bzrlib import (
@@ -61,9 +59,6 @@ from bzrlib.transport import (
     )
 from bzrlib.commands import (
     plugin_cmds,
-    )
-from bzrlib.trace import (
-    warning,
     )
 from bzrlib.version_info_formats.format_rio import (
     RioVersionInfoBuilder,
@@ -85,8 +80,8 @@ def lazy_check_versions():
     except ImportError:
         raise ImportError("bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
-        if dulwich_version < MINIMUM_DULWICH_VERSION:
-            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
+        if dulwich_version < dulwich_minimum_version:
+            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
 
 bzrdir.format_registry.register_lazy('git', 
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
