@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -872,6 +872,7 @@ def load_tests(standard_tests, module, loader):
         'test_refresh_data',
         'test_repository',
         'test_revision',
+        'test_send',
         'test_statistics',
         'test_write_group',
         ]
