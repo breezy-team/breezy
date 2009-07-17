@@ -1614,7 +1614,12 @@ class CHKInventory(CommonInventory):
             search_key_func=search_key_func)
         result.id_to_entry._ensure_root()
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        parent_id_basename_delta = []
+        # Change to apply to the parent_id_basename delta. The dict maps
+        # (parent_id, basename) -> (old_key, new_value). We use a dict because
+        # when a path has its id replaced (e.g. the root is changed, or someone
+        # does bzr mv a b, bzr mv c a, we should output a single change to this
+        # map rather than two.
+        parent_id_basename_delta = {}
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
@@ -1697,10 +1702,17 @@ class CHKInventory(CommonInventory):
                 else:
                     new_key = self._parent_id_basename_key(entry)
                     new_value = file_id
+                # If the two keys are the same, the value will be unchanged
+                # as its always the file id for this entry.
                 if old_key != new_key:
-                    # If the two keys are the same, the value will be unchanged
-                    # as its always the file id.
-                    parent_id_basename_delta.append((old_key, new_key, new_value))
+                    # Transform a change into explicit delete/add preserving
+                    # a possible match on the key from a different file id.
+                    if old_key is not None:
+                        parent_id_basename_delta.setdefault(
+                            old_key, [None, None])[0] = old_key
+                    if new_key is not None:
+                        parent_id_basename_delta.setdefault(
+                            new_key, [None, None])[1] = new_value
         # validate that deletes are complete.
         for file_id in deletes:
             entry = self[file_id]
@@ -1715,7 +1727,14 @@ class CHKInventory(CommonInventory):
                         "parent deleted.")
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
-            result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
+            # Transform the parent_id_basename delta data into a linear delta
+            # with only one record for a given key. Optimally this would allow
+            # re-keying, but its simpler to just output that as a delete+add
+            # to spend less time calculating the delta.
+            delta_list = []
+            for key, (old_key, value) in parent_id_basename_delta.iteritems():
+                delta_list.append((old_key, key, value))
+            result.parent_id_basename_to_file_id.apply_delta(delta_list)
         parents.discard(('', None))
         for parent_path, parent in parents:
             try:
