@@ -36,8 +36,8 @@ class Convert(object):
         :param url: the URL of the control directory or None if the
           control_dir is explicitly given instead
         :param format: the format to convert to or None for the default
-        :param control_dir: the control directory or None if it specified
-          via the URL parameter instead
+        :param control_dir: the control directory or None if it is
+          specified via the URL parameter instead
         """
         self.format = format
         if url is None and control_dir is None:
@@ -130,7 +130,7 @@ def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
     :param dry_run: show what would happen but don't actually do any upgrades
     :return: the list of exceptions encountered
     """
-    if isinstance(urls, str):
+    if isinstance(urls, basestring):
         urls = [urls]
     control_dirs = [BzrDir.open_unsupported(url) for url in urls]
     attempted, succeeded, exceptions = smart_upgrade(control_dirs,
@@ -176,7 +176,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
     dry_run=False):
     """Convert a control directory to a new format intelligently.
 
-    See smart_upgrade fro parameter details.
+    See smart_upgrade for parameter details.
     """
     # If the URL is a shared repository, find the dependent branches & trees
     dependents = None
@@ -250,7 +250,6 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)
         except Exception, ex:
-            # XXX: If this the right level in the Exception hierarchy to use?
             _verbose_warning(verbose, "conversion error: %s" % ex)
             exceptions.append(ex)
             continue
