@@ -1380,7 +1380,7 @@ class DirState(object):
                     "Wrong path for old path.")
             if file_id != entry[0][2]:
                 raise errors.InconsistentDelta(path, file_id,
-                    "Attempt to remove wrong has wrong id - found %r."
+                    "Attempt to remove path has wrong id - found %r."
                     % entry[0][2])
             self._make_absent(entry)
             # See if we have a malformed delta: deleting a directory must not
@@ -2714,6 +2714,7 @@ class DirState(object):
                                 ("%s/%s" % key[0:2]).decode('utf8'), key[2],
                                 "Attempt to add item at path already occupied by "
                                 "id %r" % entry[0][2])
+                        low_index += 1
                     else:
                         break
             # new entry, synthesis cross reference here,
