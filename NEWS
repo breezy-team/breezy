@@ -40,6 +40,10 @@ Bug Fixes
   committed to will no longer corrupt the dirstate. This was caused by an
   bug in the dirstate update_minimal method. (Robert Collins, #395556)
 
+* Requests for unknown methods no longer cause the smart server to log
+  lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
+  ``do_end``.  (Andrew Bennetts, #338561)
+  
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
