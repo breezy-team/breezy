@@ -25,7 +25,8 @@ import bzrlib
 import bzrlib.api
 from bzrlib.commands import plugin_cmds
 
-from setup import (
+from info import (
+    bzr_commands,
     bzr_plugin_version as version_info,
     bzr_compatible_versions,
     )
@@ -39,8 +40,7 @@ __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
-for cmd in ["replay", "rebase", "rebase_abort", "rebase_continue",
-            "rebase_todo", "filter_branch"]:
+for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [], 
         "bzrlib.plugins.rebase.commands")
 
