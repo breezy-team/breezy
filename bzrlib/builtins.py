@@ -3662,16 +3662,15 @@ class cmd_merge(Command):
                 possible_transports)
         # Find the revision ids
 	other_revision_id = None
-	if revision is not None and len(revision) >= 1:
-            other_revision_id = revision[-1].as_revision_id(other_branch)
+	base_revision_id = None
+	if revision is not None:
+	    if len(revision) >= 1:
+		other_revision_id = revision[-1].as_revision_id(other_branch)
+	    if len(revision) == 2:
+		base_revision_id = revision[0].as_revision_id(base_branch)
         if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        if (revision is not None and len(revision) == 2
-            and revision[0] is not None):
-            base_revision_id = revision[0].as_revision_id(base_branch)
-        else:
-            base_revision_id = None
         # Remember where we merge from
         if ((remember or tree.branch.get_submit_branch() is None) and
              user_location is not None):
