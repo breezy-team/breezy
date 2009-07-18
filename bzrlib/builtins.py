@@ -3661,11 +3661,12 @@ class cmd_merge(Command):
             base_branch, base_path = Branch.open_containing(base_loc,
                 possible_transports)
         # Find the revision ids
-        if revision is None or len(revision) < 1 or revision[-1] is None:
+	other_revision_id = None
+	if revision is not None and len(revision) >= 1:
+            other_revision_id = revision[-1].as_revision_id(other_branch)
+        if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        else:
-            other_revision_id = revision[-1].as_revision_id(other_branch)
         if (revision is not None and len(revision) == 2
             and revision[0] is not None):
             base_revision_id = revision[0].as_revision_id(base_branch)
