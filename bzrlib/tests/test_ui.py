@@ -327,7 +327,7 @@ class UITests(tests.TestCase):
 class CLIUITests(TestCase):
 
     def test_cli_factory_deprecated(self):
-        uif = self.applyDeprecated(deprecated_in((1, 17, 0)),
+        uif = self.applyDeprecated(deprecated_in((1, 18, 0)),
             CLIUIFactory,
             StringIO(), StringIO(), StringIO())
         self.assertIsInstance(uif, UIFactory)
@@ -356,30 +356,30 @@ class SilentUITests(TestCase):
 
 class TestTextProgressView(tests.TestCase):
     """Tests for text display of progress bars.
+
+    These test the behaviour of what's written to the output, rather than the
+    path-independent display of any particular state.  It may be worth adding
+    some tests of the second kind too as they'll be less brittle.
     """
-    # XXX: These might be a bit easier to write if the rendering and
-    # state-maintaining parts of TextProgressView were more separate, and if
-    # the progress task called back directly to its own view not to the ui
-    # factory. -- mbp 20090312
     
     def _make_factory(self):
-        out = StringIO()
-        uif = TextUIFactory(stderr=out)
+        stderr = _TTYStringIO()
+        uif = TextUIFactory(stderr=stderr)
         uif._progress_view._width = 80
-        return out, uif
+        return stderr, uif
 
     def test_render_progress_easy(self):
         """Just one task and one quarter done"""
-        out, uif = self._make_factory()
+        stderr, uif = self._make_factory()
         task = uif.nested_progress_bar()
         task.update('reticulating splines', 5, 20)
         self.assertEqual(
 '\r[####/               ] reticulating splines 5/20                               \r'
-            , out.getvalue())
+            , stderr.getvalue())
 
     def test_render_progress_nested(self):
         """Tasks proportionally contribute to overall progress"""
-        out, uif = self._make_factory()
+        stderr, uif = self._make_factory()
         task = uif.nested_progress_bar()
         task.update('reticulating splines', 0, 2)
         task2 = uif.nested_progress_bar()
@@ -398,7 +398,7 @@ r'[#########|          ] reticulating splines:stage2 2/2'
 
     def test_render_progress_sub_nested(self):
         """Intermediate tasks don't mess up calculation."""
-        out, uif = self._make_factory()
+        stderr, uif = self._make_factory()
         task_a = uif.nested_progress_bar()
         task_a.update('a', 0, 2)
         task_b = uif.nested_progress_bar()
