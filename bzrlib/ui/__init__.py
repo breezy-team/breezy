@@ -191,7 +191,7 @@ class UIFactory(object):
 class CLIUIFactory(UIFactory):
     """Deprecated in favor of TextUIFactory."""
 
-    @deprecated_method(deprecated_in((1, 17, 0)))
+    @deprecated_method(deprecated_in((1, 18, 0)))
     def __init__(self, stdin=None, stdout=None, stderr=None):
         UIFactory.__init__(self)
         self.stdin = stdin or sys.stdin
@@ -312,7 +312,7 @@ class CannedInputUIFactory(SilentUIFactory):
         return self.responses.pop(0)
 
 
-@deprecated_function(deprecated_in((1, 17, 0)))
+@deprecated_function(deprecated_in((1, 18, 0)))
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
     ui_factory.clear_term()
