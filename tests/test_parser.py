@@ -101,6 +101,14 @@ author <bugs@bunny.org> now
 committer <bugs@bunny.org> now
 data 20
 first commit, empty
+# Test a commit with a heredoc-style (delimited_data) messsage (bug #400960)
+commit refs/heads/master
+mark :4
+author <bugs@bunny.org> now
+committer <bugs@bunny.org> now
+data <<EOF
+Commit with heredoc-style message
+EOF
 """
 
 
@@ -115,7 +123,7 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
-        self.assertEqual(len(result), 10)
+        self.assertEqual(len(result), 11)
         cmd1 = result.pop(0)
         self.assertEqual('progress', cmd1.name)
         self.assertEqual('completed', cmd1.message)
@@ -178,6 +186,10 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('commit', cmd.name)
         self.assertEqual('3', cmd.mark)
         self.assertEqual(None, cmd.from_)
+        cmd = result.pop(0)
+        self.assertEqual('commit', cmd.name)
+        self.assertEqual('4', cmd.mark)
+        self.assertEqual('Commit with heredoc-style message\n', cmd.message)
 
 
 class TestStringParsing(tests.TestCase):
