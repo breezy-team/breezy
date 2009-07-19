@@ -205,16 +205,17 @@ class UITests(tests.TestCase):
         pb2.finished()
         pb1.finished()
 
-    def assert_get_bool_acceptance_of_user_input(self, factory):
-        factory.stdin = StringIO("y\nyes with garbage\n"
-                                 "yes\nn\nnot an answer\n"
-                                 "no\n"
-                                 "N\nY\n"
-                                 "foo\n"
-                                )
-        factory.stdout = StringIO()
-        factory.stderr = StringIO()
-        # there is no output from the base factory
+    def test_text_ui_get_boolean(self):
+        stdin = StringIO("y\nyes with garbage\n"
+                         "yes\nn\nnot an answer\n"
+                         "no\n"
+                         "N\nY\n"
+                         "foo\n"
+                        )
+        stdout = StringIO()
+        stderr = StringIO()
+        factory = TextUIFactory(stdin, stdout, stderr)
+        import pdb;pdb.set_trace()
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
@@ -224,10 +225,6 @@ class UITests(tests.TestCase):
         self.assertEqual("foo\n", factory.stdin.read())
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
-
-    def test_text_ui_getbool(self):
-        factory = TextUIFactory(None, None, None)
-        self.assert_get_bool_acceptance_of_user_input(factory)
 
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
