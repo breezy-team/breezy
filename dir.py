@@ -16,9 +16,6 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir."""
 
-import os
-
-import bzrlib
 from bzrlib import (
     bzrdir,
     lockable_files,

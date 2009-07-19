@@ -18,14 +18,11 @@
 
 from dulwich.objects import (
     Blob,
-    Tree,
-    hex_to_sha,
+    sha_to_hex,
     )
 from dulwich.object_store import (
     BaseObjectStore,
-    ObjectStoreIterator,
     )
-import stat
 
 from bzrlib import (
     debug,

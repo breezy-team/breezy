@@ -23,9 +23,6 @@ from dulwich.objects import (
     Tree,
     )
 
-from bzrlib.revision import (
-    NULL_REVISION,
-    )
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,

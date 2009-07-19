@@ -27,7 +27,6 @@ from bzrlib import (
     bzrdir,
     config,
     errors,
-    foreign,
     repository,
     revision,
     tag,

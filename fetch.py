@@ -14,10 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-from cStringIO import (
-    StringIO,
-    )
-
 from dulwich.objects import (
     Commit,
     Tag,
@@ -37,9 +33,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.errors import (
-    InvalidRevisionId,
     NoSuchId,
-    NoSuchRevision,
     )
 from bzrlib.inventory import (
     Inventory,
@@ -68,7 +62,6 @@ from bzrlib.plugins.git.mapping import (
     inventory_to_tree_and_blobs,
     mode_is_executable,
     squash_revision,
-    text_to_blob,
     warn_unusual_mode,
     )
 from bzrlib.plugins.git.object_store import (

@@ -18,7 +18,6 @@ import os
 import tempfile
 
 from dulwich.server import TCPGitServer
-import os
 
 from bzrlib.bzrdir import (
     BzrDir,

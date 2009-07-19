@@ -30,7 +30,6 @@ from bzrlib.option import (
 
 from bzrlib.plugins.git import (
     get_rich_root_format,
-    lazy_check_versions,
     )
 
 class cmd_git_import(Command):
@@ -48,7 +47,6 @@ class cmd_git_import(Command):
             )
         from bzrlib.bzrdir import (
             BzrDir,
-            format_registry,
             )
         from bzrlib.errors import (
             BzrCommandError,

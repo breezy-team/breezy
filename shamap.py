@@ -27,9 +27,6 @@ import bzrlib
 from bzrlib import (
     trace,
     )
-from bzrlib.errors import (
-    NoSuchRevision,
-    )
 
 
 def get_cache_dir():
@@ -52,7 +49,7 @@ def check_pysqlite_version(sqlite3):
     if (sqlite3.sqlite_version_info[0] < 3 or 
             (sqlite3.sqlite_version_info[0] == 3 and 
              sqlite3.sqlite_version_info[1] < 3)):
-        warning('Needs at least sqlite 3.3.x')
+        trace.warning('Needs at least sqlite 3.3.x')
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
 try:
@@ -63,7 +60,7 @@ try:
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
 except:
-    warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
+    trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
             'module')
     raise bzrlib.errors.BzrError("missing sqlite library")
 
@@ -113,7 +110,7 @@ class GitShaMap(object):
         """List the revision ids known."""
         raise NotImplementedError(self.revids)
 
-    def sha1s(Self):
+    def sha1s(self):
         """List the SHA1s."""
         raise NotImplementedError(self.sha1s)
 

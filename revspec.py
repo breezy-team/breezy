@@ -16,10 +16,8 @@
 """Custom revision specifier for Subversion."""
 
 from bzrlib.errors import (
-    BzrError,
     InvalidRevisionId,
     InvalidRevisionSpec,
-    NoSuchRevision,
     )
 from bzrlib.revision import (
     NULL_REVISION,

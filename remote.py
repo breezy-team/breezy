@@ -16,8 +16,8 @@
 
 import bzrlib
 from bzrlib import (
-    branch,
     tag,
+    trace,
     ui,
     urlutils,
     )
@@ -55,7 +55,6 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
 from bzrlib.plugins.git.repository import (
-    GitRepositoryFormat,
     GitRepository,
     )
 
@@ -65,17 +64,13 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    PackData,
     )
 import os
 import tempfile
 import urllib
 import urlparse
 
-try:
-    from dulwich.pack import load_pack_index
-except ImportError:
-    from dulwich.pack import PackIndex as load_pack_index
+from dulwich.pack import load_pack_index
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
@@ -247,7 +242,7 @@ class RemoteGitRepository(GitRepository):
         if self._refs is not None:
             return self._refs
         self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None, 
-            lambda x: None, lambda x: mutter("git: %s" % x))
+            lambda x: None, lambda x: trace.mutter("git: %s" % x))
         return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, 
@@ -307,7 +302,7 @@ class RemoteGitBranch(GitBranch):
             return self._ref
         heads = self.repository.get_refs()
         if not self.name in heads:
-            raise NoSuchRef(name)
+            raise NoSuchRef(self.name)
         self._ref = heads[self.name]
         return self._ref
 

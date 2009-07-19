@@ -21,9 +21,6 @@
 from cStringIO import (
     StringIO,
     )
-from dulwich.index import (
-    Index,
-    )
 from dulwich.objects import (
     Blob,
     )
@@ -33,7 +30,6 @@ import stat
 from bzrlib import (
     errors,
     ignores,
-    inventory,
     lockable_files,
     lockdir,
     osutils,
@@ -44,7 +40,6 @@ from bzrlib import (
     )
 from bzrlib.decorators import (
     needs_read_lock,
-    needs_write_lock,
     )
 
 
