@@ -23,7 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (1, 17, 0)
+_script_version = (1, 18, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -35,7 +35,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4', 'python2.5')
+KNOWN_PYTHONS = ('python2.4', 'python2.5', 'python2.6')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):

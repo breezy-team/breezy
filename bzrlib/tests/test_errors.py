@@ -87,6 +87,12 @@ class TestErrors(TestCaseWithTransport):
             "reason: reason for foo",
             str(error))
 
+    def test_inconsistent_delta_delta(self):
+        error = errors.InconsistentDeltaDelta([], 'reason')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied: []\nreason: reason",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -442,6 +442,11 @@ class TreeTransformBase(object):
         conflicts.extend(self._overwrite_conflicts())
         return conflicts
 
+    def _check_malformed(self):
+        conflicts = self.find_conflicts()
+        if len(conflicts) != 0:
+            raise MalformedTransform(conflicts=conflicts)
+
     def _add_tree_children(self):
         """Add all the children of all active parents to the known paths.
 
@@ -858,6 +863,43 @@ class TreeTransformBase(object):
         by show_diff_trees.  It must only be compared to tt._tree.
         """
         return _PreviewTree(self)
+
+    def commit(self, branch, message, merge_parents=None, strict=False):
+        """Commit the result of this TreeTransform to a branch.
+
+        :param branch: The branch to commit to.
+        :param message: The message to attach to the commit.
+        :param merge_parents: Additional parents specified by pending merges.
+        :return: The revision_id of the revision committed.
+        """
+        self._check_malformed()
+        if strict:
+            unversioned = set(self._new_contents).difference(set(self._new_id))
+            for trans_id in unversioned:
+                if self.final_file_id(trans_id) is None:
+                    raise errors.StrictCommitFailed()
+
+        revno, last_rev_id = branch.last_revision_info()
+        if last_rev_id == _mod_revision.NULL_REVISION:
+            if merge_parents is not None:
+                raise ValueError('Cannot supply merge parents for first'
+                                 ' commit.')
+            parent_ids = []
+        else:
+            parent_ids = [last_rev_id]
+            if merge_parents is not None:
+                parent_ids.extend(merge_parents)
+        if self._tree.get_revision_id() != last_rev_id:
+            raise ValueError('TreeTransform not based on branch basis: %s' %
+                             self._tree.get_revision_id())
+        builder = branch.get_commit_builder(parent_ids)
+        preview = self.get_preview_tree()
+        list(builder.record_iter_changes(preview, last_rev_id,
+                                         self.iter_changes()))
+        builder.finish_inventory()
+        revision_id = builder.commit(message)
+        branch.set_last_revision_info(revno + 1, revision_id)
+        return revision_id
 
     def _text_parent(self, trans_id):
         file_id = self.tree_file_id(trans_id)
@@ -1354,7 +1396,6 @@ class TreeTransform(DiskTreeTransform):
                 continue
             yield self.trans_id_tree_path(childpath)
 
-
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
 
@@ -1370,9 +1411,7 @@ class TreeTransform(DiskTreeTransform):
         :param _mover: Supply an alternate FileMover, for testing
         """
         if not no_conflicts:
-            conflicts = self.find_conflicts()
-            if len(conflicts) != 0:
-                raise MalformedTransform(conflicts=conflicts)
+            self._check_malformed()
         child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
             if precomputed_delta is None:
@@ -1962,6 +2001,13 @@ class _PreviewTree(tree.Tree):
             return old_annotation
         if not changed_content:
             return old_annotation
+        # TODO: This is doing something similar to what WT.annotate_iter is
+        #       doing, however it fails slightly because it doesn't know what
+        #       the *other* revision_id is, so it doesn't know how to give the
+        #       other as the origin for some lines, they all get
+        #       'default_revision'
+        #       It would be nice to be able to use the new Annotator based
+        #       approach, as well.
         return annotate.reannotate([old_annotation],
                                    self.get_file(file_id).readlines(),
                                    default_revision)

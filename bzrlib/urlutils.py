@@ -75,9 +75,9 @@ def file_relpath(base, path):
     This assumes that both paths are already fully specified file:// URLs.
     """
     if len(base) < MIN_ABS_FILEURL_LENGTH:
-        raise ValueError('Length of base must be equal or'
+        raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
-            MIN_ABS_FILEURL_LENGTH)
+            (base, MIN_ABS_FILEURL_LENGTH))
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))

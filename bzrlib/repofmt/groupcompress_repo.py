@@ -443,7 +443,7 @@ class GCCHKPacker(Packer):
         #      is grabbing too many keys...
         text_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, text_keys,
-                          'text', self._get_progress_stream, 4)
+                          'texts', self._get_progress_stream, 4)
 
     def _copy_signature_texts(self):
         source_vf, target_vf = self._build_vfs('signature', False, False)
@@ -650,6 +650,9 @@ class CHKInventoryRepository(KnitPackRepository):
                 parents=False, is_locked=self.is_locked,
                 inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
+        search_key_name = self._format._serializer.search_key_name
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        self.chk_bytes._search_key_func = search_key_func
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
