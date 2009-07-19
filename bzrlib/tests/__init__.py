@@ -346,15 +346,17 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                self.stream.write('\n')
-                self.stream.write(
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
-                self.stream.write(test._get_log())
-                self.stream.write('\n')
-                self.stream.write(
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
+                log_contents = test._get_log()
+                if log_contents:
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
+                    self.stream.write(log_contents)
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
