@@ -195,11 +195,9 @@ class ExtendedTestResult(unittest._TextTestResult):
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
         if benchmark_time is not None:
-            return "%s/%s" % (
-                self._formatTime(benchmark_time),
-                self._elapsedTestTimeString())
+            return self._formatTime(benchmark_time) + "*"
         else:
-            return "           %s" % self._elapsedTestTimeString()
+            return self._elapsedTestTimeString() + " "
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
@@ -488,11 +486,11 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
-        # numbers, plus a trailing blank
+        # width needs space for 6 char status, plus 1 for slash, plus and
+        # 11-char time string, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
         self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-30))
+                          osutils.terminal_width()-18))
         self.stream.flush()
 
     def _error_summary(self, err):
