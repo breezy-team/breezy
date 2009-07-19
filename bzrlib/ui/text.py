@@ -73,14 +73,16 @@ class TextUIFactory(UIFactory):
         self._progress_view.clear()
 
     def get_boolean(self, prompt):
-        # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
-            line = self.stdin.readline()
+            line = self.stdin.readline().lower()
             if line in ('y\n', 'yes\n'):
                 return True
-            if line in ('n\n', 'no\n'):
+            elif line in ('n\n', 'no\n'):
                 return False
+            elif line in ('', None):
+                # end-of-file; possibly should raise an error here instead
+                return None
 
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)
