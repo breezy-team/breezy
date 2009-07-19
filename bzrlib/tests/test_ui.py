@@ -215,7 +215,6 @@ class UITests(tests.TestCase):
         stdout = StringIO()
         stderr = StringIO()
         factory = TextUIFactory(stdin, stdout, stderr)
-        import pdb;pdb.set_trace()
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(True, factory.get_boolean(""))
         self.assertEqual(False, factory.get_boolean(""))
