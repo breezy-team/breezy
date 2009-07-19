@@ -4,12 +4,12 @@
 # When preparing a new release, make sure to set all of these to the latest
 # values.
 VERSIONS = {
-    'bzr': '1.12',
-    'qbzr': '0.9.8',
-    'bzrtools': '1.12.0',
-    'bzr-svn': '0.5.2',
-    'bzr-rebase': '0.4.4',
-    'subvertpy': '0.6.4',
+    'bzr': '1.16',
+    'qbzr': '0.11.0',
+    'bzrtools': '1.16.0',
+    'bzr-svn': '0.6.1',
+    'bzr-rebase': '0.5.0',
+    'subvertpy': '0.6.7',
 }
 
 # This will be passed to 'make' to ensure we build with the right python

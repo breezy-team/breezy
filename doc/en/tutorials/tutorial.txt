@@ -117,35 +117,35 @@ email address. Bazaar is smart enough to automatically generate an email
 address by looking up your username and hostname. If you don't like the
 guess that Bazaar makes, then three options exist:
 
- 1. Set an email address via ``bzr whoami``.  This is the simplest way.
+1. Set an email address via ``bzr whoami``.  This is the simplest way.
 
-    To set a global identity, use::
- 
-    % bzr whoami "Your Name <email@example.com>"
- 
-    If you'd like to use a different address for a specific branch, enter
-    the branch folder and use::
- 
-    % bzr whoami --branch "Your Name <email@example.com>"
- 
- #. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
-    adding the following lines.  Please note that  ``[DEFAULT]`` is case
-    sensitive::
+   To set a global identity, use::
 
-        [DEFAULT]
-        email=Your Name <email@isp.com>
+   % bzr whoami "Your Name <email@example.com>"
 
-    As above, you can override this settings on a branch by branch basis
-    by creating a branch section in ``~/.bazaar/locations.conf`` and
-    adding the following lines::
+   If you'd like to use a different address for a specific branch, enter
+   the branch folder and use::
 
-        [/the/path/to/the/branch]
-        email=Your Name <email@isp.com>
+   % bzr whoami --branch "Your Name <email@example.com>"
+
+#. Setting the email address in the ``~/.bazaar/bazaar.conf`` [1]_ by
+   adding the following lines.  Please note that  ``[DEFAULT]`` is case
+   sensitive::
+
+       [DEFAULT]
+       email=Your Name <email@isp.com>
+
+   As above, you can override this settings on a branch by branch basis
+   by creating a branch section in ``~/.bazaar/locations.conf`` and
+   adding the following lines::
+
+       [/the/path/to/the/branch]
+       email=Your Name <email@isp.com>
 
 
- #. Overriding the two previous options by setting the global environment
-    variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
-    precedence) to your full email address.
+#. Overriding the two previous options by setting the global environment
+   variable ``$BZR_EMAIL`` or ``$EMAIL`` (``$BZR_EMAIL`` will take
+   precedence) to your full email address.
 
 .. [1] On Windows, the users configuration files can be found in the
    application data directory. So instead of ``~/.bazaar/branch.conf``
@@ -459,9 +459,9 @@ You can delete files or directories by just deleting them from the working
 directory.  This is a bit different to CVS, which requires that you also
 do ``cvs remove``.
 
-    ``bzr remove`` makes the file un-versioned, but may or may not delete
-    the working copy [2]_.  This is useful when you add the wrong file,
-    or decide that a file should actually not be versioned. 
+``bzr remove`` makes the file un-versioned, but may or may not delete the
+working copy [2]_.  This is useful when you add the wrong file, or decide that
+a file should actually not be versioned. 
 
 ::
 
@@ -570,10 +570,9 @@ the following three methods:
   uses rsync to push the changes to the revision history and the working
   tree.
 
-You can also use copy the files around manually, by sending a tarball, or
-using rsync, or other related file transfer methods.  This is usually
-less safe than using ``push``, but may be faster or easier in some
-situations.
+* You can also copy the files around manually, by sending a tarball, or using
+  rsync, or other related file transfer methods.  This is usually less safe
+  than using ``push``, but may be faster or easier in some situations.
 
 Moving changes between trees 
 ============================

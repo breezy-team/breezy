@@ -37,8 +37,8 @@ format_registry = registry.Registry()
 
 
 def send(submit_branch, revision, public_branch, remember, format,
-         no_bundle, no_patch, output, from_, mail_to, message, body, 
-         to_file):
+         no_bundle, no_patch, output, from_, mail_to, message, body,
+         to_file, strict=None):
     tree, branch = bzrdir.BzrDir.open_containing_tree_or_branch(from_)[:2]
     # we may need to write data into branch's repository to calculate
     # the data to send.
@@ -107,13 +107,28 @@ def send(submit_branch, revision, public_branch, remember, format,
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
+            if strict is None:
+                strict = branch.get_config(
+                    ).get_user_option_as_bool('send_strict')
+            if strict is None: strict = True # default value
+            if strict and tree is not None:
+                if (tree.has_changes(tree.basis_tree())
+                    or len(tree.get_parent_ids()) > 1):
+                    raise errors.UncommittedChanges(
+                        tree, more='Use --no-strict to force the send.')
+                if tree.last_revision() != tree.branch.last_revision():
+                    # The tree has lost sync with its branch, there is little
+                    # chance that the user is aware of it but he can still force
+                    # the push with --no-strict
+                    raise errors.OutOfDateTree(
+                        tree, more='Use --no-strict to force the send.')
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')
         if format is None:
             # TODO: Query submit branch for its preferred format
             format = format_registry.get()
-        directive = format(branch, revision_id, submit_branch, 
+        directive = format(branch, revision_id, submit_branch,
             public_branch, no_patch, no_bundle, message, base_revision_id)
         if output is None:
             directive.compose_merge_request(mail_client, mail_to, body,

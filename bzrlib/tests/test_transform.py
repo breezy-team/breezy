@@ -1873,6 +1873,106 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual('FILE', target.id2path('upper-id'))
 
 
+class TestCommitTransform(tests.TestCaseWithTransport):
+
+    def get_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('empty commit')
+        return tree.branch
+
+    def get_branch_and_transform(self):
+        branch = self.get_branch()
+        tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
+        return branch, tt
+
+    def test_commit_wrong_basis(self):
+        branch = self.get_branch()
+        basis = branch.repository.revision_tree(
+            _mod_revision.NULL_REVISION)
+        tt = TransformPreview(basis)
+        self.addCleanup(tt.finalize)
+        e = self.assertRaises(ValueError, tt.commit, branch, '')
+        self.assertEqual('TreeTransform not based on branch basis: null:',
+                         str(e))
+
+    def test_empy_commit(self):
+        branch, tt = self.get_branch_and_transform()
+        rev = tt.commit(branch, 'my message')
+        self.assertEqual(2, branch.revno())
+        repo = branch.repository
+        self.assertEqual('my message', repo.get_revision(rev).message)
+
+    def test_merge_parents(self):
+        branch, tt = self.get_branch_and_transform()
+        rev = tt.commit(branch, 'my message', ['rev1b', 'rev1c'])
+        self.assertEqual(['rev1b', 'rev1c'],
+                         branch.basis_tree().get_parent_ids()[1:])
+
+    def test_first_commit(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        rev = tt.commit(branch, 'my message')
+        self.assertEqual([], branch.basis_tree().get_parent_ids())
+        self.assertNotEqual(_mod_revision.NULL_REVISION,
+                            branch.last_revision())
+
+    def test_first_commit_with_merge_parents(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        e = self.assertRaises(ValueError, tt.commit, branch,
+                          'my message', ['rev1b-id'])
+        self.assertEqual('Cannot supply merge parents for first commit.',
+                         str(e))
+        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
+
+    def test_add_files(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents', 'file-id')
+        trans_id = tt.new_directory('dir', tt.root, 'dir-id')
+        tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
+        rev = tt.commit(branch, 'message')
+        tree = branch.basis_tree()
+        self.assertEqual('file', tree.id2path('file-id'))
+        self.assertEqual('contents', tree.get_file_text('file-id'))
+        self.assertEqual('dir', tree.id2path('dir-id'))
+        self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
+        self.assertEqual('target', tree.get_symlink_target('symlink-id'))
+
+    def test_add_unversioned(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents')
+        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+                          'message', strict=True)
+
+    def test_modify_strict(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents', 'file-id')
+        tt.commit(branch, 'message', strict=True)
+        tt = TransformPreview(branch.basis_tree())
+        trans_id = tt.trans_id_file_id('file-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('contents', trans_id)
+        tt.commit(branch, 'message', strict=True)
+
+    def test_commit_malformed(self):
+        """Committing a malformed transform should raise an exception.
+
+        In this case, we are adding a file without adding its parent.
+        """
+        branch, tt = self.get_branch_and_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent_id, 'contents', 'file-id')
+        self.assertRaises(errors.MalformedTransform, tt.commit, branch,
+                          'message')
+
+
 class MockTransform(object):
 
     def has_named_child(self, by_parent, parent_id, name):

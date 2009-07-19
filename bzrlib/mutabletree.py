@@ -233,6 +233,23 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._gather_kinds)
 
     @needs_read_lock
+    def has_changes(self, from_tree):
+        """Quickly check that the tree contains at least one change.
+
+        :return: True if a change is found. False otherwise
+        """
+        changes = self.iter_changes(from_tree)
+        try:
+            change = changes.next()
+            # Exclude root (talk about black magic... --vila 20090629)
+            if change[4] == (None, None):
+                change = changes.next()
+            return True
+        except StopIteration:
+            # No changes
+            return False
+
+    @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
 
@@ -522,6 +539,9 @@ class MutableTree(tree.Tree):
         this is not a general purpose tree modification routine, but a helper
         for commit which is not required to handle situations that do not arise
         outside of commit.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
 
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing

@@ -30,7 +30,6 @@ from bzrlib import (
     osutils,
     pack,
     remote,
-    repository,
     revision as _mod_revision,
     trace,
     ui,
@@ -39,7 +38,6 @@ from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
-from bzrlib.index import GraphIndex, GraphIndexBuilder
 from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -48,6 +46,7 @@ from bzrlib.repofmt.pack_repo import (
     Pack,
     NewPack,
     KnitPackRepository,
+    KnitPackStreamSource,
     PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
@@ -217,6 +216,7 @@ class GCCHKPacker(Packer):
             p_id_roots_set = set()
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             for idx, record in enumerate(stream):
+                # Inventories should always be with revisions; assume success.
                 bytes = record.get_bytes_as('fulltext')
                 chk_inv = inventory.CHKInventory.deserialise(None, bytes,
                                                              record.key)
@@ -293,6 +293,11 @@ class GCCHKPacker(Packer):
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
                     for record in stream:
+                        if record.storage_kind == 'absent':
+                            # An absent CHK record: we assume that the missing
+                            # record is in a different pack - e.g. a page not
+                            # altered by the commit we're packing.
+                            continue
                         bytes = record.get_bytes_as('fulltext')
                         # We don't care about search_key_func for this code,
                         # because we only care about external references.
@@ -438,7 +443,7 @@ class GCCHKPacker(Packer):
         #      is grabbing too many keys...
         text_keys = source_vf.keys()
         self._copy_stream(source_vf, target_vf, text_keys,
-                          'text', self._get_progress_stream, 4)
+                          'texts', self._get_progress_stream, 4)
 
     def _copy_signature_texts(self):
         source_vf, target_vf = self._build_vfs('signature', False, False)
@@ -557,11 +562,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
 
-    def _already_packed(self):
-        """Is the collection already packed?"""
-        # Always repack GC repositories for now
-        return False
-
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
                                  reload_func=None):
@@ -620,7 +620,8 @@ class CHKInventoryRepository(KnitPackRepository):
         self.inventories = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
-                parents=True, is_locked=self.is_locked),
+                parents=True, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.inventory_index.data_access)
         self.revisions = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
@@ -632,20 +633,26 @@ class CHKInventoryRepository(KnitPackRepository):
         self.signatures = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.signature_index.combined_index,
                 add_callback=self._pack_collection.signature_index.add_callback,
-                parents=False, is_locked=self.is_locked),
+                parents=False, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.signature_index.data_access,
             delta=False)
         self.texts = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.text_index.combined_index,
                 add_callback=self._pack_collection.text_index.add_callback,
-                parents=True, is_locked=self.is_locked),
+                parents=True, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.text_index.data_access)
         # No parents, individual CHK pages don't have specific ancestry
         self.chk_bytes = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.chk_index.combined_index,
                 add_callback=self._pack_collection.chk_index.add_callback,
-                parents=False, is_locked=self.is_locked),
+                parents=False, is_locked=self.is_locked,
+                inconsistency_fatal=False),
             access=self._pack_collection.chk_index.data_access)
+        search_key_name = self._format._serializer.search_key_name
+        search_key_func = chk_map.search_key_registry.get(search_key_name)
+        self.chk_bytes._search_key_func = search_key_func
         # True when the repository object is 'write locked' (as opposed to the
         # physical lock only taken out around changes to the pack-names list.)
         # Another way to represent this would be a decorator around the control
@@ -674,6 +681,42 @@ class CHKInventoryRepository(KnitPackRepository):
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
+    def _create_inv_from_null(self, delta, revision_id):
+        """This will mutate new_inv directly.
+
+        This is a simplified form of create_by_apply_delta which knows that all
+        the old values must be None, so everything is a create.
+        """
+        serializer = self._format._serializer
+        new_inv = inventory.CHKInventory(serializer.search_key_name)
+        new_inv.revision_id = revision_id
+        entry_to_bytes = new_inv._entry_to_bytes
+        id_to_entry_dict = {}
+        parent_id_basename_dict = {}
+        for old_path, new_path, file_id, entry in delta:
+            if old_path is not None:
+                raise ValueError('Invalid delta, somebody tried to delete %r'
+                                 ' from the NULL_REVISION'
+                                 % ((old_path, file_id),))
+            if new_path is None:
+                raise ValueError('Invalid delta, delta from NULL_REVISION has'
+                                 ' no new_path %r' % (file_id,))
+            if new_path == '':
+                new_inv.root_id = file_id
+                parent_id_basename_key = ('', '')
+            else:
+                utf8_entry_name = entry.name.encode('utf-8')
+                parent_id_basename_key = (entry.parent_id, utf8_entry_name)
+            new_value = entry_to_bytes(entry)
+            # Populate Caches?
+            # new_inv._path_to_fileid_cache[new_path] = file_id
+            id_to_entry_dict[(file_id,)] = new_value
+            parent_id_basename_dict[parent_id_basename_key] = file_id
+
+        new_inv._populate_from_dicts(self.chk_bytes, id_to_entry_dict,
+            parent_id_basename_dict, maximum_size=serializer.maximum_size)
+        return new_inv
+
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
                                parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
@@ -699,24 +742,29 @@ class CHKInventoryRepository(KnitPackRepository):
             repository format specific) of the serialized inventory, and the
             resulting inventory.
         """
-        if basis_revision_id == _mod_revision.NULL_REVISION:
-            return KnitPackRepository.add_inventory_by_delta(self,
-                basis_revision_id, delta, new_revision_id, parents)
         if not self.is_in_write_group():
             raise AssertionError("%r not in write group" % (self,))
         _mod_revision.check_not_reserved_id(new_revision_id)
-        basis_tree = self.revision_tree(basis_revision_id)
-        basis_tree.lock_read()
-        try:
-            if basis_inv is None:
+        basis_tree = None
+        if basis_inv is None:
+            if basis_revision_id == _mod_revision.NULL_REVISION:
+                new_inv = self._create_inv_from_null(delta, new_revision_id)
+                inv_lines = new_inv.to_lines()
+                return self._inventory_add_lines(new_revision_id, parents,
+                    inv_lines, check_content=False), new_inv
+            else:
+                basis_tree = self.revision_tree(basis_revision_id)
+                basis_tree.lock_read()
                 basis_inv = basis_tree.inventory
+        try:
             result = basis_inv.create_by_apply_delta(delta, new_revision_id,
                 propagate_caches=propagate_caches)
             inv_lines = result.to_lines()
             return self._inventory_add_lines(new_revision_id, parents,
                 inv_lines, check_content=False), result
         finally:
-            basis_tree.unlock()
+            if basis_tree is not None:
+                basis_tree.unlock()
 
     def _iter_inventories(self, revision_ids):
         """Iterate over many inventory objects."""
@@ -736,21 +784,10 @@ class CHKInventoryRepository(KnitPackRepository):
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
 
-    def _find_parent_ids_of_revisions(self, revision_ids):
-        # TODO: we probably want to make this a helper that other code can get
-        #       at
-        parent_map = self.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_map.itervalues())
-        parents.difference_update(revision_ids)
-        parents.discard(_mod_revision.NULL_REVISION)
-        return parents
-
-    def _find_present_inventory_ids(self, revision_ids):
-        keys = [(r,) for r in revision_ids]
-        parent_map = self.inventories.get_parent_map(keys)
-        present_inventory_ids = set(k[-1] for k in parent_map)
-        return present_inventory_ids
+    def _find_present_inventory_keys(self, revision_keys):
+        parent_map = self.inventories.get_parent_map(revision_keys)
+        present_inventory_keys = set(k for k in parent_map)
+        return present_inventory_keys
 
     def fileids_altered_by_revision_ids(self, revision_ids, _inv_weave=None):
         """Find the file ids and versions affected by revisions.
@@ -767,12 +804,20 @@ class CHKInventoryRepository(KnitPackRepository):
         file_id_revisions = {}
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            parent_ids = self._find_parent_ids_of_revisions(revision_ids)
-            present_parent_inv_ids = self._find_present_inventory_ids(parent_ids)
+            revision_keys = [(r,) for r in revision_ids]
+            parent_keys = self._find_parent_keys_of_revisions(revision_keys)
+            # TODO: instead of using _find_present_inventory_keys, change the
+            #       code paths to allow missing inventories to be tolerated.
+            #       However, we only want to tolerate missing parent
+            #       inventories, not missing inventories for revision_ids
+            present_parent_inv_keys = self._find_present_inventory_keys(
+                                        parent_keys)
+            present_parent_inv_ids = set(
+                [k[-1] for k in present_parent_inv_keys])
             uninteresting_root_keys = set()
             interesting_root_keys = set()
-            inventories_to_read = set(present_parent_inv_ids)
-            inventories_to_read.update(revision_ids)
+            inventories_to_read = set(revision_ids)
+            inventories_to_read.update(present_parent_inv_ids)
             for inv in self.iter_inventories(inventories_to_read):
                 entry_chk_root_key = inv.id_to_entry.key()
                 if inv.revision_id in present_parent_inv_ids:
@@ -846,7 +891,7 @@ class CHKInventoryRepository(KnitPackRepository):
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
 
-class GroupCHKStreamSource(repository.StreamSource):
+class GroupCHKStreamSource(KnitPackStreamSource):
     """Used when both the source and target repo are GroupCHK repos."""
 
     def __init__(self, from_repository, to_format):
@@ -854,6 +899,7 @@ class GroupCHKStreamSource(repository.StreamSource):
         super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
+        self._text_fetch_order = 'groupcompress'
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
@@ -898,16 +944,10 @@ class GroupCHKStreamSource(repository.StreamSource):
             p_id_roots_set.clear()
         return ('inventories', _filtered_inv_stream())
 
-    def _find_present_inventories(self, revision_ids):
-        revision_keys = [(r,) for r in revision_ids]
-        inventories = self.from_repository.inventories
-        present_inventories = inventories.get_parent_map(revision_keys)
-        return [p[-1] for p in present_inventories]
-
-    def _get_filtered_chk_streams(self, excluded_revision_ids):
+    def _get_filtered_chk_streams(self, excluded_revision_keys):
         self._text_keys = set()
-        excluded_revision_ids.discard(_mod_revision.NULL_REVISION)
-        if not excluded_revision_ids:
+        excluded_revision_keys.discard(_mod_revision.NULL_REVISION)
+        if not excluded_revision_keys:
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
         else:
@@ -915,9 +955,9 @@ class GroupCHKStreamSource(repository.StreamSource):
             # actually present
             # TODO: Update Repository.iter_inventories() to add
             #       ignore_missing=True
-            present_ids = self.from_repository._find_present_inventory_ids(
-                            excluded_revision_ids)
-            present_ids = self._find_present_inventories(excluded_revision_ids)
+            present_keys = self.from_repository._find_present_inventory_keys(
+                            excluded_revision_keys)
+            present_ids = [k[-1] for k in present_keys]
             uninteresting_root_keys = set()
             uninteresting_pid_root_keys = set()
             for inv in self.from_repository.iter_inventories(present_ids):
@@ -948,14 +988,6 @@ class GroupCHKStreamSource(repository.StreamSource):
             self._chk_p_id_roots = None
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
 
-    def _get_text_stream(self):
-        # Note: We know we don't have to handle adding root keys, because both
-        # the source and target are GCCHK, and those always support rich-roots
-        # We may want to request as 'unordered', in case the source has done a
-        # 'split' packing
-        return ('texts', self.from_repository.texts.get_record_stream(
-                            self._text_keys, 'groupcompress', False))
-
     def get_stream(self, search):
         revision_ids = search.get_keys()
         for stream_info in self._fetch_revision_texts(revision_ids):
@@ -966,8 +998,9 @@ class GroupCHKStreamSource(repository.StreamSource):
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
         from_repo = self.from_repository
-        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
-        for stream_info in self._get_filtered_chk_streams(parent_ids):
+        parent_keys = from_repo._find_parent_keys_of_revisions(
+                        self._revision_keys)
+        for stream_info in self._get_filtered_chk_streams(parent_keys):
             yield stream_info
         yield self._get_text_stream()
 
@@ -991,8 +1024,8 @@ class GroupCHKStreamSource(repository.StreamSource):
         # no unavailable texts when the ghost inventories are not filled in.
         yield self._get_inventory_stream(missing_inventory_keys,
                                          allow_absent=True)
-        # We use the empty set for excluded_revision_ids, to make it clear that
-        # we want to transmit all referenced chk pages.
+        # We use the empty set for excluded_revision_keys, to make it clear
+        # that we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
             yield stream_info
 
@@ -1021,6 +1054,7 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     _fetch_order = 'unordered'
     _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
+    pack_compresses = True
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('development6-rich-root')
@@ -1044,7 +1078,8 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
                 'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
+        if (self.supports_tree_reference and 
+            not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
                 'Does not support nested trees', target_format)
 
@@ -1066,6 +1101,24 @@ class RepositoryFormatCHK2(RepositoryFormatCHK1):
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return ('Bazaar development format - chk repository with bencode '
-                'revision serialization (needs bzr.dev from 1.15)\n')
+                'revision serialization (needs bzr.dev from 1.16)\n')
 
 
+class RepositoryFormat2a(RepositoryFormatCHK2):
+    """A CHK repository that uses the bencode revision serializer.
+    
+    This is the same as RepositoryFormatCHK2 but with a public name.
+    """
+
+    _serializer = chk_serializer.chk_bencode_serializer
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('2a')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')

@@ -281,6 +281,9 @@ class SmartServerRequestHandler(object):
 
     def accept_body(self, bytes):
         """Accept body data."""
+        if self._command is None:
+            # no active command object, so ignore the event.
+            return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
 
     def end_of_body(self):
@@ -344,6 +347,9 @@ class SmartServerRequestHandler(object):
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
+        if self._command is None:
+            # no active command object, so ignore the event.
+            return
         self._run_handler_code(self._command.do_end, (), {})
 
     def post_body_error_received(self, error_args):
@@ -492,7 +498,7 @@ request_handlers.register_lazy(
     'BzrDirFormat.initialize', 'bzrlib.smart.bzrdir',
     'SmartServerRequestInitializeBzrDir')
 request_handlers.register_lazy(
-    'BzrDirFormat.initialize_ex', 'bzrlib.smart.bzrdir',
+    'BzrDirFormat.initialize_ex_1.16', 'bzrlib.smart.bzrdir',
     'SmartServerRequestBzrDirInitializeEx')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
@@ -554,6 +560,9 @@ request_handlers.register_lazy(
     'SmartServerRepositorySetMakeWorkingTrees')
 request_handlers.register_lazy(
     'Repository.unlock', 'bzrlib.smart.repository', 'SmartServerRepositoryUnlock')
+request_handlers.register_lazy(
+    'Repository.get_rev_id_for_revno', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetRevIdForRevno')
 request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')

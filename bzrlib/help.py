@@ -73,8 +73,7 @@ def _help_commands_to_text(topic):
         hidden = True
     else:
         hidden = False
-    names = set(_mod_commands.builtin_command_names()) # to eliminate duplicates
-    names.update(_mod_commands.plugin_command_names())
+    names = list(_mod_commands.all_command_names())
     commands = ((n, _mod_commands.get_cmd_object(n)) for n in names)
     shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
     max_name = max(len(n) for n, o in shown_commands)
@@ -94,8 +93,10 @@ def _help_commands_to_text(topic):
         else:
             firstline = ''
         helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
-        lines = textwrap.wrap(helpstring, subsequent_indent=indent,
-                              width=width)
+        lines = textwrap.wrap(
+            helpstring, subsequent_indent=indent,
+            width=width,
+            break_long_words=False)
         for line in lines:
             out.append(line + '\n')
     return ''.join(out)

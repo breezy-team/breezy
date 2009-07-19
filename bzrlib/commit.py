@@ -108,9 +108,6 @@ class NullCommitReporter(object):
     def deleted(self, path):
         pass
 
-    def escaped(self, escape_count, message):
-        pass
-
     def missing(self, path):
         pass
 
@@ -152,9 +149,6 @@ class ReportCommitToLog(NullCommitReporter):
 
     def deleted(self, path):
         self._note('deleted %s', path)
-
-    def escaped(self, escape_count, message):
-        self._note("replaced %d control characters in message", escape_count)
 
     def missing(self, path):
         self._note('missing %s', path)
@@ -210,6 +204,7 @@ class Commit(object):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
+        :param message_callback: A callback: message = message_callback(cmt_obj)
 
         :param timestamp: if not None, seconds-since-epoch for a
             postdated/predated commit.
@@ -373,7 +368,6 @@ class Commit(object):
                 # Prompt the user for a commit message if none provided
                 message = message_callback(self)
                 self.message = message
-                self._escape_commit_message()
 
                 # Add revision data to the local branch
                 self.rev_id = self.builder.commit(self.message)
@@ -399,7 +393,10 @@ class Commit(object):
             # and now do the commit locally.
             self.branch.set_last_revision_info(new_revno, self.rev_id)
 
-            # Make the working tree up to date with the branch
+            # Make the working tree be up to date with the branch. This
+            # includes automatic changes scheduled to be made to the tree, such
+            # as updating its basis and unversioning paths that were missing.
+            self.work_tree.unversion(self.deleted_ids)
             self._set_progress_stage("Updating the working tree")
             self.work_tree.update_basis_by_delta(self.rev_id,
                  self.builder.get_basis_delta())
@@ -602,17 +599,6 @@ class Commit(object):
         if self.master_locked:
             self.master_branch.unlock()
 
-    def _escape_commit_message(self):
-        """Replace xml-incompatible control characters."""
-        # FIXME: RBC 20060419 this should be done by the revision
-        # serialiser not by commit. Then we can also add an unescaper
-        # in the deserializer and start roundtripping revision messages
-        # precisely. See repository_implementations/test_repository.py
-        self.message, escape_count = xml_serializer.escape_invalid_chars(
-            self.message)
-        if escape_count:
-            self.reporter.escaped(escape_count, self.message)
-
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""
         # TODO: Make sure that this list doesn't contain duplicate
@@ -697,7 +683,7 @@ class Commit(object):
                             reporter.snapshot_change('modified', new_path)
             self._next_progress_entry()
         # Unversion IDs that were found to be deleted
-        self.work_tree.unversion(deleted_ids)
+        self.deleted_ids = deleted_ids
 
     def _record_unselected(self):
         # If specific files are selected, then all un-selected files must be
@@ -860,7 +846,7 @@ class Commit(object):
                 content_summary)
 
         # Unversion IDs that were found to be deleted
-        self.work_tree.unversion(deleted_ids)
+        self.deleted_ids = deleted_ids
 
     def _commit_nested_tree(self, file_id, path):
         "Commit a nested tree."

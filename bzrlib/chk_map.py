@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,14 +38,12 @@ Densely packed upper nodes.
 """
 
 import heapq
-import time
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import versionedfile
 """)
 from bzrlib import (
-    errors,
     lru_cache,
     osutils,
     registry,
@@ -121,7 +119,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) == tuple:
+        if type(self._root_node) is tuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -135,7 +133,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) == tuple:
+        if type(node) is tuple:
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -203,13 +201,48 @@ class CHKMap(object):
             multiple pages.
         :return: The root chk of the resulting CHKMap.
         """
-        result = CHKMap(store, None, search_key_func=search_key_func)
+        root_key = klass._create_directly(store, initial_value,
+            maximum_size=maximum_size, key_width=key_width,
+            search_key_func=search_key_func)
+        return root_key
+
+    @classmethod
+    def _create_via_map(klass, store, initial_value, maximum_size=0,
+                        key_width=1, search_key_func=None):
+        result = klass(store, None, search_key_func=search_key_func)
         result._root_node.set_maximum_size(maximum_size)
         result._root_node._key_width = key_width
         delta = []
         for key, value in initial_value.items():
             delta.append((None, key, value))
-        return result.apply_delta(delta)
+        root_key = result.apply_delta(delta)
+        return root_key
+
+    @classmethod
+    def _create_directly(klass, store, initial_value, maximum_size=0,
+                         key_width=1, search_key_func=None):
+        node = LeafNode(search_key_func=search_key_func)
+        node.set_maximum_size(maximum_size)
+        node._key_width = key_width
+        node._items = dict(initial_value)
+        node._raw_size = sum([node._key_value_len(key, value)
+                              for key,value in initial_value.iteritems()])
+        node._len = len(node._items)
+        node._compute_search_prefix()
+        node._compute_serialised_prefix()
+        if (node._len > 1
+            and maximum_size
+            and node._current_size() > maximum_size):
+            prefix, node_details = node._split(store)
+            if len(node_details) == 1:
+                raise AssertionError('Failed to split using node._split')
+            node = InternalNode(prefix, search_key_func=search_key_func)
+            node.set_maximum_size(maximum_size)
+            node._key_width = key_width
+            for split, subnode in node_details:
+                node.add_node(split, subnode)
+        keys = list(node.serialise(store))
+        return keys[-1]
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -465,7 +498,7 @@ class CHKMap(object):
 
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
-        if type(node) == tuple:
+        if type(node) is tuple:
             return node
         else:
             return node._key
@@ -491,7 +524,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) == tuple:
+        if type(self._root_node) is tuple:
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -764,7 +797,19 @@ class LeafNode(Node):
                 result[prefix] = node
             else:
                 node = result[prefix]
-            node.map(store, key, value)
+            sub_prefix, node_details = node.map(store, key, value)
+            if len(node_details) > 1:
+                if prefix != sub_prefix:
+                    # This node has been split and is now found via a different
+                    # path
+                    result.pop(prefix)
+                new_node = InternalNode(sub_prefix,
+                    search_key_func=self._search_key_func)
+                new_node.set_maximum_size(self._maximum_size)
+                new_node._key_width = self._key_width
+                for split, node in node_details:
+                    new_node.add_node(split, node)
+                result[prefix] = new_node
         return common_prefix, result.items()
 
     def map(self, store, key, value):
@@ -955,34 +1000,99 @@ class InternalNode(Node):
         # prefix is the key in self._items to use, key_filter is the key_filter
         # entries that would match this node
         keys = {}
+        shortcut = False
         if key_filter is None:
+            # yielding all nodes, yield whatever we have, and queue up a read
+            # for whatever we are missing
+            shortcut = True
             for prefix, node in self._items.iteritems():
-                if type(node) == tuple:
+                if node.__class__ is tuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
-        else:
-            # XXX defaultdict ?
+        elif len(key_filter) == 1:
+            # Technically, this path could also be handled by the first check
+            # in 'self._node_width' in length_filters. However, we can handle
+            # this case without spending any time building up the
+            # prefix_to_keys, etc state.
+
+            # This is a bit ugly, but TIMEIT showed it to be by far the fastest
+            # 0.626us   list(key_filter)[0]
+            #       is a func() for list(), 2 mallocs, and a getitem
+            # 0.489us   [k for k in key_filter][0]
+            #       still has the mallocs, avoids the func() call
+            # 0.350us   iter(key_filter).next()
+            #       has a func() call, and mallocs an iterator
+            # 0.125us   for key in key_filter: pass
+            #       no func() overhead, might malloc an iterator
+            # 0.105us   for key in key_filter: break
+            #       no func() overhead, might malloc an iterator, probably
+            #       avoids checking an 'else' clause as part of the for
+            for key in key_filter:
+                break
+            search_prefix = self._search_prefix_filter(key)
+            if len(search_prefix) == self._node_width:
+                # This item will match exactly, so just do a dict lookup, and
+                # see what we can return
+                shortcut = True
+                try:
+                    node = self._items[search_prefix]
+                except KeyError:
+                    # A given key can only match 1 child node, if it isn't
+                    # there, then we can just return nothing
+                    return
+                if node.__class__ is tuple:
+                    keys[node] = (search_prefix, [key])
+                else:
+                    # This is loaded, and the only thing that can match,
+                    # return
+                    yield node, [key]
+                    return
+        if not shortcut:
+            # First, convert all keys into a list of search prefixes
+            # Aggregate common prefixes, and track the keys they come from
             prefix_to_keys = {}
             length_filters = {}
             for key in key_filter:
-                search_key = self._search_prefix_filter(key)
+                search_prefix = self._search_prefix_filter(key)
                 length_filter = length_filters.setdefault(
-                                    len(search_key), set())
-                length_filter.add(search_key)
-                prefix_to_keys.setdefault(search_key, []).append(key)
-            length_filters = length_filters.items()
-            for prefix, node in self._items.iteritems():
-                node_key_filter = []
-                for length, length_filter in length_filters:
-                    sub_prefix = prefix[:length]
-                    if sub_prefix in length_filter:
-                        node_key_filter.extend(prefix_to_keys[sub_prefix])
-                if node_key_filter: # this key matched something, yield it
-                    if type(node) == tuple:
-                        keys[node] = (prefix, node_key_filter)
+                                    len(search_prefix), set())
+                length_filter.add(search_prefix)
+                prefix_to_keys.setdefault(search_prefix, []).append(key)
+
+            if (self._node_width in length_filters
+                and len(length_filters) == 1):
+                # all of the search prefixes match exactly _node_width. This
+                # means that everything is an exact match, and we can do a
+                # lookup into self._items, rather than iterating over the items
+                # dict.
+                search_prefixes = length_filters[self._node_width]
+                for search_prefix in search_prefixes:
+                    try:
+                        node = self._items[search_prefix]
+                    except KeyError:
+                        # We can ignore this one
+                        continue
+                    node_key_filter = prefix_to_keys[search_prefix]
+                    if node.__class__ is tuple:
+                        keys[node] = (search_prefix, node_key_filter)
                     else:
                         yield node, node_key_filter
+            else:
+                # The slow way. We walk every item in self._items, and check to
+                # see if there are any matches
+                length_filters = length_filters.items()
+                for prefix, node in self._items.iteritems():
+                    node_key_filter = []
+                    for length, length_filter in length_filters:
+                        sub_prefix = prefix[:length]
+                        if sub_prefix in length_filter:
+                            node_key_filter.extend(prefix_to_keys[sub_prefix])
+                    if node_key_filter: # this key matched something, yield it
+                        if node.__class__ is tuple:
+                            keys[node] = (prefix, node_key_filter)
+                        else:
+                            yield node, node_key_filter
         if keys:
             # Look in the page cache for some more bytes
             found_keys = set()
@@ -1117,7 +1227,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) == tuple:
+            if type(node) is tuple:
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1134,7 +1244,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) == tuple:
+            if type(node) is tuple:
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1179,7 +1289,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) == tuple:
+            if type(value) is tuple:
                 refs.append(value)
             else:
                 refs.append(value.key())
@@ -1286,94 +1396,202 @@ def _deserialise(bytes, key, search_key_func):
     return node
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
-    """Read the associated records, and determine what is interesting."""
-    uninteresting_keys = set(uninteresting_keys)
-    chks_to_read = uninteresting_keys.union(interesting_keys)
-    next_uninteresting = set()
-    next_interesting = set()
-    uninteresting_items = set()
-    interesting_items = set()
-    interesting_to_yield = []
-    for record in store.get_record_stream(chks_to_read, 'unordered', True):
-        # records_read.add(record.key())
-        if pb is not None:
-            pb.tick()
-        bytes = record.get_bytes_as('fulltext')
-        # We don't care about search_key_func for this code, because we only
-        # care about external references.
-        node = _deserialise(bytes, record.key, search_key_func=None)
-        if record.key in uninteresting_keys:
-            if type(node) is InternalNode:
-                next_uninteresting.update(node.refs())
-            else:
-                # We know we are at a LeafNode, so we can pass None for the
-                # store
-                uninteresting_items.update(node.iteritems(None))
-        else:
-            interesting_to_yield.append(record.key)
-            if type(node) is InternalNode:
-                next_interesting.update(node.refs())
-            else:
-                interesting_items.update(node.iteritems(None))
-    return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items)
+class CHKMapDifference(object):
+    """Iterate the stored pages and key,value pairs for (new - old).
 
+    This class provides a generator over the stored CHK pages and the
+    (key, value) pairs that are in any of the new maps and not in any of the
+    old maps.
 
-def _find_all_uninteresting(store, interesting_root_keys,
-                            uninteresting_root_keys, pb):
-    """Determine the full set of uninteresting keys."""
-    # What about duplicates between interesting_root_keys and
-    # uninteresting_root_keys?
-    if not uninteresting_root_keys:
-        # Shortcut case. We know there is nothing uninteresting to filter out
-        # So we just let the rest of the algorithm do the work
-        # We know there is nothing uninteresting, and we didn't have to read
-        # any interesting records yet.
-        return (set(), set(), set(interesting_root_keys), [], set())
-    all_uninteresting_chks = set(uninteresting_root_keys)
-    all_uninteresting_items = set()
+    Note that it may yield chk pages that are common (especially root nodes),
+    but it won't yield (key,value) pairs that are common.
+    """
 
-    # First step, find the direct children of both the interesting and
-    # uninteresting set
-    (uninteresting_keys, uninteresting_items,
-     interesting_keys, interesting_to_yield,
-     interesting_items) = _find_children_info(store, interesting_root_keys,
-                                              uninteresting_root_keys,
-                                              pb=pb)
-    all_uninteresting_chks.update(uninteresting_keys)
-    all_uninteresting_items.update(uninteresting_items)
-    del uninteresting_items
-    # Note: Exact matches between interesting and uninteresting do not need
-    #       to be search further. Non-exact matches need to be searched in case
-    #       there is a future exact-match
-    uninteresting_keys.difference_update(interesting_keys)
+    def __init__(self, store, new_root_keys, old_root_keys,
+                 search_key_func, pb=None):
+        self._store = store
+        self._new_root_keys = new_root_keys
+        self._old_root_keys = old_root_keys
+        self._pb = pb
+        # All uninteresting chks that we have seen. By the time they are added
+        # here, they should be either fully ignored, or queued up for
+        # processing
+        self._all_old_chks = set(self._old_root_keys)
+        # All items that we have seen from the old_root_keys
+        self._all_old_items = set()
+        # These are interesting items which were either read, or already in the
+        # interesting queue (so we don't need to walk them again)
+        self._processed_new_refs = set()
+        self._search_key_func = search_key_func
 
-    # Second, find the full set of uninteresting bits reachable by the
-    # uninteresting roots
-    chks_to_read = uninteresting_keys
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            # TODO: Handle 'absent'
-            if pb is not None:
-                pb.tick()
+        # The uninteresting and interesting nodes to be searched
+        self._old_queue = []
+        self._new_queue = []
+        # Holds the (key, value) items found when processing the root nodes,
+        # waiting for the uninteresting nodes to be walked
+        self._new_item_queue = []
+        self._state = None
+
+    def _read_nodes_from_store(self, keys):
+        # We chose not to use _page_cache, because we think in terms of records
+        # to be yielded. Also, we expect to touch each page only 1 time during
+        # this code. (We may want to evaluate saving the raw bytes into the
+        # page cache, which would allow a working tree update after the fetch
+        # to not have to read the bytes again.)
+        stream = self._store.get_record_stream(keys, 'unordered', True)
+        for record in stream:
+            if self._pb is not None:
+                self._pb.tick()
+            if record.storage_kind == 'absent':
+                raise errors.NoSuchRevision(self._store, record.key)
             bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
+            node = _deserialise(bytes, record.key,
+                                search_key_func=self._search_key_func)
             if type(node) is InternalNode:
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                # TODO: We remove the entries that are already in
-                #       uninteresting_chks ?
-                next_chks.update(chks)
-                all_uninteresting_chks.update(chks)
+                # Note we don't have to do node.refs() because we know that
+                # there are no children that have been pushed into this node
+                prefix_refs = node._items.items()
+                items = []
             else:
-                all_uninteresting_items.update(node._items.iteritems())
-        chks_to_read = next_chks
-    return (all_uninteresting_chks, all_uninteresting_items,
-            interesting_keys, interesting_to_yield, interesting_items)
+                prefix_refs = []
+                items = node._items.items()
+            yield record, node, prefix_refs, items
+
+    def _read_old_roots(self):
+        old_chks_to_enqueue = []
+        all_old_chks = self._all_old_chks
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(self._old_root_keys):
+            # Uninteresting node
+            prefix_refs = [p_r for p_r in prefix_refs
+                                if p_r[1] not in all_old_chks]
+            new_refs = [p_r[1] for p_r in prefix_refs]
+            all_old_chks.update(new_refs)
+            self._all_old_items.update(items)
+            # Queue up the uninteresting references
+            # Don't actually put them in the 'to-read' queue until we have
+            # finished checking the interesting references
+            old_chks_to_enqueue.extend(prefix_refs)
+        return old_chks_to_enqueue
+
+    def _enqueue_old(self, new_prefixes, old_chks_to_enqueue):
+        # At this point, we have read all the uninteresting and interesting
+        # items, so we can queue up the uninteresting stuff, knowing that we've
+        # handled the interesting ones
+        for prefix, ref in old_chks_to_enqueue:
+            not_interesting = True
+            for i in xrange(len(prefix), 0, -1):
+                if prefix[:i] in new_prefixes:
+                    not_interesting = False
+                    break
+            if not_interesting:
+                # This prefix is not part of the remaining 'interesting set'
+                continue
+            self._old_queue.append(ref)
+
+    def _read_all_roots(self):
+        """Read the root pages.
+
+        This is structured as a generator, so that the root records can be
+        yielded up to whoever needs them without any buffering.
+        """
+        # This is the bootstrap phase
+        if not self._old_root_keys:
+            # With no old_root_keys we can just shortcut and be ready
+            # for _flush_new_queue
+            self._new_queue = list(self._new_root_keys)
+            return
+        old_chks_to_enqueue = self._read_old_roots()
+        # filter out any root keys that are already known to be uninteresting
+        new_keys = set(self._new_root_keys).difference(self._all_old_chks)
+        # These are prefixes that are present in new_keys that we are
+        # thinking to yield
+        new_prefixes = set()
+        # We are about to yield all of these, so we don't want them getting
+        # added a second time
+        processed_new_refs = self._processed_new_refs
+        processed_new_refs.update(new_keys)
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(new_keys):
+            # At this level, we now know all the uninteresting references
+            # So we filter and queue up whatever is remaining
+            prefix_refs = [p_r for p_r in prefix_refs
+                           if p_r[1] not in self._all_old_chks
+                              and p_r[1] not in processed_new_refs]
+            refs = [p_r[1] for p_r in prefix_refs]
+            new_prefixes.update([p_r[0] for p_r in prefix_refs])
+            self._new_queue.extend(refs)
+            # TODO: We can potentially get multiple items here, however the
+            #       current design allows for this, as callers will do the work
+            #       to make the results unique. We might profile whether we
+            #       gain anything by ensuring unique return values for items
+            new_items = [item for item in items
+                               if item not in self._all_old_items]
+            self._new_item_queue.extend(new_items)
+            new_prefixes.update([self._search_key_func(item[0])
+                                 for item in new_items])
+            processed_new_refs.update(refs)
+            yield record
+        # For new_prefixes we have the full length prefixes queued up.
+        # However, we also need possible prefixes. (If we have a known ref to
+        # 'ab', then we also need to include 'a'.) So expand the
+        # new_prefixes to include all shorter prefixes
+        for prefix in list(new_prefixes):
+            new_prefixes.update([prefix[:i] for i in xrange(1, len(prefix))])
+        self._enqueue_old(new_prefixes, old_chks_to_enqueue)
+
+    def _flush_new_queue(self):
+        # No need to maintain the heap invariant anymore, just pull things out
+        # and process them
+        refs = set(self._new_queue)
+        self._new_queue = []
+        # First pass, flush all interesting items and convert to using direct refs
+        all_old_chks = self._all_old_chks
+        processed_new_refs = self._processed_new_refs
+        all_old_items = self._all_old_items
+        new_items = [item for item in self._new_item_queue
+                           if item not in all_old_items]
+        self._new_item_queue = []
+        if new_items:
+            yield None, new_items
+        refs = refs.difference(all_old_chks)
+        while refs:
+            next_refs = set()
+            next_refs_update = next_refs.update
+            # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
+            # from 1m54s to 1m51s. Consider it.
+            for record, _, p_refs, items in self._read_nodes_from_store(refs):
+                items = [item for item in items
+                         if item not in all_old_items]
+                yield record, items
+                next_refs_update([p_r[1] for p_r in p_refs])
+            next_refs = next_refs.difference(all_old_chks)
+            next_refs = next_refs.difference(processed_new_refs)
+            processed_new_refs.update(next_refs)
+            refs = next_refs
+
+    def _process_next_old(self):
+        # Since we don't filter uninteresting any further than during
+        # _read_all_roots, process the whole queue in a single pass.
+        refs = self._old_queue
+        self._old_queue = []
+        all_old_chks = self._all_old_chks
+        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+            self._all_old_items.update(items)
+            refs = [r for _,r in prefix_refs if r not in all_old_chks]
+            self._old_queue.extend(refs)
+            all_old_chks.update(refs)
+
+    def _process_queues(self):
+        while self._old_queue:
+            self._process_next_old()
+        return self._flush_new_queue()
+
+    def process(self):
+        for record in self._read_all_roots():
+            yield record, []
+        for record, items in self._process_queues():
+            yield record, items
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
@@ -1390,72 +1608,11 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :return: Yield
         (interesting record, {interesting key:values})
     """
-    # TODO: consider that it may be more memory efficient to use the 20-byte
-    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
-    # TODO: Try to factor out a lot of the get_record_stream() calls into a
-    #       helper function similar to _read_bytes. This function should be
-    #       able to use nodes from the _page_cache as well as actually
-    #       requesting bytes from the store.
-
-    (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
-     interesting_to_yield, interesting_items) = _find_all_uninteresting(store,
-        interesting_root_keys, uninteresting_root_keys, pb)
-
-    # Now that we know everything uninteresting, we can yield information from
-    # our first request
-    interesting_items.difference_update(all_uninteresting_items)
-    interesting_to_yield = set(interesting_to_yield) - all_uninteresting_chks
-    if interesting_items:
-        yield None, interesting_items
-    if interesting_to_yield:
-        # We request these records again, rather than buffering the root
-        # records, most likely they are still in the _group_cache anyway.
-        for record in store.get_record_stream(interesting_to_yield,
-                                              'unordered', False):
-            yield record, []
-    all_uninteresting_chks.update(interesting_to_yield)
-    interesting_keys.difference_update(all_uninteresting_chks)
-
-    chks_to_read = interesting_keys
-    counter = 0
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            counter += 1
-            if pb is not None:
-                pb.update('find chk pages', counter)
-            # TODO: Handle 'absent'?
-            bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
-            if type(node) is InternalNode:
-                # all_uninteresting_chks grows large, as it lists all nodes we
-                # don't want to process (including already seen interesting
-                # nodes).
-                # small.difference_update(large) scales O(large), but
-                # small.difference(large) scales O(small).
-                # Also, we know we just _deserialised this node, so we can
-                # access the dict directly.
-                chks = set(node._items.itervalues()).difference(
-                            all_uninteresting_chks)
-                # Is set() and .difference_update better than:
-                # chks = [chk for chk in node.refs()
-                #              if chk not in all_uninteresting_chks]
-                next_chks.update(chks)
-                # These are now uninteresting everywhere else
-                all_uninteresting_chks.update(chks)
-                interesting_items = []
-            else:
-                interesting_items = [item for item in node._items.iteritems()
-                                     if item not in all_uninteresting_items]
-                # TODO: Do we need to filter out items that we have already
-                #       seen on other pages? We don't really want to buffer the
-                #       whole thing, but it does mean that callers need to
-                #       understand they may get duplicate values.
-                # all_uninteresting_items.update(interesting_items)
-            yield record, interesting_items
-        chks_to_read = next_chks
+    iterator = CHKMapDifference(store, interesting_root_keys,
+                                uninteresting_root_keys,
+                                search_key_func=store._search_key_func,
+                                pb=pb)
+    return iterator.process()
 
 
 try:

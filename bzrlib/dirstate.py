@@ -1285,7 +1285,8 @@ class DirState(object):
         removals = {}
         for old_path, new_path, file_id, inv_entry in sorted(delta, reverse=True):
             if (file_id in insertions) or (file_id in removals):
-                raise AssertionError("repeated file id in delta %r" % (file_id,))
+                raise errors.InconsistentDelta(old_path or new_path, file_id,
+                    "repeated file_id")
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
                 removals[file_id] = old_path
@@ -1399,7 +1400,21 @@ class DirState(object):
         # At the same time, to reduce interface friction we convert the input
         # inventory entries to dirstate.
         root_only = ('', '')
+        # Accumulate parent references (path and id), to check for parentless
+        # items or items placed under files/links/tree-references. We get
+        # references from every item in the delta that is not a deletion and
+        # is not itself the root.
+        parents = set()
         for old_path, new_path, file_id, inv_entry in delta:
+            if inv_entry is not None and file_id != inv_entry.file_id:
+                raise errors.InconsistentDelta(new_path, file_id,
+                    "mismatched entry file_id %r" % inv_entry)
+            if new_path is not None:
+                new_path_utf8 = encode(new_path)
+                # note the parent for validation
+                dirname_utf8, basename_utf8 = osutils.split(new_path_utf8)
+                if basename_utf8:
+                    parents.add((dirname_utf8, inv_entry.parent_id))
             if old_path is None:
                 adds.append((None, encode(new_path), file_id,
                     inv_to_entry(inv_entry), True))
@@ -1420,7 +1435,6 @@ class DirState(object):
                 # for 'r' items on every pass.
                 self._update_basis_apply_deletes(deletes)
                 deletes = []
-                new_path_utf8 = encode(new_path)
                 # Split into an add/delete pair recursively.
                 adds.append((None, new_path_utf8, file_id,
                     inv_to_entry(inv_entry), False))
@@ -1453,12 +1467,25 @@ class DirState(object):
                 changes.append((encode(old_path), encode(new_path), file_id,
                     inv_to_entry(inv_entry)))
 
-        # Finish expunging deletes/first half of renames.
-        self._update_basis_apply_deletes(deletes)
-        # Reinstate second half of renames and new paths.
-        self._update_basis_apply_adds(adds)
-        # Apply in-situ changes.
-        self._update_basis_apply_changes(changes)
+        try:
+            # Finish expunging deletes/first half of renames.
+            self._update_basis_apply_deletes(deletes)
+            # Reinstate second half of renames and new paths.
+            self._update_basis_apply_adds(adds)
+            # Apply in-situ changes.
+            self._update_basis_apply_changes(changes)
+            # Validate parents
+            self._update_basis_check_parents(parents)
+        except errors.BzrError, e:
+            if 'integrity error' not in str(e):
+                raise
+            # _get_entry raises BzrError when a request is inconsistent; we
+            # want such errors to be shown as InconsistentDelta - and that 
+            # fits the behaviour we trigger. Partof this is driven by dirstate
+            # only supporting deltas that turn the basis into a closer fit to
+            # the active tree.
+            self._changes_aborted = True
+            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._header_state = DirState.IN_MEMORY_MODIFIED
@@ -1572,6 +1599,22 @@ class DirState(object):
                 else:
                     # it is being resurrected here, so blank it out temporarily.
                     self._dirblocks[block_index][1][entry_index][1][1] = null
+
+    def _update_basis_check_parents(self, parents):
+        """Check that parents required by the delta are all intact."""
+        for dirname_utf8, file_id in parents:
+            # Get the entry - the ensures that file_id, dirname_utf8 exists and
+            # has the right file id.
+            entry = self._get_entry(1, file_id, dirname_utf8)
+            if entry[1] is None:
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                    file_id, "This parent is not present.")
+            # Parents of things must be directories
+            if entry[1][1][0] != 'd':
+                self._changes_aborted = True
+                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                    file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
         _stat_to_minikind=_stat_to_minikind, _pack_stat=pack_stat):
@@ -1821,7 +1864,7 @@ class DirState(object):
         self._read_dirblocks_if_needed()
         if path_utf8 is not None:
             if type(path_utf8) is not str:
-                raise AssertionError('path_utf8 is not a str: %s %s'
+                raise errors.BzrError('path_utf8 is not a str: %s %r'
                     % (type(path_utf8), path_utf8))
             # path lookups are faster
             dirname, basename = osutils.split(path_utf8)
@@ -2379,6 +2422,9 @@ class DirState(object):
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(1,
                 "set_state_from_inventory called; please mutate the tree instead")
+        tracing = 'dirstate' in debug.debug_flags
+        if tracing:
+            trace.mutter("set_state_from_inventory trace:")
         self._read_dirblocks_if_needed()
         # sketch:
         # Two iterators: current data and new data, both in dirblock order.
@@ -2393,7 +2439,9 @@ class DirState(object):
         new_iterator = new_inv.iter_entries_by_dir()
         # we will be modifying the dirstate, so we need a stable iterator. In
         # future we might write one, for now we just clone the state into a
-        # list - which is a shallow copy.
+        # list using a copy so that we see every original item and don't have
+        # to adjust the position when items are inserted or deleted in the
+        # underlying dirstate.
         old_iterator = iter(list(self._iter_entries()))
         # both must have roots so this is safe:
         current_new = new_iterator.next()
@@ -2433,12 +2481,19 @@ class DirState(object):
             # we make both end conditions explicit
             if not current_old:
                 # old is finished: insert current_new into the state.
+                if tracing:
+                    trace.mutter("Appending from new '%s'.",
+                        new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
                 current_new = advance(new_iterator)
             elif not current_new:
                 # new is finished
+                if tracing:
+                    trace.mutter("Truncating from old '%s/%s'.",
+                        current_old[0][0].decode('utf8'),
+                        current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
             elif new_entry_key == current_old[0]:
@@ -2451,6 +2506,9 @@ class DirState(object):
                 # kind has changed.
                 if (current_old[1][0][3] != current_new[1].executable or
                     current_old[1][0][0] != current_new_minikind):
+                    if tracing:
+                        trace.mutter("Updating in-place change '%s'.",
+                            new_path_utf8.decode('utf8'))
                     self.update_minimal(current_old[0], current_new_minikind,
                         executable=current_new[1].executable,
                         path_utf8=new_path_utf8, fingerprint=fingerprint)
@@ -2462,6 +2520,9 @@ class DirState(object):
                       and new_entry_key[1:] < current_old[0][1:])):
                 # new comes before:
                 # add a entry for this and advance new
+                if tracing:
+                    trace.mutter("Inserting from new '%s'.",
+                        new_path_utf8.decode('utf8'))
                 self.update_minimal(new_entry_key, current_new_minikind,
                     executable=current_new[1].executable,
                     path_utf8=new_path_utf8, fingerprint=fingerprint)
@@ -2469,11 +2530,17 @@ class DirState(object):
             else:
                 # we've advanced past the place where the old key would be,
                 # without seeing it in the new list.  so it must be gone.
+                if tracing:
+                    trace.mutter("Deleting from old '%s/%s'.",
+                        current_old[0][0].decode('utf8'),
+                        current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         self._id_index = None
         self._packed_stat_index = None
+        if tracing:
+            trace.mutter("set_state_from_inventory complete.")
 
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
@@ -2569,25 +2636,44 @@ class DirState(object):
                 # grab one of them and use it to generate parent
                 # relocation/absent entries.
                 new_entry = key, [new_details]
-                for other_key in existing_keys:
+                # existing_keys can be changed as we iterate.
+                for other_key in tuple(existing_keys):
                     # change the record at other to be a pointer to this new
                     # record. The loop looks similar to the change to
                     # relocations when updating an existing record but its not:
                     # the test for existing kinds is different: this can be
                     # factored out to a helper though.
-                    other_block_index, present = self._find_block_index_from_key(other_key)
+                    other_block_index, present = self._find_block_index_from_key(
+                        other_key)
                     if not present:
-                        raise AssertionError('could not find block for %s' % (other_key,))
-                    other_entry_index, present = self._find_entry_index(other_key,
-                                            self._dirblocks[other_block_index][1])
+                        raise AssertionError('could not find block for %s' % (
+                            other_key,))
+                    other_block = self._dirblocks[other_block_index][1]
+                    other_entry_index, present = self._find_entry_index(
+                        other_key, other_block)
                     if not present:
-                        raise AssertionError('could not find entry for %s' % (other_key,))
+                        raise AssertionError(
+                            'update_minimal: could not find other entry for %s'
+                            % (other_key,))
                     if path_utf8 is None:
                         raise AssertionError('no path')
-                    self._dirblocks[other_block_index][1][other_entry_index][1][0] = \
-                        ('r', path_utf8, 0, False, '')
+                    # Turn this other location into a reference to the new
+                    # location. This also updates the aliased iterator
+                    # (current_old in set_state_from_inventory) so that the old
+                    # entry, if not already examined, is skipped over by that
+                    # loop.
+                    other_entry = other_block[other_entry_index]
+                    other_entry[1][0] = ('r', path_utf8, 0, False, '')
+                    self._maybe_remove_row(other_block, other_entry_index,
+                        id_index)
 
+                # This loop:
+                # adds a tuple to the new details for each column
+                #  - either by copying an existing relocation pointer inside that column
+                #  - or by creating a new pointer to the right row inside that column
                 num_present_parents = self._num_present_parents()
+                if num_present_parents:
+                    other_key = list(existing_keys)[0]
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
                     # TODO: optimise this to reduce memory use in highly
@@ -2600,7 +2686,7 @@ class DirState(object):
                     update_entry_index, present = \
                         self._find_entry_index(other_key, self._dirblocks[update_block_index][1])
                     if not present:
-                        raise AssertionError('could not find entry for %s' % (other_key,))
+                        raise AssertionError('update_minimal: could not find entry for %s' % (other_key,))
                     update_details = self._dirblocks[update_block_index][1][update_entry_index][1][lookup_index]
                     if update_details[0] in 'ar': # relocated, absent
                         # its a pointer or absent in lookup_index's tree, use
@@ -2651,6 +2737,21 @@ class DirState(object):
                 self._dirblocks.insert(block_index, (subdir_key[0], []))
 
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+
+    def _maybe_remove_row(self, block, index, id_index):
+        """Remove index if it is absent or relocated across the row.
+        
+        id_index is updated accordingly.
+        """
+        present_in_row = False
+        entry = block[index]
+        for column in entry[1]:
+            if column[0] not in 'ar':
+                present_in_row = True
+                break
+        if not present_in_row:
+            block.pop(index)
+            id_index[entry[0][2]].remove(entry[0])
 
     def _validate(self):
         """Check that invariants on the dirblock are correct.
@@ -2938,7 +3039,6 @@ def py_update_entry(state, entry, abspath, stat_value,
                            False, DirState.NULLSTAT)
     state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
-update_entry = py_update_entry
 
 
 class ProcessEntryPython(object):
@@ -3575,25 +3675,30 @@ class ProcessEntryPython(object):
                         current_dir_info = dir_iterator.next()
                     except StopIteration:
                         current_dir_info = None
-_process_entry = ProcessEntryPython
 
 
 # Try to load the compiled form if possible
 try:
-    from bzrlib._dirstate_helpers_c import (
-        _read_dirblocks_c as _read_dirblocks,
-        bisect_dirblock_c as bisect_dirblock,
-        _bisect_path_left_c as _bisect_path_left,
-        _bisect_path_right_c as _bisect_path_right,
-        cmp_by_dirs_c as cmp_by_dirs,
+    from bzrlib._dirstate_helpers_pyx import (
+        _read_dirblocks,
+        bisect_dirblock,
+        _bisect_path_left,
+        _bisect_path_right,
+        cmp_by_dirs,
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
 except ImportError:
     from bzrlib._dirstate_helpers_py import (
-        _read_dirblocks_py as _read_dirblocks,
-        bisect_dirblock_py as bisect_dirblock,
-        _bisect_path_left_py as _bisect_path_left,
-        _bisect_path_right_py as _bisect_path_right,
-        cmp_by_dirs_py as cmp_by_dirs,
+        _read_dirblocks,
+        bisect_dirblock,
+        _bisect_path_left,
+        _bisect_path_right,
+        cmp_by_dirs,
         )
+    # FIXME: It would be nice to be able to track moved lines so that the
+    # corresponding python code can be moved to the _dirstate_helpers_py
+    # module. I don't want to break the history for this important piece of
+    # code so I left the code here -- vila 20090622
+    update_entry = py_update_entry
+    _process_entry = ProcessEntryPython

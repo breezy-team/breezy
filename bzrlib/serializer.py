@@ -24,6 +24,8 @@ from bzrlib import registry
 class Serializer(object):
     """Inventory and revision serialization/deserialization."""
 
+    squashes_xml_invalid_characters = False
+
     def write_inventory(self, inv, f):
         """Write inventory to a file"""
         raise NotImplementedError(self.write_inventory)

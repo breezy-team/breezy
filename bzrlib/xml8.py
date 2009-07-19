@@ -28,6 +28,7 @@ from bzrlib.xml_serializer import (
     Element,
     SubElement,
     XMLSerializer,
+    escape_invalid_chars,
     )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision
@@ -167,9 +168,9 @@ class Serializer_v8(XMLSerializer):
         :raises: AssertionError if an error has occurred.
         """
         if inv.revision_id is None:
-            raise AssertionError()
+            raise AssertionError("inv.revision_id is None")
         if inv.root.revision is None:
-            raise AssertionError()
+            raise AssertionError("inv.root.revision is None")
 
     def _check_cache_size(self, inv_size, entry_cache):
         """Check that the entry_cache is large enough.
@@ -345,7 +346,7 @@ class Serializer_v8(XMLSerializer):
             root.set('timezone', str(rev.timezone))
         root.text = '\n'
         msg = SubElement(root, 'message')
-        msg.text = rev.message
+        msg.text = escape_invalid_chars(rev.message)[0]
         msg.tail = '\n'
         if rev.parent_ids:
             pelts = SubElement(root, 'parents')
