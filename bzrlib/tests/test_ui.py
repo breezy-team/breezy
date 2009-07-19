@@ -116,27 +116,35 @@ class UITests(tests.TestCase):
     def test_progress_construction(self):
         """TextUIFactory constructs the right progress view.
         """
-        for (term, pb, expected_pb_class) in (
+        for (file_class, term, pb, expected_pb_class) in (
             # on an xterm, either use them or not as the user requests,
             # otherwise default on
-            ('xterm', 'none', NullProgressView),
-            ('xterm', 'text', TextProgressView),
-            ('xterm', None, TextProgressView),
+            (_TTYStringIO, 'xterm', 'none', NullProgressView),
+            (_TTYStringIO, 'xterm', 'text', TextProgressView),
+            (_TTYStringIO, 'xterm', None, TextProgressView),
             # on a dumb terminal, again if there's explicit configuration do
             # it, otherwise default off
-            ('dumb', 'none', NullProgressView),
-            ('dumb', 'text', TextProgressView),
-            ('dumb', None, NullProgressView),
+            (_TTYStringIO, 'dumb', 'none', NullProgressView),
+            (_TTYStringIO, 'dumb', 'text', TextProgressView),
+            (_TTYStringIO, 'dumb', None, NullProgressView),
+            # on a non-tty terminal, it's null regardless of $TERM
+            (StringIO, 'xterm', None, NullProgressView),
+            (StringIO, 'dumb', None, NullProgressView),
+            # however, it can still be forced on
+            (StringIO, 'dumb', 'text', TextProgressView),
             ):
             os.environ['TERM'] = term
             if pb is None:
-                del os.environ['BZR_PROGRESS_BAR']
+                if 'BZR_PROGRESS_BAR' in os.environ:
+                    del os.environ['BZR_PROGRESS_BAR']
             else:
                 os.environ['BZR_PROGRESS_BAR'] = pb
-            stdin = _TTYStringIO('')
-            stderr = _TTYStringIO()
-            stdout = _TTYStringIO()
+            stdin = file_class('')
+            stderr = file_class()
+            stdout = file_class()
             uif = make_ui_for_terminal(stdin, stdout, stderr)
+            self.assertIsInstance(uif, TextUIFactory,
+                "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
             self.assertIsInstance(uif.make_progress_view(),
                 expected_pb_class,
                 "TERM=%s BZR_PROGRESS_BAR=%s uif=%r" % (term, pb, uif,))
