@@ -55,20 +55,6 @@ from bzrlib.ui.text import (
 
 class UITests(tests.TestCase):
 
-    def test_silent_factory(self):
-        ui = _mod_ui.SilentUIFactory()
-        stdout = StringIO()
-        self.assertEqual(None,
-                         self.apply_redirected(None, stdout, stdout,
-                                               ui.get_password))
-        self.assertEqual('', stdout.getvalue())
-        self.assertEqual(None,
-                         self.apply_redirected(None, stdout, stdout,
-                                               ui.get_password,
-                                               u'Hello\u1234 %(user)s',
-                                               user=u'some\u1234'))
-        self.assertEqual('', stdout.getvalue())
-
     def test_text_factory_ascii_password(self):
         ui = tests.TestUIFactory(stdin='secret\n',
                                  stdout=tests.StringIOWrapper(),
@@ -239,21 +225,6 @@ class UITests(tests.TestCase):
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
-    def test_silent_ui_getbool(self):
-        factory = _mod_ui.SilentUIFactory()
-        self.assert_get_bool_acceptance_of_user_input(factory)
-
-    def test_silent_factory_prompts_silently(self):
-        factory = _mod_ui.SilentUIFactory()
-        stdout = StringIO()
-        factory.stdin = StringIO("y\n")
-        self.assertEqual(True,
-                         self.apply_redirected(None, stdout, stdout,
-                                               factory.get_boolean, "foo"))
-        self.assertEqual("", stdout.getvalue())
-        # stdin should be empty
-        self.assertEqual('', factory.stdin.readline())
-
     def test_text_ui_getbool(self):
         factory = TextUIFactory(None, None, None)
         self.assert_get_bool_acceptance_of_user_input(factory)
@@ -343,7 +314,10 @@ class CLIUITests(TestCase):
 
 class SilentUITests(TestCase):
 
-    def test_silent_factory(self):
+    def test_silent_factory_get_password(self):
+        # A silent factory that can't do user interaction can't get a
+        # password.  Possibly it should raise a more specific error but it
+        # can't succeed.
         ui = SilentUIFactory()
         stdout = StringIO()
         self.assertRaises(

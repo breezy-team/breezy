@@ -45,9 +45,10 @@ API Changes
 
 * ``CLIUIFactory`` is deprecated; use ``TextUIFactory`` instead if you
   need to subclass or create a specific class, or better yet the existing
-  ``make_ui_for_terminal``.  ``SilentUIFactory`` is now more clearly
-  defined to raise errors when asked to read input, rather than taking it
-  from stdin.  (Martin Pool)
+  ``make_ui_for_terminal``.  ``SilentUIFactory`` is clarified to do no
+  user interaction at all, rather than trying to read from stdin but not
+  writing any output, which would be strange if reading prompts or
+  passwords.  (Martin Pool)
 
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
