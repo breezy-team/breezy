@@ -172,6 +172,38 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                          revtree.inventory.root.children[path].revision)
 
 
+class TestImportToPackTag(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, path, kind='file', content='aaa',
+        executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        # Revno 1: create a file or symlink
+        # Revno 2: modify it
+        if to_kind is None:
+            to_kind = kind
+        if to_executable is None:
+            to_executable = executable
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, executable,
+                        None, content)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                        None, to_content)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+            yield commands.TagCommand('tag1', ':1', committer, "tag 1")
+            yield commands.TagCommand('tag2', 'head', committer, "tag 2")
+        return command_list
+
+    def test_tag(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path))
+
 class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
