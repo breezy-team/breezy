@@ -5251,7 +5251,7 @@ class cmd_reconfigure(Command):
             ),
         Option('unstacked',
             help='Reconfigure a branch to be unstacked.  This '
-                'may requiring copying substantial substantial data into it.',
+                'may require copying substantial data into it.',
             ),
         ]
 
