@@ -45,8 +45,8 @@ class VcsMapping(object):
     # Whether this mapping supports exporting and importing all bzr semantics.
     roundtripping = False
 
-    # Prefix used when importing native foreign revisions (not roundtripped)
-    # using this mapping.
+    # Prefix used when importing revisions native to the foreign VCS (as
+    # opposed to roundtripping bzr-native revisions) using this mapping.
     revid_prefix = None
 
     def __init__(self, vcs):

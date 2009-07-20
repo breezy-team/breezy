@@ -33,13 +33,19 @@ Bug Fixes
 * ``bzr mv`` no longer takes out branch locks, which allows it to work
   when the branch is readonly. (Robert Collins, #216541)
 
-* Fixed a NameError when merging or pulling from a URL that causes a
-  redirection loop when bzr tries to read a URL as a bundle.
+* ``bzr serve`` once again applies a ``ChrootServer`` to the given
+  directory before serving it. (Andrew Bennetts, #400535)
+
+* Fixed a NameError that occurs when merging or pulling from a URL that
+  causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
   
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
-  
+
+* Merge now correctly handles empty right-hand revision specs.
+  (Aaron Bentley, #333961)
+
 * Renames to lexographically lower basenames in trees that have never been
   committed to will no longer corrupt the dirstate. This was caused by an
   bug in the dirstate update_minimal method. (Robert Collins, #395556)
