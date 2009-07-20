@@ -5259,7 +5259,9 @@ class cmd_reconfigure(Command):
             stacked_on=None,
             unstacked=None):
         directory = bzrdir.BzrDir.open(location)
-        if stacked_on is not None:
+        if stacked_on and unstacked:
+            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+        elif stacked_on is not None:
             branch = directory.open_branch()
             # it may be a path relative to the cwd or a url; the branch wants
             # a path relative to itself...
