@@ -503,7 +503,7 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         pass
     if 'password' not in supported_auth_types:
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
-            ' %s@%s (supported auth types: %s)'
+            '\n  %s@%s\nsupported auth types: %s'
             % (username, host, supported_auth_types))
 
     if password:
@@ -520,11 +520,12 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
         try:
             paramiko_transport.auth_password(username, password)
         except paramiko.SSHException, e:
-            raise errors.ConnectionError('Failed to authenticate to SSH host'
-                                         ' as %s@%s' % (username, host), e)
+            raise errors.ConnectionError(
+                'Unable to authenticate to SSH host as'
+                '\n  %s@%s\n' % (username, host), e)
     else:
-        raise errors.ConnectionError('Failed to authenticate to SSH host'
-                                     ' as %s@%s' % (username, host))
+        raise errors.ConnectionError('Unable to authenticate to SSH host as'
+                                     '  %s@%s' % (username, host))
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
