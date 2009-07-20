@@ -35,6 +35,10 @@ Bug Fixes
 
 * ``bzr serve`` once again applies a ``ChrootServer`` to the given
   directory before serving it. (Andrew Bennetts, #400535)
+
+* Fixed a NameError that occurs when merging or pulling from a URL that
+  causes a redirection loop when bzr tries to read a URL as a bundle.
+  (Andrew Bennetts, #400847)
   
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
