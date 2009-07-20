@@ -486,7 +486,7 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus and
+        # width needs space for 6 char status, plus 1 for slash, plus an
         # 11-char time string, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
         self.stream.write(self._ellipsize_to_right(name,
