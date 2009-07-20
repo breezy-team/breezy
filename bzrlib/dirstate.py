@@ -1317,11 +1317,10 @@ class DirState(object):
                     raise errors.InconsistentDelta(new_path, file_id,
                         "new_path with no entry")
                 new_path = new_path.encode('utf-8')
-                dirname, basename = osutils.split(new_path)
-                dirname_utf8 = encode(dirname)
+                dirname_utf8, basename = osutils.split(new_path)
                 if basename:
                     parents.add((dirname_utf8, inv_entry.parent_id))
-                key = (dirname, basename, file_id)
+                key = (dirname_utf8, basename, file_id)
                 minikind = DirState._kind_to_minikind[inv_entry.kind]
                 if minikind == 't':
                     fingerprint = inv_entry.reference_revision
