@@ -111,6 +111,8 @@ class SmartTCPServer(object):
             pass
         for hook in SmartTCPServer.hooks['server_started']:
             hook(backing_urls, self.get_url())
+        for hook in SmartTCPServer.hooks['server_started_ex']:
+            hook(self)
         self._started.set()
         try:
             try:
@@ -214,6 +216,9 @@ class SmartServerHooks(Hooks):
             "where backing_url is a list of URLs giving the "
             "server-specific directory locations, and public_url is the "
             "public URL for the directory being served.", (0, 16), None))
+        self.create_hook(HookPoint('server_started_ex',
+            "Called by the bzr server when it starts serving a directory. "
+            "server_started is called with (server_obj).", (1, 17), None))
         self.create_hook(HookPoint('server_stopped',
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
