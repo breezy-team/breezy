@@ -91,7 +91,7 @@ Changing branch stacking
 Stacking of existing branches can be changed using the ``bzr reconfigure``
 command to either stack on an existing branch, or to turn off stacking.
 Be aware that when ``bzr reconfigure --unstacked`` is used, bzr will
-to copy all the referenced data from the stacked-on repository into the
+copy all the referenced data from the stacked-on repository into the
 previously stacked repository.  For large repositories this may take
 considerable time and may substantially increase the size of the
 repository.

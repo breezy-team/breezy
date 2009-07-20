@@ -14,11 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# TODO: At some point, handle upgrades by just passing the whole request
-# across to run on the server.
-
 import bz2
-import warnings
 
 from bzrlib import (
     bencode,
@@ -34,7 +30,6 @@ from bzrlib import (
     revision,
     revision as _mod_revision,
     symbol_versioning,
-    trace,
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat

@@ -95,7 +95,7 @@ def cant_unlock_not_held(locked_object):
     or an exception.
     """
     # This is typically masking some other error and called from a finally
-    # block, so it's useful to have tho option not to generate a new error
+    # block, so it's useful to have the option not to generate a new error
     # here.  You can use -Werror to make it fatal.  It should possibly also
     # raise LockNotHeld.
     if 'unlock' in debug.debug_flags:
