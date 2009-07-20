@@ -2079,7 +2079,7 @@ class FinalPaths(object):
         self.transform = transform
 
     def _determine_path(self, trans_id):
-        if trans_id == self.transform.root:
+        if (trans_id == self.transform.root or trans_id == ROOT_PARENT):
             return ""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)

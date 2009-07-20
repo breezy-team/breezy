@@ -1916,6 +1916,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
         self.assertNotEqual(_mod_revision.NULL_REVISION,
