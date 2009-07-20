@@ -723,9 +723,10 @@ class TestTestResult(tests.TestCase):
                 self.time(time.sleep, 0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
+        # if a benchmark time is given, we now show just that time followed by
+        # a star
         self.check_timing(ShortDelayTestCase('test_short_benchmark'),
-                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+                          r"^ +[0-9]+ms\*$")
 
     def test_unittest_reporting_unittest_class(self):
         # getting the time from a non-bzrlib test works ok
