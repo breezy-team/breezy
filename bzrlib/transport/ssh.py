@@ -54,7 +54,6 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # so we get an AttributeError exception. So we will not try to
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
-_use_ssh_agent = False
 
 
 class SSHVendorManager(object):
