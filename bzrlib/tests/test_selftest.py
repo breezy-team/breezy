@@ -944,7 +944,7 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP                   0ms',
+        self.assertEqual(lines, ['NODEP        0ms',
                                  "    The feature 'Feature' is not available."])
 
     def test_text_report_unsupported(self):
@@ -1491,7 +1491,7 @@ class TestTestCase(tests.TestCase):
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            r"\d+ms/ +\d+ms\n$")
+            r"\d+ms\*\n$")
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""

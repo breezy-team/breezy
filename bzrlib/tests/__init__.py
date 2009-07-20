@@ -197,7 +197,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if benchmark_time is not None:
             return self._formatTime(benchmark_time) + "*"
         else:
-            return self._elapsedTestTimeString() + " "
+            return self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
