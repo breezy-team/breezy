@@ -574,7 +574,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper, repository.RepositoryBase):
+class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -810,6 +810,19 @@ class RemoteRepository(_RpcHelper, repository.RepositoryBase):
         if _mod_revision.NULL_REVISION in revision_ids:
             result.add(_mod_revision.NULL_REVISION)
         return result
+
+    def _has_same_fallbacks(self, other_repo):
+        """Returns true if the repositories have the same fallbacks."""
+        # XXX: copied from Repository; it should be unified into a base class
+        # <https://bugs.edge.launchpad.net/bzr/+bug/401622>
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
 
     def has_same_location(self, other):
         # TODO: Move to RepositoryBase and unify with the regular Repository
@@ -1233,7 +1246,7 @@ class RemoteRepository(_RpcHelper, repository.RepositoryBase):
         # fast path same-url fetch operations
         if (self.has_same_location(source)
             and fetch_spec is None
-            and self.has_same_fallbacks(source)):
+            and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and

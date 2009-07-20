@@ -849,26 +849,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class RepositoryBase(object):
-    """Minimal base class for repositories.
-
-    This class contains common methods for repository implementations, but 
-    makes minimal assumptions about how they're implemented: native, remote,
-    foreign, etc.
-    """
-
-    def has_same_fallbacks(self, other_repo):
-        my_fb = self._fallback_repositories
-        other_fb = other_repo._fallback_repositories
-        if len(my_fb) != len(other_fb):
-            return False
-        for f, g in zip(my_fb, other_fb):
-            if not f.has_same_location(g):
-                return False
-        return True
-
-
-class Repository(RepositoryBase):
+class Repository(object):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1211,6 +1192,17 @@ class Repository(RepositoryBase):
         else:
             return '%s(%r)' % (self.__class__.__name__,
                                self.base)
+
+    def _has_same_fallbacks(self, other_repo):
+        """Returns true if the repositories have the same fallbacks."""
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -1556,9 +1548,10 @@ class Repository(RepositoryBase):
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
+        # <https://bugs.edge.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
             and fetch_spec is None
-            and self.has_same_fallbacks(source)):
+            and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
