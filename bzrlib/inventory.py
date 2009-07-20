@@ -1734,7 +1734,7 @@ class CHKInventory(CommonInventory):
             # to spend less time calculating the delta.
             delta_list = []
             for key, (old_key, value) in parent_id_basename_delta.iteritems():
-                if value:
+                if value is not None:
                     delta_list.append((old_key, key, value))
                 else:
                     delta_list.append((old_key, None, None))
@@ -2035,7 +2035,7 @@ class CHKInventory(CommonInventory):
             for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
                 key_filter=key_filter):
                 if parent_id != current_id or name_utf8 != basename_utf8:
-                    raise errors.BzrError("corrupt inventory  lookup! "
+                    raise errors.BzrError("corrupt inventory lookup! "
                         "%r %r %r %r" % (parent_id, current_id, name_utf8,
                         basename_utf8))
             if file_id is None:
