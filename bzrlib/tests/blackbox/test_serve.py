@@ -272,8 +272,9 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         When 'func' terminates, the server will be terminated too.
         """
         # install hook
-        def on_server_start(tcp_server):
-            t = threading.Thread(target=on_server_start_thread, args=(tcp_server,))
+        def on_server_start(backing_urls, tcp_server):
+            t = threading.Thread(
+                target=on_server_start_thread, args=(tcp_server,))
             t.start()
         def on_server_start_thread(tcp_server):
             try:
