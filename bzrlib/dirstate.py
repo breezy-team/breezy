@@ -1302,7 +1302,8 @@ class DirState(object):
             inventory._check_delta_unique_old_paths(
             inventory._check_delta_unique_new_paths(
             inventory._check_delta_ids_match_entry(
-            inventory._check_delta_new_path_entry_both_or_None(delta)))),
+            inventory._check_delta_ids_are_valid(
+            inventory._check_delta_new_path_entry_both_or_None(delta))))),
             reverse=True):
             if (file_id in insertions) or (file_id in removals):
                 raise errors.InconsistentDelta(old_path or new_path, file_id,

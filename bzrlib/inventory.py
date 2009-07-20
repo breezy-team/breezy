@@ -1132,8 +1132,9 @@ class Inventory(CommonInventory):
         # facility.
         list(_check_delta_unique_ids(_check_delta_unique_new_paths(
             _check_delta_unique_old_paths(_check_delta_ids_match_entry(
+            _check_delta_ids_are_valid(
             _check_delta_new_path_entry_both_or_None(
-            delta))))))
+            delta)))))))
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -1646,6 +1647,8 @@ class CHKInventory(CommonInventory):
         inventory_delta = _check_delta_unique_new_paths(inventory_delta)
         # Check for entries that don't match the fileid
         inventory_delta = _check_delta_ids_match_entry(inventory_delta)
+        # Check for nonsense fileids
+        inventory_delta = _check_delta_ids_are_valid(inventory_delta)
         # Check for new_path <-> entry consistency
         inventory_delta = _check_delta_new_path_entry_both_or_None(
             inventory_delta)
@@ -2228,6 +2231,22 @@ def _check_delta_unique_old_paths(delta):
             paths.add(path)
             if len(paths) != length:
                 raise errors.InconsistentDelta(path, item[2], "repeated path")
+        yield item
+
+
+def _check_delta_ids_are_valid(delta):
+    """Decorate a delta and check that the ids in it are valid.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        entry = item[3]
+        if item[2] is None:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "entry with file_id None %r" % entry)
+        if type(item[2]) != str:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "entry with non bytes file_id %r" % entry)
         yield item
 
 

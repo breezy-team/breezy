@@ -277,6 +277,22 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv2 = self.get_empty_inventory(inv)
         self.assertEqual([], inv2._make_delta(inv))
 
+    def test_None_file_id(self):
+        inv = self.get_empty_inventory()
+        dir1 = inventory.InventoryDirectory(None, 'dir1', inv.root.file_id)
+        dir1.revision = 'result'
+        delta = [(None, u'dir1', None, dir1)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
+    def test_unicode_file_id(self):
+        inv = self.get_empty_inventory()
+        dir1 = inventory.InventoryDirectory(u'dirid', 'dir1', inv.root.file_id)
+        dir1.revision = 'result'
+        delta = [(None, u'dir1', dir1.file_id, dir1)]
+        self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
+            inv, delta)
+
     def test_repeated_file_id(self):
         inv = self.get_empty_inventory()
         file1 = inventory.InventoryFile('id', 'path1', inv.root.file_id)
