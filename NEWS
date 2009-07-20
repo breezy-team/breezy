@@ -20,6 +20,9 @@ Bug Fixes
   ``tools/generate_docs.py`` to allow everything to be built on Windows.
   (John Arbash Meinel, #399356)
 
+* ``bzr serve`` once again applies a ``ChrootServer`` to the given
+  directory before serving it. (Andrew Bennetts, #400535)
+
 
 bzr 1.17rc1 "So late it's brunch" 2009-07-13
 ############################################
