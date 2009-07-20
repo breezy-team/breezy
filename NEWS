@@ -22,6 +22,11 @@ New Features
 Bug Fixes
 *********
 
+* Authenticating against an ssh server now uses ``auth_none`` to determine
+  if password authentication is even supported. This fixes a bug where
+  users would be prompted for a launchpad password, even though launchpad
+  only supports publickey authentication. (John Arbash Meinel, #375867)
+
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
