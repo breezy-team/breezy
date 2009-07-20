@@ -19,6 +19,7 @@
 
 import errno
 import getpass
+import logging
 import os
 import socket
 import subprocess
@@ -53,6 +54,7 @@ _paramiko_version = getattr(paramiko, '__version_info__', (0, 0, 0))
 # so we get an AttributeError exception. So we will not try to
 # connect to an agent if we are on win32 and using Paramiko older than 1.6
 _use_ssh_agent = (sys.platform != 'win32' or _paramiko_version >= (1, 6, 0))
+_use_ssh_agent = False
 
 
 class SSHVendorManager(object):
@@ -481,6 +483,30 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, 'id_dsa'):
         return
 
+    # If we have gotten this far, we are about to try for passwords, do an
+    # auth_none check to see if it is even supported.
+    supported_auth_types = []
+    try:
+        # Note that with paramiko <1.7.5 this logs an INFO message:
+        #    Authentication type (none) not permitted.
+        # So we explicitly disable the logging level for this action
+        old_level = paramiko_transport.logger.level
+        paramiko_transport.logger.setLevel(logging.WARNING)
+        try:
+            paramiko_transport.auth_none(username)
+        finally:
+            paramiko_transport.logger.setLevel(old_level)
+    except paramiko.BadAuthenticationType, e:
+        # Supported methods are in the exception
+        supported_auth_types = e.allowed_types
+    except paramiko.SSHException, e:
+        # Don't know what happened, but just ignore it
+        pass
+    if 'password' not in supported_auth_types:
+        raise errors.ConnectionError('Unable to authenticate to SSH host as'
+            ' %s@%s (supported auth types: %s)'
+            % (username, host, supported_auth_types))
+
     if password:
         try:
             paramiko_transport.auth_password(username, password)
@@ -490,11 +516,16 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
 
     # give up and ask for a password
     password = auth.get_password('ssh', host, username, port=port)
-    try:
-        paramiko_transport.auth_password(username, password)
-    except paramiko.SSHException, e:
-        raise errors.ConnectionError(
-            'Unable to authenticate to SSH host as %s@%s' % (username, host), e)
+    # get_password can still return None, which means we should not prompt
+    if password is not None:
+        try:
+            paramiko_transport.auth_password(username, password)
+        except paramiko.SSHException, e:
+            raise errors.ConnectionError('Failed to authenticate to SSH host'
+                                         ' as %s@%s' % (username, host), e)
+    else:
+        raise errors.ConnectionError('Failed to authenticate to SSH host'
+                                     ' as %s@%s' % (username, host))
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):
