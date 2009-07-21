@@ -522,6 +522,7 @@ class _DebugCounter(object):
         try:
             request_method = request.request_handlers.get(params.method)
         except KeyError:
+            # A method we don't know about doesn't count as a VFS method.
             return
         if issubclass(request_method, vfs.VfsRequest):
             value['vfs_count'] += 1

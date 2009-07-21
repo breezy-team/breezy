@@ -1195,13 +1195,16 @@ class DirStateWorkingTree(WorkingTree3):
                 # just forget the whole block.
                 entry_index = 0
                 while entry_index < len(block[1]):
-                    # Mark this file id as having been removed
                     entry = block[1][entry_index]
-                    ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
-                                               # entries
-                        or not state._make_absent(entry)):
+                    if entry[1][0][0] in 'ar':
+                        # don't remove absent or renamed entries
                         entry_index += 1
+                    else:
+                        # Mark this file id as having been removed
+                        ids_to_unversion.discard(entry[0][2])
+                        if not state._make_absent(entry):
+                            # The block has not shrunk.
+                            entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
                 # dirblocks)
                 block_index += 1

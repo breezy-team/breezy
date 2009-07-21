@@ -512,7 +512,6 @@ class TestPush(tests.TestCaseWithTransport):
 class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def mkdir(self, relpath, mode=None):
-        from bzrlib.trace import mutter
         if self._cwd == '/source/':
             raise errors.RedirectRequested(self.abspath(relpath),
                                            self.abspath('../target'),
@@ -524,6 +523,14 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
                 relpath, mode)
+
+    def get(self, relpath):
+        if self.clone(relpath)._cwd == '/infinite-loop/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../infinite-loop'),
+                                           is_permanent=True)
+        else:
+            return super(RedirectingMemoryTransport, self).get(relpath)
 
     def _redirected_to(self, source, target):
         # We do accept redirections
