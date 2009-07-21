@@ -428,6 +428,7 @@ class FtpTransport(ConnectedTransport):
             if str(e).startswith('502 '):
                 warning("FTP server does not support file appending natively. " \
                     "Performance may be severely degraded!")
+                mutter("FTP APPE on %s failed with %s", abspath, e)
                 self._has_append = False
                 self._fallback_append(relpath, text, mode)
             else:
