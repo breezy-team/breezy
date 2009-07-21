@@ -424,10 +424,15 @@ class FtpTransport(ConnectedTransport):
             self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            warning("FTP server does not support file appending natively. " \
-                "Performance may be severely degraded!")
-            self._has_append = False
-            self._fallback_append(relpath, text, mode)
+            # Check whether the command is not supported (reply code 502)
+            if str(e).startswith('502 '):
+                warning("FTP server does not support file appending natively. " \
+                    "Performance may be severely degraded!")
+                self._has_append = False
+                self._fallback_append(relpath, text, mode)
+            else:
+                self._translate_perm_error(e, abspath, extra='error appending',
+                    unknown_exc=errors.NoSuchFile)
             
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
