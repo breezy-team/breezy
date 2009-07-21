@@ -254,23 +254,25 @@ class Inter1and2Helper(object):
         # yet, and are unlikely to in non-rich-root environments anyway.
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
+        from bzrlib.graph import FrozenHeadsCache
+        graph = FrozenHeadsCache(graph)
         new_roots_stream = _new_root_data_stream(
-            root_id_order, rev_id_to_root_id, parent_map, self.source)
+            root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]
 
 
 def _new_root_data_stream(
-    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo):
+    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
     for root_key in root_keys_to_create:
         root_id, rev_id = root_key
         parent_keys = _parent_keys_for_root_version(
-            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo)
+            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
         yield versionedfile.FulltextContentFactory(
             root_key, parent_keys, None, '')
 
 
 def _parent_keys_for_root_version(
-    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo):
+    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None):
     """Get the parent keys for a given root id."""
     # Include direct parents of the revision, but only if they used the same
     # root_id and are heads.
@@ -317,7 +319,9 @@ def _parent_keys_for_root_version(
                     # not in the tree
                     pass
     # Drop non-head parents
-    heads = repo.get_graph().heads(parent_ids)
+    if graph is None:
+        graph = repo.get_graph()
+    heads = graph.heads(parent_ids)
     selected_ids = []
     for parent_id in parent_ids:
         if parent_id in heads and parent_id not in selected_ids:
