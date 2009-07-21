@@ -88,7 +88,8 @@ The grammar is:
 
     # note: delim may be any string but must not contain lf.
     # data_line may contain any data but must not be exactly
-    # delim.
+    # delim. The lf after the final data_line is included in
+    # the data.
   delimited_data ::= 'data' sp '<<' delim lf
     (data_line lf)*
     delim lf;
@@ -234,7 +235,16 @@ class LineBasedParser(object):
 
         :return: the bytes read up to but excluding the terminator.
         """
-        raise NotImplementedError(self.read_until)
+        
+        lines = []
+        term = terminator + '\n'
+        while True:
+            line = self.input.readline()
+            if line == term:
+                break
+            else:
+                lines.append(line)
+        return ''.join(lines)
 
 
 # Regular expression used for parsing. (Note: The spec states that the name
