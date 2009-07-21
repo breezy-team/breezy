@@ -1,3 +1,10 @@
+bzr (1.17-1) unstable; urgency=low
+
+  * New upstream release.
+   + Fixes compatibility with Python 2.4. Closes: #537708
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 21 Jul 2009 11:25:12 +0200
+
 bzr (1.17~rc1-1) unstable; urgency=low
 
   * New upstream version.

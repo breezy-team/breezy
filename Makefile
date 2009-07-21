@@ -169,14 +169,14 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
+	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
+	$(PYTHON) tools/generate_docs.py -o $@ man
 
 # build a png of our performance task list
 # 
