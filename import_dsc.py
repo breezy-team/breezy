@@ -1615,6 +1615,7 @@ class DistributionBranch(object):
             raise
 
     def _revid_of_upstream_version_from_branch(self, version):
+        assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name):
             return self.branch.tags.lookup_tag(tag_name)
@@ -1641,7 +1642,7 @@ class DistributionBranch(object):
                             "%s" % (previous_version,
                                 self.upstream_tag_name(previous_version)))
                 upstream_tip = self._revid_of_upstream_version_from_branch(
-                        previous_version)
+                        previous_version.upstream_version)
                 self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
@@ -1667,7 +1668,8 @@ class DistributionBranch(object):
                     parents = []
                     if self.upstream_branch.last_revision() != NULL_REVISION:
                         parents = [self.upstream_branch.last_revision()]
-                    new_revid = self.import_upstream(tarball_dir, version,
+                    new_revid = self.import_upstream(tarball_dir,
+                            version.upstream_version,
                             md5sum, parents, upstream_tarball=tarball_filename,
                             upstream_branch=upstream_branch,
                             upstream_revision=upstream_revision)
