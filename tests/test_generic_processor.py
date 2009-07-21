@@ -193,9 +193,14 @@ class TestImportToPackTag(TestCaseForGenericProcessor):
             def files_two():
                 yield commands.FileModifyCommand(path, to_kind, to_executable,
                         None, to_content)
+
+            # pass "head" for from_ to show that #401249 is worse than I knew
             yield commands.CommitCommand('head', '2', author,
-                committer, "commit 2", ":1", [], files_two)
+                committer, "commit 2", "head", [], files_two)
+
             yield commands.TagCommand('tag1', ':1', committer, "tag 1")
+
+            # pass "head" for from_ to demonstrate #401249
             yield commands.TagCommand('tag2', 'head', committer, "tag 2")
         return command_list
 
