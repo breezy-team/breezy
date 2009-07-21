@@ -100,6 +100,7 @@ class FtpTransport(ConnectedTransport):
         else:
             self.is_active = False
         
+        # Most modern FTP servers support the APPE command. If ours doesn't, we (re)set this flag accordingly later.
         self._has_append = True
 
     def _get_FTP(self):
