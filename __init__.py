@@ -27,7 +27,7 @@ import sys
 import bzrlib
 import bzrlib.api
 
-from setup import (
+from info import (
     bzr_compatible_versions,
     bzr_plugin_version as version_info,
     dulwich_minimum_version,
