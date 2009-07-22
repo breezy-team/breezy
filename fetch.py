@@ -288,6 +288,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         try:
             o = lookup_object(head)
         except KeyError:
+            trace.mutter('missing head %s', head)
             continue
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
@@ -460,7 +461,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     import_git_objects(self.target, mapping, objects_iter, 
                             store, recorded_wants, pb)
                 finally:
-                    return self.target.commit_write_group()
+                    pack_hint = self.target.commit_write_group()
+                return pack_hint
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -495,7 +497,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                             self.source._git.object_store, 
                             target_git_object_retriever, wants, pb)
                 finally:
-                    return self.target.commit_write_group()
+                    pack_hint = self.target.commit_write_group()
+                return pack_hint
             finally:
                 self.target.unlock()
         finally:
