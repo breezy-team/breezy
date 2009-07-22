@@ -325,6 +325,9 @@ class CannedInputUIFactory(SilentUIFactory):
     def __init__(self, responses):
         self.responses = responses
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.responses)
+
     def get_boolean(self, prompt):
         return self.responses.pop(0)
 
@@ -333,6 +336,11 @@ class CannedInputUIFactory(SilentUIFactory):
 
     def get_username(self, prompt, **kwargs):
         return self.responses.pop(0)
+    
+    def assert_all_input_consumed(self):
+        if self.responses:
+            raise AssertionError("expected all input in %r to be consumed"
+                % (self,))
 
 
 @deprecated_function(deprecated_in((1, 18, 0)))
