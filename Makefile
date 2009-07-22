@@ -105,9 +105,9 @@ txt_files := \
 	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       $(wildcard doc/*/quick-reference/quick-start-summary.svg) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.png) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.pdf) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.svg) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.png) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.pdf) \
        $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
