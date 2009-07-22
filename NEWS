@@ -1,5 +1,10 @@
 0.4.1	UNRELEASED
 
+ BUG FIXES
+
+  * Avoid "No such revision" error when encountering submodules.
+   (#400598)
+
  FEATURES
 
   * Progress bars will now show results from the remote git server.

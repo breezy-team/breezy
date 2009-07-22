@@ -236,7 +236,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
             shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, base_inv, base_ie.get(basename),
+                    texts, mapping, child_path, child_hexsha, base_inv, base_children.get(basename),
                     file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
