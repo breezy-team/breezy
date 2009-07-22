@@ -3488,6 +3488,238 @@ class InterKnitRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
+class InterDifferingSerializer(InterRepository):
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with Knit2 source and Knit3 target"""
+        # This is redundant with format.check_conversion_target(), however that
+        # raises an exception, and we just want to say "False" as in we won't
+        # support converting between these formats.
+        if source.supports_rich_root() and not target.supports_rich_root():
+            return False
+        if (source._format.supports_tree_reference
+            and not target._format.supports_tree_reference):
+            return False
+        # Only use this code path for local source and target.  IDS does far
+        # too much IO (both bandwidth and roundtrips) over a network.
+        if not source.bzrdir.transport.external_url().startswith('file:///'):
+            return False
+        if not target.bzrdir.transport.external_url().startswith('file:///'):
+            return False
+        return True
+
+    def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
+        """Get the best delta and base for this revision.
+
+        :return: (basis_id, delta)
+        """
+        possible_trees = [(parent_id, cache[parent_id])
+                          for parent_id in parent_ids
+                           if parent_id in cache]
+        if len(possible_trees) == 0:
+            # There either aren't any parents, or the parents aren't in the
+            # cache, so just use the last converted tree
+            possible_trees.append((basis_id, cache[basis_id]))
+        deltas = []
+        for basis_id, basis_tree in possible_trees:
+            delta = tree.inventory._make_delta(basis_tree.inventory)
+            deltas.append((len(delta), basis_id, delta))
+        deltas.sort()
+        return deltas[0][1:]
+
+    def _fetch_batch(self, revision_ids, basis_id, cache):
+        """Fetch across a few revisions.
+
+        :param revision_ids: The revisions to copy
+        :param basis_id: The revision_id of a tree that must be in cache, used
+            as a basis for delta when no other base is available
+        :param cache: A cache of RevisionTrees that we can use.
+        :return: The revision_id of the last converted tree. The RevisionTree
+            for it will be in cache
+        """
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        root_keys_to_create = set()
+        text_keys = set()
+        pending_deltas = []
+        pending_revisions = []
+        parent_map = self.source.get_parent_map(revision_ids)
+        for tree in self.source.revision_trees(revision_ids):
+            current_revision_id = tree.get_revision_id()
+            parent_ids = parent_map.get(current_revision_id, ())
+            basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
+                                                           basis_id, cache)
+            if self._converting_to_rich_root:
+                self._revision_id_to_root_id[current_revision_id] = \
+                    tree.get_root_id()
+            # Find text entries that need to be copied
+            for old_path, new_path, file_id, entry in delta:
+                if new_path is not None:
+                    if not new_path:
+                        # This is the root
+                        if not self.target.supports_rich_root():
+                            # The target doesn't support rich root, so we don't
+                            # copy
+                            continue
+                        if self._converting_to_rich_root:
+                            # This can't be copied normally, we have to insert
+                            # it specially
+                            root_keys_to_create.add((file_id, entry.revision))
+                            continue
+                    text_keys.add((file_id, entry.revision))
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
+            pending_revisions.append(revision)
+            cache[current_revision_id] = tree
+            basis_id = current_revision_id
+        # Copy file texts
+        from_texts = self.source.texts
+        to_texts = self.target.texts
+        if root_keys_to_create:
+            from bzrlib.fetch import _new_root_data_stream
+            root_stream = _new_root_data_stream(
+                root_keys_to_create, self._revision_id_to_root_id, parent_map,
+                self.source)
+            to_texts.insert_record_stream(root_stream)
+        to_texts.insert_record_stream(from_texts.get_record_stream(
+            text_keys, self.target._format._fetch_order,
+            not self.target._format._fetch_uses_deltas))
+        # insert inventory deltas
+        for delta in pending_deltas:
+            self.target.add_inventory_by_delta(*delta)
+        if self.target._fallback_repositories:
+            # Make sure this stacked repository has all the parent inventories
+            # for the new revisions that we are about to insert.  We do this
+            # before adding the revisions so that no revision is added until
+            # all the inventories it may depend on are added.
+            parent_ids = set()
+            revision_ids = set()
+            for revision in pending_revisions:
+                revision_ids.add(revision.revision_id)
+                parent_ids.update(revision.parent_ids)
+            parent_ids.difference_update(revision_ids)
+            parent_ids.discard(_mod_revision.NULL_REVISION)
+            parent_map = self.source.get_parent_map(parent_ids)
+            for parent_tree in self.source.revision_trees(parent_ids):
+                basis_id, delta = self._get_delta_for_revision(tree, parent_ids, basis_id, cache)
+                current_revision_id = parent_tree.get_revision_id()
+                parents_parents = parent_map[current_revision_id]
+                self.target.add_inventory_by_delta(
+                    basis_id, delta, current_revision_id, parents_parents)
+        # insert signatures and revisions
+        for revision in pending_revisions:
+            try:
+                signature = self.source.get_signature_text(
+                    revision.revision_id)
+                self.target.add_signature_text(revision.revision_id,
+                    signature)
+            except errors.NoSuchRevision:
+                pass
+            self.target.add_revision(revision.revision_id, revision)
+        return basis_id
+
+    def _fetch_all_revisions(self, revision_ids, pb):
+        """Fetch everything for the list of revisions.
+
+        :param revision_ids: The list of revisions to fetch. Must be in
+            topological order.
+        :param pb: A ProgressBar
+        :return: None
+        """
+        basis_id, basis_tree = self._get_basis(revision_ids[0])
+        batch_size = 100
+        cache = lru_cache.LRUCache(100)
+        cache[basis_id] = basis_tree
+        del basis_tree # We don't want to hang on to it here
+        hints = []
+        for offset in range(0, len(revision_ids), batch_size):
+            self.target.start_write_group()
+            try:
+                pb.update('Transferring revisions', offset,
+                          len(revision_ids))
+                batch = revision_ids[offset:offset+batch_size]
+                basis_id = self._fetch_batch(batch, basis_id, cache)
+            except:
+                self.target.abort_write_group()
+                raise
+            else:
+                hint = self.target.commit_write_group()
+                if hint:
+                    hints.extend(hint)
+        if hints and self.target._format.pack_compresses:
+            self.target.pack(hint=hints)
+        pb.update('Transferring revisions', len(revision_ids),
+                  len(revision_ids))
+
+    @needs_write_lock
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        """See InterRepository.fetch()."""
+        if fetch_spec is not None:
+            raise AssertionError("Not implemented yet...")
+        if (not self.source.supports_rich_root()
+            and self.target.supports_rich_root()):
+            self._converting_to_rich_root = True
+            self._revision_id_to_root_id = {}
+        else:
+            self._converting_to_rich_root = False
+        revision_ids = self.target.search_missing_revision_ids(self.source,
+            revision_id, find_ghosts=find_ghosts).get_keys()
+        if not revision_ids:
+            return 0, 0
+        revision_ids = tsort.topo_sort(
+            self.source.get_graph().get_parent_map(revision_ids))
+        if not revision_ids:
+            return 0, 0
+        # Walk though all revisions; get inventory deltas, copy referenced
+        # texts that delta references, insert the delta, revision and
+        # signature.
+        if pb is None:
+            my_pb = ui.ui_factory.nested_progress_bar()
+            pb = my_pb
+        else:
+            symbol_versioning.warn(
+                symbol_versioning.deprecated_in((1, 14, 0))
+                % "pb parameter to fetch()")
+            my_pb = None
+        try:
+            self._fetch_all_revisions(revision_ids, pb)
+        finally:
+            if my_pb is not None:
+                my_pb.finished()
+        return len(revision_ids), 0
+
+    def _get_basis(self, first_revision_id):
+        """Get a revision and tree which exists in the target.
+
+        This assumes that first_revision_id is selected for transmission
+        because all other ancestors are already present. If we can't find an
+        ancestor we fall back to NULL_REVISION since we know that is safe.
+
+        :return: (basis_id, basis_tree)
+        """
+        first_rev = self.source.get_revision(first_revision_id)
+        try:
+            basis_id = first_rev.parent_ids[0]
+            # only valid as a basis if the target has it
+            self.target.get_revision(basis_id)
+            # Try to get a basis tree - if its a ghost it will hit the
+            # NoSuchRevision case.
+            basis_tree = self.source.revision_tree(basis_id)
+        except (IndexError, errors.NoSuchRevision):
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
+        return basis_id, basis_tree
+
+
+InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 InterRepository.register_optimiser(InterWeaveRepo)
 InterRepository.register_optimiser(InterKnitRepo)
