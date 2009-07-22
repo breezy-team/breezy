@@ -2959,6 +2959,10 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -2987,7 +2991,8 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = TestProtocolClient(stream)
+                subunit_result = AutoTimingTestResultDecorator(
+                    TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
                 os._exit(0)
@@ -3981,9 +3986,14 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = TestProtocolClient(self.stream)
+            result = AutoTimingTestResultDecorator(
+                TestProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:
