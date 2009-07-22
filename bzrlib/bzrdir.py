@@ -1233,7 +1233,7 @@ class BzrDir(object):
         return result
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False):
+        remember=False, create_prefix=False):
         """Push the source branch into this BzrDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see

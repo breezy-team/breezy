@@ -545,6 +545,8 @@ An inconsistent delta is one which:
    times.
  - has a fileid field different to the entry.fileid in the same item in the
    delta.
+ - has an entry that is in an impossible state (e.g. a directory with a text
+   size)
 
 Forms of inventory inconsistency deltas can carry/cause:
  - An entry newly introduced to a path without also removing or relocating any
@@ -554,6 +556,7 @@ Forms of inventory inconsistency deltas can carry/cause:
    (Wrong path)
  - An entry whose parent is not a directory. (Under non-directory).
  - An entry that is internally inconsistent.
+ - An entry that is already present in the tree (Duplicate id)
 
 Known causes of inconsistency:
  - A 'new' entry which the inventory already has - when this is a directory

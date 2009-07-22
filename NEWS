@@ -36,13 +36,24 @@ Bug Fixes
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
 
+* Fixed a NameError that occurs when merging or pulling from a URL that
+  causes a redirection loop when bzr tries to read a URL as a bundle.
+  (Andrew Bennetts, #400847)
+  
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
-  
+
+* Merge now correctly handles empty right-hand revision specs.
+  (Aaron Bentley, #333961)
+
 * Renames to lexographically lower basenames in trees that have never been
   committed to will no longer corrupt the dirstate. This was caused by an
   bug in the dirstate update_minimal method. (Robert Collins, #395556)
 
+* Requests for unknown methods no longer cause the smart server to log
+  lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
+  ``do_end``.  (Andrew Bennetts, #338561)
+  
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
@@ -64,9 +75,24 @@ API Changes
 Internals
 *********
 
+* ``CHKInventory.path2id`` uses the parent_id to basename hash to avoid
+  reading the entries along the path, reducing work to lookup ids from
+  paths. (Robert Collins)
 
-bzr 1.17rc1 "So late it's brunch" 2009-07-13
-############################################
+* ``CHKMap.apply_delta`` now raises ``InconsistentDelta`` if a delta adds
+  as new a key which was already mapped. (Robert Collins)
+
+* Inventory delta application catches more cases of corruption and can
+  prevent corrupt deltas from affecting consistency of data structures on
+  disk. (Robert Collins)
+
+
+bzr 1.17 "So late it's brunch" 2009-07-20
+#########################################
+:Codename: so-late-its-brunch
+:1.17rc1: 2009-07-13
+:1.17: 2009-07-20
+
 
 Bazaar continues to blaze a straight and shining path to the 2.0 release and
 the elevation of the ``2a`` beta format to the full glory of "supported and
@@ -76,6 +102,21 @@ Highlights in this release include greatly reduced memory consumption during
 commits, faster ``ls``, faster ``annotate``, faster network operations if
 you're specifying a revision number and the final destruction of those
 annoying progress bar artifacts.
+
+
+Changes from 1.17rc1 to 1.17final
+*********************************
+
+* Change an extension to call the python ``frozenset()`` rather than the C
+  api ``PyFrozenSet_New``. It turns out that python2.4 did not expose the
+  C api. (John Arbash Meinel, #399366)
+
+* Fixes for the Makefile and the rename of ``generate_docs.py`` to
+  ``tools/generate_docs.py`` to allow everything to be built on Windows.
+  (John Arbash Meinel, #399356)
+
+* ``bzr serve`` once again applies a ``ChrootServer`` to the given
+  directory before serving it. (Andrew Bennetts, #400535)
 
 
 Compatibility Breaks
