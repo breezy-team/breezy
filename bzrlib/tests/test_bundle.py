@@ -1480,17 +1480,16 @@ class V4_2aBundleTester(V4BundleTester):
         self.assertEqual('a@cset-0-3', revision_id)
         self.assertEqual('inventory', repo_kind)
         self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
-                          'sha1': 'c08b0f8cc256107f0229c98931d1d69c0e843196',
+                          'sha1': '09c53b0c4de0895e11a2aacc34fef60a6e70865c',
                           'storage_kind': 'mpdiff',
                          }, metadata)
         # We should have an mpdiff that takes some lines from both parents.
         self.assertEqualDiff(
             'i 1\n'
-            '<inventory file_id="root-id" format="5"'
-                ' revision_id="a@cset-0-3">\n'
+            '<inventory format="10" revision_id="a@cset-0-3">\n'
             '\n'
-            'c 0 1 1 1\n'
-            'c 1 2 2 2\n', bytes)
+            'c 0 1 1 2\n'
+            'c 1 3 3 2\n', bytes)
 
     def test_single_inv_no_parents_as_xml(self):
         self.make_merged_branch()
@@ -1505,14 +1504,15 @@ class V4_2aBundleTester(V4BundleTester):
         self.assertEqual('a@cset-0-1', revision_id)
         self.assertEqual('inventory', repo_kind)
         self.assertEqual({'parents': [],
-                          'sha1': 'f6ed523eebc7d813d1adbdaf3754c00e1de49446',
+                          'sha1': 'a13f42b142d544aac9b085c42595d304150e31a2',
                           'storage_kind': 'mpdiff',
                          }, metadata)
         # We should have an mpdiff that takes some lines from both parents.
         self.assertEqualDiff(
-            'i 3\n'
-            '<inventory file_id="root-id" format="5"'
-                ' revision_id="a@cset-0-1">\n'
+            'i 4\n'
+            '<inventory format="10" revision_id="a@cset-0-1">\n'
+            '<directory file_id="root-id" name=""'
+                ' revision="a@cset-0-1" />\n'
             '<file file_id="file-id" name="file" parent_id="root-id"'
                 ' revision="a@cset-0-1"'
                 ' text_sha1="09c2f8647e14e49e922b955c194102070597c2d1"'
@@ -1532,52 +1532,71 @@ class V4_2aBundleTester(V4BundleTester):
                          revision_ids)
         metadata_2a = records[0][1]
         self.assertEqual({'parents': ['a@cset-0-1'],
-                          'sha1': 'a699b8d8fe87361ad758e99655afab44aca287b2',
+                          'sha1': '1e105886d62d510763e22885eec733b66f5f09bf',
                           'storage_kind': 'mpdiff',
                          }, metadata_2a)
         metadata_2b = records[1][1]
         self.assertEqual({'parents': ['a@cset-0-1'],
-                          'sha1': 'c2bab5eda6a31f206042f0fcacc175b76c65a376',
+                          'sha1': 'f03f12574bdb5ed2204c28636c98a8547544ccd8',
                           'storage_kind': 'mpdiff',
                          }, metadata_2b)
         metadata_3 = records[2][1]
         self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
-                          'sha1': 'c08b0f8cc256107f0229c98931d1d69c0e843196',
+                          'sha1': '09c53b0c4de0895e11a2aacc34fef60a6e70865c',
                           'storage_kind': 'mpdiff',
                          }, metadata_3)
         bytes_2a = records[0][0]
         self.assertEqualDiff(
-            'i 2\n'
-            '<inventory file_id="root-id" format="5"'
-                ' revision_id="a@cset-0-2a">\n'
+            'i 1\n'
+            '<inventory format="10" revision_id="a@cset-0-2a">\n'
+            '\n'
+            'c 0 1 1 1\n'
+            'i 1\n'
             '<file file_id="file-id" name="file" parent_id="root-id"'
                 ' revision="a@cset-0-2a"'
                 ' text_sha1="50f545ff40e57b6924b1f3174b267ffc4576e9a9"'
                 ' text_size="12" />\n'
             '\n'
-            'c 0 2 2 1\n', bytes_2a)
+            'c 0 3 3 1\n', bytes_2a)
         bytes_2b = records[1][0]
         self.assertEqualDiff(
             'i 1\n'
-            '<inventory file_id="root-id" format="5"'
-                ' revision_id="a@cset-0-2b">\n'
+            '<inventory format="10" revision_id="a@cset-0-2b">\n'
             '\n'
-            'c 0 1 1 1\n'
+            'c 0 1 1 2\n'
             'i 1\n'
             '<file file_id="file2-id" name="other-file" parent_id="root-id"'
                 ' revision="a@cset-0-2b"'
                 ' text_sha1="b46c0c8ea1e5ef8e46fc8894bfd4752a88ec939e"'
                 ' text_size="14" />\n'
             '\n'
-            'c 0 2 3 1\n', bytes_2b)
+            'c 0 3 4 1\n', bytes_2b)
         bytes_3 = records[2][0]
         self.assertEqualDiff(
             'i 1\n'
-            '<inventory file_id="root-id" format="5"'
-                ' revision_id="a@cset-0-3">\n'
+            '<inventory format="10" revision_id="a@cset-0-3">\n'
             '\n'
-            'c 0 1 1 1\n'
-            'c 1 2 2 2\n', bytes_3)
+            'c 0 1 1 2\n'
+            'c 1 3 3 2\n', bytes_3)
+
+    def test_creating_bundle_preserves_chk_pages(self):
+        self.make_merged_branch()
+        target = self.b1.bzrdir.sprout('target',
+                                       revision_id='a@cset-0-2a').open_branch()
+        bundle_txt, rev_ids = self.create_bundle_text('a@cset-0-2a',
+                                                      'a@cset-0-3')
+        self.assertEqual(['a@cset-0-2b', 'a@cset-0-3'], rev_ids)
+        bundle = read_bundle(bundle_txt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        install_bundle(target.repository, bundle)
+        inv1 = self.b1.repository.inventories.get_record_stream([
+            ('a@cset-0-3',)], 'unordered',
+            True).next().get_bytes_as('fulltext')
+        inv2 = target.repository.inventories.get_record_stream([
+            ('a@cset-0-3',)], 'unordered',
+            True).next().get_bytes_as('fulltext')
+        self.assertEqualDiff(inv1, inv2)
 
 
 class MungedBundleTester(object):

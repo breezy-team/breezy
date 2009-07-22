@@ -21,8 +21,8 @@ from bzrlib import (
     cache_utf8,
     inventory,
     revision as _mod_revision,
-    xml5,
     xml6,
+    xml7,
     )
 
 
@@ -131,7 +131,7 @@ class BEncodeRevisionSerializer1(object):
         return self.read_revision_from_string(f.read())
 
 
-class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml6.Serializer_v6):
+class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml7.Serializer_v7):
     """A CHKInventory based serializer that supports tree references"""
 
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
@@ -152,14 +152,14 @@ class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml6.Serializer_v6):
             return inventory.TreeReference(file_id, name, parent_id, revision,
                                            reference_revision)
         else:
-            return xml6.Serializer_v6._unpack_entry(self, elt)
+            return xml7.Serializer_v7._unpack_entry(self, elt)
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
         self.search_key_name = search_key_name
 
 
-class CHKSerializer(xml5.Serializer_v5):
+class CHKSerializer(xml6.Serializer_v6):
     """A CHKInventory based serializer with 'plain' behaviour."""
 
     format_num = '9'
