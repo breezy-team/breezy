@@ -612,7 +612,8 @@ class RevisionInstaller(object):
             # ghosts in the source. But the Bundle serialization format doesn't
             # record any info that would help us figure that stuff out.
             # We start by going directly to the inventory vf, because the
-            # revisions have not been installed yet
+            # revisions have not been installed yet, so repo.get_parent_map
+            # would think that more things are ghosts than really are.
             parent_keys = [(r,) for r in parent_ids]
             present_parent_map = self._repository.inventories.get_parent_map(
                                         parent_keys)
