@@ -124,7 +124,7 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         self.password = ''
         self.get_server().add_user(self.user, self.password)
         t = self.get_transport()
-        ui.ui_factory = ui.CannedInputUIFactory([password])
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed),
