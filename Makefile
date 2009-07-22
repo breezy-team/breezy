@@ -89,7 +89,11 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/*/tutorials/*.txt) \
+txt_files := \
+	doc/en/tutorials/tutorial.txt \
+	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+	doc/en/tutorials/centralized_workflow.txt \
+        $(wildcard doc/ru/tutorials/*.txt) \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
