@@ -3507,9 +3507,9 @@ class InterDifferingSerializer(InterRepository):
             return False
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.
-        if not source.bzrdir.transport.external_url().startswith('file:///'):
+        if not source.bzrdir.transport.base.startswith('file:///'):
             return False
-        if not target.bzrdir.transport.external_url().startswith('file:///'):
+        if not target.bzrdir.transport.base.startswith('file:///'):
             return False
         return True
 
