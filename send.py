@@ -34,7 +34,7 @@ class GitDiffWriter(object):
         self.base_revision_id = base_revision_id
         self.tree_rev_info = {}
 
-    def get_svn_rev_info(self, tree):
+    def get_git_rev_info(self, tree):
         if tree in self.tree_rev_info:
             return self.tree_rev_info[tree]
         revision_id = tree.get_revision_id()
@@ -53,14 +53,14 @@ class GitDiffWriter(object):
             return difftext.CANNOT_DIFF
         from_file_id = to_file_id = file_id
         if old_kind == 'file':
-            old_date = self.get_svn_rev_info(difftext.old_tree)
+            old_date = self.get_git_rev_info(difftext.old_tree)
         elif old_kind is None:
             old_date = None
             from_file_id = None
         else:
             return difftext.CANNOT_DIFF
         if new_kind == 'file':
-            new_date = self.get_svn_rev_info(difftext.new_tree)
+            new_date = self.get_git_rev_info(difftext.new_tree)
         elif new_kind is None:
             new_date = None
             to_file_id = None
@@ -77,9 +77,9 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
         return self.patch.splitlines(True)
 
     @classmethod
-    def _generate_diff(cls, repository, svn_repository, revision_id, ancestor_id):
+    def _generate_diff(cls, repository, target_repository, revision_id, ancestor_id):
         from bzrlib.diff import DiffText
-        writer = GitDiffWriter(svn_repository, revision_id)
+        writer = GitDiffWriter(target_repository, revision_id)
         def DiffText_diff(self, file_id, old_path, new_path, old_kind, new_kind):
             return writer.diff_text(self, file_id, old_path, new_path, old_kind, new_kind)
         old_DiffText_diff = DiffText.diff
@@ -93,12 +93,9 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
     def from_objects(cls, repository, revision_id, time, timezone,
                      target_branch, local_target_branch=None,
                      public_branch=None, message=None):
-        from bzrlib.plugins.git.repository import GitRepository
         submit_branch = _mod_branch.Branch.open(target_branch)
         if submit_branch.get_parent() is not None:
             submit_branch = _mod_branch.Branch.open(submit_branch.get_parent())
-        if not isinstance(submit_branch.repository, GitRepository):
-            raise errors.BzrError("Not a Subversion repository")
 
         submit_branch.lock_read()
         try:
@@ -116,7 +113,7 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
             patch, None, public_branch, message)
 
 
-def send_svn(branch, revision_id, submit_branch, public_branch,
+def send_git(branch, revision_id, submit_branch, public_branch,
               no_patch, no_bundle, message, base_revision_id):
     return GitMergeDirective.from_objects(
         branch.repository, revision_id, time.time(),

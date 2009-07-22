@@ -140,6 +140,13 @@ class GitBranch(ForeignBranch):
         self._head = None
         self.base = bzrdir.transport.base
 
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        ret = self.get_config().get_user_option("child_submit_format")
+        if ret is not None:
+            return ret
+        return "git"
+
     def _get_nick(self, local=False, possible_master_transports=None):
         """Find the nick name for this branch.
 
