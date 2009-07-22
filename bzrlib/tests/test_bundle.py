@@ -1435,8 +1435,7 @@ class V4_2aBundleTester(V4BundleTester):
         return '2a'
 
     def make_merged_branch(self):
-        builder = self.make_branch_builder('source',
-                                           format=self.bzrdir_format())
+        builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot('a@cset-0-1', None, [
             ('add', ('', 'root-id', 'directory', None)),
