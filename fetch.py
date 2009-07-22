@@ -401,6 +401,11 @@ class InterGitNonGitRepository(InterGitRepository):
         pack_hint = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
+        if interesting_heads is not None:
+            present_interesting_heads = self.target.has_revisions(interesting_heads)
+            missing_interesting_heads = set(interesting_heads) - present_interesting_heads
+            if missing_interesting_heads:
+                raise AssertionError("Missing interesting heads: %r" % missing_interesting_heads)
         return self._refs
 
 
