@@ -103,6 +103,26 @@ class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
         return SuccessfulSmartServerResponse((bytes,))
 
 
+class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
+
+    def do_with_locked_branch(self, branch):
+        # We need to keep this branch locked until we get a body with the tags
+        # bytes.
+        self.branch = branch
+        self.branch.lock_write()
+
+    def do_body(self, bytes):
+        self.branch._set_tags_bytes(bytes)
+        return SuccessfulSmartServerResponse(())
+
+    def do_end(self):
+        try:
+            return SmartServerLockedBranchRequest.do_end(self)
+        finally:
+            # XXX: should only try unlock if we locked successfully!
+            self.branch.unlock()
+
+
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):

@@ -61,6 +61,12 @@ class _RpcHelper(object):
         except errors.ErrorFromSmartServer, err:
             self._translate_error(err, **err_context)
 
+    def _call_with_body_bytes(self, method, args, body_bytes, **err_context):
+        try:
+            return self._client.call_with_body_bytes(method, args, body_bytes)
+        except errors.ErrorFromSmartServer, err:
+            self._translate_error(err, **err_context)
+
     def _call_with_body_bytes_expecting_body(self, method, args, body_bytes,
                                              **err_context):
         try:
@@ -2146,6 +2152,23 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             return self._vfs_get_tags_bytes()
         return response[0]
 
+    def _vfs_set_tags_bytes(self):
+        self._ensure_real()
+        return self._real_branch._set_tags_bytes()
+
+    def _set_tags_bytes(self, bytes):
+        medium = self._client._medium
+        if medium._is_remote_before((1, 18)):
+            self._vfs_set_tags_bytes(bytes)
+        try:
+            args = (
+                self._remote_path(), self._lock_token, self._repo_lock_token)
+            response = self._call_with_body_bytes(
+                'Branch.set_tags_bytes', args, bytes)
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((1, 18))
+            self._vfs_set_tags_bytes(bytes)
+
     def lock_read(self):
         self.repository.lock_read()
         if not self._lock_mode:
@@ -2204,10 +2227,6 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             # Re-lock the repository too.
             self.repository.lock_write(self._repo_lock_token)
         return self._lock_token or None
-
-    def _set_tags_bytes(self, bytes):
-        self._ensure_real()
-        return self._real_branch._set_tags_bytes(bytes)
 
     def _unlock(self, branch_token, repo_token):
         err_context = {'token': str((branch_token, repo_token))}
