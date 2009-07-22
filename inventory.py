@@ -18,11 +18,7 @@
 """Git inventory."""
 
 
-import stat
-
-
 from dulwich.objects import (
-    S_ISGITLINK,
     Blob,
     Tree,
     )
@@ -33,7 +29,6 @@ from bzrlib import (
     inventory,
     osutils,
     ui,
-    urlutils,
     )
 
 from bzrlib.plugins.git.mapping import (

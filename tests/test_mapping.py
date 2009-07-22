@@ -14,13 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from bzrlib.inventory import (
+    InventoryDirectory,
+    InventoryFile,
+    )
+
 from dulwich.objects import (
+    Blob,
     Commit,
+    Tree,
     )
 
 from bzrlib.plugins.git import tests
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
+    directory_to_tree,
     escape_file_id,
     revision_to_commit,
     unescape_file_id,
@@ -122,3 +130,27 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.author = "Author <author>"
         self.assertRoundtripCommit(c)
 
+
+class DirectoryToTreeTests(tests.TestCase):
+
+    def test_empty(self):
+        ie = InventoryDirectory('foo', 'foo', 'foo')
+        t = directory_to_tree(ie, None, {})
+        self.assertEquals(Tree(), t)
+
+    def test_empty_dir(self):
+        ie = InventoryDirectory('foo', 'foo', 'foo')
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        ie.children['bar'] = child_ie
+        t = directory_to_tree(ie, lambda x: Tree().id, {})
+        self.assertEquals(Tree(), t)
+
+    def test_with_file(self):
+        ie = InventoryDirectory('foo', 'foo', 'foo')
+        child_ie = InventoryFile('bar', 'bar', 'bar')
+        ie.children['bar'] = child_ie
+        b = Blob.from_string("bla")
+        t1 = directory_to_tree(ie, lambda x: b.id, {})
+        t2 = Tree()
+        t2.add(0100644, "bar", b.id)
+        self.assertEquals(t1, t2)

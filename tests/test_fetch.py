@@ -125,6 +125,88 @@ class RepositoryFetchTests:
         newrepo.fetch(oldrepo, revision_id=revid2)
         self.assertEquals(set([revid1, revid2]), set(newrepo.all_revision_ids()))
 
+    def test_dir_becomes_symlink(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("mylink/somefile", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_symlink("mylink", "target/")
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        marks = bb.finish()
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree1 = newrepo.revision_tree(revid1)
+        tree2 = newrepo.revision_tree(revid2)
+        fileid = tree1.path2id("mylink")
+        ie1 = tree1.inventory[fileid]
+        ie2 = tree2.inventory[fileid]
+        self.assertEquals(revid1, ie1.revision)
+        self.assertEquals("directory", ie1.kind)
+        self.assertEquals(None, ie1.symlink_target)
+        self.assertEquals(revid2, ie2.revision)
+        self.assertEquals("symlink", ie2.kind)
+        self.assertEquals("target/", ie2.symlink_target)
+
+    def test_symlink_becomes_dir(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_symlink("mylink", "target/")
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_file("mylink/somefile", "foo\nbar\n", False)
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        marks = bb.finish()
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree1 = newrepo.revision_tree(revid1)
+        tree2 = newrepo.revision_tree(revid2)
+        fileid = tree1.path2id("mylink")
+        ie1 = tree1.inventory[fileid]
+        ie2 = tree2.inventory[fileid]
+        self.assertEquals(revid1, ie1.revision)
+        self.assertEquals("symlink", ie1.kind)
+        self.assertEquals("target/", ie1.symlink_target)
+        self.assertEquals(revid2, ie2.revision)
+        self.assertEquals("directory", ie2.kind)
+        self.assertEquals(None, ie2.symlink_target)
+
+    def test_changing_symlink(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_symlink("mylink", "target")
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg1")
+        bb.set_symlink("mylink", "target/")
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg2")
+        marks = bb.finish()
+        gitsha1 = marks[mark1]
+        gitsha2 = marks[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree1 = newrepo.revision_tree(revid1)
+        tree2 = newrepo.revision_tree(revid2)
+        fileid = tree1.path2id("mylink")
+        ie1 = tree1.inventory[fileid]
+        ie2 = tree2.inventory[fileid]
+        self.assertEquals(revid1, ie1.revision)
+        self.assertEquals("target", ie1.symlink_target)
+        self.assertEquals(revid2, ie2.revision)
+        self.assertEquals("target/", ie2.symlink_target)
+
     def test_executable(self):
         self.make_git_repo("d")
         os.chdir("d")
@@ -142,6 +224,25 @@ class RepositoryFetchTests:
         self.assertEquals(True, tree.inventory[tree.path2id("foobar")].executable)
         self.assertTrue(tree.has_filename("notexec"))
         self.assertEquals(False, tree.inventory[tree.path2id("notexec")].executable)
+
+    def test_becomes_executable(self):
+        self.make_git_repo("d")
+        os.chdir("d")
+        bb = GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        bb.set_file("foobar", "foo\nbar\n", True)
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        gitsha2 = bb.finish()[mark2]
+        os.chdir("..")
+        oldrepo = self.open_git_repo("d")
+        newrepo = self.clone_git_repo("d", "f")
+        revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        tree = newrepo.revision_tree(revid)
+        self.assertTrue(tree.has_filename("foobar"))
+        ie = tree.inventory[tree.path2id("foobar")]
+        self.assertEquals(True, ie.executable)
+        self.assertEquals(revid, ie.revision)
 
     def test_non_ascii_characters(self):
         self.make_git_repo("d")
@@ -178,7 +279,7 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         objs = { "blobname": blob}
         ret, _= import_git_blob(self._texts, self._mapping, "bla", "blobname", 
-            base_inv, None, "somerevid", [], self._map, objs.__getitem__, False,
+            base_inv, None, None, "somerevid", [], self._map, objs.__getitem__, False,
             False)
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
@@ -197,7 +298,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
-               tree.id, base_inv, 
+               tree.id, base_inv, None,
                None, "somerevid", [], self._map, {tree.id: tree}.__getitem__)
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -215,7 +316,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", 
-           tree.id, base_inv, None, "somerevid", [], 
+           tree.id, base_inv, None, None, "somerevid", [], 
            self._map, { tree.id: tree }.__getitem__)
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -236,7 +337,7 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", tree.id, 
-            base_inv, None, "somerevid", [], self._map, objects.__getitem__)
+            base_inv, None, None, "somerevid", [], self._map, objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -259,7 +360,7 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", tree.id, 
-            base_inv, None, "somerevid", [], self._map, objects.__getitem__)
+            base_inv, None, None, "somerevid", [], self._map, objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])

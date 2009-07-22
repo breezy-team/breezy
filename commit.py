@@ -31,7 +31,6 @@ from dulwich.objects import (
     S_IFGITLINK,
     Blob,
     Commit,
-    Tree,
     )
 
 

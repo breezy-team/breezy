@@ -27,6 +27,10 @@ from bzrlib import (
     trace,
     urlutils,
     )
+try:
+    from bzrlib import bencode
+except ImportError:
+    from bzrlib.util import bencode
 from bzrlib.inventory import (
     ROOT_ID,
     )
@@ -34,9 +38,6 @@ from bzrlib.foreign import (
     ForeignVcs, 
     VcsMappingRegistry, 
     ForeignRevision,
-    )
-from bzrlib.xml_serializer import (
-    escape_invalid_chars,
     )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
@@ -76,8 +77,30 @@ def warn_escaped(commit, num_escaped):
 
 
 def warn_unusual_mode(commit, path, mode):
-    trace.warning("Unusual file mode %o for %s in %s. Will be unable to "
-                  "regenerate the SHA map.", mode, path, commit)
+    trace.mutter("Unusual file mode %o for %s in %s. Storing as revision property. ",
+                 mode, path, commit)
+
+
+def squash_revision(target_repo, rev):
+    """Remove characters that can't be stored from a revision, if necessary.
+    
+    :param target_repo: Repository in which the revision will be stored
+    :param rev: Revision object, will be modified in-place
+    """
+    if not getattr(target_repo._serializer, "squashes_xml_invalid_characters", True):
+        return
+    from bzrlib.xml_serializer import escape_invalid_chars
+    rev.message, num_escaped = escape_invalid_chars(rev.message)
+    if num_escaped:
+        warn_escaped(rev.foreign_revid, num_escaped)
+    if 'author' in rev.properties:
+        rev.properties['author'], num_escaped = escape_invalid_chars(
+            rev.properties['author'])
+        if num_escaped:
+            warn_escaped(rev.foreign_revid, num_escaped)
+    rev.committer, num_escaped = escape_invalid_chars(rev.committer)
+    if num_escaped:
+        warn_escaped(rev.foreign_revid, num_escaped)
 
 
 class BzrGitMapping(foreign.VcsMapping):
@@ -114,6 +137,17 @@ class BzrGitMapping(foreign.VcsMapping):
             return ""
         return unescape_file_id(file_id)
 
+    def import_unusual_file_modes(self, rev, unusual_file_modes):
+        if unusual_file_modes:
+            ret = [(name, unusual_file_modes[name]) for name in sorted(unusual_file_modes.keys())]
+            rev.properties['file-modes'] = bencode.bencode(ret)
+
+    def export_unusual_file_modes(self, rev):
+        try:
+            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(rev.properties['file-modes'])])
+        except KeyError:
+            return {}
+
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 
@@ -123,16 +157,10 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.message, num_escaped = escape_invalid_chars(commit.message.decode("utf-8", "replace"))
-        if num_escaped:
-            warn_escaped(commit.id, num_escaped)
-        rev.committer, num_escaped = escape_invalid_chars(str(commit.committer).decode("utf-8", "replace"))
-        if num_escaped:
-            warn_escaped(commit.id, num_escaped)
+        rev.message = commit.message.decode("utf-8", "replace")
+        rev.committer = str(commit.committer).decode("utf-8", "replace")
         if commit.committer != commit.author:
-            rev.properties['author'], num_escaped = escape_invalid_chars(str(commit.author).decode("utf-8", "replace"))
-            if num_escaped:
-                warn_escaped(commit.id, num_escaped)
+            rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
 
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
@@ -157,6 +185,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
 
 
 class GitMappingRegistry(VcsMappingRegistry):
+    """Registry with available git mappings."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
         if not bzr_revid.startswith("git-"):
@@ -204,10 +233,14 @@ def symlink_to_blob(entry):
     blob._text = entry.symlink_target
     return blob
 
+
 def mode_is_executable(mode):
+    """Check if mode should be considered executable."""
     return bool(mode & 0111)
 
+
 def mode_kind(mode):
+    """Determine the Bazaar inventory kind based on Unix file mode."""
     entry_kind = (mode & 0700000) / 0100000
     if entry_kind == 0:
         return 'directory'
@@ -228,6 +261,7 @@ def mode_kind(mode):
 
 
 def entry_mode(entry):
+    """Determine the git file mode for an inventory entry."""
     if entry.kind == 'directory':
         return stat.S_IFDIR
     elif entry.kind == 'symlink':
@@ -241,17 +275,34 @@ def entry_mode(entry):
         raise AssertionError
 
 
-def directory_to_tree(entry, lookup_ie_sha1):
-    from dulwich.objects import Tree
+def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
+    from dulwich.objects import Tree, EMPTY_TREE_HEXSHA
     tree = Tree()
     for name in sorted(entry.children.keys()):
         ie = entry.children[name]
-        tree.add(entry_mode(ie), name.encode("utf-8"), lookup_ie_sha1(ie))
+        try:
+            mode = unusual_modes[ie.file_id]
+        except KeyError:
+            mode = entry_mode(ie)
+        hexsha = lookup_ie_sha1(ie)
+        if hexsha == EMPTY_TREE_HEXSHA:
+            # Not allowed to add empty trees
+            continue
+        tree.add(mode, name.encode("utf-8"), hexsha)
     tree.serialize()
     return tree
 
 
-def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
+def extract_unusual_modes(rev):
+    try:
+        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+    except errors.InvalidRevisionId:
+        return {}
+    else:
+        return mapping.export_unusual_file_modes(rev)
+
+
+def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=None):
     """Convert a Bazaar tree to a Git tree.
 
     :return: Yields tuples with object sha1, object and path
@@ -271,7 +322,8 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             tree.serialize()
             sha = tree.id
             yield sha, tree, cur.encode("utf-8")
-            t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
+            mode = unusual_modes.get(cur.encode("utf-8"), stat.S_IFDIR)
+            t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
             cur, tree = stack.pop()
             tree.add(*t)
 
@@ -289,13 +341,15 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, cur=None):
             sha = blob.id
             yield sha, blob, path.encode("utf-8")
             name = urlutils.basename(path).encode("utf-8")
-            tree.add(entry_mode(entry), name, sha)
+            mode = unusual_modes.get(path.encode("utf-8"), entry_mode(entry))
+            tree.add(mode, name, sha)
 
     while len(stack) > 1:
         tree.serialize()
         sha = tree.id
         yield sha, tree, cur.encode("utf-8")
-        t = (stat.S_IFDIR, urlutils.basename(cur).encode('UTF-8'), sha)
+        mode = unusual_modes.get(cur.encode('utf-8'), stat.S_IFDIR)
+        t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
         cur, tree = stack.pop()
         tree.add(*t)
 

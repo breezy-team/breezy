@@ -16,9 +16,6 @@
 
 """An adapter between a Git control dir and a Bazaar BzrDir."""
 
-import os
-
-import bzrlib
 from bzrlib import (
     bzrdir,
     lockable_files,
@@ -120,8 +117,7 @@ class LocalGitDir(GitDir):
         return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=True):
-        if (not self._git.bare and 
-            os.path.exists(os.path.join(self._git.controldir(), "index"))):
+        if not self._git.bare and self._git.has_index():
             return workingtree.GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
@@ -132,3 +128,19 @@ class LocalGitDir(GitDir):
 
     def create_branch(self):
         return self.open_branch()
+
+    def backup_bzrdir(self):
+        if self._git.bare:
+            self.root_transport.copy_tree(".git", ".git.backup")
+            return (self.root_transport.abspath(".git"),
+                    self.root_transport.abspath(".git.backup"))
+        else:
+            raise errors.bzr_errors.BzrError("Unable to backup bare repositories")
+
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None, hardlink=False):
+        if self._git.bare:
+            raise errors.bzr_errors.BzrError("Can't create working tree in a bare repo")
+        from dulwich.index import write_index
+        write_index(self.root_transport.abspath(".git/index"), [])
+        return self.open_workingtree()

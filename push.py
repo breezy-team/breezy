@@ -29,6 +29,9 @@ from bzrlib.revision import (
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
+from bzrlib.plugins.git.mapping import (
+    extract_unusual_modes,
+    )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     )
@@ -78,9 +81,9 @@ class MissingObjectsIterator(object):
         # or already present remotely (as git doesn't do ghosts)
         return False
 
-    def queue(self, sha, obj, path, ie=None, inv=None):
+    def queue(self, sha, obj, path, ie=None, inv=None, unusual_modes=None):
         if obj is None:
-            obj = (ie, inv)
+            obj = (ie, inv, unusual_modes)
         self._pending.append((obj, path))
         self._sent_shas.add(sha)
 
@@ -89,21 +92,23 @@ class MissingObjectsIterator(object):
 
         """
         inv = self.source.get_inventory(revid)
+        rev = self.source.get_revision(revid)
+        unusual_modes = extract_unusual_modes(rev)
         todo = [inv.root]
         tree_sha = None
         while todo:
             ie = todo.pop()
-            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv)
+            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv, unusual_modes)
             if ie.parent_id is None:
                 tree_sha = sha
             if not self.need_sha(sha):
                 continue
-            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv)
+            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv, unusual_modes)
             if ie.kind == "directory":
                 todo.extend(ie.children.values())
         assert tree_sha is not None
-        commit = self._object_store._get_commit(revid, tree_sha)
-        self.queue(commit.id, commit, None)
+        commit = self._object_store._get_commit(rev, tree_sha)
+        self.queue(commit.id, commit, None, None)
         return commit.id
 
     def __len__(self):

@@ -32,36 +32,6 @@ from bzrlib.plugins.git import (
     get_rich_root_format,
     )
 
-class cmd_git_serve(Command):
-    """Provide access to a Bazaar branch using the git protocol.
-
-    This command is experimental and doesn't do much yet.
-    """
-    takes_options = [
-        Option('directory',
-               short_name='d',
-               help='serve contents of directory',
-               type=unicode)
-    ]
-
-    def run(self, directory=None):
-        lazy_check_versions()
-        from dulwich.server import TCPGitServer
-        from bzrlib.plugins.git.server import BzrBackend
-        from bzrlib.trace import warning
-        import os
-
-        warning("server support in bzr-git is experimental.")
-
-        if directory is None:
-            directory = os.getcwd()
-
-        backend = BzrBackend(directory)
-
-        server = TCPGitServer(backend, 'localhost')
-        server.serve_forever()
-
-
 class cmd_git_import(Command):
     """Import all branches from a git repository.
 
@@ -77,7 +47,6 @@ class cmd_git_import(Command):
             )
         from bzrlib.bzrdir import (
             BzrDir,
-            format_registry,
             )
         from bzrlib.errors import (
             BzrCommandError,
@@ -106,6 +75,9 @@ class cmd_git_import(Command):
             target_repo = target_bzrdir.open_repository()
         except NoRepositoryPresent:
             target_repo = target_bzrdir.create_repository(shared=True)
+
+        if not target_repo.supports_rich_root():
+            raise BzrCommandError("Target repository doesn't support rich roots")
 
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
@@ -173,7 +145,7 @@ class cmd_git_object(Command):
         try:
             if sha1 is not None:
                 try:
-                    obj = object_store[sha1]
+                    obj = object_store[str(sha1)]
                 except KeyError:
                     raise BzrCommandError("Object not found: %s" % sha1)
                 if pretty:

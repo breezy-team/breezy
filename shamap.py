@@ -24,9 +24,22 @@ import os
 import threading
 
 import bzrlib
-from bzrlib.errors import (
-    NoSuchRevision,
+from bzrlib import (
+    trace,
     )
+
+
+def get_cache_dir():
+    try:
+        from xdg.BaseDirectory import xdg_cache_home
+    except ImportError:
+        from bzrlib.config import config_dir
+        ret = os.path.join(config_dir(), "git")
+    else:
+        ret = os.path.join(xdg_cache_home, "bazaar", "git")
+    if not os.path.isdir(ret):
+        os.makedirs(ret)
+    return ret
 
 
 def check_pysqlite_version(sqlite3):
@@ -36,7 +49,7 @@ def check_pysqlite_version(sqlite3):
     if (sqlite3.sqlite_version_info[0] < 3 or 
             (sqlite3.sqlite_version_info[0] == 3 and 
              sqlite3.sqlite_version_info[1] < 3)):
-        warning('Needs at least sqlite 3.3.x')
+        trace.warning('Needs at least sqlite 3.3.x')
         raise bzrlib.errors.BzrError("incompatible sqlite library")
 
 try:
@@ -47,7 +60,7 @@ try:
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
 except:
-    warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
+    trace.warning('Needs at least Python2.5 or Python2.4 with the pysqlite2 '
             'module')
     raise bzrlib.errors.BzrError("missing sqlite library")
 
@@ -97,7 +110,7 @@ class GitShaMap(object):
         """List the revision ids known."""
         raise NotImplementedError(self.revids)
 
-    def sha1s(Self):
+    def sha1s(self):
         """List the SHA1s."""
         raise NotImplementedError(self.sha1s)
 
@@ -161,7 +174,13 @@ class SqliteGitShaMap(GitShaMap):
 
     @classmethod
     def from_repository(cls, repository):
-        return cls(os.path.join(repository._transport.local_abspath("."), "git.db"))
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return cls(os.path.join(transport.local_abspath("."), "git.db"))
+        except bzrlib.errors.NotLocalUrl:
+            pass
+        return cls(os.path.join(get_cache_dir(), "remote.db"))
 
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
@@ -249,6 +268,7 @@ class SqliteGitShaMap(GitShaMap):
 
 
 TDB_MAP_VERSION = 2
+TDB_HASH_SIZE = 10000
 
 
 class TdbGitShaMap(GitShaMap):
@@ -269,7 +289,7 @@ class TdbGitShaMap(GitShaMap):
             self.db = {}
         else:
             if not mapdbs().has_key(path):
-                mapdbs()[path] = tdb.open(path, 0, tdb.DEFAULT, 
+                mapdbs()[path] = tdb.Tdb(path, TDB_HASH_SIZE, tdb.DEFAULT, 
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]    
         if not "version" in self.db:
@@ -289,8 +309,7 @@ class TdbGitShaMap(GitShaMap):
                 return cls(os.path.join(transport.local_abspath("."), "git.tdb"))
         except bzrlib.errors.NotLocalUrl:
             pass
-        from bzrlib.config import config_dir
-        return cls(os.path.join(config_dir(), "remote-git.tdb"))
+        return cls(os.path.join(get_cache_dir(), "remote.tdb"))
 
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
@@ -320,7 +339,9 @@ class TdbGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        data = self.db["git\0" + hex_to_sha(sha)].split("\0")
+        if len(sha) == 40:
+            sha = hex_to_sha(sha)
+        data = self.db["git\0" + sha].split("\0")
         return (data[0], (data[1], data[2]))
 
     def revids(self):

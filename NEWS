@@ -1,8 +1,31 @@
-0.3.2	UNRELEASED
+0.4.1	UNRELEASED
 
  FEATURES
 
-  * "bzr commit" in git working trees works.
+  * Progress bars will now show results from the remote git server.
+
+0.4.0	2009-06-18
+
+ BUG FIXES
+
+  * Fix handling of not-executable files becoming executable without any 
+    other changes. (#382609)
+
+  * XML-invalid characters are now no longer squashed if not required by 
+    the target repository serializer format. The only non-XML based format 
+	at the moment is the "2a" development format supported since bzr 1.16.
+
+  * Unusual file modes that could be created in Git repositories using older
+    versions of Git are now stored in Bazaar revision properties. This means 
+	it's now possible to import the Git repository and the Linux kernel repository.
+
+  * Mark as compatible with bzr 1.16.
+
+0.3.2	2009-05-20
+
+ FEATURES
+
+  * "bzr commit" in git working trees works to some extent.
 
   * "bzr push" from local git repositories to remote git repositories works.
 

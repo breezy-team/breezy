@@ -17,8 +17,11 @@
 import os
 import tempfile
 
+from dulwich.server import TCPGitServer
+
 from bzrlib.bzrdir import (
     BzrDir,
+    BzrDirFormat,
     )
 from bzrlib.repository import (
     Repository,
@@ -47,23 +50,27 @@ from dulwich.pack import (
 
 class BzrBackend(Backend):
 
-    def __init__(self, directory):
-        self.directory = directory
+    def __init__(self, transport):
+        self.transport = transport
         self.mapping = default_mapping
 
     def get_refs(self):
         """ return a dict of all tags and branches in repository (and shas) """
         ret = {}
-        repo_dir = BzrDir.open(self.directory)
-        repo = repo_dir.open_repository()
-        store = get_object_store(repo)
-        branch = None
-        for branch in repo.find_branches(using=True):
-            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
-            #FIXME: Need to get branch path relative to its repository and use this instead of nick
-            ret["refs/heads/"+branch.nick] = store._lookup_revision_sha1(branch.last_revision())
-        if 'HEAD' not in ret and branch:
-            ret['HEAD'] = store._lookup_revision_sha1(branch.last_revision())
+        repo_dir = BzrDir.open_from_transport(self.transport)
+        repo = repo_dir.find_repository()
+        repo.lock_read()
+        try:
+            store = get_object_store(repo)
+            branch = None
+            for branch in repo.find_branches(using=True):
+                #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
+                #FIXME: Need to get branch path relative to its repository and use this instead of nick
+                ret["refs/heads/"+branch.nick] = store._lookup_revision_sha1(branch.last_revision())
+            if 'HEAD' not in ret and branch:
+                ret['HEAD'] = store._lookup_revision_sha1(branch.last_revision())
+        finally:
+            repo.unlock()
         return ret
 
     def apply_pack(self, refs, read):
@@ -83,7 +90,7 @@ class BzrBackend(Backend):
             for obj in pack.iterobjects():
                 yield obj
 
-        target = Repository.open(self.directory)
+        target = Repository.open_from_transport(self.transport)
 
         target.lock_write()
         try:
@@ -98,11 +105,13 @@ class BzrBackend(Backend):
         for oldsha, sha, ref in refs:
             if ref[:11] == 'refs/heads/':
                 branch_nick = ref[11:]
+                transport = self.transport.clone(branch_nick)
 
                 try:
-                    target_dir = BzrDir.open(self.directory + "/" + branch_nick)
+                    target_dir = BzrDir.open_from_transport(transport)
                 except:
-                    target_dir = BzrDir.create(self.directory + "/" + branch_nick)
+                    format = BzrDirFormat.get_default_format()
+                    format.initialize_on_transport(transport)
 
                 try:
                     target_branch = target_dir.open_branch()
@@ -114,19 +123,23 @@ class BzrBackend(Backend):
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
-        repo = Repository.open(self.directory)
+        bzrdir = BzrDir.open_from_transport(self.transport)
+        repo = bzrdir.find_repository()
 
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is not None:
             return repo.fetch_objects(determine_wants, graph_walker, None, progress)
 
         wants = determine_wants(self.get_refs())
-
         repo.lock_read()
-        try:
-            store = BazaarObjectStore(repo)
-            have = store.find_missing_revisions(graph_walker)
-            missing_sha1s = store.find_missing_objects(have, wants, progress)
-            return self.object_store.iter_shas(missing_sha1s)
-        finally:
-            repo.unlock()
+        store = BazaarObjectStore(repo)
+        have = store.find_common_revisions(graph_walker)
+        missing_sha1s = store.find_missing_objects(have, wants, progress)
+        return store.iter_shas(missing_sha1s)
+
+
+def serve_git(transport, host=None, port=None, inet=False):
+    backend = BzrBackend(transport)
+
+    server = TCPGitServer(backend, 'localhost')
+    server.serve_forever()

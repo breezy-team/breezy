@@ -27,10 +27,11 @@ import sys
 import bzrlib
 import bzrlib.api
 
-# versions ending in 'exp' mean experimental mappings
-# versions ending in 'dev' mean development version
-# versions ending in 'final' mean release (well tested, etc)
-version_info = (0, 3, 1, 'final', 0)
+from info import (
+    bzr_compatible_versions,
+    bzr_plugin_version as version_info,
+    dulwich_minimum_version,
+    )
 
 if version_info[3] == 'final':
     version_string = '%d.%d.%d' % version_info[:3]
@@ -38,10 +39,7 @@ else:
     version_string = '%d.%d.%d%s%d' % version_info
 __version__ = version_string
 
-MINIMUM_DULWICH_VERSION = (0, 3, 1)
-COMPATIBLE_BZR_VERSIONS = [(1, 14, 0), (1, 15, 0)]
-
-bzrlib.api.require_any_api(bzrlib, COMPATIBLE_BZR_VERSIONS)
+bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 
 from bzrlib import (
@@ -62,11 +60,11 @@ from bzrlib.transport import (
 from bzrlib.commands import (
     plugin_cmds,
     )
-from bzrlib.send import (
-    format_registry as send_format_registry,
-    )
 from bzrlib.version_info_formats.format_rio import (
     RioVersionInfoBuilder,
+    )
+from bzrlib.send import (
+    format_registry as send_format_registry,
     )
 
 
@@ -85,8 +83,8 @@ def lazy_check_versions():
     except ImportError:
         raise ImportError("bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
-        if dulwich_version < MINIMUM_DULWICH_VERSION:
-            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % MINIMUM_DULWICH_VERSION)
+        if dulwich_version < dulwich_minimum_version:
+            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
 
 bzrdir.format_registry.register_lazy('git', 
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
@@ -104,6 +102,9 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
     def is_supported(self):
         return True
 
+    def network_name(self):
+        return "git"
+
 
 class LocalGitBzrDirFormat(GitBzrDirFormat):
     """The .git directory control format."""
@@ -116,14 +117,14 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
-        import dulwich as git
+        import dulwich
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
 
         try:
-            gitrepo = git.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
+            gitrepo = dulwich.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
         except bzr_errors.NotLocalUrl:
             raise bzr_errors.NotBranchError(path=transport.base)
         from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
@@ -143,12 +144,12 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         if not transport.has(".git") and not transport.has("objects"):
             raise bzr_errors.NotBranchError(path=transport.base)
 
-        import dulwich as git
+        import dulwich
         format = klass()
         try:
             format.open(transport)
             return format
-        except git.errors.NotGitRepository, e:
+        except dulwich.errors.NotGitRepository, e:
             raise bzr_errors.NotBranchError(path=transport.base)
         raise bzr_errors.NotBranchError(path=transport.base)
 
@@ -241,7 +242,6 @@ register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
 foreign_vcs_registry.register_lazy("git", 
     "bzrlib.plugins.git.mapping", "foreign_git", "Stupid content tracker")
 
-plugin_cmds.register_lazy("cmd_git_serve", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"], 
     "bzrlib.plugins.git.commands")
@@ -255,6 +255,26 @@ def update_stanza(rev, stanza):
 rio_hooks = getattr(RioVersionInfoBuilder, "hooks", None)
 if rio_hooks is not None:
     rio_hooks.install_named_hook('revision', update_stanza, None)
+
+
+try:
+    from bzrlib.transport import transport_server_registry
+except ImportError:
+    pass
+else:
+    transport_server_registry.register_lazy('git',
+        'bzrlib.plugins.git.server', 
+        'serve_git',
+        'Git Smart server protocol over TCP. (default port: 9418)')
+
+
+from bzrlib.repository import network_format_registry as repository_network_format_registry
+repository_network_format_registry.register_lazy('git', 
+    'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
+
+from bzrlib.bzrdir import network_format_registry as bzrdir_network_format_registry
+bzrdir_network_format_registry.register('git', GitBzrDirFormat)
+
 
 def get_rich_root_format(stacked=False):
     if stacked:

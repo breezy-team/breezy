@@ -16,8 +16,8 @@
 
 import bzrlib
 from bzrlib import (
-    branch,
     tag,
+    trace,
     ui,
     urlutils,
     )
@@ -55,7 +55,6 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
 from bzrlib.plugins.git.repository import (
-    GitRepositoryFormat,
     GitRepository,
     )
 
@@ -65,17 +64,13 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    PackData,
     )
 import os
 import tempfile
 import urllib
 import urlparse
 
-try:
-    from dulwich.pack import load_pack_index
-except ImportError:
-    from dulwich.pack import PackIndex as load_pack_index
+from dulwich.pack import load_pack_index
 
 
 # Don't run any tests on GitSmartTransport as it is not intended to be 
@@ -94,10 +89,13 @@ class GitSmartTransport(Transport):
         (self._host, self._port) = urllib.splitnport(hostport, None)
         self._client = _client
 
+    def external_url(self):
+        return self.base
+
     def has(self, relpath):
         return False
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         raise NotImplementedError(self._get_client)
 
     def _get_path(self):
@@ -107,7 +105,7 @@ class GitSmartTransport(Transport):
         if progress is None:
             def progress(text):
                 info("git: %s" % text)
-        client = self._get_client()
+        client = self._get_client(thin_packs=False)
         try:
             return client.fetch_pack(self._get_path(), determine_wants, 
                 graph_walker, pack_data, progress)
@@ -115,7 +113,7 @@ class GitSmartTransport(Transport):
             raise BzrError(e)
 
     def send_pack(self, get_changed_refs, generate_pack_contents):
-        client = self._get_client()
+        client = self._get_client(thin_packs=False)
         try:
             return client.send_pack(self._get_path(), get_changed_refs, 
                 generate_pack_contents)
@@ -142,12 +140,12 @@ class TCPGitSmartTransport(GitSmartTransport):
 
     _scheme = 'git'
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=False,
+        return git.client.TCPGitClient(self._host, self._port, thin_packs=thin_packs,
             report_activity=self._report_activity)
 
 
@@ -160,13 +158,13 @@ class SSHGitSmartTransport(GitSmartTransport):
             return self._path[3:]
         return self._path
 
-    def _get_client(self):
+    def _get_client(self, thin_packs):
         if self._client is not None:
             ret = self._client
             self._client = None
             return ret
         return git.client.SSHGitClient(self._host, self._port, self._username,
-            thin_packs=False, report_activity=self._report_activity)
+            thin_packs=thin_packs, report_activity=self._report_activity)
 
 
 class RemoteGitDir(GitDir):
@@ -205,14 +203,15 @@ class TemporaryPackIterator(Pack):
     @property
     def index(self):
         if self._idx is None:
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                def report_progress(cur, total):
-                    pb.update("generating index", cur, total)
-                self.data.create_index(self._idx_path, self.resolve_ext_ref,
-                    progress=report_progress)
-            finally:
-                pb.finished()
+            if not os.path.exists(self._idx_path):
+                pb = ui.ui_factory.nested_progress_bar()
+                try:
+                    def report_progress(cur, total):
+                        pb.update("generating index", cur, total)
+                    self.data.create_index(self._idx_path, self.resolve_ext_ref,
+                        progress=report_progress)
+                finally:
+                    pb.finished()
             self._idx = load_pack_index(self._idx_path)
         return self._idx
 
@@ -243,7 +242,7 @@ class RemoteGitRepository(GitRepository):
         if self._refs is not None:
             return self._refs
         self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None, 
-            lambda x: None, lambda x: mutter("git: %s" % x))
+            lambda x: None, lambda x: trace.mutter("git: %s" % x))
         return self._refs
 
     def fetch_pack(self, determine_wants, graph_walker, pack_data, 
@@ -303,7 +302,7 @@ class RemoteGitBranch(GitBranch):
             return self._ref
         heads = self.repository.get_refs()
         if not self.name in heads:
-            raise NoSuchRef(name)
+            raise NoSuchRef(self.name)
         self._ref = heads[self.name]
         return self._ref
 

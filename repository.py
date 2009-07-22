@@ -26,17 +26,9 @@ from bzrlib import (
     repository,
     revision,
     revisiontree,
-    ui,
-    urlutils,
     )
 from bzrlib.foreign import (
     ForeignRepository,
-    )
-from bzrlib.trace import (
-    mutter,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 
 from bzrlib.plugins.git.commit import (
@@ -89,6 +81,9 @@ class GitRepository(ForeignRepository):
 
     def make_working_trees(self):
         return True
+
+    def revision_graph_can_have_wrong_parents(self):
+        return False
 
     def dfetch(self, source, stop_revision):
         interrepo = repository.InterRepository.get(source, self)
@@ -169,7 +164,7 @@ class LocalGitRepository(GitRepository):
         :return: Tuple with git revisionid and mapping.
         """
         # Yes, this doesn't really work, but good enough as a stub
-        return osutils.sha(rev_id).hexdigest(), self.get_mapping()
+        return osutils.sha(revid).hexdigest(), self.get_mapping()
 
     def has_signature_for_revision_id(self, revision_id):
         return False
@@ -264,7 +259,10 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return "Git Repository"
 
     def initialize(self, url, shared=False, _internal=False):
-        raise bzr_errors.UninitializableFormat(self)
+        raise errors.UninitializableFormat(self)
 
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
+
+    def network_name(self):
+        return "git"

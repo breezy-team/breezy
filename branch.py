@@ -27,7 +27,6 @@ from bzrlib import (
     bzrdir,
     config,
     errors,
-    foreign,
     repository,
     revision,
     tag,
@@ -444,7 +443,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
-            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs["refs/heads/master"])
+            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get("refs/heads/master", "0" * 40))
             refs = { "refs/heads/master": self.source.repository.lookup_git_revid(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
@@ -512,6 +511,9 @@ class InterToGitBranch(branch.InterBranch):
     def is_compatible(self, source, target):
         return (not isinstance(source, GitBranch) and 
                 isinstance(target, GitBranch))
+
+    def update_revisions(self, *args, **kwargs):
+        raise NoPushSupport()
 
     def push(self, overwrite=True, stop_revision=None, 
              _override_hook_source_branch=None):
