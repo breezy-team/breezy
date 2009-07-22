@@ -318,9 +318,17 @@ class BundleWriteOperation(object):
         revision_order = [key[-1] for key in multiparent.topo_iter_keys(inv_vf,
             self.revision_keys)]
         if self.target is not None and self.target in self.revision_ids:
+            # Make sure the target is always the last entry
             revision_order.remove(self.target)
             revision_order.append(self.target)
-        self._add_mp_records_keys('inventory', inv_vf, [(revid,) for revid in revision_order])
+        if self.repository._serializer.support_altered_by_hack:
+            self._add_mp_records_keys('inventory', inv_vf,
+                                      [(revid,) for revid in revision_order])
+        else:
+            bork
+        self._add_revision_texts(revision_order)
+
+    def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)
         revision_to_str = self.repository._serializer.write_revision_to_string
         revisions = self.repository.get_revisions(revision_order)
@@ -544,7 +552,8 @@ class RevisionInstaller(object):
         versionedfile.add_mpdiffs(vf_records)
 
     def _install_inventory_records(self, records):
-        if self._info['serializer'] == self._repository._serializer.format_num:
+        if (self._info['serializer'] == self._repository._serializer.format_num
+            and self._repository._serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
                 records)
         for key, metadata, bytes in records:

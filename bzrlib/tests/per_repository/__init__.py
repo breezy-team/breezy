@@ -867,12 +867,12 @@ def load_tests(standard_tests, module, loader):
         'test_has_revisions',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
+        'test_merge_directive',
         'test_pack',
         'test_reconcile',
         'test_refresh_data',
         'test_repository',
         'test_revision',
-        'test_send',
         'test_statistics',
         'test_write_group',
         ]
