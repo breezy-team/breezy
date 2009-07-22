@@ -14,10 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""UI abstraction.
+"""Abstraction for interacting with the user.
 
-This tells the library how to display things to the user.  Through this
-layer different applications can choose the style of UI.
+Applications can choose different types of UI, and they deal with displaying
+messages or progress to the user, and with gathering different types of input.
 
 Several levels are supported, and you can also register new factories such as
 for a GUI.
@@ -29,32 +29,18 @@ SilentUIFactory
     Produces no output and cannot take any input; useful for programs using
     bzrlib in batch mode or for programs such as loggerhead.
 
+CannedInputUIFactory
+    For use in testing; the input values to be returned are provided 
+    at construction.
+
 TextUIFactory
     Standard text command-line interface, with stdin, stdout, stderr.
     May make more or less advanced use of them, eg in drawing progress bars,
     depending on the detected capabilities of the terminal.
+    GUIs may choose to subclass this so that unimplemented methods fall
+    back to working through the terminal.
 """
 
-# Previously, there was CLIUIFactory for dumb terminals, and TextUIFactory for
-# those on smarter terminals.  However, there are actually a few independent
-# variables so simple subclassing doesn't make sense.  The user may or may not
-# want progress bars, but even if they want them off they may want a rich
-# interface in other ways.  And on the other hand input may be redirected from
-# a file so stdin is not a terminal, but we should still try to read input
-# from it and display progress bars etc.  Therefore if we're doing a text UI
-# at all, we just use TextUIFactory and it turns some features on or off
-# depending on the detected settings and capabilities.  
-#
-# We also use this factory for most blackbox tests, but typically with non-tty
-# streams and TERM=dumb.  For api tests, SilentUIFactory is probably
-# appropriate.
-#
-# GUIs may actually choose to subclass TextUIFactory, so unimplemented methods
-# fall back to working through the terminal.
-#
-# SilentUIFactory used to read input from stdin, but not print anything, which
-# now seems like an unhelpful combination.  So it will now just fail if asked
-# for input.
 
 import os
 import sys
