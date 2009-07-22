@@ -276,7 +276,7 @@ def entry_mode(entry):
 
 
 def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
-    from dulwich.objects import Tree, EMPTY_TREE_HEXSHA
+    from dulwich.objects import Tree
     tree = Tree()
     for name in sorted(entry.children.keys()):
         ie = entry.children[name]
@@ -285,10 +285,11 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
         except KeyError:
             mode = entry_mode(ie)
         hexsha = lookup_ie_sha1(ie)
-        if hexsha == EMPTY_TREE_HEXSHA:
-            # Not allowed to add empty trees
-            continue
-        tree.add(mode, name.encode("utf-8"), hexsha)
+        if hexsha is not None:
+            tree.add(mode, name.encode("utf-8"), hexsha)
+    if entry.parent_id is not None and len(tree) == 0:
+        # Only the root can be an empty tree
+        return None
     tree.serialize()
     return tree
 
