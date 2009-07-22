@@ -147,7 +147,7 @@ class BundleReader(object):
     body
     """
 
-    def __init__(self, fileobj, stream_input=True):
+    def __init__(self, fileobj, stream_input=False):
         """Constructor
 
         :param fileobj: a file containing a bzip-encoded container
@@ -376,7 +376,6 @@ class BundleWriteOperation(object):
             parent_ids = [k[-1] for k in parent_keys]
             self.bundle.add_multiparent_record(text, sha1, parent_ids,
                                                'inventory', revision_id, None)
-
 
     def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)

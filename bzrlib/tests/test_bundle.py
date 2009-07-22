@@ -616,7 +616,8 @@ class BundleTester(object):
 
         bundle = self.get_valid_bundle('a@cset-0-2', 'a@cset-0-3')
         self.assertRaises((errors.TestamentMismatch,
-            errors.VersionedFileInvalidChecksum), self.get_invalid_bundle,
+            errors.VersionedFileInvalidChecksum,
+            errors.BadBundle), self.get_invalid_bundle,
             'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle
         bundle = self.get_valid_bundle('null:', 'a@cset-0-3')
@@ -1433,6 +1434,27 @@ class V4_2aBundleTester(V4BundleTester):
 
     def bzrdir_format(self):
         return '2a'
+
+    def get_invalid_bundle(self, base_rev_id, rev_id):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Munge the text so that it's invalid.
+
+        :return: The in-memory bundle
+        """
+        from bzrlib.bundle import serializer
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        new_text = new_text.replace('<file file_id="exe-1"',
+                                    '<file executable="y" file_id="exe-1"')
+        new_text = new_text.replace('B280', 'B295')
+        bundle_txt = StringIO()
+        bundle_txt.write(serializer._get_bundle_header('4'))
+        bundle_txt.write('\n')
+        bundle_txt.write(new_text.encode('bz2'))
+        bundle_txt.seek(0)
+        bundle = read_bundle(bundle_txt)
+        self.valid_apply_bundle(base_rev_id, bundle)
+        return bundle
 
     def make_merged_branch(self):
         builder = self.make_branch_builder('source')
