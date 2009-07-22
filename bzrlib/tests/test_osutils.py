@@ -625,6 +625,20 @@ class TestPumpStringFile(tests.TestCase):
         self.assertEqual("1234", output.getvalue())
 
 
+class TestRelpath(tests.TestCase):
+
+    def test_simple_relpath(self):
+        cwd = osutils.getcwd()
+        subdir = cwd + '/subdir'
+        self.assertEqual('subdir', osutils.relpath(cwd, subdir))
+
+    def test_not_relative(self):
+        self.assertRaises(errors.PathNotChild,
+                          osutils.relpath, 'C:/path', 'H:/path')
+        self.assertRaises(errors.PathNotChild,
+                          osutils.relpath, 'C:/', 'H:/path')
+
+
 class TestSafeUnicode(tests.TestCase):
 
     def test_from_ascii_string(self):

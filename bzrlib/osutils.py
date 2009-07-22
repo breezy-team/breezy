@@ -1040,14 +1040,14 @@ def relpath(base, path):
 
     s = []
     head = rp
-    while len(head) >= len(base):
+    while True:
+        if len(head) <= len(base) and head != base:
+            raise errors.PathNotChild(rp, base)
         if head == base:
             break
-        head, tail = os.path.split(head)
+        head, tail = split(head)
         if tail:
-            s.insert(0, tail)
-    else:
-        raise errors.PathNotChild(rp, base)
+            s.append(tail)
 
     if s:
         return pathjoin(*s)
