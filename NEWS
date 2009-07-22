@@ -41,6 +41,10 @@ Bug Fixes
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
 
+* Cope with FTP servers that don't support restart/append by falling back
+  to reading and then rewriting the whole file, such as TahoeLAFS.  (This
+  fallback may be slow for some access patterns.)  (Nils Durner, #294709)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
