@@ -30,6 +30,13 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
+  (Martin Pool, #339385, #387717)
+
 * ``bzr commit`` no longer saves the unversioning of missing files until
   the commit has completed on the branch. This means that aborting a
   commit that found a missing file will leave the tree unedited.
@@ -74,8 +81,19 @@ Documentation
 API Changes
 ***********
 
+* ``CLIUIFactory`` is deprecated; use ``TextUIFactory`` instead if you
+  need to subclass or create a specific class, or better yet the existing
+  ``make_ui_for_terminal``.  ``SilentUIFactory`` is clarified to do no
+  user interaction at all, rather than trying to read from stdin but not
+  writing any output, which would be strange if reading prompts or
+  passwords.  (Martin Pool)
+
 * New TransformPreview.commit() allows committing without a working tree.
   (Aaron Bentley)
+
+* ProgressTasks now prefer to talk direct to their ProgressView not to the
+  UIFactory. 
+  (Martin Pool)
 
 Internals
 *********

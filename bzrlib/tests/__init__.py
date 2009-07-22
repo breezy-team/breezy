@@ -102,6 +102,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -702,7 +703,7 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class TestUIFactory(ui.CLIUIFactory):
+class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.
 
     Hide the progress bar but emit note()s.
@@ -1093,11 +1094,17 @@ class TestCase(unittest.TestCase):
                          osutils.realpath(path2),
                          "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
 
-    def assertIsInstance(self, obj, kls):
-        """Fail if obj is not an instance of kls"""
+    def assertIsInstance(self, obj, kls, msg=None):
+        """Fail if obj is not an instance of kls
+        
+        :param msg: Supplementary message to show if the assertion fails.
+        """
         if not isinstance(obj, kls):
-            self.fail("%r is an instance of %s rather than %s" % (
-                obj, obj.__class__, kls))
+            m = "%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls)
+            if msg:
+                m += ": " + msg
+            self.fail(m)
 
     def expectFailure(self, reason, assertion, *args, **kwargs):
         """Invoke a test, expecting it to fail for the given reason.
@@ -1325,6 +1332,13 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            # Make sure that any text ui tests are consistent regardless of
+            # the environment the test case is run in; you may want tests that
+            # test other combinations.  'dumb' is a reasonable guess for tests
+            # going to a pipe or a StringIO.
+            'TERM': 'dumb',
+            'LINES': '25',
+            'COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
