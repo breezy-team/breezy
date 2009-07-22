@@ -1,0 +1,6 @@
+Quick Reference
+===============
+
+* `SVG format <../../_static/en/quick-reference/quick-start-summary.svg>`_
+* `PDF format <../../_static/en/quick-reference/quick-start-summary.pdf>`_
+* `PNG format <../../_static/en/quick-reference/quick-start-summary.png>`_
