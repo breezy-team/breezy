@@ -70,7 +70,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             f, transport = do_catching_redirections(get_bundle, transport,
                                                     redirected_transport)
         except errors.TooManyRedirections:
-            raise errors.NotABundle(str(url))
+            raise errors.NotABundle(transport.clone(filename).base)
 
         if _do_directive:
             from bzrlib.merge_directive import MergeDirective

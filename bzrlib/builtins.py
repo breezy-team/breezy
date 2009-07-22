@@ -799,7 +799,7 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
-        tree.lock_write()
+        tree.lock_tree_write()
         try:
             self._run(tree, names_list, rel_names, after)
         finally:
@@ -813,7 +813,7 @@ class cmd_mv(Command):
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
-        work_tree.lock_write()
+        work_tree.lock_tree_write()
         try:
             rename_map.RenameMap.guess_renames(work_tree, dry_run)
         finally:
@@ -1096,26 +1096,17 @@ class cmd_push(Command):
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
-            strict = br_from.get_config().get_user_option('push_strict')
-            if strict is not None:
-                # FIXME: This should be better supported by config
-                # -- vila 20090611
-                bools = dict(yes=True, no=False, on=True, off=False,
-                             true=True, false=False)
-                try:
-                    strict = bools[strict.lower()]
-                except KeyError:
-                    strict = None
+            strict = br_from.get_config().get_user_option_as_bool('push_strict')
+        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if (tree is not None and revision_id is None
-            and (strict is None or strict)): # Default to True:
+        if strict and tree is not None and revision_id is None:
             if (tree.has_changes(tree.basis_tree())
-                 or len(tree.get_parent_ids()) > 1):
+                or len(tree.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -3797,16 +3788,16 @@ class cmd_merge(Command):
             base_branch, base_path = Branch.open_containing(base_loc,
                 possible_transports)
         # Find the revision ids
-        if revision is None or len(revision) < 1 or revision[-1] is None:
+        other_revision_id = None
+        base_revision_id = None
+        if revision is not None:
+            if len(revision) >= 1:
+                other_revision_id = revision[-1].as_revision_id(other_branch)
+            if len(revision) == 2:
+                base_revision_id = revision[0].as_revision_id(base_branch)
+        if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        else:
-            other_revision_id = revision[-1].as_revision_id(other_branch)
-        if (revision is not None and len(revision) == 2
-            and revision[0] is not None):
-            base_revision_id = revision[0].as_revision_id(base_branch)
-        else:
-            base_revision_id = None
         # Remember where we merge from
         if ((remember or tree.branch.get_submit_branch() is None) and
              user_location is not None):

@@ -280,6 +280,15 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2.merge_from_branch(wt.branch)
         wt2.commit('merged kind change')
 
+    def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
+        wt = self.make_branch_and_tree('.')
+        wt.add(['a'], ['a-id'], ['file'])
+        def fail_message(obj):
+            raise errors.BzrCommandError("empty commit message")
+        self.assertRaises(errors.BzrCommandError, wt.commit,
+            message_callback=fail_message)
+        self.assertEqual('a', wt.id2path('a-id'))
+
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
         # at all, or even for it to exist.
@@ -602,29 +611,3 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
-
-    def test_commit_and_mv_dance_a(self):
-        # should fail because of
-        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
-        # not, while the blackbox.test_commit equivalent does - maybe because
-        # of different format combinations
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["a"])
-        tree.add("a")
-        tree.rename_one("a", "b")
-        tree.commit("Actually no, b")
-        tree.rename_one("b", "a")
-        tree.commit("No, really, a")
-
-    def test_commit_and_mv_dance_b(self):
-        # should fail because of
-        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
-        # not, while the blackbox.test_commit equivalent does - maybe because
-        # of different format combinations
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["b"])
-        tree.add("b")
-        tree.rename_one("b", "a")
-        tree.commit("Actually no, a")
-        tree.rename_one("a", "b")
-        tree.commit("No, really, b")
