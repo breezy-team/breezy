@@ -2190,6 +2190,7 @@ class Repository(object):
         """
         if ((None in revision_ids)
             or (_mod_revision.NULL_REVISION in revision_ids)):
+            import pdb; pdb.set_trace()
             raise ValueError('cannot get null revision inventory')
         return self._iter_inventories(revision_ids)
 

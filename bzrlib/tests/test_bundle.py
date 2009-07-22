@@ -1429,6 +1429,63 @@ class V4WeaveBundleTester(V4BundleTester):
         return 'metaweave'
 
 
+class V4_2aBundleTester(V4BundleTester):
+
+    def bzrdir_format(self):
+        return '2a'
+
+    def test_inventories_as_xml_texts(self):
+        builder = self.make_branch_builder('source',
+                                           format=self.bzrdir_format())
+        builder.start_series()
+        builder.build_snapshot('a@cset-0-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'original content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-2a', ['a@cset-0-1'], [
+            ('modify', ('file-id', 'new-content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-2b', ['a@cset-0-1'], [
+            ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-3', ['a@cset-0-2a', 'a@cset-0-2b'], [
+            ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
+            ])
+        builder.finish_series()
+        self.b1 = builder.get_branch()
+        self.b1.lock_read()
+        self.addCleanup(self.b1.unlock)
+
+        sio = StringIO()
+        writer = v4.BundleWriteOperation('a@cset-0-1', 'a@cset-0-3',
+                                         self.b1.repository, sio)
+        writer.bundle.begin()
+        writer._add_inventory_mpdiffs_from_serializer(
+            ['a@cset-0-3'])
+        writer.bundle.end()
+        sio.seek(0)
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(1, len(records))
+        (bytes, metadata, repo_kind, revision_id,
+         file_id) = records[0]
+        self.assertIs(None, file_id)
+        self.assertEqual('a@cset-0-3', revision_id)
+        self.assertEqual('inventory', repo_kind)
+        self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
+                          'sha1': 'c08b0f8cc256107f0229c98931d1d69c0e843196',
+                          'storage_kind': 'mpdiff',
+                         }, metadata)
+        # We should have an mpdiff that takes some lines from both parents.
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory file_id="root-id" format="5"'
+                ' revision_id="a@cset-0-3">\n'
+            '\n'
+            'c 0 1 1 1\n'
+            'c 1 2 2 2\n', bytes)
+
+
 class MungedBundleTester(object):
 
     def build_test_bundle(self):

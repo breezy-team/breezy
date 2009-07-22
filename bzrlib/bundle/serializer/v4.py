@@ -325,8 +325,48 @@ class BundleWriteOperation(object):
             self._add_mp_records_keys('inventory', inv_vf,
                                       [(revid,) for revid in revision_order])
         else:
-            bork
+            self._add_inventory_mpdiffs_from_serializer(revision_order)
         self._add_revision_texts(revision_order)
+
+    def _add_inventory_mpdiffs_from_serializer(self, revision_order):
+        inventory_key_order = [(r,) for r in revision_order]
+        parent_map = self.repository.inventories.get_parent_map(
+                            inventory_key_order)
+        inv_to_str = self.repository._serializer.write_inventory_to_string
+        # Make sure that we grab the parent texts first
+        just_parents = set()
+        map(just_parents.update, parent_map.itervalues())
+        just_parents.difference_update(revision_order)
+        # Ignore ghost parents
+        if _mod_revision.NULL_REVISION in just_parents:
+            import pdb; pdb.set_trace()
+        present_parents = self.repository.inventories.get_parent_map(
+                            just_parents)
+        needed_inventories = list(present_parents) + inventory_key_order
+        needed_inventories = [k[-1] for k in needed_inventories]
+        all_lines = {}
+        for inv in self.repository.iter_inventories(needed_inventories):
+            revision_id = inv.revision_id
+            key = (revision_id,)
+            as_bytes = inv_to_str(inv)
+            # The sha1 is validated as the xml/textual form, not as the
+            # form-in-the-repository
+            sha1 = osutils.sha_string(as_bytes)
+            as_lines = osutils.split_lines(as_bytes)
+            all_lines[revision_id] = as_lines
+            if key in just_parents:
+                # We don't transmit those entries
+                continue
+            # Create an mpdiff for this text, and add it to the output
+            parent_keys = parent_map[key]
+            parent_ids = [k[-1] for k in parent_keys]
+            parent_lines = [all_lines[p_id] for p_id in parent_ids]
+            diff = multiparent.MultiParent.from_lines(
+                as_lines, parent_lines)
+            text = ''.join(diff.to_patch())
+            self.bundle.add_multiparent_record(text, sha1, parent_ids,
+                                               'inventory', revision_id, None)
+
 
     def _add_revision_texts(self, revision_order):
         parent_map = self.repository.get_parent_map(revision_order)
