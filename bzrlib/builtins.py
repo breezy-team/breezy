@@ -1472,7 +1472,7 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Only delete files if they can be'
                  ' safely recovered (default).',
-            keep="Don't delete any files.",
+            keep='Delete from bzr but leave the working copy.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
     aliases = ['rm', 'del']
