@@ -332,16 +332,21 @@ class BundleWriteOperation(object):
         inventory_key_order = [(r,) for r in revision_order]
         parent_map = self.repository.inventories.get_parent_map(
                             inventory_key_order)
+        missing_keys = set(inventory_key_order).difference(parent_map)
+        if missing_keys:
+            raise errors.RevisionNotPresent(list(missing_keys)[0],
+                                            self.repository.inventories)
         inv_to_str = self.repository._serializer.write_inventory_to_string
         # Make sure that we grab the parent texts first
         just_parents = set()
         map(just_parents.update, parent_map.itervalues())
-        just_parents.difference_update(revision_order)
+        just_parents.difference_update(parent_map)
         # Ignore ghost parents
         if _mod_revision.NULL_REVISION in just_parents:
             import pdb; pdb.set_trace()
         present_parents = self.repository.inventories.get_parent_map(
                             just_parents)
+        ghost_keys = just_parents.difference(present_parents)
         needed_inventories = list(present_parents) + inventory_key_order
         needed_inventories = [k[-1] for k in needed_inventories]
         all_lines = {}
@@ -353,17 +358,22 @@ class BundleWriteOperation(object):
             # form-in-the-repository
             sha1 = osutils.sha_string(as_bytes)
             as_lines = osutils.split_lines(as_bytes)
-            all_lines[revision_id] = as_lines
+            del as_bytes
+            all_lines[key] = as_lines
             if key in just_parents:
                 # We don't transmit those entries
                 continue
             # Create an mpdiff for this text, and add it to the output
             parent_keys = parent_map[key]
-            parent_ids = [k[-1] for k in parent_keys]
-            parent_lines = [all_lines[p_id] for p_id in parent_ids]
+            # See the comment in VF.make_mpdiffs about how this effects
+            # ordering when there are ghosts present. I think we have a latent
+            # bug
+            parent_lines = [all_lines[p_key] for p_key in parent_keys
+                            if p_key not in ghost_keys]
             diff = multiparent.MultiParent.from_lines(
                 as_lines, parent_lines)
             text = ''.join(diff.to_patch())
+            parent_ids = [k[-1] for k in parent_keys]
             self.bundle.add_multiparent_record(text, sha1, parent_ids,
                                                'inventory', revision_id, None)
 

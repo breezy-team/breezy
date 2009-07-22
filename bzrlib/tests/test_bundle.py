@@ -1434,7 +1434,7 @@ class V4_2aBundleTester(V4BundleTester):
     def bzrdir_format(self):
         return '2a'
 
-    def test_inventories_as_xml_texts(self):
+    def make_merged_branch(self):
         builder = self.make_branch_builder('source',
                                            format=self.bzrdir_format())
         builder.start_series()
@@ -1456,14 +1456,22 @@ class V4_2aBundleTester(V4BundleTester):
         self.b1.lock_read()
         self.addCleanup(self.b1.unlock)
 
+    def make_bundle_just_inventories(self, base_revision_id,
+                                     target_revision_id,
+                                     revision_ids):
         sio = StringIO()
-        writer = v4.BundleWriteOperation('a@cset-0-1', 'a@cset-0-3',
+        writer = v4.BundleWriteOperation(base_revision_id, target_revision_id,
                                          self.b1.repository, sio)
         writer.bundle.begin()
-        writer._add_inventory_mpdiffs_from_serializer(
-            ['a@cset-0-3'])
+        writer._add_inventory_mpdiffs_from_serializer(revision_ids)
         writer.bundle.end()
         sio.seek(0)
+        return sio
+
+    def test_single_inventory_multiple_parents_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('a@cset-0-1', 'a@cset-0-3',
+                                                ['a@cset-0-3'])
         reader = v4.BundleReader(sio, stream_input=False)
         records = list(reader.iter_records())
         self.assertEqual(1, len(records))
@@ -1484,6 +1492,93 @@ class V4_2aBundleTester(V4BundleTester):
             '\n'
             'c 0 1 1 1\n'
             'c 1 2 2 2\n', bytes)
+
+    def test_single_inv_no_parents_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('null:', 'a@cset-0-1',
+                                                ['a@cset-0-1'])
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(1, len(records))
+        (bytes, metadata, repo_kind, revision_id,
+         file_id) = records[0]
+        self.assertIs(None, file_id)
+        self.assertEqual('a@cset-0-1', revision_id)
+        self.assertEqual('inventory', repo_kind)
+        self.assertEqual({'parents': [],
+                          'sha1': 'f6ed523eebc7d813d1adbdaf3754c00e1de49446',
+                          'storage_kind': 'mpdiff',
+                         }, metadata)
+        # We should have an mpdiff that takes some lines from both parents.
+        self.assertEqualDiff(
+            'i 3\n'
+            '<inventory file_id="root-id" format="5"'
+                ' revision_id="a@cset-0-1">\n'
+            '<file file_id="file-id" name="file" parent_id="root-id"'
+                ' revision="a@cset-0-1"'
+                ' text_sha1="09c2f8647e14e49e922b955c194102070597c2d1"'
+                ' text_size="17" />\n'
+            '</inventory>\n'
+            '\n', bytes)
+
+    def test_multiple_inventories_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('a@cset-0-1', 'a@cset-0-3',
+            ['a@cset-0-2a', 'a@cset-0-2b', 'a@cset-0-3'])
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(3, len(records))
+        revision_ids = [rev_id for b, m, k, rev_id, f in records]
+        self.assertEqual(['a@cset-0-2a', 'a@cset-0-2b', 'a@cset-0-3'],
+                         revision_ids)
+        metadata_2a = records[0][1]
+        self.assertEqual({'parents': ['a@cset-0-1'],
+                          'sha1': 'a699b8d8fe87361ad758e99655afab44aca287b2',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_2a)
+        metadata_2b = records[1][1]
+        self.assertEqual({'parents': ['a@cset-0-1'],
+                          'sha1': 'c2bab5eda6a31f206042f0fcacc175b76c65a376',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_2b)
+        metadata_3 = records[2][1]
+        self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
+                          'sha1': 'c08b0f8cc256107f0229c98931d1d69c0e843196',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_3)
+        bytes_2a = records[0][0]
+        self.assertEqualDiff(
+            'i 2\n'
+            '<inventory file_id="root-id" format="5"'
+                ' revision_id="a@cset-0-2a">\n'
+            '<file file_id="file-id" name="file" parent_id="root-id"'
+                ' revision="a@cset-0-2a"'
+                ' text_sha1="50f545ff40e57b6924b1f3174b267ffc4576e9a9"'
+                ' text_size="12" />\n'
+            '\n'
+            'c 0 2 2 1\n', bytes_2a)
+        bytes_2b = records[1][0]
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory file_id="root-id" format="5"'
+                ' revision_id="a@cset-0-2b">\n'
+            '\n'
+            'c 0 1 1 1\n'
+            'i 1\n'
+            '<file file_id="file2-id" name="other-file" parent_id="root-id"'
+                ' revision="a@cset-0-2b"'
+                ' text_sha1="b46c0c8ea1e5ef8e46fc8894bfd4752a88ec939e"'
+                ' text_size="14" />\n'
+            '\n'
+            'c 0 2 3 1\n', bytes_2b)
+        bytes_3 = records[2][0]
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory file_id="root-id" format="5"'
+                ' revision_id="a@cset-0-3">\n'
+            '\n'
+            'c 0 1 1 1\n'
+            'c 1 2 2 2\n', bytes_3)
 
 
 class MungedBundleTester(object):
