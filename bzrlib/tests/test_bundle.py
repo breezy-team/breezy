@@ -50,6 +50,22 @@ from bzrlib.tests import (
 from bzrlib.transform import TreeTransform
 
 
+def get_text(vf, key):
+    """Get the fulltext for a given revision id that is present in the vf"""
+    stream = vf.get_record_stream([key], 'unordered', True)
+    record = stream.next()
+    return record.get_bytes_as('fulltext')
+
+
+def get_inventory_text(repo, revision_id):
+    """Get the fulltext for the inventory at revision id"""
+    repo.lock_read()
+    try:
+        return get_text(repo.inventories, (revision_id,))
+    finally:
+        repo.unlock()
+
+
 class MockTree(object):
     def __init__(self):
         from bzrlib.inventory import InventoryDirectory, ROOT_ID
@@ -647,9 +663,10 @@ class BundleTester(object):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         other = self.get_checkout('a@cset-0-5')
-        tree1_inv = self.tree1.branch.repository.get_inventory_xml(
-            'a@cset-0-5')
-        tree2_inv = other.branch.repository.get_inventory_xml('a@cset-0-5')
+        tree1_inv = get_inventory_text(self.tree1.branch.repository,
+                                       'a@cset-0-5')
+        tree2_inv = get_inventory_text(other.branch.repository,
+                                       'a@cset-0-5')
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
@@ -1444,9 +1461,12 @@ class V4_2aBundleTester(V4BundleTester):
         from bzrlib.bundle import serializer
         bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        # We are going to be replacing some text to set the executable bit on a
+        # file. Make sure the text replacement actually works correctly.
+        self.assertContainsRe(new_text, '(?m)B281\n\ni 1\n<inventory')
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B280', 'B295')
+        new_text = new_text.replace('B281', 'B296')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')

@@ -608,10 +608,22 @@ class RevisionInstaller(object):
         for key, metadata, bytes in records:
             revision_id = key[-1]
             parent_ids = metadata['parents']
-            parents = [self._repository.get_inventory(p)
-                       for p in parent_ids]
+            # Note that this assumes the local ghosts are identical to the
+            # ghosts in the source. But the Bundle serialization format doesn't
+            # record any info that would help us figure that stuff out.
+            # We start by going directly to the inventory vf, because the
+            # revisions have not been installed yet
+            parent_keys = [(r,) for r in parent_ids]
+            present_parent_map = self._repository.inventories.get_parent_map(
+                                        parent_keys)
+            present_parent_ids = [p_id for p_id in parent_ids
+                                        if (p_id,) in present_parent_map]
+            # TODO: This doesn't do any sort of caching, etc, so expect it to
+            #       perform rather poorly.
+            parent_invs = list(self._repository.iter_inventories(
+                                present_parent_ids))
             p_texts = [self._source_serializer.write_inventory_to_string(p)
-                       for p in parents]
+                       for p in parent_invs]
             target_lines = multiparent.MultiParent.from_patch(bytes).to_lines(
                 p_texts)
             sha1 = osutils.sha_strings(target_lines)
