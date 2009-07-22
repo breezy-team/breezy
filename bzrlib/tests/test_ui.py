@@ -41,6 +41,7 @@ from bzrlib.tests.test_progress import (
     _TTYStringIO,
     )
 from bzrlib.ui import (
+    CannedInputUIFactory,
     CLIUIFactory,
     SilentUIFactory,
     UIFactory,
@@ -330,3 +331,13 @@ class SilentUITests(TestCase):
             NotImplementedError,
             self.apply_redirected,
             None, stdout, stdout, factory.get_boolean, "foo")
+
+
+class CannedInputUIFactoryTests(TestCase):
+    
+    def test_canned_input_get_input(self):
+        uif = CannedInputUIFactory([True, 'mbp', 'password'])
+        self.assertEqual(uif.get_boolean('Extra cheese?'), True)
+        self.assertEqual(uif.get_username('Enter your user name'), 'mbp')
+        self.assertEqual(uif.get_password('Password for %(host)s', host='example.com'),
+            'password')
