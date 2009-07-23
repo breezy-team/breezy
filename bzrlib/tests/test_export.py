@@ -36,8 +36,7 @@ class TestExport(tests.TestCaseWithTransport):
         self.failIfExists('target/a/c')
 
     def test_dir_export_symlink(self):
-        if osutils.has_symlinks() is False:
-            return
+        self.requireFeature(tests.SymlinkFeature)
         wt = self.make_branch_and_tree('.')
         os.symlink('source', 'link')
         wt.add(['link'])
