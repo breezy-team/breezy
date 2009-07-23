@@ -8,10 +8,12 @@ by Rocco Rutte <pdmef@gmx.net> with hints and help from the git list and
 #mercurial on freenode. hg-fast-export[1] was integrated into
 bzr-fastimport by Ian Clatworthy with permission from Rocco.
 
+The current maintainer is Frej Drejhammar <frej.drejhammar@gmail.com>.
+
 Usage
 =====
 
-Using hg-fast-export is quite simple:
+Using hg-fast-export is quite simple for a mercurial repository <repo>:
 
   bzr init-repo foo.bzr
   cd foo.bzr
@@ -23,6 +25,10 @@ Notes/Limitations
 hg-fast-import supports multiple branches but only named branches with exactly
 one head each. Otherwise commits to the tip of these heads within branch
 will get flattened into merge commits.
+
+The way the hg API and remote access protocol is designed it is not
+possible to use hg-fast-export on remote repositories
+(http/ssh). First clone the repository, then convert it.
 
 Design
 ======
