@@ -70,6 +70,12 @@ Bug Fixes
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
   
+* There was a bug in ``osutils.relpath`` that was only triggered on
+  Windows. Essentially if you were at the root of a drive, and did
+  something to a branch/repo on another drive, we would go into an
+  infinite loop while trying to find a 'relative path'.
+  (John Arbash Meinel, #394227)
+
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
