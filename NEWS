@@ -5,6 +5,9 @@
   * Avoid "No such revision" error when encountering submodules.
    (#400598)
 
+  * Avoid creating empty trees in Git during dpush, as they are not 
+    officially allowed. (#393706)
+
  FEATURES
 
   * Progress bars will now show results from the remote git server.
