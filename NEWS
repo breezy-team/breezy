@@ -77,6 +77,9 @@ Bug Fixes
 Improvements
 ************
 
+* Can now rename/move files even if they have been removed from the inventory.
+  (Marius Kruger)
+
 Documentation
 *************
 
