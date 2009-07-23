@@ -111,6 +111,10 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         self.locked = False
         
     def do_with_locked_branch(self, branch):
+        """Call _set_tags_bytes for a branch.
+
+        New in 1.18.
+        """
         # We need to keep this branch locked until we get a body with the tags
         # bytes.
         self.branch = branch

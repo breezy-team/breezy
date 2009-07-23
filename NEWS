@@ -63,6 +63,10 @@ Bug Fixes
 Improvements
 ************
 
+* Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
+  faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
+  than VFS methods.  (Andrew Bennetts, #398608)
+
 Documentation
 *************
 
