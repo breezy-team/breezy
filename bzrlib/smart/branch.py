@@ -125,9 +125,6 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         if not self.locked:
             # We never acquired the branch successfully in the first place, so
             # there's nothing more to do.
-            # XXX: perhaps it should be easier for request classes to do
-            # nothing further if they have raised an error previously?  It
-            # seems a bit messy to require them to keep track of this state.
             return
         try:
             return SmartServerLockedBranchRequest.do_end(self)
