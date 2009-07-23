@@ -1,237 +1,276 @@
-----------------------------
+============================
 bzr-fastimport Release Notes
-----------------------------
+============================
 
 .. contents::
 
-IN DEVELOPMENT
---------------
+In Development
+==============
 
-  COMPATIBILITY BREAKS:
+Compatability Breaks
+--------------------
 
-    * ``exporters/bzr-fast-export`` has been replaced with a
-      ``fast-export`` command. Some minor issues have been
-      fixed at the same time: the first commit now goes into
-      refs/heads/master (not refs/head/tmp); there's no
-      checkpoint at the top of the stream; parent commits are
-      now always given lower mark numbers than the commits they
-      are merged into. (Ian Clatworthy)
+New Features
+------------
 
-    * The ``fast-import`` command now uses a different mapping of
-      git reference names to bzr branch names. In summary:
-      
-      * ``refs/heads/foo`` is mapped to ``foo``
-      * ``refs/remotes/origin/foo`` is mapped to ``foo.remote``
-      * ``refs/tags/foo`` is mapped to ``foo.tag``
-      * ``*/master`` is mapped to ``trunk``, ``trunk.remote``, etc.
-      * ``*/trunk`` is mapped to ``git-trunk``, ``git-trunk.remote``, etc.
+Improvements
+------------
 
-      This new mapping has been introduced so that more natural
-      branch names are used and to enable round-tripping back to git.
-      (Ian Clatworthy)
+* Updated the bundled version of hg-fast-export to be the latest
+  code (25-May-2009) from http://repo.or.cz/w/fast-export.git.
+  (Ian Clatworthy)
 
-    * The old ``fast-import-filter`` command is now called
-      ``fast-import-query``. ``fast-import-filter`` now
-      really filters the input to produce a fast-import stream
-      based on filtering criteria. See below.
-      (Ian Clatworthy)
+Bug Fixes
+---------
 
-    * The ``--inv-fulltext`` option is no longer supported. It was
-      only used in experimental mode for old versions of bzrlib so
-      it added more complexity than value. (Ian Clatworthy)
+* Fixed inventory delta generation when deleting directories.
+  (Previously the child paths included were relative to the
+  directory when they ought to be relative to the root.)
+  (Ian Clatworthy)
 
-  FEATURES:
+Documentation
+-------------
 
-    * Added ``fast-import-filter`` command for splitting out a
-      subdirectory or bunch of files into their own project. It can
-      also be used to create a new repository without any history
-      for nominated files and directories. This is useful for
-      removing information which is a security risk, huge binary
-      files like ISO images, etc.
-      (Ian Clatworthy)
+Testing
+-------
 
-    * Copying of files and symbolic links is now supported.
-      (Ian Clatworthy)
+Internals
+---------
 
-    * Initial cut at reset support. (Brian de Alwis, Ian Clatworthy)
 
-  IMPROVEMENTS:
+0.8 22-Jul-2009
+===============
 
-    * If ``refs/heads/xxx`` and ``refs/remotes/origin/xxx`` are both
-      defined, the latter is now mapped to a bzr branch called
-      ``xxx.remote`` rather than ``remotes--origins--xxx``.
-      (Ian Clatworthy)
+Compatibility Breaks
+--------------------
 
-    * ``bzr fast-import-info`` now handles an unlimited # of parents for a
-      revision. The spec suggests the maximum ought to be 16 but the linux
-      kernel has revisions with more than that.
-      (Ian Clatworthy)
+* ``exporters/bzr-fast-export`` has been replaced with a
+  ``fast-export`` command. Some minor issues have been
+  fixed at the same time: the first commit now goes into
+  refs/heads/master (not refs/head/tmp); there's no
+  checkpoint at the top of the stream; parent commits are
+  now always given lower mark numbers than the commits they
+  are merged into. (Ian Clatworthy)
 
-    * ``bzr fast-import-info`` now reports on things that may need caching,
-      i.e. merges, rename old paths and copy source paths.
-      (Ian Clatworthy)
+* The ``fast-import`` command now uses a different mapping of
+  git reference names to bzr branch names. In summary:
+  
+  * ``refs/heads/foo`` is mapped to ``foo``
+  * ``refs/remotes/origin/foo`` is mapped to ``foo.remote``
+  * ``refs/tags/foo`` is mapped to ``foo.tag``
+  * ``*/master`` is mapped to ``trunk``, ``trunk.remote``, etc.
+  * ``*/trunk`` is mapped to ``git-trunk``, ``git-trunk.remote``, etc.
 
-    * Tag commands with a missing from clause now produce a warning but
-      are otherwise ignored. (Scott James Remnant, Ian Clatworthy)
+  This new mapping has been introduced so that more natural
+  branch names are used and to enable round-tripping back to git.
+  (Ian Clatworthy)
 
-    * The fastimport-id-map file can now have more revisions than the
-      repository. (Scott James Remnant)
+* The old ``fast-import-filter`` command is now called
+  ``fast-import-query``. ``fast-import-filter`` now
+  really filters the input to produce a fast-import stream
+  based on filtering criteria. See below.
+  (Ian Clatworthy)
 
-    * Updated the bundled version of hg-fast-export to be the latest
-      code from http://repo.or.cz/w/fast-export.git. It should now
-      support recent Mercurial releases.
-      (Ian Clatworthy, #318903)
+* The ``--inv-fulltext`` option is no longer supported. It was
+  only used in experimental mode for old versions of bzrlib so
+  it added more complexity than value. (Ian Clatworthy)
 
-  BUG FIXES:
+New Features
+------------
 
-    * Fixed a *bad* bug where filecopy commands were being parsed
-      as filerename commands. Repositories generated by previous
-      version of bzr-fast-import where the input stream contained
-      filecopy commands might be missing data (the copy source will
-      no longer be there if it was unchanged since the copy happened)
-      and ought to be regenerated.
-      (Ian Clatworthy)
+* Added ``fast-import-filter`` command for splitting out a
+  subdirectory or bunch of files into their own project. It can
+  also be used to create a new repository without any history
+  for nominated files and directories. This is useful for
+  removing information which is a security risk, huge binary
+  files like ISO images, etc.
+  (Ian Clatworthy)
 
-    * Fixed how the per-file graph is generated. The per-file graph
-      may still be less than perfect in the case where a file is only
-      changed in a merge and not the parent, but in the vast majority
-      of cases now, ``bzr check`` should no longer report inconsistent
-      parents. (Ian Clatworthy)
+* Copying of files and symbolic links is now supported.
+  (Ian Clatworthy)
 
-    * Fix ``os`` import as needed on Windows.
-      (Ian Clatworthy, esskov, #264988)
+* Initial cut at reset support. (Brian de Alwis, Ian Clatworthy)
 
-    * Handle a directory turning into a file and then the children
-      of that directory being deleted.
-      (Ian Clatworthy, #309486)
+Improvements
+------------
 
-    * Handle an empty email section.
-      (Ian Clatworthy)
+* If ``refs/heads/xxx`` and ``refs/remotes/origin/xxx`` are both
+  defined, the latter is now mapped to a bzr branch called
+  ``xxx.remote`` rather than ``remotes--origins--xxx``.
+  (Ian Clatworthy)
 
-    * Handle multiple merges within the one merge clause. That's illegal
-      according to the spec but git-fast-export does it.
-      (Ian Clatworthy, #259711)
+* ``bzr fast-import-info`` now handles an unlimited # of parents for a
+  revision. The spec suggests the maximum ought to be 16 but the linux
+  kernel has revisions with more than that.
+  (Ian Clatworthy)
 
-    * Handle names and paths that aren't utf8 encoded. The spec recommends
-      utf8 encoding of these but git-fast-export doesn't always do that.
-      (Ian Clatworthy, #289088)
+* ``bzr fast-import-info`` now reports on things that may need caching,
+  i.e. merges, rename old paths and copy source paths.
+  (Ian Clatworthy)
 
-    * Ignore lightweight tags with no from clause rather than abort.
-      (It seems git-fast-export outputs these commands frequently now
-      while it didn't appear to in early versions.)
-      (Ian Clatworthy, edice, #259711)
+* Tag commands with a missing from clause now produce a warning but
+  are otherwise ignored. (Scott James Remnant, Ian Clatworthy)
 
-    * Import into rich-root (and subtree) repositories without aborting.
-      (Ian Clatworthy, #300921)
+* The fastimport-id-map file can now have more revisions than the
+  repository. (Scott James Remnant)
 
-    * Recursively delete children when a directory is deleted.
-      (Scott James Remnant)
+* Updated the bundled version of hg-fast-export to be the latest
+  code from http://repo.or.cz/w/fast-export.git. It should now
+  support recent Mercurial releases.
+  (Ian Clatworthy, #318903)
 
-    * The ``deleteall`` command now only tries to delete files in the
-      nominated branch, not all known files. As a consequence,
-      it should now be possible (if it wasn't before) to import
-      multiple Darcs branches (via darcs-fast-export) at once.
-      (Ian Clatworthy)
+Bug Fixes
+---------
 
-  API BREAKS:
+* Fixed a *bad* bug where filecopy commands were being parsed
+  as filerename commands. Repositories generated by previous
+  version of bzr-fast-import where the input stream contained
+  filecopy commands might be missing data (the copy source will
+  no longer be there if it was unchanged since the copy happened)
+  and ought to be regenerated.
+  (Ian Clatworthy)
 
-  TESTING:
+* Fixed how the per-file graph is generated. The per-file graph
+  may still be less than perfect in the case where a file is only
+  changed in a merge and not the parent, but in the vast majority
+  of cases now, ``bzr check`` should no longer report inconsistent
+  parents. (Ian Clatworthy)
 
-    * A large number of tests have been added.
-      (Ian Clatworthy)
+* Fix ``os`` import as needed on Windows.
+  (Ian Clatworthy, esskov, #264988)
 
-  INTERNALS:
+* Handle a directory turning into a file and then the children
+  of that directory being deleted.
+  (Ian Clatworthy, #309486)
 
-    * Refactored ``processors/generic_processor.py`` into a bunch of modules.
-      (Ian Clatworthy)
+* Handle an empty email section.
+  (Ian Clatworthy)
+
+* Handle multiple merges within the one merge clause. That's illegal
+  according to the spec but git-fast-export does it.
+  (Ian Clatworthy, #259711)
+
+* Handle names and paths that aren't utf8 encoded. The spec recommends
+  utf8 encoding of these but git-fast-export doesn't always do that.
+  (Ian Clatworthy, #289088)
+
+* Ignore lightweight tags with no from clause rather than abort.
+  (It seems git-fast-export outputs these commands frequently now
+  while it didn't appear to in early versions.)
+  (Ian Clatworthy, edice, #259711)
+
+* Import into rich-root (and subtree) repositories without aborting.
+  (Ian Clatworthy, #300921)
+
+* Recursively delete children when a directory is deleted.
+  (Scott James Remnant)
+
+* The ``deleteall`` command now only tries to delete files in the
+  nominated branch, not all known files. As a consequence,
+  it should now be possible (if it wasn't before) to import
+  multiple Darcs branches (via darcs-fast-export) at once.
+  (Ian Clatworthy)
+
+Testing
+-------
+
+* A large number of tests have been added.
+  (Ian Clatworthy)
+
+Internals
+---------
+
+* Refactored ``processors/generic_processor.py`` into a bunch of modules.
+  (Ian Clatworthy)
 
 
 0.7 09-Feb-2009
----------------
+===============
 
-  COMPATIBILITY BREAKS:
+Compatibility Breaks
+--------------------
 
-    * bzr-fast-export.py renamed to bzr-fast-export.
-      (Jelmer Vernooij)
+* bzr-fast-export.py renamed to bzr-fast-export.
+  (Jelmer Vernooij)
 
-  IMPROVEMENTS:
+Improvements
+------------
 
-    * Add support for the deleteall command.
-      (Miklos Vajna, #284941)
+* Add support for the deleteall command.
+  (Miklos Vajna, #284941)
 
-  BUG FIXES:
+Bug Fixes
+---------
 
-    * bzr-fast-export now exports rm+mv correctly.
-      (Jonas)
+* bzr-fast-export now exports rm+mv correctly.
+  (Jonas)
 
-    * Fix recursive rename handling in bzr-fast-export.
-      (Pieter de Bie, #287785)
+* Fix recursive rename handling in bzr-fast-export.
+  (Pieter de Bie, #287785)
 
-    * hg-fast-export should use binary mode on Windows.
-      (Alexey Stukalov)
+* hg-fast-export should use binary mode on Windows.
+  (Alexey Stukalov)
 
-    * setup.py no longer assumes python2.4.
-      (schickb@gmail.com)
+* setup.py no longer assumes python2.4.
+  (schickb@gmail.com)
 
-    * setup.py support fixed.
-      (Jelmer Vernooij)
+* setup.py support fixed.
+  (Jelmer Vernooij)
 
-    * Update the last-modified revision for a renamed file.
-      (John Arbash Meinel)
+* Update the last-modified revision for a renamed file.
+  (John Arbash Meinel)
 
 
 0.6 23-Jul-2008
----------------
+===============
 
-  FEATURES:
+Improvements
+------------
 
-  IMPROVEMENTS:
+* Added NEWS containing Release Notes. (Ian Clatworthy)
 
-    * Added NEWS containing Release Notes. (Ian Clatworthy)
+* ``bzr help fastimport`` now provides help that is useful.
+  (Ian Clatworthy)
 
-    * ``bzr help fastimport`` now provides help that is useful.
-      (Ian Clatworthy)
+* Numerous fixes to ``bzr-fast-export.py`` to improve round-tripping
+  with Git. Added ``--import-marks`` and ``--export-marks`` options
+  to ``fast-import`` as well.
+  (Pieter de Bie)
 
-    * Numerous fixes to ``bzr-fast-export.py`` to improve round-tripping
-      with Git. Added ``--import-marks`` and ``--export-marks`` options
-      to ``fast-import`` as well.
-      (Pieter de Bie)
+* ``svn-fast-export.py`` now supports a regular-expression to specify
+  the branches to export.
+  (Mirko Friedenhagen)
 
-    * ``svn-fast-export.py`` now supports a regular-expression to specify
-      the branches to export.
-      (Mirko Friedenhagen)
+Bug Fixes
+---------
 
-  BUG FIXES:
+* Support the new Repository API added in bzr.dev r3510. The old API
+  will be used for earlier versions of bzr including bzr 1.6beta2 and
+  earlier. (Ian Clatworthy)
 
-    * Support the new Repository API added in bzr.dev r3510. The old API
-      will be used for earlier versions of bzr including bzr 1.6beta2 and
-      earlier. (Ian Clatworthy)
+Compatibility Breaks
+--------------------
 
-  COMPATIBILITY BREAKS:
+* The ``--inv-fulltext`` option is not yet supported when the new
+  Repository API is used to import revisions. The option can be
+  provided but it will be ignored. (Ian Clatworthy)
 
-    * The ``--inv-fulltext`` option is not yet supported when the new
-      Repository API is used to import revisions. The option can be
-      provided but it will be ignored. (Ian Clatworthy)
+API Breaks
 
-  API BREAKS:
+* The ``RevisionLoader`` class has been renamed to ``RevisionLoader1``.
+  The ``ExperimentalRevisionLoader`` class has been renamed to
+  ``ImportRevisionLoader1``. New classes called ``RevisionLoader2``
+  and ``ImportRevisionLoader2`` are provided that use the new
+  Repository API. (Ian Clatworthy)
 
-    * The ``RevisionLoader`` class has been renamed to ``RevisionLoader1``.
-      The ``ExperimentalRevisionLoader`` class has been renamed to
-      ``ImportRevisionLoader1``. New classes called ``RevisionLoader2``
-      and ``ImportRevisionLoader2`` are provided that use the new
-      Repository API. (Ian Clatworthy)
+Internals
+---------
 
-  TESTING:
-
-  INTERNALS:
-
-    * Improved packaging by adding a setup.py file. (Ian Clatworthy)
+* Improved packaging by adding a setup.py file. (Ian Clatworthy)
 
 
 0.5 02-Jun-2008
----------------
+===============
 
-  FEATURES:
-
-    * Version suitable for Bazaar 1.5.
-      (Ian Clatworthy)
+* Version suitable for Bazaar 1.5.
+  (Ian Clatworthy)
