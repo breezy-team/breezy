@@ -604,8 +604,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
     def record_delete(self, path, ie):
         self._add_entry((path, None, ie.file_id, None))
         if ie.kind == 'directory':
-            for child_path, entry in \
+            for child_relpath, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
+                child_path = osutils.pathjoin(path, child_relpath)
                 self._add_entry((child_path, None, entry.file_id, None))
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
