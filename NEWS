@@ -16,8 +16,17 @@ New Features
 Improvements
 ------------
 
+* Updated the bundled version of hg-fast-export to be the latest
+  code (25-May-2009) from http://repo.or.cz/w/fast-export.git.
+  (Ian Clatworthy)
+
 Bug Fixes
 ---------
+
+* Fixed inventory delta generation when deleting directories.
+  (Previously the child paths included were relative to the
+  directory when they ought to be relative to the root.)
+  (Ian Clatworthy)
 
 Documentation
 -------------
