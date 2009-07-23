@@ -1050,7 +1050,7 @@ def relpath(base, path):
             s.append(tail)
 
     if s:
-        return pathjoin(*s)
+        return pathjoin(*reversed(s))
     else:
         return ''
 

@@ -632,6 +632,11 @@ class TestRelpath(tests.TestCase):
         subdir = cwd + '/subdir'
         self.assertEqual('subdir', osutils.relpath(cwd, subdir))
 
+    def test_deep_relpath(self):
+        cwd = osutils.getcwd()
+        subdir = cwd + '/sub/subsubdir'
+        self.assertEqual('sub/subsubdir', osutils.relpath(cwd, subdir))
+
     def test_not_relative(self):
         self.assertRaises(errors.PathNotChild,
                           osutils.relpath, 'C:/path', 'H:/path')
