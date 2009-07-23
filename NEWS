@@ -12,6 +12,17 @@ In Development
 Compatibility Breaks
 ********************
 
+New Features
+************
+
+* ``bzr reconfigure`` now takes options ``--stacked-on URL`` and
+  ``--unstacked`` to change stacking of a branch.
+  (Martin Pool, #391411)
+
+Bug Fixes
+*********
+
+
 * ``bzr register-branch`` from the Launchpad plugin now refers to "project"
   instead of "product" which is the correct Launchpad terminology.  The
   --product option is deprecated and users should switch to using --project.
@@ -25,10 +36,6 @@ New Features
   are present in the working tree (if one is present) and no revision is
   speified. The configuration option ``push_strict`` can be used to set the
   default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
-
-* ``bzr reconfigure`` now takes options ``--stacked-on URL`` and
-  ``--unstacked`` to change stacking of a branch.
-  (Martin Pool, #391411)
 
 * ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
   show revision info for the working tree instead of the branch.
