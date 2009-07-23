@@ -574,8 +574,9 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open('b1/one', 'wb').write('one\n')
-        self.tree1.add('one')
+        self.build_tree_contents([('b1/one', 'one\n')])
+        self.tree1.add('one', 'one-id')
+        self.tree1.set_root_id('root-id')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle('null:', 'a@cset-0-1')
@@ -592,8 +593,8 @@ class BundleTester(object):
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
                 ])
-        open('b1/sub/sub/emptyfile.txt', 'wb').close()
-        open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
+        self.build_tree_contents([('b1/sub/sub/emptyfile.txt', ''),
+                                  ('b1/dir/nolastnewline.txt', 'bloop')])
         tt = TreeTransform(self.tree1)
         tt.new_file('executable', tt.root, '#!/bin/sh\n', 'exe-1', True)
         tt.apply()
@@ -1335,7 +1336,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B222', 'B237')
+        new_text = new_text.replace('B260', 'B275')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
@@ -1463,10 +1464,10 @@ class V4_2aBundleTester(V4BundleTester):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         # We are going to be replacing some text to set the executable bit on a
         # file. Make sure the text replacement actually works correctly.
-        self.assertContainsRe(new_text, '(?m)B281\n\ni 1\n<inventory')
+        self.assertContainsRe(new_text, '(?m)B244\n\ni 1\n<inventory')
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B281', 'B296')
+        new_text = new_text.replace('B244', 'B259')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
