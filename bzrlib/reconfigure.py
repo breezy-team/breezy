@@ -55,6 +55,21 @@ class ReconfigureStackedOn(object):
             branch.unlock()
 
 
+class ReconfigureUnstacked(object):
+
+    def apply(self, bzrdir):
+        branch = bzrdir.open_branch()
+        branch.lock_write()
+        try:
+            branch.set_stacked_on_url(None)
+            if not trace.is_quiet():
+                ui.ui_factory.note(
+                    "%s is now not stacked\n"
+                    % (branch.base,))
+        finally:
+            branch.unlock()
+
+
 class Reconfigure(object):
 
     def __init__(self, bzrdir, new_bound_location=None):

@@ -5264,16 +5264,7 @@ class cmd_reconfigure(Command):
         elif stacked_on is not None:
             reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:
-            branch = directory.open_branch()
-            branch.lock_write()
-            try:
-                branch.set_stacked_on_url(None)
-                if not is_quiet():
-                    self.outf.write(
-                        "%s is now not stacked\n"
-                        % (branch.base,))
-            finally:
-                branch.unlock()
+            reconfigure.ReconfigureUnstacked().apply(directory)
         # At the moment you can use --stacked-on and a different
         # reconfiguration shape at the same time; there seems no good reason
         # to ban it.
