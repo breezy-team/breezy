@@ -116,6 +116,9 @@ Internals
   prevent corrupt deltas from affecting consistency of data structures on
   disk. (Robert Collins)
 
+* --subunit support now adds timestamps if the subunit version supports
+  it. (Robert Collins)
+
 
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
