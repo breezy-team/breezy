@@ -63,11 +63,12 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                os.symlink(ie.symlink_target, fullpath)
+                symlink_target = tree.get_symlink_target(ie.file_id)
+                os.symlink(symlink_target, fullpath)
             except OSError,e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, self.symlink_target, e))
+                    % (fullpath, symlink_target, e))
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                (ie.file_id, ie.kind))
