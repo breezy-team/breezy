@@ -5,7 +5,7 @@ dulwich_minimum_version = (0, 3, 3)
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version
 # versions ending in 'final' mean release (well tested, etc)
-bzr_plugin_version = (0, 4, 1, 'final', 0)
+bzr_plugin_version = (0, 4, 2, 'dev', 0)
 
 bzr_commands = ["svn-import", "svn-layout"]
 
