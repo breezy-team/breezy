@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,13 +14,46 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Reconfigure a bzrdir into a new tree/branch/repository layout"""
+"""Reconfigure a bzrdir into a new tree/branch/repository layout.
+
+Various types of reconfiguration operation are available either by
+constructing a class or using a factory method on Reconfigure.
+"""
+
 
 from bzrlib import (
     branch,
     bzrdir,
     errors,
+    trace,
+    ui,
+    urlutils,
     )
+
+
+# TODO: common base class for all reconfigure operations, making no
+# assumptions about what kind of change will be done.
+
+
+class ReconfigureStackedOn(object):
+    """Reconfigures a branch to be stacked on another branch."""
+
+    def apply(self, bzrdir, stacked_on_url):
+        branch = bzrdir.open_branch()
+        # it may be a path relative to the cwd or a url; the branch wants
+        # a path relative to itself...
+        on_url = urlutils.relative_url(branch.base,
+            urlutils.normalize_url(stacked_on_url))
+        branch.lock_write()
+        try:
+            branch.set_stacked_on_url(on_url)
+            if not trace.is_quiet():
+                ui.ui_factory.note(
+                    "%s is now stacked on %s\n"
+                    % (branch.base, branch.get_stacked_on_url()))
+        finally:
+            branch.unlock()
+
 
 class Reconfigure(object):
 

@@ -5262,21 +5262,7 @@ class cmd_reconfigure(Command):
         if stacked_on and unstacked:
             raise BzrCommandError("Can't use both --stacked-on and --unstacked")
         elif stacked_on is not None:
-            branch = directory.open_branch()
-            # it may be a path relative to the cwd or a url; the branch wants
-            # a path relative to itself...
-            on_url = urlutils.relative_url(branch.base,
-                urlutils.normalize_url(stacked_on))
-            branch.lock_write()
-            try:
-                branch.set_stacked_on_url(on_url)
-                if not is_quiet():
-                    self.outf.write(
-                        "%s is now stacked on %s\n"
-                        % (branch.base,
-                           branch.get_stacked_on_url()))
-            finally:
-                branch.unlock()
+            reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
         elif unstacked:
             branch = directory.open_branch()
             branch.lock_write()
