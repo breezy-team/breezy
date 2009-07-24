@@ -133,8 +133,6 @@ class Tree(object):
         return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        if file_id == self.inventory.root.file_id:
-            return True
         return self.inventory.has_id(file_id)
 
     def is_ignored(self, filename):
@@ -825,7 +823,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if not tree.has_id(file_id):
+                if not tree.has_or_had_id(file_id):
                     continue
                 for child_id in tree.iter_children(file_id):
                     if child_id not in interesting_ids:

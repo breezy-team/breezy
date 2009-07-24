@@ -799,7 +799,7 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
-        tree.lock_write()
+        tree.lock_tree_write()
         try:
             self._run(tree, names_list, rel_names, after)
         finally:
@@ -813,7 +813,7 @@ class cmd_mv(Command):
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
-        work_tree.lock_write()
+        work_tree.lock_tree_write()
         try:
             rename_map.RenameMap.guess_renames(work_tree, dry_run)
         finally:
@@ -3788,16 +3788,16 @@ class cmd_merge(Command):
             base_branch, base_path = Branch.open_containing(base_loc,
                 possible_transports)
         # Find the revision ids
-        if revision is None or len(revision) < 1 or revision[-1] is None:
+        other_revision_id = None
+        base_revision_id = None
+        if revision is not None:
+            if len(revision) >= 1:
+                other_revision_id = revision[-1].as_revision_id(other_branch)
+            if len(revision) == 2:
+                base_revision_id = revision[0].as_revision_id(base_branch)
+        if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        else:
-            other_revision_id = revision[-1].as_revision_id(other_branch)
-        if (revision is not None and len(revision) == 2
-            and revision[0] is not None):
-            base_revision_id = revision[0].as_revision_id(base_branch)
-        else:
-            base_revision_id = None
         # Remember where we merge from
         if ((remember or tree.branch.get_submit_branch() is None) and
              user_location is not None):
@@ -5259,14 +5259,37 @@ class cmd_reconfigure(Command):
             ),
         Option('bind-to', help='Branch to bind checkout to.', type=str),
         Option('force',
-               help='Perform reconfiguration even if local changes'
-               ' will be lost.')
+            help='Perform reconfiguration even if local changes'
+            ' will be lost.'),
+        Option('stacked-on',
+            help='Reconfigure a branch to be stacked on another branch.',
+            type=unicode,
+            ),
+        Option('unstacked',
+            help='Reconfigure a branch to be unstacked.  This '
+                'may require copying substantial data into it.',
+            ),
         ]
 
-    def run(self, location=None, target_type=None, bind_to=None, force=False):
+    def run(self, location=None, target_type=None, bind_to=None, force=False,
+            stacked_on=None,
+            unstacked=None):
         directory = bzrdir.BzrDir.open(location)
+        if stacked_on and unstacked:
+            raise BzrCommandError("Can't use both --stacked-on and --unstacked")
+        elif stacked_on is not None:
+            reconfigure.ReconfigureStackedOn().apply(directory, stacked_on)
+        elif unstacked:
+            reconfigure.ReconfigureUnstacked().apply(directory)
+        # At the moment you can use --stacked-on and a different
+        # reconfiguration shape at the same time; there seems no good reason
+        # to ban it.
         if target_type is None:
-            raise errors.BzrCommandError('No target configuration specified')
+            if stacked_on or unstacked:
+                return
+            else:
+                raise errors.BzrCommandError('No target configuration '
+                    'specified')
         elif target_type == 'branch':
             reconfiguration = reconfigure.Reconfigure.to_branch(directory)
         elif target_type == 'tree':

@@ -19,6 +19,7 @@ import os
 
 from bzrlib import (
     export,
+    osutils,
     tests,
     )
 
@@ -34,3 +35,10 @@ class TestExport(tests.TestCaseWithTransport):
         self.failUnlessExists('target/a/b')
         self.failIfExists('target/a/c')
 
+    def test_dir_export_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        os.symlink('source', 'link')
+        wt.add(['link'])
+        export.export(wt, 'target', format="dir")
+        self.failUnlessExists('target/link')
