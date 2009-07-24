@@ -26,6 +26,10 @@ New Features
 Bug Fixes
 *********
 
+* Annotating on a stacked branch will now succeed in simple scenarios.
+  There are still some complex scenarios where it will fail (bug #399884)
+  (John Arbash Meinel, #393366)
+
 * Authenticating against an ssh server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
