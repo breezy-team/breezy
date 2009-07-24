@@ -16,8 +16,12 @@ Compatibility Breaks
 New Features
 ************
 
-* ``merge --interactive`` applies a user-selected portion of the merge.  The UI
-  is similar to ``shelve``.  (Aaron Bentley)
+* ``bzr merge --interactive`` applies a user-selected portion of the
+  merge.  The UI is similar to ``shelve``.  (Aaron Bentley)
+
+* ``bzr reconfigure`` now takes options ``--stacked-on URL`` and
+  ``--unstacked`` to change stacking of a branch.
+  (Martin Pool, #391411)
 
 Bug Fixes
 *********
@@ -172,7 +176,7 @@ New Features
 
 * ``bzr push`` now aborts if uncommitted changes (including pending merges)
   are present in the working tree (if one is present) and no revision is
-  speified. The configuration option ``push_strict`` can be used to set the
+  specified. The configuration option ``push_strict`` can be used to set the
   default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
 
 * ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to
