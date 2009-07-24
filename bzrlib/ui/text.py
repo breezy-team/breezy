@@ -18,6 +18,7 @@
 """Text UI, write output to the console.
 """
 
+import getpass
 import os
 import sys
 import time
