@@ -236,7 +236,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
             shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, base_inv, base_ie.get(basename),
+                    texts, mapping, child_path, child_hexsha, base_inv, base_children.get(basename),
                     file_id, revision_id, parent_invs, shagitmap, lookup_object)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
@@ -288,6 +288,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         try:
             o = lookup_object(head)
         except KeyError:
+            trace.mutter('missing head %s', head)
             continue
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
@@ -401,6 +402,11 @@ class InterGitNonGitRepository(InterGitRepository):
         pack_hint = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
+        if interesting_heads is not None:
+            present_interesting_heads = self.target.has_revisions(interesting_heads)
+            missing_interesting_heads = set(interesting_heads) - present_interesting_heads
+            if missing_interesting_heads:
+                raise AssertionError("Missing interesting heads: %r" % missing_interesting_heads)
         return self._refs
 
 
@@ -455,7 +461,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                     import_git_objects(self.target, mapping, objects_iter, 
                             store, recorded_wants, pb)
                 finally:
-                    return self.target.commit_write_group()
+                    pack_hint = self.target.commit_write_group()
+                return pack_hint
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -490,7 +497,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                             self.source._git.object_store, 
                             target_git_object_retriever, wants, pb)
                 finally:
-                    return self.target.commit_write_group()
+                    pack_hint = self.target.commit_write_group()
+                return pack_hint
             finally:
                 self.target.unlock()
         finally:

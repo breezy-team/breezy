@@ -70,7 +70,7 @@ class MissingObjectsIterator(object):
             yield (revid, git_commit)
 
     def need_sha(self, sha):
-        if sha in self._sent_shas:
+        if sha is None or sha in self._sent_shas:
             return False
         (type, (fileid, revid)) = self._object_store._idmap.lookup_git_sha(sha)
         assert type in ("blob", "tree")
@@ -83,7 +83,13 @@ class MissingObjectsIterator(object):
 
     def queue(self, sha, obj, path, ie=None, inv=None, unusual_modes=None):
         if obj is None:
-            obj = (ie, inv, unusual_modes)
+            # Can't lazy-evaluate directories, since they might be eliminated
+            if ie.kind == "directory":
+                obj = self._object_store._get_ie_object(ie, inv, unusual_modes)
+                if obj is None:
+                    return
+            else:
+                obj = (ie, inv, unusual_modes)
         self._pending.append((obj, path))
         self._sent_shas.add(sha)
 

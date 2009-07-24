@@ -16,6 +16,7 @@
 
 import bzrlib
 from bzrlib import (
+    config,
     tag,
     trace,
     ui,
@@ -295,6 +296,14 @@ class RemoteGitBranch(GitBranch):
 
     def last_revision(self):
         return self.mapping.revision_id_foreign_to_bzr(self.head)
+
+    def _get_config(self):
+        class EmptyConfig(object):
+
+            def _get_configobj(self):
+                return config.ConfigObj()
+
+        return EmptyConfig()
 
     @property
     def head(self):

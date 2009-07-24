@@ -136,8 +136,12 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                self._idmap.add_entry(ret.id, "tree", (entry.file_id, inv.revision_id))
-                return ret.id, ret
+                if ret is None:
+                    hexsha = None
+                else:
+                    hexsha = ret.id
+                self._idmap.add_entry(hexsha, "tree", (entry.file_id, inv.revision_id))
+                return hexsha, ret
         else:
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None

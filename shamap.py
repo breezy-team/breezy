@@ -317,17 +317,25 @@ class TdbGitShaMap(GitShaMap):
     def commit(self):
         pass
 
-    def add_entry(self, sha, type, type_data):
+    def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
-        self.db["git\0" + hex_to_sha(sha)] = "\0".join((type, type_data[0], type_data[1]))
-        if type == "commit":
-            self.db["commit\0" + type_data[0]] = "\0".join((hex_to_sha(sha), type_data[1]))
+        if hexsha is None:
+            sha = ""
         else:
-            self.db["\0".join((type, type_data[0], type_data[1]))] = hex_to_sha(sha)
+            sha = hex_to_sha(hexsha)
+            self.db["git\0" + sha] = "\0".join((type, type_data[0], type_data[1]))
+        if type == "commit":
+            self.db["commit\0" + type_data[0]] = "\0".join((sha, type_data[1]))
+        else:
+            self.db["\0".join((type, type_data[0], type_data[1]))] = sha
 
     def lookup_tree(self, fileid, revid):
-        return sha_to_hex(self.db["\0".join(("tree", fileid, revid))])
+        sha = self.db["\0".join(("tree", fileid, revid))]
+        if sha == "":
+            return None
+        else:
+            return sha_to_hex(sha)
 
     def lookup_blob(self, fileid, revid):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
