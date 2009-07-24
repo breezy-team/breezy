@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,6 +58,7 @@ from bzrlib import (
     errors,
     generate_ids,
     globbing,
+    graph as _mod_graph,
     hashcache,
     ignores,
     inventory,
@@ -477,31 +478,42 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         incorrectly attributed to CURRENT_REVISION (but after committing, the
         attribution will be correct).
         """
-        basis = self.basis_tree()
-        basis.lock_read()
-        try:
-            changes = self.iter_changes(basis, True, [self.id2path(file_id)],
-                require_versioned=True).next()
-            changed_content, kind = changes[2], changes[6]
-            if not changed_content:
-                return basis.annotate_iter(file_id)
-            if kind[1] is None:
-                return None
-            import annotate
-            if kind[0] != 'file':
-                old_lines = []
-            else:
-                old_lines = list(basis.annotate_iter(file_id))
-            old = [old_lines]
-            for tree in self.branch.repository.revision_trees(
-                self.get_parent_ids()[1:]):
-                if file_id not in tree:
+        maybe_file_parent_keys = []
+        for parent_id in self.get_parent_ids():
+            try:
+                parent_tree = self.revision_tree(parent_id)
+            except errors.NoSuchRevisionInTree:
+                parent_tree = self.branch.repository.revision_tree(parent_id)
+            parent_tree.lock_read()
+            try:
+                if file_id not in parent_tree:
                     continue
-                old.append(list(tree.annotate_iter(file_id)))
-            return annotate.reannotate(old, self.get_file(file_id).readlines(),
-                                       default_revision)
-        finally:
-            basis.unlock()
+                ie = parent_tree.inventory[file_id]
+                if ie.kind != 'file':
+                    # Note: this is slightly unnecessary, because symlinks and
+                    # directories have a "text" which is the empty text, and we
+                    # know that won't mess up annotations. But it seems cleaner
+                    continue
+                parent_text_key = (file_id, ie.revision)
+                if parent_text_key not in maybe_file_parent_keys:
+                    maybe_file_parent_keys.append(parent_text_key)
+            finally:
+                parent_tree.unlock()
+        graph = _mod_graph.Graph(self.branch.repository.texts)
+        heads = graph.heads(maybe_file_parent_keys)
+        file_parent_keys = []
+        for key in maybe_file_parent_keys:
+            if key in heads:
+                file_parent_keys.append(key)
+
+        # Now we have the parents of this content
+        annotator = self.branch.repository.texts.get_annotator()
+        text = self.get_file(file_id).read()
+        this_key =(file_id, default_revision)
+        annotator.add_special_text(this_key, file_parent_keys, text)
+        annotations = [(key[-1], line)
+                       for key, line in annotator.annotate_flat(this_key)]
+        return annotations
 
     def _get_ancestors(self, default_revision):
         ancestors = set([default_revision])
@@ -1464,9 +1476,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_tail = splitpath(from_rel)[-1]
         from_id = inv.path2id(from_rel)
         if from_id is None:
-            raise errors.BzrRenameFailedError(from_rel,to_rel,
-                errors.NotVersionedError(path=str(from_rel)))
-        from_entry = inv[from_id]
+            # if file is missing in the inventory maybe it's in the basis_tree
+            basis_tree = self.branch.basis_tree()
+            from_id = basis_tree.path2id(from_rel)
+            if from_id is None:
+                raise errors.BzrRenameFailedError(from_rel,to_rel,
+                    errors.NotVersionedError(path=str(from_rel)))
+            # put entry back in the inventory so we can rename it
+            from_entry = basis_tree.inventory[from_id].copy()
+            inv.add(from_entry)
+        else:
+            from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)

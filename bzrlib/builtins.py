@@ -449,18 +449,18 @@ class cmd_remove_tree(Command):
         except errors.NoWorkingTree:
             raise errors.BzrCommandError("No working tree to remove")
         except errors.NotLocalUrl:
-            raise errors.BzrCommandError("You cannot remove the working tree of a "
-                                         "remote path")
+            raise errors.BzrCommandError("You cannot remove the working tree"
+                                         " of a remote path")
         if not force:
-            changes = working.changes_from(working.basis_tree())
-            if changes.has_changed():
+            # XXX: What about pending merges ? -- vila 20090629
+            if working.has_changes(working.basis_tree()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
         branch_path = working.branch.bzrdir.root_transport.base
         if working_path != branch_path:
-            raise errors.BzrCommandError("You cannot remove the working tree from "
-                                         "a lightweight checkout")
+            raise errors.BzrCommandError("You cannot remove the working tree"
+                                         " from a lightweight checkout")
 
         d.destroy_workingtree()
 
@@ -799,7 +799,7 @@ class cmd_mv(Command):
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
-        tree.lock_write()
+        tree.lock_tree_write()
         try:
             self._run(tree, names_list, rel_names, after)
         finally:
@@ -813,7 +813,7 @@ class cmd_mv(Command):
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
-        work_tree.lock_write()
+        work_tree.lock_tree_write()
         try:
             rename_map.RenameMap.guess_renames(work_tree, dry_run)
         finally:
@@ -1096,26 +1096,17 @@ class cmd_push(Command):
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
         if strict is None:
-            strict = br_from.get_config().get_user_option('push_strict')
-            if strict is not None:
-                # FIXME: This should be better supported by config
-                # -- vila 20090611
-                bools = dict(yes=True, no=False, on=True, off=False,
-                             true=True, false=False)
-                try:
-                    strict = bools[strict.lower()]
-                except KeyError:
-                    strict = None
+            strict = br_from.get_config().get_user_option_as_bool('push_strict')
+        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if (tree is not None and revision_id is None
-            and (strict is None or strict)): # Default to True:
-            changes = tree.changes_from(tree.basis_tree())
-            if changes.has_changed() or len(tree.get_parent_ids()) > 1:
+        if strict and tree is not None and revision_id is None:
+            if (tree.has_changes(tree.basis_tree())
+                or len(tree.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -3573,6 +3564,9 @@ class cmd_merge(Command):
     merge refuses to run if there are any uncommitted changes, unless
     --force is given.
 
+    To select only some changes to merge, use "merge -i", which will prompt
+    you to apply each diff hunk and file change, similar to "shelve".
+
     :Examples:
         To merge the latest revision from bzr.dev::
 
@@ -3616,7 +3610,10 @@ class cmd_merge(Command):
                short_name='d',
                type=unicode,
                ),
-        Option('preview', help='Instead of merging, show a diff of the merge.')
+        Option('preview', help='Instead of merging, show a diff of the'
+               ' merge.'),
+        Option('interactive', help='Select changes interactively.',
+            short_name='i')
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -3624,6 +3621,7 @@ class cmd_merge(Command):
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
+            interactive=False,
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3641,8 +3639,7 @@ class cmd_merge(Command):
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
         if not force:
-            changes = tree.changes_from(basis_tree)
-            if changes.has_changed():
+            if tree.has_changes(basis_tree):
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -3701,7 +3698,9 @@ class cmd_merge(Command):
                     return 0
             merger.check_basis(False)
             if preview:
-                return self._do_preview(merger)
+                return self._do_preview(merger, cleanups)
+            elif interactive:
+                return self._do_interactive(merger, cleanups)
             else:
                 return self._do_merge(merger, change_reporter, allow_pending,
                                       verified)
@@ -3709,16 +3708,18 @@ class cmd_merge(Command):
             for cleanup in reversed(cleanups):
                 cleanup()
 
-    def _do_preview(self, merger):
-        from bzrlib.diff import show_diff_trees
+    def _get_preview(self, merger, cleanups):
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
-        try:
-            result_tree = tt.get_preview_tree()
-            show_diff_trees(merger.this_tree, result_tree, self.outf,
-                            old_label='', new_label='')
-        finally:
-            tt.finalize()
+        cleanups.append(tt.finalize)
+        result_tree = tt.get_preview_tree()
+        return result_tree
+
+    def _do_preview(self, merger, cleanups):
+        from bzrlib.diff import show_diff_trees
+        result_tree = self._get_preview(merger, cleanups)
+        show_diff_trees(merger.this_tree, result_tree, self.outf,
+                        old_label='', new_label='')
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
@@ -3731,6 +3732,21 @@ class cmd_merge(Command):
             return 1
         else:
             return 0
+
+    def _do_interactive(self, merger, cleanups):
+        """Perform an interactive merge.
+
+        This works by generating a preview tree of the merge, then using
+        Shelver to selectively remove the differences between the working tree
+        and the preview tree.
+        """
+        from bzrlib import shelf_ui
+        result_tree = self._get_preview(merger, cleanups)
+        writer = bzrlib.option.diff_writer_registry.get()
+        shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
+                                   reporter=shelf_ui.ApplyReporter(),
+                                   diff_writer=writer(sys.stdout))
+        shelver.run()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
@@ -3772,16 +3788,16 @@ class cmd_merge(Command):
             base_branch, base_path = Branch.open_containing(base_loc,
                 possible_transports)
         # Find the revision ids
-        if revision is None or len(revision) < 1 or revision[-1] is None:
+        other_revision_id = None
+        base_revision_id = None
+        if revision is not None:
+            if len(revision) >= 1:
+                other_revision_id = revision[-1].as_revision_id(other_branch)
+            if len(revision) == 2:
+                base_revision_id = revision[0].as_revision_id(base_branch)
+        if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        else:
-            other_revision_id = revision[-1].as_revision_id(other_branch)
-        if (revision is not None and len(revision) == 2
-            and revision[0] is not None):
-            base_revision_id = revision[0].as_revision_id(base_branch)
-        else:
-            base_revision_id = None
         # Remember where we merge from
         if ((remember or tree.branch.get_submit_branch() is None) and
              user_location is not None):
@@ -5322,10 +5338,13 @@ class cmd_switch(Command):
 
     takes_args = ['to_location']
     takes_options = [Option('force',
-                        help='Switch even if local commits will be lost.')
+                        help='Switch even if local commits will be lost.'),
+                     Option('create-branch', short_name='b',
+                        help='Create the target branch from this one before'
+                             ' switching to it.'),
                      ]
 
-    def run(self, to_location, force=False):
+    def run(self, to_location, force=False, create_branch=False):
         from bzrlib import switch
         tree_location = '.'
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
@@ -5333,13 +5352,33 @@ class cmd_switch(Command):
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
         except errors.NotBranchError:
+            branch = None
             had_explicit_nick = False
-        try:
-            to_branch = Branch.open(to_location)
-        except errors.NotBranchError:
-            this_url = self._get_branch_location(control_dir)
-            to_branch = Branch.open(
-                urlutils.join(this_url, '..', to_location))
+        if create_branch:
+            if branch is None:
+                raise errors.BzrCommandError('cannot create branch without'
+                                             ' source branch')
+            if '/' not in to_location and '\\' not in to_location:
+                # This path is meant to be relative to the existing branch
+                this_url = self._get_branch_location(control_dir)
+                to_location = urlutils.join(this_url, '..', to_location)
+            to_branch = branch.bzrdir.sprout(to_location,
+                                 possible_transports=[branch.bzrdir.root_transport],
+                                 source_branch=branch).open_branch()
+            # try:
+            #     from_branch = control_dir.open_branch()
+            # except errors.NotBranchError:
+            #     raise BzrCommandError('Cannot create a branch from this'
+            #         ' location when we cannot open this branch')
+            # from_branch.bzrdir.sprout(
+            pass
+        else:
+            try:
+                to_branch = Branch.open(to_location)
+            except errors.NotBranchError:
+                this_url = self._get_branch_location(control_dir)
+                to_branch = Branch.open(
+                    urlutils.join(this_url, '..', to_location))
         switch.switch(control_dir, to_branch, force)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!

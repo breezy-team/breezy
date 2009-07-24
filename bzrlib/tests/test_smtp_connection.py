@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -136,12 +136,9 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
                                    smtp_factory=factory)
         self.assertIs(None, conn._smtp_password)
 
-        ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
-                                            stdout=tests.StringIOWrapper())
+        ui.ui_factory = ui.CannedInputUIFactory([password])
         conn._connect()
         self.assertEqual(password, conn._smtp_password)
-        # stdin should be empty (the provided password have been consumed)
-        self.assertEqual('', ui.ui_factory.stdin.readline())
 
     def test_smtp_password_from_auth_config(self):
         user = 'joe'

@@ -102,6 +102,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -195,11 +196,9 @@ class ExtendedTestResult(unittest._TextTestResult):
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
         if benchmark_time is not None:
-            return "%s/%s" % (
-                self._formatTime(benchmark_time),
-                self._elapsedTestTimeString())
+            return self._formatTime(benchmark_time) + "*"
         else:
-            return "           %s" % self._elapsedTestTimeString()
+            return self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
@@ -346,15 +345,17 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                self.stream.write('\n')
-                self.stream.write(
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
-                self.stream.write(test._get_log())
-                self.stream.write('\n')
-                self.stream.write(
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
+                log_contents = test._get_log()
+                if log_contents:
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
+                    self.stream.write(log_contents)
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
@@ -486,11 +487,11 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
-        # numbers, plus a trailing blank
+        # width needs space for 6 char status, plus 1 for slash, plus an
+        # 11-char time string, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
         self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-30))
+                          osutils.terminal_width()-18))
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -702,7 +703,7 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class TestUIFactory(ui.CLIUIFactory):
+class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.
 
     Hide the progress bar but emit note()s.
@@ -1093,11 +1094,17 @@ class TestCase(unittest.TestCase):
                          osutils.realpath(path2),
                          "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
 
-    def assertIsInstance(self, obj, kls):
-        """Fail if obj is not an instance of kls"""
+    def assertIsInstance(self, obj, kls, msg=None):
+        """Fail if obj is not an instance of kls
+        
+        :param msg: Supplementary message to show if the assertion fails.
+        """
         if not isinstance(obj, kls):
-            self.fail("%r is an instance of %s rather than %s" % (
-                obj, obj.__class__, kls))
+            m = "%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls)
+            if msg:
+                m += ": " + msg
+            self.fail(m)
 
     def expectFailure(self, reason, assertion, *args, **kwargs):
         """Invoke a test, expecting it to fail for the given reason.
@@ -1325,6 +1332,13 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            # Make sure that any text ui tests are consistent regardless of
+            # the environment the test case is run in; you may want tests that
+            # test other combinations.  'dumb' is a reasonable guess for tests
+            # going to a pipe or a StringIO.
+            'TERM': 'dumb',
+            'LINES': '25',
+            'COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2959,6 +2973,10 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -2987,7 +3005,8 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = TestProtocolClient(stream)
+                subunit_result = AutoTimingTestResultDecorator(
+                    TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
                 os._exit(0)
@@ -3333,17 +3352,21 @@ def test_suite(keep_only=None, starting_with=None):
     testmod_names = [
                    'bzrlib.doc',
                    'bzrlib.tests.blackbox',
-                   'bzrlib.tests.branch_implementations',
-                   'bzrlib.tests.bzrdir_implementations',
                    'bzrlib.tests.commands',
-                   'bzrlib.tests.interrepository_implementations',
-                   'bzrlib.tests.intertree_implementations',
-                   'bzrlib.tests.inventory_implementations',
+                   'bzrlib.tests.per_branch',
+                   'bzrlib.tests.per_bzrdir',
+                   'bzrlib.tests.per_interrepository',
+                   'bzrlib.tests.per_intertree',
+                   'bzrlib.tests.per_inventory',
                    'bzrlib.tests.per_interbranch',
                    'bzrlib.tests.per_lock',
+                   'bzrlib.tests.per_transport',
+                   'bzrlib.tests.per_tree',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_workingtree',
+                   'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
                    'bzrlib.tests.test__dirstate_helpers',
                    'bzrlib.tests.test__groupcompress',
@@ -3481,7 +3504,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_transactions',
                    'bzrlib.tests.test_transform',
                    'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_transport_implementations',
                    'bzrlib.tests.test_transport_log',
                    'bzrlib.tests.test_tree',
                    'bzrlib.tests.test_treebuilder',
@@ -3502,8 +3524,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_workingtree_4',
                    'bzrlib.tests.test_wsgi',
                    'bzrlib.tests.test_xml',
-                   'bzrlib.tests.tree_implementations',
-                   'bzrlib.tests.workingtree_implementations',
                    ]
 
     loader = TestUtil.TestLoader()
@@ -3980,9 +4000,14 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = TestProtocolClient(self.stream)
+            result = AutoTimingTestResultDecorator(
+                TestProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:

@@ -5,6 +5,7 @@ These flags can be passed on the bzr command line or (without the ``-D``
 prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 
 -Dauth            Trace authentication sections used.
+-Ddirstate        Trace dirstate activity (verbose!)
 -Derror           Instead of normal error handling, always print a traceback
                   on error.
 -Devil            Capture call sites that do expensive or badly-scaling

@@ -19,6 +19,8 @@ Core Documentation
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
+* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_ 
+
 * `Developer Document Catalog <developers/index.html>`_ |--| for developers
   of Bazaar and plugins
 

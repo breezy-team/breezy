@@ -561,9 +561,7 @@ class TestLockDir(TestCaseWithTransport):
         # do this without IO redirection to ensure it doesn't prompt.
         self.assertRaises(AssertionError, ld1.break_lock)
         orig_factory = bzrlib.ui.ui_factory
-        # silent ui - no need for stdout
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             ld2.break_lock()
             self.assertRaises(LockBroken, ld1.unlock)

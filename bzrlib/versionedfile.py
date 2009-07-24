@@ -30,6 +30,7 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
     groupcompress,
     index,
@@ -173,6 +174,12 @@ class AbsentContentFactory(ContentFactory):
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
+
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
 
 
 class AdapterFactory(ContentFactory):
@@ -1121,6 +1128,9 @@ class ThunkedVersionedFiles(VersionedFiles):
         for origin, line in origins:
             result.append((prefix + (origin,), line))
         return result
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""

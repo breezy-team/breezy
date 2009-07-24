@@ -281,6 +281,9 @@ class SmartServerRequestHandler(object):
 
     def accept_body(self, bytes):
         """Accept body data."""
+        if self._command is None:
+            # no active command object, so ignore the event.
+            return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
 
     def end_of_body(self):
@@ -344,6 +347,9 @@ class SmartServerRequestHandler(object):
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
+        if self._command is None:
+            # no active command object, so ignore the event.
+            return
         self._run_handler_code(self._command.do_end, (), {})
 
     def post_body_error_received(self, error_args):

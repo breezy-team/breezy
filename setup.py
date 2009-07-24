@@ -259,6 +259,7 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         define_macros=define_macros, libraries=libraries))
 
 
+add_pyrex_extension('bzrlib._annotator_pyx')
 add_pyrex_extension('bzrlib._bencode_pyx')
 add_pyrex_extension('bzrlib._btree_serializer_pyx')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')

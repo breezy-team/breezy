@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -367,6 +366,20 @@ class TestIniConfig(tests.TestCase):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+    def test_get_user_option_as_bool(self):
+        config_file = StringIO("""
+a_true_bool = true
+a_false_bool = 0
+an_invalid_bool = maybe
+a_list = hmm, who knows ? # This interpreted as a list !
+""".encode('utf-8'))
+        my_config = config.IniBasedConfig(None)
+        parser = my_config._get_parser(file=config_file)
+        get_option = my_config.get_user_option_as_bool
+        self.assertEqual(True, get_option('a_true_bool'))
+        self.assertEqual(False, get_option('a_false_bool'))
+        self.assertIs(None, get_option('an_invalid_bool'))
+        self.assertIs(None, get_option('not_defined_in_this_config'))
 
 class TestGetConfig(tests.TestCase):
 
@@ -1547,8 +1560,9 @@ password=jimpass
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -1568,8 +1582,10 @@ user=jim
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout,
+                                            stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
