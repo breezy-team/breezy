@@ -24,6 +24,7 @@ import warnings
 from bzrlib import (
     counted_lock,
     errors,
+    lock,
     osutils,
     transactions,
     urlutils,
@@ -308,7 +309,7 @@ class LockableFiles(object):
 
     def unlock(self):
         if not self._lock_mode:
-            raise errors.LockNotHeld(self)
+            return lock.cant_unlock_not_held(self)
         if self._lock_warner.lock_count > 1:
             self._lock_warner.lock_count -= 1
         else:

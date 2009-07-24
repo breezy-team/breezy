@@ -35,6 +35,7 @@ from bzrlib import (
         symbol_versioning,
         transport,
         tsort,
+        ui,
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
@@ -662,6 +663,9 @@ class Branch(object):
         """
         if not self._format.supports_stacking():
             raise errors.UnstackableBranchFormat(self._format, self.base)
+        # XXX: Changing from one fallback repository to another does not check
+        # that all the data you need is present in the new fallback.
+        # Possibly it should.
         self._check_stackable_repo()
         if not url:
             try:
@@ -669,27 +673,67 @@ class Branch(object):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
-            url = ''
-            # XXX: Lock correctness - should unlock our old repo if we were
-            # locked.
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            self.repository.lock_write()
-            # for every revision reference the branch has, ensure it is pulled
-            # in.
-            source_repository = self._get_fallback_repository(old_url)
-            for revision_id in chain([self.last_revision()],
-                self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id,
-                    find_ghosts=True)
+            self._unstack()
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
 
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+        
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("Unstacking")
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks. 
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
+                raise AssertionError("can't cope with fallback repositories "
+                    "of %r" % (self.repository,))
+            # unlock it, including unlocking the fallback
+            old_repository.unlock()
+            old_repository.lock_read()
+            try:
+                # Repositories don't offer an interface to remove fallback
+                # repositories today; take the conceptually simpler option and just
+                # reopen it.  We reopen it starting from the URL so that we
+                # get a separate connection for RemoteRepositories and can
+                # stream from one of them to the other.  This does mean doing
+                # separate SSH connection setup, but unstacking is not a
+                # common operation so it's tolerable.
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+                new_repository = new_bzrdir.find_repository()
+                self.repository = new_repository
+                if self.repository._fallback_repositories:
+                    raise AssertionError("didn't expect %r to have "
+                        "fallback_repositories"
+                        % (self.repository,))
+                # this is not paired with an unlock because it's just restoring
+                # the previous state; the lock's released when set_stacked_on_url
+                # returns
+                self.repository.lock_write()
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                #
+                # XXX: This only fetches up to the tip of the repository; it
+                # doesn't bring across any tags.  That's fairly consistent
+                # with how branch works, but perhaps not ideal.
+                self.repository.fetch(old_repository,
+                    revision_id=self.last_revision(),
+                    find_ghosts=True)
+            finally:
+                old_repository.unlock()
+        finally:
+            pb.finished()
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.
