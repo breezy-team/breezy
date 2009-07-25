@@ -123,10 +123,10 @@ class RevisionSpec(object):
 
     help_txt = """A parsed revision specification.
 
-    A revision specification can be an integer, in which case it is
-    assumed to be a revno (though this will translate negative values
-    into positive ones); or it can be a string, in which case it is
-    parsed for something like 'date:' or 'revid:' etc.
+    A revision specification is a string, which may be unambiguous about
+    what it represents by giving a prefix like 'date:' or 'revid:' etc,
+    or it may have no prefix, in which case it's tried against several
+    specifier types in sequence to determine what the user meant.
 
     Revision specs are an UI element, and they have been moved out
     of the branch class to leave "back-end" classes unaware of such
