@@ -51,13 +51,7 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 
-try:
-    from bzrlib.foreign import ForeignBranch
-except ImportError:
-    class ForeignBranch(branch.Branch):
-        def __init__(self, mapping):
-            self.mapping = mapping
-            super(ForeignBranch, self).__init__()
+from bzrlib.foreign import ForeignBranch
 
 
 def extract_tags(refs, mapping):
@@ -139,6 +133,13 @@ class GitBranch(ForeignBranch):
         self.name = name
         self._head = None
         self.base = bzrdir.transport.base
+
+    def get_child_submit_format(self):
+        """Return the preferred format of submissions to this branch."""
+        ret = self.get_config().get_user_option("child_submit_format")
+        if ret is not None:
+            return ret
+        return "git"
 
     def _get_nick(self, local=False, possible_master_transports=None):
         """Find the nick name for this branch.

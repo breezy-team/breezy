@@ -34,10 +34,6 @@ from bzrlib.revision import (
     NULL_REVISION,
     )
 
-from bzrlib.plugins.git.errors import (
-    GhostRevision,
-    )
-
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     directory_to_tree,
@@ -95,13 +91,21 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._idmap.sha1s())
 
+    def _revision_to_commit(self, rev, tree_sha):
+        def parent_lookup(revid):
+            try:
+                return self._lookup_revision_sha1(revid)
+            except errors.NoSuchRevision:
+                trace.warning("Ignoring ghost parent %s", revid)
+                return None
+        return revision_to_commit(rev, tree_sha, parent_lookup)
+
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
         rev = self.repository.get_revision(revid)
         unusual_modes = extract_unusual_modes(rev)
         tree_sha = self._get_ie_sha1(inv.root, inv, unusual_modes)
-        commit_obj = revision_to_commit(rev, tree_sha,
-                                        self._idmap.lookup_commit)
+        commit_obj = self._revision_to_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
         except errors.InvalidRevisionId:
@@ -179,10 +183,7 @@ class BazaarObjectStore(BaseObjectStore):
         return tree
 
     def _get_commit(self, rev, tree_sha, expected_sha=None):
-        try:
-            commit = revision_to_commit(rev, tree_sha, self._lookup_revision_sha1)
-        except errors.NoSuchRevision, e:
-            raise GhostRevision(e.branch, e.revision)
+        commit = self._revision_to_commit(rev, tree_sha)
         self._check_expected_sha(expected_sha, commit)
         return commit
 

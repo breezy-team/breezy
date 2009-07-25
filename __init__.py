@@ -63,6 +63,9 @@ from bzrlib.commands import (
 from bzrlib.version_info_formats.format_rio import (
     RioVersionInfoBuilder,
     )
+from bzrlib.send import (
+    format_registry as send_format_registry,
+    )
 
 
 if getattr(sys, "frozen", None):
@@ -278,6 +281,9 @@ def get_rich_root_format(stacked=False):
         return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
     else:
         return bzrdir.format_registry.make_bzrdir("default-rich-root")
+
+send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
+                                   'send_git', 'Git am-style diff format')
 
 def test_suite():
     from bzrlib.plugins.git import tests
