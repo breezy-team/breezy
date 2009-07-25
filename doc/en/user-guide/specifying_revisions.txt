@@ -40,13 +40,19 @@ different format specifications as shown below.
  +----------------------+------------------------------------+
  | **last**:*number*    | negative revision number           |
  +----------------------+------------------------------------+
+ | *guid*               | globally unique revision id        |
+ +----------------------+------------------------------------+
  | **revid**:*guid*     | globally unique revision id        |
  +----------------------+------------------------------------+
  | **before**:*rev*     | leftmost parent of ''rev''         |
  +----------------------+------------------------------------+
- | **date**:*value*     | first entry after a given date     |
+ | *date-value*         | first entry after a given date     |
  +----------------------+------------------------------------+
- | **tag**:*value*      | revision matching a given tag      |
+ | **date**:*date-value*| first entry after a given date     |
+ +----------------------+------------------------------------+
+ | *tag-name*           | revision matching a given tag      |
+ +----------------------+------------------------------------+
+ | **tag**:*tag-name*   | revision matching a given tag      |
  +----------------------+------------------------------------+
  | **ancestor**:*path*  | last merged revision from a branch |
  +----------------------+------------------------------------+
