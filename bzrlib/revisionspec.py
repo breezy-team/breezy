@@ -165,17 +165,8 @@ class RevisionSpec(object):
                              spectype.__name__, spec)
                 if spec.startswith(spectype.prefix):
                     return spectype(spec, _internal=True)
-            # RevisionSpec_revno is special cased, because it is the only
-            # one that directly handles plain integers
-            # TODO: This should not be special cased rather it should be
-            # a method invocation on spectype.canparse()
-            global _revno_regex
-            if _revno_regex is None:
-                _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
-            if _revno_regex.match(spec) is not None:
-                return RevisionSpec_revno(spec, _internal=True)
-
-            raise errors.NoSuchRevisionSpec(spec)
+            # Otherwise treat it as a DWIM
+            return RevisionSpec_dwim(spec, _internal=True)
 
     def __init__(self, spec, _internal=False):
         """Create a RevisionSpec referring to the Null revision.
@@ -290,6 +281,63 @@ class RevisionSpec(object):
 
 
 # private API
+
+class RevisionSpec_dwim(RevisionSpec):
+    """Provides a DWIMish revision specifier lookup.
+
+    Note that this does not go in the revspec_registry.  It's solely
+    called from RevisionSpec.from_string().
+    """
+
+    help_txt = None
+    # Default to False to save building the history in the revno case
+    wants_revision_history = False
+
+    # Util
+    def __try_spectype(self, rstype, spec, branch):
+        rs = rstype(spec, _internal=True)
+        # Hit in_history to find out if it exists, or we need to try the
+        # next type.
+        return rs.in_history(branch)
+
+    def _match_on(self, branch, revs):
+        """Run the lookup and see what we can get."""
+        spec = self.spec
+
+        # First, see if it's a revno
+        global _revno_regex
+        if _revno_regex is None:
+            _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
+        if _revno_regex.match(spec) is not None:
+            try:
+                return self.__try_spectype(RevisionSpec_revno, spec, branch)
+            except errors.InvalidRevisionSpec:
+                pass
+
+        # It's not a revno, so now we need this
+        self.wants_revision_history = True
+
+        # OK, next let's try for a tag
+        try:
+            return self.__try_spectype(RevisionSpec_tag, spec, branch)
+        except (errors.NoSuchTag, errors.TagsNotSupported):
+            pass
+
+        # Maybe it's a revid?
+        try:
+            return self.__try_spectype(RevisionSpec_revid, spec, branch)
+        except errors.InvalidRevisionSpec:
+            pass
+
+        # OK, last try, maybe it's a branch
+        try:
+            return self.__try_spectype(RevisionSpec_branch, spec, branch)
+        except errors.NotBranchError:
+            pass
+
+        # Well, I dunno what it is.
+        raise errors.InvalidRevisionSpec(self.spec, branch)
+
 
 class RevisionSpec_revno(RevisionSpec):
     """Selects a revision using a number."""
