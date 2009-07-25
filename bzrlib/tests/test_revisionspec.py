@@ -153,6 +153,27 @@ class TestOddRevisionSpec(TestRevisionSpec):
                           RevisionSpec.from_string, '123a')
 
 
+class TestRevisionSpec_dwim(TestRevisionSpec):
+
+    # Don't need to test revno's explicitly since TRS_revno already
+    # covers that well for us
+
+    def test_dwim_spec_revid(self):
+        self.assertInHistoryIs(2, 'r2', 'r2')
+
+    def test_dwim_spec_tag(self):
+        self.tree.branch.tags.set_tag('footag', 'r1')
+        self.assertAsRevisionId('r1', 'footag')
+        self.tree.branch.tags.delete_tag('footag')
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          self.get_in_history, 'footag')
+
+    def test_dwim_spec_branch(self):
+        self.assertInHistoryIs(None, 'alt_r2', 'tree2')
+
+    def test_dwim_spec_nonexistent(self):
+        self.assertInvalid('revid:r3', invalid_as_revision_id=False)
+
 
 class TestRevnoFromString(TestCase):
 
