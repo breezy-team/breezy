@@ -167,16 +167,21 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
     def from_objects(cls, repository, revision_id, time, timezone,
                      target_branch, local_target_branch=None,
                      public_branch=None, message=None):
+        patches = []
         submit_branch = _mod_branch.Branch.open(target_branch)
         submit_branch.lock_read()
         try:
             submit_revision_id = submit_branch.last_revision()
             repository.fetch(submit_branch.repository, submit_revision_id)
-            summary, patch = cls._generate_commit(repository, revision_id, 1, 1)
+            graph = repository.get_graph()
+            todo = graph.find_difference(submit_revision_id, revision_id)[1]
+            total = len(todo)
+            for i, revid in enumerate(graph.iter_topo_order(todo)):
+                patches.append(cls._generate_commit(repository, revid, i+1, total))
         finally:
             submit_branch.unlock()
         return cls(revision_id, None, time, timezone, target_branch,
-            patch, None, public_branch, message)
+            "".join([patch for (summary, patch) in patches]), None, public_branch, message)
 
 
 def send_git(branch, revision_id, submit_branch, public_branch,
