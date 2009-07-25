@@ -62,7 +62,3 @@ class NoPushSupport(bzr_errors.BzrError):
 
 class GitSmartRemoteNotSupported(bzr_errors.BzrError):
     _fmt = "This operation is not supported by the Git smart server protocol."
-
-
-class GhostRevision(bzr_errors.NoSuchRevision):
-    _fmt = "Revision %(revision)s is a ghost; unable to represent in Git."""
