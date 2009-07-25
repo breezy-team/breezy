@@ -51,13 +51,7 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 
-try:
-    from bzrlib.foreign import ForeignBranch
-except ImportError:
-    class ForeignBranch(branch.Branch):
-        def __init__(self, mapping):
-            self.mapping = mapping
-            super(ForeignBranch, self).__init__()
+from bzrlib.foreign import ForeignBranch
 
 
 def extract_tags(refs, mapping):
