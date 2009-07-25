@@ -175,7 +175,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertInHistoryIs(None, 'alt_r2', 'tree2')
 
     def test_dwim_spec_nonexistent(self):
-        self.assertInvalid('revid:r3', invalid_as_revision_id=False)
+        self.assertInvalid('somethingrandom', invalid_as_revision_id=False)
 
 
 class TestRevnoFromString(TestCase):
