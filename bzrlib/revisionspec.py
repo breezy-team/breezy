@@ -185,7 +185,6 @@ class RevisionSpec(object):
             called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
-            # XXX: Update this after 0.10 is released
             symbol_versioning.warn('Creating a RevisionSpec directly has'
                                    ' been deprecated in version 0.11. Use'
                                    ' RevisionSpec.from_string()'
