@@ -1,0 +1,337 @@
+#!/usr/bin/env python
+
+"""
+
+    darcs-fast-export - darcs backend for fast data importers
+
+    Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
+    Copyright (c) 2008 Matthias Andree <matthias.andree@gmx.de>
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2, or (at your option)
+    any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+"""
+
+import xml.dom.minidom
+import xml.parsers.expat
+import os
+import sys
+import gzip
+import time
+import shutil
+import subprocess
+import optparse
+import re
+
+sys = reload(sys)
+sys.setdefaultencoding("utf-8")
+
+def __get_zone():
+	now = time.localtime()
+	if time.daylight and now[-1]:
+		offset = time.altzone
+	else:
+		offset = time.timezone
+	hours, minutes = divmod(abs(offset), 3600)
+	if offset > 0:
+		sign = "-"
+	else:
+		sign = "+"
+	return sign, hours, minutes
+
+def get_zone_str():
+	sign, hours, minutes = __get_zone()
+	return "%s%02d%02d" % (sign, hours, minutes // 60)
+
+def get_zone_int():
+	sign, hours, minutes = __get_zone()
+	ret = hours*3600+minutes*60
+	if sign == "-":
+		ret *= -1
+	return ret
+
+def get_patchname(patch):
+	ret = []
+	s = ""
+	if patch.attributes['inverted'].value == 'True':
+		s = "UNDO: "
+	ret.append(s + patch.getElementsByTagName("name")[0].childNodes[0].data)
+	lines = patch.getElementsByTagName("comment")
+	if lines:
+		for i in lines[0].childNodes[0].data.split('\n'):
+			if not i.startswith("Ignore-this: "):
+				ret.append(i)
+	return "\n".join(ret).encode('utf-8')
+
+def get_author(patch):
+	"""darcs allows any freeform string, but fast-import has a more
+	strict format, so fix up broken author names here."""
+
+	author = patch.attributes['author'].value
+	if author in authormap:
+		author = authormap[author]
+	if not len(author):
+		author = "darcs-fast-export <darcs-fast-export>"
+	# add missing name
+	elif not ">" in author:
+		author = "%s <%s>" % (author.split('@')[0], author)
+	# avoid double quoting
+	elif author[0] == '"' and author[-1] == '"':
+		author = author[1:-1]
+	# name after email
+	elif author[-1] != '>':
+		author = author[author.index('>')+2:] + ' ' + author[:author.index('>')+1]
+	return author.encode('utf-8')
+
+def get_date(patch):
+	try:
+		date = time.strptime(patch, "%Y%m%d%H%M%S")
+	except ValueError:
+		date = time.strptime(patch[:19] + patch[-5:], '%a %b %d %H:%M:%S %Y')
+	return int(time.mktime(date)) + get_zone_int()
+
+def progress(s):
+	print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
+	sys.stdout.flush()
+
+def log(s):
+	logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
+	logsock.flush()
+
+hashes = []
+def parse_inventory(sock=None):
+	prev = None
+	nextprev = False
+	buf = []
+	if not sock:
+		sock = open(os.path.join("_darcs", "hashed_inventory"))
+	for i in sock.readlines():
+		if i.startswith("hash"):
+			buf.insert(0, i[6:-1])
+		if i.startswith("Starting with inventory:"):
+			nextprev = True
+		elif nextprev:
+			prev = i[:-1]
+			nextprev = False
+	sock.close()
+	for i in buf:
+		hashes.insert(0, i)
+	if prev:
+		sock = gzip.open(os.path.join("_darcs", "inventories", prev))
+		parse_inventory(sock)
+
+# Option Parser
+usage="%prog [options] darcsrepo"
+opp = optparse.OptionParser(usage=usage)
+opp.add_option("--import-marks", metavar="IFILE",
+	help="read state for incremental imports from IFILE")
+opp.add_option("--export-marks", metavar="OFILE",
+	help="write state for incremental imports from OFILE")
+opp.add_option("--encoding",
+	help="encoding of log [default: %default], if unspecified and input isn't utf-8, guess")
+opp.add_option("--authors-file", metavar="F",
+	help="read author transformations in old=new format from F")
+opp.add_option("--working", metavar="W",
+	help="working directory which is removed at the end of non-incremental conversions")
+opp.add_option("--logfile", metavar="L",
+	help="log file which contains the output of external programs invoked during the conversion")
+opp.add_option("--git-branch", metavar="B",
+	help="git branch [default: refs/heads/master]")
+opp.add_option("--progress", metavar="P",
+	help="insert progress statements after every n commit [default: 100]")
+(options, args) = opp.parse_args()
+if len(args) < 1:
+	opp.error("darcsrepo required")
+
+export_marks = []
+import_marks = []
+if options.import_marks:
+	sock = open(options.import_marks)
+	for i in sock.readlines():
+		line = i.strip()
+		if not len(line):
+			continue
+		import_marks.append(line.split(' ')[1])
+		export_marks.append(line)
+	sock.close()
+
+# read author mapping file in gitauthors format,
+# i. e. in=out (one per # line)
+authormap = {}
+if options.authors_file:
+	sock = open(options.authors_file)
+	authormap = dict([i.strip().split('=',1) for i in sock])
+	sock.close()
+
+origin = os.path.abspath(args[0])
+if options.working:
+	working = os.path.abspath(options.working)
+else:
+	working = "%s.darcs" % origin
+patchfile = "%s.patch" % origin
+if options.logfile:
+	logfile = os.path.abspath(options.logfile)
+else:
+	logfile = "%s.log" % origin
+logsock = open(logfile, "a")
+if options.git_branch:
+	git_branch = options.git_branch
+else:
+	git_branch = "refs/heads/master"
+
+if options.progress:
+	prognum = int(options.progress)
+else:
+	prognum = 100
+
+progress("getting list of patches")
+if not len(import_marks):
+	sock = os.popen("darcs changes --xml --reverse --repo %s" % origin)
+else:
+	sock = os.popen("darcs changes --xml --reverse  --repo %s --from-match 'hash %s'" % (origin, import_marks[-1]))
+buf = sock.read()
+sock.close()
+# this is hackish. we need to escape some bad chars, otherwise the xml
+# will not be valid
+buf = buf.replace('\x1b', '^[')
+if options.encoding:
+	xmldoc = xml.dom.minidom.parseString(unicode(buf, options.encoding).encode('utf-8'))
+else:
+	try:
+		xmldoc = xml.dom.minidom.parseString(buf)
+	except xml.parsers.expat.ExpatError:
+		import chardet
+		progress("encoding is not utf8, guessing charset")
+		encoding = chardet.detect(buf)['encoding']
+		progress("detected encoding is %s" % encoding)
+		xmldoc = xml.dom.minidom.parseString(unicode(buf, encoding).encode('utf-8'))
+sys.stdout.flush()
+
+darcs2 = False
+oldfashionedpatch = True
+cwd = os.getcwd()
+if os.path.exists(os.path.join(origin, "_darcs", "format")):
+	sock = open(os.path.join(origin, "_darcs", "format"))
+	format = [x.strip() for x in sock]
+	sock.close()
+	darcs2 = 'darcs-2' in format
+	oldfashionedpatch = not 'hashed' in format
+if not oldfashionedpatch:
+	progress("parsing the inventory")
+	os.chdir(origin)
+	parse_inventory()
+if not options.import_marks or not os.path.exists(working):
+	# init the tmp darcs repo
+	os.mkdir(working)
+	os.chdir(working)
+	if darcs2:
+		os.system("darcs init --darcs-2")
+	else:
+		os.system("darcs init --old-fashioned-inventory")
+else:
+	os.chdir(working)
+if options.import_marks:
+	sock = os.popen("darcs pull -a --match 'hash %s' %s" % (import_marks[-1], origin))
+	log("Building/updating working directory:\n%s" % sock.read())
+	sock.close()
+
+# this is the number of the NEXT patch
+count = 1
+patches = xmldoc.getElementsByTagName('patch')
+if len(import_marks):
+	patches = patches[1:]
+	count = len(import_marks) + 1
+if len(export_marks):
+	# this is the mark number of the NEXT patch
+	markcount = int(export_marks[-1].split(' ')[0][1:]) + 1
+else:
+	markcount = count
+# this may be huge and we need it many times
+patchnum = len(patches)
+
+if not len(import_marks):
+	progress("starting export, repo has %d patches" % patchnum)
+else:
+	progress("continuing export, %d patches to convert" % patchnum)
+paths = []
+for i in patches:
+	# apply the patch
+	hash = i.attributes['hash'].value
+	buf = ["\nNew patches:\n"]
+	if oldfashionedpatch:
+		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
+	else:
+		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hashes[count-1]))
+	buf.append(sock.read())
+	sock.close()
+	sock = os.popen("darcs changes --context")
+	buf.append(sock.read())
+	sock.close()
+	sock = subprocess.Popen(["darcs", "apply", "--allow-conflicts"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	sock.stdin.write("".join(buf))
+	sock.stdin.close()
+	log("Applying %s:\n%s" % (hash, sock.stdout.read()))
+	sock.stdout.close()
+	message = get_patchname(i)
+	# export the commit
+	print "commit %s" % git_branch
+	print "mark :%s" % markcount
+	if options.export_marks:
+		export_marks.append(":%s %s" % (markcount, hash))
+	date = get_date(i.attributes['date'].value)
+	print "committer %s %s %s" % (get_author(i), date, get_zone_str())
+	print "data %d\n%s" % (len(message), message)
+	if markcount > 1:
+		print "from :%s" % (markcount-1)
+	# export the files
+	for j in paths:
+		print "D %s" % j
+	paths = []
+	for (root, dirs, files) in os.walk ("."):
+		for f in files:
+			j = os.path.normpath(os.path.join(root, f))
+			if j.startswith("_darcs") or "-darcs-backup" in j:
+				continue
+			paths.append(j)
+			sock = open(j)
+			buf = sock.read()
+			sock.close()
+			# darcs does not track the executable bit :/
+			print "M 644 inline %s" % j
+			print "data %s\n%s" % (len(buf), buf)
+	if message[:4] == "TAG ":
+		tag = re.sub('[^\xe9-\xf8\w.\-]+', '_', message[4:].strip().split('\n')[0]).strip('_')
+		print "tag %s" % tag
+		print "from :%s" % markcount
+		print "tagger %s %s %s" % (get_author(i), date, get_zone_str())
+		print "data %d\n%s" % (len(message), message)
+	if count % prognum == 0:
+		progress("%d/%d patches" % (count, patchnum))
+	count += 1
+	markcount += 1
+
+os.chdir(cwd)
+
+if not options.export_marks:
+	shutil.rmtree(working)
+logsock.close()
+
+if options.export_marks:
+	progress("writing export marks")
+	sock = open(options.export_marks, 'w')
+	sock.write("\n".join(export_marks))
+	sock.write("\n")
+	sock.close()
+
+progress("finished")

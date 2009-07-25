@@ -1,0 +1,35 @@
+= darcs-fast-import(1)
+
+== NAME
+
+darcs-fast-import - darcs backend to the 'fast-import stream' format
+
+== SYNOPSIS
+
+darcs-fast-import [<options>]
+
+== DESCRIPTION
+
+darcs-fast-import can produce a darcs repository from a fast-import
+stream, read from the standard input. It supports incremental conversion
+as well, via the --import-marks / --export-marks switches.
+
+== OPTIONS
+
+-h, --help::
+	Display usage.
+
+--import-marks::
+	Import marks from a given file. This is read at the beginning of the
+	conversion at once. Use it if you want to continue an incremental
+	conversion.
+
+--export-marks::
+	Export marks to a given file at the end of the conversion. It can be the
+	same as the one for --import-marks as it is written only once at the
+	end. Use it if you want to be able to incrementally update the target
+	repository later.
+
+--logfile::
+	The output of external commands are redirected to a log file. You can
+	specify the path of that file with this parameter.
