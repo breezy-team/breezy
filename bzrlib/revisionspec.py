@@ -351,10 +351,10 @@ class RevisionSpec_revno(RevisionSpec):
     help_txt = """Selects a revision using a number.
 
     Use an integer to specify a revision in the history of the branch.
-    Optionally a branch can be specified. The 'revno:' prefix is optional.
-    A negative number will count from the end of the branch (-1 is the
-    last revision, -2 the previous one). If the negative number is larger
-    than the branch's history, the first revision is returned.
+    Optionally a branch can be specified.  A negative number will count
+    from the end of the branch (-1 is the last revision, -2 the previous
+    one). If the negative number is larger than the branch's history, the
+    first revision is returned.
     Examples::
 
       revno:1                   -> return the first revision of this branch
