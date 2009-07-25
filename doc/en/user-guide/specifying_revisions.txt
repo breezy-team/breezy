@@ -36,7 +36,7 @@ different format specifications as shown below.
  +----------------------+------------------------------------+
  | *number*             | revision number                    |
  +----------------------+------------------------------------+
- | **revno**:*number*   | positive revision number           |
+ | **revno**:*number*   | revision number                    |
  +----------------------+------------------------------------+
  | **last**:*number*    | negative revision number           |
  +----------------------+------------------------------------+
