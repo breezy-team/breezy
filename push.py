@@ -17,6 +17,7 @@
 """Push implementation that simply prints message saying push is not supported."""
 
 from bzrlib import (
+    errors,
     ui,
     )
 from bzrlib.repository import (
@@ -189,7 +190,11 @@ class InterToLocalGitRepository(InterToGitRepository):
             def check_revid(revid):
                 if revid == NULL_REVISION:
                     return True
-                return (self.source_store._lookup_revision_sha1(revid) in target_store)
+                try:
+                    return (self.source_store._lookup_revision_sha1(revid) in target_store)
+                except errors.NoSuchRevision:
+                    # Ghost, can't dpush
+                    return True
             todo = list(self.missing_revisions(stop_revisions, check_revid))
             pb = ui.ui_factory.nested_progress_bar()
             try:
