@@ -260,19 +260,23 @@ def mode_kind(mode):
             "Unknown kind, perms=%r." % (mode,))
 
 
-def entry_mode(entry):
-    """Determine the git file mode for an inventory entry."""
-    if entry.kind == 'directory':
+def object_mode(kind, executable):
+    if kind == 'directory':
         return stat.S_IFDIR
-    elif entry.kind == 'symlink':
+    elif kind == 'symlink':
         return stat.S_IFLNK
-    elif entry.kind == 'file':
+    elif kind == 'file':
         mode = stat.S_IFREG | 0644
-        if entry.executable:
+        if executable:
             mode |= 0111
         return mode
     else:
         raise AssertionError
+
+
+def entry_mode(entry):
+    """Determine the git file mode for an inventory entry."""
+    return object_mode(entry.kind, entry.executable)
 
 
 def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
