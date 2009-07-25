@@ -168,6 +168,9 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertRaises(errors.InvalidRevisionSpec,
                           self.get_in_history, 'footag')
 
+    def test_dwim_spec_date(self):
+        self.assertAsRevisionId('r1', 'today')
+
     def test_dwim_spec_branch(self):
         self.assertInHistoryIs(None, 'alt_r2', 'tree2')
 

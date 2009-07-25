@@ -329,6 +329,12 @@ class RevisionSpec_dwim(RevisionSpec):
         except errors.InvalidRevisionSpec:
             pass
 
+        # Perhaps a date?
+        try:
+            return self.__try_spectype(RevisionSpec_date, spec, branch)
+        except errors.InvalidRevisionSpec:
+            pass
+
         # OK, last try, maybe it's a branch
         try:
             return self.__try_spectype(RevisionSpec_branch, spec, branch)
