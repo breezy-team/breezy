@@ -29,7 +29,7 @@ from bzrlib import msgeditor
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
-from setup import (
+from info import (
     bzr_plugin_version as version_info,
     )
 

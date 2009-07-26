@@ -20,19 +20,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-bzr_plugin_name = 'builddeb'
-
-bzr_plugin_version = (2, 1, 1, 'dev', 0)
-
-bzr_commands = [
-    "test_builddeb",
-    "builddeb",
-    "merge_upstream",
-    "import_dsc",
-    "bd_do",
-    "mark_uploaded",
-    ]
-
+from info import *
 
 if __name__ == '__main__':
 
