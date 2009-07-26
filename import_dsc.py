@@ -1650,8 +1650,10 @@ class DistributionBranch(object):
                 else:
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "
-                            "%s" % (previous_version,
-                                self.upstream_tag_name(previous_version)))
+                            "%s" % (
+                        previous_version.upstream_version,
+                        self.upstream_tag_name(
+                            previous_version.upstream_version)))
             else:
                 self._create_empty_upstream_tree(tempdir)
             if self.has_upstream_version_in_packaging_branch(version.upstream_version):
