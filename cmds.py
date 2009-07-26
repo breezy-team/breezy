@@ -360,6 +360,10 @@ class cmd_builddeb(Command):
                 dont_purge = True
                 use_existing = True
             merge, native, split = self._build_type(config, merge, native, split)
+            if (not merge and not native and not split and
+                tree.inventory.root.children.keys() == ["debian"]):
+                # Default to merge mode if there's only a debian/ directory
+                merge = True
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
