@@ -1,11 +1,16 @@
 bzr-builddeb (2.2~ubuntu2) karmic; urgency=low
 
+  [ James Westby ]
   * Don't cause the commit to fail if the changelog file is present but
     unknown.
   * Also avoid problems with SIGPIPE when running the build command.
     (LP: #399938)
 
- -- James Westby <james.westby@ubuntu.com>  Wed, 15 Jul 2009 18:05:38 +0100
+  [ Jelmer Vernooij ]
+  * Automatically use merge mode if there's only a debian/ directory in
+    the packaging branch. Closes: #529816.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 26 Jul 2009 18:20:30 +0200
 
 bzr-builddeb (2.2~ubuntu1) karmic; urgency=low
 
