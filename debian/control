@@ -14,6 +14,7 @@ Standards-Version: 3.7.2
 Package: bzr-builddeb
 Architecture: all
 Depends: bzr (>= 1.10~), python-debian (>= 0.1.11), python-apt, ${python:Depends}, dpkg-dev, fakeroot, bzrtools (>= 1.2), devscripts, patchutils, pristine-tar
+Recommends: python-launchpadlib
 Suggests: bzr-svn (>= 0.4.10)
 Provides: bzr-buildpackage
 XB-Python-Version: ${python:Versions}
