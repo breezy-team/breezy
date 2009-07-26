@@ -28,6 +28,8 @@ _overrides = {
 
 
 def guess_command(cmd_name):
+    if not cmd_name:
+        return
     names = set()
     for name in commands.all_command_names():
         names.add(name)
