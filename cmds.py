@@ -34,6 +34,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
+from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
@@ -73,7 +74,11 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.upstream import UpstreamProvider, UpstreamBranchSource
+from bzrlib.plugins.builddeb.upstream import (
+        UpstreamProvider,
+        UpstreamBranchSource,
+        get_upstream_sources,
+        )
 from bzrlib.plugins.builddeb.util import (find_changelog,
         get_export_upstream_revision,
         find_last_distribution,
@@ -211,12 +216,7 @@ class cmd_builddeb(Command):
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
         if is_local:
             os.chdir(location)
-        try:
-            tree, _ = WorkingTree.open_containing(location)
-            branch = tree.branch
-        except NoWorkingTree:
-            tree = None
-            branch, _ = Branch.open_containing(location)
+        tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
         return tree, branch, is_local
 
     def _get_build_tree(self, revision, tree, branch):
@@ -375,10 +375,11 @@ class cmd_builddeb(Command):
                             export_upstream_revision, config,
                             changelog.version)
 
-            upstream_provider = UpstreamProvider(tree, branch,
+            upstream_provider = UpstreamProvider(
                     changelog.package, changelog.version,
-                    orig_dir, larstiq=larstiq, upstream_branch=upstream_branch,
-                    upstream_revision=upstream_revision, allow_split=split)
+                    orig_dir, get_upstream_sources(tree, branch,
+                    larstiq=larstiq, upstream_branch=upstream_branch,
+                    upstream_revision=upstream_revision, allow_split=split))
 
             if merge:
                 distiller_cls = MergeModeDistiller
@@ -392,8 +393,8 @@ class cmd_builddeb(Command):
                     is_working_tree=working_tree)
 
             build_source_dir = os.path.join(build_dir,
-                    changelog.package + "-"
-                    + changelog.version.upstream_version)
+                    "%s-%s" % (changelog.package,
+                               changelog.version.upstream_version))
 
             builder = DebBuild(distiller, build_source_dir, build_cmd,
                     use_existing=use_existing)
@@ -780,9 +781,9 @@ class cmd_bd_do(Command):
         orig_dir = config.orig_dir
         if orig_dir is None:
             orig_dir = default_orig_dir
-        upstream_provider = UpstreamProvider(t, t.branch,
-                changelog.package, changelog.version.upstream_version,
-                orig_dir, larstiq=larstiq)
+        upstream_provider = UpstreamProvider(changelog.package, 
+                changelog.version.upstream_version, orig_dir, 
+                get_upstream_sources(t, t.branch, larstiq=larstiq))
 
         distiller = MergeModeDistiller(t, upstream_provider,
                 larstiq=larstiq)
