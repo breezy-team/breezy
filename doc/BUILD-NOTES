@@ -13,8 +13,8 @@ steps below.
 2. Tweak the User Guide index page used:
 
    cd doc/en/user-guide
-   rm index.txt
-   ln -s index-for-2x.txt index.txt
+   bzr mv index.txt index-for-1x.txt
+   bzr mv index-for-2x.txt index.txt
 
 3. Tweak the Release Notes TOC depth:
 
