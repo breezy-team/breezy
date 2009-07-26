@@ -20,18 +20,24 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from distutils.core import setup
+from info import *
 
-setup(name="bzr-builddeb",
-      version="2.1.1",
-      description="Build a .deb from a bzr branch",
-      author="James Westby",
-      author_email="jw+debian@jameswestby.net",
-      license = "GNU GPL v2",
-      url="http://jameswestby.net/bzr/bzr-builddeb/",
-      packages=['bzrlib.plugins.builddeb',
-                'bzrlib.plugins.builddeb.tests',
-                'bzrlib.plugins.builddeb.tests.blackbox'],
-      package_dir={'bzrlib.plugins.builddeb': '.'},
-      scripts=['bzr-buildpackage'],
-      data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
+if __name__ == '__main__':
+
+    from distutils.core import setup
+
+    version_string = ".".join([str(v) for v in bzr_plugin_version[:3]])
+
+    setup(name="bzr-builddeb",
+          version=version_string,
+          description="Build a .deb from a bzr branch",
+          author="James Westby",
+          author_email="jw+debian@jameswestby.net",
+          license = "GNU GPL v2",
+          url="http://jameswestby.net/bzr/bzr-builddeb/",
+          packages=['bzrlib.plugins.builddeb',
+                    'bzrlib.plugins.builddeb.tests',
+                    'bzrlib.plugins.builddeb.tests.blackbox'],
+          package_dir={'bzrlib.plugins.builddeb': '.'},
+          scripts=['bzr-buildpackage'],
+          data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
