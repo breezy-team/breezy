@@ -34,7 +34,6 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
 from bzrlib.errors import (BzrCommandError,
                            NoWorkingTree,
@@ -74,7 +73,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
         MergeModeDistiller,
         NativeSourceDistiller,
         )
-from bzrlib.plugins.builddeb.upstream import UpstreamProvider
+from bzrlib.plugins.builddeb.upstream import UpstreamProvider, UpstreamBranchSource
 from bzrlib.plugins.builddeb.util import (find_changelog,
         get_export_upstream_revision,
         find_last_distribution,
@@ -212,7 +211,12 @@ class cmd_builddeb(Command):
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
         if is_local:
             os.chdir(location)
-        tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
+        try:
+            tree, _ = WorkingTree.open_containing(location)
+            branch = tree.branch
+        except NoWorkingTree:
+            tree = None
+            branch, _ = Branch.open_containing(location)
         return tree, branch, is_local
 
     def _get_build_tree(self, revision, tree, branch):
@@ -574,11 +578,10 @@ class cmd_merge_upstream(Command):
             tarball_filename = os.path.join(orig_dir, dest_name)
 
             if upstream_branch and no_tarball:
-                info("Exporting the upstream branch to create the tarball")
-                rev_tree = upstream_branch.repository.revision_tree(
+                upstream = UpstreamBranchSource(upstream_branch, 
                         upstream_revision)
-                export(rev_tree, tarball_filename, format='tgz',
-                        root="%s-%s" % (package, version.upstream_version))
+                upstream.get_specific_version(package, version.upstream_version,
+                        orig_dir)
             else:
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir)

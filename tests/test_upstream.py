@@ -24,14 +24,18 @@ import os
 
 from debian_bundle.changelog import Version
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+        TestCase,
+        TestCaseWithTransport,
+        )
 from bzrlib.plugins.builddeb.errors import (
         MissingUpstreamTarball,
         )
 from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
-        get_apt_command_for_source,
-        provide_with_apt,
+        UpstreamSource,
+        AptSource,
+        PristineTarSource,
         )
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
@@ -39,7 +43,7 @@ from bzrlib.plugins.builddeb.util import (
         )
 
 
-class MockProvider(object):
+class MockProvider(UpstreamSource):
 
     def create_target(self, path):
         parent_dir = get_parent_dir(path)
@@ -51,9 +55,6 @@ class MockProvider(object):
         finally:
             f.close()
 
-    def tarball_name(self, package, upstream_version):
-        return tarball_name(package, upstream_version)
-
 
 class MockAptProvider(MockProvider):
 
@@ -64,14 +65,14 @@ class MockAptProvider(MockProvider):
         self.upstream_version = None
         self.target_dir = None
 
-    def provide(self, package, upstream_version, target_dir):
+    def get_specific_version(self, package, upstream_version, target_dir):
         self.called_times += 1
         self.package = package
         self.upstream_version = upstream_version
         self.target_dir = target_dir
         if self.find:
             self.create_target(os.path.join(target_dir,
-                    self.tarball_name(package, upstream_version)))
+                    tarball_name(package, upstream_version)))
         return self.find
 
 
@@ -97,7 +98,7 @@ class MockUscanProvider(MockProvider):
         self.target_dir = target_dir
         if self.find:
             self.create_target(os.path.join(target_dir,
-                    self.tarball_name(package, upstream_version)))
+                    tarball_name(package, upstream_version)))
         return self.find
 
 
@@ -226,23 +227,6 @@ class MockAptPkg(object):
         return self.sources
 
 
-class MockAptCaller(object):
-
-    def __init__(self, work=False):
-        self.work = work
-        self.called = 0
-        self.package = None
-        self.version_str = None
-        self.target_dir = None
-
-    def call(self, package, version_str, target_dir):
-        self.package = package
-        self.version_str = version_str
-        self.target_dir = target_dir
-        self.called += 1
-        return self.work
-
-
 class UpstreamProviderTests(TestCaseWithTransport):
 
     def setUp(self):
@@ -258,20 +242,22 @@ class UpstreamProviderTests(TestCaseWithTransport):
         self.store_dir = "store"
         self.provider = UpstreamProvider(self.tree, self.branch,
                 self.package, self.version, self.store_dir)
+        self.provider._sources = []
         self.providers = {}
-        self.providers["apt"]= MockAptProvider()
-        self.provider._apt_provider = self.providers["apt"].provide
+        self.providers["apt"] = MockAptProvider()
+        self.provider._sources.append(self.providers["apt"])
         self.providers["uscan"] = MockUscanProvider()
-        self.provider._uscan_provider = self.providers["uscan"].provide
+        self.provider._sources.append(self.providers["uscan"])
         self.providers["pristine"] = MockPristineProvider()
-        self.provider._pristine_provider = self.providers["pristine"].provide
+        self.provider._sources.append(self.providers["pristine"])
         self.providers["orig"] = MockOrigSourceProvider()
-        self.provider._orig_source_provider = self.providers["orig"].provide
+        self.provider._sources.append(self.providers["orig"])
         self.providers["upstream"] = MockOtherBranchProvider()
+        self.provider._sources.append(self.providers["upstream"])
         self.provider._upstream_branch_provider = \
                                 self.providers["upstream"].provide
         self.providers["split"] = MockSplitProvider()
-        self.provider._split_provider = self.providers["split"].provide
+        self.provider._sources.append(self.providers["split"])
         self.target_dir = "target"
         self.target_filename = os.path.join(self.target_dir,
                 self.desired_tarball_name)
@@ -436,17 +422,37 @@ class UpstreamProviderTests(TestCaseWithTransport):
         self.provider.allow_split = True
         self.assertSuccesfulCall("uscan", ["pristine", "apt"])
 
+
+class MockAptCaller(object):
+
+    def __init__(self, work=False):
+        self.work = work
+        self.called = 0
+        self.package = None
+        self.version_str = None
+        self.target_dir = None
+
+    def call(self, package, version_str, target_dir):
+        self.package = package
+        self.version_str = version_str
+        self.target_dir = target_dir
+        self.called += 1
+        return self.work
+
+
+class AptSourceTests(TestCase):
+
     def test_get_apt_command_for_source(self):
         self.assertEqual("apt-get source -y --only-source --tar-only "
                 "apackage=someversion",
-                get_apt_command_for_source("apackage", "someversion"))
+                AptSource()._get_command("apackage", "someversion"))
 
     def test_apt_provider_no_package(self):
         caller = MockAptCaller()
         sources = MockSources([])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -458,8 +464,8 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", _apt_pkg=apt_pkg, _apt_caller=caller))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -471,8 +477,9 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller(work=True)
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(True, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(True, AptSource().get_specific_version(
+            "apackage", "0.2", "target", 
+            _apt_pkg=apt_pkg, _apt_caller=caller.call))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)
@@ -488,8 +495,9 @@ class UpstreamProviderTests(TestCaseWithTransport):
         caller = MockAptCaller()
         sources = MockSources(["0.1-1", "0.2-1"])
         apt_pkg = MockAptPkg(sources)
-        self.assertEqual(False, provide_with_apt("apackage", "0.2",
-                    "target", _apt_pkg=apt_pkg, _apt_caller=caller.call))
+        self.assertEqual(False, AptSource().get_specific_version(
+            "apackage", "0.2", "target", 
+            _apt_pkg=apt_pkg, _apt_caller=caller.call))
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
         self.assertEqual(1, sources.restart_called_times)

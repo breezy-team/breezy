@@ -86,15 +86,5 @@ class VcsDirectory(object):
             else:
                 return urls[version]["Git"]
 
-        if "Hg" in urls[version]:
-            try:
-                import bzrlib.plugins.hg
-            except ImportError:
-                info("This package uses hg. If you would like to "
-                        "access it with bzr then please install bzr-hg"
-                        "and re-run the command.")
-            else:
-                return urls[version]["Hg"]
-
         raise errors.InvalidURL(path=url,
             extra='unsupported VCSes %r found' % urls[version].keys())

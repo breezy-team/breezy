@@ -57,6 +57,7 @@ from bzrlib.errors import (
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
@@ -73,7 +74,7 @@ from bzrlib.plugins.builddeb.errors import (
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
                 )
-from bzrlib.plugins.builddeb.util import get_commit_info_from_changelog
+from bzrlib.plugins.builddeb.util import get_commit_info_from_changelog, get_snapshot_revision
 
 
 files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
@@ -1634,16 +1635,23 @@ class DistributionBranch(object):
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
+            previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
             if previous_version is not None:
-                if not self.has_upstream_version_in_packaging_branch(
+                if self.has_upstream_version_in_packaging_branch(
                         previous_version.upstream_version):
+                    upstream_tip = self._revid_of_upstream_version_from_branch(
+                            previous_version.upstream_version)
+                    self._extract_upstream_tree(upstream_tip, tempdir)
+                elif (upstream_branch is not None and 
+                      previous_upstream_revision is not None):
+                    upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
+                    assert isinstance(upstream_tip, str)
+                    self._extract_upstream_tree(upstream_tip, tempdir)
+                else:
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "
                             "%s" % (previous_version,
                                 self.upstream_tag_name(previous_version)))
-                upstream_tip = self._revid_of_upstream_version_from_branch(
-                        previous_version.upstream_version)
-                self._extract_upstream_tree(upstream_tip, tempdir)
             else:
                 self._create_empty_upstream_tree(tempdir)
             if self.has_upstream_version_in_packaging_branch(version.upstream_version):
