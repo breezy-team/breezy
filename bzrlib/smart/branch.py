@@ -126,6 +126,8 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
         return SuccessfulSmartServerResponse(())
 
     def do_end(self):
+        # TODO: this request shouldn't have to do this housekeeping manually.
+        # Some of this logic probably belongs in a base class.
         if not self.locked:
             # We never acquired the branch successfully in the first place, so
             # there's nothing more to do.
