@@ -147,7 +147,7 @@ class BundleReader(object):
     body
     """
 
-    def __init__(self, fileobj, stream_input=False):
+    def __init__(self, fileobj, stream_input=True):
         """Constructor
 
         :param fileobj: a file containing a bzip-encoded container
@@ -608,19 +608,20 @@ class RevisionInstaller(object):
         for key, metadata, bytes in records:
             revision_id = key[-1]
             parent_ids = metadata['parents']
-            # Note that this assumes the local ghosts are identical to the
-            # ghosts in the source. But the Bundle serialization format doesn't
-            # record any info that would help us figure that stuff out.
-            # We start by going directly to the inventory vf, because the
-            # revisions have not been installed yet, so repo.get_parent_map
-            # would think that more things are ghosts than really are.
+            # Note: This assumes the local ghosts are identical to the ghosts
+            #       in the source, as the Bundle serialization format doesn't
+            #       record ghosts.
+            # Find out what is present in the local inventory vf (don't use
+            # revisions vf as those haven't been installed yet.)
             parent_keys = [(r,) for r in parent_ids]
             present_parent_map = self._repository.inventories.get_parent_map(
                                         parent_keys)
             present_parent_ids = [p_id for p_id in parent_ids
                                         if (p_id,) in present_parent_map]
             # TODO: This doesn't do any sort of caching, etc, so expect it to
-            #       perform rather poorly.
+            #       perform rather poorly. When transmitting many inventories,
+            #       it will be re-reading and serializing to bytes the
+            #       inventories that it just wrote.
             parent_invs = list(self._repository.iter_inventories(
                                 present_parent_ids))
             p_texts = [self._source_serializer.write_inventory_to_string(p)
