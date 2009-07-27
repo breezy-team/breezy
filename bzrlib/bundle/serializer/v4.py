@@ -506,6 +506,11 @@ class BundleInfoV4(object):
     target = property(_get_target)
 
 
+_counters = {}
+def update_counter(name, adjust):
+    _counters[name] = _counters.get(name, 0) + 1
+
+
 class RevisionInstaller(object):
     """Installs revisions into a repository"""
 
@@ -602,16 +607,22 @@ class RevisionInstaller(object):
             vf_records.append((key, parents, meta['sha1'], d_func(text)))
         versionedfile.add_mpdiffs(vf_records)
 
-    def _get_parent_inventory_texts(self, inventory_text_cache, parent_ids):
+    def _get_parent_inventory_texts(self, inventory_text_cache,
+                                    inventory_cache, parent_ids):
         cached_parent_texts = {}
         remaining_parent_ids = []
         for parent_id in parent_ids:
+            update_counter('parents', 1)
             p_text = inventory_text_cache.get(parent_id, None)
             if p_text is None:
+                update_counter('missing parent text', 1)
                 remaining_parent_ids.append(parent_id)
             else:
+                update_counter('cached parent text', 1)
                 cached_parent_texts[parent_id] = p_text
         ghosts = ()
+        # TODO: Use inventory_cache to grab inventories we already have in
+        #       memory
         if remaining_parent_ids:
             # first determine what keys are actually present in the local
             # inventories object (don't use revisions as they haven't been
@@ -630,6 +641,7 @@ class RevisionInstaller(object):
             for parent_inv in self._repository.iter_inventories(
                                     present_parent_ids):
                 p_text = to_string(parent_inv)
+                inventory_cache[parent_inv.revision_id] = parent_inv
                 cached_parent_texts[parent_inv.revision_id] = p_text
                 inventory_text_cache[parent_inv.revision_id] = p_text
 
@@ -648,6 +660,7 @@ class RevisionInstaller(object):
         # be >5MB). Another possibility is to cache 10-20 inventory texts
         # instead
         inventory_text_cache = lru_cache.LRUSizeCache(10*1024*1024)
+        inventory_cache = lru_cache.LRUCache(10)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             num_records = len(records)
@@ -659,6 +672,7 @@ class RevisionInstaller(object):
                 #       ghosts in the source, as the Bundle serialization
                 #       format doesn't record ghosts.
                 p_texts = self._get_parent_inventory_texts(inventory_text_cache,
+                                                           inventory_cache,
                                                            parent_ids)
                 # Why does to_lines() take strings as the source, it seems that
                 # it would have to cast to a list of lines, which we get back
@@ -679,13 +693,26 @@ class RevisionInstaller(object):
                 #       add_inventory_by_delta instead of always using
                 #       add_inventory
                 self._handle_root(target_inv, parent_ids)
+                parent_inv = None
+                if parent_ids:
+                    parent_inv = inventory_cache.get(parent_ids[0], None)
                 try:
-                    self._repository.add_inventory(revision_id, target_inv,
-                                                   parent_ids)
+                    if parent_inv is None:
+                        update_counter('missing parent inv', 1)
+                        self._repository.add_inventory(revision_id, target_inv,
+                                                       parent_ids)
+                    else:
+                        update_counter('cached parent inv', 1)
+                        delta = target_inv._make_delta(parent_inv)
+                        self._repository.add_inventory_by_delta(parent_ids[0],
+                            delta, revision_id, parent_ids)
                 except errors.UnsupportedInventoryKind:
                     raise errors.IncompatibleRevision(repr(self._repository))
+                inventory_cache[revision_id] = target_inv
         finally:
             pb.finished()
+            import pprint
+            pprint.pprint(_counters)
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id
