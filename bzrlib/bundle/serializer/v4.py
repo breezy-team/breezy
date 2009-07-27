@@ -344,8 +344,6 @@ class BundleWriteOperation(object):
         map(just_parents.update, parent_map.itervalues())
         just_parents.difference_update(parent_map)
         # Ignore ghost parents
-        if _mod_revision.NULL_REVISION in just_parents:
-            import pdb; pdb.set_trace()
         present_parents = self.repository.inventories.get_parent_map(
                             just_parents)
         ghost_keys = just_parents.difference(present_parents)
