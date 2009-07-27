@@ -22,12 +22,14 @@ from bzrlib import (
     diff,
     errors,
     iterablefile,
+    lru_cache,
     multiparent,
     osutils,
     pack,
     revision as _mod_revision,
-    trace,
     serializer,
+    trace,
+    ui,
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
 from bzrlib import bencode
@@ -600,45 +602,90 @@ class RevisionInstaller(object):
             vf_records.append((key, parents, meta['sha1'], d_func(text)))
         versionedfile.add_mpdiffs(vf_records)
 
+    def _get_parent_inventory_texts(self, inventory_text_cache, parent_ids):
+        cached_parent_texts = {}
+        remaining_parent_ids = []
+        for parent_id in parent_ids:
+            p_text = inventory_text_cache.get(parent_id, None)
+            if p_text is None:
+                remaining_parent_ids.append(parent_id)
+            else:
+                cached_parent_texts[parent_id] = p_text
+        ghosts = ()
+        if remaining_parent_ids:
+            # first determine what keys are actually present in the local
+            # inventories object (don't use revisions as they haven't been
+            # installed yet.)
+            parent_keys = [(r,) for r in remaining_parent_ids]
+            present_parent_map = self._repository.inventories.get_parent_map(
+                                        parent_keys)
+            present_parent_ids = []
+            ghosts = set()
+            for p_id in remaining_parent_ids:
+                if (p_id,) in present_parent_map:
+                    present_parent_ids.append(p_id)
+                else:
+                    ghosts.add(p_id)
+            to_string = self._source_serializer.write_inventory_to_string
+            for parent_inv in self._repository.iter_inventories(
+                                    present_parent_ids):
+                p_text = to_string(parent_inv)
+                cached_parent_texts[parent_inv.revision_id] = p_text
+                inventory_text_cache[parent_inv.revision_id] = p_text
+
+        parent_texts = [cached_parent_texts[parent_id]
+                        for parent_id in parent_ids
+                         if parent_id not in ghosts]
+        return parent_texts
+
     def _install_inventory_records(self, records):
         if (self._info['serializer'] == self._repository._serializer.format_num
             and self._repository._serializer.support_altered_by_hack):
             return self._install_mp_records_keys(self._repository.inventories,
                 records)
-        for key, metadata, bytes in records:
-            revision_id = key[-1]
-            parent_ids = metadata['parents']
-            # Note: This assumes the local ghosts are identical to the ghosts
-            #       in the source, as the Bundle serialization format doesn't
-            #       record ghosts.
-            # Find out what is present in the local inventory vf (don't use
-            # revisions vf as those haven't been installed yet.)
-            parent_keys = [(r,) for r in parent_ids]
-            present_parent_map = self._repository.inventories.get_parent_map(
-                                        parent_keys)
-            present_parent_ids = [p_id for p_id in parent_ids
-                                        if (p_id,) in present_parent_map]
-            # TODO: This doesn't do any sort of caching, etc, so expect it to
-            #       perform rather poorly. When transmitting many inventories,
-            #       it will be re-reading and serializing to bytes the
-            #       inventories that it just wrote.
-            parent_invs = list(self._repository.iter_inventories(
-                                present_parent_ids))
-            p_texts = [self._source_serializer.write_inventory_to_string(p)
-                       for p in parent_invs]
-            target_lines = multiparent.MultiParent.from_patch(bytes).to_lines(
-                p_texts)
-            sha1 = osutils.sha_strings(target_lines)
-            if sha1 != metadata['sha1']:
-                raise errors.BadBundle("Can't convert to target format")
-            target_inv = self._source_serializer.read_inventory_from_string(
-                ''.join(target_lines))
-            self._handle_root(target_inv, parent_ids)
-            try:
-                self._repository.add_inventory(revision_id, target_inv,
-                                               parent_ids)
-            except errors.UnsupportedInventoryKind:
-                raise errors.IncompatibleRevision(repr(self._repository))
+        # Use a 10MB text cache, since these are string xml inventories. Note
+        # that 10MB is fairly small for large projects (a single inventory can
+        # be >5MB). Another possibility is to cache 10-20 inventory texts
+        # instead
+        inventory_text_cache = lru_cache.LRUSizeCache(10*1024*1024)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            num_records = len(records)
+            for idx, (key, metadata, bytes) in enumerate(records):
+                pb.update('installing inventory', idx, num_records)
+                revision_id = key[-1]
+                parent_ids = metadata['parents']
+                # Note: This assumes the local ghosts are identical to the
+                #       ghosts in the source, as the Bundle serialization
+                #       format doesn't record ghosts.
+                p_texts = self._get_parent_inventory_texts(inventory_text_cache,
+                                                           parent_ids)
+                # Why does to_lines() take strings as the source, it seems that
+                # it would have to cast to a list of lines, which we get back
+                # as lines and then cast back to a string.
+                target_lines = multiparent.MultiParent.from_patch(bytes
+                            ).to_lines(p_texts)
+                inv_text = ''.join(target_lines)
+                del target_lines
+                sha1 = osutils.sha_string(inv_text)
+                if sha1 != metadata['sha1']:
+                    raise errors.BadBundle("Can't convert to target format")
+                # Add this to the cache so we don't have to extract it again.
+                inventory_text_cache[revision_id] = inv_text
+                target_inv = self._source_serializer.read_inventory_from_string(
+                    inv_text)
+                # TODO: we might try caching the parent inventories themselves,
+                #       and then using inv._make_delta and
+                #       add_inventory_by_delta instead of always using
+                #       add_inventory
+                self._handle_root(target_inv, parent_ids)
+                try:
+                    self._repository.add_inventory(revision_id, target_inv,
+                                                   parent_ids)
+                except errors.UnsupportedInventoryKind:
+                    raise errors.IncompatibleRevision(repr(self._repository))
+        finally:
+            pb.finished()
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id
