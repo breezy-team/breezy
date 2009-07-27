@@ -46,6 +46,18 @@ class CountedLock(object):
         self._lock_mode = None
         self._lock_count = 0
 
+    def get_physical_lock_status(self):
+        """Return physical lock status.
+
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._real_lock.peek() is not None
+        except NotImplementedError:
+            return False
+
     def is_locked(self):
         return self._lock_mode is not None
 
