@@ -181,16 +181,10 @@ class LockDir(lock.Lock):
 
         self._report_function = note
 
-    def _url(self):
-        try:
-            url = self.transport.external_url()
-        except errors.InProcessTransport:
-            url = self.transport.base
-        return url
-
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
-                             self._url(), self.path)
+                             self.transport.base,
+                             self.path)
 
     is_held = property(lambda self: self._lock_held)
 
@@ -527,7 +521,7 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
-                lock_url = self._url()
+                lock_url = self.transport.abspath(self.path)
                 self._report_function('%s %s\n'
                                       '%s\n' # held by
                                       '%s\n' # locked ... ago

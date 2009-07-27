@@ -398,7 +398,7 @@ def _translate_error(err):
     elif isinstance(err, errors.TokenMismatch):
         return ('TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
-        return ('LockContention', repr(err.lock), err.msg)
+        return ('LockContention',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return ('error', str(err))
