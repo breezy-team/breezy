@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
@@ -52,6 +52,18 @@ def bytes_to_gzip(bytes, factory=zlib.compressobj,
     width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
     crc32=zlib.crc32):
     """Create a gzip file containing bytes and return its content."""
+    return chunks_to_gzip([bytes])
+
+
+def chunks_to_gzip(chunks, factory=zlib.compressobj,
+    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
+    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
+    crc32=zlib.crc32):
+    """Create a gzip file containing chunks and return its content.
+
+    :param chunks: An iterable of strings. Each string can have arbitrary
+        layout.
+    """
     result = [
         '\037\213'  # self.fileobj.write('\037\213')  # magic header
         '\010'      # self.fileobj.write('\010')      # compression method
@@ -69,11 +81,17 @@ def bytes_to_gzip(bytes, factory=zlib.compressobj,
     # using a compressobj avoids a small header and trailer that the compress()
     # utility function adds.
     compress = factory(level, method, width, mem, 0)
-    result.append(compress.compress(bytes))
+    crc = 0
+    total_len = 0
+    for chunk in chunks:
+        crc = crc32(chunk, crc)
+        total_len += len(chunk)
+        zbytes = compress.compress(chunk)
+        if zbytes:
+            result.append(zbytes)
     result.append(compress.flush())
-    result.append(struct.pack("<L", LOWU32(crc32(bytes))))
     # size may exceed 2GB, or even 4GB
-    result.append(struct.pack("<L", LOWU32(len(bytes))))
+    result.append(struct.pack("<LL", LOWU32(crc), LOWU32(total_len)))
     return ''.join(result)
 
 

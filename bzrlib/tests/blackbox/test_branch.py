@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr branch."""
@@ -113,6 +113,27 @@ class TestBranch(ExternalBase):
         self.failIfExists('target/hello')
         self.failIfExists('target/goodbye')
 
+    def test_branch_into_existing_dir(self):
+        self.example_branch('a')
+        # existing dir with similar files but no .bzr dir
+        self.build_tree_contents([('b/',)])
+        self.build_tree_contents([('b/hello', 'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        # fails without --use-existing-dir
+        out,err = self.run_bzr('branch a b', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Target directory "b" already exists.\n',
+            err)
+        # force operation
+        self.run_bzr('branch a b --use-existing-dir')
+        # check conflicts
+        self.failUnlessExists('b/hello.moved')
+        self.failIfExists('b/godbye.moved')
+        # we can't branch into branch
+        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
@@ -159,11 +180,11 @@ class TestBranchStacked(ExternalBase):
         """Branching a stacked branch is not stacked by default"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='development')
+            format='1.9')
         trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='development')
+            format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_tree.commit('moar work plz')
@@ -183,11 +204,11 @@ class TestBranchStacked(ExternalBase):
         """Asking to stack on a stacked branch does work"""
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('target',
-            format='development')
+            format='1.9')
         trunk_revid = trunk_tree.commit('mainline')
         # and a branch from it which is stacked
         branch_tree = self.make_branch_and_tree('branch',
-            format='development')
+            format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
         branch_revid = branch_tree.commit('moar work plz')
@@ -208,7 +229,7 @@ class TestBranchStacked(ExternalBase):
     def test_branch_stacked(self):
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline',
-            format='development')
+            format='1.9')
         original_revid = trunk_tree.commit('mainline')
         self.assertRevisionInRepository('mainline', original_revid)
         # and a branch from it which is stacked
@@ -226,7 +247,7 @@ class TestBranchStacked(ExternalBase):
         # We can branch stacking on a smart server
         from bzrlib.smart.server import SmartTCPServer_for_testing
         self.transport_server = SmartTCPServer_for_testing
-        trunk = self.make_branch('mainline', format='development')
+        trunk = self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
 
@@ -237,9 +258,10 @@ class TestBranchStacked(ExternalBase):
             ['branch', '--stacked', 'trunk', 'shallow'])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
-            'Source format does not support stacking, using format: \'1.6\'\n'
+            'Source repository format does not support stacking, using format:\n'
             '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
-            '\n'
+            'Source branch format does not support stacking, using format:\n'
+            '  Branch format 7\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
@@ -249,10 +271,10 @@ class TestBranchStacked(ExternalBase):
             ['branch', '--stacked', 'trunk', 'shallow'])
         # We should notify the user that we upgraded their format
         self.assertEqualDiff(
-            'Source format does not support stacking, using format:'
-            ' \'1.6.1-rich-root\'\n'
+            'Source repository format does not support stacking, using format:\n'
             '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
-            '\n'
+            'Source branch format does not support stacking, using format:\n'
+            '  Branch format 7\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
@@ -267,13 +289,12 @@ class TestSmartServerBranching(ExternalBase):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
             self.get_url('target')])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(71, rpc_count)
+        self.assertLength(38, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -283,13 +304,30 @@ class TestSmartServerBranching(ExternalBase):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('from'),
             'local-target'])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(17, rpc_count)
+        self.assertLength(10, self.hpss_calls)
+
+    def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('trunk')
+        for count in range(8):
+            t.commit(message='commit %d' % count)
+        tree2 = t.branch.bzrdir.sprout('feature', stacked=True
+            ).open_workingtree()
+        tree2.commit('feature change')
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('feature'),
+            'local-target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(15, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

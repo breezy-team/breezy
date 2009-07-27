@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,13 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the test framework."""
 
-import cStringIO
+from cStringIO import StringIO
 import os
-from StringIO import StringIO
 import sys
 import time
 import unittest
@@ -28,57 +27,32 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    debug,
     errors,
+    lockdir,
     memorytree,
     osutils,
+    progress,
     remote,
     repository,
     symbol_versioning,
     tests,
     workingtree,
     )
-from bzrlib.progress import _BaseProgressBar
 from bzrlib.repofmt import (
     pack_repo,
     weaverepo,
     )
 from bzrlib.symbol_versioning import (
-    one_zero,
-    zero_eleven,
-    zero_ten,
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
     )
 from bzrlib.tests import (
-                          ChrootedTestCase,
-                          ExtendedTestResult,
-                          Feature,
-                          KnownFailure,
-                          TestCase,
-                          TestCaseInTempDir,
-                          TestCaseWithMemoryTransport,
-                          TestCaseWithTransport,
-                          TestNotApplicable,
-                          TestSkipped,
-                          TestSuite,
-                          TestUtil,
-                          TextTestRunner,
-                          UnavailableFeature,
-                          condition_id_re,
-                          condition_isinstance,
-                          exclude_tests_by_condition,
-                          exclude_tests_by_re,
-                          filter_suite_by_condition,
-                          filter_suite_by_re,
-                          iter_suite_tests,
-                          preserve_input,
-                          randomize_suite,
-                          run_suite,
-                          split_suite_by_condition,
-                          split_suite_by_re,
-                          test_lsprof,
-                          test_suite,
-                          )
-from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.TestUtil import _load_module_by_name
+    test_lsprof,
+    test_sftp_transport,
+    TestUtil,
+    )
 from bzrlib.trace import note
 from bzrlib.transport.memory import MemoryServer, MemoryTransport
 from bzrlib.version import _get_bzr_source_tree
@@ -86,21 +60,21 @@ from bzrlib.version import _get_bzr_source_tree
 
 def _test_ids(test_suite):
     """Get the ids for the tests in a test suite."""
-    return [t.id() for t in iter_suite_tests(test_suite)]
+    return [t.id() for t in tests.iter_suite_tests(test_suite)]
 
 
-class SelftestTests(TestCase):
+class SelftestTests(tests.TestCase):
 
     def test_import_tests(self):
-        mod = _load_module_by_name('bzrlib.tests.test_selftest')
+        mod = TestUtil._load_module_by_name('bzrlib.tests.test_selftest')
         self.assertEqual(mod.SelftestTests, SelftestTests)
 
     def test_import_test_failure(self):
         self.assertRaises(ImportError,
-                          _load_module_by_name,
+                          TestUtil._load_module_by_name,
                           'bzrlib.no-name-yet')
 
-class MetaTestLog(TestCase):
+class MetaTestLog(tests.TestCase):
 
     def test_logging(self):
         """Test logs are captured when a test fails."""
@@ -110,7 +84,7 @@ class MetaTestLog(TestCase):
                               'a test message\n')
 
 
-class TestUnicodeFilename(TestCase):
+class TestUnicodeFilename(tests.TestCase):
 
     def test_probe_passes(self):
         """UnicodeFilename._probe passes."""
@@ -119,7 +93,7 @@ class TestUnicodeFilename(TestCase):
         tests.UnicodeFilename._probe()
 
 
-class TestTreeShape(TestCaseInTempDir):
+class TestTreeShape(tests.TestCaseInTempDir):
 
     def test_unicode_paths(self):
         self.requireFeature(tests.UnicodeFilename)
@@ -129,7 +103,7 @@ class TestTreeShape(TestCaseInTempDir):
         self.failUnlessExists(filename)
 
 
-class TestTransportProviderAdapter(TestCase):
+class TestTransportScenarios(tests.TestCase):
     """A group of tests that test the transport implementation adaption core.
 
     This is a meta test that the tests are applied to all available
@@ -141,24 +115,21 @@ class TestTransportProviderAdapter(TestCase):
 
     def test_get_transport_permutations(self):
         # this checks that get_test_permutations defined by the module is
-        # called by the adapter get_transport_test_permutations method.
+        # called by the get_transport_test_permutations function.
         class MockModule(object):
             def get_test_permutations(self):
                 return sample_permutation
         sample_permutation = [(1,2), (3,4)]
-        from bzrlib.tests.test_transport_implementations \
-            import TransportTestProviderAdapter
-        adapter = TransportTestProviderAdapter()
+        from bzrlib.tests.per_transport import get_transport_test_permutations
         self.assertEqual(sample_permutation,
-                         adapter.get_transport_test_permutations(MockModule()))
+                         get_transport_test_permutations(MockModule()))
 
-    def test_adapter_checks_all_modules(self):
-        # this checks that the adapter returns as many permutations as there
-        # are in all the registered transport modules - we assume if this
-        # matches its probably doing the right thing especially in combination
-        # with the tests for setting the right classes below.
-        from bzrlib.tests.test_transport_implementations \
-            import TransportTestProviderAdapter
+    def test_scenarios_invlude_all_modules(self):
+        # this checks that the scenario generator returns as many permutations
+        # as there are in all the registered transport modules - we assume if
+        # this matches its probably doing the right thing especially in
+        # combination with the tests for setting the right classes below.
+        from bzrlib.tests.per_transport import transport_test_permutations
         from bzrlib.transport import _get_transport_modules
         modules = _get_transport_modules()
         permutation_count = 0
@@ -169,22 +140,15 @@ class TestTransportProviderAdapter(TestCase):
                      __import__(module))())
             except errors.DependencyNotPresent:
                 pass
-        input_test = TestTransportProviderAdapter(
-            "test_adapter_sets_transport_class")
-        adapter = TransportTestProviderAdapter()
-        self.assertEqual(permutation_count,
-                         len(list(iter(adapter.adapt(input_test)))))
+        scenarios = transport_test_permutations()
+        self.assertEqual(permutation_count, len(scenarios))
 
-    def test_adapter_sets_transport_class(self):
-        # Check that the test adapter inserts a transport and server into the
-        # generated test.
-        #
+    def test_scenarios_include_transport_class(self):
         # This test used to know about all the possible transports and the
         # order they were returned but that seems overly brittle (mbp
         # 20060307)
-        from bzrlib.tests.test_transport_implementations \
-            import TransportTestProviderAdapter
-        scenarios = TransportTestProviderAdapter().scenarios
+        from bzrlib.tests.per_transport import transport_test_permutations
+        scenarios = transport_test_permutations()
         # there are at least that many builtin transports
         self.assertTrue(len(scenarios) > 6)
         one_scenario = scenarios[0]
@@ -195,18 +159,17 @@ class TestTransportProviderAdapter(TestCase):
                                    bzrlib.transport.Server))
 
 
-class TestBranchProviderAdapter(TestCase):
-    """A group of tests that test the branch implementation test adapter."""
+class TestBranchScenarios(tests.TestCase):
 
-    def test_constructor(self):
+    def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.branch_implementations import BranchTestProviderAdapter
+        from bzrlib.tests.per_branch import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [("c", "C"), ("d", "D")]
-        adapter = BranchTestProviderAdapter(server1, server2, formats)
-        self.assertEqual(2, len(adapter.scenarios))
+        scenarios = make_scenarios(server1, server2, formats)
+        self.assertEqual(2, len(scenarios))
         self.assertEqual([
             ('str',
              {'branch_format': 'c',
@@ -218,22 +181,20 @@ class TestBranchProviderAdapter(TestCase):
               'bzrdir_format': 'D',
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
-            adapter.scenarios)
+            scenarios)
 
 
-class TestBzrDirProviderAdapter(TestCase):
-    """A group of tests that test the bzr dir implementation test adapter."""
+class TestBzrDirScenarios(tests.TestCase):
 
-    def test_adapted_tests(self):
+    def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.bzrdir_implementations import BzrDirTestProviderAdapter
+        from bzrlib.tests.per_bzrdir import make_scenarios
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"
         formats = ["c", "d"]
-        adapter = BzrDirTestProviderAdapter(vfs_factory,
-            server1, server2, formats)
+        scenarios = make_scenarios(vfs_factory, server1, server2, formats)
         self.assertEqual([
             ('str',
              {'bzrdir_format': 'c',
@@ -245,14 +206,12 @@ class TestBzrDirProviderAdapter(TestCase):
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'vfs_transport_factory': 'v'})],
-            adapter.scenarios)
+            scenarios)
 
 
-class TestRepositoryParameterisation(TestCase):
-    """A group of tests that test the repository implementation test adapter."""
+class TestRepositoryScenarios(tests.TestCase):
 
     def test_formats_to_scenarios(self):
-        """The adapter can generate all the scenarios needed."""
         from bzrlib.tests.per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
@@ -290,35 +249,20 @@ class TestRepositoryParameterisation(TestCase):
             vfs_scenarios)
 
 
-class TestTestScenarioApplier(TestCase):
+class TestTestScenarioApplication(tests.TestCase):
     """Tests for the test adaption facilities."""
 
-    def test_adapt_applies_scenarios(self):
-        from bzrlib.tests.per_repository import TestScenarioApplier
-        input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
-        adapter = TestScenarioApplier()
-        adapter.scenarios = [("1", "dict"), ("2", "settings")]
-        calls = []
-        def capture_call(test, scenario):
-            calls.append((test, scenario))
-            return test
-        adapter.adapt_test_to_scenario = capture_call
-        adapter.adapt(input_test)
-        self.assertEqual([(input_test, ("1", "dict")),
-            (input_test, ("2", "settings"))], calls)
-
-    def test_adapt_test_to_scenario(self):
-        from bzrlib.tests.per_repository import TestScenarioApplier
-        input_test = TestTestScenarioApplier("test_adapt_test_to_scenario")
-        adapter = TestScenarioApplier()
+    def test_apply_scenario(self):
+        from bzrlib.tests import apply_scenario
+        input_test = TestTestScenarioApplication("test_apply_scenario")
         # setup two adapted tests
-        adapted_test1 = adapter.adapt_test_to_scenario(input_test,
+        adapted_test1 = apply_scenario(input_test,
             ("new id",
             {"bzrdir_format":"bzr_format",
              "repository_format":"repo_fmt",
              "transport_server":"transport_server",
              "transport_readonly_server":"readonly-server"}))
-        adapted_test2 = adapter.adapt_test_to_scenario(input_test,
+        adapted_test2 = apply_scenario(input_test,
             ("new id 2", {"bzrdir_format":None}))
         # input_test should have been altered.
         self.assertRaises(AttributeError, getattr, input_test, "bzrdir_format")
@@ -331,28 +275,26 @@ class TestTestScenarioApplier(TestCase):
         self.assertEqual("readonly-server",
             adapted_test1.transport_readonly_server)
         self.assertEqual(
-            "bzrlib.tests.test_selftest.TestTestScenarioApplier."
-            "test_adapt_test_to_scenario(new id)",
+            "bzrlib.tests.test_selftest.TestTestScenarioApplication."
+            "test_apply_scenario(new id)",
             adapted_test1.id())
         self.assertEqual(None, adapted_test2.bzrdir_format)
         self.assertEqual(
-            "bzrlib.tests.test_selftest.TestTestScenarioApplier."
-            "test_adapt_test_to_scenario(new id 2)",
+            "bzrlib.tests.test_selftest.TestTestScenarioApplication."
+            "test_apply_scenario(new id 2)",
             adapted_test2.id())
 
 
-class TestInterRepositoryProviderAdapter(TestCase):
-    """A group of tests that test the InterRepository test adapter."""
+class TestInterRepositoryScenarios(tests.TestCase):
 
-    def test_adapted_tests(self):
+    def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.interrepository_implementations import \
-            InterRepositoryTestProviderAdapter
+        from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [(str, "C1", "C2"), (int, "D1", "D2")]
-        adapter = InterRepositoryTestProviderAdapter(server1, server2, formats)
+        scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('str,str,str',
              {'interrepo_class': str,
@@ -366,22 +308,20 @@ class TestInterRepositoryProviderAdapter(TestCase):
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
-            adapter.formats_to_scenarios(formats))
+            scenarios)
 
 
-class TestWorkingTreeProviderAdapter(TestCase):
-    """A group of tests that test the workingtree implementation test adapter."""
+class TestWorkingTreeScenarios(tests.TestCase):
 
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.workingtree_implementations \
-            import WorkingTreeTestProviderAdapter
+        from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
         formats = [workingtree.WorkingTreeFormat2(),
                    workingtree.WorkingTreeFormat3(),]
-        adapter = WorkingTreeTestProviderAdapter(server1, server2, formats)
+        scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('WorkingTreeFormat2',
              {'bzrdir_format': formats[0]._matchingbzrdir,
@@ -393,63 +333,92 @@ class TestWorkingTreeProviderAdapter(TestCase):
               'transport_readonly_server': 'b',
               'transport_server': 'a',
               'workingtree_format': formats[1]})],
-            adapter.scenarios)
+            scenarios)
 
 
-class TestTreeProviderAdapter(TestCase):
-    """Test the setup of tree_implementation tests."""
+class TestTreeScenarios(tests.TestCase):
 
-    def test_adapted_tests(self):
-        # the tree implementation adapter is meant to setup one instance for
-        # each working tree format, and one additional instance that will
-        # use the default wt format, but create a revision tree for the tests.
-        # this means that the wt ones should have the workingtree_to_test_tree
-        # attribute set to 'return_parameter' and the revision one set to
-        # revision_tree_from_workingtree.
+    def test_scenarios(self):
+        # the tree implementation scenario generator is meant to setup one
+        # instance for each working tree format, and one additional instance
+        # that will use the default wt format, but create a revision tree for
+        # the tests.  this means that the wt ones should have the
+        # workingtree_to_test_tree attribute set to 'return_parameter' and the
+        # revision one set to revision_tree_from_workingtree.
 
-        from bzrlib.tests.tree_implementations import (
-            TreeTestProviderAdapter,
+        from bzrlib.tests.per_tree import (
+            _dirstate_tree_from_workingtree,
+            make_scenarios,
+            preview_tree_pre,
+            preview_tree_post,
             return_parameter,
             revision_tree_from_workingtree
             )
-        input_test = TestTreeProviderAdapter(
-            "test_adapted_tests")
         server1 = "a"
         server2 = "b"
         formats = [workingtree.WorkingTreeFormat2(),
                    workingtree.WorkingTreeFormat3(),]
-        adapter = TreeTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        # XXX We should not have tests fail as we add more scenarios
-        # abentley 20080412
-        self.assertEqual(7, len(tests))
-        # this must match the default format setp up in
-        # TreeTestProviderAdapter.adapt
-        default_format = workingtree.WorkingTreeFormat3
-        self.assertEqual(tests[0].workingtree_format, formats[0])
-        self.assertEqual(tests[0].bzrdir_format, formats[0]._matchingbzrdir)
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
-        self.assertEqual(tests[1].workingtree_format, formats[1])
-        self.assertEqual(tests[1].bzrdir_format, formats[1]._matchingbzrdir)
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
-        self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
-        self.assertIsInstance(tests[2].workingtree_format, default_format)
-        #self.assertEqual(tests[2].bzrdir_format,
-        #                 default_format._matchingbzrdir)
-        self.assertEqual(tests[2].transport_server, server1)
-        self.assertEqual(tests[2].transport_readonly_server, server2)
-        self.assertEqual(tests[2]._workingtree_to_test_tree,
-            revision_tree_from_workingtree)
+        scenarios = make_scenarios(server1, server2, formats)
+        self.assertEqual(7, len(scenarios))
+        default_wt_format = workingtree.WorkingTreeFormat4._default_format
+        wt4_format = workingtree.WorkingTreeFormat4()
+        wt5_format = workingtree.WorkingTreeFormat5()
+        expected_scenarios = [
+            ('WorkingTreeFormat2',
+             {'bzrdir_format': formats[0]._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': formats[0],
+              '_workingtree_to_test_tree': return_parameter,
+              }),
+            ('WorkingTreeFormat3',
+             {'bzrdir_format': formats[1]._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': formats[1],
+              '_workingtree_to_test_tree': return_parameter,
+             }),
+            ('RevisionTree',
+             {'_workingtree_to_test_tree': revision_tree_from_workingtree,
+              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': default_wt_format,
+             }),
+            ('DirStateRevisionTree,WT4',
+             {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
+              'bzrdir_format': wt4_format._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': wt4_format,
+             }),
+            ('DirStateRevisionTree,WT5',
+             {'_workingtree_to_test_tree': _dirstate_tree_from_workingtree,
+              'bzrdir_format': wt5_format._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': wt5_format,
+             }),
+            ('PreviewTree',
+             {'_workingtree_to_test_tree': preview_tree_pre,
+              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': default_wt_format}),
+            ('PreviewTreePost',
+             {'_workingtree_to_test_tree': preview_tree_post,
+              'bzrdir_format': default_wt_format._matchingbzrdir,
+              'transport_readonly_server': 'b',
+              'transport_server': 'a',
+              'workingtree_format': default_wt_format}),
+             ]
+        self.assertEqual(expected_scenarios, scenarios)
 
 
-class TestInterTreeProviderAdapter(TestCase):
+class TestInterTreeScenarios(tests.TestCase):
     """A group of tests that test the InterTreeTestAdapter."""
 
-    def test_adapted_tests(self):
+    def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
         # for InterTree tests we want the machinery to bring up two trees in
@@ -459,43 +428,50 @@ class TestInterTreeProviderAdapter(TestCase):
         # unlike the TestProviderAdapter we dont want to automatically add a
         # parameterized one for WorkingTree - the optimisers will tell us what
         # ones to add.
-        from bzrlib.tests.tree_implementations import (
+        from bzrlib.tests.per_tree import (
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.tests.intertree_implementations import (
-            InterTreeTestProviderAdapter,
+        from bzrlib.tests.per_intertree import (
+            make_scenarios,
             )
         from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
-        input_test = TestInterTreeProviderAdapter(
-            "test_adapted_tests")
+        input_test = TestInterTreeScenarios(
+            "test_scenarios")
         server1 = "a"
         server2 = "b"
         format1 = WorkingTreeFormat2()
         format2 = WorkingTreeFormat3()
         formats = [("1", str, format1, format2, "converter1"),
             ("2", int, format2, format1, "converter2")]
-        adapter = InterTreeTestProviderAdapter(server1, server2, formats)
-        suite = adapter.adapt(input_test)
-        tests = list(iter(suite))
-        self.assertEqual(2, len(tests))
-        self.assertEqual(tests[0].intertree_class, formats[0][1])
-        self.assertEqual(tests[0].workingtree_format, formats[0][2])
-        self.assertEqual(tests[0].workingtree_format_to, formats[0][3])
-        self.assertEqual(tests[0].mutable_trees_to_test_trees, formats[0][4])
-        self.assertEqual(tests[0]._workingtree_to_test_tree, return_parameter)
-        self.assertEqual(tests[0].transport_server, server1)
-        self.assertEqual(tests[0].transport_readonly_server, server2)
-        self.assertEqual(tests[1].intertree_class, formats[1][1])
-        self.assertEqual(tests[1].workingtree_format, formats[1][2])
-        self.assertEqual(tests[1].workingtree_format_to, formats[1][3])
-        self.assertEqual(tests[1].mutable_trees_to_test_trees, formats[1][4])
-        self.assertEqual(tests[1]._workingtree_to_test_tree, return_parameter)
-        self.assertEqual(tests[1].transport_server, server1)
-        self.assertEqual(tests[1].transport_readonly_server, server2)
+        scenarios = make_scenarios(server1, server2, formats)
+        self.assertEqual(2, len(scenarios))
+        expected_scenarios = [
+            ("1", {
+                "bzrdir_format": format1._matchingbzrdir,
+                "intertree_class": formats[0][1],
+                "workingtree_format": formats[0][2],
+                "workingtree_format_to": formats[0][3],
+                "mutable_trees_to_test_trees": formats[0][4],
+                "_workingtree_to_test_tree": return_parameter,
+                "transport_server": server1,
+                "transport_readonly_server": server2,
+                }),
+            ("2", {
+                "bzrdir_format": format2._matchingbzrdir,
+                "intertree_class": formats[1][1],
+                "workingtree_format": formats[1][2],
+                "workingtree_format_to": formats[1][3],
+                "mutable_trees_to_test_trees": formats[1][4],
+                "_workingtree_to_test_tree": return_parameter,
+                "transport_server": server1,
+                "transport_readonly_server": server2,
+                }),
+            ]
+        self.assertEqual(scenarios, expected_scenarios)
 
 
-class TestTestCaseInTempDir(TestCaseInTempDir):
+class TestTestCaseInTempDir(tests.TestCaseInTempDir):
 
     def test_home_is_not_working(self):
         self.assertNotEqual(self.test_dir, self.test_home_dir)
@@ -517,7 +493,7 @@ class TestTestCaseInTempDir(TestCaseInTempDir):
             os.lstat("foo"), os.lstat("bar"))
 
 
-class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
+class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
 
     def test_home_is_non_existant_dir_under_root(self):
         """The test_home_dir for TestCaseWithMemoryTransport is missing.
@@ -612,8 +588,19 @@ class TestTestCaseWithMemoryTransport(TestCaseWithMemoryTransport):
         # But we have a safety net in place.
         self.assertRaises(AssertionError, self._check_safety_net)
 
+    def test_dangling_locks_cause_failures(self):
+        class TestDanglingLock(tests.TestCaseWithMemoryTransport):
+            def test_function(self):
+                t = self.get_transport('.')
+                l = lockdir.LockDir(t, 'lock')
+                l.create()
+                l.attempt_lock()
+        test = TestDanglingLock('test_function')
+        result = test.run()
+        self.assertEqual(1, len(result.errors))
 
-class TestTestCaseWithTransport(TestCaseWithTransport):
+
+class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
@@ -670,7 +657,7 @@ class TestTestCaseWithTransport(TestCaseWithTransport):
         self.assertEqual((1, rev_id), a_branch.last_revision_info())
 
 
-class TestTestCaseTransports(TestCaseWithTransport):
+class TestTestCaseTransports(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
@@ -685,7 +672,7 @@ class TestTestCaseTransports(TestCaseWithTransport):
         self.failIfExists('subdir')
 
 
-class TestChrootedTest(ChrootedTestCase):
+class TestChrootedTest(tests.ChrootedTestCase):
 
     def test_root_is_root(self):
         from bzrlib.transport import get_transport
@@ -694,14 +681,14 @@ class TestChrootedTest(ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
-class MockProgress(_BaseProgressBar):
+class MockProgress(progress._BaseProgressBar):
     """Progress-bar standin that records calls.
 
     Useful for testing pb using code.
     """
 
     def __init__(self):
-        _BaseProgressBar.__init__(self)
+        progress._BaseProgressBar.__init__(self)
         self.calls = []
 
     def tick(self):
@@ -717,7 +704,7 @@ class MockProgress(_BaseProgressBar):
         self.calls.append(('note', msg, args))
 
 
-class TestTestResult(TestCase):
+class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
         result = bzrlib.tests.TextTestResult(self._log_file,
@@ -729,16 +716,17 @@ class TestTestResult(TestCase):
         self.assertContainsRe(timed_string, expected_re)
 
     def test_test_reporting(self):
-        class ShortDelayTestCase(TestCase):
+        class ShortDelayTestCase(tests.TestCase):
             def test_short_delay(self):
                 time.sleep(0.003)
             def test_short_benchmark(self):
                 self.time(time.sleep, 0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
+        # if a benchmark time is given, we now show just that time followed by
+        # a star
         self.check_timing(ShortDelayTestCase('test_short_benchmark'),
-                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+                          r"^ +[0-9]+ms\*$")
 
     def test_unittest_reporting_unittest_class(self):
         # getting the time from a non-bzrlib test works ok
@@ -828,21 +816,22 @@ class TestTestResult(TestCase):
 
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
-        class InstrumentedTestResult(ExtendedTestResult):
-
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
                 self._call = test, err
         result = InstrumentedTestResult(None, None, None, None)
         def test_function():
-            raise KnownFailure('failed!')
+            raise tests.KnownFailure('failed!')
         test = unittest.FunctionTestCase(test_function)
         test.run(result)
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
         self.assertEqual(test, result._call[0])
-        self.assertEqual(KnownFailure, result._call[1][0])
-        self.assertIsInstance(result._call[1][1], KnownFailure)
+        self.assertEqual(tests.KnownFailure, result._call[1][0])
+        self.assertIsInstance(result._call[1][1], tests.KnownFailure)
         # we dont introspec the traceback, if the rest is ok, it would be
         # exceptional for it not to be.
         # it should update the known_failure_count on the object.
@@ -865,7 +854,7 @@ class TestTestResult(TestCase):
         # (class, exception object, traceback)
         # KnownFailures dont get their tracebacks shown though, so we
         # can skip that.
-        err = (KnownFailure, KnownFailure('foo'), None)
+        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
         result.report_known_failure(test, err)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
@@ -877,7 +866,7 @@ class TestTestResult(TestCase):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
@@ -889,7 +878,7 @@ class TestTestResult(TestCase):
         # (class, exception object, traceback)
         # KnownFailures dont get their tracebacks shown though, so we
         # can skip that.
-        err = (KnownFailure, KnownFailure('foo'), None)
+        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
         result.report_known_failure(test, err)
         self.assertEqual(
             [
@@ -916,13 +905,15 @@ class TestTestResult(TestCase):
 
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
-        class InstrumentedTestResult(ExtendedTestResult):
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         test = SampleTestCase('_test_pass')
-        feature = Feature()
+        feature = tests.Feature()
         result.startTest(test)
         result.addNotSupported(test, feature)
         # it should invoke 'report_unsupported'.
@@ -947,25 +938,26 @@ class TestTestResult(TestCase):
             verbosity=2,
             )
         test = self.get_passing_test()
-        feature = Feature()
+        feature = tests.Feature()
         result.startTest(test)
         prefix = len(result_stream.getvalue())
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP                   0ms', "    The feature 'Feature' is not available."])
+        self.assertEqual(lines, ['NODEP        0ms',
+                                 "    The feature 'Feature' is not available."])
 
     def test_text_report_unsupported(self):
         # text test output formatting
         pb = MockProgress()
         result = bzrlib.tests.TextTestResult(
-            None,
+            StringIO(),
             descriptions=0,
             verbosity=1,
             pb=pb,
             )
         test = self.get_passing_test()
-        feature = Feature()
+        feature = tests.Feature()
         # this seeds the state to handle reporting the test.
         result.startTest(test)
         result.report_unsupported(test, feature)
@@ -986,15 +978,16 @@ class TestTestResult(TestCase):
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
-        class InstrumentedTestResult(ExtendedTestResult):
-
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            def done(self): pass
+            def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
-        feature = Feature()
+        feature = tests.Feature()
         def test_function():
-            raise UnavailableFeature(feature)
+            raise tests.UnavailableFeature(feature)
         test = unittest.FunctionTestCase(test_function)
         test.run(result)
         # it should invoke 'addNotSupported'.
@@ -1017,7 +1010,7 @@ class TestTestResult(TestCase):
         result = bzrlib.tests.TextTestResult(self._log_file, descriptions=0,
                                              verbosity=1)
         test = self.get_passing_test()
-        err = (KnownFailure, KnownFailure('foo'), None)
+        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
         result._addKnownFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
@@ -1030,8 +1023,21 @@ class TestTestResult(TestCase):
         self.assertTrue(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
+    def test_startTests(self):
+        """Starting the first test should trigger startTests."""
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+            def report_test_start(self, test): pass
+        result = InstrumentedTestResult(None, None, None, None)
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        test.run(result)
+        self.assertEquals(1, result.calls)
 
-class TestUnicodeFilenameFeature(TestCase):
+
+class TestUnicodeFilenameFeature(tests.TestCase):
 
     def test_probe_passes(self):
         """UnicodeFilenameFeature._probe passes."""
@@ -1040,7 +1046,7 @@ class TestUnicodeFilenameFeature(TestCase):
         tests.UnicodeFilenameFeature._probe()
 
 
-class TestRunner(TestCase):
+class TestRunner(tests.TestCase):
 
     def dummy_test(self):
         pass
@@ -1051,28 +1057,29 @@ class TestRunner(TestCase):
         This current saves and restores:
         TestCaseInTempDir.TEST_ROOT
 
-        There should be no tests in this file that use bzrlib.tests.TextTestRunner
-        without using this convenience method, because of our use of global state.
+        There should be no tests in this file that use
+        bzrlib.tests.TextTestRunner without using this convenience method,
+        because of our use of global state.
         """
-        old_root = TestCaseInTempDir.TEST_ROOT
+        old_root = tests.TestCaseInTempDir.TEST_ROOT
         try:
-            TestCaseInTempDir.TEST_ROOT = None
+            tests.TestCaseInTempDir.TEST_ROOT = None
             return testrunner.run(test)
         finally:
-            TestCaseInTempDir.TEST_ROOT = old_root
+            tests.TestCaseInTempDir.TEST_ROOT = old_root
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
         # the final output when real failures occur.
         def known_failure_test():
-            raise KnownFailure('failed')
+            raise tests.KnownFailure('failed')
         test = unittest.TestSuite()
         test.addTest(unittest.FunctionTestCase(known_failure_test))
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
-        runner = TextTestRunner(stream=stream)
+        runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertEqual([
@@ -1087,15 +1094,15 @@ class TestRunner(TestCase):
             '----------------------------------------------------------------------',
             '',
             'FAILED (failures=1, known_failure_count=1)'],
-            lines[0:5] + lines[6:10] + lines[11:])
+            lines[3:8] + lines[9:13] + lines[14:])
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
         def known_failure_test():
-            raise KnownFailure('failed')
+            raise tests.KnownFailure('failed')
         test = unittest.FunctionTestCase(known_failure_test)
         stream = StringIO()
-        runner = TextTestRunner(stream=stream)
+        runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         self.assertContainsRe(stream.getvalue(),
             '\n'
@@ -1108,22 +1115,22 @@ class TestRunner(TestCase):
         # run a test that is skipped, and check the suite as a whole still
         # succeeds.
         # skipping_test must be hidden in here so it's not run as a real test
-        class SkippingTest(TestCase):
+        class SkippingTest(tests.TestCase):
             def skipping_test(self):
-                raise TestSkipped('test intentionally skipped')
-        runner = TextTestRunner(stream=self._log_file)
+                raise tests.TestSkipped('test intentionally skipped')
+        runner = tests.TextTestRunner(stream=self._log_file)
         test = SkippingTest("skipping_test")
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
 
     def test_skipped_from_setup(self):
         calls = []
-        class SkippedSetupTest(TestCase):
+        class SkippedSetupTest(tests.TestCase):
 
             def setUp(self):
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
-                raise TestSkipped('skipped setup')
+                raise tests.TestSkipped('skipped setup')
 
             def test_skip(self):
                 self.fail('test reached')
@@ -1131,7 +1138,7 @@ class TestRunner(TestCase):
             def cleanup(self):
                 calls.append('cleanup')
 
-        runner = TextTestRunner(stream=self._log_file)
+        runner = tests.TextTestRunner(stream=self._log_file)
         test = SkippedSetupTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1140,19 +1147,20 @@ class TestRunner(TestCase):
 
     def test_skipped_from_test(self):
         calls = []
-        class SkippedTest(TestCase):
+        class SkippedTest(tests.TestCase):
 
             def setUp(self):
+                tests.TestCase.setUp(self)
                 calls.append('setUp')
                 self.addCleanup(self.cleanup)
 
             def test_skip(self):
-                raise TestSkipped('skipped test')
+                raise tests.TestSkipped('skipped test')
 
             def cleanup(self):
                 calls.append('cleanup')
 
-        runner = TextTestRunner(stream=self._log_file)
+        runner = tests.TextTestRunner(stream=self._log_file)
         test = SkippedTest('test_skip')
         result = self.run_test_runner(runner, test)
         self.assertTrue(result.wasSuccessful())
@@ -1162,10 +1170,9 @@ class TestRunner(TestCase):
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
         def not_applicable_test():
-            from bzrlib.tests import TestNotApplicable
-            raise TestNotApplicable('this test never runs')
+            raise tests.TestNotApplicable('this test never runs')
         out = StringIO()
-        runner = TextTestRunner(stream=out, verbosity=2)
+        runner = tests.TextTestRunner(stream=out, verbosity=2)
         test = unittest.FunctionTestCase(not_applicable_test)
         result = self.run_test_runner(runner, test)
         self._log_file.write(out.getvalue())
@@ -1178,13 +1185,13 @@ class TestRunner(TestCase):
 
     def test_not_applicable_demo(self):
         # just so you can see it in the test output
-        raise TestNotApplicable('this test is just a demonstation')
+        raise tests.TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
-        class Feature1(Feature):
+        class Feature1(tests.Feature):
             def _probe(self): return False
-        class Feature2(Feature):
+        class Feature2(tests.Feature):
             def _probe(self): return False
         # create sample tests
         test1 = SampleTestCase('_test_pass')
@@ -1195,7 +1202,7 @@ class TestRunner(TestCase):
         test.addTest(test1)
         test.addTest(test2)
         stream = StringIO()
-        runner = TextTestRunner(stream=stream)
+        runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertEqual([
@@ -1212,7 +1219,8 @@ class TestRunner(TestCase):
         workingtree = _get_bzr_source_tree()
         test = TestRunner('dummy_test')
         output = StringIO()
-        runner = TextTestRunner(stream=self._log_file, bench_history=output)
+        runner = tests.TextTestRunner(stream=self._log_file,
+                                      bench_history=output)
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
@@ -1229,13 +1237,13 @@ class TestRunner(TestCase):
     def test_success_log_deleted(self):
         """Successful tests have their log deleted"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_success(self):
                 self.log('this will be removed\n')
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_success')
         result = self.run_test_runner(runner, test)
 
@@ -1244,14 +1252,14 @@ class TestRunner(TestCase):
     def test_skipped_log_deleted(self):
         """Skipped tests have their log deleted"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_skipped(self):
                 self.log('this will be removed\n')
                 raise tests.TestSkipped()
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_skipped')
         result = self.run_test_runner(runner, test)
 
@@ -1260,14 +1268,14 @@ class TestRunner(TestCase):
     def test_not_aplicable_log_deleted(self):
         """Not applicable tests have their log deleted"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_not_applicable(self):
                 self.log('this will be removed\n')
                 raise tests.TestNotApplicable()
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_not_applicable')
         result = self.run_test_runner(runner, test)
 
@@ -1276,14 +1284,14 @@ class TestRunner(TestCase):
     def test_known_failure_log_deleted(self):
         """Know failure tests have their log deleted"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_known_failure(self):
                 self.log('this will be removed\n')
                 raise tests.KnownFailure()
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_known_failure')
         result = self.run_test_runner(runner, test)
 
@@ -1292,14 +1300,14 @@ class TestRunner(TestCase):
     def test_fail_log_kept(self):
         """Failed tests have their log kept"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_fail(self):
                 self.log('this will be kept\n')
                 self.fail('this test fails')
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_fail')
         result = self.run_test_runner(runner, test)
 
@@ -1314,14 +1322,14 @@ class TestRunner(TestCase):
     def test_error_log_kept(self):
         """Tests with errors have their log kept"""
 
-        class LogTester(TestCase):
+        class LogTester(tests.TestCase):
 
             def test_error(self):
                 self.log('this will be kept\n')
                 raise ValueError('random exception raised')
 
-        sio = cStringIO.StringIO()
-        runner = TextTestRunner(stream=sio)
+        sio = StringIO()
+        runner = tests.TextTestRunner(stream=sio)
         test = LogTester('test_error')
         result = self.run_test_runner(runner, test)
 
@@ -1334,7 +1342,7 @@ class TestRunner(TestCase):
         self.assertEqual(log, test._log_contents)
 
 
-class SampleTestCase(TestCase):
+class SampleTestCase(tests.TestCase):
 
     def _test_pass(self):
         pass
@@ -1342,13 +1350,56 @@ class SampleTestCase(TestCase):
 class _TestException(Exception):
     pass
 
-class TestTestCase(TestCase):
+class TestTestCase(tests.TestCase):
     """Tests that test the core bzrlib TestCase."""
+
+    def test_assertLength_matches_empty(self):
+        a_list = []
+        self.assertLength(0, a_list)
+
+    def test_assertLength_matches_nonempty(self):
+        a_list = [1, 2, 3]
+        self.assertLength(3, a_list)
+
+    def test_assertLength_fails_different(self):
+        a_list = []
+        self.assertRaises(AssertionError, self.assertLength, 1, a_list)
+
+    def test_assertLength_shows_sequence_in_failure(self):
+        a_list = [1, 2, 3]
+        exception = self.assertRaises(AssertionError, self.assertLength, 2,
+            a_list)
+        self.assertEqual('Incorrect length: wanted 2, got 3 for [1, 2, 3]',
+            exception.args[0])
+
+    def test_base_setUp_not_called_causes_failure(self):
+        class TestCaseWithBrokenSetUp(tests.TestCase):
+            def setUp(self):
+                pass # does not call TestCase.setUp
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenSetUp('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
+
+    def test_base_tearDown_not_called_causes_failure(self):
+        class TestCaseWithBrokenTearDown(tests.TestCase):
+            def tearDown(self):
+                pass # does not call TestCase.tearDown
+            def test_foo(self):
+                pass
+        test = TestCaseWithBrokenTearDown('test_foo')
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertFalse(result.wasSuccessful())
+        self.assertEqual(1, result.testsRun)
 
     def test_debug_flags_sanitised(self):
         """The bzrlib debug flags should be sanitised by setUp."""
         if 'allow_debug' in tests.selftest_debug_flags:
-            raise TestNotApplicable(
+            raise tests.TestNotApplicable(
                 '-Eallow_debug option prevents debug flag sanitisation')
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
@@ -1369,7 +1420,7 @@ class TestTestCase(TestCase):
         """
         self.change_selftest_debug_flags(set(['allow_debug']))
         bzrlib.debug.debug_flags = set(['a-flag'])
-        class TestThatRecordsFlags(TestCase):
+        class TestThatRecordsFlags(tests.TestCase):
             def test_foo(nested_self):
                 self.flags = set(bzrlib.debug.debug_flags)
         test = TestThatRecordsFlags('test_foo')
@@ -1383,7 +1434,7 @@ class TestTestCase(TestCase):
         self.change_selftest_debug_flags(set(['allow_debug']))
         # Now run a test that modifies debug.debug_flags.
         bzrlib.debug.debug_flags = set(['original-state'])
-        class TestThatModifiesFlags(TestCase):
+        class TestThatModifiesFlags(tests.TestCase):
             def test_foo(self):
                 bzrlib.debug.debug_flags = set(['modified'])
         test = TestThatModifiesFlags('test_foo')
@@ -1391,8 +1442,7 @@ class TestTestCase(TestCase):
         self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
 
     def make_test_result(self):
-        return bzrlib.tests.TextTestResult(
-            self._log_file, descriptions=0, verbosity=1)
+        return tests.TextTestResult(self._log_file, descriptions=0, verbosity=1)
 
     def inner_test(self):
         # the inner child test
@@ -1441,7 +1491,7 @@ class TestTestCase(TestCase):
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            r"\d+ms/ +\d+ms\n$")
+            r"\d+ms\*\n$")
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""
@@ -1474,21 +1524,22 @@ class TestTestCase(TestCase):
 
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
-        self.assertRaises(KnownFailure, self.knownFailure, "A Failure")
+        self.assertRaises(tests.KnownFailure, self.knownFailure, "A Failure")
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
-        class Available(Feature):
+        class Available(tests.Feature):
             def _probe(self):return True
         feature = Available()
         self.requireFeature(feature)
 
     def test_requireFeature_unavailable(self):
         """self.requireFeature(unavailable) raises UnavailableFeature."""
-        class Unavailable(Feature):
+        class Unavailable(tests.Feature):
             def _probe(self):return False
         feature = Unavailable()
-        self.assertRaises(UnavailableFeature, self.requireFeature, feature)
+        self.assertRaises(tests.UnavailableFeature,
+                          self.requireFeature, feature)
 
     def test_run_no_parameters(self):
         test = SampleTestCase('_test_pass')
@@ -1603,7 +1654,8 @@ class TestTestCase(TestCase):
             self.assertListRaises, _TestException, success_generator)
 
 
-@symbol_versioning.deprecated_function(zero_eleven)
+# NB: Don't delete this; it's not actually from 0.11!
+@deprecated_function(deprecated_in((0, 11, 0)))
 def sample_deprecated_function():
     """A deprecated function to test applyDeprecated with."""
     return 2
@@ -1616,7 +1668,7 @@ def sample_undeprecated_function(a_param):
 class ApplyDeprecatedHelper(object):
     """A helper class for ApplyDeprecated tests."""
 
-    @symbol_versioning.deprecated_method(zero_eleven)
+    @deprecated_method(deprecated_in((0, 11, 0)))
     def sample_deprecated_method(self, param_one):
         """A deprecated method for testing with."""
         return param_one
@@ -1624,19 +1676,26 @@ class ApplyDeprecatedHelper(object):
     def sample_normal_method(self):
         """A undeprecated method."""
 
-    @symbol_versioning.deprecated_method(zero_ten)
+    @deprecated_method(deprecated_in((0, 10, 0)))
     def sample_nested_deprecation(self):
         return sample_deprecated_function()
 
 
-class TestExtraAssertions(TestCase):
+class TestExtraAssertions(tests.TestCase):
     """Tests for new test assertions in bzrlib test suite"""
 
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', basestring)
-        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+        e = self.assertRaises(AssertionError,
+            self.assertIsInstance, None, int, "it's just not")
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+            ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -1645,30 +1704,35 @@ class TestExtraAssertions(TestCase):
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
         # calling an undeprecated callable raises an assertion
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_object.sample_normal_method)
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_eleven,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 11, 0)),
             sample_undeprecated_function, "a param value")
         # calling a deprecated callable (function or method) with the wrong
         # expected deprecation fails.
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_object.sample_deprecated_method, "a param value")
-        self.assertRaises(AssertionError, self.applyDeprecated, zero_ten,
+        self.assertRaises(AssertionError, self.applyDeprecated,
+            deprecated_in((0, 10, 0)),
             sample_deprecated_function)
         # calling a deprecated callable (function or method) with the right
         # expected deprecation returns the functions result.
-        self.assertEqual("a param value", self.applyDeprecated(zero_eleven,
+        self.assertEqual("a param value",
+            self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_object.sample_deprecated_method, "a param value"))
-        self.assertEqual(2, self.applyDeprecated(zero_eleven,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 11, 0)),
             sample_deprecated_function))
         # calling a nested deprecation with the wrong deprecation version
         # fails even if a deeper nested function was deprecated with the
         # supplied version.
         self.assertRaises(AssertionError, self.applyDeprecated,
-            zero_eleven, sample_object.sample_nested_deprecation)
+            deprecated_in((0, 11, 0)), sample_object.sample_nested_deprecation)
         # calling a nested deprecation with the right deprecation value
         # returns the calls result.
-        self.assertEqual(2, self.applyDeprecated(zero_ten,
+        self.assertEqual(2, self.applyDeprecated(deprecated_in((0, 10, 0)),
             sample_object.sample_nested_deprecation))
 
     def test_callDeprecated(self):
@@ -1685,7 +1749,7 @@ class TestExtraAssertions(TestCase):
         self.callDeprecated([], testfunc, be_deprecated=False)
 
 
-class TestWarningTests(TestCase):
+class TestWarningTests(tests.TestCase):
     """Tests for calling methods that raise warnings."""
 
     def test_callCatchWarnings(self):
@@ -1701,7 +1765,7 @@ class TestWarningTests(TestCase):
         self.assertEquals("this is your last warning", str(w0))
 
 
-class TestConvenienceMakers(TestCaseWithTransport):
+class TestConvenienceMakers(tests.TestCaseWithTransport):
     """Test for the make_* convenience functions."""
 
     def test_make_branch_and_tree_with_format(self):
@@ -1720,7 +1784,7 @@ class TestConvenienceMakers(TestCaseWithTransport):
         self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
 
 
-class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
+class TestSFTPMakeBranchAndTree(test_sftp_transport.TestCaseWithSFTPServer):
 
     def test_make_tree_for_sftp_branch(self):
         """Transports backed by local directories create local trees."""
@@ -1735,14 +1799,14 @@ class TestSFTPMakeBranchAndTree(TestCaseWithSFTPServer):
                 tree.branch.repository.bzrdir.root_transport)
 
 
-class TestSelftest(TestCase):
+class TestSelftest(tests.TestCase):
     """Tests of bzrlib.tests.selftest."""
 
     def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
         factory_called = []
         def factory():
             factory_called.append(True)
-            return TestSuite()
+            return TestUtil.TestSuite()
         out = StringIO()
         err = StringIO()
         self.apply_redirected(out, err, None, bzrlib.tests.selftest,
@@ -1750,18 +1814,18 @@ class TestSelftest(TestCase):
         self.assertEqual([True], factory_called)
 
 
-class TestKnownFailure(TestCase):
+class TestKnownFailure(tests.TestCase):
 
     def test_known_failure(self):
         """Check that KnownFailure is defined appropriately."""
         # a KnownFailure is an assertion error for compatability with unaware
         # runners.
-        self.assertIsInstance(KnownFailure(""), AssertionError)
+        self.assertIsInstance(tests.KnownFailure(""), AssertionError)
 
     def test_expect_failure(self):
         try:
             self.expectFailure("Doomed to failure", self.assertTrue, False)
-        except KnownFailure, e:
+        except tests.KnownFailure, e:
             self.assertEqual('Doomed to failure', e.args[0])
         try:
             self.expectFailure("Doomed to failure", self.assertTrue, True)
@@ -1772,13 +1836,13 @@ class TestKnownFailure(TestCase):
             self.fail('Assertion not raised')
 
 
-class TestFeature(TestCase):
+class TestFeature(tests.TestCase):
 
     def test_caching(self):
         """Feature._probe is called by the feature at most once."""
-        class InstrumentedFeature(Feature):
+        class InstrumentedFeature(tests.Feature):
             def __init__(self):
-                Feature.__init__(self)
+                super(InstrumentedFeature, self).__init__()
                 self.calls = []
             def _probe(self):
                 self.calls.append('_probe')
@@ -1791,7 +1855,7 @@ class TestFeature(TestCase):
 
     def test_named_str(self):
         """Feature.__str__ should thunk to feature_name()."""
-        class NamedFeature(Feature):
+        class NamedFeature(tests.Feature):
             def feature_name(self):
                 return 'symlinks'
         feature = NamedFeature()
@@ -1799,23 +1863,24 @@ class TestFeature(TestCase):
 
     def test_default_str(self):
         """Feature.__str__ should default to __class__.__name__."""
-        class NamedFeature(Feature):
+        class NamedFeature(tests.Feature):
             pass
         feature = NamedFeature()
         self.assertEqual('NamedFeature', str(feature))
 
 
-class TestUnavailableFeature(TestCase):
+class TestUnavailableFeature(tests.TestCase):
 
     def test_access_feature(self):
-        feature = Feature()
-        exception = UnavailableFeature(feature)
+        feature = tests.Feature()
+        exception = tests.UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
 
 
-class TestSelftestFiltering(TestCase):
+class TestSelftestFiltering(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
         self.suite.addTest(self.loader.loadTestsFromModuleNames([
@@ -1825,18 +1890,18 @@ class TestSelftestFiltering(TestCase):
     def test_condition_id_re(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_condition_id_re')
-        filtered_suite = filter_suite_by_condition(self.suite,
-            condition_id_re('test_condition_id_re'))
+        filtered_suite = tests.filter_suite_by_condition(
+            self.suite, tests.condition_id_re('test_condition_id_re'))
         self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_condition_id_in_list(self):
         test_names = ['bzrlib.tests.test_selftest.TestSelftestFiltering.'
                       'test_condition_id_in_list']
         id_list = tests.TestIdList(test_names)
-        filtered_suite = filter_suite_by_condition(
+        filtered_suite = tests.filter_suite_by_condition(
             self.suite, tests.condition_id_in_list(id_list))
         my_pattern = 'TestSelftestFiltering.*test_condition_id_in_list'
-        re_filtered = filter_suite_by_re(self.suite, my_pattern)
+        re_filtered = tests.filter_suite_by_re(self.suite, my_pattern)
         self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_condition_id_startswith(self):
@@ -1846,21 +1911,21 @@ class TestSelftestFiltering(TestCase):
         test_names = [ klass + 'test_condition_id_in_list',
                       klass + 'test_condition_id_startswith',
                      ]
-        filtered_suite = filter_suite_by_condition(
+        filtered_suite = tests.filter_suite_by_condition(
             self.suite, tests.condition_id_startswith([start1, start2]))
         self.assertEqual(test_names, _test_ids(filtered_suite))
 
     def test_condition_isinstance(self):
-        filtered_suite = filter_suite_by_condition(self.suite,
-            condition_isinstance(self.__class__))
+        filtered_suite = tests.filter_suite_by_condition(
+            self.suite, tests.condition_isinstance(self.__class__))
         class_pattern = 'bzrlib.tests.test_selftest.TestSelftestFiltering.'
-        re_filtered = filter_suite_by_re(self.suite, class_pattern)
+        re_filtered = tests.filter_suite_by_re(self.suite, class_pattern)
         self.assertEqual(_test_ids(re_filtered), _test_ids(filtered_suite))
 
     def test_exclude_tests_by_condition(self):
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_exclude_tests_by_condition')
-        filtered_suite = exclude_tests_by_condition(self.suite,
+        filtered_suite = tests.exclude_tests_by_condition(self.suite,
             lambda x:x.id() == excluded_name)
         self.assertEqual(len(self.all_names) - 1,
             filtered_suite.countTestCases())
@@ -1871,7 +1936,8 @@ class TestSelftestFiltering(TestCase):
 
     def test_exclude_tests_by_re(self):
         self.all_names = _test_ids(self.suite)
-        filtered_suite = exclude_tests_by_re(self.suite, 'exclude_tests_by_re')
+        filtered_suite = tests.exclude_tests_by_re(self.suite,
+                                                   'exclude_tests_by_re')
         excluded_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_exclude_tests_by_re')
         self.assertEqual(len(self.all_names) - 1,
@@ -1884,12 +1950,13 @@ class TestSelftestFiltering(TestCase):
     def test_filter_suite_by_condition(self):
         test_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_condition')
-        filtered_suite = filter_suite_by_condition(self.suite,
+        filtered_suite = tests.filter_suite_by_condition(self.suite,
             lambda x:x.id() == test_name)
         self.assertEqual([test_name], _test_ids(filtered_suite))
 
     def test_filter_suite_by_re(self):
-        filtered_suite = filter_suite_by_re(self.suite, 'test_filter_suite_by_r')
+        filtered_suite = tests.filter_suite_by_re(self.suite,
+                                                  'test_filter_suite_by_r')
         filtered_names = _test_ids(filtered_suite)
         self.assertEqual(filtered_names, ['bzrlib.tests.test_selftest.'
             'TestSelftestFiltering.test_filter_suite_by_re'])
@@ -1923,11 +1990,11 @@ class TestSelftestFiltering(TestCase):
 
     def test_preserve_input(self):
         # NB: Surely this is something in the stdlib to do this?
-        self.assertTrue(self.suite is preserve_input(self.suite))
-        self.assertTrue("@#$" is preserve_input("@#$"))
+        self.assertTrue(self.suite is tests.preserve_input(self.suite))
+        self.assertTrue("@#$" is tests.preserve_input("@#$"))
 
     def test_randomize_suite(self):
-        randomized_suite = randomize_suite(self.suite)
+        randomized_suite = tests.randomize_suite(self.suite)
         # randomizing should not add or remove test names.
         self.assertEqual(set(_test_ids(self.suite)),
                          set(_test_ids(randomized_suite)))
@@ -1943,8 +2010,8 @@ class TestSelftestFiltering(TestCase):
 
     def test_split_suit_by_condition(self):
         self.all_names = _test_ids(self.suite)
-        condition = condition_id_re('test_filter_suite_by_r')
-        split_suite = split_suite_by_condition(self.suite, condition)
+        condition = tests.condition_id_re('test_filter_suite_by_r')
+        split_suite = tests.split_suite_by_condition(self.suite, condition)
         filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_re')
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
@@ -1955,7 +2022,8 @@ class TestSelftestFiltering(TestCase):
 
     def test_split_suit_by_re(self):
         self.all_names = _test_ids(self.suite)
-        split_suite = split_suite_by_re(self.suite, 'test_filter_suite_by_r')
+        split_suite = tests.split_suite_by_re(self.suite,
+                                              'test_filter_suite_by_r')
         filtered_name = ('bzrlib.tests.test_selftest.TestSelftestFiltering.'
             'test_filter_suite_by_re')
         self.assertEqual([filtered_name], _test_ids(split_suite[0]))
@@ -1965,7 +2033,7 @@ class TestSelftestFiltering(TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(TestCaseWithTransport):
+class TestCheckInventoryShape(tests.TestCaseWithTransport):
 
     def test_check_inventory_shape(self):
         files = ['a', 'b/', 'b/c']
@@ -1979,7 +2047,7 @@ class TestCheckInventoryShape(TestCaseWithTransport):
             tree.unlock()
 
 
-class TestBlackboxSupport(TestCase):
+class TestBlackboxSupport(tests.TestCase):
     """Tests for testsuite blackbox features."""
 
     def test_run_bzr_failure_not_caught(self):
@@ -2006,14 +2074,14 @@ class TestBlackboxSupport(TestCase):
             'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
 
 
-class TestTestLoader(TestCase):
+class TestTestLoader(tests.TestCase):
     """Tests for the test loader."""
 
     def _get_loader_and_module(self):
         """Gets a TestLoader and a module with one test in it."""
         loader = TestUtil.TestLoader()
         module = {}
-        class Stub(TestCase):
+        class Stub(tests.TestCase):
             def test_foo(self):
                 pass
         class MyModule(object):
@@ -2032,7 +2100,7 @@ class TestTestLoader(TestCase):
         # load_tests do not need that :)
         def load_tests(self, standard_tests, module, loader):
             result = loader.suiteClass()
-            for test in iter_suite_tests(standard_tests):
+            for test in tests.iter_suite_tests(standard_tests):
                 result.addTests([test, test])
             return result
         # add a load_tests() method which multiplies the tests from the module.
@@ -2057,7 +2125,7 @@ class TestTestIdList(tests.TestCase):
 
     def _create_suite(self, test_id_list):
 
-        class Stub(TestCase):
+        class Stub(tests.TestCase):
             def test_foo(self):
                 pass
 
@@ -2073,7 +2141,7 @@ class TestTestIdList(tests.TestCase):
 
     def _test_ids(self, test_suite):
         """Get the ids for the tests in a test suite."""
-        return [t.id() for t in iter_suite_tests(test_suite)]
+        return [t.id() for t in tests.iter_suite_tests(test_suite)]
 
     def test_empty_list(self):
         id_list = self._create_id_list([])
@@ -2105,24 +2173,6 @@ class TestTestIdList(tests.TestCase):
         self.assertTrue(id_list.refers_to('mod.class'))
         self.assertTrue(id_list.refers_to('mod.class.meth'))
 
-    def test_test_suite(self):
-        # This test is slow, so we do a single test with one test in each
-        # category
-        test_list = [
-            # testmod_names
-            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
-            'bzrlib.tests.test_selftest.TestTestIdList.test_test_suite',
-            # transport implementations
-            'bzrlib.tests.test_transport_implementations.TransportTests'
-            '.test_abspath(LocalURLServer)',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
-            # plugins can't be tested that way since selftest may be run with
-            # --no-plugins
-            ]
-        suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, _test_ids(suite))
-
     def test_test_suite_matches_id_list_with_unknown(self):
         loader = TestUtil.TestLoader()
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
@@ -2136,7 +2186,7 @@ class TestTestIdList(tests.TestCase):
         loader = TestUtil.TestLoader()
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         dupes = loader.suiteClass()
-        for test in iter_suite_tests(suite):
+        for test in tests.iter_suite_tests(suite):
             dupes.addTest(test)
             dupes.addTest(test) # Add it again
 
@@ -2146,6 +2196,33 @@ class TestTestIdList(tests.TestCase):
         self.assertEquals([], not_found)
         self.assertEquals(['bzrlib.tests.test_sampler.DemoTest.test_nothing'],
                           duplicates)
+
+
+class TestTestSuite(tests.TestCase):
+
+    def test_test_suite(self):
+        # This test is slow, so we do a single test with one test in each
+        # category
+        test_list = [
+            # testmod_names
+            'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
+            ('bzrlib.tests.per_transport.TransportTests'
+             '.test_abspath(LocalURLServer)'),
+            'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
+            # modules_to_doctest
+            'bzrlib.timestamp.format_highres_date',
+            # plugins can't be tested that way since selftest may be run with
+            # --no-plugins
+            ]
+        suite = tests.test_suite(test_list)
+        self.assertEquals(test_list, _test_ids(suite))
+
+    def test_test_suite_list_and_start(self):
+        test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
+        suite = tests.test_suite(test_list,
+                                 ['bzrlib.tests.test_selftest.TestTestSuite'])
+        # test_test_suite_list_and_start is not included 
+        self.assertEquals(test_list, _test_ids(suite))
 
 
 class TestLoadTestIdList(tests.TestCaseInTempDir):
@@ -2276,19 +2353,35 @@ class TestTestPrefixRegistry(tests.TestCase):
         self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
 
 
-class TestRunSuite(TestCase):
+class TestRunSuite(tests.TestCase):
 
     def test_runner_class(self):
         """run_suite accepts and uses a runner_class keyword argument."""
-        class Stub(TestCase):
+        class Stub(tests.TestCase):
             def test_foo(self):
                 pass
         suite = Stub("test_foo")
         calls = []
-        class MyRunner(TextTestRunner):
+        class MyRunner(tests.TextTestRunner):
             def run(self, test):
                 calls.append(test)
-                return ExtendedTestResult(self.stream, self.descriptions,
-                    self.verbosity)
-        run_suite(suite, runner_class=MyRunner)
+                return tests.ExtendedTestResult(self.stream, self.descriptions,
+                                                self.verbosity)
+        tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertEqual(calls, [suite])
+
+    def test_done(self):
+        """run_suite should call result.done()"""
+        self.calls = 0
+        def one_more_call(): self.calls += 1
+        def test_function():
+            pass
+        test = unittest.FunctionTestCase(test_function)
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            def done(self): one_more_call()
+        class MyRunner(tests.TextTestRunner):
+            def run(self, test):
+                return InstrumentedTestResult(self.stream, self.descriptions,
+                                              self.verbosity)
+        tests.run_suite(test, runner_class=MyRunner, stream=StringIO())
+        self.assertEquals(1, self.calls)

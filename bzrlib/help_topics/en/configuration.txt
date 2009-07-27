@@ -1,10 +1,6 @@
 Configuration Settings
 =======================
 
-.. TODO: Should have some explanation of why you'd want things in
-.. branch.conf.
-
-
 Environment settings
 ---------------------
 
@@ -228,6 +224,15 @@ file see `Authentication Settings`_.
 Common variable options
 -----------------------
 
+debug_flags
+~~~~~~~~~~~
+
+A comma-separated list of debugging options to turn on.  The same values
+can be used as with the -D command-line option (see `help global-options`).
+For example::
+
+    debug_flags = hpss
+
 email
 ~~~~~
 
@@ -399,6 +404,12 @@ push_location
 If present, the location of the default branch for push.  This option
 is normally set by ``push --remember``.
 
+push_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing.
+
 bound_location
 ~~~~~~~~~~~~~~
 
@@ -410,3 +421,10 @@ bound
 
 If set to "True", the branch should act as a checkout, and push each commit to
 the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+send_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before sending a merge directive.
+

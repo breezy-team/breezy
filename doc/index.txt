@@ -13,11 +13,13 @@ Core Documentation
 
 * `User Reference <en/user-reference/bzr_man.html>`_ 
 
-* `Quick Start Card <en/quick-reference/quick-start-summary.svg>`_
-  (`PDF <en/quick-reference/quick-start-summary.pdf>`_,
-  `PNG <en/quick-reference/quick-start-summary.png>`_)
+* `Quick Start Card <_static/en/quick-reference/bzr-quick-reference.svg>`_
+  (`PDF <_static/en/quick-reference/bzr-quick-reference.pdf>`_,
+  `PNG <_static/en/quick-reference/bzr-quick-reference.png>`_)
 
 * `Release Notes <en/release-notes/NEWS.html>`_
+
+* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_ 
 
 * `Developer Document Catalog <developers/index.html>`_ |--| for developers
   of Bazaar and plugins
@@ -53,6 +55,7 @@ Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
+* `Russian Documentation <index.ru.html>`_ |--| документация на русском
 
 .. |--| unicode:: U+2014
 

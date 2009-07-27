@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import collections
 from cStringIO import StringIO
@@ -283,8 +283,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
-                "please check connectivity and permissions",
-                "(and try -Dhpss if further diagnosis is required)")
+                "Unexpected end of message. "
+                "Please check connectivity and permissions, and report a bug "
+                "if problems persist.")
         self._protocol_decoder.accept_bytes(bytes)
 
     def protocol_error(self, exception):
@@ -352,5 +353,9 @@ def _translate_error(error_tuple):
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
         raise errors.LockFailed(*error_args[:2])
+    elif error_name == 'FileExists':
+        raise errors.FileExists(error_args[0])
+    elif error_name == 'NoSuchFile':
+        raise errors.NoSuchFile(error_args[0])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)

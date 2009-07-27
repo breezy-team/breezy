@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Versioned text file storage api."""
 
@@ -30,7 +30,9 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -39,14 +41,14 @@ from bzrlib import (
     revision,
     ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, _StackedParentsProvider
+from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -172,6 +174,12 @@ class AbsentContentFactory(ContentFactory):
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
+
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
 
 
 class AdapterFactory(ContentFactory):
@@ -794,7 +802,8 @@ class VersionedFiles(object):
         check_content=True):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
             of them except the last must be terminated with \n and contain no
@@ -826,6 +835,36 @@ class VersionedFiles(object):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         raise NotImplementedError(self.add_lines)
+
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
+        """Add a text to the store.
+
+        This is a private function for use by CommitBuilder.
+
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
+        :param parents: The parents key tuples of the text to add.
+        :param text: A string containing the text to be committed.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future _add_text calls in the parent_texts dictionary.
+        """
+        # The default implementation just thunks over to .add_lines(),
+        # inefficient, but it works.
+        return self.add_lines(key, parents, osutils.split_lines(text),
+                              nostore_sha=nostore_sha,
+                              random_id=random_id,
+                              check_content=True)
 
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
@@ -1090,6 +1129,9 @@ class ThunkedVersionedFiles(VersionedFiles):
             result.append((prefix + (origin,), line))
         return result
 
+    def get_annotator(self):
+        return annotate.Annotator(self)
+
     def check(self, progress_bar=None):
         """See VersionedFiles.check()."""
         for prefix, vf in self._iter_all_components():
@@ -1331,7 +1373,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            _StackedParentsProvider(self._providers).get_parent_map(keys))
+            StackedParentsProvider(self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1401,9 +1443,13 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
@@ -1484,7 +1530,7 @@ class VirtualVersionedFiles(VersionedFiles):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         for i, (key,) in enumerate(keys):
             if pb is not None:
-                pb.update("iterating texts", i, len(keys))
+                pb.update("Finding changed lines", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
 
@@ -1517,6 +1563,7 @@ class NetworkRecordStream(object):
             'knit-annotated-delta-gz':knit.knit_network_to_record,
             'knit-delta-closure':knit.knit_delta_closure_to_records,
             'fulltext':fulltext_network_to_record,
+            'groupcompress-block':groupcompress.network_block_to_records,
             }
 
     def read(self):
@@ -1555,3 +1602,31 @@ def record_to_fulltext_bytes(record):
     record_content = record.get_bytes_as('fulltext')
     return "fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
+
+
+def sort_groupcompress(parent_map):
+    """Sort and group the keys in parent_map into groupcompress order.
+
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {}
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            prefix = ''
+        else:
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
+
+    present_keys = []
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+    return present_keys

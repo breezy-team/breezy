@@ -19,7 +19,7 @@ repository is usually creating using the ``no-trees`` option, e.g.::
 You can think of this step as similar to setting up a new cvsroot or
 Subversion repository. However, Bazaar gives you more flexibility
 in how branches may be organised in your repository. See
-`Choosing a shared repository layout`_ in the appendices for
+`Advanced shared repository layouts`_ in the appendices for
 guidelines and examples.
 
 

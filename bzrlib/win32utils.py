@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Win32-specific helper functions
 
@@ -66,6 +66,7 @@ else:
         suffix = 'W'
 try:
     import win32file
+    import pywintypes
     has_win32file = True
 except ImportError:
     has_win32file = False
@@ -95,6 +96,10 @@ CSIDL_PERSONAL = 0x0005     # My Documents folder
 MAX_PATH = 260
 UNLEN = 256
 MAX_COMPUTERNAME_LENGTH = 31
+
+# Registry data type ids
+REG_SZ = 1
+REG_EXPAND_SZ = 2
 
 
 def debug_memory_win32api(message='', short=True):
@@ -144,13 +149,20 @@ def debug_memory_win32api(message='', short=True):
         trace.note('Cannot debug memory on win32 without ctypes'
                    ' or win32process')
         return
-    trace.note('WorkingSize       %8d kB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d kB', info['PeakWorkingSetSize'] / 1024)
     if short:
+        trace.note('WorkingSize %7dKB'
+                   '\tPeakWorking %7dKB\t%s',
+                   info['WorkingSetSize'] / 1024,
+                   info['PeakWorkingSetSize'] / 1024,
+                   message)
         return
-    trace.note('PagefileUsage     %8d kB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d kB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d kB', info.get('PrivateUsage', 0) / 1024)
+    if message:
+        trace.note('%s', message)
+    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -260,7 +272,7 @@ def get_local_appdata_location():
 
     Returned value can be unicode or plain string.
     To convert plain string to unicode use
-    s.decode(bzrlib.user_encoding)
+    s.decode(osutils.get_user_encoding())
     (XXX - but see bug 262874, which asserts the correct encoding is 'mbcs')
     """
     local = _get_sh_special_folder_path(CSIDL_LOCAL_APPDATA)
@@ -279,7 +291,7 @@ def get_home_location():
     If location cannot be obtained return system drive root,
     i.e. C:\
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -302,7 +314,7 @@ def get_user_name():
     """Return user name as login name.
     If name cannot be obtained return None.
 
-    Returned value can be unicode or plain sring.
+    Returned value can be unicode or plain string.
     To convert plain string to unicode use
     s.decode(osutils.get_user_encoding())
     """
@@ -426,7 +438,6 @@ def glob_expand(file_list):
     import glob
     expanded_file_list = []
     for possible_glob in file_list:
-
         # work around bugs in glob.glob()
         # - Python bug #1001604 ("glob doesn't return unicode with ...")
         # - failing expansion for */* with non-iso-8859-* chars
@@ -447,7 +458,7 @@ def glob_expand(file_list):
 
 def get_app_path(appname):
     """Look up in Windows registry for full path to application executable.
-    Typicaly, applications create subkey with their basename
+    Typically, applications create subkey with their basename
     in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
 
     :param  appname:    name of application (if no filename extension
@@ -456,28 +467,74 @@ def get_app_path(appname):
                 or appname itself if nothing found.
     """
     import _winreg
-    try:
-        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
-                               r'SOFTWARE\Microsoft\Windows'
-                               r'\CurrentVersion\App Paths')
-    except EnvironmentError:
-        return appname
 
     basename = appname
     if not os.path.splitext(basename)[1]:
         basename = appname + '.exe'
+
+    try:
+        hkey = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE,
+            'SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\' +
+            basename)
+    except EnvironmentError:
+        return appname
+
     try:
         try:
-            fullpath = _winreg.QueryValue(hkey, basename)
+            path, type_id = _winreg.QueryValueEx(hkey, '')
         except WindowsError:
-            fullpath = appname
+            return appname
     finally:
         _winreg.CloseKey(hkey)
 
-    return fullpath
+    if type_id == REG_SZ:
+        return path
+    if type_id == REG_EXPAND_SZ and has_win32api:
+        fullpath = win32api.ExpandEnvironmentStrings(path)
+        if len(fullpath) > 1 and fullpath[0] == '"' and fullpath[-1] == '"':
+            fullpath = fullpath[1:-1]   # remove quotes around value
+        return fullpath
+    return appname
 
 
 def set_file_attr_hidden(path):
     """Set file attributes to hidden if possible"""
     if has_win32file:
-        win32file.SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+        if winver != 'Windows 98':
+            SetFileAttributes = win32file.SetFileAttributesW
+        else:
+            SetFileAttributes = win32file.SetFileAttributes
+        try:
+            SetFileAttributes(path, win32file.FILE_ATTRIBUTE_HIDDEN)
+        except pywintypes.error, e:
+            from bzrlib import trace
+            trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
+
+
+if has_ctypes and winver != 'Windows 98':
+    def get_unicode_argv():
+        LPCWSTR = ctypes.c_wchar_p
+        INT = ctypes.c_int
+        POINTER = ctypes.POINTER
+        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
+        GetCommandLine = prototype(("GetCommandLineW",
+                                    ctypes.windll.kernel32))
+        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
+        CommandLineToArgv = prototype(("CommandLineToArgvW",
+                                       ctypes.windll.shell32))
+        c = INT(0)
+        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        # Skip the first argument, since we only care about parameters
+        argv = [pargv[i] for i in range(1, c.value)]
+        if getattr(sys, 'frozen', None) is None:
+            # Invoked via 'python.exe' which takes the form:
+            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
+            # we need to get only BZR_OPTIONS part,
+            # so let's using sys.argv[1:] as reference to get the tail
+            # of unicode argv
+            tail_len = len(sys.argv[1:])
+            ix = len(argv) - tail_len
+            argv = argv[ix:]
+        return argv
+else:
+    get_unicode_argv = None

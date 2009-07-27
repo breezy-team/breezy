@@ -15,7 +15,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
 /* Provide the typedefs that pyrex does automatically in newer versions, to
@@ -67,5 +67,10 @@
     #include "arpa/inet.h"
 #endif
 
+#include <stdio.h>
+
+#ifdef _MSC_VER
+#define  snprintf  _snprintf
+#endif
 
 #endif /* _BZR_PYTHON_COMPAT_H */

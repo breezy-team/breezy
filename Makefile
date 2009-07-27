@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # A relatively simple Makefile to assist in building parts of bzr. Mostly for
 # building documentation, etc.
@@ -21,6 +21,10 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON24=python24
+PYTHON25=python25
+BZR_TARGET=release
+PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -84,36 +88,62 @@ endif
 # translate txt docs to html
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
-	doc/en/developer-guide/HACKING.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/en/tutorials/*.txt) \
+txt_files := \
+	doc/en/tutorials/tutorial.txt \
+	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+	doc/en/tutorials/centralized_workflow.txt \
+        $(wildcard doc/ru/tutorials/*.txt) \
+	$(wildcard doc/*/mini-tutorial/index.txt) \
+	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
-	doc/en/user-guide/index.txt \
-	doc/en/mini-tutorial/index.txt \
+	doc/en/developer-guide/HACKING.txt \
+	doc/en/upgrade-guide/index.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
-	doc/index.es.txt
+	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       doc/en/quick-reference/quick-start-summary.svg \
-       doc/en/quick-reference/quick-start-summary.png \
-       doc/en/quick-reference/quick-start-summary.pdf \
-       $(wildcard doc/en/user-guide/images/*.png) \
-       doc/es/referencia-rapida/referencia-rapida.svg \
-       doc/es/referencia-rapida/referencia-rapida.png \
-       doc/es/referencia-rapida/referencia-rapida.pdf \
-       $(wildcard doc/es/guia-usuario/images/*.png)
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.svg) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.png) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.pdf) \
+       $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
-dev_txt_files := $(wildcard $(addsuffix /*.txt, doc/developers))
+
+# doc/developers/*.txt files that should *not* be individually
+# converted to HTML
+dev_txt_nohtml := \
+	doc/developers/add.txt \
+	doc/developers/annotate.txt \
+	doc/developers/bundle-creation.txt \
+	doc/developers/commit.txt \
+	doc/developers/diff.txt \
+	doc/developers/directory-fingerprints.txt \
+	doc/developers/gc.txt \
+	doc/developers/incremental-push-pull.txt \
+	doc/developers/initial-push-pull.txt \
+	doc/developers/merge-scaling.txt \
+	doc/developers/missing.txt \
+	doc/developers/performance-roadmap-rationale.txt \
+	doc/developers/performance-use-case-analysis.txt \
+	doc/developers/planned-change-integration.txt \
+	doc/developers/planned-performance-changes.txt \
+	doc/developers/revert.txt \
+	doc/developers/status.txt \
+	doc/developers/uncommit.txt
+
+dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
-doc/en/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
-	$(rst2html) --stylesheet=../../default.css doc/en/user-guide/index.txt $@
+doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # Set the paper size for PDF files.
 # Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
 PAPERSIZE = a4
+# TODO: Add generation for Russian PDF
 PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
 
 # Copy and modify the RST sources, and convert SVG images to PDF
@@ -137,41 +167,41 @@ doc/developers/%.html: doc/developers/%.txt
 doc/index.html: doc/index.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
+doc/index.%.html: doc/index.%.txt
+	$(rst2html) --stylesheet=default.css $< $@
+
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
-		 bzrlib/bundle/commands.py \
-		 bzrlib/conflicts.py \
-		 bzrlib/help_topics/__init__.py \
-		 bzrlib/bzrdir.py \
-		 bzrlib/sign_my_commits.py \
-		 bzrlib/bugtracker.py \
-		 generate_docs.py \
-		 tools/doc_generate/__init__.py \
-		 tools/doc_generate/autodoc_man.py \
-		 tools/doc_generate/autodoc_rstx.py \
-		 $(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
+	$(wildcard bzrlib/*.py) \
+	$(wildcard bzrlib/*/*.py) \
+	tools/generate_docs.py \
+	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ rstx
-
-doc/en/developer-guide/HACKING.txt: doc/developers/HACKING.txt
-	$(PYTHON) tools/win32/ostools.py copytodir doc/developers/HACKING.txt doc/en/developer-guide
+	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	$(PYTHON) generate_docs.py -o $@ man
+	$(PYTHON) tools/generate_docs.py -o $@ man
+
+upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
+
+doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # build a png of our performance task list
+# 
+# this is no longer built by default; you can build it if you want to look at it
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
 
-derived_web_docs = $(htm_files) $(dev_htm_files) doc/developers/performance.png
+derived_web_docs = $(htm_files) $(dev_htm_files) 
 WEB_DOCS = $(derived_web_docs) $(non_txt_files)
 ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
@@ -190,15 +220,43 @@ pdf-docs: $(PDF_DOCS)
 clean-docs:
 	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
 	    $(HTMLDIR) $(derived_txt_files)
-	rm -f doc/en/user-guide/*.pdf
-	rm -rf doc/en/user-guide/latex_prepared
+	rm -f doc/*/user-guide/*.pdf
+	rm -rf doc/*/user-guide/latex_prepared
 
 
 ### Windows Support ###
 
+# make all the installers completely from scratch, using zc.buildout
+# to fetch the dependencies
+installer-all:
+	@echo *** Make all the installers from scratch
+	cd tools/win32 && $(PYTHON) bootstrap.py
+	cd tools/win32 && bin/buildout
+	cd tools/win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
+
+
+clean-installer-all:
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/.installed.cfg
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bin/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-rebase/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzrtools/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/db4/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/develop-eggs/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/libintl/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/parts/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/qbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/subvertpy/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tortoise-overlays/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/zlib/
+
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
+	$(PYTHON) tools/win32/ostools.py remove bzrlib/*.pyd
 	$(PYTHON) setup.py build_ext -i -f $(PYTHON_BUILDFLAGS)
 	$(PYTHON) setup.py py2exe > py2exe.log
 	$(PYTHON) tools/win32/ostools.py copytodir tools/win32/start_bzr.bat win32_bzr.exe
@@ -206,19 +264,22 @@ exe:
 
 # win32 installer for bzr.exe
 installer: exe copy-docs
-	@echo *** Make windows installer
+	@echo *** Make Windows installer
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
 py-inst-24: docs
-	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON24) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-25: docs
-	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
-python-installer: py-inst-24 py-inst-25
+py-inst-26: docs
+	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+
+python-installer: py-inst-24 py-inst-25 py-inst-26
 
 
 copy-docs: docs

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of extra help information for using bzr.
 
@@ -207,7 +207,8 @@ def _help_on_transport(name):
     import textwrap
 
     def add_string(proto, help, maxl, prefix_width=20):
-       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       help_lines = textwrap.wrap(help, maxl - prefix_width,
+            break_long_words=False)
        line_with_indent = '\n' + ' ' * prefix_width
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
@@ -299,25 +300,7 @@ command.  (e.g. "bzr --profile help").
 
 See doc/developers/profiling.txt for more information on profiling.
 A number of debug flags are also available to assist troubleshooting and
-development.
-
--Dauth            Trace authentication sections used.
--Derror           Instead of normal error handling, always print a traceback
-                  on error.
--Devil            Capture call sites that do expensive or badly-scaling
-                  operations.
--Dfetch           Trace history copying between repositories.
--Dgraph           Trace graph traversal.
--Dhashcache       Log every time a working file is read to determine its hash.
--Dhooks           Trace hook execution.
--Dhpss            Trace smart protocol requests and responses.
--Dhttp            Trace http connections, requests and responses
--Dindex           Trace major index operations.
--Dknit            Trace knit operations.
--Dlock            Trace when lockdir locks are taken or released.
--Dmerge           Emit information for debugging merges.
--Dpack            Emit information about pack operations.
--Dsftp            Trace SFTP internals.
+development.  See `bzr help debug-flags`.
 """
 
 _standard_options = \
@@ -507,7 +490,7 @@ repository (a shared repository). Branches can be copied and merged.
 Related commands::
 
   init    Change a directory into a versioned branch.
-  branch  Create a new copy of a branch.
+  branch  Create a new branch that is a copy of an existing branch.
   merge   Perform a three-way merge.
 """
 
@@ -669,10 +652,10 @@ as soon as a condition is true):
   by default).
 
 * If you are using bzr-svn to interoperate with a Subversion
-  repository, use 1.9-rich-root.
+  repository, use 1.14-rich-root.
 
 * If you are working on a project with big trees (5000+ paths)
-  or deep history (5000+ revisions), use 1.9.
+  or deep history (5000+ revisions), use 1.14.
 
 * Otherwise, use the default format - it is good enough for
   most projects.
@@ -680,8 +663,8 @@ as soon as a condition is true):
 If some of your developers are unable to use the most recent
 version of Bazaar (due to distro package availability say), be
 sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.6 instead of 1.9 if your project has
-standardized on Bazaar 1.7.
+you may need to select 1.9 instead of 1.14 if your project has
+standardized on Bazaar 1.13.1 say.
 
 Note: Many of the currently supported formats have two variants:
 a plain one and a rich-root one. The latter include an additional
@@ -734,18 +717,24 @@ topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+topic_registry.register_lazy('hooks', 'bzrlib.hooks', 'hooks_help_text',
+                        'Points at which custom processing can be added')
 
-# Load some of the help topics from files
+# Load some of the help topics from files. Note that topics which reproduce API
+# details will tend to skew (quickly usually!) so please seek other solutions
+# for such things.
 topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
 topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
-topic_registry.register('hooks', _load_from_file,
-                        'Points at which custom processing can be added')
+topic_registry.register('debug-flags', _load_from_file,
+                        'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches')
 
 
 # Register concept topics.
@@ -756,6 +745,12 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('content-filters', _load_from_file,
+                        'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('eol', _load_from_file,
+                        'Information on end-of-line handling',
+                        SECT_CONCEPT)
 topic_registry.register('formats', _storage_formats,
                         'Information on choosing a storage format',
                         SECT_CONCEPT)

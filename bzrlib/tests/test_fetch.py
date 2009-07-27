@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import re
@@ -38,7 +38,7 @@ from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
 # These tests are a bit old; please instead add new tests into
-# interrepository_implementations/ so they'll run on all relevant
+# per_interrepository/ so they'll run on all relevant
 # combinations.
 
 
@@ -95,9 +95,9 @@ def fetch_steps(self, br_a, br_b, writable_a):
     br_a3.fetch(br_a2, br_a.revision_history()[2])
     # pull the 3 revisions introduced by a@u-0-3
     br_a3.fetch(br_a2, br_a.revision_history()[3])
-    # InstallFailed should be raised if the branch is missing the revision
+    # NoSuchRevision should be raised if the branch is missing the revision
     # that was requested.
-    self.assertRaises(errors.InstallFailed, br_a3.fetch, br_a2, 'pizza')
+    self.assertRaises(errors.NoSuchRevision, br_a3.fetch, br_a2, 'pizza')
 
     # TODO: Test trying to fetch from a branch that points to a revision not
     # actually present in its repository.  Not every branch format allows you
@@ -321,30 +321,30 @@ class TestHttpFetch(TestCaseWithWebserver):
         self.assertEqual(1, self._count_log_matches('branch/format', http_logs))
         self.assertEqual(1, self._count_log_matches('repository/format',
             http_logs))
+        self.assertEqual(1, self._count_log_matches('revisions.kndx',
+            http_logs))
         self.assertTrue(1 >= self._count_log_matches('revision-history',
                                                      http_logs))
         self.assertTrue(1 >= self._count_log_matches('last-revision',
                                                      http_logs))
-        self.assertEqual(4, len(http_logs))
+        self.assertLength(5, http_logs)
 
 
 class TestKnitToPackFetch(TestCaseWithTransport):
 
-    def find_get_record_stream(self, calls):
-        """In a list of calls, find 'get_record_stream' calls.
+    def find_get_record_stream(self, calls, expected_count=1):
+        """In a list of calls, find the last 'get_record_stream'.
 
-        This also ensures that there is only one get_record_stream call.
+        :param expected_count: The number of calls we should exepect to find.
+            If a different number is found, an assertion is raised.
         """
         get_record_call = None
+        call_count = 0
         for call in calls:
             if call[0] == 'get_record_stream':
-                self.assertIs(None, get_record_call,
-                              "there should only be one call to"
-                              " get_record_stream")
+                call_count += 1
                 get_record_call = call
-        self.assertIsNot(None, get_record_call,
-                         "there should be exactly one call to "
-                         " get_record_stream")
+        self.assertEqual(expected_count, call_count)
         return get_record_call
 
     def test_fetch_with_deltas_no_delta_closure(self):
@@ -370,8 +370,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._format._fetch_order, False),
-                         self.find_get_record_stream(source.inventories.calls))
+          target._format._fetch_order, False),
+          self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._format._fetch_order, False),
                          self.find_get_record_stream(source.revisions.calls))
@@ -414,8 +414,8 @@ class TestKnitToPackFetch(TestCaseWithTransport):
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.texts.calls))
         self.assertEqual(('get_record_stream', [('rev-one',)],
-                          target._format._fetch_order, True),
-                         self.find_get_record_stream(source.inventories.calls))
+            target._format._fetch_order, True),
+            self.find_get_record_stream(source.inventories.calls, 2))
         self.assertEqual(('get_record_stream', [('rev-one',)],
                           target._format._fetch_order, True),
                          self.find_get_record_stream(source.revisions.calls))
@@ -578,8 +578,7 @@ class Test1To2Fetch(TestCaseWithTransport):
         self.repo.fetch(self.tree.branch.repository, 'second-id')
         root_id = self.tree.get_root_id()
         self.assertEqual(
-            ((root_id, 'left-parent'), (root_id, 'ghost-parent'),
-             (root_id, 'not-ghost-parent')),
+            ((root_id, 'left-parent'), (root_id, 'not-ghost-parent')),
             self.get_parents(root_id, 'second-id'))
 
     def make_two_commits(self, change_root, fetch_twice):

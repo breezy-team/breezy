@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Benchmark test suite for bzr."""
 
@@ -190,6 +190,7 @@ def test_suite():
                    'bzrlib.benchmarks.bench_rocks',
                    'bzrlib.benchmarks.bench_startup',
                    'bzrlib.benchmarks.bench_status',
+                   'bzrlib.benchmarks.bench_tags',
                    'bzrlib.benchmarks.bench_transform',
                    'bzrlib.benchmarks.bench_workingtree',
                    'bzrlib.benchmarks.bench_sftp',

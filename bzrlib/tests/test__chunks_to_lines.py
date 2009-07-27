@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests for chunks_to_lines."""
@@ -22,21 +22,18 @@ from bzrlib import tests
 
 def load_tests(standard_tests, module, loader):
     # parameterize all tests in this module
-    suite = loader.suiteClass()
-    applier = tests.TestScenarioApplier()
     import bzrlib._chunks_to_lines_py as py_module
-    applier.scenarios = [('python', {'module': py_module})]
+    scenarios = [('python', {'module': py_module})]
     if CompiledChunksToLinesFeature.available():
         import bzrlib._chunks_to_lines_pyx as c_module
-        applier.scenarios.append(('C', {'module': c_module}))
+        scenarios.append(('C', {'module': c_module}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
                 self.requireFeature(CompiledChunksToLinesFeature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.adapt_tests(standard_tests, applier, suite)
-    return suite
+        standard_tests.addTest(FailWithoutFeature("test_fail"))
+    return tests.multiply_tests(standard_tests, scenarios, loader.suiteClass())
 
 
 class _CompiledChunksToLinesFeature(tests.Feature):

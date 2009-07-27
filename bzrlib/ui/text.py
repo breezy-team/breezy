@@ -12,21 +12,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Text UI, write output to the console.
 """
 
+import getpass
+import os
 import sys
 import time
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
     progress,
     osutils,
@@ -35,14 +34,16 @@ from bzrlib import (
 
 """)
 
-from bzrlib.ui import CLIUIFactory
+from bzrlib.ui import (
+    UIFactory,
+    NullProgressView,
+    )
 
 
-class TextUIFactory(CLIUIFactory):
+class TextUIFactory(UIFactory):
     """A UI factory for Text user interefaces."""
 
     def __init__(self,
-                 bar_type=None,
                  stdin=None,
                  stdout=None,
                  stderr=None):
@@ -52,18 +53,15 @@ class TextUIFactory(CLIUIFactory):
                          letting the bzrlib.progress.ProgressBar factory auto
                          select.   Deprecated.
         """
-        super(TextUIFactory, self).__init__(stdin=stdin,
-                stdout=stdout, stderr=stderr)
-        if bar_type:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 11, 0))
-                % "bar_type parameter")
+        super(TextUIFactory, self).__init__()
+        # TODO: there's no good reason not to pass all three streams, maybe we
+        # should deprecate the default values...
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
         # paints progress, network activity, etc
-        self._progress_view = TextProgressView(self.stderr)
-
-    def prompt(self, prompt):
-        """Emit prompt on the CLI."""
-        self.stdout.write(prompt)
-
+        self._progress_view = self.make_progress_view()
+        
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -75,10 +73,99 @@ class TextUIFactory(CLIUIFactory):
         # to clear it.  We might need to separately check for the case of
         self._progress_view.clear()
 
+    def get_boolean(self, prompt):
+        while True:
+            self.prompt(prompt + "? [y/n]: ")
+            line = self.stdin.readline().lower()
+            if line in ('y\n', 'yes\n'):
+                return True
+            elif line in ('n\n', 'no\n'):
+                return False
+            elif line in ('', None):
+                # end-of-file; possibly should raise an error here instead
+                return None
+
+    def get_non_echoed_password(self):
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
+
+    def get_password(self, prompt='', **kwargs):
+        """Prompt the user for a password.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The password string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        # There's currently no way to say 'i decline to enter a password'
+        # as opposed to 'my password is empty' -- does it matter?
+        return self.get_non_echoed_password()
+
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a username.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
+
+    def make_progress_view(self):
+        """Construct and return a new ProgressView subclass for this UI.
+        """
+        # if the user specifically requests either text or no progress bars,
+        # always do that.  otherwise, guess based on $TERM and tty presence.
+        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+            return TextProgressView(self.stderr)
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
+            return NullProgressView()
+        elif progress._supports_progress(self.stderr):
+            return TextProgressView(self.stderr)
+        else:
+            return NullProgressView()
+
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
         self.clear_term()
         self.stdout.write(msg + '\n')
+
+    def prompt(self, prompt, **kwargs):
+        """Emit prompt on the CLI.
+        
+        :param kwargs: Dictionary of arguments to insert into the prompt,
+            to allow UIs to reformat the prompt.
+        """
+        if kwargs:
+            # See <https://launchpad.net/bugs/365891>
+            prompt = prompt % kwargs
+        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        self.clear_term()
+        self.stderr.write(prompt)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.
@@ -86,7 +173,8 @@ class TextUIFactory(CLIUIFactory):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        self._progress_view.show_transport_activity(byte_count)
+        self._progress_view.show_transport_activity(transport,
+            direction, byte_count)
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
@@ -123,6 +211,7 @@ class TextProgressView(object):
         # true when there's output on the screen we may need to clear
         self._have_output = False
         # XXX: We could listen for SIGWINCH and update the terminal width...
+        # https://launchpad.net/bugs/316357
         self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
@@ -130,7 +219,6 @@ class TextProgressView(object):
         self._last_repaint = 0
         # time we last got information about transport activity
         self._transport_update_time = 0
-        self._task_fraction = None
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
@@ -146,16 +234,25 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is not None) and self._last_task.show_bar:
+        if (self._last_task is None) or self._last_task.show_bar:
+            # If there's no task object, we show space for the bar anyhow.
+            # That's because most invocations of bzr will end showing progress
+            # at some point, though perhaps only after doing some initial IO.
+            # It looks better to draw the progress bar initially rather than
+            # to have what looks like an incomplete progress bar.
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
-            f = self._task_fraction or 0
             cols = 20
-            # number of markers highlighted in bar
-            markers = int(round(float(cols) * f)) - 1
+            if self._last_task is None:
+                completion_fraction = 0
+            else:
+                completion_fraction = \
+                    self._last_task._overall_completion_fraction() or 0
+            markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif (self._last_task is None) or self._last_task.show_spinner:
+        elif self._last_task.show_spinner:
+            # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
             return spin_str + ' '
@@ -171,7 +268,6 @@ class TextProgressView(object):
             s = ' %d' % (task.current_cnt)
         else:
             s = ''
-        self._task_fraction = task._overall_completion_fraction()
         # compose all the parent messages
         t = task
         m = task.msg
@@ -181,35 +277,41 @@ class TextProgressView(object):
                 m = t.msg + ':' + m
         return m + s
 
-    def _repaint(self):
+    def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
         trans = self._last_transport_msg
-        if trans and task_msg:
+        if trans:
             trans += ' | '
-        s = (bar_string
-             + trans
-             + task_msg
-             )
+        return (bar_string + trans + task_msg)
+
+    def _repaint(self):
+        s = self._render_line()
         self._show_line(s)
         self._have_output = True
 
     def show_progress(self, task):
+        """Called by the task object when it has changed.
+        
+        :param task: The top task object; its parents are also included 
+            by following links.
+        """
+        must_update = task is not self._last_task
         self._last_task = task
         now = time.time()
-        if now < self._last_repaint + 0.1:
+        if (not must_update) and (now < self._last_repaint + 0.1):
             return
-        if now > self._transport_update_time + 5:
+        if now > self._transport_update_time + 10:
             # no recent activity; expire it
             self._last_transport_msg = ''
         self._last_repaint = now
         self._repaint()
 
-    def show_transport_activity(self, byte_count):
-        """Called by transports as they do IO.
+    def show_transport_activity(self, transport, direction, byte_count):
+        """Called by transports via the ui_factory, as they do IO.
 
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
@@ -217,6 +319,14 @@ class TextProgressView(object):
         # XXX: Probably there should be a transport activity model, and that
         # too should be seen by the progress view, rather than being poked in
         # here.
+        if not self._have_output:
+            # As a workaround for <https://launchpad.net/bugs/321935> we only
+            # show transport activity when there's already a progress bar
+            # shown, which time the application code is expected to know to
+            # clear off the progress bar when it's going to send some other
+            # output.  Eventually it would be nice to have that automatically
+            # synchronized.
+            return
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
         now = time.time()
@@ -226,12 +336,10 @@ class TextProgressView(object):
             # guard against clock stepping backwards, and don't update too
             # often
             rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dkB @ %4dkB/s" %
-                (self._total_byte_count>>10, int(rate)>>10,))
+            msg = ("%6dKB %5dKB/s" %
+                    (self._total_byte_count>>10, int(rate)>>10,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
-
-

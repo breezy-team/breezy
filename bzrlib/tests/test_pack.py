@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzrlib.pack."""
 
@@ -68,6 +68,7 @@ class TestContainerSerialiser(tests.TestCase):
 class TestContainerWriter(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.output = StringIO()
         self.writer = pack.ContainerWriter(self.output.write)
 
@@ -607,6 +608,19 @@ class TestContainerPushParser(PushParserTestCase):
         parser.accept_bytes("B5\nname1\n\nbody1B5\nname2\n\nbody2")
         self.assertEqual(
             [([('name1',)], 'body1'), ([('name2',)], 'body2')],
+            parser.read_pending_records())
+
+    def test_multiple_empty_records_at_once(self):
+        """If multiple empty records worth of data are fed to the parser in one
+        string, the parser will correctly parse all the records.
+
+        (A naive implementation might stop after parsing the first empty
+        record, because the buffer size had not changed.)
+        """
+        parser = self.make_parser_expecting_record_type()
+        parser.accept_bytes("B0\nname1\n\nB0\nname2\n\n")
+        self.assertEqual(
+            [([('name1',)], ''), ([('name2',)], '')],
             parser.read_pending_records())
 
 

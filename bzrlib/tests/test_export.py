@@ -12,21 +12,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
-from bzrlib.export import export
-from bzrlib.tests import TestCaseWithTransport
+
+from bzrlib import (
+    export,
+    osutils,
+    tests,
+    )
 
 
-class TestExport(TestCaseWithTransport):
+class TestExport(tests.TestCaseWithTransport):
 
     def test_dir_export_missing_file(self):
         self.build_tree(['a/', 'a/b', 'a/c'])
         wt = self.make_branch_and_tree('.')
         wt.add(['a', 'a/b', 'a/c'])
         os.unlink('a/c')
-        export(wt, 'target', format="dir")
+        export.export(wt, 'target', format="dir")
         self.failUnlessExists('target/a/b')
         self.failIfExists('target/a/c')
+
+    def test_dir_export_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        os.symlink('source', 'link')
+        wt.add(['link'])
+        export.export(wt, 'target', format="dir")
+        self.failUnlessExists('target/link')

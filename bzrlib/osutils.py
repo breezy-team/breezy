@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import re
@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -77,6 +78,15 @@ from bzrlib import symbol_versioning
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
 
+def get_unicode_argv():
+    try:
+        user_encoding = get_user_encoding()
+        return [a.decode(user_encoding) for a in sys.argv[1:]]
+    except UnicodeDecodeError:
+        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
+                                                            "encoding." % a))
+
+
 def make_readonly(filename):
     """Make a filename read-only."""
     mod = os.lstat(filename).st_mode
@@ -97,16 +107,22 @@ def minimum_path_selection(paths):
 
     :param paths: A container (and hence not None) of paths.
     :return: A set of paths sufficient to include everything in paths via
-        is_inside_any, drawn from the paths parameter.
+        is_inside, drawn from the paths parameter.
     """
-    search_paths = set()
-    paths = set(paths)
-    for path in paths:
-        other_paths = paths.difference([path])
-        if not is_inside_any(other_paths, path):
-            # this is a top level path, we must check it.
-            search_paths.add(path)
-    return search_paths
+    if len(paths) < 2:
+        return set(paths)
+
+    def sort_key(path):
+        return path.split('/')
+    sorted_paths = sorted(list(paths), key=sort_key)
+
+    search_paths = [sorted_paths[0]]
+    for path in sorted_paths[1:]:
+        if not is_inside(search_paths[-1], path):
+            # This path is unique, add it
+            search_paths.append(path)
+
+    return set(search_paths)
 
 
 _QUOTE_RE = None
@@ -384,6 +400,11 @@ if sys.platform == 'win32':
     def rmtree(path, ignore_errors=False, onerror=_win32_delete_readonly):
         """Replacer for shutil.rmtree: could remove readonly dirs/files"""
         return shutil.rmtree(path, ignore_errors, onerror)
+
+    f = win32utils.get_unicode_argv     # special function or None
+    if f is not None:
+        get_unicode_argv = f
+
 elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
@@ -597,6 +618,24 @@ def sha_file(f):
     return s.hexdigest()
 
 
+def size_sha_file(f):
+    """Calculate the size and hexdigest of an open file.
+
+    The file cursor should be already at the start and
+    the caller is responsible for closing the file afterwards.
+    """
+    size = 0
+    s = sha()
+    BUFSIZE = 128<<10
+    while True:
+        b = f.read(BUFSIZE)
+        if not b:
+            break
+        size += len(b)
+        s.update(b)
+    return size, s.hexdigest()
+
+
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
@@ -683,7 +722,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, unicode):
-        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+        date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -829,6 +868,19 @@ def joinpath(p):
     return pathjoin(*p)
 
 
+def parent_directories(filename):
+    """Return the list of parent directories, deepest first.
+    
+    For example, parent_directories("a/b/c") -> ["a/b", "a"].
+    """
+    parents = []
+    parts = splitpath(dirname(filename))
+    while parts:
+        parents.append(joinpath(parts))
+        parts.pop()
+    return parents
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
 except ImportError:
@@ -875,13 +927,31 @@ def link_or_copy(src, dest):
         shutil.copyfile(src, dest)
 
 
-# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-# Forgiveness than Permission (EAFP) because:
-# - root can damage a solaris file system by using unlink,
-# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-#   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
-    """Delete a file or directory."""
+    """Delete a file, symlink or directory.  
+    
+    Will delete even if readonly.
+    """
+    try:
+       _delete_file_or_dir(path)
+    except (OSError, IOError), e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            # make writable and try again
+            try:
+                make_writable(path)
+            except (OSError, IOError):
+                pass
+            _delete_file_or_dir(path)
+        else:
+            raise
+
+
+def _delete_file_or_dir(path):
+    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+    # Forgiveness than Permission (EAFP) because:
+    # - root can damage a solaris file system by using unlink,
+    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+    #   EACCES, OSX: EPERM) when invoked on a directory.
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:
@@ -905,6 +975,20 @@ def has_hardlinks():
 def host_os_dereferences_symlinks():
     return (has_symlinks()
             and sys.platform not in ('cygwin', 'win32'))
+
+
+def readlink(abspath):
+    """Return a string representing the path to which the symbolic link points.
+
+    :param abspath: The link absolute unicode path.
+
+    This his guaranteed to return the symbolic link in unicode in all python
+    versions.
+    """
+    link = abspath.encode(_fs_enc)
+    target = os.readlink(link)
+    target = target.decode(_fs_enc)
+    return target
 
 
 def contains_whitespace(s):
@@ -956,17 +1040,17 @@ def relpath(base, path):
 
     s = []
     head = rp
-    while len(head) >= len(base):
+    while True:
+        if len(head) <= len(base) and head != base:
+            raise errors.PathNotChild(rp, base)
         if head == base:
             break
-        head, tail = os.path.split(head)
+        head, tail = split(head)
         if tail:
-            s.insert(0, tail)
-    else:
-        raise errors.PathNotChild(rp, base)
+            s.append(tail)
 
     if s:
-        return pathjoin(*s)
+        return pathjoin(*reversed(s))
     else:
         return ''
 
@@ -1012,10 +1096,11 @@ def _cicp_canonical_relpath(base, path):
     return current[len(abs_base)+1:]
 
 # XXX - TODO - we need better detection/integration of case-insensitive
-# file-systems; Linux often sees FAT32 devices, for example, so could
-# probably benefit from the same basic support there.  For now though, only
-# Windows gets that support, and it gets it for *all* file-systems!
-if sys.platform == "win32":
+# file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
+# filesystems), for example, so could probably benefit from the same basic
+# support there.  For now though, only Windows and OSX get that support, and
+# they get it for *all* file-systems!
+if sys.platform in ('win32', 'darwin'):
     canonical_relpath = _cicp_canonical_relpath
 else:
     canonical_relpath = relpath
@@ -1033,9 +1118,8 @@ def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
     If it is unicode, it is returned.
-    Otherwise it is decoded from utf-8. If a decoding error
-    occurs, it is wrapped as a If the decoding fails, the exception is wrapped
-    as a BzrBadParameter exception.
+    Otherwise it is decoded from utf-8. If decoding fails, the exception is
+    wrapped in a BzrBadParameterNotUnicode exception.
     """
     if isinstance(unicode_or_utf8_string, unicode):
         return unicode_or_utf8_string
@@ -1374,21 +1458,21 @@ def _walkdirs_utf8(top, prefix=""):
             #       for win98 anyway.
             try:
                 from bzrlib._walkdirs_win32 import Win32ReadDir
-            except ImportError:
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = Win32ReadDir()
-        elif fs_encoding not in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
+            except ImportError:
+                pass
+        elif fs_encoding in ('UTF-8', 'US-ASCII', 'ANSI_X3.4-1968'):
             # ANSI_X3.4-1968 is a form of ASCII
-            _selected_dir_reader = UnicodeDirReader()
-        else:
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
-            except ImportError:
-                # No optimised code path
-                _selected_dir_reader = UnicodeDirReader()
-            else:
                 _selected_dir_reader = UTF8DirReader()
+            except ImportError:
+                pass
+
+    if _selected_dir_reader is None:
+        # Fallback to the python version
+        _selected_dir_reader = UnicodeDirReader()
+
     # 0 - relpath, 1- basename, 2- kind, 3- stat, 4-toppath
     # But we don't actually uses 1-3 in pending, so set them to None
     pending = [[_selected_dir_reader.top_prefix_to_starting_dir(top, prefix)]]
@@ -1623,15 +1707,21 @@ def recv_all(socket, bytes):
     return b
 
 
-def send_all(socket, bytes):
+def send_all(socket, bytes, report_activity=None):
     """Send all bytes on a socket.
 
     Regular socket.sendall() can give socket error 10053 on Windows.  This
     implementation sends no more than 64k at a time, which avoids this problem.
+
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
     """
     chunk_size = 2**16
     for pos in xrange(0, len(bytes), chunk_size):
-        until_no_eintr(socket.sendall, bytes[pos:pos+chunk_size])
+        block = bytes[pos:pos+chunk_size]
+        if report_activity is not None:
+            report_activity(len(block), 'write')
+        until_no_eintr(socket.sendall, block)
 
 
 def dereference_path(path):
@@ -1716,6 +1806,28 @@ def until_no_eintr(f, *a, **kw):
                 continue
             raise
 
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except re.error, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
+            % (where, re_string, e))
+
 
 if sys.platform == "win32":
     import msvcrt
@@ -1733,3 +1845,58 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # This appears to return the number of cores.
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
+    return concurrency

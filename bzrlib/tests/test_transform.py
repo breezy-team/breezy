@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import stat
@@ -20,6 +20,7 @@ from StringIO import StringIO
 import sys
 
 from bzrlib import (
+    bencode,
     errors,
     generate_ids,
     osutils,
@@ -53,7 +54,6 @@ from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
                               build_tree, get_backup_name,
                               _FileMover, resolve_checkout,
                               TransformPreview, create_from_tree)
-from bzrlib.util import bencode
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -525,26 +525,42 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         resolve_conflicts(replace)
         replace.apply()
 
-    def test_symlinks(self):
+    def _test_symlinks(self, link_name1,link_target1,
+                       link_name2, link_target2):
+
+        def ozpath(p): return 'oz/' + p
+
         self.requireFeature(SymlinkFeature)
-        transform,root = self.get_transform()
+        transform, root = self.get_transform()
         oz_id = transform.new_directory('oz', root, 'oz-id')
-        wizard = transform.new_symlink('wizard', oz_id, 'wizard-target',
+        wizard = transform.new_symlink(link_name1, oz_id, link_target1,
                                        'wizard-id')
-        wiz_id = transform.create_path('wizard2', oz_id)
-        transform.create_symlink('behind_curtain', wiz_id)
+        wiz_id = transform.create_path(link_name2, oz_id)
+        transform.create_symlink(link_target2, wiz_id)
         transform.version_file('wiz-id2', wiz_id)
         transform.set_executability(True, wiz_id)
         self.assertEqual(transform.find_conflicts(),
                          [('non-file executability', wiz_id)])
         transform.set_executability(None, wiz_id)
         transform.apply()
-        self.assertEqual(self.wt.path2id('oz/wizard'), 'wizard-id')
-        self.assertEqual(file_kind(self.wt.abspath('oz/wizard')), 'symlink')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard2')),
-                         'behind_curtain')
-        self.assertEqual(os.readlink(self.wt.abspath('oz/wizard')),
-                         'wizard-target')
+        self.assertEqual(self.wt.path2id(ozpath(link_name1)), 'wizard-id')
+        self.assertEqual('symlink',
+                         file_kind(self.wt.abspath(ozpath(link_name1))))
+        self.assertEqual(link_target2,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name2))))
+        self.assertEqual(link_target1,
+                         osutils.readlink(self.wt.abspath(ozpath(link_name1))))
+
+    def test_symlinks(self):
+        self._test_symlinks('wizard', 'wizard-target',
+                            'wizard2', 'behind_curtain')
+
+    def test_symlinks_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        self._test_symlinks(u'\N{Euro Sign}wizard',
+                            u'wizard-targ\N{Euro Sign}t',
+                            u'\N{Euro Sign}wizard2',
+                            u'b\N{Euro Sign}hind_curtain')
 
     def test_unable_create_symlink(self):
         def tt_helper():
@@ -1841,6 +1857,9 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def test_case_insensitive_build_tree_inventory(self):
+        if (tests.CaseInsensitiveFilesystemFeature.available()
+            or tests.CaseInsCasePresFilenameFeature.available()):
+            raise tests.UnavailableFeature('Fully case sensitive filesystem')
         source = self.make_branch_and_tree('source')
         self.build_tree(['source/file', 'source/FILE'])
         source.add(['file', 'FILE'], ['lower-id', 'upper-id'])
@@ -1852,6 +1871,107 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(source.basis_tree(), target, source, delta_from_tree=True)
         self.assertEqual('file.moved', target.id2path('lower-id'))
         self.assertEqual('FILE', target.id2path('upper-id'))
+
+
+class TestCommitTransform(tests.TestCaseWithTransport):
+
+    def get_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('empty commit')
+        return tree.branch
+
+    def get_branch_and_transform(self):
+        branch = self.get_branch()
+        tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
+        return branch, tt
+
+    def test_commit_wrong_basis(self):
+        branch = self.get_branch()
+        basis = branch.repository.revision_tree(
+            _mod_revision.NULL_REVISION)
+        tt = TransformPreview(basis)
+        self.addCleanup(tt.finalize)
+        e = self.assertRaises(ValueError, tt.commit, branch, '')
+        self.assertEqual('TreeTransform not based on branch basis: null:',
+                         str(e))
+
+    def test_empy_commit(self):
+        branch, tt = self.get_branch_and_transform()
+        rev = tt.commit(branch, 'my message')
+        self.assertEqual(2, branch.revno())
+        repo = branch.repository
+        self.assertEqual('my message', repo.get_revision(rev).message)
+
+    def test_merge_parents(self):
+        branch, tt = self.get_branch_and_transform()
+        rev = tt.commit(branch, 'my message', ['rev1b', 'rev1c'])
+        self.assertEqual(['rev1b', 'rev1c'],
+                         branch.basis_tree().get_parent_ids()[1:])
+
+    def test_first_commit(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
+        rev = tt.commit(branch, 'my message')
+        self.assertEqual([], branch.basis_tree().get_parent_ids())
+        self.assertNotEqual(_mod_revision.NULL_REVISION,
+                            branch.last_revision())
+
+    def test_first_commit_with_merge_parents(self):
+        branch = self.make_branch('branch')
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        tt = TransformPreview(branch.basis_tree())
+        e = self.assertRaises(ValueError, tt.commit, branch,
+                          'my message', ['rev1b-id'])
+        self.assertEqual('Cannot supply merge parents for first commit.',
+                         str(e))
+        self.assertEqual(_mod_revision.NULL_REVISION, branch.last_revision())
+
+    def test_add_files(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents', 'file-id')
+        trans_id = tt.new_directory('dir', tt.root, 'dir-id')
+        tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
+        rev = tt.commit(branch, 'message')
+        tree = branch.basis_tree()
+        self.assertEqual('file', tree.id2path('file-id'))
+        self.assertEqual('contents', tree.get_file_text('file-id'))
+        self.assertEqual('dir', tree.id2path('dir-id'))
+        self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
+        self.assertEqual('target', tree.get_symlink_target('symlink-id'))
+
+    def test_add_unversioned(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents')
+        self.assertRaises(errors.StrictCommitFailed, tt.commit, branch,
+                          'message', strict=True)
+
+    def test_modify_strict(self):
+        branch, tt = self.get_branch_and_transform()
+        tt.new_file('file', tt.root, 'contents', 'file-id')
+        tt.commit(branch, 'message', strict=True)
+        tt = TransformPreview(branch.basis_tree())
+        trans_id = tt.trans_id_file_id('file-id')
+        tt.delete_contents(trans_id)
+        tt.create_file('contents', trans_id)
+        tt.commit(branch, 'message', strict=True)
+
+    def test_commit_malformed(self):
+        """Committing a malformed transform should raise an exception.
+
+        In this case, we are adding a file without adding its parent.
+        """
+        branch, tt = self.get_branch_and_transform()
+        parent_id = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent_id, 'contents', 'file-id')
+        self.assertRaises(errors.MalformedTransform, tt.commit, branch,
+                          'message')
 
 
 class MockTransform(object):
@@ -2585,6 +2705,23 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                                                            'tree/foo'))
         self.assertEqual(False, preview_tree.is_executable('baz-id'))
 
+    def test_commit_preview_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        rev_id = tree.commit('rev1')
+        tree.branch.lock_write()
+        self.addCleanup(tree.branch.unlock)
+        tt = TransformPreview(tree)
+        tt.new_file('file', tt.root, 'contents', 'file_id')
+        self.addCleanup(tt.finalize)
+        preview = tt.get_preview_tree()
+        preview.set_parent_ids([rev_id])
+        builder = tree.branch.get_commit_builder([rev_id])
+        list(builder.record_iter_changes(preview, rev_id, tt.iter_changes()))
+        builder.finish_inventory()
+        rev2_id = builder.commit('rev2')
+        rev2_tree = tree.branch.repository.revision_tree(rev2_id)
+        self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
+
 
 class FakeSerializer(object):
     """Serializer implementation that simply returns the input.
@@ -2685,10 +2822,11 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         self.assertSerializesTo(self.symlink_creation_records(), tt)
 
     def test_deserialize_symlink_creation(self):
+        self.requireFeature(tests.SymlinkFeature)
         tt = self.get_preview()
         tt.deserialize(iter(self.symlink_creation_records()))
-        # XXX readlink should be returning unicode, not utf-8
-        foo_content = os.readlink(tt._limbo_name('new-1')).decode('utf-8')
+        abspath = tt._limbo_name('new-1')
+        foo_content = osutils.readlink(abspath)
         self.assertEqual(u'bar\u1234', foo_content)
 
     def make_destruction_preview(self):

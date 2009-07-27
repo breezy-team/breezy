@@ -11,14 +11,16 @@ Additionally changes that alter disk formats are inherently more tricky to
 integrate because we will often need to alter apis throughout the code base to
 expose the increased or reduced model of the preferred disk format.
 
-The dot file performance.dot graphs out the dependencies to let us make
-accurate assessments of the changes needed in terms of code and API, hopefully
-minimising the number of different integration steps we have to take, while
-giving us a broad surface area for development. Its based on a sumary in the
-next section of this document of the planned changes with their expected
-collaborators and dependencies. Where a command is listed, the expectation is
-that all uses of that command - local, remote, dumb transport and smart
-transport are being addressed together.
+You can generate a graph ``performance.png`` in the source tree from
+Graphviz "dot" file ``performance.dot``.  This graphs out the dependencies
+to let us make accurate assessments of the changes needed in terms of code
+and API, hopefully minimising the number of different integration steps we
+have to take, while giving us a broad surface area for development. It's
+based on a summary in the next section of this document of the planned
+changes with their expected collaborators and dependencies. Where a
+command is listed, the expectation is that all uses of that command -
+local, remote, dumb transport and smart transport are being addressed
+together.
 
 
 The following provides a summary of the planned changes and their expected

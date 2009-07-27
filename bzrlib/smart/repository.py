@@ -12,21 +12,22 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side repository related request implmentations."""
 
 import bz2
 import os
 import Queue
-import struct
 import sys
 import tarfile
 import tempfile
 import threading
 
 from bzrlib import (
+    bencode,
     errors,
+    graph,
     osutils,
     pack,
     )
@@ -38,7 +39,6 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.util import bencode
 from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
 
 
@@ -70,8 +70,34 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
+    def recreate_search(self, repository, search_bytes, discard_excess=False):
+        """Recreate a search from its serialised form.
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
+        lines = search_bytes.split('\n')
+        if lines[0] == 'ancestry-of':
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
+            return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:],
+                discard_excess=discard_excess)
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines,
+        discard_excess=False):
+        """Recreate a specific revision search (vs a from-tip search).
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -86,14 +112,15 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[2] != revision_count:
+            if (not discard_excess and
+                search_result.get_recipe()[3] != revision_count):
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -123,6 +150,10 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         from revision_ids is returned. The verb takes a body containing the
         current search state, see do_body for details.
 
+        If 'include-missing:' is in revision_ids, ghosts encountered in the
+        graph traversal for getting parent data are included in the result with
+        a prefix of 'missing:'.
+
         :param repository: The repository to query in.
         :param revision_ids: The utf8 encoded revision_id to answer for.
         """
@@ -147,12 +178,17 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -165,19 +201,29 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         while next_revs:
             queried_revs.update(next_revs)
             parent_map = repo_graph.get_parent_map(next_revs)
+            current_revs = next_revs
             next_revs = set()
-            for revision_id, parents in parent_map.iteritems():
-                # adjust for the wire
-                if parents == (_mod_revision.NULL_REVISION,):
-                    parents = ()
-                # prepare the next query
-                next_revs.update(parents)
-                if revision_id not in client_seen_revs:
+            for revision_id in current_revs:
+                missing_rev = False
+                parents = parent_map.get(revision_id)
+                if parents is not None:
+                    # adjust for the wire
+                    if parents == (_mod_revision.NULL_REVISION,):
+                        parents = ()
+                    # prepare the next query
+                    next_revs.update(parents)
+                    encoded_id = revision_id
+                else:
+                    missing_rev = True
+                    encoded_id = "missing:" + revision_id
+                    parents = []
+                if (revision_id not in client_seen_revs and
+                    (not missing_rev or include_missing)):
                     # Client does not have this revision, give it to it.
                     # add parents to the result
-                    result[revision_id] = parents
+                    result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
@@ -235,6 +281,31 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
+
+
+class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+
+    def do_readlocked_repository_request(self, repository, revno,
+            known_pair):
+        """Find the revid for a given revno, given a known revno/revid pair.
+        
+        New in 1.17.
+        """
+        try:
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id != known_pair[1]:
+                raise AssertionError(
+                    'get_rev_id_for_revno raised RevisionNotPresent for '
+                    'non-initial revision: ' + err.revision_id)
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision_id))
+        if found_flag:
+            return SuccessfulSmartServerResponse(('ok', result))
+        else:
+            earliest_revno, earliest_revid = result
+            return SuccessfulSmartServerResponse(
+                ('history-incomplete', earliest_revno, earliest_revid))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
@@ -349,13 +420,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         repository = self._repository
         repository.lock_read()
         try:
-            search, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes,
+                discard_excess=True)
             if error is not None:
                 repository.unlock()
                 return error
-            search = search.get_result()
             source = repository._get_source(self._to_format)
-            stream = source.get_stream(search)
+            stream = source.get_stream(search_result)
         except Exception:
             exc_info = sys.exc_info()
             try:
@@ -389,6 +460,8 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'absent':
+                raise ValueError("Absent factory for %s" % (record.key,))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:
@@ -512,17 +585,22 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
     """Insert a record stream from a RemoteSink into a repository.
 
     This gets bytes pushed to it by the network infrastructure and turns that
     into a bytes iterator using a thread. That is then processed by
     _byte_stream_to_stream.
+
+    New in 1.14.
     """
 
-    def do_repository_request(self, repository, resume_tokens):
+    def do_repository_request(self, repository, resume_tokens, lock_token):
         """StreamSink.insert_stream for a remote repository."""
-        repository.lock_write()
+        repository.lock_write(token=lock_token)
+        self.do_insert_stream_request(repository, resume_tokens)
+
+    def do_insert_stream_request(self, repository, resume_tokens):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
@@ -570,3 +648,21 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into an unlocked repository.
+
+    This is the same as SmartServerRepositoryInsertStreamLocked, except it
+    takes no lock_tokens; i.e. it works with an unlocked (or lock-free, e.g.
+    like pack format) repository.
+
+    New in 1.13.
+    """
+
+    def do_repository_request(self, repository, resume_tokens):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        self.do_insert_stream_request(repository, resume_tokens)
+
+

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2004, 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
@@ -47,9 +47,9 @@ class TestRevisionInfo(ExternalBase):
 
         # Expected return values
         values = {
-            '1'    : '   1 a@r-0-1\n',
+            '1'    : '1 a@r-0-1\n',
             '1.1.1': '1.1.1 a@r-0-1.1.1\n',
-            '2'    : '   2 a@r-0-2\n'
+            '2'    : '2 a@r-0-2\n'
         }
 
         # Make sure with no arg it defaults to the head
@@ -60,7 +60,9 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['1.1.1'], 'revision-info 1.1.1')
         self.check_output(values['2'], 'revision-info 2')
         self.check_output(values['1']+values['2'], 'revision-info 1 2')
-        self.check_output(values['1']+values['1.1.1']+values['2'],
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
+                          '    '+values['2'],
                           'revision-info 1 1.1.1 2')
         self.check_output(values['2']+values['1'], 'revision-info 2 1')
 
@@ -70,7 +72,9 @@ class TestRevisionInfo(ExternalBase):
         self.check_output(values['1.1.1'], 'revision-info --revision 1.1.1')
         self.check_output(values['2'], 'revision-info -r 2')
         self.check_output(values['1']+values['2'], 'revision-info -r 1..2')
-        self.check_output(values['1']+values['1.1.1']+values['2'],
+        self.check_output('    '+values['1']+
+                                 values['1.1.1']+
+                          '    '+values['2'],
                           'revision-info -r 1..1.1.1..2')
         self.check_output(values['2']+values['1'], 'revision-info -r 2..1')
 
@@ -85,4 +89,40 @@ class TestRevisionInfo(ExternalBase):
         wt = self.make_branch_and_tree('branch')
 
         wt.commit('Commit one', rev_id='a@r-0-1')
-        self.check_output('   1 a@r-0-1\n', 'revision-info -d branch')
+        self.check_output('1 a@r-0-1\n', 'revision-info -d branch')
+
+    def test_revision_info_tree(self):
+        # Make branch and checkout
+        wt = self.make_branch_and_tree('branch')
+        wt.commit('Commit one', rev_id='a@r-0-1')
+
+        # Make checkout and move the branch forward
+        wt.branch.create_checkout('checkout', lightweight=True)
+        wt.commit('Commit two', rev_id='a@r-0-2')
+
+        # Make sure the checkout gives the right answer for branch and
+        # tree
+        self.check_output('2 a@r-0-2\n', 'revision-info -d checkout')
+        self.check_output('1 a@r-0-1\n', 'revision-info --tree -d checkout')
+
+    def test_revision_info_tree_no_working_tree(self):
+        # Make branch with no tree
+        b = self.make_branch('branch')
+
+        # Try getting the --tree revision-info
+        out,err = self.run_bzr('revision-info --tree -d branch', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: No WorkingTree exists for "branch".\n',
+            err)
+
+    def test_revision_info_not_in_history(self):
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [])
+        builder.finish_series()
+        self.check_output('  1 A-id\n??? B-id\n  2 C-id\n',
+                          'revision-info -d branch'
+                          ' revid:A-id revid:B-id revid:C-id')

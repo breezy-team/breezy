@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -46,7 +46,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        self.assertEqual((1, []), by.fetch(bx))
+        by.fetch(bx)
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
                           wty.commit,

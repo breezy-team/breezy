@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tag strategies.
 
@@ -28,12 +28,8 @@ when the branch is opened.  Clients should typically do
 
 from warnings import warn
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib.util import bencode
-""")
-
 from bzrlib import (
+    bencode,
     errors,
     trace,
     )
@@ -57,9 +53,6 @@ class DisabledTags(_Tags):
     def _not_supported(self, *a, **k):
         raise errors.TagsNotSupported(self.branch)
 
-    def supports_tags(self):
-        return False
-
     set_tag = _not_supported
     get_tag_dict = _not_supported
     _set_tag_dict = _not_supported
@@ -70,6 +63,10 @@ class DisabledTags(_Tags):
         # we never have anything to copy
         pass
 
+    def rename_revisions(self, rename_map):
+        # No tags, so nothing to rename
+        pass
+
     def get_reverse_tag_dict(self):
         # There aren't any tags, so the reverse mapping is empty.
         return {}
@@ -78,9 +75,6 @@ class DisabledTags(_Tags):
 class BasicTags(_Tags):
     """Tag storage in an unversioned branch control file.
     """
-
-    def supports_tags(self):
-        return True
 
     def set_tag(self, tag_name, tag_target):
         """Add a tag definition to the branch.
@@ -111,7 +105,7 @@ class BasicTags(_Tags):
         self.branch.lock_read()
         try:
             try:
-                tag_content = self.branch._transport.get_bytes('tags')
+                tag_content = self.branch._get_tags_bytes()
             except errors.NoSuchFile, e:
                 # ugly, but only abentley should see this :)
                 trace.warning('No branch/tags file in %s.  '
@@ -158,14 +152,12 @@ class BasicTags(_Tags):
     def _set_tag_dict(self, new_dict):
         """Replace all tag definitions
 
+        WARNING: Calling this on an unlocked branch will lock it, and will
+        replace the tags without warning on conflicts.
+
         :param new_dict: Dictionary from tag name to target.
         """
-        self.branch.lock_write()
-        try:
-            self.branch._transport.put_bytes('tags',
-                self._serialize_tag_dict(new_dict))
-        finally:
-            self.branch.unlock()
+        return self.branch._set_tags_bytes(self._serialize_tag_dict(new_dict))
 
     def _serialize_tag_dict(self, tag_dict):
         td = dict((k.encode('utf-8'), v)
@@ -205,7 +197,7 @@ class BasicTags(_Tags):
         """
         if self.branch == to_tags.branch:
             return
-        if not self.supports_tags():
+        if not self.branch.supports_tags():
             # obviously nothing to copy
             return
         source_dict = self.get_tag_dict()
@@ -223,6 +215,17 @@ class BasicTags(_Tags):
         finally:
             to_tags.branch.unlock()
         return conflicts
+
+    def rename_revisions(self, rename_map):
+        """Rename revisions in this tags dictionary.
+        
+        :param rename_map: Dictionary mapping old revids to new revids
+        """
+        reverse_tags = self.get_reverse_tag_dict()
+        for revid, names in reverse_tags.iteritems():
+            if revid in rename_map:
+                for name in names:
+                    self.set_tag(name, rename_map[revid])
 
     def _reconcile_tags(self, source_dict, dest_dict, overwrite):
         """Do a two-way merge of two tag dictionaries.

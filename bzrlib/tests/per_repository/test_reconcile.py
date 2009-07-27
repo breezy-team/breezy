@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for reconciliation of repositories."""
 
@@ -263,6 +263,40 @@ class TestsNeedingReweave(TestReconcile):
         repo.get_inventory('the_ghost')
         self.assertEqual([None, 'the_ghost', 'ghost'], repo.get_ancestry('ghost'))
         self.assertEqual([None, 'the_ghost'], repo.get_ancestry('the_ghost'))
+
+    def test_text_from_ghost_revision(self):
+        repo = self.make_repository('text-from-ghost')
+        inv = Inventory(revision_id='final-revid')
+        inv.root.revision = 'root-revid'
+        ie = inv.add_path('bla', 'file', 'myfileid')
+        ie.revision = 'ghostrevid'
+        ie.text_size = 42
+        ie.text_sha1 = "bee68c8acd989f5f1765b4660695275948bf5c00"
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       revision_id='final-revid')
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                repo.add_revision('final-revid', rev, inv)
+                try:
+                    repo.texts.add_lines(('myfileid', 'ghostrevid'),
+                        (('myfileid', 'ghost-text-parent'),),
+                        ["line1\n", "line2\n"])
+                except errors.RevisionNotPresent:
+                    raise TestSkipped("text ghost parents not supported")
+                if repo.supports_rich_root():
+                    root_id = inv.root.file_id
+                    repo.texts.add_lines((inv.root.file_id, inv.root.revision),
+                        [], [])
+            finally:
+                repo.commit_write_group()
+        finally:
+            repo.unlock()
+        repo.reconcile(thorough=True)
 
 
 class TestReconcileWithIncorrectRevisionCache(TestReconcile):

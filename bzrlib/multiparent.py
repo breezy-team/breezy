@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 
@@ -28,7 +28,7 @@ from bzrlib import (
     trace,
     ui,
     )
-from bzrlib.util import bencode
+from bzrlib import bencode
 """)
 from bzrlib.tuned_gzip import GzipFile
 
@@ -290,7 +290,7 @@ class ParentText(object):
             ' %(num_lines)r)' % self.__dict__
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
 
@@ -316,7 +316,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\

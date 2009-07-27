@@ -1,6 +1,4 @@
-#! /usr/bin/python
-
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Author: Martin Pool <mbp@canonical.com>
 
@@ -99,6 +97,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     adapter_registry,
     ContentFactory,
+    sort_groupcompress,
     VersionedFile,
     )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
@@ -321,6 +320,11 @@ class Weave(VersionedFile):
             new_versions = tsort.topo_sort(parents)
             new_versions.extend(set(versions).difference(set(parents)))
             versions = new_versions
+        elif ordering == 'groupcompress':
+            parents = self.get_parent_map(versions)
+            new_versions = sort_groupcompress(parents)
+            new_versions.extend(set(versions).difference(set(parents)))
+            versions = new_versions
         for version in versions:
             if version in self:
                 yield WeaveContentFactory(version, self)
@@ -404,6 +408,7 @@ class Weave(VersionedFile):
         version_id
             Symbolic name for this version.
             (Typically the revision-id of the revision that added it.)
+            If None, a name will be allocated based on the hash. (sha1:SHAHASH)
 
         parents
             List or set of direct parent version numbers.
@@ -419,6 +424,8 @@ class Weave(VersionedFile):
             sha1 = sha_strings(lines)
         if sha1 == nostore_sha:
             raise errors.ExistingContent
+        if version_id is None:
+            version_id = "sha1:" + sha1
         if version_id in self._name_map:
             return self._check_repeated_add(version_id, parents, lines, sha1)
 
@@ -575,10 +582,7 @@ class Weave(VersionedFile):
             version_ids = self.versions()
         version_ids = set(version_ids)
         for lineno, inserted, deletes, line in self._walk_internal(version_ids):
-            # if inserted not in version_ids then it was inserted before the
-            # versions we care about, but because weaves cannot represent ghosts
-            # properly, we do not filter down to that
-            # if inserted not in version_ids: continue
+            if inserted not in version_ids: continue
             if line[-1] != '\n':
                 yield line + '\n', inserted
             else:
@@ -969,13 +973,6 @@ class WeaveFile(Weave):
         super(WeaveFile, self).insert_record_stream(stream)
         self._save()
 
-    @deprecated_method(one_five)
-    def join(self, other, pb=None, msg=None, version_ids=None,
-             ignore_missing=False):
-        """Join other into self and save."""
-        super(WeaveFile, self).join(other, pb, msg, version_ids, ignore_missing)
-        self._save()
-
 
 def _reweave(wa, wb, pb=None, msg=None):
     """Combine two weaves and return the result.
@@ -1026,6 +1023,7 @@ def _reweave(wa, wb, pb=None, msg=None):
         wr._add(name, lines, [wr._lookup(i) for i in combined_parents[name]])
     return wr
 
+
 def _reweave_parent_graphs(wa, wb):
     """Return combined parent ancestry for two weaves.
 
@@ -1036,206 +1034,3 @@ def _reweave_parent_graphs(wa, wb):
             p = combined.setdefault(name, set())
             p.update(map(weave._idx_to_name, weave._parents[idx]))
     return combined
-
-
-def weave_toc(w):
-    """Show the weave's table-of-contents"""
-    print '%6s %50s %10s %10s' % ('ver', 'name', 'sha1', 'parents')
-    for i in (6, 50, 10, 10):
-        print '-' * i,
-    print
-    for i in range(w.num_versions()):
-        sha1 = w._sha1s[i]
-        name = w._names[i]
-        parent_str = ' '.join(map(str, w._parents[i]))
-        print '%6d %-50.50s %10.10s %s' % (i, name, sha1, parent_str)
-
-
-
-def weave_stats(weave_file, pb):
-    from bzrlib.weavefile import read_weave
-
-    wf = file(weave_file, 'rb')
-    w = read_weave(wf)
-    # FIXME: doesn't work on pipes
-    weave_size = wf.tell()
-
-    total = 0
-    vers = len(w)
-    for i in range(vers):
-        pb.update('checking sizes', i, vers)
-        for origin, lineno, line in w._extract([i]):
-            total += len(line)
-
-    pb.clear()
-
-    print 'versions          %9d' % vers
-    print 'weave file        %9d bytes' % weave_size
-    print 'total contents    %9d bytes' % total
-    print 'compression ratio %9.2fx' % (float(total) / float(weave_size))
-    if vers:
-        avg = total/vers
-        print 'average size      %9d bytes' % avg
-        print 'relative size     %9.2fx' % (float(weave_size) / float(avg))
-
-
-def usage():
-    print """bzr weave tool
-
-Experimental tool for weave algorithm.
-
-usage:
-    weave init WEAVEFILE
-        Create an empty weave file
-    weave get WEAVEFILE VERSION
-        Write out specified version.
-    weave check WEAVEFILE
-        Check consistency of all versions.
-    weave toc WEAVEFILE
-        Display table of contents.
-    weave add WEAVEFILE NAME [BASE...] < NEWTEXT
-        Add NEWTEXT, with specified parent versions.
-    weave annotate WEAVEFILE VERSION
-        Display origin of each line.
-    weave merge WEAVEFILE VERSION1 VERSION2 > OUT
-        Auto-merge two versions and display conflicts.
-    weave diff WEAVEFILE VERSION1 VERSION2
-        Show differences between two versions.
-
-example:
-
-    % weave init foo.weave
-    % vi foo.txt
-    % weave add foo.weave ver0 < foo.txt
-    added version 0
-
-    (create updated version)
-    % vi foo.txt
-    % weave get foo.weave 0 | diff -u - foo.txt
-    % weave add foo.weave ver1 0 < foo.txt
-    added version 1
-
-    % weave get foo.weave 0 > foo.txt       (create forked version)
-    % vi foo.txt
-    % weave add foo.weave ver2 0 < foo.txt
-    added version 2
-
-    % weave merge foo.weave 1 2 > foo.txt   (merge them)
-    % vi foo.txt                            (resolve conflicts)
-    % weave add foo.weave merged 1 2 < foo.txt     (commit merged version)
-
-"""
-
-
-
-def main(argv):
-    import sys
-    import os
-    try:
-        import bzrlib
-    except ImportError:
-        # in case we're run directly from the subdirectory
-        sys.path.append('..')
-        import bzrlib
-    from bzrlib.weavefile import write_weave, read_weave
-    from bzrlib.progress import ProgressBar
-
-    try:
-        import psyco
-        psyco.full()
-    except ImportError:
-        pass
-
-    if len(argv) < 2:
-        usage()
-        return 0
-
-    cmd = argv[1]
-
-    def readit():
-        return read_weave(file(argv[2], 'rb'))
-
-    if cmd == 'help':
-        usage()
-    elif cmd == 'add':
-        w = readit()
-        # at the moment, based on everything in the file
-        name = argv[3]
-        parents = map(int, argv[4:])
-        lines = sys.stdin.readlines()
-        ver = w.add(name, parents, lines)
-        write_weave(w, file(argv[2], 'wb'))
-        print 'added version %r %d' % (name, ver)
-    elif cmd == 'init':
-        fn = argv[2]
-        if os.path.exists(fn):
-            raise IOError("file exists")
-        w = Weave()
-        write_weave(w, file(fn, 'wb'))
-    elif cmd == 'get': # get one version
-        w = readit()
-        sys.stdout.writelines(w.get_iter(int(argv[3])))
-
-    elif cmd == 'diff':
-        w = readit()
-        fn = argv[2]
-        v1, v2 = map(int, argv[3:5])
-        lines1 = w.get(v1)
-        lines2 = w.get(v2)
-        diff_gen = bzrlib.patiencediff.unified_diff(lines1, lines2,
-                                '%s version %d' % (fn, v1),
-                                '%s version %d' % (fn, v2))
-        sys.stdout.writelines(diff_gen)
-
-    elif cmd == 'annotate':
-        w = readit()
-        # newline is added to all lines regardless; too hard to get
-        # reasonable formatting otherwise
-        lasto = None
-        for origin, text in w.annotate(int(argv[3])):
-            text = text.rstrip('\r\n')
-            if origin == lasto:
-                print '      | %s' % (text)
-            else:
-                print '%5d | %s' % (origin, text)
-                lasto = origin
-
-    elif cmd == 'toc':
-        weave_toc(readit())
-
-    elif cmd == 'stats':
-        weave_stats(argv[2], ProgressBar())
-
-    elif cmd == 'check':
-        w = readit()
-        pb = ProgressBar()
-        w.check(pb)
-        pb.clear()
-        print '%d versions ok' % w.num_versions()
-
-    elif cmd == 'inclusions':
-        w = readit()
-        print ' '.join(map(str, w.inclusions([int(argv[3])])))
-
-    elif cmd == 'parents':
-        w = readit()
-        print ' '.join(map(str, w._parents[int(argv[3])]))
-
-    elif cmd == 'plan-merge':
-        # replaced by 'bzr weave-plan-merge'
-        w = readit()
-        for state, line in w.plan_merge(int(argv[3]), int(argv[4])):
-            if line:
-                print '%14s | %s' % (state, line),
-    elif cmd == 'merge':
-        # replaced by 'bzr weave-merge-text'
-        w = readit()
-        p = w.plan_merge(int(argv[3]), int(argv[4]))
-        sys.stdout.writelines(w.weave_merge(p))
-    else:
-        raise ValueError('unknown command %r' % cmd)
-
-
-if __name__ == '__main__':
-    import sys
-    sys.exit(main(sys.argv))

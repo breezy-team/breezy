@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
 import httplib
@@ -381,6 +381,23 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
         # process. This is prophylactic as we should not leave the threads
         # lying around.
         self.daemon_threads = True
+
+    def process_request_thread(self, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Under some circumstances (as in bug #383920), we need to force the
+        # shutdown as python delays it until gc occur otherwise and the client
+        # may hang.
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            request.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
 
 
 class HttpServer(transport.Server):

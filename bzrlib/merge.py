@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import errno
@@ -70,7 +70,7 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 class Merger(object):
     def __init__(self, this_branch, other_tree=None, base_tree=None,
-                 this_tree=None, pb=DummyProgress(), change_reporter=None,
+                 this_tree=None, pb=None, change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
@@ -89,6 +89,8 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
+        if pb is None:
+            pb = DummyProgress()
         self._pb = pb
         self.pp = None
         self.recurse = recurse
@@ -132,7 +134,7 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb, base_tree=None):
+    def from_uncommitted(tree, other_tree, pb=None, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
@@ -241,8 +243,7 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = other_basis_tree.changes_from(self.other_tree)
-            if changes.has_changed():
+            if other_basis_tree.has_changes(self.other_tree):
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
@@ -274,8 +275,7 @@ class Merger(object):
             basis_tree = self.revision_tree(self.this_tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = self.this_tree.basis_tree()
-        changes = self.this_tree.changes_from(basis_tree)
-        if not changes.has_changed():
+        if not self.this_tree.has_changes(basis_tree):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
@@ -460,6 +460,8 @@ class Merger(object):
                                **kwargs)
 
     def _do_merge_to(self, merge):
+        if self.other_branch is not None:
+            self.other_branch.update_references(self.this_branch)
         merge.do_merge()
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
@@ -544,7 +546,7 @@ class Merge3Merger(object):
         :param working_tree: The working tree to apply the merge to
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
-        :param other_tree: The other other tree to merge changes from
+        :param other_tree: The other tree to merge changes from
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.

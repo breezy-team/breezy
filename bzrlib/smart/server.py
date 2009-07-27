@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server for smart-server protocol."""
 
@@ -21,7 +21,7 @@ import socket
 import sys
 import threading
 
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 from bzrlib import (
     errors,
     trace,
@@ -111,6 +111,8 @@ class SmartTCPServer(object):
             pass
         for hook in SmartTCPServer.hooks['server_started']:
             hook(backing_urls, self.get_url())
+        for hook in SmartTCPServer.hooks['server_started_ex']:
+            hook(backing_urls, self)
         self._started.set()
         try:
             try:
@@ -152,7 +154,7 @@ class SmartTCPServer(object):
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
-        # propogates to the newly accepted socket.
+        # propagates to the newly accepted socket.
         conn.setblocking(True)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         handler = medium.SmartServerSocketStreamMedium(
@@ -208,14 +210,20 @@ class SmartServerHooks(Hooks):
         notified.
         """
         Hooks.__init__(self)
-        # Introduced in 0.16:
-        # invoked whenever the server starts serving a directory.
-        # The api signature is (backing urls, public url).
-        self['server_started'] = []
-        # Introduced in 0.16:
-        # invoked whenever the server stops serving a directory.
-        # The api signature is (backing urls, public url).
-        self['server_stopped'] = []
+        self.create_hook(HookPoint('server_started',
+            "Called by the bzr server when it starts serving a directory. "
+            "server_started is called with (backing urls, public url), "
+            "where backing_url is a list of URLs giving the "
+            "server-specific directory locations, and public_url is the "
+            "public URL for the directory being served.", (0, 16), None))
+        self.create_hook(HookPoint('server_started_ex',
+            "Called by the bzr server when it starts serving a directory. "
+            "server_started is called with (backing_urls, server_obj).",
+            (1, 17), None))
+        self.create_hook(HookPoint('server_stopped',
+            "Called by the bzr server when it stops serving a directory. "
+            "server_stopped is called with the same parameters as the "
+            "server_started hook: (backing_urls, public_url).", (0, 16), None))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
@@ -304,4 +312,35 @@ class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_o
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
 
+
+def serve_bzr(transport, host=None, port=None, inet=False):
+    from bzrlib import lockdir, ui
+    from bzrlib.transport import get_transport
+    from bzrlib.transport.chroot import ChrootServer
+    chroot_server = ChrootServer(transport)
+    chroot_server.setUp()
+    transport = get_transport(chroot_server.get_url())
+    if inet:
+        smart_server = medium.SmartServerPipeStreamMedium(
+            sys.stdin, sys.stdout, transport)
+    else:
+        if host is None:
+            host = medium.BZR_DEFAULT_INTERFACE
+        if port is None:
+            port = medium.BZR_DEFAULT_PORT
+        smart_server = SmartTCPServer(transport, host=host, port=port)
+        trace.note('listening on port: %s' % smart_server.port)
+    # For the duration of this server, no UI output is permitted. note
+    # that this may cause problems with blackbox tests. This should be
+    # changed with care though, as we dont want to use bandwidth sending
+    # progress over stderr to smart server clients!
+    old_factory = ui.ui_factory
+    old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+    try:
+        ui.ui_factory = ui.SilentUIFactory()
+        lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        smart_server.serve()
+    finally:
+        ui.ui_factory = old_factory
+        lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
 

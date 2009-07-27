@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the commit CLI of bzr."""
@@ -43,8 +43,8 @@ class TestCommit(ExternalBase):
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'bzr: ERROR: no changes to commit\.'
-                                  ' use --unchanged to commit anyhow\n')
+        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
+                                  ' Use --unchanged to commit anyhow.\n')
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
@@ -124,10 +124,13 @@ class TestCommit(ExternalBase):
         wt.rename_one('hello.txt', 'subdir/hello.txt')
         out, err = self.run_bzr('commit -m renamed')
         self.assertEqual('', out)
-        self.assertContainsRe(err, '^Committing to: .*\n'
-                              'added subdir\n'
-                              'renamed hello\.txt => subdir/hello\.txt\n'
-                              'Committed revision 2\.\n$')
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'added subdir',
+            'renamed hello.txt => subdir/hello.txt',
+            'Committed revision 2.',
+            '',
+            ]), set(err.split('\n')))
 
     def test_verbose_commit_with_unknown(self):
         """Unknown files should not be listed by default in verbose output"""
@@ -220,20 +223,20 @@ class TestCommit(ExternalBase):
         os.chdir('this')
         out,err = self.run_bzr('commit -m added')
         self.assertEqual('', out)
-        expected = '%s/' % (osutils.getcwd(), )
-        self.assertEqualDiff(
-            'Committing to: %s\n'
-            'modified filetomodify\n'
-            'added newdir\n'
-            'added newfile\n'
-            'renamed dirtorename => renameddir\n'
-            'renamed filetorename => renamedfile\n'
-            'renamed dirtoreparent => renameddir/reparenteddir\n'
-            'renamed filetoreparent => renameddir/reparentedfile\n'
-            'deleted dirtoremove\n'
-            'deleted filetoremove\n'
-            'Committed revision 2.\n' % (expected, ),
-            err)
+        self.assertEqual(set([
+            'Committing to: %s/' % osutils.getcwd(),
+            'modified filetomodify',
+            'added newdir',
+            'added newfile',
+            'renamed dirtorename => renameddir',
+            'renamed filetorename => renamedfile',
+            'renamed dirtoreparent => renameddir/reparenteddir',
+            'renamed filetoreparent => renameddir/reparentedfile',
+            'deleted dirtoremove',
+            'deleted filetoremove',
+            'Committed revision 2.',
+            ''
+            ]), set(err.split('\n')))
 
     def test_empty_commit_message(self):
         tree = self.make_branch_and_tree('.')
@@ -252,6 +255,10 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
+        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
+        #       guess is that the change to use Unicode command lines means
+        #       that we no longer pay any attention to LANG=C when decoding the
+        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -392,7 +399,7 @@ class TestCommit(ExternalBase):
 
         # With no changes, it should just be 'no changes'
         # Make sure that commit is failing because there is nothing to do
-        self.run_bzr_error(['no changes to commit'],
+        self.run_bzr_error(['No changes to commit'],
                            'commit --strict -m no-changes',
                            working_dir='tree')
 
@@ -517,7 +524,9 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            ["Invalid bug identifier for %s. Commit refused." % 'lp:orange'],
+            ["Did not understand bug identifier orange: Must be an integer. "
+             "See \"bzr help bugs\" for more information on this feature.\n"
+             "Commit refused."],
             'commit -m add-b --fixes=lp:orange',
             working_dir='tree')
 
@@ -527,7 +536,8 @@ class TestCommit(ExternalBase):
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
         self.run_bzr_error(
-            [r"Invalid bug orange. Must be in the form of 'tag:id'\. "
+            [r"Invalid bug orange. Must be in the form of 'tracker:id'\. "
+             r"See \"bzr help bugs\" for more information on this feature.\n"
              r"Commit refused\."],
             'commit -m add-b --fixes=orange',
             working_dir='tree')

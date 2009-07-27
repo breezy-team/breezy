@@ -12,19 +12,35 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""UI abstraction.
+"""Abstraction for interacting with the user.
 
-This tells the library how to display things to the user.  Through this
-layer different applications can choose the style of UI.
+Applications can choose different types of UI, and they deal with displaying
+messages or progress to the user, and with gathering different types of input.
 
-At the moment this layer is almost trivial: the application can just
-choose the style of progress bar.
+Several levels are supported, and you can also register new factories such as
+for a GUI.
 
-Set the ui_factory member to define the behaviour.  The default
-displays no output.
+UIFactory
+    Semi-abstract base class
+
+SilentUIFactory
+    Produces no output and cannot take any input; useful for programs using
+    bzrlib in batch mode or for programs such as loggerhead.
+
+CannedInputUIFactory
+    For use in testing; the input values to be returned are provided 
+    at construction.
+
+TextUIFactory
+    Standard text command-line interface, with stdin, stdout, stderr.
+    May make more or less advanced use of them, eg in drawing progress bars,
+    depending on the detected capabilities of the terminal.
+    GUIs may choose to subclass this so that unimplemented methods fall
+    back to working through the terminal.
 """
+
 
 import os
 import sys
@@ -41,6 +57,47 @@ from bzrlib import (
     trace,
     )
 """)
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
+    )
+
+
+_valid_boolean_strings = dict(yes=True, no=False,
+                              y=True, n=False,
+                              on=True, off=False,
+                              true=True, false=False)
+_valid_boolean_strings['1'] = True
+_valid_boolean_strings['0'] = False
+
+
+def bool_from_string(s, accepted_values=None):
+    """Returns a boolean if the string can be interpreted as such.
+
+    Interpret case insensitive strings as booleans. The default values
+    includes: 'yes', 'no, 'y', 'n', 'true', 'false', '0', '1', 'on',
+    'off'. Alternative values can be provided with the 'accepted_values'
+    parameter.
+
+    :param s: A string that should be interpreted as a boolean. It should be of
+        type string or unicode.
+
+    :param accepted_values: An optional dict with accepted strings as keys and
+        True/False as values. The strings will be tested against a lowered
+        version of 's'.
+
+    :return: True or False for accepted strings, None otherwise.
+    """
+    if accepted_values is None:
+        accepted_values = _valid_boolean_strings
+    val = None
+    if type(s) in (str, unicode):
+        try:
+            val = accepted_values[s.lower()]
+        except KeyError:
+            pass
+    return val
 
 
 class UIFactory(object):
@@ -122,6 +179,14 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
+    def make_progress_view(self):
+        """Construct a new ProgressView object for this UI.
+
+        Application code should normally not call this but instead
+        nested_progress_bar().
+        """
+        return NullProgressView()
+
     def recommend_upgrade(self,
         current_format_name,
         basedir):
@@ -146,32 +211,40 @@ class UIFactory(object):
 
 
 class CLIUIFactory(UIFactory):
-    """Common behaviour for command line UI factories.
+    """Deprecated in favor of TextUIFactory."""
 
-    This is suitable for dumb terminals that can't repaint existing text."""
-
+    @deprecated_method(deprecated_in((1, 18, 0)))
     def __init__(self, stdin=None, stdout=None, stderr=None):
         UIFactory.__init__(self)
         self.stdin = stdin or sys.stdin
         self.stdout = stdout or sys.stdout
         self.stderr = stderr or sys.stderr
 
+    _accepted_boolean_strings = dict(y=True, n=False, yes=True, no=False)
+
     def get_boolean(self, prompt):
-        self.clear_term()
-        # FIXME: make a regexp and handle case variations as well.
         while True:
             self.prompt(prompt + "? [y/n]: ")
             line = self.stdin.readline()
-            if line in ('y\n', 'yes\n'):
-                return True
-            if line in ('n\n', 'no\n'):
-                return False
+            line = line.rstrip('\n')
+            val = bool_from_string(line, self._accepted_boolean_strings)
+            if val is not None:
+                return val
 
-    def get_non_echoed_password(self, prompt):
-        if not sys.stdin.isatty():
-            raise errors.NotATerminal()
-        encoding = osutils.get_terminal_encoding()
-        return getpass.getpass(prompt.encode(encoding, 'replace'))
+    def get_non_echoed_password(self):
+        isatty = getattr(self.stdin, 'isatty', None)
+        if isatty is not None and isatty():
+            # getpass() ensure the password is not echoed and other
+            # cross-platform niceties
+            password = getpass.getpass('')
+        else:
+            # echo doesn't make sense without a terminal
+            password = self.stdin.readline()
+            if not password:
+                password = None
+            elif password[-1] == '\n':
+                password = password[:-1]
+        return password
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -184,39 +257,93 @@ class CLIUIFactory(UIFactory):
                  canceled the request.
         """
         prompt += ': '
-        prompt = (prompt % kwargs)
+        self.prompt(prompt, **kwargs)
         # There's currently no way to say 'i decline to enter a password'
         # as opposed to 'my password is empty' -- does it matter?
-        return self.get_non_echoed_password(prompt)
+        return self.get_non_echoed_password()
 
-    def prompt(self, prompt):
-        """Emit prompt on the CLI."""
-        self.stdout.write(prompt)
+    def get_username(self, prompt, **kwargs):
+        """Prompt the user for a username.
+
+        :param prompt: The prompt to present the user
+        :param kwargs: Arguments which will be expanded into the prompt.
+                       This lets front ends display different things if
+                       they so choose.
+        :return: The username string, return None if the user
+                 canceled the request.
+        """
+        prompt += ': '
+        self.prompt(prompt, **kwargs)
+        username = self.stdin.readline()
+        if not username:
+            username = None
+        elif username[-1] == '\n':
+            username = username[:-1]
+        return username
+
+    def prompt(self, prompt, **kwargs):
+        """Emit prompt on the CLI.
+        
+        :param kwargs: Dictionary of arguments to insert into the prompt,
+            to allow UIs to reformat the prompt.
+        """
+        if kwargs:
+            # See <https://launchpad.net/bugs/365891>
+            prompt = prompt % kwargs
+        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
+        self.clear_term()
+        self.stderr.write(prompt)
 
     def note(self, msg):
         """Write an already-formatted message."""
         self.stdout.write(msg + '\n')
 
 
-class SilentUIFactory(CLIUIFactory):
+class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
 
-    This is the default UI, if another one is never registered.
+    This is the default UI, if another one is never registered by a program
+    using bzrlib, and it's also active for example inside 'bzr serve'.
+
+    Methods that try to read from the user raise an error; methods that do
+    output do nothing.
     """
 
     def __init__(self):
-        CLIUIFactory.__init__(self)
-
-    def get_password(self, prompt='', **kwargs):
-        return None
-
-    def prompt(self, prompt):
-        pass
+        UIFactory.__init__(self)
 
     def note(self, msg):
         pass
 
+    def get_username(self, prompt, **kwargs):
+        return None
 
+
+class CannedInputUIFactory(SilentUIFactory):
+    """A silent UI that return canned input."""
+
+    def __init__(self, responses):
+        self.responses = responses
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.responses)
+
+    def get_boolean(self, prompt):
+        return self.responses.pop(0)
+
+    def get_password(self, prompt='', **kwargs):
+        return self.responses.pop(0)
+
+    def get_username(self, prompt, **kwargs):
+        return self.responses.pop(0)
+    
+    def assert_all_input_consumed(self):
+        if self.responses:
+            raise AssertionError("expected all input in %r to be consumed"
+                % (self,))
+
+
+@deprecated_function(deprecated_in((1, 18, 0)))
 def clear_decorator(func, *args, **kwargs):
     """Decorator that clears the term"""
     ui_factory.clear_term()
@@ -224,28 +351,27 @@ def clear_decorator(func, *args, **kwargs):
 
 
 ui_factory = SilentUIFactory()
-"""IMPORTANT: never import this symbol directly. ONLY ever access it as
-ui.ui_factory."""
+# IMPORTANT: never import this symbol directly. ONLY ever access it as
+# ui.ui_factory, so that you refer to the current value.
 
 
 def make_ui_for_terminal(stdin, stdout, stderr):
     """Construct and return a suitable UIFactory for a text mode program.
-
-    If stdout is a smart terminal, this gets a smart UIFactory with
-    progress indicators, etc.  If it's a dumb terminal, just plain text output.
     """
-    cls = None
-    isatty = getattr(stdin, 'isatty', None)
-    if isatty is None:
-        cls = CLIUIFactory
-    elif not isatty():
-        cls = CLIUIFactory
-    elif os.environ.get('TERM') in (None, 'dumb', ''):
-        # e.g. emacs compile window
-        cls = CLIUIFactory
-    # User may know better, otherwise default to TextUIFactory
-    if (   os.environ.get('BZR_USE_TEXT_UI', None) is not None
-        or cls is None):
-        from bzrlib.ui.text import TextUIFactory
-        cls = TextUIFactory
-    return cls(stdin=stdin, stdout=stdout, stderr=stderr)
+    # this is now always TextUIFactory, which in turn decides whether it
+    # should display progress bars etc
+    from bzrlib.ui.text import TextUIFactory
+    return TextUIFactory(stdin, stdout, stderr)
+
+
+class NullProgressView(object):
+    """Soak up and ignore progress information."""
+
+    def clear(self):
+        pass
+
+    def show_progress(self, task):
+        pass
+
+    def show_transport_activity(self, transport, direction, byte_count):
+        pass

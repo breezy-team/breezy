@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that traces transport operations.
 
@@ -33,6 +33,9 @@ class TransportTraceDecorator(TransportDecorator):
     Not all operations are logged at this point, if you need an unlogged
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
+
+    See also TransportLogDecorator, that records a machine-readable log in 
+    memory for eg testing.
     """
 
     def __init__(self, url, _decorated=None, _from_transport=None):
@@ -126,7 +129,8 @@ class TransportTraceDecorator(TransportDecorator):
 
     def readv(self, relpath, offsets, adjust_for_latency=False,
         upper_limit=None):
-        """See Transport.readv."""
+        # we override at the readv() level rather than _readv() so that any
+        # latency adjustments will be done by the underlying transport
         self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
         return self._decorated.readv(relpath, offsets, adjust_for_latency,

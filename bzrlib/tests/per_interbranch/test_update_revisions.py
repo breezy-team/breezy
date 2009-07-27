@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -28,10 +28,10 @@ class TestUpdateRevisions(TestCaseWithInterBranch):
         super(TestUpdateRevisions, self).setUp()
         self.tree1 = self.make_branch_and_tree('tree1')
         rev1 = self.tree1.commit('one')
-        dir2 = self.make_to_bzrdir('tree2')
-        dir2.create_repository().fetch(self.tree1.branch.repository)
-        branch2 = self.tree1.branch.sprout(dir2)
-        self.tree2 = dir2.create_workingtree()
+        branch2 = self.make_to_branch('tree2')
+        branch2.repository.fetch(self.tree1.branch.repository)
+        self.tree1.branch.copy_content_into(branch2)
+        self.tree2 = branch2.bzrdir.create_workingtree()
 
     def test_accepts_graph(self):
         # An implementation may not use it, but it should allow a 'graph' to be

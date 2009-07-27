@@ -17,7 +17,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 use strict;
 use lib '../lib';
@@ -256,7 +256,7 @@ exit 1;
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 package PatchWork::Comment;
 
@@ -339,7 +339,7 @@ sub refs(@)
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 package PatchWork::Person;
 
@@ -423,7 +423,7 @@ sub username(@)
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 package PatchWork::Patch;
 
@@ -553,7 +553,7 @@ sub trees(@)
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 package PatchWork::Tree;
 
@@ -613,7 +613,7 @@ sub url(@)
 #
 # You should have received a copy of the GNU General Public License
 # along with Patchwork; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 package PatchWork::User;
 @PatchWork::User::ISA = ('PatchWork::Person');
