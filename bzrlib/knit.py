@@ -1576,6 +1576,13 @@ class KnitVersionedFiles(VersionedFiles):
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
+            kind = record.storage_kind
+            if kind.startswith('knit-') and kind.endswith('-gz'):
+                # Check that the ID in the header of the raw knit bytes matches
+                # the record metadata.
+                raw_data = record._raw_record
+                df, rec = self._parse_record_header(record.key, raw_data)
+                df.close()
             buffered = False
             parents = record.parents
             if record.storage_kind in delta_types:
