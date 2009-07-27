@@ -2168,9 +2168,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             return self._vfs_get_tags_bytes()
         return response[0]
 
-    def _vfs_set_tags_bytes(self):
+    def _vfs_set_tags_bytes(self, bytes):
         self._ensure_real()
-        return self._real_branch._set_tags_bytes()
+        return self._real_branch._set_tags_bytes(bytes)
 
     def _set_tags_bytes(self, bytes):
         medium = self._client._medium
