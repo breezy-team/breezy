@@ -8,8 +8,8 @@ if __name__ == '__main__':
     version_string = ".".join([str(v) for v in bzr_plugin_version[:3]])
 
     setup(name='bzr-rewrite',
-          description='Rebase plugin for Bazaar',
-          keywords='plugin bzr rebase',
+          description='Rewrite plugin for Bazaar',
+          keywords='plugin bzr rewrite rebase',
           version=version_string,
           url='http://bazaar-vcs.org/Rebase',
           download_url='http://samba.org/~jelmer/bzr/bzr-rebase-%s.tar.gz' % version_string,

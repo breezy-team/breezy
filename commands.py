@@ -378,7 +378,6 @@ class cmd_foreign_mapping_upgrade(Command):
     You are recommended to run "bzr check" in the local repository 
     after running this command.
     """
-    aliases = ['svn-upgrade']
     takes_args = ['from_repository?']
     takes_options = ['verbose', 
             Option("idmap-file", help="Write map with old and new revision ids.", type=str)]

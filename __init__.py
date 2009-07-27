@@ -44,7 +44,7 @@ for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [], 
         "bzrlib.plugins.rebase.commands")
 
-plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', ['svn-upgrade'], 
+plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [], 
                           'bzrlib.plugins.rebase.commands')
 
 
