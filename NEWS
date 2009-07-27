@@ -94,6 +94,11 @@ Improvements
 * Can now rename/move files even if they have been removed from the inventory.
   (Marius Kruger)
 
+* Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
+  faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
+  than VFS methods.  For example, pushes of small branches with tags take
+  11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
+
 Documentation
 *************
 
