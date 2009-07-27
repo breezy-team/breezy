@@ -315,17 +315,19 @@ class BundleWriteOperation(object):
     def write_revisions(self):
         """Write bundle records for all revisions and signatures"""
         inv_vf = self.repository.inventories
-        revision_order = [key[-1] for key in multiparent.topo_iter_keys(inv_vf,
-            self.revision_keys)]
+        topological_order = [key[-1] for key in multiparent.topo_iter_keys(
+                                inv_vf, self.revision_keys)]
+        revision_order = topological_order
         if self.target is not None and self.target in self.revision_ids:
             # Make sure the target is always the last entry
+            revision_order = list(topological_order)
             revision_order.remove(self.target)
             revision_order.append(self.target)
         if self.repository._serializer.support_altered_by_hack:
             self._add_mp_records_keys('inventory', inv_vf,
-                                      [(revid,) for revid in revision_order])
+                                      [(revid,) for revid in topological_order])
         else:
-            self._add_inventory_mpdiffs_from_serializer(revision_order)
+            self._add_inventory_mpdiffs_from_serializer(topological_order)
         self._add_revision_texts(revision_order)
 
     def _add_inventory_mpdiffs_from_serializer(self, revision_order):
