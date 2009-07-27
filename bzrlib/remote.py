@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,9 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# TODO: At some point, handle upgrades by just passing the whole request
-# across to run on the server.
-
 import bz2
 
 from bzrlib import (
@@ -27,6 +24,7 @@ from bzrlib import (
     debug,
     errors,
     graph,
+    lock,
     lockdir,
     repository,
     revision,
@@ -819,7 +817,23 @@ class RemoteRepository(_RpcHelper):
             result.add(_mod_revision.NULL_REVISION)
         return result
 
+    def _has_same_fallbacks(self, other_repo):
+        """Returns true if the repositories have the same fallbacks."""
+        # XXX: copied from Repository; it should be unified into a base class
+        # <https://bugs.edge.launchpad.net/bzr/+bug/401622>
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
+
     def has_same_location(self, other):
+        # TODO: Move to RepositoryBase and unify with the regular Repository
+        # one; unfortunately the tests rely on slightly different behaviour at
+        # present -- mbp 20090710
         return (self.__class__ is other.__class__ and
                 self.bzrdir.transport.base == other.bzrdir.transport.base)
 
@@ -1031,7 +1045,7 @@ class RemoteRepository(_RpcHelper):
 
     def unlock(self):
         if not self._lock_count:
-            raise errors.LockNotHeld(self)
+            return lock.cant_unlock_not_held(self)
         self._lock_count -= 1
         if self._lock_count > 0:
             return
@@ -1236,7 +1250,9 @@ class RemoteRepository(_RpcHelper):
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
-        if self.has_same_location(source) and fetch_spec is None:
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and

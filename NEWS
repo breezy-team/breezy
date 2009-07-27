@@ -16,11 +16,19 @@ Compatibility Breaks
 New Features
 ************
 
-* ``merge --interactive`` applies a user-selected portion of the merge.  The UI
-  is similar to ``shelve``.  (Aaron Bentley)
+* ``bzr merge --interactive`` applies a user-selected portion of the
+  merge.  The UI is similar to ``shelve``.  (Aaron Bentley)
+
+* ``bzr reconfigure`` now takes options ``--stacked-on URL`` and
+  ``--unstacked`` to change stacking of a branch.
+  (Martin Pool, #391411)
 
 Bug Fixes
 *********
+
+* Annotating on a stacked branch will now succeed in simple scenarios.
+  There are still some complex scenarios where it will fail (bug #399884)
+  (John Arbash Meinel, #393366)
 
 * Authenticating against an ssh server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
@@ -30,6 +38,13 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
+  (Martin Pool, #339385, #387717)
+
 * ``bzr commit`` no longer saves the unversioning of missing files until
   the commit has completed on the branch. This means that aborting a
   commit that found a missing file will leave the tree unedited.
@@ -37,6 +52,13 @@ Bug Fixes
 
 * ``bzr mv`` no longer takes out branch locks, which allows it to work
   when the branch is readonly. (Robert Collins, #216541)
+
+* ``bzr revert .`` no longer generates an InconsistentDelta error when
+  there are missing subtrees. (Robert Collins, #367632)
+
+* Cope with FTP servers that don't support restart/append by falling back
+  to reading and then rewriting the whole file, such as TahoeLAFS.  (This
+  fallback may be slow for some access patterns.)  (Nils Durner, #294709)
 
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
@@ -56,12 +78,21 @@ Bug Fixes
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
   
+* There was a bug in ``osutils.relpath`` that was only triggered on
+  Windows. Essentially if you were at the root of a drive, and did
+  something to a branch/repo on another drive, we would go into an
+  infinite loop while trying to find a 'relative path'.
+  (John Arbash Meinel, #394227)
+
 * ``WorkingTree4.unversion`` will no longer fail to unversion ids which
   were present in a parent tree but renamed in the working tree.
   (Robert Collins, #187207)
 
 Improvements
 ************
+
+* Can now rename/move files even if they have been removed from the inventory.
+  (Marius Kruger)
 
 * Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
   faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
@@ -76,8 +107,19 @@ Documentation
 API Changes
 ***********
 
+* ``CLIUIFactory`` is deprecated; use ``TextUIFactory`` instead if you
+  need to subclass or create a specific class, or better yet the existing
+  ``make_ui_for_terminal``.  ``SilentUIFactory`` is clarified to do no
+  user interaction at all, rather than trying to read from stdin but not
+  writing any output, which would be strange if reading prompts or
+  passwords.  (Martin Pool)
+
 * New TransformPreview.commit() allows committing without a working tree.
   (Aaron Bentley)
+
+* ProgressTasks now prefer to talk direct to their ProgressView not to the
+  UIFactory. 
+  (Martin Pool)
 
 Internals
 *********
@@ -92,6 +134,9 @@ Internals
 * Inventory delta application catches more cases of corruption and can
   prevent corrupt deltas from affecting consistency of data structures on
   disk. (Robert Collins)
+
+* --subunit support now adds timestamps if the subunit version supports
+  it. (Robert Collins)
 
 
 bzr 1.17 "So late it's brunch" 2009-07-20
@@ -140,7 +185,7 @@ New Features
 
 * ``bzr push`` now aborts if uncommitted changes (including pending merges)
   are present in the working tree (if one is present) and no revision is
-  speified. The configuration option ``push_strict`` can be used to set the
+  specified. The configuration option ``push_strict`` can be used to set the
   default for this behavior.  (Vincent Ladeuil, #284038, #322808, #65286)
 
 * ``bzr revno`` and ``bzr revision-info`` now have a ``--tree`` option to

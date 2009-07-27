@@ -3,7 +3,7 @@ Using Bazaar with Launchpad
 ===========================
 
 .. contents::
-.. sectnum::
+
 
 Motivation
 ==========

@@ -157,8 +157,7 @@ class _TestLockableFiles_mixin(object):
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             l2.break_lock()
         finally:
