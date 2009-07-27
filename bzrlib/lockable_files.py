@@ -140,7 +140,7 @@ class LockableFiles(object):
     def _find_modes(self):
         """Determine the appropriate modes for files and directories.
 
-        :deprecated: Replaced by BzrDir._find_modes.
+        :deprecated: Replaced by BzrDir._find_creation_modes.
         """
         # XXX: The properties created by this can be removed or deprecated
         # once all the _get_text_store methods etc no longer use them.
