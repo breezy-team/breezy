@@ -65,24 +65,13 @@ class _LockWarner(object):
 class LockableFiles(object):
     """Object representing a set of related files locked within the same scope.
 
-    These files are used by a WorkingTree, Repository or Branch, and should
-    generally only be touched by that object.
-
-    LockableFiles also provides some policy on top of Transport for encoding
-    control files as utf-8.
+    This coordinates access to the lock along with providing a transaction.
 
     LockableFiles manage a lock count and can be locked repeatedly by
     a single caller.  (The underlying lock implementation generally does not
     support this.)
 
     Instances of this class are often called control_files.
-
-    This object builds on top of a Transport, which is used to actually write
-    the files to disk, and an OSLock or LockDir, which controls how access to
-    the files is controlled.  The particular type of locking used is set when
-    the object is constructed.  In older formats OSLocks are used everywhere.
-    in newer formats a LockDir is used for Repositories and Branches, and
-    OSLocks for the local filesystem.
 
     This class is now deprecated; code should move to using the Transport
     directly for file operations and using the lock or CountedLock for
