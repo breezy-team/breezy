@@ -3511,6 +3511,7 @@ class InterDifferingSerializer(InterRepository):
         # This is redundant with format.check_conversion_target(), however that
         # raises an exception, and we just want to say "False" as in we won't
         # support converting between these formats.
+        return False
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
         if (source._format.supports_tree_reference
@@ -4234,7 +4235,7 @@ class StreamSource(object):
             # Any time we switch serializations, we want to use an
             # inventory-delta based approach.
             return self._get_convertable_inventory_stream(revision_ids,
-                    fulltexts=missing)
+                    delta_versus_null=missing)
 
     def _get_simple_inventory_stream(self, revision_ids, missing=False):
         # NB: This currently reopens the inventory weave in source;
@@ -4248,16 +4249,26 @@ class StreamSource(object):
             [(rev_id,) for rev_id in revision_ids],
             self.inventory_fetch_order(), delta_closure))
 
-    def _get_convertable_inventory_stream(self, revision_ids, fulltexts=False):
+    def _get_convertable_inventory_stream(self, revision_ids,
+                                          delta_versus_null=False):
         # The source is using CHKs, but the target either doesn't or is has a
         # different serializer.  The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.18,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
         yield ('inventories',
-           self._stream_invs_as_deltas(revision_ids, fulltexts=fulltexts))
+           self._stream_invs_as_deltas(revision_ids,
+                                       delta_versus_null=delta_versus_null))
 
-    def _stream_invs_as_deltas(self, revision_ids, fulltexts=False):
+    def _stream_invs_as_deltas(self, revision_ids, delta_versus_null=False):
+        """Return a stream of inventory-deltas for the given rev ids.
+
+        :param revision_ids: The list of inventories to transmit
+        :param delta_versus_null: Don't try to find a minimal delta for this
+            entry, instead compute the delta versus the NULL_REVISION. This
+            effectively streams a complete inventory. Used for stuff like
+            filling in missing parents, etc.
+        """
         from_repo = self.from_repository
         revision_keys = [(rev_id,) for rev_id in revision_ids]
         parent_map = from_repo.inventories.get_parent_map(revision_keys)
@@ -4271,39 +4282,42 @@ class StreamSource(object):
         format = from_repo._format
         flags = (format.rich_root_data, format.supports_tree_reference)
         invs_sent_so_far = set([_mod_revision.NULL_REVISION])
+        inventory_cache = lru_cache.LRUCache(50)
+        null_inventory = Inventory(None)
         for inv in inventories:
             key = (inv.revision_id,)
-            parents = parent_map.get(key, ())
-            if fulltexts or parents == ():
-                # Either the caller asked for fulltexts, or there is no parent,
-                # so, stream as a delta from null:.
-                basis_id = _mod_revision.NULL_REVISION
-                parent_inv = Inventory(None)
-                delta = inv._make_delta(parent_inv)
-            else:
-                # Make a delta against each parent so that we can find the
-                # smallest.
-                best_delta = None
-                parent_ids = [parent_key[0] for parent_key in parents]
-                parent_ids.append(_mod_revision.NULL_REVISION)
+            parent_keys = parent_map.get(key, ())
+            delta = None
+            if not delta_versus_null and parent_keys:
+                # The caller did not ask for complete inventories and we have
+                # some parents that we can delta against.  Make a delta against
+                # each parent so that we can find the smallest.
+                parent_ids = [parent_key[0] for parent_key in parent_keys]
                 for parent_id in parent_ids:
                     if parent_id not in invs_sent_so_far:
                         # We don't know that the remote side has this basis, so
                         # we can't use it.
                         continue
                     if parent_id == _mod_revision.NULL_REVISION:
-                        parent_inv = Inventory(None)
+                        parent_inv = null_inventory
                     else:
-                        parent_inv = from_repo.get_inventory(parent_id)
+                        parent_inv = inventory_cache.get(parent_id, None)
+                        if parent_inv is None:
+                            parent_inv = from_repo.get_inventory(parent_id)
                     candidate_delta = inv._make_delta(parent_inv)
-                    if (best_delta is None or
-                        len(best_delta) > len(candidate_delta)):
-                        best_delta = candidate_delta
+                    if (delta is None or
+                        len(delta) > len(candidate_delta)):
+                        delta = candidate_delta
                         basis_id = parent_id
-                delta = best_delta
-            invs_sent_so_far.add(basis_id)
+            if delta is None:
+                # Either none of the parents ended up being suitable, or we
+                # were asked to delta against NULL
+                basis_id = _mod_revision.NULL_REVISION
+                delta = inv._make_delta(null_inventory)
+            invs_sent_so_far.add(inv.revision_id)
+            inventory_cache[inv.revision_id] = inv
             yield versionedfile.InventoryDeltaContentFactory(
-                key, parents, None, delta, basis_id, flags, from_repo)
+                key, parent_keys, None, delta, basis_id, flags, from_repo)
 
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,
