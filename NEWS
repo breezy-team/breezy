@@ -78,6 +78,10 @@ Bug Fixes
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
   
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  repositories.  (Andrew Bennetts, #405653)
+  
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
   something to a branch/repo on another drive, we would go into an
