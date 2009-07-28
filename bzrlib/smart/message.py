@@ -330,7 +330,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpss' in debug.debug_flags:
+                if 'hpssdetail' in debug.debug_flags:
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()
