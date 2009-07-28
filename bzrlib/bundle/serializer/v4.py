@@ -506,11 +506,6 @@ class BundleInfoV4(object):
     target = property(_get_target)
 
 
-_counters = {}
-def update_counter(name, adjust):
-    _counters[name] = _counters.get(name, 0) + 1
-
-
 class RevisionInstaller(object):
     """Installs revisions into a repository"""
 
@@ -612,13 +607,10 @@ class RevisionInstaller(object):
         cached_parent_texts = {}
         remaining_parent_ids = []
         for parent_id in parent_ids:
-            update_counter('parents', 1)
             p_text = inventory_text_cache.get(parent_id, None)
             if p_text is None:
-                update_counter('missing parent text', 1)
                 remaining_parent_ids.append(parent_id)
             else:
-                update_counter('cached parent text', 1)
                 cached_parent_texts[parent_id] = p_text
         ghosts = ()
         # TODO: Use inventory_cache to grab inventories we already have in
@@ -688,21 +680,15 @@ class RevisionInstaller(object):
                 inventory_text_cache[revision_id] = inv_text
                 target_inv = self._source_serializer.read_inventory_from_string(
                     inv_text)
-                # TODO: we might try caching the parent inventories themselves,
-                #       and then using inv._make_delta and
-                #       add_inventory_by_delta instead of always using
-                #       add_inventory
                 self._handle_root(target_inv, parent_ids)
                 parent_inv = None
                 if parent_ids:
                     parent_inv = inventory_cache.get(parent_ids[0], None)
                 try:
                     if parent_inv is None:
-                        update_counter('missing parent inv', 1)
                         self._repository.add_inventory(revision_id, target_inv,
                                                        parent_ids)
                     else:
-                        update_counter('cached parent inv', 1)
                         delta = target_inv._make_delta(parent_inv)
                         self._repository.add_inventory_by_delta(parent_ids[0],
                             delta, revision_id, parent_ids)
@@ -711,8 +697,6 @@ class RevisionInstaller(object):
                 inventory_cache[revision_id] = target_inv
         finally:
             pb.finished()
-            import pprint
-            pprint.pprint(_counters)
 
     def _handle_root(self, target_inv, parent_ids):
         revision_id = target_inv.revision_id
