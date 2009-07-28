@@ -2208,6 +2208,10 @@ class Repository(object):
 
     def _iter_inventory_xmls(self, revision_ids, ordering='unordered'):
         keys = [(revision_id,) for revision_id in revision_ids]
+        if not keys:
+            return
+        key_iter = iter(keys)
+        next_key = key_iter.next()
         stream = self.inventories.get_record_stream(keys, ordering, True)
         text_chunks = {}
         for record in stream:
@@ -2215,9 +2219,16 @@ class Repository(object):
                 text_chunks[record.key] = record.get_bytes_as('chunked')
             else:
                 raise errors.NoSuchRevision(self, record.key)
-        for key in keys:
-            chunks = text_chunks.pop(key)
-            yield ''.join(chunks), key[-1]
+            while next_key in text_chunks:
+                chunks = text_chunks.pop(next_key)
+                yield ''.join(chunks), next_key[-1]
+                try:
+                    next_key = key_iter.next()
+                except StopIteration:
+                    # We still want to fully consume the get_record_stream,
+                    # just in case it is not actually finished at this point
+                    next_key = None
+                    break
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object.
@@ -4219,18 +4230,9 @@ class StreamSource(object):
             from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
-        elif (not from_format.supports_chks):
-            # Source repository doesn't support chks. So we can transmit the
-            # inventories 'as-is' and either they are just accepted on the
-            # target, or the Sink will properly convert it.
-            # (XXX: this assumes that all non-chk formats are understood as-is
-            # by any Sink, but that presumably isn't true for foreign repo
-            # formats added by bzr-svn etc?)
-            return self._get_simple_inventory_stream(revision_ids,
-                    missing=missing)
         else:
-            # Make chk->non-chk (and chk with different serializers) fetch:
-            # copy the inventories as (format-neutral) inventory deltas.
+            # Any time we switch serializations, we want to use an
+            # inventory-delta based approach.
             return self._get_convertable_inventory_stream(revision_ids,
                     fulltexts=missing)
 
