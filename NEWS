@@ -7,6 +7,17 @@ Bazaar Release Notes
    :depth: 1
 
 
+bzr 1.17.1
+##########
+
+Bug Fixes
+*********
+
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  repositories.  (Andrew Bennetts, #405653)
+  
+
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
 :Codename: so-late-its-brunch

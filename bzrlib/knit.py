@@ -3616,6 +3616,6 @@ class _KnitAnnotator(annotate.Annotator):
                     to_process.extend(self._process_pending(key))
 
 try:
-    from bzrlib._knit_load_data_c import _load_data_c as _load_data
+    from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
 except ImportError:
     from bzrlib._knit_load_data_py import _load_data_py as _load_data
