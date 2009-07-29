@@ -94,6 +94,10 @@ Improvements
 * Can now rename/move files even if they have been removed from the inventory.
   (Marius Kruger)
 
+* Commit of specific files no longer prevents using the the iter_changes
+  codepath. On 2a repositories, commit of specific files should now be as
+  fast, or slightly faster, than a full commit. (Robert Collins)
+
 * The internal core code that handles specific file operations like
   ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
   include the parent directories if they have altered, and when a

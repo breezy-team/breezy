@@ -285,7 +285,6 @@ class Commit(object):
         # the command line parameters, and the repository has fast delta
         # generation. See bug 347649.
         self.use_record_iter_changes = (
-            not self.specific_files and
             not self.exclude and 
             not self.branch.repository._format.supports_tree_reference and
             (self.branch.repository._format.fast_deltas or
