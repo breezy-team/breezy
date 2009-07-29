@@ -881,9 +881,40 @@ def parent_directories(filename):
     return parents
 
 
+def _failed_to_load_extension(exception):
+    """Handle failing to load a binary extension.
+
+    This should be called from the ImportError block guarding the attempt to
+    import the native extension.  If this function returns, the pure-Python
+    implementation should be loaded instead::
+
+    >>> try:
+    >>>     import bzrlib._fictional_extension_pyx
+    >>> except ImportError, e:
+    >>>     bzrlib._failed_to_load_extension(e)
+    >>>     import bzrlib._fictional_extension_py
+    """
+    # NB: This docstring is just an example, not a doctest, because doctest
+    # currently can't cope with the use of lazy imports in this namespace --
+    # mbp 20090729
+   
+    # we can't use trace.warning, because this can happen early in program
+    # startup before the UIFactory etc is loaded and created; we don't use
+    # Python warnings because they unhelpfully include the line where the
+    # exception was reported, and it's not really a code deprecation warning
+    # anyhow.
+    sys.stderr.write(
+            "bzr: warning: Failed to load compiled extension: "
+            "%s\n" 
+            "    Bazaar can run, but performance may be reduced.\n"
+            "    Check Bazaar is correctly installed.\n"
+            % (exception,))
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
-except ImportError:
+except ImportError, e:
+    _failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
 
