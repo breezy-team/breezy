@@ -64,6 +64,10 @@ Bug Fixes
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
   
+* Fixed export to existing directory: if directory is empty then export 
+  will succeed, otherwise it fails with error.
+  (Alexander Belchenko, #406174)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
 
