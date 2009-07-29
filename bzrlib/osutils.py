@@ -899,8 +899,12 @@ def _failed_to_load_extension(exception):
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
    
-    # we use Python warnings so you can turn this into an error etc if you
-    # want
+    # We use Python warnings so you can turn this into an error etc if you
+    # want.  Although there is a mechanism to disable particular extensions
+    # it's not very easy to use or to set persistently so we have a special
+    # mechanism.
+    if os.environ.get('BZR_IGNORE_MISSING_EXTENSIONS') == '1':
+        return
     warnings.warn(
         "bzr: warning: Failed to load compiled extension: "
         "%s\n" 

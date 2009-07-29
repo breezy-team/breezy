@@ -1810,8 +1810,17 @@ class TestFailedToLoadExtension(tests.TestCase):
             return True
 
     def test_failure_to_load(self):
+        k = 'BZR_IGNORE_MISSING_EXTENSIONS'
+        if k in os.environ:
+            del os.environ[k]
         warnings, result = self.callCatchWarnings(self._try_loading)
         self.assertEquals(result, True)
         self.assertLength(1, warnings)
         self.assertContainsRe(str(warnings[0]),
             r".*Failed to load compiled extension: .*fictional.*")
+
+    def test_failure_to_load_ignored(self):
+        os.environ['BZR_IGNORE_MISSING_EXTENSIONS'] = '1'
+        warnings, result = self.callCatchWarnings(self._try_loading)
+        self.assertEquals(result, True)
+        self.assertLength(0, warnings)
