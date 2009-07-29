@@ -3164,7 +3164,7 @@ def py_update_entry(state, entry, abspath, stat_value,
 
 class ProcessEntryPython(object):
 
-    __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id", "uninteresting",
+    __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id",
         "last_source_parent", "last_target_parent", "include_unchanged",
         "use_filesystem_for_exec", "utf8_decode", "searched_specific_files",
         "search_specific_files", "state", "source_index", "target_index",
@@ -3175,9 +3175,6 @@ class ProcessEntryPython(object):
         want_unversioned, tree):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
-        # Just a sentry, so that _process_entry can say that this
-        # record is handled, but isn't interesting to process (unchanged)
-        self.uninteresting = object()
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
@@ -3206,10 +3203,13 @@ class ProcessEntryPython(object):
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
             decode.
-        :return: None if these don't match
-                 A tuple of information about the change, or
-                 the object 'uninteresting' if these match, but are
-                 basically identical.
+        :return: (iter_changes_result, changed). If the entry has not been
+            handled then changed is None. Otherwise it is False if no content
+            or metadata changes have occured, and None if any content or
+            metadata change has occured. If self.include_unchanged is True then
+            if changed is not None, iter_changes_result will always be a result
+            tuple. Otherwise, iter_changes_result is None unless changed is
+            True.
         """
         if self.source_index is None:
             source_details = DirState.NULL_PARENT_DETAILS
@@ -3320,7 +3320,7 @@ class ProcessEntryPython(object):
                     old_path = path = pathjoin(old_dirname, old_basename)
                 self.old_dirname_to_file_id[old_path] = file_id
             # parent id is the entry for the path in the target tree
-            if old_dirname == self.last_source_parent[0]:
+            if old_basename and old_dirname == self.last_source_parent[0]:
                 source_parent_id = self.last_source_parent[1]
             else:
                 try:
@@ -3336,7 +3336,7 @@ class ProcessEntryPython(object):
                     self.last_source_parent[0] = old_dirname
                     self.last_source_parent[1] = source_parent_id
             new_dirname = entry[0][0]
-            if new_dirname == self.last_target_parent[0]:
+            if entry[0][1] and new_dirname == self.last_target_parent[0]:
                 target_parent_id = self.last_target_parent[1]
             else:
                 try:
@@ -3359,12 +3359,14 @@ class ProcessEntryPython(object):
                     self.last_target_parent[1] = target_parent_id
 
             source_exec = source_details[3]
-            if (self.include_unchanged
-                or content_change
+            changed = (content_change
                 or source_parent_id != target_parent_id
                 or old_basename != entry[0][1]
                 or source_exec != target_exec
-                ):
+                )
+            if not changed and not self.include_unchanged:
+                return None, False
+            else:
                 if old_path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
                     old_path_u = self.utf8_decode(old_path)[0]
@@ -3383,9 +3385,7 @@ class ProcessEntryPython(object):
                        (source_parent_id, target_parent_id),
                        (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
                        (source_kind, target_kind),
-                       (source_exec, target_exec))
-            else:
-                return self.uninteresting
+                       (source_exec, target_exec)), changed
         elif source_minikind in 'a' and target_minikind in 'fdlt':
             # looks like a new file
             path = pathjoin(entry[0][0], entry[0][1])
@@ -3412,7 +3412,7 @@ class ProcessEntryPython(object):
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, path_info[2]),
-                       (None, target_exec))
+                       (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return (entry[0][2],
@@ -3422,7 +3422,7 @@ class ProcessEntryPython(object):
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
-                       (None, False))
+                       (None, False)), True
         elif source_minikind in 'fdlt' and target_minikind in 'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
@@ -3440,7 +3440,7 @@ class ProcessEntryPython(object):
                    (parent_id, None),
                    (self.utf8_decode(entry[0][1])[0], None),
                    (DirState._minikind_to_kind[source_minikind], None),
-                   (source_details[3], None))
+                   (source_details[3], None)), True
         elif source_minikind in 'fdlt' and target_minikind in 'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
@@ -3458,7 +3458,7 @@ class ProcessEntryPython(object):
                 "source_minikind=%r, target_minikind=%r"
                 % (source_minikind, target_minikind))
             ## import pdb;pdb.set_trace()
-        return None
+        return None, None
 
     def __iter__(self):
         return self
@@ -3468,7 +3468,6 @@ class ProcessEntryPython(object):
         utf8_decode = cache_utf8._utf8_decode
         _cmp_by_dirs = cmp_by_dirs
         _process_entry = self._process_entry
-        uninteresting = self.uninteresting
         search_specific_files = self.search_specific_files
         searched_specific_files = self.searched_specific_files
         splitpath = osutils.splitpath
@@ -3544,10 +3543,10 @@ class ProcessEntryPython(object):
                 continue
             path_handled = False
             for entry in root_entries:
-                result = _process_entry(entry, root_dir_info)
-                if result is not None:
+                result, changed = _process_entry(entry, root_dir_info)
+                if changed is not None:
                     path_handled = True
-                    if result is not uninteresting:
+                    if changed or self.include_unchanged:
                         yield result
             if self.want_unversioned and not path_handled and root_dir_info:
                 new_executable = bool(
@@ -3663,9 +3662,9 @@ class ProcessEntryPython(object):
                         for current_entry in current_block[1]:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result = _process_entry(current_entry, None)
-                            if result is not None:
-                                if result is not uninteresting:
+                            result, changed = _process_entry(current_entry, None)
+                            if changed is not None:
+                                if changed or self.include_unchanged:
                                     yield result
                         block_index +=1
                         if (block_index < len(self.state._dirblocks) and
@@ -3701,9 +3700,9 @@ class ProcessEntryPython(object):
                         pass
                     elif current_path_info is None:
                         # no path is fine: the per entry code will handle it.
-                        result = _process_entry(current_entry, current_path_info)
-                        if result is not None:
-                            if result is not uninteresting:
+                        result, changed = _process_entry(current_entry, current_path_info)
+                        if changed is not None:
+                            if changed or self.include_unchanged:
                                 yield result
                     elif (current_entry[0][1] != current_path_info[1]
                           or current_entry[1][self.target_index][0] in 'ar'):
@@ -3722,16 +3721,16 @@ class ProcessEntryPython(object):
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result = _process_entry(current_entry, None)
-                            if result is not None:
-                                if result is not uninteresting:
+                            result, changed = _process_entry(current_entry, None)
+                            if changed is not None:
+                                if changed or self.include_unchanged:
                                     yield result
                             advance_path = False
                     else:
-                        result = _process_entry(current_entry, current_path_info)
-                        if result is not None:
+                        result, changed = _process_entry(current_entry, current_path_info)
+                        if changed is not None:
                             path_handled = True
-                            if result is not uninteresting:
+                            if changed or self.include_unchanged:
                                 yield result
                     if advance_entry and current_entry is not None:
                         entry_index += 1
