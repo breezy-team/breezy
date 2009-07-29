@@ -21,6 +21,7 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -898,17 +899,15 @@ def _failed_to_load_extension(exception):
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
    
-    # we can't use trace.warning, because this can happen early in program
-    # startup before the UIFactory etc is loaded and created; we don't use
-    # Python warnings because they unhelpfully include the line where the
-    # exception was reported, and it's not really a code deprecation warning
-    # anyhow.
-    sys.stderr.write(
-            "bzr: warning: Failed to load compiled extension: "
-            "%s\n" 
-            "    Bazaar can run, but performance may be reduced.\n"
-            "    Check Bazaar is correctly installed.\n"
-            % (exception,))
+    # we use Python warnings so you can turn this into an error etc if you
+    # want
+    warnings.warn(
+        "bzr: warning: Failed to load compiled extension: "
+        "%s\n" 
+        "    Bazaar can run, but performance may be reduced.\n"
+        "    Check Bazaar is correctly installed."
+        % (exception,),
+        stacklevel=2)
 
 
 try:
