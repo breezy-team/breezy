@@ -16,12 +16,10 @@
 
 """Tests for the BzrDir facility and any format specific tests.
 
-For interface contract tests, see tests/bzr_dir_implementations.
+For interface contract tests, see tests/per_bzr_dir.
 """
 
 import os
-import os.path
-from StringIO import StringIO
 import subprocess
 import sys
 
@@ -31,7 +29,6 @@ from bzrlib import (
     help_topics,
     repository,
     osutils,
-    symbol_versioning,
     remote,
     urlutils,
     win32utils,
@@ -47,7 +44,6 @@ from bzrlib.tests import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
-    test_sftp_transport
     )
 from bzrlib.tests import(
     http_server,

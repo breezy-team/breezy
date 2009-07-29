@@ -2,8 +2,6 @@
 Bazaar Developer Document Catalog
 =================================
 
-Bazaar user documentation is in the 
-`Main Document Catalog <../index.html>`_.
 
 Overall developer documentation
 ===============================
@@ -48,6 +46,9 @@ Process
 
 * `EC2 resources <ec2.html>`_ |--| A team resource for 
   Windows packaging and testing, and Ubuntu testing.
+
+* `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug 
+  tracker.
 
 Plans
 =====

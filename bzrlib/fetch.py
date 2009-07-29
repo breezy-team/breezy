@@ -51,9 +51,6 @@ class RepoFetcher(object):
         :param last_revision: If set, try to limit to the data this revision
             references.
         :param find_ghosts: If True search the entire history for ghosts.
-        :param _write_group_acquired_callable: Don't use; this parameter only
-            exists to facilitate a hack done in InterPackRepo.fetch.  We would
-            like to remove this parameter.
         :param pb: ProgressBar object to use; deprecated and ignored.
             This method will just create one on top of the stack.
         """
@@ -62,11 +59,8 @@ class RepoFetcher(object):
                 symbol_versioning.deprecated_in((1, 14, 0))
                 % "pb parameter to RepoFetcher.__init__")
             # and for simplicity it is in fact ignored
-        if to_repository.has_same_location(from_repository):
-            # repository.fetch should be taking care of this case.
-            raise errors.BzrError('RepoFetcher run '
-                    'between two objects at the same location: '
-                    '%r and %r' % (to_repository, from_repository))
+        # repository.fetch has the responsibility for short-circuiting
+        # attempts to copy between a repository and itself.
         self.to_repository = to_repository
         self.from_repository = from_repository
         self.sink = to_repository._get_sink()

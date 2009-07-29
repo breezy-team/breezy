@@ -1507,7 +1507,8 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions ",
+            "Unexpected end of message. Please check connectivity "
+            "and permissions, and report a bug if problems persist. ",
             str(ex))
 
     def test_server_offset_serialisation(self):
@@ -2295,6 +2296,23 @@ class TestProtocolThree(TestSmartProtocol):
         smart_protocol.accept_bytes(request_bytes)
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('', smart_protocol.unused_data)
+
+    def test_repeated_excess(self):
+        """Repeated calls to accept_bytes after the message end has been parsed
+        accumlates the bytes in the unused_data attribute.
+        """
+        output = StringIO()
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        end = 'e'
+        request_bytes = headers + end
+        smart_protocol = self.server_protocol_class(LoggingMessageHandler())
+        smart_protocol.accept_bytes(request_bytes)
+        self.assertEqual('', smart_protocol.unused_data)
+        smart_protocol.accept_bytes('aaa')
+        self.assertEqual('aaa', smart_protocol.unused_data)
+        smart_protocol.accept_bytes('bbb')
+        self.assertEqual('aaabbb', smart_protocol.unused_data)
+        self.assertEqual(0, smart_protocol.next_read_size())
 
     def make_protocol_expecting_message_part(self):
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
@@ -3526,7 +3544,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+        self.assertEqual('bzr+http://host/~a/b/c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))

@@ -19,6 +19,7 @@ from bzrlib.xml_serializer import (
     ElementTree,
     SubElement,
     XMLSerializer,
+    escape_invalid_chars,
     )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
@@ -125,7 +126,7 @@ class _Serializer_v4(XMLSerializer):
         root.text = '\n'
 
         msg = SubElement(root, 'message')
-        msg.text = rev.message
+        msg.text = escape_invalid_chars(rev.message)[0]
         msg.tail = '\n'
 
         if rev.parents:

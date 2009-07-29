@@ -155,7 +155,7 @@ cdef class _Stat:
         (mode, ino, dev, nlink, uid, gid, size, None(atime), mtime, ctime)
         """
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, None,
-                     self._mtime, self._ctime))
+                     self.st_mtime, self.st_ctime))
 
 
 from bzrlib import osutils

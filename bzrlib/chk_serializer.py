@@ -16,15 +16,10 @@
 
 """Serializer object for CHK based inventory storage."""
 
-from cStringIO import (
-    StringIO,
-    )
-
 from bzrlib import (
     bencode,
     cache_utf8,
     inventory,
-    osutils,
     revision as _mod_revision,
     xml5,
     xml6,
@@ -49,6 +44,8 @@ def _is_format_10(value):
 class BEncodeRevisionSerializer1(object):
     """Simple revision serializer based around bencode.
     """
+
+    squashes_xml_invalid_characters = False
 
     # Maps {key:(Revision attribute, bencode_type, validator)}
     # This tells us what kind we expect bdecode to create, what variable on

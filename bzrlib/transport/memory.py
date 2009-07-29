@@ -85,7 +85,7 @@ class MemoryTransport(Transport):
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
-        result = MemoryTransport(url)
+        result = self.__class__(url)
         result._dirs = self._dirs
         result._files = self._files
         result._locks = self._locks

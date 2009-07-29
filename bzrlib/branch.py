@@ -91,6 +91,7 @@ class Branch(object):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
+        self._partial_revision_history_cache = []
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
@@ -104,6 +105,8 @@ class Branch(object):
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
+        if repo.has_same_location(self.repository):
+            raise errors.UnstackableLocationError(self.base, url)
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -124,6 +127,27 @@ class Branch(object):
         if not self.repository._format.supports_external_lookups:
             raise errors.UnstackableRepositoryFormat(self.repository._format,
                 self.repository.base)
+
+    def _extend_partial_history(self, stop_index=None, stop_revision=None):
+        """Extend the partial history to include a given index
+
+        If a stop_index is supplied, stop when that index has been reached.
+        If a stop_revision is supplied, stop when that revision is
+        encountered.  Otherwise, stop when the beginning of history is
+        reached.
+
+        :param stop_index: The index which should be present.  When it is
+            present, history extension will stop.
+        :param stop_revision: The revision id which should be present.  When
+            it is encountered, history extension will stop.
+        """
+        if len(self._partial_revision_history_cache) == 0:
+            self._partial_revision_history_cache = [self.last_revision()]
+        repository._iter_for_revno(
+            self.repository, self._partial_revision_history_cache,
+            stop_index=stop_index, stop_revision=stop_revision)
+        if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
+            self._partial_revision_history_cache.pop()
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -498,6 +522,16 @@ class Branch(object):
         """
         raise errors.UpgradeRequired(self.base)
 
+    def set_append_revisions_only(self, enabled):
+        if not self._format.supports_set_append_revisions_only():
+            raise errors.UpgradeRequired(self.base)
+        if enabled:
+            value = 'True'
+        else:
+            value = 'False'
+        self.get_config().set_user_option('append_revisions_only', value,
+            warn_masked=True)
+
     def set_reference_info(self, file_id, tree_path, branch_location):
         """Set the branch location to use for a tree reference."""
         raise errors.UnsupportedOperation(self.set_reference_info, self)
@@ -629,6 +663,9 @@ class Branch(object):
         """
         if not self._format.supports_stacking():
             raise errors.UnstackableBranchFormat(self._format, self.base)
+        # XXX: Changing from one fallback repository to another does not check
+        # that all the data you need is present in the new fallback.
+        # Possibly it should.
         self._check_stackable_repo()
         if not url:
             try:
@@ -636,27 +673,67 @@ class Branch(object):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
-            url = ''
-            # XXX: Lock correctness - should unlock our old repo if we were
-            # locked.
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            self.repository.lock_write()
-            # for every revision reference the branch has, ensure it is pulled
-            # in.
-            source_repository = self._get_fallback_repository(old_url)
-            for revision_id in chain([self.last_revision()],
-                self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id,
-                    find_ghosts=True)
+            self._unstack()
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
 
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+        
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("Unstacking")
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks. 
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
+                raise AssertionError("can't cope with fallback repositories "
+                    "of %r" % (self.repository,))
+            # unlock it, including unlocking the fallback
+            old_repository.unlock()
+            old_repository.lock_read()
+            try:
+                # Repositories don't offer an interface to remove fallback
+                # repositories today; take the conceptually simpler option and just
+                # reopen it.  We reopen it starting from the URL so that we
+                # get a separate connection for RemoteRepositories and can
+                # stream from one of them to the other.  This does mean doing
+                # separate SSH connection setup, but unstacking is not a
+                # common operation so it's tolerable.
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+                new_repository = new_bzrdir.find_repository()
+                self.repository = new_repository
+                if self.repository._fallback_repositories:
+                    raise AssertionError("didn't expect %r to have "
+                        "fallback_repositories"
+                        % (self.repository,))
+                # this is not paired with an unlock because it's just restoring
+                # the previous state; the lock's released when set_stacked_on_url
+                # returns
+                self.repository.lock_write()
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                #
+                # XXX: This only fetches up to the tip of the repository; it
+                # doesn't bring across any tags.  That's fairly consistent
+                # with how branch works, but perhaps not ideal.
+                self.repository.fetch(old_repository,
+                    revision_id=self.last_revision(),
+                    find_ghosts=True)
+            finally:
+                old_repository.unlock()
+        finally:
+            pb.finished()
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.
@@ -698,6 +775,8 @@ class Branch(object):
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
+        self._partial_revision_history_cache = []
+        self._partial_revision_id_to_revno_cache = {}
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -740,10 +819,6 @@ class Branch(object):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
-
-    def set_append_revisions_only(self, enabled):
-        """Older format branches are never restricted to append-only"""
         raise errors.UpgradeRequired(self.base)
 
     def last_revision(self):
@@ -831,15 +906,20 @@ class Branch(object):
         except ValueError:
             raise errors.NoSuchRevision(self, revision_id)
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         """Find the revision id of the specified revno."""
         if revno == 0:
             return _mod_revision.NULL_REVISION
-        if history is None:
-            history = self.revision_history()
-        if revno <= 0 or revno > len(history):
+        last_revno, last_revid = self.last_revision_info()
+        if revno == last_revno:
+            return last_revid
+        if revno <= 0 or revno > last_revno:
             raise errors.NoSuchRevision(self, revno)
-        return history[revno - 1]
+        distance_from_last = last_revno - revno
+        if len(self._partial_revision_history_cache) <= distance_from_last:
+            self._extend_partial_history(distance_from_last)
+        return self._partial_revision_history_cache[distance_from_last]
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
@@ -1349,6 +1429,8 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    can_set_append_revisions_only = True
+
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
@@ -1506,6 +1588,10 @@ class BranchFormat(object):
     @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
+
+    def supports_set_append_revisions_only(self):
+        """True if this format supports set_append_revisions_only."""
+        return False
 
     def supports_stacking(self):
         """True if this format records a stacked-on branch."""
@@ -1794,6 +1880,8 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
 
 
 class BzrBranchFormat8(BranchFormatMetadir):
@@ -1828,6 +1916,9 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
 
+    def supports_set_append_revisions_only(self):
+        return True
+
     def supports_stacking(self):
         return True
 
@@ -1861,6 +1952,9 @@ class BzrBranchFormat7(BzrBranchFormat8):
     def get_format_description(self):
         """See BranchFormat.get_format_description()."""
         return "Branch format 7"
+
+    def supports_set_append_revisions_only(self):
+        return True
 
     supports_reference_locations = False
 
@@ -2376,13 +2470,11 @@ class BzrBranch8(BzrBranch5):
         self._ignore_fallbacks = kwargs.get('ignore_fallbacks', False)
         super(BzrBranch8, self).__init__(*args, **kwargs)
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _clear_cached_state(self):
         super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
-        self._partial_revision_history_cache = []
         self._reference_info = None
 
     def _last_revision_info(self):
@@ -2443,35 +2535,6 @@ class BzrBranch8(BzrBranch5):
         last_revno, last_revision = self.last_revision_info()
         self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
-
-    def _extend_partial_history(self, stop_index=None, stop_revision=None):
-        """Extend the partial history to include a given index
-
-        If a stop_index is supplied, stop when that index has been reached.
-        If a stop_revision is supplied, stop when that revision is
-        encountered.  Otherwise, stop when the beginning of history is
-        reached.
-
-        :param stop_index: The index which should be present.  When it is
-            present, history extension will stop.
-        :param revision_id: The revision id which should be present.  When
-            it is encountered, history extension will stop.
-        """
-        repo = self.repository
-        if len(self._partial_revision_history_cache) == 0:
-            iterator = repo.iter_reverse_revision_history(self.last_revision())
-        else:
-            start_revision = self._partial_revision_history_cache[-1]
-            iterator = repo.iter_reverse_revision_history(start_revision)
-            #skip the last revision in the list
-            next_revision = iterator.next()
-        for revision_id in iterator:
-            self._partial_revision_history_cache.append(revision_id)
-            if (stop_index is not None and
-                len(self._partial_revision_history_cache) > stop_index):
-                break
-            if revision_id == stop_revision:
-                break
 
     def _write_revision_history(self, history):
         """Factored out of set_revision_history.
@@ -2620,14 +2683,6 @@ class BzrBranch8(BzrBranch5):
         if stacked_url is None:
             raise errors.NotStacked(self)
         return stacked_url
-
-    def set_append_revisions_only(self, enabled):
-        if enabled:
-            value = 'True'
-        else:
-            value = 'False'
-        self.get_config().set_user_option('append_revisions_only', value,
-            warn_masked=True)
 
     def _get_append_revisions_only(self):
         value = self.get_config().get_user_option('append_revisions_only')
@@ -2897,7 +2952,7 @@ class InterBranch(InterObject):
     @staticmethod
     def _get_branch_formats_to_test():
         """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(self._get_branch_formats_to_test)
+        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
@@ -3058,7 +3113,6 @@ class GenericInterBranch(InterBranch):
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
-        return result
 
     def _push_with_bound_branches(self, overwrite, stop_revision,
             _override_hook_source_branch=None):
