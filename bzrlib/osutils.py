@@ -909,7 +909,8 @@ def _failed_to_load_extension(exception):
         "bzr: warning: Failed to load compiled extension: "
         "%s\n" 
         "    Bazaar can run, but performance may be reduced.\n"
-        "    Check Bazaar is correctly installed."
+        "    Check Bazaar is correctly installed "
+        "(or set BZR_IGNORE_MISSING_EXTENSIONS=1)."
         % (exception,),
         stacklevel=2)
 
