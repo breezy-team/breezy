@@ -1501,7 +1501,8 @@ def _walkdirs_utf8(top, prefix=""):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError:
+            except ImportError, e:
+                _failed_to_load_extension(e)
                 pass
 
     if _selected_dir_reader is None:
@@ -1813,7 +1814,8 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError:
+        except ImportError, e:
+            _failed_to_load_extension(e)
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )
