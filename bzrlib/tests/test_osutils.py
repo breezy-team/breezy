@@ -1798,3 +1798,20 @@ class TestConcurrency(tests.TestCase):
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
+
+
+class TestFailedToLoadExtension(tests.TestCase):
+
+    def _try_loading(self):
+        try:
+            import bzrlib._fictional_extension_py
+        except ImportError, e:
+            osutils._failed_to_load_extension(e)
+            return True
+
+    def test_failure_to_load(self):
+        warnings, result = self.callCatchWarnings(self._try_loading)
+        self.assertEquals(result, True)
+        self.assertLength(1, warnings)
+        self.assertContainsRe(str(warnings[0]),
+            r".*Failed to load compiled extension: .*fictional.*")
