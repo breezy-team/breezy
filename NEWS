@@ -94,6 +94,13 @@ Improvements
 * Can now rename/move files even if they have been removed from the inventory.
   (Marius Kruger)
 
+* The internal core code that handles specific file operations like
+  ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
+  include the parent directories if they have altered, and when a
+  directory stops being a directory its children are always included. This
+  fixes a number of causes for ``InconsistentDelta`` errors, and permits
+  faster commit of specific paths. (Robert Collins, #347649)
+
 * Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
   faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
   than VFS methods.  For example, pushes of small branches with tags take
