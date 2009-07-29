@@ -220,6 +220,25 @@ class TestRenameOne(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
 
+    def test_rename_one_after_source_removed(self):
+        """Rename even if the source was removed from the inventory already"""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a', 'b/'])
+        tree.add(['a', 'b'], ['a-id', 'b-id'])
+        tree.commit('initial', rev_id='rev-1')
+        root_id = tree.get_root_id()
+        os.rename('a', 'b/foo')
+        tree.remove(['a'])
+
+        self.assertTreeLayout([('', root_id), ('b', 'b-id')], tree)
+        # We don't need after=True as long as source is missing and target
+        # exists.
+        tree.rename_one('a', 'b/foo')
+        self.assertTreeLayout([('', root_id), ('b', 'b-id'),
+                               ('b/foo', 'a-id')], tree)
+        self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
+                              tree.basis_tree())
+
     def test_rename_one_after_no_target(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])

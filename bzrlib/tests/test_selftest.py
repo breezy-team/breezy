@@ -1685,8 +1685,15 @@ class TestExtraAssertions(tests.TestCase):
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', basestring)
-        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+        e = self.assertRaises(AssertionError,
+            self.assertIsInstance, None, int, "it's just not")
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+            ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')

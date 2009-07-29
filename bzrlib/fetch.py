@@ -64,11 +64,8 @@ class RepoFetcher(object):
                 symbol_versioning.deprecated_in((1, 14, 0))
                 % "pb parameter to RepoFetcher.__init__")
             # and for simplicity it is in fact ignored
-        if to_repository.has_same_location(from_repository):
-            # repository.fetch should be taking care of this case.
-            raise errors.BzrError('RepoFetcher run '
-                    'between two objects at the same location: '
-                    '%r and %r' % (to_repository, from_repository))
+        # repository.fetch has the responsibility for short-circuiting
+        # attempts to copy between a repository and itself.
         self.to_repository = to_repository
         self.from_repository = from_repository
         self.sink = to_repository._get_sink()

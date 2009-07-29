@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1561,8 +1560,9 @@ password=jimpass
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -1582,8 +1582,10 @@ user=jim
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout,
+                                            stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted

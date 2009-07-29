@@ -202,6 +202,12 @@ class AbsentContentFactory(ContentFactory):
         self.key = key
         self.parents = None
 
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
+
 
 class AdapterFactory(ContentFactory):
     """A content factory to adapt between key prefix's."""

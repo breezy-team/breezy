@@ -849,6 +849,7 @@ class RootCommitBuilder(CommitBuilder):
 ######################################################################
 # Repositories
 
+
 class Repository(object):
     """Repository holding history for one or more branches.
 
@@ -1189,8 +1190,25 @@ class Repository(object):
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
-                           self.base)
+        if self._fallback_repositories:
+            return '%s(%r, fallback_repositories=%r)' % (
+                self.__class__.__name__,
+                self.base,
+                self._fallback_repositories)
+        else:
+            return '%s(%r)' % (self.__class__.__name__,
+                               self.base)
+
+    def _has_same_fallbacks(self, other_repo):
+        """Returns true if the repositories have the same fallbacks."""
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -1535,7 +1553,11 @@ class Repository(object):
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
-        if self.has_same_location(source) and fetch_spec is None:
+        # TODO: lift out to somewhere common with RemoteRepository
+        # <https://bugs.edge.launchpad.net/bzr/+bug/401646>
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and

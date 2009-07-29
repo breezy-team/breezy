@@ -2,8 +2,6 @@
 Bazaar Developer Document Catalog
 =================================
 
-Bazaar user documentation is in the 
-`Main Document Catalog <../index.html>`_.
 
 Overall developer documentation
 ===============================
