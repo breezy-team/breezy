@@ -892,7 +892,7 @@ def _failed_to_load_extension(exception):
     >>> try:
     >>>     import bzrlib._fictional_extension_pyx
     >>> except ImportError, e:
-    >>>     bzrlib._failed_to_load_extension(e)
+    >>>     bzrlib.osutils._failed_to_load_extension(e)
     >>>     import bzrlib._fictional_extension_py
     """
     # NB: This docstring is just an example, not a doctest, because doctest
