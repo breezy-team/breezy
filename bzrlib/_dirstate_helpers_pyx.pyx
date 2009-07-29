@@ -1017,7 +1017,10 @@ cdef class ProcessEntryC:
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
         self.last_target_parent = [None, None]
-        self.include_unchanged = include_unchanged
+        if include_unchanged is None:
+            self.include_unchanged = False
+        else:
+            self.include_unchanged = include_unchanged
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
         # for all search_indexs in each path at or under each element of
@@ -1917,7 +1920,7 @@ cdef class ProcessEntryC:
                             initial_key)
                         if block_index == 0:
                             # The children of the root are in block index 1.
-                            block_index +=1
+                            block_index = block_index + 1
                         current_block = None
                         if block_index < len(self.state._dirblocks):
                             current_block = self.state._dirblocks[block_index]
