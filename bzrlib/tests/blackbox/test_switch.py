@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -150,3 +150,36 @@ class TestSwitch(ExternalBase):
         self.run_bzr('switch --force branch1', working_dir='tree')
         branch_location = WorkingTree.open('tree').branch.base
         self.assertEndsWith(branch_location, 'branch1/')
+
+    def test_create_branch_no_branch(self):
+        self.prepare_lightweight_switch()
+        self.run_bzr_error(['cannot create branch without source branch'],
+            'switch --create-branch ../branch2', working_dir='tree')
+
+    def test_create_branch(self):
+        branch = self.make_branch('branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        tree.commit('one', rev_id='rev-1')
+        self.run_bzr('switch --create-branch ../branch2', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        self.assertEndsWith(tree.branch.base, '/branch2/')
+
+    def test_create_branch_local(self):
+        branch = self.make_branch('branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        tree.commit('one', rev_id='rev-1')
+        self.run_bzr('switch --create-branch branch2', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        # The new branch should have been created at the same level as
+        # 'branch', because we did not have a '/' segment
+        self.assertEqual(branch.base[:-1] + '2/', tree.branch.base)
+
+    def test_create_branch_short_name(self):
+        branch = self.make_branch('branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        tree.commit('one', rev_id='rev-1')
+        self.run_bzr('switch -b branch2', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        # The new branch should have been created at the same level as
+        # 'branch', because we did not have a '/' segment
+        self.assertEqual(branch.base[:-1] + '2/', tree.branch.base)

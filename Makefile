@@ -21,6 +21,10 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON24=python24
+PYTHON25=python25
+BZR_TARGET=release
+PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -85,18 +89,25 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/*/tutorials/*.txt) \
+txt_files := \
+	doc/en/tutorials/tutorial.txt \
+	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+	doc/en/tutorials/centralized_workflow.txt \
+        $(wildcard doc/ru/tutorials/*.txt) \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
 	doc/en/developer-guide/HACKING.txt \
+	doc/en/upgrade-guide/index.txt \
+	$(wildcard doc/es/guia-usario/*.txt) \
+	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       $(wildcard doc/*/quick-reference/quick-start-summary.svg) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.png) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.pdf) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.svg) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.png) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.pdf) \
        $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -169,14 +180,19 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 	$(wildcard $(addsuffix /*.txt, bzrlib/help_topics/en)) 
 
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ rstx
+	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
-	PYTHONPATH=.:$$PYTHONPATH $(PYTHON) tools/generate_docs.py -o $@ man
+	$(PYTHON) tools/generate_docs.py -o $@ man
+
+upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
+
+doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 
 # build a png of our performance task list
 # 
@@ -210,6 +226,33 @@ clean-docs:
 
 ### Windows Support ###
 
+# make all the installers completely from scratch, using zc.buildout
+# to fetch the dependencies
+installer-all:
+	@echo *** Make all the installers from scratch
+	cd tools/win32 && $(PYTHON) bootstrap.py
+	cd tools/win32 && bin/buildout
+	cd tools/win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
+
+
+clean-installer-all:
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/.installed.cfg
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bin/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-rebase/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzrtools/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/db4/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/develop-eggs/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/libintl/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/parts/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/qbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/subvertpy/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/svn/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tbzr/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/tortoise-overlays/
+	$(PYTHON) tools/win32/ostools.py remove tools/win32/zlib/
+
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
@@ -221,17 +264,17 @@ exe:
 
 # win32 installer for bzr.exe
 installer: exe copy-docs
-	@echo *** Make windows installer
+	@echo *** Make Windows installer
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
 py-inst-24: docs
-	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON24) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-25: docs
-	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-26: docs
 	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
