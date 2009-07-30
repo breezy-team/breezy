@@ -19,8 +19,9 @@
 
 
 from bzrlib import (
-    lock,
+    debug,
     errors,
+    lock,
     tests,
     )
 
@@ -73,16 +74,50 @@ class TestOSLock(tests.TestCaseInTempDir):
     def test_read_locks_block_write_locks(self):
         r_lock = self.read_lock('a-lock-file')
         try:
-            self.assertRaises(errors.LockContention,
-                              self.write_lock, 'a-lock-file')
+            if lock.have_fcntl and self.write_lock is lock._fcntl_WriteLock:
+                # With -Dlock, fcntl locks are properly exclusive
+                debug.debug_flags.add('lock')
+                self.assertRaises(errors.LockContention,
+                                  self.write_lock, 'a-lock-file')
+                # But not without it
+                debug.debug_flags.remove('lock')
+                try:
+                    w_lock = self.write_lock('a-lock-file')
+                except errors.LockContention:
+                    self.fail('Unexpected success. fcntl read locks'
+                              ' do not usually block write locks')
+                else:
+                    w_lock.unlock()
+                    self.knownFailure('fcntl read locks don\'t'
+                                      ' block write locks without -Dlock')
+            else:
+                self.assertRaises(errors.LockContention,
+                                  self.write_lock, 'a-lock-file')
         finally:
             r_lock.unlock()
 
     def test_write_locks_block_read_lock(self):
         w_lock = self.write_lock('a-lock-file')
         try:
-            self.assertRaises(errors.LockContention,
-                              self.read_lock, 'a-lock-file')
+            if lock.have_fcntl and self.read_lock is lock._fcntl_ReadLock:
+                # With -Dlock, fcntl locks are properly exclusive
+                debug.debug_flags.add('lock')
+                self.assertRaises(errors.LockContention,
+                                  self.read_lock, 'a-lock-file')
+                # But not without it
+                debug.debug_flags.remove('lock')
+                try:
+                    r_lock = self.read_lock('a-lock-file')
+                except errors.LockContention:
+                    self.fail('Unexpected success. fcntl write locks'
+                              ' do not usually block read locks')
+                else:
+                    r_lock.unlock()
+                    self.knownFailure('fcntl write locks don\'t'
+                                      ' block read locks without -Dlock')
+            else:
+                self.assertRaises(errors.LockContention,
+                                  self.read_lock, 'a-lock-file')
         finally:
             w_lock.unlock()
 
