@@ -84,6 +84,9 @@ Bug Fixes
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
   
+* Streaming from bzr servers where there is a chain of stacked branches
+  (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
+
 * The optional ``_knit_load_data_pyx`` C extension was never being
   imported.  This caused significant slowdowns when reading data from
   repositories.  (Andrew Bennetts, #405653)
