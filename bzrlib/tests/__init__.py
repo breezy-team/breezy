@@ -802,7 +802,6 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
-        # Track locks - needs to be called before _clear_debug_flags.
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
@@ -859,10 +858,7 @@ class TestCase(unittest.TestCase):
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
         # once we have fixed all the current lock problems, we can change the
-        # following code to always check for mismatched locks, but only do
-        # traceback showing with -Dlock (self._lock_check_thorough is True).
-        # For now, because the test suite will fail, we only assert that lock
-        # matching has occured with -Dlock.
+        # following code to always check for mismatched locks
         # unhook:
         acquired_locks = [lock for action, lock in self._lock_actions
                           if action == 'acquired']
@@ -878,16 +874,11 @@ class TestCase(unittest.TestCase):
             message = ('Different number of acquired and '
                        'released or broken locks. (%s, %s + %s)' %
                        (acquired_locks, released_locks, broken_locks))
-            if not self._lock_check_thorough:
-                # Rather than fail, just warn
-                print "Broken test %s: %s" % (self, message)
-                return
             self.fail(message)
 
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        self._lock_check_thorough = 'lock' not in debug.debug_flags
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
