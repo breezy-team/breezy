@@ -150,8 +150,12 @@ class TestInterRepository(TestCaseWithInterRepository):
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
-        builder.build_snapshot('base', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
+        if self.make_repository('rich-root-test').supports_rich_root():
+            builder.build_snapshot('base', None, [
+                ('add', ('', 'root-id', 'directory', None))])
+        else:
+            builder.build_snapshot('base', None, [
+                ('add', ('', inventory.ROOT_ID, 'directory', None))])
         builder.build_snapshot('left', ['base'], [])
         builder.build_snapshot('right', ['base'], [])
         builder.build_snapshot('merge', ['left', 'right'], [])

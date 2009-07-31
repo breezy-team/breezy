@@ -180,7 +180,7 @@ class InventoryDeltaContentFactory(ContentFactory):
             serializer = inventory_delta.InventoryDeltaSerializer()
             serializer.require_flags(*self._format_flags)
             return ''.join(serializer.delta_to_lines(
-                self._basis_id, self.key, self._delta))
+                self._basis_id, self.key[-1], self._delta))
         raise errors.UnavailableRepresentation(self.key, storage_kind,
             self.storage_kind)
 

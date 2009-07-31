@@ -4305,7 +4305,8 @@ class StreamSource(object):
         flags = (format.rich_root_data, format.supports_tree_reference)
         invs_sent_so_far = set([_mod_revision.NULL_REVISION])
         inventory_cache = lru_cache.LRUCache(50)
-        null_inventory = Inventory(None)
+        null_inventory = from_repo.revision_tree(
+            _mod_revision.NULL_REVISION).inventory
         for inv in inventories:
             key = (inv.revision_id,)
             parent_keys = parent_map.get(key, ())
