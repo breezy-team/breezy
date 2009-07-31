@@ -1312,6 +1312,16 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
+    def failsStrictLockCheck(self):
+        """It is known that this test would fail with -Dstrict_locks.
+
+        By default, all tests are run with strict lock checking unless
+        -Edisable_lock_checks is supplied. However there are some tests which
+        we know fail strict locks at this point that have not been fixed.
+        They should call this function to disable the strict checking.
+        """
+        debug.debug_flags.discard('strict_locks')
+
     def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 

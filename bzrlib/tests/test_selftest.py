@@ -1350,6 +1350,7 @@ class SampleTestCase(tests.TestCase):
 class _TestException(Exception):
     pass
 
+
 class TestTestCase(tests.TestCase):
     """Tests that test the core bzrlib TestCase."""
 
@@ -1426,6 +1427,24 @@ class TestTestCase(tests.TestCase):
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
         self.assertEqual(set(['a-flag']), self.flags)
+
+    def test_disable_lock_checks(self):
+        """The -Edisable_lock_checks flag disables thorough checks."""
+        class TestThatRecordsFlags(tests.TestCase):
+            def test_foo(nested_self):
+                self.flags = set(bzrlib.debug.debug_flags)
+                self.test_lock_check_thorough = nested_self._lock_check_thorough
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertTrue(self.test_lock_check_thorough)
+        self.assertEqual(set(), self.flags)
+        # Now set the disable_lock_checks flag, and assert that this is
+        # no longer true
+        self.change_selftest_debug_flags(set(['disable_lock_checks']))
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertFalse(self.test_lock_check_thorough)
+        self.assertEqual(set(), self.flags)
 
     def test_debug_flags_restored(self):
         """The bzrlib debug flags should be restored to their original state
