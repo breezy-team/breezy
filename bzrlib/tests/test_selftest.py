@@ -1459,6 +1459,19 @@ class TestTestCase(tests.TestCase):
         self.assertFalse(self.test_lock_check_thorough)
         self.assertEqual(set(), self.flags)
 
+    def test_this_fails_strict_lock_check(self):
+        class TestThatRecordsFlags(tests.TestCase):
+            def test_foo(nested_self):
+                self.flags1 = set(bzrlib.debug.debug_flags)
+                self.thisFailsStrictLockCheck()
+                self.flags2 = set(bzrlib.debug.debug_flags)
+        # Make sure lock checking is active
+        self.change_selftest_debug_flags(set())
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['strict_locks']), self.flags1)
+        self.assertEqual(set(), self.flags2)
+
     def test_debug_flags_restored(self):
         """The bzrlib debug flags should be restored to their original state
         after the test was run, even if allow_debug is set.
