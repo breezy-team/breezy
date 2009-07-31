@@ -116,6 +116,11 @@ Improvements
   than VFS methods.  For example, pushes of small branches with tags take
   11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
 
+* Sending Ctrl-Break on Windows will now drop you into the debugger, in
+  the same way that sending Ctrl-\\ does on other platforms.
+  (John Arbash Meinel)
+
+
 Documentation
 *************
 
