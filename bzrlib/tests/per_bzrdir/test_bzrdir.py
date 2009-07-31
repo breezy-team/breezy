@@ -528,6 +528,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_clone_bzrdir_tree_branch_repo(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')

@@ -26,6 +26,7 @@ from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
 class TestCreateClone(TestCaseWithBranch):
 
     def test_create_clone_on_transport_missing_parent_dir(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         source = tree.branch
@@ -35,6 +36,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertFalse(self.get_transport('.').has('subdir'))
 
     def test_create_clone_on_transport_missing_parent_dir_create(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         source = tree.branch
@@ -46,6 +48,7 @@ class TestCreateClone(TestCaseWithBranch):
             result.bzrdir.root_transport.base)
 
     def test_create_clone_on_transport_use_existing_dir_false(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         source = tree.branch
@@ -56,6 +59,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertFalse(target_transport.has(".bzr"))
 
     def test_create_clone_on_transport_use_existing_dir_true(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         source = tree.branch
@@ -66,6 +70,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertEqual(source.last_revision(), result.last_revision())
 
     def test_create_clone_on_transport_no_revision_id(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         source = tree.branch
@@ -74,6 +79,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertEqual(source.last_revision(), result.last_revision())
 
     def test_create_clone_on_transport_revision_id(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         old_revid = tree.commit('a commit')
         source_tip = tree.commit('a second commit')
@@ -87,6 +93,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertFalse(result.repository.has_revision(source_tip))
 
     def test_create_clone_on_transport_stacked(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         trunk = tree.branch.create_clone_on_transport(
@@ -100,6 +107,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.assertEqual(trunk.base, result.get_stacked_on_url())
 
     def test_create_clone_of_multiple_roots(self):
+        self.thisFailsStrictLockCheck()
         try:
             builder = self.make_branch_builder('local')
         except (errors.TransportNotPossible, errors.UninitializableFormat):
@@ -121,6 +129,7 @@ class TestCreateClone(TestCaseWithBranch):
         self.hook_calls.append(pre_change_params)
 
     def test_create_clone_on_transport_stacked_hooks_get_stacked_branch(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('a commit')
         trunk = tree.branch.create_clone_on_transport(
