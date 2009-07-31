@@ -55,9 +55,9 @@ class TestBreakin(tests.TestCase):
             self._send_signal = self._send_signal_via_kill
 
     def _send_signal_via_kill(self, pid, sig_type):
-        if sig == 'break':
+        if sig_type == 'break':
             sig_num = signal.SIGQUIT
-        elif sig == 'kill':
+        elif sig_type == 'kill':
             sig_num = signal.SIGKILL
         else:
             raise ValueError("unknown signal type: %s" % (sig_type,))
