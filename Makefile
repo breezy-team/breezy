@@ -236,10 +236,8 @@ BUILDOUT_FILES := buildout.cfg \
 	buildout-templates/bin/build-installer.bat.in
 
 installer-all:
-	@echo *** Make all the installers from scratch
-	# Build everything in a separate directory, which has an extra shared repo
-	# The repo is there to make sure none of the fetches 'leak' into the local
-	# shared repo
+	@echo Make all the installers from scratch
+	@# Build everything in a separate directory, to avoid cluttering the WT
 	mkdir -p build-win32
 	cd tools/win32 && $(PYTHON) ostools.py copytree $(BUILDOUT_FILES) ../../build-win32
 	cd build-win32 && $(PYTHON) ../tools/win32/bootstrap.py
