@@ -49,7 +49,8 @@ if not defined PLUGIN_TARGET (set PLUGIN_TARGET=release)
 %PYTHON% %ROOT%/ostools.py makedir %INSTALLERS%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
+rem Use %COMSPEC% /c in case bzr is actually a .bat file
+%COMSPEC% /c bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/subvertpy/%PLUGIN_TARGET%
