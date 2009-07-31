@@ -830,8 +830,8 @@ class TestCase(unittest.TestCase):
         self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
-        if 'lock' in selftest_debug_flags:
-            debug.debug_flags.add('lock')
+        # if 'disable_lock_checks' not in selftest_debug_flags:
+        #     debug.debug_flags.add('strict-locks')
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -859,8 +859,9 @@ class TestCase(unittest.TestCase):
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
-        # once we have fixed all the current lock problems, we can change the
-        # following code to always check for mismatched locks
+        # We always check for mismatched locks. If a mismatch is found, we
+        # fail unless -Edisable_lock_checks is supplied to selftest, in which
+        # case we just print a warning.
         # unhook:
         acquired_locks = [lock for action, lock in self._lock_actions
                           if action == 'acquired']
@@ -876,11 +877,20 @@ class TestCase(unittest.TestCase):
             message = ('Different number of acquired and '
                        'released or broken locks. (%s, %s + %s)' %
                        (acquired_locks, released_locks, broken_locks))
+            if not self._lock_check_thorough:
+                # Rather than fail, just warn
+                print "Broken test %s: %s" % (self, message)
+                return
             self.fail(message)
 
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
+        if 'disable_lock_checks' in selftest_debug_flags:
+            self._lock_check_thorough = False
+        else:
+            self._lock_check_thorough = True
+            
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -3114,6 +3124,13 @@ class BZRTransformingResult(unittest.TestResult):
 
 
 # Controlled by "bzr selftest -E=..." option
+# Currently supported:
+#   -Eallow_debug           Will no longer clear debug.debug_flags() so it
+#                           preserves any flags supplied at the command line.
+#   -Edisable_lock_checks   Turns errors in mismatched locks into simple prints
+#                           rather than failing tests. And no longer raise
+#                           LockContention when fctnl locks are not being used
+#                           with proper exclusion rules.
 selftest_debug_flags = set()
 
 
