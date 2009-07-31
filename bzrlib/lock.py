@@ -229,6 +229,8 @@ if have_fcntl:
             self.filename = osutils.realpath(filename)
             if self.filename in _fcntl_WriteLock._open_locks:
                 if 'strict_locks' in debug.debug_flags:
+                    # We raise before calling _open so we don't need to
+                    # _clear_f
                     raise errors.LockContention(self.filename)
                 else:
                     trace.mutter('Read lock taken w/ an open write lock on: %s'
