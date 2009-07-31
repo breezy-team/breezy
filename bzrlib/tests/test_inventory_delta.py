@@ -63,12 +63,13 @@ tree_references: false
 /\x00an-id\x00\x00different-version\x00dir
 """
 
+# No root entry is included for unversioned roots.
 root_only_unversioned = """format: bzr inventory delta v1 (bzr 1.14)
 parent: null:
 version: entry-version
 versioned_root: false
 tree_references: false
-None\x00/\x00TREE_ROOT\x00\x00null:\x00dir
+None\x00/\x00TREE_ROOT\x00\x00entry-version\x00dir
 """
 
 reference_lines = """format: bzr inventory delta v1 (bzr 1.14)
@@ -292,12 +293,19 @@ class TestSerialization(TestCase):
         old_inv = Inventory(None)
         new_inv = Inventory(None)
         root = new_inv.make_entry('directory', '', None, 'TREE_ROOT')
+        # Implicit roots are considered modified in every revision.
+        root.revision = 'entry-version'
         new_inv.add(root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer()
         serializer.require_flags(False, False)
+        serialized_lines = serializer.delta_to_lines(
+            NULL_REVISION, 'entry-version', delta)
         self.assertEqual(StringIO(root_only_unversioned).readlines(),
-            serializer.delta_to_lines(NULL_REVISION, 'entry-version', delta))
+            serialized_lines)
+        self.assertEqual(
+            (NULL_REVISION, 'entry-version', False, False, delta),
+            serializer.parse_text_bytes(''.join(serialized_lines)))
 
     def test_unversioned_non_root_errors(self):
         old_inv = Inventory(None)
@@ -337,7 +345,7 @@ class TestSerialization(TestCase):
         serializer.require_flags(versioned_root=False, tree_references=True)
         err = self.assertRaises(errors.BzrError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(str(err), 'Version present for / in TREE_ROOT')
+        self.assertStartsWith(str(err), 'Version present for / in TREE_ROOT')
 
     def test_nonrichroot_non_TREE_ROOT_id_errors(self):
         old_inv = Inventory(None)
