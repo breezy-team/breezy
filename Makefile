@@ -233,7 +233,8 @@ clean-docs:
 # the build process.
 # Note that the path is relative to tools/win32
 BUILDOUT_FILES := buildout.cfg \
-	buildout-templates/bin/build-installer.bat.in
+	buildout-templates/bin/build-installer.bat.in \
+	ostools.py
 
 installer-all:
 	@echo Make all the installers from scratch
