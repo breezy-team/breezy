@@ -229,11 +229,22 @@ clean-docs:
 
 # make all the installers completely from scratch, using zc.buildout
 # to fetch the dependencies
+# These are files that need to be copied into the build location to boostrap
+# the build process.
+# Note that the path is relative to tools/win32
+BUILDOUT_FILES := buildout.cfg \
+	buildout-templates/bin/build-installer.bat.in
+
 installer-all:
 	@echo *** Make all the installers from scratch
-	cd tools/win32 && $(PYTHON) bootstrap.py
-	cd tools/win32 && bin/buildout
-	cd tools/win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
+	# Build everything in a separate directory, which has an extra shared repo
+	# The repo is there to make sure none of the fetches 'leak' into the local
+	# shared repo
+	mkdir -p build-win32
+	cd tools/win32 && $(PYTHON) ostools.py copytree $(BUILDOUT_FILES) ../../build-win32
+	cd build-win32 && $(PYTHON) ../tools/win32/bootstrap.py
+	cd build-win32 && bin/buildout
+	cd build-win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
 
 
 clean-installer-all:
