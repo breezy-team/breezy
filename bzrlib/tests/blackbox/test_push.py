@@ -146,6 +146,7 @@ class TestPush(tests.TestCaseWithTransport):
         # bzr push of a branch with revisions to a new location
         # should print the number of revisions equal to the length of the
         # local branch.
+        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         t.add('file')
@@ -758,6 +759,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_command_line_override_config(self):
+        self.thisFailsStrictLockCheck()
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])
