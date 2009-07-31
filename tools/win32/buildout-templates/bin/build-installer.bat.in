@@ -69,7 +69,7 @@ cd %ROOT%/bzr-svn/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-cd %ROOT%/bzr-rebase/%PLUGIN_TARGET%
+cd %ROOT%/bzr-rewrite/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
