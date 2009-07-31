@@ -23,6 +23,7 @@
 PYTHON=python
 PYTHON24=python24
 PYTHON25=python25
+PYTHON26=python26
 BZR_TARGET=release
 PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
@@ -277,7 +278,7 @@ py-inst-25: docs
 	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-26: docs
-	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON26) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 python-installer: py-inst-24 py-inst-25 py-inst-26
 

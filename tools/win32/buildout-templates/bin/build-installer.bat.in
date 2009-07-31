@@ -82,13 +82,16 @@ make installer PYTHON=%CYG_PYTHON%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 rem Enable this when this branch is merged.
-rem make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25}
+rem make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25} PYTHON26=${settings:python26}
 rem @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 ${settings:python24} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 ${settings:python25} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python26} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 %PYTHON% %ROOT%/ostools.py copytodir %TARGET%/bzr*.exe %INSTALLERS%
