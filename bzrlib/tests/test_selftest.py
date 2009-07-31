@@ -597,7 +597,12 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
-        self.assertEqual(1, len(result.errors))
+        if self._lock_check_thorough:
+            self.assertEqual(1, len(result.errors))
+        else:
+            # When _lock_check_thorough is disabled, then we don't trigger a
+            # failure
+            self.assertEqual(0, len(result.errors))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -1405,7 +1410,10 @@ class TestTestCase(tests.TestCase):
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
         # if someone runs the test with -Dsomething it will error.
-        self.assertEqual(set(), bzrlib.debug.debug_flags)
+        flags = set()
+        if self._lock_check_thorough:
+            flags.add('strict_locks')
+        self.assertEqual(flags, bzrlib.debug.debug_flags)
 
     def change_selftest_debug_flags(self, new_flags):
         orig_selftest_flags = tests.selftest_debug_flags
@@ -1426,7 +1434,10 @@ class TestTestCase(tests.TestCase):
                 self.flags = set(bzrlib.debug.debug_flags)
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['a-flag']), self.flags)
+        flags = set(['a-flag'])
+        if 'disable_lock_checks' not in tests.selftest_debug_flags:
+            flags.add('strict_locks')
+        self.assertEqual(flags, self.flags)
 
     def test_disable_lock_checks(self):
         """The -Edisable_lock_checks flag disables thorough checks."""
@@ -1434,12 +1445,14 @@ class TestTestCase(tests.TestCase):
             def test_foo(nested_self):
                 self.flags = set(bzrlib.debug.debug_flags)
                 self.test_lock_check_thorough = nested_self._lock_check_thorough
+        self.change_selftest_debug_flags(set())
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
+        # By default we do strict lock checking and thorough lock/unlock
+        # tracking.
         self.assertTrue(self.test_lock_check_thorough)
-        self.assertEqual(set(), self.flags)
-        # Now set the disable_lock_checks flag, and assert that this is
-        # no longer true
+        self.assertEqual(set(['strict_locks']), self.flags)
+        # Now set the disable_lock_checks flag, and show that this changed.
         self.change_selftest_debug_flags(set(['disable_lock_checks']))
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())

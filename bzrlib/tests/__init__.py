@@ -830,8 +830,8 @@ class TestCase(unittest.TestCase):
         self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
-        # if 'disable_lock_checks' not in selftest_debug_flags:
-        #     debug.debug_flags.add('strict_locks')
+        if 'disable_lock_checks' not in selftest_debug_flags:
+            debug.debug_flags.add('strict_locks')
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -1312,13 +1312,16 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
-    def failsStrictLockCheck(self):
+    def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
 
         By default, all tests are run with strict lock checking unless
         -Edisable_lock_checks is supplied. However there are some tests which
         we know fail strict locks at this point that have not been fixed.
         They should call this function to disable the strict checking.
+
+        This should be used sparingly, it is much better to fix the locking
+        issues rather than papering over the problem by calling this function.
         """
         debug.debug_flags.discard('strict_locks')
 
