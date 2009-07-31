@@ -34,8 +34,51 @@ def topo_sort(graph):
     their children.
 
     node identifiers can be any hashable object, and are typically strings.
+
+    This function has the same purpose as the TopoSorter class, but uses a
+    different algorithm to sort the graph. That means that while both return a list
+    with parents before their child nodes, the exact ordering can be different.
+
+    topo_sort is faster when the whole list is needed, while when iterating over a
+    part of the list, TopoSorter.iter_topo_order should be used.
     """
-    return TopoSorter(graph).sorted()
+    # store a dict of the graph.
+    graph = dict(graph)
+    # this is the stack storing on which the sorted nodes are pushed.
+    node_name_stack = []
+
+    # count the number of children for every node in the graph
+    nchildren = dict.fromkeys(graph.iterkeys(), 0)
+    for parents in graph.itervalues():
+        for parent in parents:
+            if parent in nchildren:
+                nchildren[parent] += 1
+    # keep track of nodes without children in a separate list
+    nochildnodes = [node for (node, n) in nchildren.iteritems() if n == 0]
+
+    while nochildnodes:
+        # pick a node without a child and add it to the stack.
+        node_name = nochildnodes.pop()
+        node_name_stack.append(node_name)
+
+        # the parents of the node lose it as a child; if it was the last
+        # child, add the parent to the list of childless nodes.
+        parents = graph.pop(node_name)
+        for parent in parents:
+            if parent in nchildren:
+                nchildren[parent] -= 1
+                if nchildren[parent] == 0:
+                    nochildnodes.append(parent)
+
+    # if there are still nodes left in the graph,
+    # that means that there is a cycle
+    if graph:
+        raise errors.GraphCycleError(graph)
+
+    # the nodes where pushed on the stack child first, so this list needs to be
+    # reversed before returning it.
+    node_name_stack.reverse()
+    return node_name_stack
 
 
 class TopoSorter(object):
