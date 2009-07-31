@@ -831,7 +831,7 @@ class TestCase(unittest.TestCase):
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
         # if 'disable_lock_checks' not in selftest_debug_flags:
-        #     debug.debug_flags.add('strict-locks')
+        #     debug.debug_flags.add('strict_locks')
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):

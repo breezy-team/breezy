@@ -21,7 +21,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dhttp            Trace http connections, requests and responses.
 -Dindex           Trace major index operations.
 -Dknit            Trace knit operations.
--Dlock            Trace when OS locks are potentially used in a non-portable
+-Dstrict_locks    Trace when OS locks are potentially used in a non-portable
                   manner.
 -Dmerge           Emit information for debugging merges.
 -Dunlock          Some errors during unlock are treated as warnings.
