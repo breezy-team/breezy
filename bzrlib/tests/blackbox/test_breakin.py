@@ -72,8 +72,8 @@ class TestBreakin(tests.TestCase):
                 children of self)
             2) Sending SIGBREAK to a process that shares the current console,
                 which can be in its own process group.
-        So we have start_bzr_subprocess to create a new process group for the
-        spawned process, and then we map
+        So we have start_bzr_subprocess create a new process group for the
+        spawned process (via a flag to Popen), and then we map
             SIGQUIT to GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT)
             SIGKILL to TerminateProcess
         """
@@ -122,8 +122,6 @@ class TestBreakin(tests.TestCase):
             # Win32 doesn't support WNOHANG, so we just pass 0
             opts = getattr(os, 'WNOHANG', 0)
             try:
-                # note: waitpid is different on win32, but this test only runs
-                # on unix
                 # TODO: waitpid doesn't work well on windows, we might consider
                 #       using WaitForSingleObject(proc._handle, TIMEOUT)
                 #       instead. Most notably, the WNOHANG isn't allowed, so
