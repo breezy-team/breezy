@@ -268,7 +268,7 @@ class SqliteGitShaMap(GitShaMap):
 
 
 TDB_MAP_VERSION = 2
-TDB_HASH_SIZE = 10000
+TDB_HASH_SIZE = 50000
 
 
 class TdbGitShaMap(GitShaMap):
