@@ -723,9 +723,10 @@ class TestTestResult(tests.TestCase):
                 self.time(time.sleep, 0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
+        # if a benchmark time is given, we now show just that time followed by
+        # a star
         self.check_timing(ShortDelayTestCase('test_short_benchmark'),
-                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+                          r"^ +[0-9]+ms\*$")
 
     def test_unittest_reporting_unittest_class(self):
         # getting the time from a non-bzrlib test works ok
@@ -943,7 +944,7 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP                   0ms',
+        self.assertEqual(lines, ['NODEP        0ms',
                                  "    The feature 'Feature' is not available."])
 
     def test_text_report_unsupported(self):
@@ -1490,7 +1491,7 @@ class TestTestCase(tests.TestCase):
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            r"\d+ms/ +\d+ms\n$")
+            r"\d+ms\*\n$")
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""
@@ -1686,8 +1687,15 @@ class TestExtraAssertions(tests.TestCase):
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', basestring)
-        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+        e = self.assertRaises(AssertionError,
+            self.assertIsInstance, None, int, "it's just not")
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+            ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')

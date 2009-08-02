@@ -99,6 +99,9 @@ class FtpTransport(ConnectedTransport):
             self.is_active = True
         else:
             self.is_active = False
+        
+        # Most modern FTP servers support the APPE command. If ours doesn't, we (re)set this flag accordingly later.
+        self._has_append = True
 
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
@@ -387,6 +390,8 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
+        text = f.read()
+        
         abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
@@ -394,8 +399,11 @@ class FtpTransport(ConnectedTransport):
         else:
             result = 0
 
-        mutter("FTP appe to %s", abspath)
-        self._try_append(relpath, f.read(), mode)
+        if self._has_append:
+            mutter("FTP appe to %s", abspath)
+            self._try_append(relpath, text, mode)
+        else:
+            self._fallback_append(relpath, text, mode)
 
         return result
 
@@ -416,8 +424,16 @@ class FtpTransport(ConnectedTransport):
             self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='error appending',
-                unknown_exc=errors.NoSuchFile)
+            # Check whether the command is not supported (reply code 502)
+            if str(e).startswith('502 '):
+                warning("FTP server does not support file appending natively. " \
+                    "Performance may be severely degraded! (%s)", e)
+                self._has_append = False
+                self._fallback_append(relpath, text, mode)
+            else:
+                self._translate_perm_error(e, abspath, extra='error appending',
+                    unknown_exc=errors.NoSuchFile)
+            
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
                 raise errors.TransportError("FTP temporary error during APPEND %s." \
@@ -426,6 +442,13 @@ class FtpTransport(ConnectedTransport):
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
                 self._try_append(relpath, text, mode, retries+1)
+
+    def _fallback_append(self, relpath, text, mode = None):
+        remote = self.get(relpath)
+        remote.seek(0, 2)
+        remote.write(text)
+        remote.seek(0, 0)
+        return self.put_file(relpath, remote, mode)
 
     def _setmode(self, relpath, mode):
         """Set permissions on a path.

@@ -2,8 +2,8 @@
 # doc/*/quick-reference/Makefile and update TARGETS and OBJECTS usages in
 # doc/Makefile
 
-TARGETS=quick-start-summary.png quick-start-summary.pdf
-OBJECTS=quick-start-summary.svg Makefile
+TARGETS=bzr-quick-reference.png bzr-quick-reference.pdf
+OBJECTS=bzr-quick-reference.svg Makefile
 
 all: $(TARGETS)
 

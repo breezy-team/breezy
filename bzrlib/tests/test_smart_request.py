@@ -159,9 +159,11 @@ class TestRequestHanderErrorTranslation(TestCase):
             ('NoSuchFile', 'path'), errors.NoSuchFile('path'))
 
     def test_LockContention(self):
+        # For now, LockContentions are always transmitted with no details.
+        # Eventually they should include a relpath or url or something else to
+        # identify which lock is busy.
         self.assertTranslationEqual(
-            ('LockContention', 'lock', 'msg'),
-            errors.LockContention('lock', 'msg'))
+            ('LockContention',), errors.LockContention('lock', 'msg'))
 
     def test_TokenMismatch(self):
         self.assertTranslationEqual(

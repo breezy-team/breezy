@@ -398,7 +398,7 @@ def _translate_error(err):
     elif isinstance(err, errors.TokenMismatch):
         return ('TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
-        return ('LockContention', err.lock, err.msg)
+        return ('LockContention',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
     return ('error', str(err))
@@ -450,6 +450,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Branch.get_tags_bytes', 'bzrlib.smart.branch',
     'SmartServerBranchGetTagsBytes')
+request_handlers.register_lazy(
+    'Branch.set_tags_bytes', 'bzrlib.smart.branch',
+    'SmartServerBranchSetTagsBytes')
 request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
