@@ -106,7 +106,7 @@ class TestBranch(ExternalBase):
             # https://bugs.edge.launchpad.net/bzr/+bug/408193
             self.assertContainsRe(err, "hardlinking working copy files is "
                 "not currently supported")
-            raise KnownFailure("branch --hardlink doesn't work in formats "
+            raise KnownFailure("--hardlink doesn't work in formats "
                 "that support content filtering (#408193)")
 
     def test_branch_standalone(self):
