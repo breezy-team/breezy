@@ -160,6 +160,12 @@ Internals
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
 
+Testing
+*******
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
 
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
