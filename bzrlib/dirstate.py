@@ -3925,8 +3925,9 @@ class ProcessEntryPython(object):
                                     # included.
                                     continue
                                 # Path of the entry itself.
+
                                 self.search_specific_file_parents.add(
-                                    '/'.join(entry[0][:2]))
+                                    osutils.pathjoin(*entry[0][:2]))
                 if changed or self.include_unchanged:
                     yield result
             self.searched_exact_paths.add(path_utf8)
