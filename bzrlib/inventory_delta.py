@@ -171,6 +171,10 @@ class InventoryDeltaSerializer(object):
             raise AssertionError(
                 "Cannot serialise unless versioned_root/tree_references flags "
                 "are both set.")
+        if type(old_name) is not str:
+            raise TypeError('old_name should be str, got %r' % (old_name,))
+        if type(new_name) is not str:
+            raise TypeError('new_name should be str, got %r' % (new_name,))
         lines = ['', '', '', '', '']
         to_line = self._delta_item_to_line
         for delta_item in delta_to_new:
