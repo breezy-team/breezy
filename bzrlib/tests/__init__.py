@@ -113,6 +113,10 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
+# Subunit result codes, defined here to prevent a hard dependency on subunit.
+SUBUNIT_SEEK_SET = 0
+SUBUNIT_SEEK_CUR = 1
+
 
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
@@ -360,9 +364,9 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def progress(self, offset, whence):
         """The test is adjusting the count of tests to run."""
-        if whence == os.SEEK_SET:
+        if whence == SUBUNIT_SEEK_SET:
             self.num_tests = offset
-        elif whence == os.SEEK_CUR:
+        elif whence == SUBUNIT_SEEK_CUR:
             self.num_tests += offset
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
@@ -2875,7 +2879,7 @@ class CountingDecorator(TestDecorator):
     def run(self, result):
         progress_method = getattr(result, 'progress', None)
         if callable(progress_method):
-            progress_method(self.countTestCases(), os.SEEK_SET)
+            progress_method(self.countTestCases(), SUBUNIT_SEEK_SET)
         return super(CountingDecorator, self).run(result)
 
 
