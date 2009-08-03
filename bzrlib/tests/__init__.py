@@ -395,6 +395,7 @@ class TextTestResult(ExtendedTestResult):
         self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
+        self.pb.update_latency = 0
 
     def report_starting(self):
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))

@@ -31,7 +31,8 @@ Bug Fixes
   (John Arbash Meinel, #393366)
 
 * A progress bar is no longer left dangling when ``bzr selftest``
-  completes.
+  completes, and the progress bar updates with zero latency so the
+  displayed test name is always the one that's actually running.
   (Martin Pool, #123688)
 
 * Authenticating against an ssh server now uses ``auth_none`` to determine
