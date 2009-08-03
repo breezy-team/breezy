@@ -60,10 +60,20 @@ Bug Fixes
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
   fallback may be slow for some access patterns.)  (Nils Durner, #294709)
 
+* Encode the paths in ``mbcs`` encoding on Windows when spawning an
+  external diff client. This at least allows supporting filenames that are
+  not ascii, but are present in the current locale. Ideally we would be
+  able to pass the Unicode path, but that would be client dependent.
+  (John Arbash Meinel, #382709)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
   
+* Fixed export to existing directory: if directory is empty then export 
+  will succeed, otherwise it fails with error.
+  (Alexander Belchenko, #406174)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
 
@@ -77,6 +87,13 @@ Bug Fixes
 * Requests for unknown methods no longer cause the smart server to log
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
+  
+* Streaming from bzr servers where there is a chain of stacked branches
+  (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
+
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  repositories.  (Andrew Bennetts, #405653)
   
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
@@ -94,6 +111,15 @@ Improvements
 * Can now rename/move files even if they have been removed from the inventory.
   (Marius Kruger)
 
+* Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
+  faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
+  than VFS methods.  For example, pushes of small branches with tags take
+  11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
+
+* Sending Ctrl-Break on Windows will now drop you into the debugger, in
+  the same way that sending Ctrl-\\ does on other platforms.
+  (John Arbash Meinel)
+
 * The internal core code that handles specific file operations like
   ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
   include the parent directories if they have altered, and when a
@@ -101,10 +127,6 @@ Improvements
   fixes a number of causes for ``InconsistentDelta`` errors, and permits
   faster commit of specific paths. (Robert Collins, #347649)
 
-* Pushing branches with tags via ``bzr://`` and ``bzr+ssh://`` is much
-  faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
-  than VFS methods.  For example, pushes of small branches with tags take
-  11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
 
 Documentation
 *************
