@@ -22,7 +22,10 @@ import os
 from bzrlib import (branch, bzrdir, errors, repository)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import HardlinkFeature
+from bzrlib.tests import (
+    KnownFailure,
+    HardlinkFeature,
+    )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
@@ -93,10 +96,18 @@ class TestBranch(ExternalBase):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        self.run_bzr(['branch', 'source', 'target', '--hardlink'])
+        out, err = self.run_bzr(['branch', 'source', 'target', '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        self.assertEqual(source_stat, target_stat)
+        same_file = (source_stat == target_stat)
+        if same_file:
+            pass
+        else:
+            # https://bugs.edge.launchpad.net/bzr/+bug/408193
+            self.assertContainsRe(err, "hardlinking working copy files is "
+                "not currently supported")
+            raise KnownFailure("branch --hardlink doesn't work in formats "
+                "that support content filtering (#408193)")
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
