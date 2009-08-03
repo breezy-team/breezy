@@ -1486,8 +1486,7 @@ class TestTestCase(tests.TestCase):
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(output_stream),
             descriptions=0,
-            verbosity=2,
-            num_tests=sample_test.countTestCases())
+            verbosity=2)
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
@@ -2368,7 +2367,7 @@ class TestRunSuite(tests.TestCase):
                 return tests.ExtendedTestResult(self.stream, self.descriptions,
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
-        self.assertEqual(calls, [suite])
+        self.assertLength(1, calls)
 
     def test_done(self):
         """run_suite should call result.done()"""
