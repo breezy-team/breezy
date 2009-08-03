@@ -385,12 +385,11 @@ class TextTestResult(ExtendedTestResult):
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, num_tests, strict)
-        if pb is None:
-            self.pb = self.ui.nested_progress_bar()
-            self._supplied_pb = False
-        else:
-            self.pb = pb
-            self._supplied_pb = True
+        # We no longer pass them around, but just rely on the UIFactory stack
+        # for state
+        if pb is not None:
+            warnings.warn("Passing pb to TextTestResult is deprecated")
+        self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False,
@@ -465,9 +464,13 @@ class TextTestResult(ExtendedTestResult):
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
 
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
+
     def finished(self):
-        if not self._supplied_pb:
-            self.pb.finished()
+        self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
