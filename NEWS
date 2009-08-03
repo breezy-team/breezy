@@ -166,6 +166,13 @@ Testing
 * Spurious failure in ``check`` tests on rich-root formats fixed.
   (Martin Pool, #408199)
 
+* The ``bzrlib.tests.TextTestRunner`` will no longer call
+  ``countTestsCases`` on the test being run. Progress information is
+  instead handled by having the test passed in call ``result.progress``
+  before running its contents. This improves the behaviour when using
+  ``TextTestRunner`` with test suites that don't support
+  ``countTestsCases``. (Robert Collins)
+
 
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
