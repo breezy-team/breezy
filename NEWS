@@ -160,6 +160,12 @@ Internals
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
 
+Testing
+*******
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
 * The ``bzrlib.tests.TextTestRunner`` will no longer call
   ``countTestsCases`` on the test being run. Progress information is
   instead handled by having the test passed in call ``result.progress``
