@@ -73,6 +73,11 @@ class ProgressTask(object):
     :ivar update_latency: The interval (in seconds) at which the PB should be
         updated.  Setting this to zero suggests every update should be shown
         synchronously.
+
+    :ivar show_transport_activity: If true (default), transport activity
+        will be shown when this task is drawn.  Disable it if you're sure 
+        that only irrelevant or uninteresting transport activity can occur
+        during this task.
     """
 
     def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
@@ -102,6 +107,7 @@ class ProgressTask(object):
         self.show_count = True
         self.show_bar = True
         self.update_latency = 0.1
+        self.show_transport_activity = True
 
     def __repr__(self):
         return '%s(%r/%r, msg=%r)' % (

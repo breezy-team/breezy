@@ -82,6 +82,9 @@ Bug Fixes
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
 
+* Fixed spurious transport activity indicator appearing while tests are
+  running.  (Martin Pool, #343532)
+
 * Merge now correctly handles empty right-hand revision specs.
   (Aaron Bentley, #333961)
 

@@ -284,9 +284,12 @@ class TextProgressView(object):
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
-        trans = self._last_transport_msg
-        if trans:
-            trans += ' | '
+        if self._last_task and not self._last_task.show_transport_activity:
+            trans = ''
+        else:
+            trans = self._last_transport_msg
+            if trans:
+                trans += ' | '
         return (bar_string + trans + task_msg)
 
     def _repaint(self):
