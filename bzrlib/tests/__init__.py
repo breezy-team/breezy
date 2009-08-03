@@ -102,6 +102,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -709,7 +710,13 @@ class TestUIFactory(TextUIFactory):
     Hide the progress bar but emit note()s.
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
+
+    See also CannedInputUIFactory which lets you provide programmatic input in
+    a structured way.
     """
+    # XXX: Should probably unify more with CannedInputUIFactory or a
+    # particular configuration of TextUIFactory, or otherwise have a clearer
+    # idea of how they're supposed to be different.
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -720,26 +727,8 @@ class TestUIFactory(TextUIFactory):
             stdin = StringIOWrapper(stdin)
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressBar.finished()."""
-
-    def note(self, fmt_string, *args):
-        """See progress.ProgressBar.note()."""
-        if args:
-            fmt_string = fmt_string % args
-        self.stdout.write(fmt_string + "\n")
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        return self
+    def make_progress_view(self):
+        return NullProgressView()
 
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
