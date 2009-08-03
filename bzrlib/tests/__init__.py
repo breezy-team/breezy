@@ -398,8 +398,21 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update_latency = 0
         self.pb.show_transport_activity = False
 
+    def done(self):
+        # called when the tests that are going to run have run
+        self.pb.clear()
+        super(TextTestResult, self).done()
+
+    def finished(self):
+        self.pb.finished()
+
     def report_starting(self):
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -465,14 +478,6 @@ class TextTestResult(ExtendedTestResult):
 
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
-
-    def printErrors(self):
-        # clear the pb to make room for the error listing
-        self.pb.clear()
-        super(TextTestResult, self).printErrors()
-
-    def finished(self):
-        self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
