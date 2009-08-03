@@ -171,6 +171,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._strict = strict
 
     def done(self):
+        # nb: called stopTestRun in the version of this that Python merged
+        # upstream, according to lifeless 20090803
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
