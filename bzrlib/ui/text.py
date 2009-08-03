@@ -224,6 +224,7 @@ class TextProgressView(object):
         self._bytes_since_update = 0
 
     def _show_line(self, s):
+        # sys.stderr.write("progress %r\n" % s)
         n = self._width - 1
         self._term_file.write('\r%-*.*s\r' % (n, n, s))
 
@@ -302,7 +303,7 @@ class TextProgressView(object):
         must_update = task is not self._last_task
         self._last_task = task
         now = time.time()
-        if (not must_update) and (now < self._last_repaint + 0.1):
+        if (not must_update) and (now < self._last_repaint + task.update_latency):
             return
         if now > self._transport_update_time + 10:
             # no recent activity; expire it
