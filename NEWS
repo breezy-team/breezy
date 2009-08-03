@@ -95,6 +95,11 @@ Bug Fixes
   imported.  This caused significant slowdowns when reading data from
   repositories.  (Andrew Bennetts, #405653)
   
+* The ``--hardlink`` option to ``branch`` and ``checkout`` is not
+  supported at the moment on workingtree formats that can do content
+  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  bzr now says so, rather than just ignoring the option.  (Martin Pool)
+
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
   something to a branch/repo on another drive, we would go into an
