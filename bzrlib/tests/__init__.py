@@ -113,6 +113,10 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
+# Subunit result codes, defined here to prevent a hard dependency on subunit.
+SUBUNIT_SEEK_SET = 0
+SUBUNIT_SEEK_CUR = 1
+
 
 class ExtendedTestResult(unittest._TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
@@ -134,7 +138,6 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  strict=False,
                  ):
         """Construct new TestResult.
@@ -159,7 +162,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
         self.ui = ui.ui_factory
-        self.num_tests = num_tests
+        self.num_tests = 0
         self.error_count = 0
         self.failure_count = 0
         self.known_failure_count = 0
@@ -359,6 +362,15 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
+    def progress(self, offset, whence):
+        """The test is adjusting the count of tests to run."""
+        if whence == SUBUNIT_SEEK_SET:
+            self.num_tests = offset
+        elif whence == SUBUNIT_SEEK_CUR:
+            self.num_tests += offset
+        else:
+            raise errors.BzrError("Unknown whence %r" % whence)
+
     def finished(self):
         pass
 
@@ -379,12 +391,11 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests, strict)
+            bench_history, strict)
         if pb is None:
             self.pb = self.ui.nested_progress_bar()
             self._supplied_pb = False
@@ -410,7 +421,7 @@ class TextTestResult(ExtendedTestResult):
         ##     a += ', %d skip' % self.skip_count
         ## if self.known_failure_count:
         ##     a += '+%dX' % self.known_failure_count
-        if self.num_tests is not None:
+        if self.num_tests:
             a +='/%d' % self.num_tests
         a += ' in '
         runtime = time.time() - self._overall_start_time
@@ -566,7 +577,6 @@ class TextTestRunner(object):
                               self.descriptions,
                               self.verbosity,
                               bench_history=self._bench_history,
-                              num_tests=test.countTestCases(),
                               strict=self._strict,
                               )
         result.stop_early = self.stop_on_failure
@@ -2752,6 +2762,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
+    # tell the result object how many tests will be running:
+    decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
@@ -2859,6 +2871,16 @@ class TestDecorator(TestSuite):
                 break
             test.run(result)
         return result
+
+
+class CountingDecorator(TestDecorator):
+    """A decorator which calls result.progress(self.countTestCases)."""
+
+    def run(self, result):
+        progress_method = getattr(result, 'progress', None)
+        if callable(progress_method):
+            progress_method(self.countTestCases(), SUBUNIT_SEEK_SET)
+        return super(CountingDecorator, self).run(result)
 
 
 class ExcludeDecorator(TestDecorator):
