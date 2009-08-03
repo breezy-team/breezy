@@ -77,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -1384,6 +1385,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:

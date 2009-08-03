@@ -1423,6 +1423,9 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 # applied so we can't safely build the inventory delta from
                 # the source tree.
                 if wt.supports_content_filtering():
+                    # see https://bugs.edge.launchpad.net/bzr/+bug/408193
+                    trace.warning("hardlinking working copy files is not currently "
+                        "supported in %r" % (wt,))
                     accelerator_tree = None
                     delta_from_tree = False
                 else:
