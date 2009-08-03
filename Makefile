@@ -234,35 +234,26 @@ clean-docs:
 # Note that the path is relative to tools/win32
 BUILDOUT_FILES := buildout.cfg \
 	buildout-templates/bin/build-installer.bat.in \
-	ostools.py
+	ostools.py bootstrap.py
 
 installer-all:
 	@echo Make all the installers from scratch
 	@# Build everything in a separate directory, to avoid cluttering the WT
-	mkdir -p build-win32
+	$(PYTHON) tools/win32/ostools.py makedir build-win32
+	@# cd to tools/win32 so that the relative paths are copied correctly
 	cd tools/win32 && $(PYTHON) ostools.py copytree $(BUILDOUT_FILES) ../../build-win32
-	cd build-win32 && $(PYTHON) ../tools/win32/bootstrap.py
+	@# There seems to be a bug in gf.release.bzr, It doesn't correctly update
+	@# existing release directories, so delete them manually before building
+	@# It means things may be rebuilt that don't need to be, but at least
+	@# it will be correct when they do.
+	cd build-win32 && $(PYTHON) ostools.py remove release */release
+	cd build-win32 && $(PYTHON) bootstrap.py
 	cd build-win32 && bin/buildout
 	cd build-win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
 
 
 clean-installer-all:
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/.installed.cfg
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/bin/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-rebase/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzr-svn/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/bzrtools/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/db4/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/develop-eggs/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/libintl/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/parts/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/qbzr/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/subvertpy/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/svn/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/tbzr/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/tortoise-overlays/
-	$(PYTHON) tools/win32/ostools.py remove tools/win32/zlib/
+	$(PYTHON) tools/win32/ostools.py remove build-win32
 
 # make bzr.exe for win32 with py2exe
 exe:
