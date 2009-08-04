@@ -1390,7 +1390,7 @@ class ConnectedTransport(Transport):
             netloc = '%s@%s' % (urllib.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
-        path = urllib.quote(path)
+        path = urlutils.escape(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):

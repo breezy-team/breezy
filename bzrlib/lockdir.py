@@ -293,7 +293,7 @@ class LockDir(lock.Lock):
             self._fake_read_lock = False
             return
         if not self._lock_held:
-            raise LockNotHeld(self)
+            return lock.cant_unlock_not_held(self)
         if self._locked_via_token:
             self._locked_via_token = False
             self._lock_held = False

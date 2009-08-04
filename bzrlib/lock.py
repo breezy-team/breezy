@@ -35,9 +35,12 @@ unlock() method.
 """
 
 import errno
+import os
 import sys
+import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     trace,
@@ -85,6 +88,23 @@ class LockResult(object):
                              self.lock_url, self.details)
 
 
+def cant_unlock_not_held(locked_object):
+    """An attempt to unlock failed because the object was not locked.
+
+    This provides a policy point from which we can generate either a warning 
+    or an exception.
+    """
+    # This is typically masking some other error and called from a finally
+    # block, so it's useful to have the option not to generate a new error
+    # here.  You can use -Werror to make it fatal.  It should possibly also
+    # raise LockNotHeld.
+    if 'unlock' in debug.debug_flags:
+        warnings.warn("%r is already unlocked" % (locked_object,),
+            stacklevel=3)
+    else:
+        raise errors.LockNotHeld(locked_object)
+
+
 try:
     import fcntl
     have_fcntl = True
@@ -96,7 +116,7 @@ have_ctypes_win32 = False
 if sys.platform == 'win32':
     import msvcrt
     try:
-        import win32con, win32file, pywintypes, winerror
+        import win32file, pywintypes, winerror
         have_pywin32 = True
     except ImportError:
         pass
@@ -151,10 +171,6 @@ _lock_classes = []
 
 
 if have_fcntl:
-    LOCK_SH = fcntl.LOCK_SH
-    LOCK_NB = fcntl.LOCK_NB
-    lock_EX = fcntl.LOCK_EX
-
 
     class _fcntl_FileLock(_OSLock):
 
@@ -304,44 +320,41 @@ if have_fcntl:
 
 
 if have_pywin32 and sys.platform == 'win32':
-    LOCK_SH = 0 # the default
-    LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
-    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
-
+    if os.path.supports_unicode_filenames:
+        # for Windows NT/2K/XP/etc
+        win32file_CreateFile = win32file.CreateFileW
+    else:
+        # for Windows 98
+        win32file_CreateFile = win32file.CreateFile
 
     class _w32c_FileLock(_OSLock):
 
-        def _lock(self, filename, openmode, lockmode):
-            self._open(filename, openmode)
-
-            self.hfile = msvcrt.get_osfhandle(self.f.fileno())
-            overlapped = pywintypes.OVERLAPPED()
+        def _open(self, filename, access, share, cflags, pymode):
+            self.filename = osutils.realpath(filename)
             try:
-                win32file.LockFileEx(self.hfile, lockmode, 0, 0x7fff0000,
-                                     overlapped)
+                self._handle = win32file_CreateFile(filename, access, share,
+                    None, win32file.OPEN_ALWAYS,
+                    win32file.FILE_ATTRIBUTE_NORMAL, None)
             except pywintypes.error, e:
-                self._clear_f()
-                if e.args[0] in (winerror.ERROR_LOCK_VIOLATION,):
-                    raise errors.LockContention(filename)
-                ## import pdb; pdb.set_trace()
+                if e.args[0] == winerror.ERROR_ACCESS_DENIED:
+                    raise errors.LockFailed(filename, e)
+                if e.args[0] == winerror.ERROR_SHARING_VIOLATION:
+                    raise errors.LockContention(filename, e)
                 raise
-            except Exception, e:
-                self._clear_f()
-                raise errors.LockContention(filename, e)
+            fd = win32file._open_osfhandle(self._handle, cflags)
+            self.f = os.fdopen(fd, pymode)
+            return self.f
 
         def unlock(self):
-            overlapped = pywintypes.OVERLAPPED()
-            try:
-                win32file.UnlockFileEx(self.hfile, 0, 0x7fff0000, overlapped)
-                self._clear_f()
-            except Exception, e:
-                raise errors.LockContention(self.filename, e)
+            self._clear_f()
+            self._handle = None
 
 
     class _w32c_ReadLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_ReadLock, self).__init__()
-            self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
+            self._open(filename, win32file.GENERIC_READ,
+                win32file.FILE_SHARE_READ, os.O_RDONLY, "rb")
 
         def temporary_write_lock(self):
             """Try to grab a write lock on the file.
@@ -366,7 +379,9 @@ if have_pywin32 and sys.platform == 'win32':
     class _w32c_WriteLock(_w32c_FileLock):
         def __init__(self, filename):
             super(_w32c_WriteLock, self).__init__()
-            self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+            self._open(filename,
+                win32file.GENERIC_READ | win32file.GENERIC_WRITE, 0,
+                os.O_RDWR, "rb+")
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""
@@ -380,92 +395,67 @@ if have_pywin32 and sys.platform == 'win32':
 
 
 if have_ctypes_win32:
-    # These constants were copied from the win32con.py module.
-    LOCKFILE_FAIL_IMMEDIATELY = 1
-    LOCKFILE_EXCLUSIVE_LOCK = 2
-    # Constant taken from winerror.py module
-    ERROR_LOCK_VIOLATION = 33
+    from ctypes.wintypes import DWORD, LPCSTR, LPCWSTR
+    LPSECURITY_ATTRIBUTES = ctypes.c_void_p # used as NULL no need to declare
+    HANDLE = ctypes.c_int # rather than unsigned as in ctypes.wintypes
+    if os.path.supports_unicode_filenames:
+        _function_name = "CreateFileW"
+        LPTSTR = LPCWSTR
+    else:
+        _function_name = "CreateFileA"
+        class LPTSTR(LPCSTR):
+            def __new__(cls, obj):
+                return LPCSTR.__new__(cls, obj.encode("mbcs"))
 
-    LOCK_SH = 0
-    LOCK_EX = LOCKFILE_EXCLUSIVE_LOCK
-    LOCK_NB = LOCKFILE_FAIL_IMMEDIATELY
-    _LockFileEx = ctypes.windll.kernel32.LockFileEx
-    _UnlockFileEx = ctypes.windll.kernel32.UnlockFileEx
-
-    ### Define the OVERLAPPED structure.
-    #   http://msdn2.microsoft.com/en-us/library/ms684342.aspx
-    # typedef struct _OVERLAPPED {
-    #   ULONG_PTR Internal;
-    #   ULONG_PTR InternalHigh;
-    #   union {
-    #     struct {
-    #       DWORD Offset;
-    #       DWORD OffsetHigh;
-    #     };
-    #     PVOID Pointer;
-    #   };
-    #   HANDLE hEvent;
-    # } OVERLAPPED,
-
-    class _inner_struct(ctypes.Structure):
-        _fields_ = [('Offset', ctypes.c_uint), # DWORD
-                    ('OffsetHigh', ctypes.c_uint), # DWORD
-                   ]
-
-    class _inner_union(ctypes.Union):
-        _fields_  = [('anon_struct', _inner_struct), # struct
-                     ('Pointer', ctypes.c_void_p), # PVOID
-                    ]
-
-    class OVERLAPPED(ctypes.Structure):
-        _fields_ = [('Internal', ctypes.c_void_p), # ULONG_PTR
-                    ('InternalHigh', ctypes.c_void_p), # ULONG_PTR
-                    ('_inner_union', _inner_union),
-                    ('hEvent', ctypes.c_void_p), # HANDLE
-                   ]
+    # CreateFile <http://msdn.microsoft.com/en-us/library/aa363858.aspx>
+    _CreateFile = ctypes.WINFUNCTYPE(
+            HANDLE,                # return value
+            LPTSTR,                # lpFileName
+            DWORD,                 # dwDesiredAccess
+            DWORD,                 # dwShareMode
+            LPSECURITY_ATTRIBUTES, # lpSecurityAttributes
+            DWORD,                 # dwCreationDisposition
+            DWORD,                 # dwFlagsAndAttributes
+            HANDLE                 # hTemplateFile
+        )((_function_name, ctypes.windll.kernel32))
+    
+    INVALID_HANDLE_VALUE = -1
+    
+    GENERIC_READ = 0x80000000
+    GENERIC_WRITE = 0x40000000
+    FILE_SHARE_READ = 1
+    OPEN_ALWAYS = 4
+    FILE_ATTRIBUTE_NORMAL = 128
+    
+    ERROR_ACCESS_DENIED = 5
+    ERROR_SHARING_VIOLATION = 32
 
     class _ctypes_FileLock(_OSLock):
 
-        def _lock(self, filename, openmode, lockmode):
-            self._open(filename, openmode)
-
-            self.hfile = msvcrt.get_osfhandle(self.f.fileno())
-            overlapped = OVERLAPPED()
-            result = _LockFileEx(self.hfile, # HANDLE hFile
-                                 lockmode,   # DWORD dwFlags
-                                 0,          # DWORD dwReserved
-                                 0x7fffffff, # DWORD nNumberOfBytesToLockLow
-                                 0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                 ctypes.byref(overlapped), # lpOverlapped
-                                )
-            if result == 0:
-                last_err = ctypes.GetLastError()
-                self._clear_f()
-                if last_err in (ERROR_LOCK_VIOLATION,):
-                    raise errors.LockContention(filename)
-                raise errors.LockContention(filename,
-                    'Unknown locking error: %s' % (last_err,))
+        def _open(self, filename, access, share, cflags, pymode):
+            self.filename = osutils.realpath(filename)
+            handle = _CreateFile(filename, access, share, None, OPEN_ALWAYS,
+                FILE_ATTRIBUTE_NORMAL, 0)
+            if handle in (INVALID_HANDLE_VALUE, 0):
+                e = ctypes.WinError()
+                if e.args[0] == ERROR_ACCESS_DENIED:
+                    raise errors.LockFailed(filename, e)
+                if e.args[0] == ERROR_SHARING_VIOLATION:
+                    raise errors.LockContention(filename, e)
+                raise e
+            fd = msvcrt.open_osfhandle(handle, cflags)
+            self.f = os.fdopen(fd, pymode)
+            return self.f
 
         def unlock(self):
-            overlapped = OVERLAPPED()
-            result = _UnlockFileEx(self.hfile, # HANDLE hFile
-                                   0,          # DWORD dwReserved
-                                   0x7fffffff, # DWORD nNumberOfBytesToLockLow
-                                   0x00000000, # DWORD nNumberOfBytesToLockHigh
-                                   ctypes.byref(overlapped), # lpOverlapped
-                                  )
-            if result == 0:
-                last_err = ctypes.GetLastError()
-                self._clear_f()
-                raise errors.LockContention(self.filename,
-                    'Unknown unlocking error: %s' % (last_err,))
             self._clear_f()
 
 
     class _ctypes_ReadLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_ReadLock, self).__init__()
-            self._lock(filename, 'rb', LOCK_SH + LOCK_NB)
+            self._open(filename, GENERIC_READ, FILE_SHARE_READ, os.O_RDONLY,
+                "rb")
 
         def temporary_write_lock(self):
             """Try to grab a write lock on the file.
@@ -489,7 +479,8 @@ if have_ctypes_win32:
     class _ctypes_WriteLock(_ctypes_FileLock):
         def __init__(self, filename):
             super(_ctypes_WriteLock, self).__init__()
-            self._lock(filename, 'rb+', LOCK_EX + LOCK_NB)
+            self._open(filename, GENERIC_READ | GENERIC_WRITE, 0, os.O_RDWR,
+                "rb+")
 
         def restore_read_lock(self):
             """Restore the original ReadLock."""

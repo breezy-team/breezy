@@ -238,6 +238,35 @@ class TestPackRepository(TestCaseWithTransport):
         pack_names = [node[1][0] for node in index.iter_all_entries()]
         self.assertTrue(large_pack_name in pack_names)
 
+    def test_commit_write_group_returns_new_pack_names(self):
+        format = self.get_format()
+        tree = self.make_branch_and_tree('foo', format=format)
+        tree.commit('first post')
+        repo = tree.branch.repository
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                inv = inventory.Inventory(revision_id="A")
+                inv.root.revision = "A"
+                repo.texts.add_lines((inv.root.file_id, "A"), [], [])
+                rev = _mod_revision.Revision(timestamp=0, timezone=None,
+                    committer="Foo Bar <foo@example.com>", message="Message",
+                    revision_id="A")
+                rev.parent_ids = ()
+                repo.add_revision("A", rev, inv=inv)
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                old_names = repo._pack_collection._names.keys()
+                result = repo.commit_write_group()
+                cur_names = repo._pack_collection._names.keys()
+                new_names = list(set(cur_names) - set(old_names))
+                self.assertEqual(new_names, result)
+        finally:
+            repo.unlock()
+
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
@@ -488,8 +517,7 @@ class TestPackRepository(TestCaseWithTransport):
         def restoreFactory():
             ui.ui_factory = old_factory
         self.addCleanup(restoreFactory)
-        ui.ui_factory = ui.SilentUIFactory()
-        ui.ui_factory.stdin = StringIO("y\n")
+        ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_break_lock_breaks_physical_lock(self):
         repo = self.make_repository('.', format=self.get_format())

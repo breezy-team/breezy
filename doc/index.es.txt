@@ -10,15 +10,15 @@ Documentacion Principal
 
 * `Mini Tutorial <es/mini-tutorial/index.html>`_ 
 
-* `Referencia Rapida <es/referencia-rapida/referencia-rapida.svg>`_
+* `Referencia Rapida <es/quick-reference/quick-start-summary.svg>`_
 
-* `Guia de Usuario <es/guia-usuario/index.html>`_ 
+* `Guia de Usuario <es/user-guide/index.html>`_ 
 
-* `Referencia <es/referencia/bzr_man.html>`_ 
+* `Referencia <es/user-reference/bzr_man.html>`_ 
 
-* `Notas sobre la Version <es/notas-version/NOTICIAS.html>`_
+* `Notas sobre la Version <es/release-notes/NEWS.html>`_
 
-* `Guia del Desarrollador <es/guia-desarrollador/HACKING.html>`_
+* `Guia del Desarrollador <es/developer-guide/HACKING.html>`_
 
 
 Otra Documentacion

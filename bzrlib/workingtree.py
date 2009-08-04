@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,8 +48,6 @@ import errno
 import itertools
 import operator
 import stat
-from time import time
-import warnings
 import re
 
 import bzrlib
@@ -57,29 +55,26 @@ from bzrlib import (
     branch,
     bzrdir,
     conflicts as _mod_conflicts,
-    dirstate,
     errors,
     generate_ids,
     globbing,
+    graph as _mod_graph,
     hashcache,
     ignores,
+    inventory,
     merge,
     revision as _mod_revision,
     revisiontree,
-    repository,
     textui,
     trace,
     transform,
     ui,
-    urlutils,
     views,
     xml5,
-    xml6,
     xml7,
     )
 import bzrlib.branch
 from bzrlib.transport import get_transport
-import bzrlib.ui
 from bzrlib.workingtree_4 import (
     WorkingTreeFormat4,
     WorkingTreeFormat5,
@@ -89,19 +84,16 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.inventory import InventoryEntry, Inventory, ROOT_ID, TreeReference
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib import osutils
 from bzrlib.osutils import (
-    compact_date,
     file_kind,
     isdir,
     normpath,
     pathjoin,
-    rand_chars,
     realpath,
     safe_unicode,
     splitpath,
@@ -111,13 +103,12 @@ from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.progress import DummyProgress, ProgressPhase
-from bzrlib.revision import NULL_REVISION, CURRENT_REVISION
+from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
-from bzrlib.symbol_versioning import (deprecated_passed,
-        deprecated_method,
-        deprecated_function,
-        DEPRECATED_PARAMETER,
-        )
+from bzrlib.symbol_versioning import (
+    deprecated_passed,
+    DEPRECATED_PARAMETER,
+    )
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
@@ -487,31 +478,42 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         incorrectly attributed to CURRENT_REVISION (but after committing, the
         attribution will be correct).
         """
-        basis = self.basis_tree()
-        basis.lock_read()
-        try:
-            changes = self.iter_changes(basis, True, [self.id2path(file_id)],
-                require_versioned=True).next()
-            changed_content, kind = changes[2], changes[6]
-            if not changed_content:
-                return basis.annotate_iter(file_id)
-            if kind[1] is None:
-                return None
-            import annotate
-            if kind[0] != 'file':
-                old_lines = []
-            else:
-                old_lines = list(basis.annotate_iter(file_id))
-            old = [old_lines]
-            for tree in self.branch.repository.revision_trees(
-                self.get_parent_ids()[1:]):
-                if file_id not in tree:
+        maybe_file_parent_keys = []
+        for parent_id in self.get_parent_ids():
+            try:
+                parent_tree = self.revision_tree(parent_id)
+            except errors.NoSuchRevisionInTree:
+                parent_tree = self.branch.repository.revision_tree(parent_id)
+            parent_tree.lock_read()
+            try:
+                if file_id not in parent_tree:
                     continue
-                old.append(list(tree.annotate_iter(file_id)))
-            return annotate.reannotate(old, self.get_file(file_id).readlines(),
-                                       default_revision)
-        finally:
-            basis.unlock()
+                ie = parent_tree.inventory[file_id]
+                if ie.kind != 'file':
+                    # Note: this is slightly unnecessary, because symlinks and
+                    # directories have a "text" which is the empty text, and we
+                    # know that won't mess up annotations. But it seems cleaner
+                    continue
+                parent_text_key = (file_id, ie.revision)
+                if parent_text_key not in maybe_file_parent_keys:
+                    maybe_file_parent_keys.append(parent_text_key)
+            finally:
+                parent_tree.unlock()
+        graph = _mod_graph.Graph(self.branch.repository.texts)
+        heads = graph.heads(maybe_file_parent_keys)
+        file_parent_keys = []
+        for key in maybe_file_parent_keys:
+            if key in heads:
+                file_parent_keys.append(key)
+
+        # Now we have the parents of this content
+        annotator = self.branch.repository.texts.get_annotator()
+        text = self.get_file(file_id).read()
+        this_key =(file_id, default_revision)
+        annotator.add_special_text(this_key, file_parent_keys, text)
+        annotations = [(key[-1], line)
+                       for key, line in annotator.annotate_flat(this_key)]
+        return annotations
 
     def _get_ancestors(self, default_revision):
         ancestors = set([default_revision])
@@ -889,7 +891,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.last_revision().
         """
         from bzrlib.merge import Merger, Merge3Merger
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             merger = Merger(self.branch, this_tree=self, pb=pb)
             merger.pp = ProgressPhase("Merge phase", 5, pb)
@@ -1081,10 +1083,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.BranchReferenceFormat().initialize(tree_bzrdir, new_branch)
         else:
             tree_bzrdir = branch_bzrdir
-        wt = tree_bzrdir.create_workingtree(NULL_REVISION)
+        wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
         wt.set_parent_ids(self.get_parent_ids())
         my_inv = self.inventory
-        child_inv = Inventory(root_id=None)
+        child_inv = inventory.Inventory(root_id=None)
         new_root = my_inv[file_id]
         my_inv.remove_recursive_id(file_id)
         new_root.parent_id = None
@@ -1416,7 +1418,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         inv = self.inventory
         for entry in moved:
             try:
-                self._move_entry(_RenameEntry(entry.to_rel, entry.from_id,
+                self._move_entry(WorkingTree._RenameEntry(
+                    entry.to_rel, entry.from_id,
                     entry.to_tail, entry.to_parent_id, entry.from_rel,
                     entry.from_tail, entry.from_parent_id,
                     entry.only_change_inv))
@@ -1473,9 +1476,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_tail = splitpath(from_rel)[-1]
         from_id = inv.path2id(from_rel)
         if from_id is None:
-            raise errors.BzrRenameFailedError(from_rel,to_rel,
-                errors.NotVersionedError(path=str(from_rel)))
-        from_entry = inv[from_id]
+            # if file is missing in the inventory maybe it's in the basis_tree
+            basis_tree = self.branch.basis_tree()
+            from_id = basis_tree.path2id(from_rel)
+            if from_id is None:
+                raise errors.BzrRenameFailedError(from_rel,to_rel,
+                    errors.NotVersionedError(path=str(from_rel)))
+            # put entry back in the inventory so we can rename it
+            from_entry = basis_tree.inventory[from_id].copy()
+            inv.add(from_entry)
+        else:
+            from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
@@ -1573,7 +1584,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False):
-        top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        top_pb = ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
             pp = ProgressPhase("Pull phase", 2, top_pb)
@@ -1587,7 +1598,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if new_revision_info != old_revision_info:
                 pp.next_phase()
                 repository = self.branch.repository
-                pb = bzrlib.ui.ui_factory.nested_progress_bar()
+                pb = ui.ui_factory.nested_progress_bar()
                 basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
@@ -2042,7 +2053,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if filenames is None and len(self.get_parent_ids()) > 1:
                 parent_trees = []
                 last_revision = self.last_revision()
-                if last_revision != NULL_REVISION:
+                if last_revision != _mod_revision.NULL_REVISION:
                     if basis_tree is None:
                         basis_tree = self.basis_tree()
                         basis_tree.lock_read()
@@ -2086,7 +2097,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def set_inventory(self, new_inventory_list):
         from bzrlib.inventory import (Inventory,
                                       InventoryDirectory,
-                                      InventoryEntry,
                                       InventoryFile,
                                       InventoryLink)
         inv = Inventory(self.get_root_id())
@@ -2634,7 +2644,7 @@ class WorkingTree3(WorkingTree):
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
-        if revision_id is None or revision_id == NULL_REVISION:
+        if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
             try:
                 self._transport.delete('last-revision')
             except errors.NoSuchFile:
@@ -2804,7 +2814,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         no working tree.  (See bug #43064).
         """
         sio = StringIO()
-        inv = Inventory()
+        inv = inventory.Inventory()
         xml5.serializer_v5.write_inventory(inv, sio, working=True)
         sio.seek(0)
         transport.put_file('inventory', sio, file_mode)
@@ -2826,7 +2836,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
             branch.generate_revision_history(revision_id)
         finally:
             branch.unlock()
-        inv = Inventory()
+        inv = inventory.Inventory()
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                          branch,
                          inv,
@@ -2949,7 +2959,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
             # only set an explicit root id if there is one to set.
             if basis_tree.inventory.root is not None:
                 wt.set_root_id(basis_tree.get_root_id())
-            if revision_id == NULL_REVISION:
+            if revision_id == _mod_revision.NULL_REVISION:
                 wt.set_parent_trees([])
             else:
                 wt.set_parent_trees([(revision_id, basis_tree)])
@@ -2962,7 +2972,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return wt
 
     def _initial_inventory(self):
-        return Inventory()
+        return inventory.Inventory()
 
     def __init__(self):
         super(WorkingTreeFormat3, self).__init__()

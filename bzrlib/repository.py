@@ -57,9 +57,6 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-        deprecated_method,
-        )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -494,12 +491,12 @@ class CommitBuilder(object):
             ie.executable = content_summary[2]
             file_obj, stat_value = tree.get_file_with_stat(ie.file_id, path)
             try:
-                lines = file_obj.readlines()
+                text = file_obj.read()
             finally:
                 file_obj.close()
             try:
                 ie.text_sha1, ie.text_size = self._add_text_to_weave(
-                    ie.file_id, lines, heads, nostore_sha)
+                    ie.file_id, text, heads, nostore_sha)
                 # Let the caller know we generated a stat fingerprint.
                 fingerprint = (ie.text_sha1, stat_value)
             except errors.ExistingContent:
@@ -517,8 +514,7 @@ class CommitBuilder(object):
                 # carry over:
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         elif kind == 'symlink':
             current_link_target = content_summary[3]
             if not store:
@@ -532,8 +528,7 @@ class CommitBuilder(object):
                 ie.symlink_target = parent_entry.symlink_target
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.symlink_target = current_link_target
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         elif kind == 'tree-reference':
             if not store:
                 if content_summary[3] != parent_entry.reference_revision:
@@ -544,8 +539,7 @@ class CommitBuilder(object):
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
-            lines = []
-            self._add_text_to_weave(ie.file_id, lines, heads, None)
+            self._add_text_to_weave(ie.file_id, '', heads, None)
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
@@ -745,7 +739,7 @@ class CommitBuilder(object):
                         entry.executable = True
                     else:
                         entry.executable = False
-                    if (carry_over_possible and 
+                    if (carry_over_possible and
                         parent_entry.executable == entry.executable):
                             # Check the file length, content hash after reading
                             # the file.
@@ -754,12 +748,12 @@ class CommitBuilder(object):
                         nostore_sha = None
                     file_obj, stat_value = tree.get_file_with_stat(file_id, change[1][1])
                     try:
-                        lines = file_obj.readlines()
+                        text = file_obj.read()
                     finally:
                         file_obj.close()
                     try:
                         entry.text_sha1, entry.text_size = self._add_text_to_weave(
-                            file_id, lines, heads, nostore_sha)
+                            file_id, text, heads, nostore_sha)
                         yield file_id, change[1][1], (entry.text_sha1, stat_value)
                     except errors.ExistingContent:
                         # No content change against a carry_over parent
@@ -774,7 +768,7 @@ class CommitBuilder(object):
                         parent_entry.symlink_target == entry.symlink_target):
                         carried_over = True
                     else:
-                        self._add_text_to_weave(change[0], [], heads, None)
+                        self._add_text_to_weave(change[0], '', heads, None)
                 elif kind == 'directory':
                     if carry_over_possible:
                         carried_over = True
@@ -782,7 +776,7 @@ class CommitBuilder(object):
                         # Nothing to set on the entry.
                         # XXX: split into the Root and nonRoot versions.
                         if change[1][1] != '' or self.repository.supports_rich_root():
-                            self._add_text_to_weave(change[0], [], heads, None)
+                            self._add_text_to_weave(change[0], '', heads, None)
                 elif kind == 'tree-reference':
                     if not self.repository._format.supports_tree_reference:
                         # This isn't quite sane as an error, but we shouldn't
@@ -791,13 +785,13 @@ class CommitBuilder(object):
                         # references.
                         raise errors.UnsupportedOperation(tree.add_reference,
                             self.repository)
-                    entry.reference_revision = \
-                        tree.get_reference_revision(change[0])
+                    reference_revision = tree.get_reference_revision(change[0])
+                    entry.reference_revision = reference_revision
                     if (carry_over_possible and
                         parent_entry.reference_revision == reference_revision):
                         carried_over = True
                     else:
-                        self._add_text_to_weave(change[0], [], heads, None)
+                        self._add_text_to_weave(change[0], '', heads, None)
                 else:
                     raise AssertionError('unknown kind %r' % kind)
                 if not carried_over:
@@ -818,17 +812,11 @@ class CommitBuilder(object):
             self._require_root_change(tree)
         self.basis_delta_revision = basis_revision_id
 
-    def _add_text_to_weave(self, file_id, new_lines, parents, nostore_sha):
-        # Note: as we read the content directly from the tree, we know its not
-        # been turned into unicode or badly split - but a broken tree
-        # implementation could give us bad output from readlines() so this is
-        # not a guarantee of safety. What would be better is always checking
-        # the content during test suite execution. RBC 20070912
-        parent_keys = tuple((file_id, parent) for parent in parents)
-        return self.repository.texts.add_lines(
-            (file_id, self._new_revision_id), parent_keys, new_lines,
-            nostore_sha=nostore_sha, random_id=self.random_revid,
-            check_content=False)[0:2]
+    def _add_text_to_weave(self, file_id, new_text, parents, nostore_sha):
+        parent_keys = tuple([(file_id, parent) for parent in parents])
+        return self.repository.texts._add_text(
+            (file_id, self._new_revision_id), parent_keys, new_text,
+            nostore_sha=nostore_sha, random_id=self.random_revid)[0:2]
 
 
 class RootCommitBuilder(CommitBuilder):
@@ -859,6 +847,7 @@ class RootCommitBuilder(CommitBuilder):
 
 ######################################################################
 # Repositories
+
 
 class Repository(object):
     """Repository holding history for one or more branches.
@@ -1027,6 +1016,9 @@ class Repository(object):
                                parents, basis_inv=None, propagate_caches=False):
         """Add a new inventory expressed as a delta against another revision.
 
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
         :param basis_revision_id: The inventory id the delta was created
             against. (This does not have to be a direct parent.)
         :param delta: The inventory delta (see Inventory.apply_delta for
@@ -1192,8 +1184,25 @@ class Repository(object):
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
-                           self.base)
+        if self._fallback_repositories:
+            return '%s(%r, fallback_repositories=%r)' % (
+                self.__class__.__name__,
+                self.base,
+                self._fallback_repositories)
+        else:
+            return '%s(%r)' % (self.__class__.__name__,
+                               self.base)
+
+    def _has_same_fallbacks(self, other_repo):
+        """Returns true if the repositories have the same fallbacks."""
+        my_fb = self._fallback_repositories
+        other_fb = other_repo._fallback_repositories
+        if len(my_fb) != len(other_fb):
+            return False
+        for f, g in zip(my_fb, other_fb):
+            if not f.has_same_location(g):
+                return False
+        return True
 
     def has_same_location(self, other):
         """Returns a boolean indicating if this repository is at the same
@@ -1413,8 +1422,9 @@ class Repository(object):
             raise errors.BzrError('mismatched lock context %r and '
                 'write group %r.' %
                 (self.get_transaction(), self._write_group))
-        self._commit_write_group()
+        result = self._commit_write_group()
         self._write_group = None
+        return result
 
     def _commit_write_group(self):
         """Template method for per-repository write group cleanup.
@@ -1537,7 +1547,11 @@ class Repository(object):
             raise errors.InternalBzrError(
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
-        if self.has_same_location(source) and fetch_spec is None:
+        # TODO: lift out to somewhere common with RemoteRepository
+        # <https://bugs.edge.launchpad.net/bzr/+bug/401646>
+        if (self.has_same_location(source)
+            and fetch_spec is None
+            and self._has_same_fallbacks(source)):
             # check that last_revision is in 'from' and then return a
             # no-operation.
             if (revision_id is not None and
@@ -2427,7 +2441,7 @@ class Repository(object):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self):
+    def pack(self, hint=None):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2436,6 +2450,13 @@ class Repository(object):
         This stub method does not require a lock, but subclasses should use
         @needs_write_lock as this is a long running call its reasonable to
         implicitly lock for the user.
+
+        :param hint: If not supplied, the whole repository is packed.
+            If supplied, the repository may use the hint parameter as a
+            hint for the parts of the repository to pack. A hint can be
+            obtained from the result of commit_write_group(). Out of
+            date hints are simply ignored, because concurrent operations
+            can obsolete them rapidly.
         """
 
     def get_transaction(self):
@@ -2844,6 +2865,11 @@ class RepositoryFormat(object):
     # Does this format have < O(tree_size) delta generation. Used to hint what
     # code path for commit, amongst other things.
     fast_deltas = None
+    # Does doing a pack operation compress data? Useful for the pack UI command
+    # (so if there is one pack, the operation can still proceed because it may
+    # help), and for fetching when data won't have come from the same
+    # compressor.
+    pack_compresses = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3675,6 +3701,7 @@ class InterDifferingSerializer(InterRepository):
         cache = lru_cache.LRUCache(100)
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
+        hints = []
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
@@ -3686,7 +3713,11 @@ class InterDifferingSerializer(InterRepository):
                 self.target.abort_write_group()
                 raise
             else:
-                self.target.commit_write_group()
+                hint = self.target.commit_write_group()
+                if hint:
+                    hints.extend(hint)
+        if hints and self.target._format.pack_compresses:
+            self.target.pack(hint=hints)
         pb.update('Transferring revisions', len(revision_ids),
                   len(revision_ids))
 
@@ -4034,7 +4065,10 @@ class StreamSink(object):
                 # missing keys can handle suspending a write group).
                 write_group_tokens = self.target_repo.suspend_write_group()
                 return write_group_tokens, missing_keys
-        self.target_repo.commit_write_group()
+        hint = self.target_repo.commit_write_group()
+        if (to_serializer != src_serializer and
+            self.target_repo._format.pack_compresses):
+            self.target_repo.pack(hint=hint)
         return [], set()
 
     def _extract_and_insert_inventories(self, substream, serializer):

@@ -45,10 +45,6 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
         possible_transports=possible_transports)
     transport = child_transport.clone('..')
     filename = transport.relpath(child_transport.base)
-    if filename.endswith('/'):
-        # A path to a directory was passed in
-        # definitely not a bundle
-        raise errors.NotABundle('A directory cannot be a bundle')
     mergeable, transport = read_mergeable_from_transport(transport, filename,
                                                          _do_directive)
     return mergeable
@@ -74,7 +70,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             f, transport = do_catching_redirections(get_bundle, transport,
                                                     redirected_transport)
         except errors.TooManyRedirections:
-            raise errors.NotABundle(str(url))
+            raise errors.NotABundle(transport.clone(filename).base)
 
         if _do_directive:
             from bzrlib.merge_directive import MergeDirective
@@ -82,7 +78,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
             return directive, transport
         else:
             return _serializer.read_bundle(f), transport
-    except errors.ConnectionReset:
+    except (errors.ConnectionReset, errors.ConnectionError), e:
         raise
     except (errors.TransportError, errors.PathError), e:
         raise errors.NotABundle(str(e))
