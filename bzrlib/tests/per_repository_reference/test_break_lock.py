@@ -21,6 +21,9 @@ from bzrlib import errors
 from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 
 
 class TestBreakLock(TestCaseWithExternalReferenceRepository):
@@ -39,12 +42,8 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
             # 'lock_write' has not taken a physical mutex out.
             repo.unlock()
             return
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
         unused_repo.break_lock()
         self.assertRaises(errors.LockBroken, repo.unlock)

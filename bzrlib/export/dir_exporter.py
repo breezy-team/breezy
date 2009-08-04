@@ -17,7 +17,7 @@
 """Export a Tree to a non-versioned directory.
 """
 
-
+import errno
 import os
 import StringIO
 
@@ -43,7 +43,15 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
            left in a half-assed state.
     """
     mutter('export version %r', tree)
-    os.mkdir(dest)
+    try:
+        os.mkdir(dest)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            # check if directory empty
+            if os.listdir(dest) != []:
+                raise errors.BzrError("Can't export tree to non-empty directory.")
+        else:
+            raise
     for dp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
@@ -63,11 +71,12 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
             try:
-                os.symlink(ie.symlink_target, fullpath)
+                symlink_target = tree.get_symlink_target(ie.file_id)
+                os.symlink(symlink_target, fullpath)
             except OSError,e:
                 raise errors.BzrError(
                     "Failed to create symlink %r -> %r, error: %s"
-                    % (fullpath, self.symlink_target, e))
+                    % (fullpath, symlink_target, e))
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                (ie.file_id, ie.kind))

@@ -102,6 +102,8 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui import NullProgressView
+from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -111,6 +113,10 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 __unittest = 1
 
 default_transport = LocalURLServer
+
+# Subunit result codes, defined here to prevent a hard dependency on subunit.
+SUBUNIT_SEEK_SET = 0
+SUBUNIT_SEEK_CUR = 1
 
 
 class ExtendedTestResult(unittest._TextTestResult):
@@ -133,7 +139,6 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  strict=False,
                  ):
         """Construct new TestResult.
@@ -158,7 +163,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
         self.ui = ui.ui_factory
-        self.num_tests = num_tests
+        self.num_tests = 0
         self.error_count = 0
         self.failure_count = 0
         self.known_failure_count = 0
@@ -170,6 +175,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._strict = strict
 
     def done(self):
+        # nb: called stopTestRun in the version of this that Python merged
+        # upstream, according to lifeless 20090803
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
@@ -195,11 +202,9 @@ class ExtendedTestResult(unittest._TextTestResult):
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
         if benchmark_time is not None:
-            return "%s/%s" % (
-                self._formatTime(benchmark_time),
-                self._elapsedTestTimeString())
+            return self._formatTime(benchmark_time) + "*"
         else:
-            return "           %s" % self._elapsedTestTimeString()
+            return self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
@@ -346,17 +351,28 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                self.stream.write('\n')
-                self.stream.write(
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
-                self.stream.write(test._get_log())
-                self.stream.write('\n')
-                self.stream.write(
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
+                log_contents = test._get_log()
+                if log_contents:
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
+                    self.stream.write(log_contents)
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
+
+    def progress(self, offset, whence):
+        """The test is adjusting the count of tests to run."""
+        if whence == SUBUNIT_SEEK_SET:
+            self.num_tests = offset
+        elif whence == SUBUNIT_SEEK_CUR:
+            self.num_tests += offset
+        else:
+            raise errors.BzrError("Unknown whence %r" % whence)
 
     def finished(self):
         pass
@@ -378,26 +394,39 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests, strict)
-        if pb is None:
-            self.pb = self.ui.nested_progress_bar()
-            self._supplied_pb = False
-        else:
-            self.pb = pb
-            self._supplied_pb = True
+            bench_history, strict)
+        # We no longer pass them around, but just rely on the UIFactory stack
+        # for state
+        if pb is not None:
+            warnings.warn("Passing pb to TextTestResult is deprecated")
+        self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
+        self.pb.update_latency = 0
+        self.pb.show_transport_activity = False
+
+    def done(self):
+        # called when the tests that are going to run have run
+        self.pb.clear()
+        super(TextTestResult, self).done()
+
+    def finished(self):
+        self.pb.finished()
 
     def report_starting(self):
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -409,7 +438,7 @@ class TextTestResult(ExtendedTestResult):
         ##     a += ', %d skip' % self.skip_count
         ## if self.known_failure_count:
         ##     a += '+%dX' % self.known_failure_count
-        if self.num_tests is not None:
+        if self.num_tests:
             a +='/%d' % self.num_tests
         a += ' in '
         runtime = time.time() - self._overall_start_time
@@ -464,10 +493,6 @@ class TextTestResult(ExtendedTestResult):
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
 
-    def finished(self):
-        if not self._supplied_pb:
-            self.pb.finished()
-
 
 class VerboseTestResult(ExtendedTestResult):
     """Produce long output, with one line per test run plus times"""
@@ -486,11 +511,11 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
-        # numbers, plus a trailing blank
+        # width needs space for 6 char status, plus 1 for slash, plus an
+        # 11-char time string, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
         self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-30))
+                          osutils.terminal_width()-18))
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -565,7 +590,6 @@ class TextTestRunner(object):
                               self.descriptions,
                               self.verbosity,
                               bench_history=self._bench_history,
-                              num_tests=test.countTestCases(),
                               strict=self._strict,
                               )
         result.stop_early = self.stop_on_failure
@@ -702,13 +726,23 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class TestUIFactory(ui.CLIUIFactory):
+class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.
 
     Hide the progress bar but emit note()s.
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
+
+    See also CannedInputUIFactory which lets you provide programmatic input in
+    a structured way.
     """
+    # TODO: Capture progress events at the model level and allow them to be
+    # observed by tests that care.
+    #
+    # XXX: Should probably unify more with CannedInputUIFactory or a
+    # particular configuration of TextUIFactory, or otherwise have a clearer
+    # idea of how they're supposed to be different.
+    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -719,26 +753,8 @@ class TestUIFactory(ui.CLIUIFactory):
             stdin = StringIOWrapper(stdin)
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressBar.finished()."""
-
-    def note(self, fmt_string, *args):
-        """See progress.ProgressBar.note()."""
-        if args:
-            fmt_string = fmt_string % args
-        self.stdout.write(fmt_string + "\n")
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        return self
+    def make_progress_view(self):
+        return NullProgressView()
 
     def update(self, message, count=None, total=None):
         """See progress.ProgressBar.update()."""
@@ -1093,11 +1109,17 @@ class TestCase(unittest.TestCase):
                          osutils.realpath(path2),
                          "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
 
-    def assertIsInstance(self, obj, kls):
-        """Fail if obj is not an instance of kls"""
+    def assertIsInstance(self, obj, kls, msg=None):
+        """Fail if obj is not an instance of kls
+        
+        :param msg: Supplementary message to show if the assertion fails.
+        """
         if not isinstance(obj, kls):
-            self.fail("%r is an instance of %s rather than %s" % (
-                obj, obj.__class__, kls))
+            m = "%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls)
+            if msg:
+                m += ": " + msg
+            self.fail(m)
 
     def expectFailure(self, reason, assertion, *args, **kwargs):
         """Invoke a test, expecting it to fail for the given reason.
@@ -1325,6 +1347,13 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            # Make sure that any text ui tests are consistent regardless of
+            # the environment the test case is run in; you may want tests that
+            # test other combinations.  'dumb' is a reasonable guess for tests
+            # going to a pipe or a StringIO.
+            'TERM': 'dumb',
+            'LINES': '25',
+            'COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2738,6 +2767,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
+    # tell the result object how many tests will be running:
+    decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
@@ -2845,6 +2876,16 @@ class TestDecorator(TestSuite):
                 break
             test.run(result)
         return result
+
+
+class CountingDecorator(TestDecorator):
+    """A decorator which calls result.progress(self.countTestCases)."""
+
+    def run(self, result):
+        progress_method = getattr(result, 'progress', None)
+        if callable(progress_method):
+            progress_method(self.countTestCases(), SUBUNIT_SEEK_SET)
+        return super(CountingDecorator, self).run(result)
 
 
 class ExcludeDecorator(TestDecorator):
@@ -2959,6 +3000,10 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -2987,7 +3032,8 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = TestProtocolClient(stream)
+                subunit_result = AutoTimingTestResultDecorator(
+                    TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
                 os._exit(0)
@@ -3981,9 +4027,14 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = TestProtocolClient(self.stream)
+            result = AutoTimingTestResultDecorator(
+                TestProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:

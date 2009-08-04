@@ -1825,6 +1825,16 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
                           'foo:bar')
 
+    def test_infinite_redirects_are_not_a_bundle(self):
+        """If a URL causes TooManyRedirections then NotABundle is raised.
+        """
+        from bzrlib.tests.blackbox.test_push import RedirectingMemoryServer
+        server = RedirectingMemoryServer()
+        server.setUp()
+        url = server.get_url() + 'infinite-loop'
+        self.addCleanup(server.tearDown)
+        self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
+
     def test_smart_server_connection_reset(self):
         """If a smart server connection fails during the attempt to read a
         bundle, then the ConnectionReset error should be propagated.

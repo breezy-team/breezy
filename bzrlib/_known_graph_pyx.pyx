@@ -25,8 +25,6 @@ cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
 
-    object PyFrozenSet_New(object)
-
     object PyTuple_New(Py_ssize_t n)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
@@ -267,7 +265,7 @@ cdef class KnownGraph:
         cdef Py_ssize_t pos, last_item
         cdef long min_gdfo
 
-        heads_key = PyFrozenSet_New(keys)
+        heads_key = frozenset(keys)
         maybe_heads = PyDict_GetItem(self._known_heads, heads_key)
         if maybe_heads != NULL:
             return <object>maybe_heads
@@ -285,7 +283,7 @@ cdef class KnownGraph:
             if not candidate_nodes:
                 return frozenset([NULL_REVISION])
             # The keys changed, so recalculate heads_key
-            heads_key = PyFrozenSet_New(candidate_nodes)
+            heads_key = frozenset(candidate_nodes)
         if PyDict_Size(candidate_nodes) < 2:
             return heads_key
 
@@ -330,7 +328,7 @@ cdef class KnownGraph:
             node = <_KnownGraphNode>temp_node
             if not node.seen:
                 PyList_Append(heads, node.key)
-        heads = PyFrozenSet_New(heads)
+        heads = frozenset(heads)
         for pos from 0 <= pos < PyList_GET_SIZE(cleanup):
             node = _get_list_node(cleanup, pos)
             node.seen = 0

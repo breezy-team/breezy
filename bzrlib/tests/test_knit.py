@@ -73,13 +73,13 @@ class _CompiledKnitFeature(Feature):
 
     def _probe(self):
         try:
-            import bzrlib._knit_load_data_c
+            import bzrlib._knit_load_data_pyx
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._knit_load_data_c'
+        return 'bzrlib._knit_load_data_pyx'
 
 CompiledKnitFeature = _CompiledKnitFeature()
 
@@ -1316,7 +1316,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        from bzrlib._knit_load_data_c import _load_data_c
+        from bzrlib._knit_load_data_pyx import _load_data_c
         knit._load_data = _load_data_c
         allow_writes = lambda: mode == 'w'
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
@@ -2230,7 +2230,7 @@ class TestStacking(KnitTests):
         # self.assertEqual([("annotate", key_basis)], basis.calls)
         self.assertEqual([('get_parent_map', set([key_basis])),
             ('get_parent_map', set([key_basis])),
-            ('get_record_stream', [key_basis], 'unordered', True)],
+            ('get_record_stream', [key_basis], 'topological', True)],
             basis.calls)
 
     def test_check(self):
@@ -2342,9 +2342,9 @@ class TestStacking(KnitTests):
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
-            # unordered is asked for by the underlying worker as it still
-            # buffers everything while answering - which is a problem!
-            ("get_record_stream", [key_basis_2, key_basis], 'unordered', True)],
+            # topological is requested from the fallback, because that is what
+            # was requested at the top level.
+            ("get_record_stream", [key_basis_2, key_basis], 'topological', True)],
             calls)
 
     def test_get_record_stream_unordered_deltas(self):
@@ -2571,7 +2571,7 @@ class TestStacking(KnitTests):
         last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
-        self.assertEqual('unordered', last_call[2])
+        self.assertEqual('topological', last_call[2])
         self.assertEqual(True, last_call[3])
 
 

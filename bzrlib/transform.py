@@ -1718,14 +1718,20 @@ class _PreviewTree(tree.Tree):
     def __iter__(self):
         return iter(self.all_file_ids())
 
-    def has_id(self, file_id):
+    def _has_id(self, file_id, fallback_check):
         if file_id in self._transform._r_new_id:
             return True
         elif file_id in set([self._transform.tree_file_id(trans_id) for
             trans_id in self._transform._removed_id]):
             return False
         else:
-            return self._transform._tree.has_id(file_id)
+            return fallback_check(file_id)
+
+    def has_id(self, file_id):
+        return self._has_id(file_id, self._transform._tree.has_id)
+
+    def has_or_had_id(self, file_id):
+        return self._has_id(file_id, self._transform._tree.has_or_had_id)
 
     def _path2trans_id(self, path):
         # We must not use None here, because that is a valid value to store.
@@ -2079,7 +2085,7 @@ class FinalPaths(object):
         self.transform = transform
 
     def _determine_path(self, trans_id):
-        if trans_id == self.transform.root:
+        if (trans_id == self.transform.root or trans_id == ROOT_PARENT):
             return ""
         name = self.transform.final_name(trans_id)
         parent_id = self.transform.final_parent(trans_id)

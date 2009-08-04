@@ -681,29 +681,6 @@ class TestChrootedTest(tests.ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
-class MockProgress(progress._BaseProgressBar):
-    """Progress-bar standin that records calls.
-
-    Useful for testing pb using code.
-    """
-
-    def __init__(self):
-        progress._BaseProgressBar.__init__(self)
-        self.calls = []
-
-    def tick(self):
-        self.calls.append(('tick',))
-
-    def update(self, msg=None, current=None, total=None):
-        self.calls.append(('update', msg, current, total))
-
-    def clear(self):
-        self.calls.append(('clear',))
-
-    def note(self, msg, *args):
-        self.calls.append(('note', msg, args))
-
-
 class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
@@ -723,9 +700,10 @@ class TestTestResult(tests.TestCase):
                 self.time(time.sleep, 0.003)
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
-        # if a benchmark time is given, we want a x of y style result.
+        # if a benchmark time is given, we now show just that time followed by
+        # a star
         self.check_timing(ShortDelayTestCase('test_short_benchmark'),
-                          r"^ +[0-9]+ms/ +[0-9]+ms$")
+                          r"^ +[0-9]+ms\*$")
 
     def test_unittest_reporting_unittest_class(self):
         # getting the time from a non-bzrlib test works ok
@@ -861,41 +839,6 @@ class TestTestResult(tests.TestCase):
         self.assertEqual(lines[1], '    foo')
         self.assertEqual(2, len(lines))
 
-    def test_text_report_known_failure(self):
-        # text test output formatting
-        pb = MockProgress()
-        result = bzrlib.tests.TextTestResult(
-            StringIO(),
-            descriptions=0,
-            verbosity=1,
-            pb=pb,
-            )
-        test = self.get_passing_test()
-        # this seeds the state to handle reporting the test.
-        result.startTest(test)
-        # the err parameter has the shape:
-        # (class, exception object, traceback)
-        # KnownFailures dont get their tracebacks shown though, so we
-        # can skip that.
-        err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result.report_known_failure(test, err)
-        self.assertEqual(
-            [
-            ('update', '[1 in 0s] passing_test', None, None),
-            ('note', 'XFAIL: %s\n%s\n', ('passing_test', err[1]))
-            ],
-            pb.calls)
-        # known_failures should be printed in the summary, so if we run a test
-        # after there are some known failures, the update prefix should match
-        # this.
-        result.known_failure_count = 3
-        test.run(result)
-        self.assertEqual(
-            [
-            ('update', '[2 in 0s] passing_test', None, None),
-            ],
-            pb.calls[2:])
-
     def get_passing_test(self):
         """Return a test object that can't be run usefully."""
         def passing_test():
@@ -943,37 +886,8 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP                   0ms',
+        self.assertEqual(lines, ['NODEP        0ms',
                                  "    The feature 'Feature' is not available."])
-
-    def test_text_report_unsupported(self):
-        # text test output formatting
-        pb = MockProgress()
-        result = bzrlib.tests.TextTestResult(
-            StringIO(),
-            descriptions=0,
-            verbosity=1,
-            pb=pb,
-            )
-        test = self.get_passing_test()
-        feature = tests.Feature()
-        # this seeds the state to handle reporting the test.
-        result.startTest(test)
-        result.report_unsupported(test, feature)
-        # no output on unsupported features
-        self.assertEqual(
-            [('update', '[1 in 0s] passing_test', None, None)
-            ],
-            pb.calls)
-        # the number of missing features should be printed in the progress
-        # summary, so check for that.
-        result.unsupported = {'foo':0, 'bar':0}
-        test.run(result)
-        self.assertEqual(
-            [
-            ('update', '[2 in 0s, 2 missing] passing_test', None, None),
-            ],
-            pb.calls[1:])
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
@@ -1485,12 +1399,11 @@ class TestTestCase(tests.TestCase):
         result = bzrlib.tests.VerboseTestResult(
             unittest._WritelnDecorator(output_stream),
             descriptions=0,
-            verbosity=2,
-            num_tests=sample_test.countTestCases())
+            verbosity=2)
         sample_test.run(result)
         self.assertContainsRe(
             output_stream.getvalue(),
-            r"\d+ms/ +\d+ms\n$")
+            r"\d+ms\*\n$")
 
     def test_hooks_sanitised(self):
         """The bzrlib hooks should be sanitised by setUp."""
@@ -1686,8 +1599,15 @@ class TestExtraAssertions(tests.TestCase):
     def test_assert_isinstance(self):
         self.assertIsInstance(2, int)
         self.assertIsInstance(u'', basestring)
-        self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        e = self.assertRaises(AssertionError, self.assertIsInstance, None, int)
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>")
         self.assertRaises(AssertionError, self.assertIsInstance, 23.3, int)
+        e = self.assertRaises(AssertionError,
+            self.assertIsInstance, None, int, "it's just not")
+        self.assertEquals(str(e),
+            "None is an instance of <type 'NoneType'> rather than <type 'int'>"
+            ": it's just not")
 
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
@@ -2360,7 +2280,7 @@ class TestRunSuite(tests.TestCase):
                 return tests.ExtendedTestResult(self.stream, self.descriptions,
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
-        self.assertEqual(calls, [suite])
+        self.assertLength(1, calls)
 
     def test_done(self):
         """run_suite should call result.done()"""

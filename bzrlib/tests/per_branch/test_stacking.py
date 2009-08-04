@@ -184,11 +184,17 @@ class TestStacking(TestCaseWithBranch):
         trunk_revid = trunk_tree.commit('revision on mainline')
         # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+            new_dir = trunk_tree.bzrdir.sprout(self.get_url('newbranch'),
+                stacked=True)
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        # TODO: we'd like to commit in the stacked repository; that requires
+        # some care (maybe a BranchBuilder) if it's remote and has no
+        # workingtree
+        ##newbranch_revid = new_dir.open_workingtree().commit('revision in '
+            ##'newbranch')
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()

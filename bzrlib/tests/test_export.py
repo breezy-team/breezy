@@ -18,7 +18,9 @@ import os
 
 
 from bzrlib import (
+    errors,
     export,
+    osutils,
     tests,
     )
 
@@ -34,3 +36,29 @@ class TestExport(tests.TestCaseWithTransport):
         self.failUnlessExists('target/a/b')
         self.failIfExists('target/a/c')
 
+    def test_dir_export_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        wt = self.make_branch_and_tree('.')
+        os.symlink('source', 'link')
+        wt.add(['link'])
+        export.export(wt, 'target', format="dir")
+        self.failUnlessExists('target/link')
+
+    def test_dir_export_to_existing_empty_dir_success(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        wt = self.make_branch_and_tree('source')
+        wt.add(['a', 'b', 'b/c'])
+        wt.commit('1')
+        self.build_tree(['target/'])
+        export.export(wt, 'target', format="dir")
+        self.failUnlessExists('target/a')
+        self.failUnlessExists('target/b')
+        self.failUnlessExists('target/b/c')
+
+    def test_dir_export_to_existing_nonempty_dir_fail(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        wt = self.make_branch_and_tree('source')
+        wt.add(['a', 'b', 'b/c'])
+        wt.commit('1')
+        self.build_tree(['target/', 'target/foo'])
+        self.assertRaises(errors.BzrError, export.export, wt, 'target', format="dir")

@@ -435,6 +435,11 @@ class DirStateWorkingTree(WorkingTree3):
         return osutils.lexists(pathjoin(
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
+    def has_or_had_id(self, file_id):
+        state = self.current_dirstate()
+        row, parents = self._get_entry(file_id=file_id)
+        return row is not None
+
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
@@ -1418,6 +1423,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 # applied so we can't safely build the inventory delta from
                 # the source tree.
                 if wt.supports_content_filtering():
+                    if hardlink:
+                        # see https://bugs.edge.launchpad.net/bzr/+bug/408193
+                        trace.warning("hardlinking working copy files is not currently "
+                            "supported in %r" % (wt,))
                     accelerator_tree = None
                     delta_from_tree = False
                 else:
