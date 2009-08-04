@@ -63,7 +63,6 @@ tree_references: false
 /\x00an-id\x00\x00different-version\x00dir
 """
 
-# No root entry is included for unversioned roots.
 root_only_unversioned = """format: bzr inventory delta v1 (bzr 1.14)
 parent: null:
 version: entry-version
@@ -263,6 +262,24 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         err = self.assertRaises(errors.BzrError,
             serializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'oldpath invalid')
+    
+    def test_parse_new_file(self):
+        """a new file is parsed correctly"""
+        lines = root_only_lines
+        fake_sha = "deadbeef" * 5
+        lines += (
+            "None\x00/new\x00file-id\x00an-id\x00version\x00file\x00123\x00" +
+            "\x00" + fake_sha + "\n")
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        parse_result = serializer.parse_text_bytes(lines)
+        expected_entry = inventory.make_entry(
+            'file', u'new', 'an-id', 'file-id')
+        expected_entry.revision = 'version'
+        expected_entry.text_size = 123
+        expected_entry.text_sha1 = fake_sha
+        delta = parse_result[4]
+        self.assertEqual(
+             (None, u'new', 'file-id', expected_entry), delta[-1])
 
 
 class TestSerialization(TestCase):

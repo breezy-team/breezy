@@ -160,31 +160,6 @@ class FulltextContentFactory(ContentFactory):
             self.storage_kind)
 
 
-class InventoryDeltaContentFactory(ContentFactory):
-
-    def __init__(self, key, parents, sha1, delta, basis_id, format_flags,
-            repo=None):
-        self.sha1 = sha1
-        self.storage_kind = 'inventory-delta'
-        self.key = key
-        self.parents = parents
-        self._delta = delta
-        self._basis_id = basis_id
-        self._format_flags = format_flags
-        self._repo = repo
-
-    def get_bytes_as(self, storage_kind):
-        if storage_kind == self.storage_kind:
-            return self._basis_id, self.key, self._delta, self._format_flags
-        elif storage_kind == 'inventory-delta-bytes':
-            serializer = inventory_delta.InventoryDeltaSerializer()
-            serializer.require_flags(*self._format_flags)
-            return ''.join(serializer.delta_to_lines(
-                self._basis_id, self.key[-1], self._delta))
-        raise errors.UnavailableRepresentation(self.key, storage_kind,
-            self.storage_kind)
-
-
 class AbsentContentFactory(ContentFactory):
     """A placeholder content factory for unavailable texts.
 
@@ -1587,7 +1562,6 @@ class NetworkRecordStream(object):
         self._kind_factory = {
             'fulltext': fulltext_network_to_record,
             'groupcompress-block': groupcompress.network_block_to_records,
-            'inventory-delta': inventory_delta_network_to_record,
             'knit-ft-gz': knit.knit_network_to_record,
             'knit-delta-gz': knit.knit_network_to_record,
             'knit-annotated-ft-gz': knit.knit_network_to_record,
@@ -1618,21 +1592,6 @@ def fulltext_network_to_record(kind, bytes, line_end):
     return [FulltextContentFactory(key, parents, None, fulltext)]
 
 
-def inventory_delta_network_to_record(kind, bytes, line_end):
-    """Convert a network inventory-delta record to record."""
-    meta_len, = struct.unpack('!L', bytes[line_end:line_end+4])
-    record_meta = bytes[line_end+4:line_end+4+meta_len]
-    key, parents = bencode.bdecode_as_tuple(record_meta)
-    if parents == 'nil':
-        parents = None
-    inventory_delta_bytes = bytes[line_end+4+meta_len:]
-    deserialiser = inventory_delta.InventoryDeltaSerializer()
-    parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
-    basis_id, new_id, rich_root, tree_refs, delta = parse_result
-    return [InventoryDeltaContentFactory(
-        key, parents, None, delta, basis_id, (rich_root, tree_refs))]
-
-
 def _length_prefix(bytes):
     return struct.pack('!L', len(bytes))
 
@@ -1645,17 +1604,6 @@ def record_to_fulltext_bytes(record):
     record_meta = bencode.bencode((record.key, parents))
     record_content = record.get_bytes_as('fulltext')
     return "fulltext\n%s%s%s" % (
-        _length_prefix(record_meta), record_meta, record_content)
-
-
-def record_to_inventory_delta_bytes(record):
-    record_content = record.get_bytes_as('inventory-delta-bytes')
-    if record.parents is None:
-        parents = 'nil'
-    else:
-        parents = record.parents
-    record_meta = bencode.bencode((record.key, parents))
-    return "inventory-delta\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
 
 

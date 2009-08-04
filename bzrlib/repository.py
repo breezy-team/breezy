@@ -3972,7 +3972,6 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
-        delta_deserializer = inventory_delta.InventoryDeltaSerializer()
         for substream_type, substream in stream:
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
@@ -3982,8 +3981,10 @@ class StreamSink(object):
                         substream)
                 else:
                     self._extract_and_insert_inventories(
-                        substream, src_serializer,
-                        delta_deserializer.parse_text_bytes)
+                        substream, src_serializer)
+            elif substream_type == 'inventory-deltas':
+                self._extract_and_insert_inventory_deltas(
+                    substream, src_serializer)
             elif substream_type == 'chk_bytes':
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
@@ -4040,6 +4041,27 @@ class StreamSink(object):
             self.target_repo.pack(hint=hint)
         return [], set()
 
+    def _extract_and_insert_inventory_deltas(self, substream, serializer):
+        target_rich_root = self.target_repo._format.rich_root_data
+        target_tree_refs = self.target_repo._format.supports_tree_reference
+        for record in substream:
+            # Insert the delta directly
+            inventory_delta_bytes = record.get_bytes_as('fulltext')
+            deserialiser = inventory_delta.InventoryDeltaSerializer()
+            parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
+            basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
+            #mutter('inv_delta: %r', inv_delta)
+            # Make sure the delta is compatible with the target
+            if rich_root and not target_rich_root:
+                raise errors.IncompatibleRevision(self.target_repo._format)
+            if tree_refs and not target_tree_refs:
+                raise errors.IncompatibleRevision(self.target_repo._format)
+            #revision_id = new_id[0]
+            revision_id = new_id
+            parents = [key[0] for key in record.parents]
+            self.target_repo.add_inventory_by_delta(
+                basis_id, inv_delta, revision_id, parents)
+
     def _extract_and_insert_inventories(self, substream, serializer,
             parse_delta=None):
         """Generate a new inventory versionedfile in target, converting data.
@@ -4050,20 +4072,6 @@ class StreamSink(object):
         target_rich_root = self.target_repo._format.rich_root_data
         target_tree_refs = self.target_repo._format.supports_tree_reference
         for record in substream:
-            if record.storage_kind == 'inventory-delta':
-                # Insert the delta directly
-                delta_tuple = record.get_bytes_as('inventory-delta')
-                basis_id, new_id, inv_delta, format_flags = delta_tuple
-                # Make sure the delta is compatible with the target
-                if format_flags[0] and not target_rich_root:
-                    raise errors.IncompatibleRevision(self.target_repo._format)
-                if format_flags[1] and not target_tree_refs:
-                    raise errors.IncompatibleRevision(self.target_repo._format)
-                revision_id = new_id[0]
-                parents = [key[0] for key in record.parents]
-                self.target_repo.add_inventory_by_delta(
-                    basis_id, inv_delta, revision_id, parents)
-                continue
             # It's not a delta, so it must be a fulltext in the source
             # serializer's format.
             bytes = record.get_bytes_as('fulltext')
@@ -4211,6 +4219,8 @@ class StreamSource(object):
             if not keys:
                 # No need to stream something we don't have
                 continue
+            if substream_kind == 'inventory-deltas':
+                XXX
             if substream_kind == 'inventories':
                 # Some missing keys are genuinely ghosts, filter those out.
                 present = self.from_repository.inventories.get_parent_map(keys)
@@ -4278,7 +4288,7 @@ class StreamSource(object):
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.18,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
-        yield ('inventories',
+        yield ('inventory-deltas',
            self._stream_invs_as_deltas(revision_ids,
                                        delta_versus_null=delta_versus_null))
 
@@ -4307,6 +4317,8 @@ class StreamSource(object):
         inventory_cache = lru_cache.LRUCache(50)
         null_inventory = from_repo.revision_tree(
             _mod_revision.NULL_REVISION).inventory
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        serializer.require_flags(*flags)
         for inv in inventories:
             key = (inv.revision_id,)
             parent_keys = parent_map.get(key, ())
@@ -4339,8 +4351,10 @@ class StreamSource(object):
                 delta = inv._make_delta(null_inventory)
             invs_sent_so_far.add(inv.revision_id)
             inventory_cache[inv.revision_id] = inv
-            yield versionedfile.InventoryDeltaContentFactory(
-                key, parent_keys, None, delta, basis_id, flags, from_repo)
+            delta_serialized = ''.join(
+                serializer.delta_to_lines(basis_id, key[-1], delta))
+            yield versionedfile.FulltextContentFactory(
+                key, parent_keys, None, delta_serialized)
 
 
 def _iter_for_revno(repo, partial_history_cache, stop_index=None,

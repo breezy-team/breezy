@@ -43,7 +43,6 @@ from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
     record_to_fulltext_bytes,
-    record_to_inventory_delta_bytes,
     )
 
 

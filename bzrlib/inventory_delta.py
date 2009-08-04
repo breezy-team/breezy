@@ -354,7 +354,9 @@ def _parse_entry(utf8_path, file_id, parent_id, last_modified, content):
         'tree': _tree_to_entry,
     }
     kind = content[0]
-    path = utf8_path[1:].decode('utf8')
+    if utf8_path.startswith('/'):
+        raise AssertionError
+    path = utf8_path.decode('utf8')
     name = basename(path)
     return entry_factory[content[0]](
             content, name, parent_id, file_id, last_modified)
