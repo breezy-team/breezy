@@ -4264,7 +4264,14 @@ class StreamSource(object):
 
     def _get_inventory_stream(self, revision_ids, missing=False):
         from_format = self.from_repository._format
-        if (from_format.supports_chks and self.to_format.supports_chks and
+        if from_format.network_name() == self.to_format.network_name():
+            return self._get_simple_inventory_stream(revision_ids,
+                    missing=missing)
+        if (not from_format.supports_chks and not self.to_format.supports_chks
+                and from_format._serializer == self.to_format._serializer):
+            return self._get_simple_inventory_stream(revision_ids,
+                    missing=missing)
+        elif (from_format.supports_chks and self.to_format.supports_chks and
             from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
