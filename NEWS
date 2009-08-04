@@ -38,13 +38,6 @@ Bug Fixes
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
 
-* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
-  always forces progress bars either on or off respectively.  Otherwise,
-  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
-  bzr always uses the 'text' user interface when run as a command, so
-  ``BZR_USE_TEXT_UI`` is no longer needed.
-  (Martin Pool, #339385, #387717)
-
 * ``bzr commit`` no longer saves the unversioning of missing files until
   the commit has completed on the branch. This means that aborting a
   commit that found a missing file will leave the tree unedited.
@@ -69,6 +62,10 @@ Bug Fixes
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
+
+* Fix ``AttributeError: 'TestUIFactory' object has no attribute 'tick'``
+  running send and similar commands on 2a formats.
+  (Martin Pool, #408201)
   
 * Fixed export to existing directory: if directory is empty then export 
   will succeed, otherwise it fails with error.
@@ -90,6 +87,13 @@ Bug Fixes
   
 * Streaming from bzr servers where there is a chain of stacked branches
   (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
+
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
+  (Martin Pool, #339385, #387717)
 
 * The optional ``_knit_load_data_pyx`` C extension was never being
   imported.  This caused significant slowdowns when reading data from
@@ -164,6 +168,19 @@ Internals
 
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
+
+Testing
+*******
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
+* The ``bzrlib.tests.TextTestRunner`` will no longer call
+  ``countTestsCases`` on the test being run. Progress information is
+  instead handled by having the test passed in call ``result.progress``
+  before running its contents. This improves the behaviour when using
+  ``TextTestRunner`` with test suites that don't support
+  ``countTestsCases``. (Robert Collins)
 
 
 bzr 1.17 "So late it's brunch" 2009-07-20
