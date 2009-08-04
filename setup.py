@@ -93,6 +93,7 @@ def get_bzrlib_packages():
 BZRLIB['packages'] = get_bzrlib_packages()
 
 
+from distutils import log
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -400,7 +401,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
-def get_qbzr_py2exe_info(includes, excludes, packages):
+def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     packages.append('PyQt4')
     excludes.append('PyQt4.elementtree.ElementTree')
@@ -415,9 +416,26 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
         qscintilla2.dll""".split())
     # the qt binaries might not be on PATH...
     qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
-    path = os.environ.get("PATH","")
-    if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
-        os.environ["PATH"] = path + os.pathsep + qt_dir
+    if os.path.isdir(qt_dir):
+        path = os.environ.get("PATH","")
+        if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
+            os.environ["PATH"] = path + os.pathsep + qt_dir
+    # add imageformats plugins to distribution
+    try:
+        import PyQt4
+    except ImportError:
+        log.warn("Can't find PyQt4 installation -> skip imageformats plugins")
+    else:
+        imageformats = 'imageformats'
+        plug_dir = os.path.join(os.path.dirname(PyQt4.__file__),
+            'plugins', imageformats)
+        if os.path.isdir(plug_dir):
+            files = []
+            for i in os.listdir(plug_dir):
+                if i.endswith('.dll') and not i.endswith('d4.dll'):
+                    files.append(os.path.join(plug_dir,i))
+            if files:
+                data_files.append((imageformats, files))
 
 
 def get_svn_py2exe_info(includes, excludes, packages):
@@ -600,7 +618,7 @@ elif 'py2exe' in sys.argv:
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
-        get_qbzr_py2exe_info(includes, excludes, packages)
+        get_qbzr_py2exe_info(includes, excludes, packages, data_files)
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
