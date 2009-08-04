@@ -1472,6 +1472,53 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.addCleanup(lambda:self.cleanup(files))
         return files
 
+    def get_simple_key(self, suffix):
+        """Return a key for the object under test."""
+        if self.key_length == 1:
+            return (suffix,)
+        else:
+            return ('FileA',) + (suffix,)
+
+    def test_add_lines(self):
+        f = self.get_versionedfiles()
+        key0 = self.get_simple_key('r0')
+        key1 = self.get_simple_key('r1')
+        key2 = self.get_simple_key('r2')
+        keyf = self.get_simple_key('foo')
+        f.add_lines(key0, [], ['a\n', 'b\n'])
+        if self.graph:
+            f.add_lines(key1, [key0], ['b\n', 'c\n'])
+        else:
+            f.add_lines(key1, [], ['b\n', 'c\n'])
+        keys = f.keys()
+        self.assertTrue(key0 in keys)
+        self.assertTrue(key1 in keys)
+        records = []
+        for record in f.get_record_stream([key0, key1], 'unordered', True):
+            records.append((record.key, record.get_bytes_as('fulltext')))
+        records.sort()
+        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
+
+    def test__add_text(self):
+        f = self.get_versionedfiles()
+        key0 = self.get_simple_key('r0')
+        key1 = self.get_simple_key('r1')
+        key2 = self.get_simple_key('r2')
+        keyf = self.get_simple_key('foo')
+        f._add_text(key0, [], 'a\nb\n')
+        if self.graph:
+            f._add_text(key1, [key0], 'b\nc\n')
+        else:
+            f._add_text(key1, [], 'b\nc\n')
+        keys = f.keys()
+        self.assertTrue(key0 in keys)
+        self.assertTrue(key1 in keys)
+        records = []
+        for record in f.get_record_stream([key0, key1], 'unordered', True):
+            records.append((record.key, record.get_bytes_as('fulltext')))
+        records.sort()
+        self.assertEqual([(key0, 'a\nb\n'), (key1, 'b\nc\n')], records)
+
     def test_annotate(self):
         files = self.get_versionedfiles()
         self.get_diamond_files(files)
@@ -1543,7 +1590,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             trailing_eol=trailing_eol, nograph=not self.graph,
             left_only=left_only, nokeys=nokeys)
 
-    def test_add_lines_nostoresha(self):
+    def _add_content_nostoresha(self, add_lines):
         """When nostore_sha is supplied using old content raises."""
         vf = self.get_versionedfiles()
         empty_text = ('a', [])
@@ -1551,7 +1598,12 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         sample_text_no_nl = ('c', ["foo\n", "bar"])
         shas = []
         for version, lines in (empty_text, sample_text_nl, sample_text_no_nl):
-            sha, _, _ = vf.add_lines(self.get_simple_key(version), [], lines)
+            if add_lines:
+                sha, _, _ = vf.add_lines(self.get_simple_key(version), [],
+                                         lines)
+            else:
+                sha, _, _ = vf._add_text(self.get_simple_key(version), [],
+                                         ''.join(lines))
             shas.append(sha)
         # we now have a copy of all the lines in the vf.
         for sha, (version, lines) in zip(
@@ -1560,9 +1612,18 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             self.assertRaises(errors.ExistingContent,
                 vf.add_lines, new_key, [], lines,
                 nostore_sha=sha)
+            self.assertRaises(errors.ExistingContent,
+                vf._add_text, new_key, [], ''.join(lines),
+                nostore_sha=sha)
             # and no new version should have been added.
             record = vf.get_record_stream([new_key], 'unordered', True).next()
             self.assertEqual('absent', record.storage_kind)
+
+    def test_add_lines_nostoresha(self):
+        self._add_content_nostoresha(add_lines=True)
+
+    def test__add_text_nostoresha(self):
+        self._add_content_nostoresha(add_lines=False)
 
     def test_add_lines_return(self):
         files = self.get_versionedfiles()
@@ -1717,13 +1778,6 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         seen = set()
         self.capture_stream(files, entries, seen.add, parent_map)
         self.assertEqual(set(keys), seen)
-
-    def get_simple_key(self, suffix):
-        """Return a key for the object under test."""
-        if self.key_length == 1:
-            return (suffix,)
-        else:
-            return ('FileA',) + (suffix,)
 
     def get_keys_and_sort_order(self):
         """Get diamond test keys list, and their sort ordering."""
@@ -2092,6 +2146,42 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             return parents
         else:
             return None
+
+    def test_get_annotator(self):
+        files = self.get_versionedfiles()
+        self.get_diamond_files(files)
+        origin_key = self.get_simple_key('origin')
+        base_key = self.get_simple_key('base')
+        left_key = self.get_simple_key('left')
+        right_key = self.get_simple_key('right')
+        merged_key = self.get_simple_key('merged')
+        # annotator = files.get_annotator()
+        # introduced full text
+        origins, lines = files.get_annotator().annotate(origin_key)
+        self.assertEqual([(origin_key,)], origins)
+        self.assertEqual(['origin\n'], lines)
+        # a delta
+        origins, lines = files.get_annotator().annotate(base_key)
+        self.assertEqual([(base_key,)], origins)
+        # a merge
+        origins, lines = files.get_annotator().annotate(merged_key)
+        if self.graph:
+            self.assertEqual([
+                (base_key,),
+                (left_key,),
+                (right_key,),
+                (merged_key,),
+                ], origins)
+        else:
+            # Without a graph everything is new.
+            self.assertEqual([
+                (merged_key,),
+                (merged_key,),
+                (merged_key,),
+                (merged_key,),
+                ], origins)
+        self.assertRaises(RevisionNotPresent,
+            files.get_annotator().annotate, self.get_simple_key('missing-key'))
 
     def test_get_parent_map(self):
         files = self.get_versionedfiles()

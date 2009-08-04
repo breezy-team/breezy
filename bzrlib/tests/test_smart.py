@@ -603,6 +603,43 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
         branch.unlock()
 
 
+class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
+    # Only called when the branch format and tags match [yay factory
+    # methods] so only need to test straight forward cases.
+
+    def test_set_bytes(self):
+        base_branch = self.make_branch('base')
+        tag_bytes = base_branch._get_tags_bytes()
+        # get_lock_tokens takes out a lock.
+        branch_token, repo_token = self.get_lock_tokens(base_branch)
+        request = smart.branch.SmartServerBranchSetTagsBytes(
+            self.get_transport())
+        response = request.execute('base', branch_token, repo_token)
+        self.assertEqual(None, response)
+        response = request.do_chunk(tag_bytes)
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEquals(
+            SuccessfulSmartServerResponse(()), response)
+        base_branch.unlock()
+
+    def test_lock_failed(self):
+        base_branch = self.make_branch('base')
+        base_branch.lock_write()
+        tag_bytes = base_branch._get_tags_bytes()
+        request = smart.branch.SmartServerBranchSetTagsBytes(
+            self.get_transport())
+        self.assertRaises(errors.TokenMismatch, request.execute,
+            'base', 'wrong token', 'wrong token')
+        # The request handler will keep processing the message parts, so even
+        # if the request fails immediately do_chunk and do_end are still
+        # called.
+        request.do_chunk(tag_bytes)
+        request.do_end()
+        base_branch.unlock()
+
+
+
 class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
@@ -872,8 +909,8 @@ class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
-# Only called when the branch format and tags match [yay factory
-# methods] so only need to test straight forward cases.
+    # Only called when the branch format and tags match [yay factory
+    # methods] so only need to test straight forward cases.
 
     def test_get_bytes(self):
         base_branch = self.make_branch('base')
@@ -1160,6 +1197,50 @@ class TestSmartServerRepositoryGetRevisionGraph(tests.TestCaseWithMemoryTranspor
             SmartServerResponse(('nosuchrevision', 'missingrevision', ), ''),
             request.execute('', 'missingrevision'))
 
+
+class TestSmartServerRepositoryGetRevIdForRevno(tests.TestCaseWithMemoryTransport):
+
+    def test_revno_found(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        tree.add('')
+        rev1_id_utf8 = u'\xc8'.encode('utf-8')
+        rev2_id_utf8 = u'\xc9'.encode('utf-8')
+        tree.commit('1st commit', rev_id=rev1_id_utf8)
+        tree.commit('2nd commit', rev_id=rev2_id_utf8)
+        tree.unlock()
+
+        self.assertEqual(SmartServerResponse(('ok', rev1_id_utf8)),
+            request.execute('', 1, (2, rev2_id_utf8)))
+
+    def test_known_revid_missing(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(
+            FailedSmartServerResponse(('nosuchrevision', 'ghost')),
+            request.execute('', 1, (2, 'ghost')))
+
+    def test_history_incomplete(self):
+        backing = self.get_transport()
+        request = smart.repository.SmartServerRepositoryGetRevIdForRevno(backing)
+        parent = self.make_branch_and_memory_tree('parent', format='1.9')
+        parent.lock_write()
+        parent.add([''], ['TREE_ROOT'])
+        r1 = parent.commit(message='first commit')
+        r2 = parent.commit(message='second commit')
+        parent.unlock()
+        local = self.make_branch_and_memory_tree('local', format='1.9')
+        local.branch.pull(parent.branch)
+        local.set_parent_ids([r2])
+        r3 = local.commit(message='local commit')
+        local.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=self.get_url('parent'))
+        self.assertEqual(
+            SmartServerResponse(('history-incomplete', 2, r2)),
+            request.execute('stacked', 1, (3, r3)))
 
 class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
 
@@ -1576,6 +1657,8 @@ class TestHandlers(tests.TestCase):
             smart.repository.SmartServerRepositoryGatherStats)
         self.assertHandlerEqual('Repository.get_parent_map',
             smart.repository.SmartServerRepositoryGetParentMap)
+        self.assertHandlerEqual('Repository.get_rev_id_for_revno',
+            smart.repository.SmartServerRepositoryGetRevIdForRevno)
         self.assertHandlerEqual('Repository.get_revision_graph',
             smart.repository.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',

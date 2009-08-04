@@ -472,7 +472,8 @@ class SmartClientMediumRequest(object):
         if not line.endswith('\n'):
             # end of file encountered reading from server
             raise errors.ConnectionReset(
-                "please check connectivity and permissions")
+                "Unexpected end of message. Please check connectivity "
+                "and permissions, and report a bug if problems persist.")
         return line
 
     def _read_line(self):
@@ -518,7 +519,11 @@ class _DebugCounter(object):
         # Increment the count in the WeakKeyDictionary
         value = self.counts[params.medium]
         value['count'] += 1
-        request_method = request.request_handlers.get(params.method)
+        try:
+            request_method = request.request_handlers.get(params.method)
+        except KeyError:
+            # A method we don't know about doesn't count as a VFS method.
+            return
         if issubclass(request_method, vfs.VfsRequest):
             value['vfs_count'] += 1
 

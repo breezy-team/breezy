@@ -243,8 +243,7 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = other_basis_tree.changes_from(self.other_tree)
-            if changes.has_changed():
+            if other_basis_tree.has_changes(self.other_tree):
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
@@ -276,8 +275,7 @@ class Merger(object):
             basis_tree = self.revision_tree(self.this_tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = self.this_tree.basis_tree()
-        changes = self.this_tree.changes_from(basis_tree)
-        if not changes.has_changed():
+        if not self.this_tree.has_changes(basis_tree):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):

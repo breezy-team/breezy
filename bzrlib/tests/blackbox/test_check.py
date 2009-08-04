@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,9 +36,10 @@ class TestCheck(ExternalBase):
         out, err = self.run_bzr('check')
         self.assertContainsRe(err, r"Checking working tree at '.*'\.\n")
         self.assertContainsRe(err, r"Checking repository at '.*'\.\n")
+        # the root directory may be in the texts for rich root formats
         self.assertContainsRe(err, r"checked repository.*\n"
                                    r"     1 revisions\n"
-                                   r"     0 file-ids\n"
+                                   r"     [01] file-ids\n"
                                    )
         self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
         self.assertContainsRe(err, r"checked branch.*")
@@ -57,7 +58,7 @@ class TestCheck(ExternalBase):
         self.assertContainsRe(err, r"^Checking repository at '.*'\.\n"
                                    r"checked repository.*\n"
                                    r"     1 revisions\n"
-                                   r"     0 file-ids\n"
+                                   r"     [01] file-ids\n"
                                    )
 
     def test_check_tree(self):

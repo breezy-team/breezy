@@ -30,6 +30,7 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
     groupcompress,
     index,
@@ -173,6 +174,12 @@ class AbsentContentFactory(ContentFactory):
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
+
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
 
 
 class AdapterFactory(ContentFactory):
@@ -829,6 +836,36 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.add_lines)
 
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
+        """Add a text to the store.
+
+        This is a private function for use by CommitBuilder.
+
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
+        :param parents: The parents key tuples of the text to add.
+        :param text: A string containing the text to be committed.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future _add_text calls in the parent_texts dictionary.
+        """
+        # The default implementation just thunks over to .add_lines(),
+        # inefficient, but it works.
+        return self.add_lines(key, parents, osutils.split_lines(text),
+                              nostore_sha=nostore_sha,
+                              random_id=random_id,
+                              check_content=True)
+
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
 
@@ -1100,6 +1137,9 @@ class ThunkedVersionedFiles(VersionedFiles):
         for origin, line in origins:
             result.append((prefix + (origin,), line))
         return result
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""

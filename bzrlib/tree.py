@@ -19,7 +19,6 @@
 
 import os
 from collections import deque
-from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -30,17 +29,16 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     rules,
-    symbol_versioning,
     )
 from bzrlib.decorators import needs_read_lock
-from bzrlib.errors import BzrError, BzrCheckError, NoSuchId
+from bzrlib.errors import BzrError, NoSuchId
 from bzrlib import errors
-from bzrlib.inventory import Inventory, InventoryFile
+from bzrlib.inventory import InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
 import bzrlib.revision
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
-from bzrlib.trace import mutter, note
+from bzrlib.trace import note
 
 
 class Tree(object):
@@ -135,8 +133,6 @@ class Tree(object):
         return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        if file_id == self.inventory.root.file_id:
-            return True
         return self.inventory.has_id(file_id)
 
     def is_ignored(self, filename):
@@ -437,7 +433,7 @@ class Tree(object):
         raise NotImplementedError(self.annotate_iter)
 
     def _get_plan_merge_data(self, file_id, other, base):
-        from bzrlib import merge, versionedfile
+        from bzrlib import versionedfile
         vf = versionedfile._PlanMergeVersionedFile(file_id)
         last_revision_a = self._get_file_revision(file_id, vf, 'this:')
         last_revision_b = other._get_file_revision(file_id, vf, 'other:')
@@ -827,7 +823,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if not tree.has_id(file_id):
+                if not tree.has_or_had_id(file_id):
                     continue
                 for child_id in tree.iter_children(file_id):
                     if child_id not in interesting_ids:

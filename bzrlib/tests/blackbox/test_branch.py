@@ -113,6 +113,27 @@ class TestBranch(ExternalBase):
         self.failIfExists('target/hello')
         self.failIfExists('target/goodbye')
 
+    def test_branch_into_existing_dir(self):
+        self.example_branch('a')
+        # existing dir with similar files but no .bzr dir
+        self.build_tree_contents([('b/',)])
+        self.build_tree_contents([('b/hello', 'bar')])  # different content
+        self.build_tree_contents([('b/goodbye', 'baz')])# same content
+        # fails without --use-existing-dir
+        out,err = self.run_bzr('branch a b', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Target directory "b" already exists.\n',
+            err)
+        # force operation
+        self.run_bzr('branch a b --use-existing-dir')
+        # check conflicts
+        self.failUnlessExists('b/hello.moved')
+        self.failIfExists('b/godbye.moved')
+        # we can't branch into branch
+        out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
@@ -273,7 +294,7 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(39, self.hpss_calls)
+        self.assertLength(38, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()

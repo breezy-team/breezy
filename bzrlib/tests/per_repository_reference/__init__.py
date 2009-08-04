@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,6 +98,8 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_check',
         'bzrlib.tests.per_repository_reference.test_default_stacking',
         'bzrlib.tests.per_repository_reference.test_fetch',
+        'bzrlib.tests.per_repository_reference.test_get_record_stream',
+        'bzrlib.tests.per_repository_reference.test_get_rev_id_for_revno',
         'bzrlib.tests.per_repository_reference.test_initialize',
         'bzrlib.tests.per_repository_reference.test_unlock',
         ]

@@ -35,6 +35,30 @@ from bzrlib.tests import http_server
 from bzrlib.transport import memory
 
 
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the push command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestPushStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_changes_type= '_uncommitted_changes')),
+        ('pending-merges',
+         dict(_changes_type= '_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type= '_out_of_sync_trees')),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
+
 class TestPush(tests.TestCaseWithTransport):
 
     def test_push_error_on_vfs_http(self):
@@ -214,6 +238,20 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertLength(14, self.hpss_calls)
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
+
+    def test_push_smart_tags_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id = t.commit(allow_pointless=True, message='first commit')
+        t.branch.tags.set_tag('new-tag', rev_id)
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
 
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
@@ -475,11 +513,19 @@ class TestPush(tests.TestCaseWithTransport):
         # subsequent log is accurate
         self.assertNotContainsRe(out, 'rev1')
 
+    def test_push_from_subdir(self):
+        t = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/dir/', 'tree/dir/file'])
+        t.add('dir', 'dir/file')
+        t.commit('r1')
+        out, err = self.run_bzr('push ../../pushloc', working_dir='tree/dir')
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
+
 
 class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def mkdir(self, relpath, mode=None):
-        from bzrlib.trace import mutter
         if self._cwd == '/source/':
             raise errors.RedirectRequested(self.abspath(relpath),
                                            self.abspath('../target'),
@@ -491,6 +537,14 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
                 relpath, mode)
+
+    def get(self, relpath):
+        if self.clone(relpath)._cwd == '/infinite-loop/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../infinite-loop'),
+                                           is_permanent=True)
+        else:
+            return super(RedirectingMemoryTransport, self).get(relpath)
 
     def _redirected_to(self, source, target):
         # We do accept redirections
@@ -555,3 +609,135 @@ class TestPushRedirect(tests.TestCaseWithTransport):
              % re.escape(destination_url)],
             ['push', '-d', 'tree', destination_url], retcode=3)
         self.assertEqual('', out)
+
+
+class TestPushStrictMixin(object):
+
+    def make_local_branch_and_tree(self):
+        self.tree = self.make_branch_and_tree('local')
+        self.build_tree_contents([('local/file', 'initial')])
+        self.tree.add('file')
+        self.tree.commit('adding file', rev_id='added')
+        self.build_tree_contents([('local/file', 'modified')])
+        self.tree.commit('modify file', rev_id='modified')
+
+    def set_config_push_strict(self, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = self.tree.branch.get_config()
+        conf.set_user_option('push_strict', value)
+
+    _default_command = ['push', '../to']
+    _default_wd = 'local'
+    _default_errors = ['Working tree ".*/local/" has uncommitted '
+                       'changes \(See bzr status\)\.',]
+    _default_pushed_revid = 'modified'
+
+    def assertPushFails(self, args):
+        self.run_bzr_error(self._default_errors, self._default_command + args,
+                           working_dir=self._default_wd, retcode=3)
+
+    def assertPushSucceeds(self, args, pushed_revid=None):
+        self.run_bzr(self._default_command + args,
+                     working_dir=self._default_wd)
+        if pushed_revid is None:
+            pushed_revid = self._default_pushed_revid
+        tree_to = workingtree.WorkingTree.open('to')
+        repo_to = tree_to.branch.repository
+        self.assertTrue(repo_to.has_revision(pushed_revid))
+        self.assertEqual(tree_to.branch.last_revision_info()[1], pushed_revid)
+
+
+
+class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
+                                   TestPushStrictMixin):
+
+    def setUp(self):
+        super(TestPushStrictWithoutChanges, self).setUp()
+        self.make_local_branch_and_tree()
+
+    def test_push_default(self):
+        self.assertPushSucceeds([])
+
+    def test_push_strict(self):
+        self.assertPushSucceeds(['--strict'])
+
+    def test_push_no_strict(self):
+        self.assertPushSucceeds(['--no-strict'])
+
+    def test_push_config_var_strict(self):
+        self.set_config_push_strict('true')
+        self.assertPushSucceeds([])
+
+    def test_push_config_var_no_strict(self):
+        self.set_config_push_strict('false')
+        self.assertPushSucceeds([])
+
+
+class TestPushStrictWithChanges(tests.TestCaseWithTransport,
+                                TestPushStrictMixin):
+
+    _changes_type = None # Set by load_tests
+
+    def setUp(self):
+        super(TestPushStrictWithChanges, self).setUp()
+        getattr(self, self._changes_type)()
+
+    def _uncommitted_changes(self):
+        self.make_local_branch_and_tree()
+        # Make a change without committing it
+        self.build_tree_contents([('local/file', 'in progress')])
+
+    def _pending_merges(self):
+        self.make_local_branch_and_tree()
+        # Create 'other' branch containing a new file
+        other_bzrdir = self.tree.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+        self.build_tree_contents([('other/other-file', 'other')])
+        other_tree.add('other-file')
+        other_tree.commit('other commit', rev_id='other')
+        # Merge and revert, leaving a pending merge
+        self.tree.merge_from_branch(other_tree.branch)
+        self.tree.revert(filenames=['other-file'], backups=False)
+
+    def _out_of_sync_trees(self):
+        self.make_local_branch_and_tree()
+        self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
+        # Make a change and commit it
+        self.build_tree_contents([('local/file', 'modified in local')])
+        self.tree.commit('modify file', rev_id='modified-in-local')
+        # Exercise commands from the checkout directory
+        self._default_wd = 'checkout'
+        self._default_errors = ["Working tree is out of date, please run"
+                                " 'bzr update'\.",]
+        self._default_pushed_revid = 'modified-in-local'
+
+    def test_push_default(self):
+        self.assertPushFails([])
+
+    def test_push_with_revision(self):
+        self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
+
+    def test_push_no_strict(self):
+        self.assertPushSucceeds(['--no-strict'])
+
+    def test_push_strict_with_changes(self):
+        self.assertPushFails(['--strict'])
+
+    def test_push_respect_config_var_strict(self):
+        self.set_config_push_strict('true')
+        self.assertPushFails([])
+
+    def test_push_bogus_config_var_ignored(self):
+        self.set_config_push_strict("I don't want you to be strict")
+        self.assertPushFails([])
+
+    def test_push_no_strict_command_line_override_config(self):
+        self.set_config_push_strict('yES')
+        self.assertPushFails([])
+        self.assertPushSucceeds(['--no-strict'])
+
+    def test_push_strict_command_line_override_config(self):
+        self.set_config_push_strict('oFF')
+        self.assertPushFails(['--strict'])
+        self.assertPushSucceeds([])

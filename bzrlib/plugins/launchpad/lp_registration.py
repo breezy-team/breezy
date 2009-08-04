@@ -15,8 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from getpass import getpass
 import os
+import socket
 from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
@@ -177,6 +177,10 @@ class LaunchpadService(object):
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
+        except socket.gaierror, e:
+            raise errors.ConnectionError(
+                "Could not resolve '%s'" % self.domain,
+                orig_error=e)
         return result
 
     @property
@@ -314,7 +318,7 @@ class ResolveLaunchpadPathRequest(BaseRequest):
     def __init__(self, path):
         if not path:
             raise errors.InvalidURL(path=path,
-                                    extra="You must specify a product.")
+                                    extra="You must specify a project.")
         self.path = path
 
     def _request_params(self):

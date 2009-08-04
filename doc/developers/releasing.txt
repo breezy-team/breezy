@@ -166,8 +166,7 @@ Now that the release is publicly available, tell people about it.
      
       The Bazaar team is happy to announce availability of a new 
       release of the bzr adaptive version control system.
-      Bazaar is part of the GNU project to develop a complete 
-      free software system.
+      Bazaar is part of the GNU system <http://gnu.org/>.
      
       Thanks to everyone who contributed patches, suggestions, and
       feedback.

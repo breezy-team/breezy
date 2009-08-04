@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1676,3 +1676,10 @@ def collapse_linear_regions(parent_map):
             removed.add(node)
 
     return result
+
+
+_counters = [0,0,0,0,0,0,0]
+try:
+    from bzrlib._known_graph_pyx import KnownGraph
+except ImportError:
+    from bzrlib._known_graph_py import KnownGraph

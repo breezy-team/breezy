@@ -70,7 +70,6 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
-    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -1234,7 +1233,7 @@ class BzrDir(object):
         return result
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False):
+        remember=False, create_prefix=False):
         """Push the source branch into this BzrDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -2358,7 +2357,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
-    def require_stacking(self, stack_on=None, possible_transports=None):
+    def require_stacking(self, stack_on=None, possible_transports=None,
+            _skip_repo=False):
         """We have a request to stack, try to ensure the formats support it.
 
         :param stack_on: If supplied, it is the URL to a branch that we want to
@@ -2402,7 +2402,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             target[:] = [target_branch, True, False]
             return target
 
-        if not (self.repository_format.supports_external_lookups):
+        if (not _skip_repo and
+                 not self.repository_format.supports_external_lookups):
             # We need to upgrade the Repository.
             target_branch, _, do_upgrade = get_target_branch()
             if target_branch is None:
@@ -3268,6 +3269,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             remote_repo = None
             policy = None
+        bzrdir._format.set_branch_format(self.get_branch_format())
+        if require_stacking:
+            # The repo has already been created, but we need to make sure that
+            # we'll make a stackable branch.
+            bzrdir._format.require_stacking(_skip_repo=True)
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
@@ -3449,8 +3455,9 @@ class BzrDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                    textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    '))
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
