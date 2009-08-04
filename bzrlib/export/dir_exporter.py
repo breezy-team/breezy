@@ -17,7 +17,7 @@
 """Export a Tree to a non-versioned directory.
 """
 
-
+import errno
 import os
 import StringIO
 
@@ -43,7 +43,15 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
            left in a half-assed state.
     """
     mutter('export version %r', tree)
-    os.mkdir(dest)
+    try:
+        os.mkdir(dest)
+    except OSError, e:
+        if e.errno == errno.EEXIST:
+            # check if directory empty
+            if os.listdir(dest) != []:
+                raise errors.BzrError("Can't export tree to non-empty directory.")
+        else:
+            raise
     for dp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":

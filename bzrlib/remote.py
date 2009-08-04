@@ -1817,8 +1817,17 @@ class RemoteStreamSource(repository.StreamSource):
         if (self.from_repository._fallback_repositories and
             self.to_format._fetch_order == 'topological'):
             return self._real_stream(self.from_repository, search)
-        return self.missing_parents_chain(search, [self.from_repository] +
-            self.from_repository._fallback_repositories)
+        sources = []
+        seen = set()
+        repos = [self.from_repository]
+        while repos:
+            repo = repos.pop(0)
+            if repo in seen:
+                continue
+            seen.add(repo)
+            repos.extend(repo._fallback_repositories)
+            sources.append(repo)
+        return self.missing_parents_chain(search, sources)
 
     def get_stream_for_missing_keys(self, missing_keys):
         self.from_repository._ensure_real()

@@ -2832,11 +2832,13 @@ class TestStacking(tests.TestCaseWithTransport):
                     result.append(content.key[-1])
         return result
 
-    def get_ordered_revs(self, format, order):
+    def get_ordered_revs(self, format, order, branch_factory=None):
         """Get a list of the revisions in a stream to format format.
 
         :param format: The format of the target.
         :param order: the order that target should have requested.
+        :param branch_factory: A callable to create a trunk and stacked branch
+            to fetch from. If none, self.prepare_stacked_remote_branch is used.
         :result: The revision ids in the stream, in the order seen,
             the topological order of revisions in the source.
         """
@@ -2844,7 +2846,9 @@ class TestStacking(tests.TestCaseWithTransport):
         target_repository_format = unordered_format.repository_format
         # Cross check
         self.assertEqual(order, target_repository_format._fetch_order)
-        trunk, stacked = self.prepare_stacked_remote_branch()
+        if branch_factory is None:
+            branch_factory = self.prepare_stacked_remote_branch
+        _, stacked = branch_factory()
         source = stacked.repository._get_source(target_repository_format)
         tip = stacked.last_revision()
         revs = stacked.repository.get_ancestry(tip)
@@ -2868,6 +2872,24 @@ class TestStacking(tests.TestCaseWithTransport):
         # Getting unordered results should have made a streaming data request
         # from the server, then one from the backing branch.
         self.assertLength(2, self.hpss_calls)
+
+    def test_stacked_on_stacked_get_stream_unordered(self):
+        # Repository._get_source.get_stream() from a stacked repository which
+        # is itself stacked yields the full data from all three sources.
+        def make_stacked_stacked():
+            _, stacked = self.prepare_stacked_remote_branch()
+            tree = stacked.bzrdir.sprout('tree3', stacked=True
+                ).open_workingtree()
+            tree.commit('more local changes are better')
+            branch = Branch.open(self.get_url('tree3'))
+            branch.lock_read()
+            return None, branch
+        rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
+            branch_factory=make_stacked_stacked)
+        self.assertEqual(set(expected_revs), set(rev_ord))
+        # Getting unordered results should have made a streaming data request
+        # from the server, and one from each backing repo
+        self.assertLength(3, self.hpss_calls)
 
     def test_stacked_get_stream_topological(self):
         # Repository._get_source.get_stream() from a stacked repository with

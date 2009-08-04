@@ -60,10 +60,20 @@ Bug Fixes
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
   fallback may be slow for some access patterns.)  (Nils Durner, #294709)
 
+* Encode the paths in ``mbcs`` encoding on Windows when spawning an
+  external diff client. This at least allows supporting filenames that are
+  not ascii, but are present in the current locale. Ideally we would be
+  able to pass the Unicode path, but that would be client dependent.
+  (John Arbash Meinel, #382709)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
   
+* Fixed export to existing directory: if directory is empty then export 
+  will succeed, otherwise it fails with error.
+  (Alexander Belchenko, #406174)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
 
@@ -78,6 +88,9 @@ Bug Fixes
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
   
+* Streaming from bzr servers where there is a chain of stacked branches
+  (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
+
 * StreamSource generates rich roots from non-rich root sources correctly
   now.  (Andrew Bennetts, #368921)
 
@@ -111,6 +124,11 @@ Improvements
   faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
   than VFS methods.  For example, pushes of small branches with tags take
   11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
+
+* Sending Ctrl-Break on Windows will now drop you into the debugger, in
+  the same way that sending Ctrl-\\ does on other platforms.
+  (John Arbash Meinel)
+
 
 Documentation
 *************
@@ -153,6 +171,19 @@ Internals
 
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
+
+Testing
+*******
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
+* The ``bzrlib.tests.TextTestRunner`` will no longer call
+  ``countTestsCases`` on the test being run. Progress information is
+  instead handled by having the test passed in call ``result.progress``
+  before running its contents. This improves the behaviour when using
+  ``TextTestRunner`` with test suites that don't support
+  ``countTestsCases``. (Robert Collins)
 
 
 bzr 1.17 "So late it's brunch" 2009-07-20

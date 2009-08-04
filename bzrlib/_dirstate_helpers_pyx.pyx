@@ -965,7 +965,6 @@ cdef class ProcessEntryC:
 
     cdef object old_dirname_to_file_id # dict
     cdef object new_dirname_to_file_id # dict
-    cdef readonly object uninteresting
     cdef object last_source_parent
     cdef object last_target_parent
     cdef object include_unchanged
@@ -1002,9 +1001,6 @@ cdef class ProcessEntryC:
         want_unversioned, tree):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
-        # Just a sentry, so that _process_entry can say that this
-        # record is handled, but isn't interesting to process (unchanged)
-        self.uninteresting = object()
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
@@ -1055,10 +1051,13 @@ cdef class ProcessEntryC:
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
             decode.
-        :return: None if the these don't match
-                 A tuple of information about the change, or
-                 the object 'uninteresting' if these match, but are
-                 basically identical.
+        :return: (iter_changes_result, changed). If the entry has not been
+            handled then changed is None. Otherwise it is False if no content
+            or metadata changes have occured, and None if any content or
+            metadata change has occured. If self.include_unchanged is True then
+            if changed is not None, iter_changes_result will always be a result
+            tuple. Otherwise, iter_changes_result is None unless changed is
+            True.
         """
         cdef char target_minikind
         cdef char source_minikind
@@ -1220,12 +1219,14 @@ cdef class ProcessEntryC:
                     self.last_target_parent[1] = target_parent_id
 
             source_exec = source_details[3]
-            if (self.include_unchanged
-                or content_change
+            changed = (content_change
                 or source_parent_id != target_parent_id
                 or old_basename != entry[0][1]
                 or source_exec != target_exec
-                ):
+                )
+            if not changed and not self.include_unchanged:
+                return None, False
+            else:
                 if old_path is None:
                     path = self.pathjoin(old_dirname, old_basename)
                     old_path = path
@@ -1245,9 +1246,7 @@ cdef class ProcessEntryC:
                        (source_parent_id, target_parent_id),
                        (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
                        (source_kind, target_kind),
-                       (source_exec, target_exec))
-            else:
-                return self.uninteresting
+                       (source_exec, target_exec)), changed
         elif source_minikind == c'a' and _versioned_minikind(target_minikind):
             # looks like a new file
             path = self.pathjoin(entry[0][0], entry[0][1])
@@ -1280,7 +1279,7 @@ cdef class ProcessEntryC:
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, path_info[2]),
-                       (None, target_exec))
+                       (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return (entry[0][2],
@@ -1290,7 +1289,7 @@ cdef class ProcessEntryC:
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
-                       (None, False))
+                       (None, False)), True
         elif _versioned_minikind(source_minikind) and target_minikind == c'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
@@ -1308,7 +1307,7 @@ cdef class ProcessEntryC:
                    (parent_id, None),
                    (self.utf8_decode(entry[0][1])[0], None),
                    (_minikind_to_kind(source_minikind), None),
-                   (source_details[3], None))
+                   (source_details[3], None)), True
         elif _versioned_minikind(source_minikind) and target_minikind == c'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
@@ -1327,7 +1326,7 @@ cdef class ProcessEntryC:
                 "source_minikind=%r, target_minikind=%r"
                 % (source_minikind, target_minikind))
             ## import pdb;pdb.set_trace()
-        return None
+        return None, None
 
     def __iter__(self):
         return self
@@ -1401,14 +1400,13 @@ cdef class ProcessEntryC:
         cdef char * current_dirname_c, * current_blockname_c
         cdef int advance_entry, advance_path
         cdef int path_handled
-        uninteresting = self.uninteresting
         searched_specific_files = self.searched_specific_files
         # Are we walking a root?
         while self.root_entries_pos < self.root_entries_len:
             entry = self.root_entries[self.root_entries_pos]
             self.root_entries_pos = self.root_entries_pos + 1
-            result = self._process_entry(entry, self.root_dir_info)
-            if result is not None and result is not self.uninteresting:
+            result, changed = self._process_entry(entry, self.root_dir_info)
+            if changed is not None and changed or self.include_unchanged:
                 return result
         # Have we finished the prior root, or never started one ?
         if self.current_root is None:
@@ -1457,10 +1455,10 @@ cdef class ProcessEntryC:
             while self.root_entries_pos < self.root_entries_len:
                 entry = self.root_entries[self.root_entries_pos]
                 self.root_entries_pos = self.root_entries_pos + 1
-                result = self._process_entry(entry, self.root_dir_info)
-                if result is not None:
+                result, changed = self._process_entry(entry, self.root_dir_info)
+                if changed is not None:
                     path_handled = -1
-                    if result is not self.uninteresting:
+                    if changed or self.include_unchanged:
                         return result
             # handle unversioned specified paths:
             if self.want_unversioned and not path_handled and self.root_dir_info:
@@ -1606,9 +1604,9 @@ cdef class ProcessEntryC:
                         self.current_block_pos = self.current_block_pos + 1
                         # entry referring to file not present on disk.
                         # advance the entry only, after processing.
-                        result = self._process_entry(current_entry, None)
-                        if result is not None:
-                            if result is not self.uninteresting:
+                        result, changed = self._process_entry(current_entry, None)
+                        if changed is not None:
+                            if changed or self.include_unchanged:
                                 return result
                     self.block_index = self.block_index + 1
                     self._update_current_block()
@@ -1675,10 +1673,8 @@ cdef class ProcessEntryC:
                     pass
                 elif current_path_info is None:
                     # no path is fine: the per entry code will handle it.
-                    result = self._process_entry(current_entry, current_path_info)
-                    if result is not None:
-                        if result is self.uninteresting:
-                            result = None
+                    result, changed = self._process_entry(current_entry,
+                        current_path_info)
                 else:
                     minikind = _minikind_from_string(
                         current_entry[1][self.target_index][0])
@@ -1699,19 +1695,16 @@ cdef class ProcessEntryC:
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result = self._process_entry(current_entry, None)
-                            if result is not None:
-                                if result is self.uninteresting:
-                                    result = None
+                            result, changed = self._process_entry(current_entry,
+                                None)
                             advance_path = 0
                     else:
                         # paths are the same,and the dirstate entry is not
                         # absent or renamed.
-                        result = self._process_entry(current_entry, current_path_info)
-                        if result is not None:
+                        result, changed = self._process_entry(current_entry,
+                            current_path_info)
+                        if changed is not None:
                             path_handled = -1
-                            if result is self.uninteresting:
-                                result = None
                 # >- loop control starts here:
                 # >- entry
                 if advance_entry and current_entry is not None:
