@@ -1020,7 +1020,7 @@ cdef class ProcessEntryC:
         if include_unchanged is None:
             self.include_unchanged = False
         else:
-            self.include_unchanged = include_unchanged
+            self.include_unchanged = int(include_unchanged)
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
         # for all search_indexs in each path at or under each element of
