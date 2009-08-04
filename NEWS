@@ -54,6 +54,12 @@ Bug Fixes
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
 
+* ``bzr send`` now generates valid bundles with ``--2a`` formats. However,
+  do to internal changes necessary to support this, older clients will
+  fail when trying to insert them. For newer clients, the bundle can be
+  used to apply the changes to any rich-root compatible format.
+  (John Arbash Meinel, #393349)
+
 * Cope with FTP servers that don't support restart/append by falling back
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
   fallback may be slow for some access patterns.)  (Nils Durner, #294709)

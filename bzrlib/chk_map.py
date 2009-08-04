@@ -60,6 +60,9 @@ _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
 
+def clear_cache():
+    _page_cache.clear()
+
 # If a ChildNode falls below this many bytes, we check for a remap
 _INTERESTING_NEW_SIZE = 50
 # If a ChildNode shrinks by more than this amount, we check for a remap
