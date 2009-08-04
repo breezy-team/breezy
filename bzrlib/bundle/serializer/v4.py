@@ -666,6 +666,9 @@ class RevisionInstaller(object):
         # be >5MB). Another possibility is to cache 10-20 inventory texts
         # instead
         inventory_text_cache = lru_cache.LRUSizeCache(10*1024*1024)
+        # Also cache the in-memory representation. This allows us to create
+        # inventory deltas to apply rather than calling add_inventory from
+        # scratch each time.
         inventory_cache = lru_cache.LRUCache(10)
         pb = ui.ui_factory.nested_progress_bar()
         try:
