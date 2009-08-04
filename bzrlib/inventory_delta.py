@@ -228,14 +228,11 @@ class InventoryDeltaSerializer(object):
             if newpath_utf8 == '/' and not self._versioned_root:
                 # This is an entry for the root, this inventory does not
                 # support versioned roots.  So this must be an unversioned
-                # root, i.e. id == TREE_ROOT and last_modified == new revision.
-                # Otherwise, this delta is nonsensical.
-                if file_id != 'TREE_ROOT':
-                    from bzrlib.trace import mutter
-                    mutter('delta_item: %r', delta_item)
-                    mutter('self._versioned_root: %r', self._versioned_root)
-                    raise errors.BzrError(
-                        'file_id %s is not TREE_ROOT for /' % file_id)
+                # root, i.e. last_modified == new revision.  Otherwise, this
+                # delta is invalid.
+                # Note: the non-rich-root repositories *can* have roots with
+                # file-ids other than TREE_ROOT, e.g. repo formats that use the
+                # xml5 serializer.
                 if last_modified != new_version:
                     raise errors.BzrError(
                         'Version present for / in %s (%s != %s)'
@@ -308,14 +305,15 @@ class InventoryDeltaSerializer(object):
                 raise errors.BzrError(
                     "duplicate file id in inventory delta %r" % lines)
             seen_ids.add(file_id)
-            if newpath_utf8 == '/' and not delta_versioned_root and (
-                last_modified != delta_version_id or file_id != 'TREE_ROOT'):
+            if (newpath_utf8 == '/' and not delta_versioned_root and
+                last_modified != delta_version_id):
                     # Delta claims to be not rich root, yet here's a root entry
-                    # with either a non-default ID or a non-default version,
-                    # i.e.  it's rich...
+                    # with either non-default version, i.e. it's rich...
                     raise errors.BzrError("Versioned root found: %r" % line)
-            elif last_modified[-1] == ':':
-                    raise errors.BzrError('special revisionid found: %r' % line)
+            elif newpath_utf8 != 'None' and last_modified[-1] == ':':
+                # Deletes have a last_modified of null:, but otherwise special
+                # revision ids should not occur.
+                raise errors.BzrError('special revisionid found: %r' % line)
             if delta_tree_references is False and content.startswith('tree\x00'):
                 raise errors.BzrError("Tree reference found: %r" % line)
             if oldpath_utf8 == 'None':
@@ -338,8 +336,13 @@ class InventoryDeltaSerializer(object):
                 newpath_utf8 = newpath_utf8[1:]
                 newpath = newpath_utf8.decode('utf8')
             content_tuple = tuple(content.split('\x00'))
-            entry = _parse_entry(
-                newpath_utf8, file_id, parent_id, last_modified, content_tuple)
+            if content_tuple[0] == 'deleted':
+                # XXX: No test coverage for deletes!!!
+                entry = None
+            else:
+                entry = _parse_entry(
+                    newpath_utf8, file_id, parent_id, last_modified,
+                    content_tuple)
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
         return (delta_parent_id, delta_version_id, delta_versioned_root,

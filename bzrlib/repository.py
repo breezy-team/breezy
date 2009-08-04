@@ -4055,7 +4055,12 @@ class StreamSink(object):
             if rich_root and not target_rich_root:
                 raise errors.IncompatibleRevision(self.target_repo._format)
             if tree_refs and not target_tree_refs:
-                raise errors.IncompatibleRevision(self.target_repo._format)
+                # The source supports tree refs and the target doesn't.  Check
+                # the delta for tree refs; if it has any we can't insert it.
+                for delta_item in inv_delta:
+                    entry = delta_item[3]
+                    if entry.kind == 'tree-reference':
+                        raise errors.IncompatibleRevision(self.target_repo._format)
             #revision_id = new_id[0]
             revision_id = new_id
             parents = [key[0] for key in record.parents]

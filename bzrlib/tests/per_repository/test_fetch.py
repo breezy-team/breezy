@@ -302,10 +302,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.fetch(tree.branch.repository)
 
     def make_simple_branch_with_ghost(self):
-        builder = self.make_branch_builder('source')
+        builder = self.make_branch_builder('source', automatic_root=True)
         builder.start_series()
         builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))])
         builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
         builder.finish_series()
