@@ -86,11 +86,19 @@ class ForeignBranchTests(object):
         self.assertRaises(UnstackableBranchFormat, 
                           self.branch.get_stacked_on_url)
 
+    def test_get_physical_lock_status(self):
+        self.assertFalse(self.branch.get_physical_lock_status())
+
 
 class ForeignBranchFormatTests(object):
     """Basic tests for foreign branch format objects."""
 
     def test_initialize(self):
+        """Test this format is not initializable.
+        
+        Remote branches may be initializable on their own, but not in 
+        .bzr/branch.
+        """
         self.assertRaises(NotImplementedError, self.format.initialize, None)
 
     def test_get_format_description_type(self):
