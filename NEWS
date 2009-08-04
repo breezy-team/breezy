@@ -175,6 +175,11 @@ Internals
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
 
+* The Windows all-in-one installer now bundles the PyQt image format
+  plugins, which allows previewing more images as part of 'qdiff'.
+  (Alexander Belchenko)
+
+
 Testing
 *******
 
