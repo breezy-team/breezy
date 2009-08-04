@@ -84,7 +84,7 @@ class TreeTransformBase(object):
 
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
-        :param pb: A ProgressBar indicating how much progress is being made
+        :param pb: A ProgressTask indicating how much progress is being made
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """

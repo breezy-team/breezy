@@ -753,12 +753,6 @@ class TestUIFactory(TextUIFactory):
             stdin = StringIOWrapper(stdin)
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
-    def make_progress_view(self):
-        return NullProgressView()
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
-
     def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
         password = self.stdin.readline()
@@ -767,6 +761,9 @@ class TestUIFactory(TextUIFactory):
         if password[-1] == '\n':
             password = password[:-1]
         return password
+
+    def make_progress_view(self):
+        return NullProgressView()
 
 
 class TestCase(unittest.TestCase):
