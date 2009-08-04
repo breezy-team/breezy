@@ -175,6 +175,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._strict = strict
 
     def done(self):
+        # nb: called stopTestRun in the version of this that Python merged
+        # upstream, according to lifeless 20090803
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
@@ -397,20 +399,34 @@ class TextTestResult(ExtendedTestResult):
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, strict)
-        if pb is None:
-            self.pb = self.ui.nested_progress_bar()
-            self._supplied_pb = False
-        else:
-            self.pb = pb
-            self._supplied_pb = True
+        # We no longer pass them around, but just rely on the UIFactory stack
+        # for state
+        if pb is not None:
+            warnings.warn("Passing pb to TextTestResult is deprecated")
+        self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
+        self.pb.update_latency = 0
+        self.pb.show_transport_activity = False
+
+    def done(self):
+        # called when the tests that are going to run have run
+        self.pb.clear()
+        super(TextTestResult, self).done()
+
+    def finished(self):
+        self.pb.finished()
 
     def report_starting(self):
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -476,10 +492,6 @@ class TextTestResult(ExtendedTestResult):
 
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
-
-    def finished(self):
-        if not self._supplied_pb:
-            self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -724,6 +736,9 @@ class TestUIFactory(TextUIFactory):
     See also CannedInputUIFactory which lets you provide programmatic input in
     a structured way.
     """
+    # TODO: Capture progress events at the model level and allow them to be
+    # observed by tests that care.
+    #
     # XXX: Should probably unify more with CannedInputUIFactory or a
     # particular configuration of TextUIFactory, or otherwise have a clearer
     # idea of how they're supposed to be different.

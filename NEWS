@@ -30,6 +30,11 @@ Bug Fixes
   There are still some complex scenarios where it will fail (bug #399884)
   (John Arbash Meinel, #393366)
 
+* A progress bar is no longer left dangling when ``bzr selftest``
+  completes, and the progress bar updates with zero latency so the
+  displayed test name is always the one that's actually running.
+  (Martin Pool, #123688)
+
 * Authenticating against an ssh server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
@@ -73,6 +78,9 @@ Bug Fixes
 
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
+
+* Fixed spurious transport activity indicator appearing while tests are
+  running.  (Martin Pool, #343532)
 
 * Merge now correctly handles empty right-hand revision specs.
   (Aaron Bentley, #333961)
@@ -142,6 +150,9 @@ API Changes
 
 * New TransformPreview.commit() allows committing without a working tree.
   (Aaron Bentley)
+
+* ``pb`` parameter to ``TextTestResult`` is deprecated and ignored.
+  (Martin Pool)
 
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
