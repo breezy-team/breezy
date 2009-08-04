@@ -14,6 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+
+"""Tests specific to Branch implementations that use foreign VCS'es."""
+
+
 from bzrlib.errors import (
     UnstackableBranchFormat,
     )
@@ -25,8 +29,8 @@ from bzrlib.revision import (
 class ForeignBranchTests(object):
     """Basic tests for foreign branch implementations.
     
-    These tests mainly make sure that foreign branch implementations implement 
-    all of the API to some degree. 
+    These tests mainly make sure that the implementation covers the required 
+    bits of the API and returns reasonable values. 
     """
 
     def test_set_parent(self):
@@ -89,6 +93,13 @@ class ForeignBranchTests(object):
     def test_get_physical_lock_status(self):
         self.assertFalse(self.branch.get_physical_lock_status())
 
+    def test_last_revision(self):
+        (revno, revid) = self.branch.last_revision_info()
+        self.assertIsInstance(revno, int)
+        self.assertIsInstance(revid, str)
+        self.assertEquals(revno, self.branch.revision_id_to_revno(revid))
+        self.assertEquals(revid, self.branch.last_revision())
+
 
 class ForeignBranchFormatTests(object):
     """Basic tests for foreign branch format objects."""
@@ -96,8 +107,8 @@ class ForeignBranchFormatTests(object):
     def test_initialize(self):
         """Test this format is not initializable.
         
-        Remote branches may be initializable on their own, but not in 
-        .bzr/branch.
+        Remote branches may be initializable on their own, but none currently
+        support living in .bzr/branch.
         """
         self.assertRaises(NotImplementedError, self.format.initialize, None)
 
