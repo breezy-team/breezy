@@ -321,18 +321,32 @@ class BundleWriteOperation(object):
                                 inv_vf, self.revision_keys)]
         revision_order = topological_order
         if self.target is not None and self.target in self.revision_ids:
-            # Make sure the target is always the last entry
+            # Make sure the target revision is always the last entry
             revision_order = list(topological_order)
             revision_order.remove(self.target)
             revision_order.append(self.target)
         if self.repository._serializer.support_altered_by_hack:
+            # Repositories that support_altered_by_hack means that
+            # inventories.make_mpdiffs() contains all the data about the tree
+            # shape. Formats without support_altered_by_hack require
+            # chk_bytes/etc, so we use a different code path.
             self._add_mp_records_keys('inventory', inv_vf,
                                       [(revid,) for revid in topological_order])
         else:
+            # Inventories should always be added in pure-topological order, so
+            # that we can apply the mpdiff for the child to the parent texts.
             self._add_inventory_mpdiffs_from_serializer(topological_order)
         self._add_revision_texts(revision_order)
 
     def _add_inventory_mpdiffs_from_serializer(self, revision_order):
+        """Generate mpdiffs by serializing inventories.
+
+        The current repository only has part of the tree shape information in
+        the 'inventories' vf. So we use serializer.write_inventory_to_string to
+        get a 'full' representation of the tree shape, and then generate
+        mpdiffs on that data stream. This stream can then be reconstructed on
+        the other side.
+        """
         inventory_key_order = [(r,) for r in revision_order]
         parent_map = self.repository.inventories.get_parent_map(
                             inventory_key_order)
