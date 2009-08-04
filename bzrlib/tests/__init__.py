@@ -732,6 +732,8 @@ class TestUIFactory(TextUIFactory):
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
     """
+    # TODO: Capture progress events at the model level and allow them to be
+    # observed by tests that care.
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
