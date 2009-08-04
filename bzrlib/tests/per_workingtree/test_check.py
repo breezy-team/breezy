@@ -19,7 +19,7 @@
 from bzrlib import (
     tests,
     )
-from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
+from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestCheck(TestCaseWithWorkingTree):
