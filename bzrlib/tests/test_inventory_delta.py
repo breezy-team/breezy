@@ -281,6 +281,16 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         self.assertEqual(
              (None, u'new', 'file-id', expected_entry), delta[-1])
 
+    def test_parse_delete(self):
+        lines = root_only_lines
+        lines += (
+            "/old-file\x00None\x00deleted-id\x00\x00null:\x00deleted\x00\x00\n")
+        serializer = inventory_delta.InventoryDeltaSerializer()
+        parse_result = serializer.parse_text_bytes(lines)
+        delta = parse_result[4]
+        self.assertEqual(
+             (u'old-file', None, 'deleted-id', None), delta[-1])
+
 
 class TestSerialization(TestCase):
     """Tests for InventoryDeltaSerializer.delta_to_lines."""
