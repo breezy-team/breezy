@@ -32,6 +32,7 @@ from bzrlib import (
     errors,
     graph,
     inventory,
+    inventory_delta,
     pack,
     remote,
     repository,
@@ -2288,8 +2289,8 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         self.assertEqual(set(), missing_keys)
         self.assertFinished(client)
 
-    def test_stream_with_inventory_delta(self):
-        """inventory-delta records can't be sent to the
+    def test_stream_with_inventory_deltas(self):
+        """'inventory-deltas' substreams can't be sent to the
         Repository.insert_stream verb.  So when one is encountered the
         RemoteSink immediately stops using that verb and falls back to VFS
         insert_stream.
@@ -2328,7 +2329,7 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         # Every record from the first inventory delta should have been sent to
         # the VFS sink.
         expected_records = [
-            ('inventories', [('rev2',), ('rev3',)]),
+            ('inventory-deltas', [('rev2',), ('rev3',)]),
             ('texts', [('some-rev', 'some-file')])]
         self.assertEqual(expected_records, fake_real_sink.records)
         # The return values from the real sink's insert_stream are propagated
@@ -2348,27 +2349,34 @@ class TestRepositoryInsertStream(TestRemoteRepository):
            * texts substream: (some-rev, some-file)
         """
         # Define a stream using generators so that it isn't rewindable.
+        inv = inventory.Inventory(revision_id='rev1')
         def stream_with_inv_delta():
-            yield ('inventories', inventory_substream_with_delta())
+            yield ('inventories', inventories_substream())
+            yield ('inventory-deltas', inventory_delta_substream())
             yield ('texts', [
                 versionedfile.FulltextContentFactory(
                     ('some-rev', 'some-file'), (), None, 'content')])
-        def inventory_substream_with_delta():
+        def inventories_substream():
             # An empty inventory fulltext.  This will be streamed normally.
-            inv = inventory.Inventory(revision_id='rev1')
             text = fmt._serializer.write_inventory_to_string(inv)
             yield versionedfile.FulltextContentFactory(
                 ('rev1',), (), None, text)
+        def inventory_delta_substream():
             # An inventory delta.  This can't be streamed via this verb, so it
             # will trigger a fallback to VFS insert_stream.
             entry = inv.make_entry(
                 'directory', 'newdir', inv.root.file_id, 'newdir-id')
+            entry.revision = 'ghost'
             delta = [(None, 'newdir', 'newdir-id', entry)]
-            yield versionedfile.InventoryDeltaContentFactory(
-                ('rev2',), (('rev1',)), None, ('rev1',), (True, False), None)
+            serializer = inventory_delta.InventoryDeltaSerializer()
+            serializer.require_flags(True, False)
+            lines = serializer.delta_to_lines('rev1', 'rev2', delta)
+            yield versionedfile.ChunkedContentFactory(
+                ('rev2',), (('rev1',)), None, lines)
             # Another delta.
-            yield versionedfile.InventoryDeltaContentFactory(
-                ('rev3',), (('rev1',)), None, ('rev1',), (True, False), None)
+            lines = serializer.delta_to_lines('rev1', 'rev3', delta)
+            yield versionedfile.ChunkedContentFactory(
+                ('rev3',), (('rev1',)), None, lines)
         return stream_with_inv_delta()
 
 
