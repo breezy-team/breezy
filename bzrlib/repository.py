@@ -4055,7 +4055,6 @@ class StreamSink(object):
             deserialiser = inventory_delta.InventoryDeltaSerializer()
             parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
-            #mutter('inv_delta: %r', inv_delta)
             # Make sure the delta is compatible with the target
             if rich_root and not target_rich_root:
                 raise errors.IncompatibleRevision(self.target_repo._format)
@@ -4065,8 +4064,8 @@ class StreamSink(object):
                 for delta_item in inv_delta:
                     entry = delta_item[3]
                     if entry.kind == 'tree-reference':
-                        raise errors.IncompatibleRevision(self.target_repo._format)
-            #revision_id = new_id[0]
+                        raise errors.IncompatibleRevision(
+                            self.target_repo._format)
             revision_id = new_id
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory_by_delta(
