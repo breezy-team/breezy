@@ -137,6 +137,18 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 ; ]]]
 ; [[[end]]]
 
+; imageformats plugins for PyQt4
+; [[[cog
+; plug_dir = os.path.join(os.path.dirname(cog.inFile), # $(bzr_src_root)/tools/win32
+;                         '..', '..', 'win32_bzr.exe', 'imageformats')
+; if os.path.isdir(plug_dir):
+;     cog.outl('Source: "imageformats\\*.*"; DestDir: "{app}\\imageformats"; '
+;              'Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;')
+; else:
+;     cog.msg('imageformats plugins for PyQt4 not found')
+; ]]]
+; [[[end]]]
+
 [Types]
 Name: "typical"; Description: "A typical installation"
 Name: "full"; Description: "Full Installation (typical installation plus test utilities)"

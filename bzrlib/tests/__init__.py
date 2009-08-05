@@ -102,6 +102,7 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
@@ -174,6 +175,8 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._strict = strict
 
     def done(self):
+        # nb: called stopTestRun in the version of this that Python merged
+        # upstream, according to lifeless 20090803
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
@@ -396,20 +399,34 @@ class TextTestResult(ExtendedTestResult):
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
             bench_history, strict)
-        if pb is None:
-            self.pb = self.ui.nested_progress_bar()
-            self._supplied_pb = False
-        else:
-            self.pb = pb
-            self._supplied_pb = True
+        # We no longer pass them around, but just rely on the UIFactory stack
+        # for state
+        if pb is not None:
+            warnings.warn("Passing pb to TextTestResult is deprecated")
+        self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
+        self.pb.update_latency = 0
+        self.pb.show_transport_activity = False
+
+    def done(self):
+        # called when the tests that are going to run have run
+        self.pb.clear()
+        super(TextTestResult, self).done()
+
+    def finished(self):
+        self.pb.finished()
 
     def report_starting(self):
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -475,10 +492,6 @@ class TextTestResult(ExtendedTestResult):
 
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
-
-    def finished(self):
-        if not self._supplied_pb:
-            self.pb.finished()
 
 
 class VerboseTestResult(ExtendedTestResult):
@@ -719,7 +732,17 @@ class TestUIFactory(TextUIFactory):
     Hide the progress bar but emit note()s.
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
+
+    See also CannedInputUIFactory which lets you provide programmatic input in
+    a structured way.
     """
+    # TODO: Capture progress events at the model level and allow them to be
+    # observed by tests that care.
+    #
+    # XXX: Should probably unify more with CannedInputUIFactory or a
+    # particular configuration of TextUIFactory, or otherwise have a clearer
+    # idea of how they're supposed to be different.
+    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -730,30 +753,6 @@ class TestUIFactory(TextUIFactory):
             stdin = StringIOWrapper(stdin)
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressBar.finished()."""
-
-    def note(self, fmt_string, *args):
-        """See progress.ProgressBar.note()."""
-        if args:
-            fmt_string = fmt_string % args
-        self.stdout.write(fmt_string + "\n")
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        return self
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
-
     def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
         password = self.stdin.readline()
@@ -762,6 +761,9 @@ class TestUIFactory(TextUIFactory):
         if password[-1] == '\n':
             password = password[:-1]
         return password
+
+    def make_progress_view(self):
+        return NullProgressView()
 
 
 class TestCase(unittest.TestCase):

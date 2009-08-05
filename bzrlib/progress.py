@@ -69,6 +69,15 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
+    
+    :ivar update_latency: The interval (in seconds) at which the PB should be
+        updated.  Setting this to zero suggests every update should be shown
+        synchronously.
+
+    :ivar show_transport_activity: If true (default), transport activity
+        will be shown when this task is drawn.  Disable it if you're sure 
+        that only irrelevant or uninteresting transport activity can occur
+        during this task.
     """
 
     def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
@@ -97,6 +106,8 @@ class ProgressTask(object):
         self.show_eta = False,
         self.show_count = True
         self.show_bar = True
+        self.update_latency = 0.1
+        self.show_transport_activity = True
 
     def __repr__(self):
         return '%s(%r/%r, msg=%r)' % (
@@ -163,7 +174,10 @@ class ProgressTask(object):
 
 @deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
-    """Abstract factory"""
+    """Construct a progress bar.
+
+    Deprecated; ask the ui_factory for a progress task instead.
+    """
     if to_file is None:
         to_file = sys.stderr
     requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')

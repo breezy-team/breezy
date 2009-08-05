@@ -3669,7 +3669,7 @@ class InterDifferingSerializer(InterRepository):
 
         :param revision_ids: The list of revisions to fetch. Must be in
             topological order.
-        :param pb: A ProgressBar
+        :param pb: A ProgressTask
         :return: None
         """
         basis_id, basis_tree = self._get_basis(revision_ids[0])
