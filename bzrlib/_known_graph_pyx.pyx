@@ -400,3 +400,49 @@ cdef class KnownGraph:
         if self.do_cache:
             PyDict_SetItem(self._known_heads, heads_key, heads)
         return heads
+
+    def topo_sort(self):
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        # This is, for the most part, the same iteration order that we used for
+        # _find_gdfo, consider finding a way to remove the duplication
+        # In general, we find the 'tails' (nodes with no parents), and then
+        # walk to the children. For children that have all of their parents
+        # yielded, we queue up the child to be yielded as well.
+        cdef _KnownGraphNode node
+        cdef _KnownGraphNode child
+        cdef PyObject *temp
+        cdef Py_ssize_t pos
+        cdef int replace
+        cdef Py_ssize_t last_item
+
+        pending = self._find_tails()
+
+        topo_order = []
+
+        last_item = PyList_GET_SIZE(pending) - 1
+        while last_item >= 0:
+            # Avoid pop followed by push, instead, peek, and replace
+            # timing shows this is 930ms => 770ms for OOo
+            node = _get_list_node(pending, last_item)
+            PyList_Append(topo_order, node.key)
+            last_item = last_item - 1
+            for pos from 0 <= pos < PyList_GET_SIZE(node.children):
+                child = _get_list_node(node.children, pos)
+                child.seen = child.seen + 1
+                if child.seen == PyTuple_GET_SIZE(child.parents):
+                    # All parents of this child have been yielded, queue this
+                    # one to be yielded as well
+                    last_item = last_item + 1
+                    if last_item < PyList_GET_SIZE(pending):
+                        Py_INCREF(child) # SetItem steals a ref
+                        PyList_SetItem(pending, last_item, child)
+                    else:
+                        PyList_Append(pending, child)
+                    # We have queued this node, we don't need to track it
+                    # anymore
+                    child.seen = 0
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
