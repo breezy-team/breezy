@@ -3542,6 +3542,10 @@ class InterDifferingSerializer(InterRepository):
         if (source._format.supports_tree_reference
             and not target._format.supports_tree_reference):
             return False
+        if target._fallback_repositories and target._format.supports_chks:
+            # IDS doesn't know how to copy CHKs for the parent inventories it
+            # adds to stacked repos.
+            return False
         if 'IDS:always' in debug.debug_flags:
             return True
         # Only use this code path for local source and target.  IDS does far
