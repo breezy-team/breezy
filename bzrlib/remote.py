@@ -1619,9 +1619,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.revision_graph_can_have_wrong_parents()
 
-    def _find_inconsistent_revision_parents(self):
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         self._ensure_real()
-        return self._real_repository._find_inconsistent_revision_parents()
+        return self._real_repository._find_inconsistent_revision_parents(
+            revisions_iterator)
 
     def _check_for_inconsistent_revision_parents(self):
         self._ensure_real()
