@@ -21,7 +21,6 @@ from bzrlib import (
     commit,
     errors,
     memorytree,
-    revision as _mod_revision,
     )
 
 
@@ -57,8 +56,7 @@ class BranchBuilder(object):
         a series in progress, it should be None.
     """
 
-    def __init__(self, transport=None, format=None, branch=None,
-            automatic_root=False):
+    def __init__(self, transport=None, format=None, branch=None):
         """Construct a BranchBuilder on transport.
 
         :param transport: The transport the branch should be created on.
@@ -68,11 +66,6 @@ class BranchBuilder(object):
             bzrdir format registry for the branch to be built.
         :param branch: An already constructed branch to use.  This param is
             mutually exclusive with the transport and format params.
-        :param automatic_root: if True, a root entry will be created
-            automatically.  The rich-root support of the branch's repository is
-            taken into account when automatically creating a root.  Pass False
-            if you want to add the root explicitly (and handle rich-root vs.
-            not manually).
         """
         if branch is not None:
             if format is not None:
@@ -92,7 +85,6 @@ class BranchBuilder(object):
             self._branch = bzrdir.BzrDir.create_branch_convenience(
                 transport.base, format=format, force_new_tree=False)
         self._tree = None
-        self._automatic_root = automatic_root
 
     def build_commit(self, **commit_kwargs):
         """Build a commit on the branch.
@@ -206,20 +198,6 @@ class BranchBuilder(object):
             if parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-            elif self._branch.last_revision() == _mod_revision.NULL_REVISION:
-                if self._automatic_root:
-                    # No parent revision, and automatic_root.  Create an
-                    # appropriate root entry.
-                    if self._branch.repository.supports_rich_root():
-                        from bzrlib.generate_ids import gen_root_id
-                        new_root_id = gen_root_id()
-                    else:
-                        from bzrlib.inventory import ROOT_ID
-                        new_root_id = ROOT_ID
-                    add_root_action = (
-                        'add', ('', new_root_id, 'directory', None))
-                    actions = [add_root_action] + list(actions)
-
             # Unfortunately, MemoryTree.add(directory) just creates an
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but

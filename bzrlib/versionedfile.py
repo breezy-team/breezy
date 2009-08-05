@@ -34,8 +34,6 @@ from bzrlib import (
     errors,
     groupcompress,
     index,
-    inventory,
-    inventory_delta,
     knit,
     osutils,
     multiparent,
