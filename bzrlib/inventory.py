@@ -592,16 +592,16 @@ class InventoryLink(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id):
+    def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
         if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
             checker._report_items.append(
                'symlink {%s} has text in revision {%s}'
-                    % (self.file_id, rev_id))
+                    % (self.file_id, tree_revision_id))
         if self.symlink_target is None:
             checker._report_items.append(
                 'symlink {%s} has no target in revision {%s}'
-                    % (self.file_id, rev_id))
+                    % (self.file_id, tree_revision_id))
         # Symlinks are stored as ''
         checker.add_pending_item(tree_revision_id,
             ('texts', self.file_id, self.revision), 'text',

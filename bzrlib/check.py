@@ -402,6 +402,11 @@ def scan_tree(base_tree, tree, needed_refs, to_unlock):
 
 
 def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
+    """Check multiple objects.
+
+    If errors occur they are accumulated and reported as far as possible, and
+    an exception raised at the end of the process.
+    """
     try:
         base_tree, branch, repo, relpath = \
                         BzrDir.open_containing_tree_branch_or_repository(path)
