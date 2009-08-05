@@ -337,7 +337,6 @@ class InventoryDeltaSerializer(object):
                 newpath = newpath_utf8.decode('utf8')
             content_tuple = tuple(content.split('\x00'))
             if content_tuple[0] == 'deleted':
-                # XXX: No test coverage for deletes!!!
                 entry = None
             else:
                 entry = _parse_entry(

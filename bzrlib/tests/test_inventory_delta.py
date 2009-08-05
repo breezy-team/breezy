@@ -178,11 +178,11 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
         serializer = inventory_delta.InventoryDeltaSerializer()
         serializer.require_flags(versioned_root=False, tree_references=True)
         root_only_lines = """format: bzr inventory delta v1 (bzr 1.14)
-parent: null:
-version: null:
+parent: parent-id
+version: a@e\xc3\xa5ample.com--2004
 versioned_root: false
 tree_references: true
-None\x00/\x00an-id\x00\x00null:\x00dir\x00\x00
+None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
 """
         err = self.assertRaises(errors.BzrError,
             serializer.parse_text_bytes, root_only_lines)
@@ -373,19 +373,6 @@ class TestSerialization(TestCase):
         err = self.assertRaises(errors.BzrError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
         self.assertStartsWith(str(err), 'Version present for / in TREE_ROOT')
-
-    def test_nonrichroot_non_TREE_ROOT_id_errors(self):
-        old_inv = Inventory(None)
-        new_inv = Inventory(None)
-        root = new_inv.make_entry('directory', '', None, 'my-rich-root-id')
-        new_inv.add(root)
-        delta = new_inv._make_delta(old_inv)
-        serializer = inventory_delta.InventoryDeltaSerializer()
-        serializer.require_flags(versioned_root=False, tree_references=True)
-        err = self.assertRaises(errors.BzrError,
-            serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(
-            str(err), 'file_id my-rich-root-id is not TREE_ROOT for /')
 
     def test_unknown_kind_errors(self):
         old_inv = Inventory(None)
