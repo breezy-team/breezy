@@ -1069,8 +1069,10 @@ class Repository(object):
         check_content=True):
         """Store lines in inv_vf and return the sha1 of the inventory."""
         parents = [(parent,) for parent in parents]
-        return self.inventories.add_lines((revision_id,), parents, lines,
+        result = self.inventories.add_lines((revision_id,), parents, lines,
             check_content=check_content)[0]
+        self.inventories._access.flush()
+        return result
 
     def add_revision(self, revision_id, rev, inv=None, config=None):
         """Add rev to the revision store as revision_id.
@@ -4264,17 +4266,19 @@ class StreamSource(object):
 
     def _get_inventory_stream(self, revision_ids, missing=False):
         from_format = self.from_repository._format
-        if from_format.network_name() == self.to_format.network_name():
-            return self._get_simple_inventory_stream(revision_ids,
-                    missing=missing)
-        if (not from_format.supports_chks and not self.to_format.supports_chks
-                and from_format._serializer == self.to_format._serializer):
-            return self._get_simple_inventory_stream(revision_ids,
-                    missing=missing)
-        elif (from_format.supports_chks and self.to_format.supports_chks and
+        if (from_format.supports_chks and self.to_format.supports_chks and
             from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
+        elif from_format.network_name() == self.to_format.network_name():
+            # Same format.
+            return self._get_simple_inventory_stream(revision_ids,
+                    missing=missing)
+        elif (not from_format.supports_chks and not self.to_format.supports_chks
+                and from_format._serializer == self.to_format._serializer):
+            # Essentially the same format.
+            return self._get_simple_inventory_stream(revision_ids,
+                    missing=missing)
         else:
             # Any time we switch serializations, we want to use an
             # inventory-delta based approach.
