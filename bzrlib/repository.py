@@ -3535,12 +3535,15 @@ class InterDifferingSerializer(InterRepository):
         # This is redundant with format.check_conversion_target(), however that
         # raises an exception, and we just want to say "False" as in we won't
         # support converting between these formats.
-        return False
+        if 'IDS:never' in debug.debug_flags:
+            return False
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
         if (source._format.supports_tree_reference
             and not target._format.supports_tree_reference):
             return False
+        if 'IDS:always' in debug.debug_flags:
+            return True
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.
         if not source.bzrdir.transport.base.startswith('file:///'):
@@ -4226,8 +4229,6 @@ class StreamSource(object):
             if not keys:
                 # No need to stream something we don't have
                 continue
-            if substream_kind == 'inventory-deltas':
-                XXX
             if substream_kind == 'inventories':
                 # Some missing keys are genuinely ghosts, filter those out.
                 present = self.from_repository.inventories.get_parent_map(keys)
@@ -4270,6 +4271,9 @@ class StreamSource(object):
             from_format.network_name() == self.to_format.network_name()):
             raise AssertionError(
                 "this case should be handled by GroupCHKStreamSource")
+        elif 'forceinvdeltas' in debug.debug_flags:
+            return self._get_convertable_inventory_stream(revision_ids,
+                    delta_versus_null=missing)
         elif from_format.network_name() == self.to_format.network_name():
             # Same format.
             return self._get_simple_inventory_stream(revision_ids,
