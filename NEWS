@@ -70,6 +70,9 @@ Bug Fixes
   able to pass the Unicode path, but that would be client dependent.
   (John Arbash Meinel, #382709)
 
+* Fix a compile bug on Solaris having to do with const and
+  pointer-to-pointers. (John Arbash Meinel, #408441)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
