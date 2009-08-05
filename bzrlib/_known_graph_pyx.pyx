@@ -51,6 +51,71 @@ cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION
 
 
+def topo_sort(graph):
+    cdef Py_ssize_t last_tip, pos
+    cdef PyObject *temp_key, *temp_value
+
+    graph = dict(graph)
+    # this is the stack storing on which the sorted nodes are pushed.
+    node_name_stack = []
+
+    # count the number of children for every node in the graph
+    num_children = dict.fromkeys(graph.iterkeys(), 0)
+    pos = 0
+    while PyDict_Next(graph, &pos, NULL, &temp_value):
+        parents = <object>temp_value
+        for parent in parents: # pretty sure this is a tuple
+            temp_value = PyDict_GetItem(num_children, parent)
+            if temp_value != NULL: # Ignore ghosts
+                n = (<object>temp_value) + 1
+                PyDict_SetItem(num_children, parent, n)
+    # keep track of nodes without children in a separate list
+    tips = []
+    pos = 0
+    while PyDict_Next(num_children, &pos, &temp_key, &temp_value):
+        value = <object>temp_value
+        if value == 0:
+            node_name = <object>temp_key
+            PyList_Append(tips, node_name)
+
+    graph_pop = graph.pop
+    last_tip = len(tips) - 1
+    while last_tip >= 0:
+        # pick a node without a child and add it to the stack.
+        temp_key = PyList_GET_ITEM(tips, last_tip)
+        node_name = <object>temp_key
+        last_tip -= 1
+        PyList_Append(node_name_stack, node_name)
+
+        # the parents of the node lose it as a child; if it was the last
+        # child, add the parent to the list of childless nodes.
+        parents = graph_pop(node_name)
+        for parent in parents:
+            temp_value = PyDict_GetItem(num_children, parent)
+            if temp_value == NULL:
+                # Ghost parent, skip it
+                continue
+            n = (<object>temp_value) - 1
+            PyDict_SetItem(num_children, parent, n)
+            if n == 0:
+                last_tip += 1
+                if PyList_GET_SIZE(tips) > last_tip:
+                    Py_INCREF(parent)
+                    PyList_SetItem(tips, last_tip, parent)
+                else:
+                    PyList_Append(tips, parent)
+
+    # if there are still nodes left in the graph,
+    # that means that there is a cycle
+    if graph:
+        raise errors.GraphCycleError(graph)
+
+    # the nodes where pushed on the stack child first, so this list needs to be
+    # reversed before returning it.
+    node_name_stack.reverse()
+    return node_name_stack
+
+
 cdef class _KnownGraphNode:
     """Represents a single object in the known graph."""
 

@@ -48,27 +48,44 @@ def topo_sort(graph):
     node_name_stack = []
 
     # count the number of children for every node in the graph
-    nchildren = dict.fromkeys(graph.iterkeys(), 0)
+    num_children = dict.fromkeys(graph.iterkeys(), 0)
     for parents in graph.itervalues():
         for parent in parents:
-            if parent in nchildren:
-                nchildren[parent] += 1
+            try:
+                num_children[parent] += 1
+            except KeyError:
+                # This is a ghost parent, we don't track its children
+                pass
     # keep track of nodes without children in a separate list
-    nochildnodes = [node for (node, n) in nchildren.iteritems() if n == 0]
+    tips = [node for (node, n) in num_children.iteritems() if n == 0]
 
-    while nochildnodes:
+    graph_pop = graph.pop
+    node_name_stack_append = node_name_stack.append
+    tips_append = tips.append
+    tips_pop = tips.pop
+    last_tip = len(tips) - 1
+    while last_tip >= 0:
         # pick a node without a child and add it to the stack.
-        node_name = nochildnodes.pop()
-        node_name_stack.append(node_name)
+        node_name = tips[last_tip]
+        last_tip -= 1
+        node_name_stack_append(node_name)
 
         # the parents of the node lose it as a child; if it was the last
         # child, add the parent to the list of childless nodes.
-        parents = graph.pop(node_name)
+        parents = graph_pop(node_name)
         for parent in parents:
-            if parent in nchildren:
-                nchildren[parent] -= 1
-                if nchildren[parent] == 0:
-                    nochildnodes.append(parent)
+            try:
+                n = num_children[parent] - 1
+            except KeyError:
+                # ghost parent
+                continue
+            num_children[parent] = n
+            if n == 0:
+                last_tip += 1
+                if len(tips) > last_tip:
+                    tips[last_tip] = parent
+                else:
+                    tips_append(parent)
 
     # if there are still nodes left in the graph,
     # that means that there is a cycle
