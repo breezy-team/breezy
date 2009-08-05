@@ -3978,6 +3978,8 @@ class StreamSink(object):
             else:
                 new_pack.set_write_cache_size(1024*1024)
         for substream_type, substream in stream:
+            if 'stream' in debug.debug_flags:
+                mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
                 self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
@@ -4049,6 +4051,7 @@ class StreamSink(object):
     def _extract_and_insert_inventory_deltas(self, substream, serializer):
         target_rich_root = self.target_repo._format.rich_root_data
         target_tree_refs = self.target_repo._format.supports_tree_reference
+        inventory_cache = lru_cache.LRUCache(50)
         for record in substream:
             # Insert the delta directly
             inventory_delta_bytes = record.get_bytes_as('fulltext')
@@ -4068,8 +4071,13 @@ class StreamSink(object):
                             self.target_repo._format)
             revision_id = new_id
             parents = [key[0] for key in record.parents]
-            self.target_repo.add_inventory_by_delta(
-                basis_id, inv_delta, revision_id, parents)
+            basis_inv = inventory_cache.get(basis_id, None)
+            if basis_inv is not None:
+                # add_inventory_by_delta mutates the basis_inv!
+                basis_inv = basis_inv.copy()
+            validator, inv = self.target_repo.add_inventory_by_delta(
+                basis_id, inv_delta, revision_id, parents, basis_inv=basis_inv)
+            inventory_cache[revision_id] = inv
 
     def _extract_and_insert_inventories(self, substream, serializer,
             parse_delta=None):

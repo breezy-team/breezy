@@ -27,6 +27,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dunlock          Some errors during unlock are treated as warnings.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
+-Dstream          Trace fetch streams.
 -DIDS:never       Never use InterDifferingSerializer when fetching.
 -DIDS:always      Always use InterDifferingSerializer to fetch if appropriate
                   for the format, even for non-local fetches.
