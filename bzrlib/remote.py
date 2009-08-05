@@ -1742,7 +1742,7 @@ class RemoteStreamSink(repository.StreamSink):
             (verb, path, resume_tokens) + lock_args, byte_stream)
         if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
-        if self._last_inv_record is not None:
+        if self._last_substream is not None:
             # The stream included an inventory-delta record, but the remote
             # side isn't new enough to support them.  So we need to send the
             # rest of the stream via VFS.
@@ -1765,16 +1765,13 @@ class RemoteStreamSink(repository.StreamSink):
         else:
             tokens = []
         def resume_substream():
-            # First yield the record we stopped at.
-            yield self._last_inv_record
-            self._last_inv_record = None
-            # Then yield the rest of the substream that was interrupted.
+            # Yield the substream that was interrupted.
             for record in self._last_substream:
                 yield record
             self._last_substream = None
         def resume_stream():
             # Finish sending the interrupted substream
-            yield ('inventories', resume_substream())
+            yield ('inventory-deltas', resume_substream())
             # Then simply continue sending the rest of the stream.
             for substream_kind, substream in self._last_stream:
                 yield substream_kind, substream
@@ -1783,29 +1780,18 @@ class RemoteStreamSink(repository.StreamSink):
     def _stop_stream_if_inventory_delta(self, stream):
         """Normally this just lets the original stream pass-through unchanged.
 
-        However if any 'inventories' substream includes an inventory-delta
-        record it will stop streaming, and store the interrupted record,
-        substream and stream in self._last_inv_record, self._last_substream and
-        self._last_stream so that the stream can be resumed by
-        _resume_stream_with_vfs.
+        However if any 'inventory-deltas' substream occurs it will stop
+        streaming, and store the interrupted substream and stream in
+        self._last_substream and self._last_stream so that the stream can be
+        resumed by _resume_stream_with_vfs.
         """
-        def filter_inv_substream(inv_substream):
-            substream_iter = iter(inv_substream)
-            for record in substream_iter:
-                if record.storage_kind == 'inventory-delta':
-                    self._last_inv_record = record
-                    self._last_substream = substream_iter
-                    return
-                else:
-                    yield record
                     
         stream_iter = iter(stream)
         for substream_kind, substream in stream_iter:
-            if substream_kind == 'inventories':
-                yield substream_kind, filter_inv_substream(substream)
-                if self._last_inv_record is not None:
-                    self._last_stream = stream_iter
-                    return
+            if substream_kind == 'inventory-deltas':
+                self._last_substream = substream
+                self._last_stream = stream_iter
+                return
             else:
                 yield substream_kind, substream
             
