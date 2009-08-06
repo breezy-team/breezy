@@ -1120,6 +1120,142 @@ class BTreeGraphIndex(object):
                     else:
                         yield (self, next_sub_key, value)
 
+    def get_ancestry(self, keys, ref_list_num, parent_map):
+        """Iterate over the given keys and all parents that are found.
+
+        :param keys: A sorted list keys whose ancestry we want to return
+        :param ref_list_num: This index in the ref_lists is the parents we
+            care about.
+        :param parent_map: keys that we already know the parents to. when
+            finding new keys we will add nodes to this dict.
+        :return: [not_present_keys], [sorted_search_tips]
+            A dict mapping {key: parent_keys} but including all
+                parent_keys that we encounter.
+            not_present_keys are keys where we found the LeafNode, but the key
+                just isn't there.
+            search_tips parents that we found, which might exist in this
+                index, but which we were unable to find immediately, callers
+                should re-query this index for those keys.
+        """
+        if not self.key_count():
+            # We use key_count() to trigger reading the root node and
+            # determining info about this BTreeGraphIndex
+            # If we don't have any keys, then everything is missing
+            return keys, parent_map
+        if ref_list_num >= self.node_ref_lists:
+            raise ValueError('No ref list %d, index has %d ref lists'
+                % (ref_list_num, self.node_ref_lists))
+
+        # The main trick we are trying to accomplish is that when we find a
+        # key listing its parents, we expect that the parent key is also likely
+        # to sit on the same page. Allowing us to expand parents quickly
+        # without suffering the full stack of bisecting, etc.
+        nodes_and_keys = [(0, sorted(keys))]
+
+        # Search through the internal nodes, until we get to the leaf nodes
+        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+            node_indexes = [idx for idx, s_keys in nodes_and_keys]
+            nodes = self._get_internal_nodes(node_indexes)
+
+            next_nodes_and_keys = []
+            for node_index, sub_keys in nodes_and_keys:
+                node = nodes[node_index]
+                positions = self._multi_bisect_right(sub_keys, node.keys)
+                node_offset = next_row_start + node.offset
+                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
+                                           for pos, s_keys in positions])
+            nodes_and_keys = next_nodes_and_keys
+        # We should now be at the _LeafNodes
+        node_indexes = [idx for idx, s_keys in nodes_and_keys]
+
+        # TODO: We may *not* want to always read all the nodes in one
+        #       big go. Consider setting a max size on this.
+
+        # Should missing_keys be a set?
+        missing_keys = set()
+        # These are parent keys which could not be immediately resolved on the
+        # page where the child was present. Note that we may already be
+        # searching for that key, and it may actually be present [or known
+        # missing] on one of the other pages we are reading.
+        # TODO:
+        #   We could try searching for them in the immediate previous or next
+        #   page. If they occur "later" we could put them in a pending lookup
+        #   set, and then for each node we read thereafter we could check to
+        #   see if they are present.
+        #   However, we don't know the impact of keeping this list of things
+        #   that I'm going to search for every node I come across from here on
+        #   out.
+        #   It doesn't handle the case when the parent key is missing on a
+        #   page that we *don't* read. So we already have to handle being
+        #   re-entrant for that.
+        #   Since most keys contain a date string, they are more likely to be
+        #   found earlier in the file than later, but we would know that right
+        #   away (key < min_key), and wouldn't keep searching it on every other
+        #   page that we read.
+        #   Mostly, it is an idea, one which should be benchmarked.
+        parents_not_on_page = set()
+
+        nodes = self._get_leaf_nodes(node_indexes)
+        for node_index, sub_keys in nodes_and_keys:
+            if not sub_keys:
+                continue
+            # sub_keys is all of the keys we are looking for that should exist
+            # on this page, if they aren't here, then they won't be found
+            node = nodes[node_index]
+            parents_to_check = set()
+            for next_sub_key in sub_keys:
+                if next_sub_key not in node.keys:
+                    # This one is just not present
+                    missing_keys.add(next_sub_key)
+                else:
+                    value, refs = node.keys[next_sub_key]
+                    parent_keys = refs[ref_list_num]
+                    parent_map[next_sub_key] = parent_keys
+                    parents_to_check.update(parent_keys)
+            # Don't look for things we've already found
+            parents_to_check = parents_to_check.difference(parent_map)
+            # TODO: we should really track what the minimum and maximum key is
+            #       on a given leaf node. We know it trivially when
+            #       deserializing the leaf node, and it would tell us right
+            #       away if a missing parent would be in this btree if it was
+            #       going to be present at all.
+            #       Also, if we knew a parent was supposed to come before this
+            #       page, we could cheaply check to see if node_index - 1 was
+            #       in nodes, or if node_index + 1 is in nodes and quickly look
+            #       there.
+            min_key = min(node.keys)
+            max_key = max(node.keys)
+            while parents_to_check:
+                next_parents_to_check = set()
+                for key in parents_to_check:
+                    if key in node.keys:
+                        value, refs = node.keys[key]
+                        parent_keys = refs[ref_list_num]
+                        parent_map[key] = parent_keys
+                        next_parents_to_check.update(parent_keys)
+                    else:
+                        # Missing for some reason
+                        if key < min_key or key > max_key:
+                            # This parent key would be present on a different
+                            # LeafNode
+                            parents_not_on_page.add(key)
+                        else:
+                            assert key != min_key and key != max_key
+                            # If it was going to be present, it would be on
+                            # *this* page, so mark it missing.
+                            missing_keys.add(key)
+                parents_to_check = next_parents_to_check.difference(parent_map)
+                # Some parents we will already know are missing from searching
+                # other LeafNodes, is it faster to check now, or just wait
+                # until later
+                # search_tips = search_tips.difference(missing_keys)
+        # parents_not_on_page could have been found on a different page, or be
+        # known to be missing. So cull out everything that has already been
+        # found.
+        search_tips = parents_not_on_page.difference(
+            parent_map).difference(missing_keys)
+        return missing_keys, search_tips
+
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
 
