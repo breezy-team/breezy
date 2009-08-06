@@ -90,15 +90,24 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     upstream_tree = db.upstream_tree
 
     # Merge upstream branch tips to obtain a shared upstream parent.
+    print("\n--> Merge upstream branch tips to obtain a shared upstream parent.\n")
+    import sys
+    sys.stdout.flush()
     try:
         upstream_tree.lock_write()
-        upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
+        conflicts = upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
+        print conflicts
+        sys.stdout.flush()
     finally:
         upstream_tree.unlock()
 
     # Merge shared upstream parent into the target merge branch.
+    print("\n--> Merge shared upstream parent into the target merge branch.\n")
+    sys.stdout.flush()
     try:
         tree.lock_write()
-        tree.merge_from_branch(upstream_tree.branch)
+        conflicts = tree.merge_from_branch(upstream_tree.branch)
+        print conflicts
+        sys.stdout.flush()
     finally:
         tree.unlock()

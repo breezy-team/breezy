@@ -883,6 +883,9 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source):
+        import sys
+        print('\n--> merge pack start\n')
+        sys.stdout.flush()
         source_branch = target_branch = None
         # Get the target branch.
         try:
@@ -912,6 +915,7 @@ class cmd_merge_package(Command):
 
         print "Upstream branches diverged: %s\n" % upstreams_diverged
         print "Upstream rev ids: %s\n" % upstream_revids
+        sys.stdout.flush()
         if upstreams_diverged:
             # Fix upstream ancestry.
             fix_upstream_ancestry(tree, source_branch, upstream_revids)
