@@ -1615,7 +1615,7 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
-    def _revid_of_upstream_version_from_branch(self, version):
+    def revid_of_upstream_version_from_branch(self, version):
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name):
@@ -1639,7 +1639,7 @@ class DistributionBranch(object):
             if previous_version is not None:
                 if self.has_upstream_version_in_packaging_branch(
                         previous_version.upstream_version):
-                    upstream_tip = self._revid_of_upstream_version_from_branch(
+                    upstream_tip = self.revid_of_upstream_version_from_branch(
                             previous_version.upstream_version)
                     self._extract_upstream_tree(upstream_tip, tempdir)
                 elif (upstream_branch is not None and 

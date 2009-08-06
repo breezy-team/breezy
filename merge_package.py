@@ -84,7 +84,7 @@ class MergeBranchCommand(Command):
                 db = DistributionBranch(branch, branch)
                 version = MergeBranchCommand._latest_version(branch)
                 upstream_versions.append(
-                    db._revid_of_upstream_version_from_branch(
+                    db.revid_of_upstream_version_from_branch(
                         version.upstream_version))
 
             graph = source.repository.get_graph(target.repository)
