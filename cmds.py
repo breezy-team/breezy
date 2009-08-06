@@ -70,7 +70,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscComp,
         )
 from bzrlib.plugins.builddeb.merge_package import (
-    upstream_branches_diverged)
+    get_upstream_revids, fix_upstream_ancestry)
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
@@ -884,18 +884,38 @@ class cmd_merge_package(Command):
 
     def run(self, source):
         source_branch = target_branch = None
+        # Get the target branch.
         try:
             tree = WorkingTree.open_containing('.')[0]
             target_branch = tree.branch
         except NotBranchError:
             raise BzrCommandError(
                 "There is no tree to merge the source branch in to")
+        # Get the source branch.
         try:
             source_branch = Branch.open(source)
         except NotBranchError:
             raise BzrCommandError("Invalid source branch URL?")
-        upstreams_diverged = upstream_branches_diverged(source_branch, target_branch)
+
+        # Do the upstream branches of the merge source and target diverge?
+        try:
+            source_branch.lock_read()
+            target_branch.lock_read()
+            upstream_revids = get_upstream_revids(source_branch, target_branch)
+            graph = source_branch.repository.get_graph(target_branch.repository)
+            # Get the number of heads for the combined upstream branches graph.
+            heads = graph.heads(upstream_revids)
+            upstreams_diverged = (len(heads) > 1)
+        finally:
+            source_branch.unlock()
+            target_branch.unlock()
+
         print "Upstream branches diverged: %s\n" % upstreams_diverged
+        print "Upstream rev ids: %s\n" % upstream_revids
+        if upstreams_diverged:
+            # Fix upstream ancestry.
+            fix_upstream_ancestry(tree, source_branch, upstream_revids)
+        tree.merge_from_branch(source_branch)
 
 
 class cmd_test_builddeb(Command):

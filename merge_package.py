@@ -20,7 +20,9 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
+import os
 import re
+import tempfile
 
 from debian_bundle.changelog import Version
 
@@ -62,39 +64,41 @@ def _latest_version(branch):
 
     return Version(upload_version)
 
-def upstream_branches_diverged(source, target):
-    """Do the upstream branches of the merge source and target diverge?
+def get_upstream_revids(source, target):
+    # Please note: both branches must have been read-locked beforehand.
 
-    The upstream branches will not have diverged if
-        * they are identical
-        * one is a proper subtree of the other
-    """
+    # Get the revision IDs for the most recent source and target
+    # upstream versions respectively.
+    upstream_revs = []
+    for branch in (source, target):
+        db = DistributionBranch(branch, branch)
+        version = _latest_version(branch)
+        # print "Version : %s, %s\n" % (version, version.upstream_version)
+        upstream_revs.append(
+            db.revid_of_upstream_version_from_branch(
+                version.upstream_version))
+
+    return upstream_revs
+
+def fix_upstream_ancestry(tree, source, upstream_revids):
+    [source_upstream_revid, target_upstream_revid] = upstream_revids
+
+    db = DistributionBranch(tree.branch, tree.branch)
+    tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
+    db._extract_upstream_tree(target_upstream_revid, tempdir)
+
+    upstream_tree = db.upstream_tree
+
+    # Merge upstream branch tips to obtain a shared upstream parent.
     try:
-        # print "Source : %s\n" % source
-        # print "Target : %s\n" % target
-        source.lock_read()
-        target.lock_read()
-
-        # Get the revision IDs for the most recent source and target
-        # upstream versions respectively.
-        upstream_revs = []
-        for branch in (source, target):
-            db = DistributionBranch(branch, branch)
-            version = _latest_version(branch)
-            # print "Version : %s, %s\n" % (version, version.upstream_version)
-            upstream_revs.append(
-                db.revid_of_upstream_version_from_branch(
-                    version.upstream_version))
-
-        graph = source.repository.get_graph(target.repository)
-        # Get the number of heads for the combined upstream branches
-        # graph.
-        # print upstream_revs
-        heads = graph.heads(upstream_revs)
+        upstream_tree.lock_write()
+        upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
     finally:
-        source.unlock()
-        target.unlock()
+        upstream_tree.unlock()
 
-    # A single head means the upstream branches have not diverged.
-    # print heads
-    return (len(heads) > 1)
+    # Merge shared upstream parent into the target merge branch.
+    try:
+        tree.lock_write()
+        tree.merge_from_branch(upstream_tree.branch)
+    finally:
+        tree.unlock()
