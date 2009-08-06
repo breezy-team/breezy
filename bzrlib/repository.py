@@ -1146,6 +1146,119 @@ class Repository(object):
         # The old API returned a list, should this actually be a set?
         return parent_map.keys()
 
+    def _check_inventories(self, checker):
+        """Check the inventories found from the revision scan.
+        
+        This is responsible for verifying the sha1 of inventories and
+        creating a pending_keys set that covers data referenced by inventories.
+        """
+        bar = ui.ui_factory.nested_progress_bar()
+        try:
+            self._do_check_inventories(checker, bar)
+        finally:
+            bar.finished()
+
+    def _do_check_inventories(self, checker, bar):
+        """Helper for _check_inventories."""
+        revno = 0
+        keys = {'chk_bytes':set(), 'inventories':set(), 'texts':set()}
+        kinds = ['chk_bytes', 'texts']
+        count = len(checker.pending_keys)
+        bar.update("inventories", 0, 2)
+        current_keys = checker.pending_keys
+        checker.pending_keys = {}
+        # Accumulate current checks.
+        for key in current_keys:
+            if key[0] != 'inventories' and key[0] not in kinds:
+                checker._report_items.append('unknown key type %r' % (key,))
+            keys[key[0]].add(key[1:])
+        if keys['inventories']:
+            # NB: output order *should* be roughly sorted - topo or
+            # inverse topo depending on repository - either way decent
+            # to just delta against. However, pre-CHK formats didn't
+            # try to optimise inventory layout on disk. As such the
+            # pre-CHK code path does not use inventory deltas.
+            last_object = None
+            for record in self.inventories.check(keys=keys['inventories']):
+                if record.storage_kind == 'absent':
+                    checker._report_items.append(
+                        'Missing inventory {%s}' % (record.key,))
+                else:
+                    last_object = self._check_record('inventories', record,
+                        checker, last_object,
+                        current_keys[('inventories',) + record.key])
+            del keys['inventories']
+        else:
+            return
+        bar.update("texts", 1)
+        while (checker.pending_keys or keys['chk_bytes']
+            or keys['texts']):
+            # Something to check.
+            current_keys = checker.pending_keys
+            checker.pending_keys = {}
+            # Accumulate current checks.
+            for key in current_keys:
+                if key[0] not in kinds:
+                    checker._report_items.append('unknown key type %r' % (key,))
+                keys[key[0]].add(key[1:])
+            # Check the outermost kind only - inventories || chk_bytes || texts
+            for kind in kinds:
+                if keys[kind]:
+                    last_object = None
+                    for record in getattr(self, kind).check(keys=keys[kind]):
+                        if record.storage_kind == 'absent':
+                            checker._report_items.append(
+                                'Missing inventory {%s}' % (record.key,))
+                        else:
+                            last_object = self._check_record(kind, record,
+                                checker, last_object, current_keys[(kind,) + record.key])
+                    keys[kind] = set()
+                    break
+
+    def _check_record(self, kind, record, checker, last_object, item_data):
+        """Check a single text from this repository."""
+        if kind == 'inventories':
+            rev_id = record.key[0]
+            inv = self.deserialise_inventory(rev_id,
+                record.get_bytes_as('fulltext'))
+            if last_object is not None:
+                delta = inv._make_delta(last_object)
+                for old_path, path, file_id, ie in delta:
+                    if ie is None:
+                        continue
+                    ie.check(checker, rev_id, inv)
+            else:
+                for path, ie in inv.iter_entries():
+                    ie.check(checker, rev_id, inv)
+            if self._format.fast_deltas:
+                return inv
+        elif kind == 'chk_bytes':
+            # No code written to check chk_bytes for this repo format.
+            checker._report_items.append(
+                'unsupported key type chk_bytes for %s' % (record.key,))
+        elif kind == 'texts':
+            self._check_text(record, checker, item_data)
+        else:
+            checker._report_items.append(
+                'unknown key type %s for %s' % (kind, record.key))
+
+    def _check_text(self, record, checker, item_data):
+        """Check a single text."""
+        # Check it is extractable.
+        # TODO: check length.
+        if record.storage_kind == 'chunked':
+            chunks = record.get_bytes_as(record.storage_kind)
+            sha1 = osutils.sha_strings(chunks)
+            length = sum(map(len, chunks))
+        else:
+            content = record.get_bytes_as('fulltext')
+            sha1 = osutils.sha_string(content)
+            length = len(content)
+        if item_data and sha1 != item_data[1]:
+            checker._report_items.append(
+                'sha1 mismatch: %s has sha1 %s expected %s referenced by %s' %
+                (record.key, sha1, item_data[1], item_data[2]))
+
     @staticmethod
     def create(a_bzrdir):
         """Construct the current default format repository in a_bzrdir."""
@@ -1714,25 +1827,49 @@ class Repository(object):
 
     @needs_read_lock
     def get_revisions(self, revision_ids):
-        """Get many revisions at once."""
+        """Get many revisions at once.
+        
+        Repositories that need to check data on every revision read should 
+        subclass this method.
+        """
         return self._get_revisions(revision_ids)
 
     @needs_read_lock
     def _get_revisions(self, revision_ids):
         """Core work logic to get many revisions without sanity checks."""
-        for rev_id in revision_ids:
-            if not rev_id or not isinstance(rev_id, basestring):
-                raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
+        revs = {}
+        for revid, rev in self._iter_revisions(revision_ids):
+            if rev is None:
+                raise errors.NoSuchRevision(self, revid)
+            revs[revid] = rev
+        return [revs[revid] for revid in revision_ids]
+
+    def _iter_revisions(self, revision_ids):
+        """Iterate over revision objects.
+
+        :param revision_ids: An iterable of revisions to examine. None may be
+            passed to request all revisions known to the repository. Note that
+            not all repositories can find unreferenced revisions; for those
+            repositories only referenced ones will be returned.
+        :return: An iterator of (revid, revision) tuples. Absent revisions (
+            those asked for but not available) are returned as (revid, None).
+        """
+        if revision_ids is None:
+            revision_ids = self.all_revision_ids()
+        else:
+            for rev_id in revision_ids:
+                if not rev_id or not isinstance(rev_id, basestring):
+                    raise errors.InvalidRevisionId(revision_id=rev_id, branch=self)
         keys = [(key,) for key in revision_ids]
         stream = self.revisions.get_record_stream(keys, 'unordered', True)
-        revs = {}
         for record in stream:
+            revid = record.key[0]
             if record.storage_kind == 'absent':
-                raise errors.NoSuchRevision(self, record.key[0])
-            text = record.get_bytes_as('fulltext')
-            rev = self._serializer.read_revision_from_string(text)
-            revs[record.key[0]] = rev
-        return [revs[revid] for revid in revision_ids]
+                yield (revid, None)
+            else:
+                text = record.get_bytes_as('fulltext')
+                rev = self._serializer.read_revision_from_string(text)
+                yield (revid, rev)
 
     @needs_read_lock
     def get_revision_xml(self, revision_id):
@@ -2093,8 +2230,7 @@ class Repository(object):
                 batch_size]
             if not to_query:
                 break
-            for rev_tree in self.revision_trees(to_query):
-                revision_id = rev_tree.get_revision_id()
+            for revision_id in to_query:
                 parent_ids = ancestors[revision_id]
                 for text_key in revision_keys[revision_id]:
                     pb.update("Calculating text parents", processed_texts)
@@ -2496,7 +2632,8 @@ class Repository(object):
                 [parents_provider, other_repository._make_parents_provider()])
         return graph.Graph(parents_provider)
 
-    def _get_versioned_file_checker(self, text_key_references=None):
+    def _get_versioned_file_checker(self, text_key_references=None,
+        ancestors=None):
         """Return an object suitable for checking versioned files.
         
         :param text_key_references: if non-None, an already built
@@ -2504,9 +2641,12 @@ class Repository(object):
             to whether they were referred to by the inventory of the
             revision_id that they contain. If None, this will be
             calculated.
+        :param ancestors: Optional result from
+            self.get_graph().get_parent_map(self.all_revision_ids()) if already
+            available.
         """
         return _VersionedFileChecker(self,
-            text_key_references=text_key_references)
+            text_key_references=text_key_references, ancestors=ancestors)
 
     def revision_ids_to_search_result(self, result_set):
         """Convert a set of revision ids to a graph SearchResult."""
@@ -2562,19 +2702,25 @@ class Repository(object):
         return record.get_bytes_as('fulltext')
 
     @needs_read_lock
-    def check(self, revision_ids=None):
+    def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         """Check consistency of all history of given revision_ids.
 
         Different repository implementations should override _check().
 
         :param revision_ids: A non-empty list of revision_ids whose ancestry
              will be checked.  Typically the last revision_id of a branch.
+        :param callback_refs: A dict of check-refs to resolve and callback
+            the check/_check method on the items listed as wanting the ref.
+            see bzrlib.check.
+        :param check_repo: If False do not check the repository contents, just 
+            calculate the data callback_refs requires and call them back.
         """
-        return self._check(revision_ids)
+        return self._check(revision_ids, callback_refs=callback_refs,
+            check_repo=check_repo)
 
-    def _check(self, revision_ids):
-        result = check.Check(self)
-        result.check()
+    def _check(self, revision_ids, callback_refs, check_repo):
+        result = check.Check(self, check_repo=check_repo)
+        result.check(callback_refs)
         return result
 
     def _warn_if_deprecated(self):
@@ -3873,10 +4019,10 @@ def _unescape_xml(data):
 
 class _VersionedFileChecker(object):
 
-    def __init__(self, repository, text_key_references=None):
+    def __init__(self, repository, text_key_references=None, ancestors=None):
         self.repository = repository
         self.text_index = self.repository._generate_text_key_index(
-            text_key_references=text_key_references)
+            text_key_references=text_key_references, ancestors=ancestors)
 
     def calculate_file_version_parents(self, text_key):
         """Calculate the correct parents for a file version according to
@@ -3900,6 +4046,18 @@ class _VersionedFileChecker(object):
             revision_id) tuples for versions that are present in this versioned
             file, but not used by the corresponding inventory.
         """
+        local_progress = None
+        if progress_bar is None:
+            local_progress = ui.ui_factory.nested_progress_bar()
+            progress_bar = local_progress
+        try:
+            return self._check_file_version_parents(texts, progress_bar)
+        finally:
+            if local_progress:
+                local_progress.finished()
+
+    def _check_file_version_parents(self, texts, progress_bar):
+        """See check_file_version_parents."""
         wrong_parents = {}
         self.file_ids = set([file_id for file_id, _ in
             self.text_index.iterkeys()])
@@ -3914,8 +4072,7 @@ class _VersionedFileChecker(object):
         text_keys = self.repository.texts.keys()
         unused_keys = frozenset(text_keys) - set(self.text_index)
         for num, key in enumerate(self.text_index.iterkeys()):
-            if progress_bar is not None:
-                progress_bar.update('checking text graph', num, n_versions)
+            progress_bar.update('checking text graph', num, n_versions)
             correct_parents = self.calculate_file_version_parents(key)
             try:
                 knit_parents = parent_map[key]

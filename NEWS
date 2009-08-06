@@ -146,7 +146,6 @@ Improvements
   the same way that sending Ctrl-\\ does on other platforms.
   (John Arbash Meinel)
 
-
 Documentation
 *************
 
@@ -171,6 +170,9 @@ API Changes
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
   (Martin Pool)
+
+* ``WorkingTree._check`` now requires a references dict with keys matching
+  those returned by ``WorkingTree._get_check_refs``. (Robert Collins)
 
 Internals
 *********
@@ -901,6 +903,9 @@ Internals
 * ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
+
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
 
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 

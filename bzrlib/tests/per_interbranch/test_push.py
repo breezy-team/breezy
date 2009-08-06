@@ -23,6 +23,7 @@ from bzrlib import (
     branch,
     builtins,
     bzrdir,
+    check,
     debug,
     errors,
     push,
@@ -230,7 +231,7 @@ class TestPush(TestCaseWithInterBranch):
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = Branch.open(self.get_url('remote'))
         trunk.push(remote_branch)
-        remote_branch.check()
+        check.check_dwim(remote_branch.base, False, True, True)
 
     def test_no_get_parent_map_after_insert_stream(self):
         # Effort test for bug 331823
