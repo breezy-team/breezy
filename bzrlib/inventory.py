@@ -743,6 +743,9 @@ class CommonInventory(object):
         """
         return self.has_id(file_id)
 
+    def has_filename(self, filename):
+        return bool(self.path2id(filename))
+
     def id2path(self, file_id):
         """Return as a string the path to file_id.
 
@@ -1362,9 +1365,6 @@ class Inventory(CommonInventory):
                 raise errors.NoSuchId(tree=None, file_id=file_id)
             yield ie
             file_id = ie.parent_id
-
-    def has_filename(self, filename):
-        return bool(self.path2id(filename))
 
     def has_id(self, file_id):
         return (file_id in self._byid)
