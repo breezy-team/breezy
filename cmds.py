@@ -69,6 +69,8 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscCache,
         DscComp,
         )
+from bzrlib.plugins.builddeb.merge_package import (
+    upstream_branches_diverged)
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
@@ -868,6 +870,32 @@ class cmd_mark_uploaded(Command):
             self.outf.write("Tag '%s' created.\n" % tag_name)
         finally:
             t.unlock()
+
+
+class cmd_merge_package(Command):
+    """Merges source packaging branch into target packaging branch.
+
+    This will first check whether the upstream branches have diverged.
+    In that case an attempt will be made to fix upstream ancestry so that
+    the user only needs dealing wth packaging branch merge issues.
+    In the opposite case a normal merge will be performed.
+    """
+    takes_args = ['source']
+
+    def run(self, source):
+        source_branch = target_branch = None
+        try:
+            tree = WorkingTree.open_containing('.')[0]
+            target_branch = tree.branch
+        except NotBranchError:
+            raise BzrCommandError(
+                "There is no tree to merge the source branch in to")
+        try:
+            source_branch = Branch.open(source)
+        except NotBranchError:
+            raise BzrCommandError("Invalid source branch URL?")
+        upstreams_diverged = upstream_branches_diverged(source_branch, target_branch)
+        print "Upstream branches diverged: %s\n" % upstreams_diverged
 
 
 class cmd_test_builddeb(Command):

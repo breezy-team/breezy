@@ -1616,6 +1616,10 @@ class DistributionBranch(object):
             raise
 
     def revid_of_upstream_version_from_branch(self, version):
+        """The private method below will go away eventually."""
+        return self._revid_of_upstream_version_from_branch(version)
+
+    def _revid_of_upstream_version_from_branch(self, version):
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name):
