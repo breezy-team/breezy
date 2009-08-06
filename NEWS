@@ -199,6 +199,9 @@ Internals
 Testing
 *******
 
+* Merge directive cherrypick tests must use the same root id.
+  (Martin Pool, #409684)
+
 * Spurious failure in ``check`` tests on rich-root formats fixed.
   (Martin Pool, #408199)
 
