@@ -1,6 +1,7 @@
 #    merge_package.py -- The plugin for bzr
-#    Copyright (C) 2009 Muharem Hrnjadovic
-#                  2009 Canonical Ltd.
+#    Copyright (C) 2009 Canonical Ltd.
+#
+#    :Author: Muharem Hrnjadovic <muharem@ubuntu.com>
 #
 #    This file is part of bzr-builddeb.
 #
