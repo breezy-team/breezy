@@ -81,6 +81,9 @@ Bug Fixes
   running send and similar commands on 2a formats.
   (Martin Pool, #408201)
   
+* Fix crash in some invocations of ``bzr status`` in format 2a.
+  (Martin Pool, #403523)
+
 * Fixed export to existing directory: if directory is empty then export 
   will succeed, otherwise it fails with error.
   (Alexander Belchenko, #406174)
