@@ -473,6 +473,8 @@ class GCCHKPacker(Packer):
             old_pack = self.packs[0]
             if old_pack.name == self.new_pack._hash.hexdigest():
                 # The single old pack was already optimally packed.
+                mutter('single pack %s was already optimally packed',
+                    old_pack.name)
                 self.new_pack.abort()
                 return None
         self.pb.update('finishing repack', 6, 7)
