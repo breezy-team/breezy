@@ -270,6 +270,9 @@ class ImportParser(LineBasedParser):
         # We auto-detect the date format when a date is first encountered
         self.date_parser = None
 
+    def _warning(self, msg):
+        print "warning line %d: %s" % (self.lineno, msg)
+
     def iter_commands(self):
         """Iterator returning ImportCommand objects."""
         while True:
@@ -341,8 +344,9 @@ class ImportParser(LineBasedParser):
         try:
             message = message.decode('utf_8')
         except UnicodeDecodeError:
-            # TODO: output a warning here about a broken front-end
-            pass
+            self._warning(
+                "commit message not in utf8 - replacing unknown characters")
+            message = message.decode('utf_8', 'replace')
         from_ = self._get_from()
         merges = []
         while True:
