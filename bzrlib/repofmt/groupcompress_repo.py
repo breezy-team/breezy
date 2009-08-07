@@ -896,8 +896,7 @@ class CHKInventoryRepository(KnitPackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if (to_format.supports_chks and
-            self._format._serializer == to_format._serializer):
+        if self._format._serializer == to_format._serializer:
             # We must be exactly the same format, otherwise stuff like the chk
             # page layout might be different.
             # Actually, this test is just slightly looser than exact so that
