@@ -586,13 +586,19 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(object):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ('keys',)
+    __slots__ = ('keys', 'min_key', 'max_key')
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        self.keys = dict(_btree_serializer._parse_leaf_lines(bytes,
-            key_length, ref_list_length))
+        key_list = _btree_serializer._parse_leaf_lines(bytes,
+            key_length, ref_list_length)
+        if key_list:
+            self.min_key = key_list[0]
+            self.max_key = key_list[-1]
+        else:
+            self.min_key = self.max_key = None
+        self.keys = dict(key_list)
 
 
 class _InternalNode(object):
@@ -1223,8 +1229,6 @@ class BTreeGraphIndex(object):
             #       page, we could cheaply check to see if node_index - 1 was
             #       in nodes, or if node_index + 1 is in nodes and quickly look
             #       there.
-            min_key = min(node.keys)
-            max_key = max(node.keys)
             while parents_to_check:
                 next_parents_to_check = set()
                 for key in parents_to_check:
@@ -1235,12 +1239,12 @@ class BTreeGraphIndex(object):
                         next_parents_to_check.update(parent_keys)
                     else:
                         # Missing for some reason
-                        if key < min_key or key > max_key:
+                        if key < node.min_key or key > node.max_key:
                             # This parent key would be present on a different
                             # LeafNode
                             parents_not_on_page.add(key)
                         else:
-                            assert key != min_key and key != max_key
+                            assert key != node.min_key and key != node.max_key
                             # If it was going to be present, it would be on
                             # *this* page, so mark it missing.
                             missing_keys.add(key)

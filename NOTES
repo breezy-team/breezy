@@ -1320,3 +1320,25 @@ while keys_to_search:
             all_index_missing = all_index_missing.intersection(index_missing_keys)
     missing_keys.update(all_index_missing)
     keys_to_search = keys_to_search.difference(all_index_missing)
+
+
+
+Performance notes so far:
+  time ancestry_from_get_parent_map()
+  567ms
+  time ancestry_from_get_ancestry()
+  245ms
+
+So even without optimizing that inner loop much, we are at about 43%
+time.(2.3:1 faster).
+
+With the current setup, at the baseline, is 150ms in 222 calls to
+"_parse_leaf_lines", which is required to read all of the pages. (according to
+lsprof.)
+At best, we could shave off ~20ms by getting rid of the intern() call.
+
+We spend 24ms in zlib.decompress
+We spend 11ms in transport.readv
+roughly 217ms in _read_nodes (under lsprof)
+
+50ms in min() and 50ms in max(), so a much bigger savings if we fix that part.
