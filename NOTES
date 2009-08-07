@@ -1543,3 +1543,14 @@ the get_parent_map implementation.
 
 Also of interest is that in the single-index case the improvement was only
 about 2x, so this seems quite significant overall.
+
+
+For OOo with a single index:
+    time ancestry_from_get_parent_map
+    32.998s
+
+    time ancestry_from_get_ancestry
+    10.462s
+
+This is 3.15:1 faster, even without the benefits of pyrex or a real-world case
+when we have more than one pack file.
