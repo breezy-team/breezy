@@ -45,12 +45,14 @@ def copy_inventory(inv):
 class GenericCommitHandler(processor.CommitHandler):
     """Base class for Bazaar CommitHandlers."""
 
-    def __init__(self, command, cache_mgr, rev_store, verbose=False):
+    def __init__(self, command, cache_mgr, rev_store, verbose=False,
+        prune_empty_dirs=True):
         super(GenericCommitHandler, self).__init__(command)
         self.cache_mgr = cache_mgr
         self.rev_store = rev_store
         self.verbose = verbose
         self.branch_ref = command.ref
+        self.prune_empty_dirs = prune_empty_dirs
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -524,6 +526,8 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def pre_process_files(self):
         super(InventoryDeltaCommitHandler, self).pre_process_files()
+        self._dirs_that_might_become_empty = set()
+
         # A given file-id can only appear once so we accumulate
         # the entries in a dict then build the actual delta at the end
         self._delta_entries_by_fileid = {}
@@ -541,8 +545,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def post_process_files(self):
         """Save the revision."""
-        delta = list(self._delta_entries_by_fileid.values())
-        #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
+        delta = self._get_final_delta()
         inv = self.rev_store.load_using_delta(self.revision,
             self.basis_inventory, delta, None,
             lambda file_id: self._get_lines(file_id),
@@ -550,6 +553,34 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             lambda revision_ids: self._get_inventories(revision_ids))
         self.cache_mgr.inventories[self.revision_id] = inv
         #print "committed %s" % self.revision_id
+
+    def _get_final_delta(self):
+        """Generate the final delta.
+
+        Smart post-processing of changes, e.g. pruning of directories
+        that would become empty, goes here.
+        """
+        delta = list(self._delta_entries_by_fileid.values())
+        if self.prune_empty_dirs and self._dirs_that_might_become_empty:
+            candidates = osutils.minimum_path_selection(
+                self._dirs_that_might_become_empty)
+            for path, file_id in self._empty_after_delta(delta, candidates):
+                delta.append((path, None, file_id, None))
+        #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
+        return delta
+
+    def _empty_after_delta(self, delta, candidates):
+        new_inv = self.basis_inventory._get_mutable_inventory()
+        new_inv.apply_delta(delta)
+        result = []
+        for dir in candidates:
+            file_id = new_inv.path2id(dir)
+            children = new_inv[file_id].children
+            if len(children) == 0:
+                if self.verbose:
+                    self.note("pruning empty directory %s" % (dir,))
+                result.append((dir, file_id))
+        return result
 
     def _add_entry(self, entry):
         # We need to combine the data if multiple entries have the same file-id.
@@ -578,6 +609,20 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             old_path = existing[0]
             entry = (old_path, new_path, file_id, ie)
         self._delta_entries_by_fileid[file_id] = entry
+
+        # Collect parent direcctories that might become empty
+        if new_path is None:
+            # delete
+            parent_dir = osutils.dirname(old_path)
+            # note: no need to check the root
+            if parent_dir:
+                self._dirs_that_might_become_empty.add(parent_dir)
+        elif old_path is not None and old_path != new_path:
+            # rename
+            old_parent_dir = osutils.dirname(old_path)
+            new_parent_dir = osutils.dirname(new_path)
+            if old_parent_dir and old_parent_dir != new_parent_dir:
+                self._dirs_that_might_become_empty.add(old_parent_dir)
 
         # Calculate the per-file parents, if not already done
         if file_id in self.per_file_parents_for_commit:
