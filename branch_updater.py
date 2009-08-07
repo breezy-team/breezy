@@ -41,6 +41,8 @@ class BranchUpdater(object):
         self.last_ref = last_ref
         self.tags = tags
         self.name_mapper = branch_mapper.BranchMapper()
+        self._branch_format = \
+            helpers.best_format_for_objects_in_a_repository(repo)
 
     def update(self):
         """Update the Bazaar branches and tips matching the heads.
@@ -127,7 +129,8 @@ class BranchUpdater(object):
         try:
             return bzrdir.BzrDir.open(location).open_branch()
         except errors.NotBranchError, ex:
-            return bzrdir.BzrDir.create_branch_convenience(location)
+            return bzrdir.BzrDir.create_branch_convenience(location,
+                format=self._branch_format)
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.

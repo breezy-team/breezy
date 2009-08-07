@@ -136,3 +136,32 @@ def binary_stream(stream):
     except ImportError:
         pass
     return stream
+
+
+def best_format_for_objects_in_a_repository(repo):
+    """Find the high-level format for branches and trees given a repository.
+
+    When creating branches and working trees within a repository, Bazaar
+    defaults to using the default format which may not be the best choice.
+    This routine does a reverse lookup of the high-level format registry
+    to find the high-level format that a shared repository was most likely
+    created via.
+
+    :return: the BzrDirFormat or None if no matches were found.
+    """
+    # Based on code from bzrlib/info.py ...
+    from bzrlib import bzrdir
+    repo_format = repo._format
+    candidates  = []
+    non_aliases = set(bzrdir.format_registry.keys())
+    non_aliases.difference_update(bzrdir.format_registry.aliases())
+    for key in non_aliases:
+        format = bzrdir.format_registry.make_bzrdir(key)
+        if format.repository_format == repo_format:
+            candidates.append((key, format))
+    if len(candidates):
+        # Assume the first one. Is there any reason not to do that?
+        name, format = candidates[0]
+        return format
+    else:
+        return None
