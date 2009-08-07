@@ -77,12 +77,13 @@ def get_upstream_revids(source, target):
     # Get the revision IDs for the most recent source and target
     # upstream versions respectively.
     _debug(['\n>> get_upstream_revids()\n'])
-    upstream_revids = []
-    for branch in (source, target):
+    upstream_revids = dict()
+    for branch_name, branch in dict(source=source, target=target).iteritems():
         db = DistributionBranch(branch, branch)
         version = _latest_version(branch)
         # print "Version : %s, %s\n" % (version, version.upstream_version)
-        upstream_revids.append(
+        upstream_revids[branch_name] = (
+            version.upstream_version,
             db.revid_of_upstream_version_from_branch(
                 version.upstream_version))
 
@@ -93,11 +94,16 @@ def get_upstream_revids(source, target):
 def fix_upstream_ancestry(tree, source, upstream_revids):
     _debug(['\n>> fix_upstream_ancestry()\n',
             '!! Upstream branches diverged'])
-    [source_upstream_revid, target_upstream_revid] = upstream_revids
+
+    # "Unpack" the versions and revision ids.
+    source_ver = Version(upstream_revids['source'][0])
+    source_revid = upstream_revids['source'][1]
+    target_ver = Version(upstream_revids['target'][0])
+    target_revid = upstream_revids['target'][1]
 
     db = DistributionBranch(tree.branch, tree.branch)
     tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
-    db._extract_upstream_tree(target_upstream_revid, tempdir)
+    db._extract_upstream_tree(target_revid, tempdir)
 
     upstream_tree = db.upstream_tree
 
@@ -105,11 +111,16 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     _debug(["\n--> Merge upstream branch tips.\n"])
     try:
         upstream_tree.lock_write()
-        try:
-            uconflicts = upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
-        except errors.PointlessMerge:
-            uconflicts = -1
-            _debug(['Upstream: Nothing to merge.'])
+
+        if source_ver > target_ver:
+            # The source upstream tree is more recent and the temporary
+            # target tree needs to be reshaped to match it.
+            _debug(["\n--> Reverting upstream target tree.\n"])
+            upstream_tree.revert(None, source.repository.revision_tree(source_revid))
+        _debug(["--> Setting parent IDs on upstream tree.\n"])
+        upstream_tree.set_parent_ids((target_revid, source_revid))
+        _debug(["--> Committing upstream tree.\n"])
+        upstream_tree.commit('Consolidated upstream tree for merging into target branch')
     finally:
         upstream_tree.unlock()
 
@@ -117,14 +128,11 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     _debug(["\n--> Merge shared upstream into target merge branch.\n"])
     try:
         tree.lock_write()
-        try:
-            tconflicts = tree.merge_from_branch(upstream_tree.branch)
-        except errors.PointlessMerge:
-            tconflicts = -1
-            _debug(['Target branch: Nothing to merge.'])
+        conflicts = tree.merge_from_branch(upstream_tree.branch)
+        tree.commit('Merging source packaging branch in to target.')
     finally:
         tree.unlock()
 
-    _debug(['merge conflicts: %s/%s' % (uconflicts, tconflicts),
+    _debug(['merge conflicts: %s' % conflicts,
             '\n<< fix_upstream_ancestry()\n'])
-    return (uconflicts, tconflicts)
+    return conflicts

@@ -915,10 +915,8 @@ class cmd_merge_package(Command):
         if upstreams_diverged:
             # Fix upstream ancestry.
             conflicts = fix_upstream_ancestry(tree, source_branch, upstream_revids)
-            for datum in conflicts:
-                if datum != 0:
-                    merge_should_be_done = False
-                    break
+            if conflicts != 0:
+                merge_should_be_done = False
 
         # Merge source packaging branch in to the target packaging branch.
         if merge_should_be_done:
