@@ -340,15 +340,14 @@ class InventoryDeltaSerializer(object):
                 entry = None
             else:
                 entry = _parse_entry(
-                    newpath_utf8, file_id, parent_id, last_modified,
-                    content_tuple)
+                    newpath, file_id, parent_id, last_modified, content_tuple)
             delta_item = (oldpath, newpath, file_id, entry)
             result.append(delta_item)
         return (delta_parent_id, delta_version_id, delta_versioned_root,
                 delta_tree_references, result)
 
 
-def _parse_entry(utf8_path, file_id, parent_id, last_modified, content):
+def _parse_entry(path, file_id, parent_id, last_modified, content):
     entry_factory = {
         'dir': _dir_to_entry,
         'file': _file_to_entry,
@@ -356,9 +355,8 @@ def _parse_entry(utf8_path, file_id, parent_id, last_modified, content):
         'tree': _tree_to_entry,
     }
     kind = content[0]
-    if utf8_path.startswith('/'):
+    if path.startswith('/'):
         raise AssertionError
-    path = utf8_path.decode('utf8')
     name = basename(path)
     return entry_factory[content[0]](
             content, name, parent_id, file_id, last_modified)
