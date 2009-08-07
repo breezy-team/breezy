@@ -473,7 +473,7 @@ class GCCHKPacker(Packer):
             old_pack = self.packs[0]
             if old_pack.name == self.new_pack._hash.hexdigest():
                 # The single old pack was already optimally packed.
-                mutter('single pack %s was already optimally packed',
+                trace.mutter('single pack %s was already optimally packed',
                     old_pack.name)
                 self.new_pack.abort()
                 return None
@@ -779,6 +779,8 @@ class CHKInventoryRepository(KnitPackRepository):
 
     def _iter_inventories(self, revision_ids, ordering):
         """Iterate over many inventory objects."""
+        if ordering is None:
+            ordering = 'unordered'
         keys = [(revision_id,) for revision_id in revision_ids]
         stream = self.inventories.get_record_stream(keys, ordering, True)
         texts = {}

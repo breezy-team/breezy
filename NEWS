@@ -188,8 +188,10 @@ Internals
 * ``CHKMap.apply_delta`` now raises ``InconsistentDelta`` if a delta adds
   as new a key which was already mapped. (Robert Collins)
 
-* InterDifferingSerializer has been removed.  The transformations it
-  provided are now done automatically by StreamSource.  (Andrew Bennetts)
+* InterDifferingSerializer is now only used locally.  Other fetches that
+  would have used InterDifferingSerializer now use the more network
+  friendly StreamSource, which now automatically does the same
+  transformations as InterDifferingSerializer.  (Andrew Bennetts)
 
 * Inventory delta application catches more cases of corruption and can
   prevent corrupt deltas from affecting consistency of data structures on

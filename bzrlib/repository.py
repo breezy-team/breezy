@@ -2208,7 +2208,7 @@ class Repository(object):
         """Get Inventory object by revision id."""
         return self.iter_inventories([revision_id]).next()
 
-    def iter_inventories(self, revision_ids, ordering='unordered'):
+    def iter_inventories(self, revision_ids, ordering=None):
         """Get many inventories by revision_ids.
 
         This will buffer some or all of the texts used in constructing the
@@ -2216,7 +2216,9 @@ class Repository(object):
         time.
 
         :param revision_ids: The expected revision ids of the inventories.
-        :param ordering: optional ordering, e.g. 'topological'.
+        :param ordering: optional ordering, e.g. 'topological'.  If not
+            specified, the order of revision_ids will be preserved (by
+            buffering if necessary).
         :return: An iterator of inventories.
         """
         if ((None in revision_ids)
@@ -2230,29 +2232,41 @@ class Repository(object):
         for text, revision_id in inv_xmls:
             yield self.deserialise_inventory(revision_id, text)
 
-    def _iter_inventory_xmls(self, revision_ids, ordering='unordered'):
+    def _iter_inventory_xmls(self, revision_ids, ordering):
+        if ordering is None:
+            order_as_requested = True
+            ordering = 'unordered'
+        else:
+            order_as_requested = False
         keys = [(revision_id,) for revision_id in revision_ids]
         if not keys:
             return
-        key_iter = iter(keys)
-        next_key = key_iter.next()
+        if order_as_requested:
+            key_iter = iter(keys)
+            next_key = key_iter.next()
         stream = self.inventories.get_record_stream(keys, ordering, True)
         text_chunks = {}
         for record in stream:
             if record.storage_kind != 'absent':
-                text_chunks[record.key] = record.get_bytes_as('chunked')
+                chunks = record.get_bytes_as('chunked')
+                if order_as_requested:
+                    text_chunks[record.key] = chunks
+                else:
+                    yield ''.join(chunks), record.key[-1]
             else:
                 raise errors.NoSuchRevision(self, record.key)
-            while next_key in text_chunks:
-                chunks = text_chunks.pop(next_key)
-                yield ''.join(chunks), next_key[-1]
-                try:
-                    next_key = key_iter.next()
-                except StopIteration:
-                    # We still want to fully consume the get_record_stream,
-                    # just in case it is not actually finished at this point
-                    next_key = None
-                    break
+            if order_as_requested:
+                # Yield as many results as we can while preserving order.
+                while next_key in text_chunks:
+                    chunks = text_chunks.pop(next_key)
+                    yield ''.join(chunks), next_key[-1]
+                    try:
+                        next_key = key_iter.next()
+                    except StopIteration:
+                        # We still want to fully consume the get_record_stream,
+                        # just in case it is not actually finished at this point
+                        next_key = None
+                        break
 
     def deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object.
