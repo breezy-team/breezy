@@ -20,20 +20,22 @@ def get_bindex(path):
     bindex = r.revisions._index._graph_index._indices[0]
     return b, rev_key, bindex
 
+def get_cindex(path):
+    b = branch.Branch.open(path)
+    b.lock_read()
+    r = b.repository
+    rev_id = b.last_revision()
+    rev_key = (rev_id,)
+    cindex = r.revisions._index._graph_index
+    return b, rev_key, cindex
+
+
 
 def ancestry_from_get_ancestry(path):
-    b, rev_key, bindex = get_bindex(path)
-    keys = set([rev_key])
-    search_keys = set([rev_key])
-    parent_map = {}
-    generation = 0
-    while search_keys:
-        generation += 1
-        missing_keys, search_keys = bindex.get_ancestry(search_keys, 0,
-                                                        parent_map)
-        # print '%4d\t%5d\t%5d' % (generation, len(search_keys),
-        #                          len(parent_map))
+    b, rev_key, cindex = get_cindex(path)
+    parent_map, missing_keys = cindex.get_ancestry([rev_key])
     b.unlock()
+
 
 def ancestry_from_get_parent_map(path):
     b, rev_key, gcindex = get_gcindex(path)

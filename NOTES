@@ -1282,63 +1282,264 @@ get_ancestry peaks at 529 search_keys, but peaks at finding 2287 keys in a
 single pass, and only has 1 pass where it failed to find more than 1 parent,
 and only 4 passes where it found fewer than 10.
 
-So how to handle the multiple-index scenario. The issue is that ancestry can
-jump back and forth between indexes. Though if you consider it closely, it is
-actually quite unlikely to do so, because that would imply knowing about a
-revision in a previous pack, before that revision was transferred. Possible,
-yes (especially with ghosts), likely: no.
 
-However, certainly parents that are missing in one index are likely to be found
-in another index, and we don't really know the actual ordering between the
+Notes from CombinedGraphIndex.get_ancestry
+
+you can see that in a real-world repository it takes 1 pass across all indexes
+to really 'get primed' and start yielding results. However once that has
+happened, we end up getting a lot of results quickly from the 'deep history'
+index, and then we spin around a few times to finally fill in the rest of the
 indexes.
+One possibility would be to reprioritise the various indexes, so that if an
+index has recently had good success returning information, we move it earlier
+in the list. Or conversely, if we don't get any information, we move the index
+to the end. I don't have anything concrete, but the idea is to avoid polling
+*all* of the indexes on every pass, but instead to have a tighter loop around
+ones that we think are going to give us good info.
 
-# We want to keep looping until keys_to_search converges to 0, or we
-# determine that all indexes are missing the keys that we are currently
-# searching for.
-# I think we could do something like take the set intersection of the keys
-# that each index says are missing, and then after a given pass, we would
-# stop searching all of the keys that all indexes are missing.
-
-My thought is to have a loop like:
-
-keys_to_search = set(input_keys)
-missing_keys = set()
-while keys_to_search:
-    all_index_missing = None
-    for index in self._indices:
-        this_search_keys = keys_to_search
-        # keys this *this* index cannot resolve
-        index_missing_keys = set()
-        while this_search_keys:
-            this_missing_keys, this_search_keys =
-                index.get_ancestry(this_search_keys, ...)
-            index_missing_keys.update(this_missing_keys)
-        keys_to_search = index_missing_keys
-        if all_index_missing is None:
-            all_index_missing = set(index_missing_keys)
-        else:
-            all_index_missing = all_index_missing.intersection(index_missing_keys)
-    missing_keys.update(all_index_missing)
-    keys_to_search = keys_to_search.difference(all_index_missing)
-
-
+gen	idx	sub	n_keys	n_pmap	n_miss
+   1			   1	    0	    0
+    	 0		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 1		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 2		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 3		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 4		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 5		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 6		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 7		   1	    0	    0
+    	  	 1	   0	    0	    1
+    	 8		   1	    0	    0
+    	  	 1	   0	    4	    1
+    	 9		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	10		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	11		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	12		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	13		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	14		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	15		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	16		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	17		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	18		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	19		   1	    4	    0
+    	  	 1	   0	    4	    1
+gen	idx	sub	n_keys	n_pmap	n_miss
+   2			   1	    4	    0
+    	 0		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	 1		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	 2		   1	    4	    0
+    	  	 1	   0	    4	    1
+    	 3		   1	    4	    0
+    	  	 1	   0	   45	    7
+    	 4		   7	   45	    0
+    	  	 1	   0	   45	    7
+    	 5		   7	   45	    0
+    	  	 1	   0	   45	    7
+    	 6		   7	   45	    0
+    	  	 1	   0	   45	    7
+    	 7		   7	   45	    0
+    	  	 1	   0	   45	    7
+    	 8		   7	   45	    0
+    	  	 1	   0	   45	    7
+    	 9		   7	   45	    0
+    	  	 1	   0	   49	    7
+    	10		   7	   49	    0
+    	  	 1	   0	   49	    7
+    	11		   7	   49	    0
+    	  	 1	   0	   49	    7
+    	12		   7	   49	    0
+    	  	 1	   0	   49	    7
+    	13		   7	   49	    0
+    	  	 1	   0	   49	    7
+    	14		   7	   49	    0
+    	  	 1	   0	   49	    7
+    	15		   7	   49	    0
+    	  	 1	   0	   54	    7
+    	16		   7	   54	    0
+    	  	 1	  63	  115	    5
+    	  	 2	 151	  443	    5
+    	  	 3	 143	 1026	    5
+    	  	 4	 113	 1577	    5
+    	  	 5	 291	 2215	    5
+    	  	 6	 574	 3707	    5
+    	  	 7	 569	 6047	    5
+    	  	 8	 540	 8814	    5
+    	  	 9	 476	11157	    5
+    	  	10	 352	13153	    5
+    	  	11	 411	14748	    5
+    	  	12	 359	16704	    5
+    	  	13	 289	18287	    5
+    	  	14	 136	19853	    5
+    	  	15	  76	20655	    5
+    	  	16	  63	21249	    5
+    	  	17	  37	21748	    5
+    	  	18	  39	22017	    5
+    	  	19	  36	22322	    5
+    	  	20	  22	22650	    5
+    	  	21	  14	23060	    5
+    	  	22	  17	23280	    5
+    	  	23	  13	23478	    7
+    	  	24	   8	23683	    7
+    	  	25	   6	23867	    7
+    	  	26	   7	24052	    7
+    	  	27	  19	24191	    7
+    	  	28	  15	24275	    7
+    	  	29	  19	24476	    7
+    	  	30	  13	24726	    7
+    	  	31	  14	24826	    7
+    	  	32	  10	24874	    7
+    	  	33	   6	24953	    7
+    	  	34	   5	24977	    7
+    	  	35	   5	25035	    7
+    	  	36	   4	25076	    7
+    	  	37	   4	25129	    7
+    	  	38	   3	25145	    7
+    	  	39	   2	25158	    7
+    	  	40	   2	25163	    7
+    	  	41	   2	25166	    7
+    	  	42	   2	25188	    7
+    	  	43	   2	25205	    7
+    	  	44	   1	25241	    7
+    	  	45	   6	25248	    7
+    	  	46	   4	25272	    7
+    	  	47	   1	25305	    7
+    	  	48	   0	25308	    7
+    	17		   7	25308	    0
+    	  	 1	   0	25348	    6
+    	18		   6	25348	    0
+    	  	 1	   7	25415	    9
+    	  	 2	   2	25441	   11
+    	  	 3	   0	25441	   13
+    	19		  13	25441	    0
+    	  	 1	   0	25441	   13
+gen	idx	sub	n_keys	n_pmap	n_miss
+   3			  13	25441	    0
+    	 0		  13	25441	    0
+    	  	 1	   0	25441	   13
+    	 1		  13	25441	    0
+    	  	 1	   0	25441	   13
+    	 2		  13	25441	    0
+    	  	 1	   0	25442	   14
+    	 3		  14	25442	    0
+    	  	 1	   0	25442	   14
+    	 4		  14	25442	    0
+    	  	 1	   0	25442	   14
+    	 5		  14	25442	    0
+    	  	 1	   0	25442	   14
+    	 6		  14	25442	    0
+    	  	 1	   1	25453	   16
+    	  	 2	   0	25453	   17
+    	 7		  17	25453	    0
+    	  	 1	   0	25453	   17
+    	 8		  17	25453	    0
+    	  	 1	   0	25453	   17
+    	 9		  17	25453	    0
+    	  	 1	   0	25459	   16
+    	10		  16	25459	    0
+    	  	 1	   0	25459	   16
+    	11		  16	25459	    0
+    	  	 1	   0	25459	   16
+    	12		  16	25459	    0
+    	  	 1	   0	25459	   16
+    	13		  16	25459	    0
+    	  	 1	   0	25459	   16
+    	14		  16	25459	    0
+    	  	 1	  33	25531	   12
+    	  	 2	  14	25677	   19
+    	  	 3	   6	25717	   25
+    	  	 4	   1	25728	   26
+    	  	 5	   0	25729	   26
+    	15		  26	25729	    0
+    	  	 1	   0	25748	   24
+    	16		  24	25748	    0
+    	  	 1	  72	25870	    6
+    	  	 2	  30	26173	    6
+    	  	 3	   6	26321	    6
+    	  	 4	   3	26346	    6
+    	  	 5	   0	26355	    6
+    	17		   6	26355	    0
+    	  	 1	   0	26362	    6
+    	18		   6	26362	    0
+    	  	 1	   4	26376	    4
+    	  	 2	   0	26391	    5
+    	19		   5	26391	    0
+    	  	 1	   0	26391	    5
+gen	idx	sub	n_keys	n_pmap	n_miss
+   4			   3	26391	    2
+    	 0		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 1		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 2		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 3		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 4		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 5		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 6		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 7		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 8		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	 9		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	10		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	11		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	12		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	13		   3	26391	    0
+    	  	 1	   0	26391	    3
+    	14		   3	26391	    0
+    	  	 1	   1	26394	    1
+    	  	 2	   0	26401	    1
+    	15		   1	26401	    0
+    	  	 1	   0	26401	    1
+    	16		   1	26401	    0
+    	  	 1	   0	26401	    1
+    	17		   1	26401	    0
+    	  	 1	   0	26401	    1
+    	18		   1	26401	    0
+    	  	 1	   0	26402	    0
 
 Performance notes so far:
   time ancestry_from_get_parent_map()
-  567ms
+  1530ms  (down from 567ms when there was a single real index)
   time ancestry_from_get_ancestry()
-  245ms
+  309ms   (down from 245ms when there was a single real index)
 
-So even without optimizing that inner loop much, we are at about 43%
-time.(2.3:1 faster).
+So even without optimizing that inner loop much, we are at about 20%
+time.(5:1 faster). (also note that being done on different repos, the
+real-world test has another ~1500 revisions in the ancestry.)
 
-With the current setup, at the baseline, is 150ms in 222 calls to
-"_parse_leaf_lines", which is required to read all of the pages. (according to
-lsprof.)
-At best, we could shave off ~20ms by getting rid of the intern() call.
+This also shows how much better things scale when we have lots of indexes. It
+allows us to not try to search across all the indexes all the time, because we
+follow whatever parent threads a given index can give us.
 
-We spend 24ms in zlib.decompress
-We spend 11ms in transport.readv
-roughly 217ms in _read_nodes (under lsprof)
+The overhead of 19 indexes was only 245 => 309 or 1.26:1, rather than 3:1 for
+the get_parent_map implementation.
 
-50ms in min() and 50ms in max(), so a much bigger savings if we fix that part.
+Also of interest is that in the single-index case the improvement was only
+about 2x, so this seems quite significant overall.

@@ -1323,18 +1323,38 @@ class CombinedGraphIndex(object):
         missing_keys = set()
         parent_map = {}
         keys_to_lookup = set(keys)
+        generation = 0
         while keys_to_lookup:
             # keys that *all* indexes claim are missing, stop searching them
+            generation += 1
             all_index_missing = None
-            for index in self._indices:
+            # print 'gen\tidx\tsub\tn_keys\tn_pmap\tn_miss'
+            # print '%4d\t\t\t%4d\t%5d\t%5d' % (generation, len(keys_to_lookup),
+            #                                   len(parent_map),
+            #                                   len(missing_keys))
+            for index_idx, index in enumerate(self._indices):
+                # TODO: we should probably be doing something with
+                #       'missing_keys' since we've already determined that
+                #       those revisions have not been found anywhere
                 index_missing_keys = set()
                 # Find all of the ancestry we can from this index
                 # keep looking until the search_keys set is empty, which means
                 # things we didn't find should be in index_missing_keys
                 search_keys = keys_to_lookup
+                sub_generation = 0
+                # print '    \t%2d\t\t%4d\t%5d\t%5d' % (
+                #     index_idx, len(search_keys),
+                #     len(parent_map), len(index_missing_keys))
                 while search_keys:
+                    sub_generation += 1
+                    # TODO: ref_list_num should really be a parameter, since
+                    #       CombinedGraphIndex does not know what the ref lists
+                    #       mean.
                     search_keys = index.get_ancestry(search_keys, 0,
                         parent_map, index_missing_keys)
+                    # print '    \t  \t%2d\t%4d\t%5d\t%5d' % (
+                    #     sub_generation, len(search_keys),
+                    #     len(parent_map), len(index_missing_keys))
                 # Now set whatever was missing to be searched in the next index
                 keys_to_lookup = index_missing_keys
                 if all_index_missing is None:
