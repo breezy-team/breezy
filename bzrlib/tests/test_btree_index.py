@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -979,6 +979,19 @@ class TestBTreeIndex(BTreeTestCase):
             (('key-2',), 'value', ([],)),
             ])
         self.assertEqual(set([]), index.external_references(0))
+
+    def test_get_ancestry_one_page(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key1], 0, parent_map, missing_keys)
+        self.assertEqual({key1: (key2,), key2: ()}, parent_map)
+        self.assertEqual(set(), missing_keys)
 
 
 class TestBTreeNodes(BTreeTestCase):

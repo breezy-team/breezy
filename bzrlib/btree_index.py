@@ -1045,6 +1045,39 @@ class BTreeGraphIndex(object):
             output.append(cur_out)
         return output
 
+    def _walk_through_internal_nodes(self, keys):
+        """Take the given set of keys, and find the corresponding LeafNodes.
+
+        :param keys: An unsorted iterable of keys to search for
+        :return: (nodes, index_and_keys)
+            nodes is a dict mapping {index: LeafNode}
+            keys_at_index is a list of tuples of [(index, [keys for Leaf])]
+        """
+        # 6 seconds spent in miss_torture using the sorted() line.
+        # Even with out of order disk IO it seems faster not to sort it when
+        # large queries are being made.
+        keys_at_index = [(0, sorted(keys))]
+
+        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+            node_indexes = [idx for idx, s_keys in keys_at_index]
+            nodes = self._get_internal_nodes(node_indexes)
+
+            next_nodes_and_keys = []
+            for node_index, sub_keys in keys_at_index:
+                node = nodes[node_index]
+                positions = self._multi_bisect_right(sub_keys, node.keys)
+                node_offset = next_row_start + node.offset
+                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
+                                           for pos, s_keys in positions])
+            keys_at_index = next_nodes_and_keys
+        # We should now be at the _LeafNodes
+        node_indexes = [idx for idx, s_keys in keys_at_index]
+
+        # TODO: We may *not* want to always read all the nodes in one
+        #       big go. Consider setting a max size on this.
+        nodes = self._get_leaf_nodes(node_indexes)
+        return nodes, keys_at_index
+
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
@@ -1088,32 +1121,7 @@ class BTreeGraphIndex(object):
         needed_keys = keys
         if not needed_keys:
             return
-        # 6 seconds spent in miss_torture using the sorted() line.
-        # Even with out of order disk IO it seems faster not to sort it when
-        # large queries are being made.
-        needed_keys = sorted(needed_keys)
-
-        nodes_and_keys = [(0, needed_keys)]
-
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
-            node_indexes = [idx for idx, s_keys in nodes_and_keys]
-            nodes = self._get_internal_nodes(node_indexes)
-
-            next_nodes_and_keys = []
-            for node_index, sub_keys in nodes_and_keys:
-                node = nodes[node_index]
-                positions = self._multi_bisect_right(sub_keys, node.keys)
-                node_offset = next_row_start + node.offset
-                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
-                                           for pos, s_keys in positions])
-            nodes_and_keys = next_nodes_and_keys
-        # We should now be at the _LeafNodes
-        node_indexes = [idx for idx, s_keys in nodes_and_keys]
-
-        # TODO: We may *not* want to always read all the nodes in one
-        #       big go. Consider setting a max size on this.
-
-        nodes = self._get_leaf_nodes(node_indexes)
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(needed_keys)
         for node_index, sub_keys in nodes_and_keys:
             if not sub_keys:
                 continue
@@ -1126,7 +1134,7 @@ class BTreeGraphIndex(object):
                     else:
                         yield (self, next_sub_key, value)
 
-    def get_ancestry(self, keys, ref_list_num, parent_map):
+    def get_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
         """Iterate over the given keys and all parents that are found.
 
         :param keys: A sorted list keys whose ancestry we want to return
@@ -1134,12 +1142,14 @@ class BTreeGraphIndex(object):
             care about.
         :param parent_map: keys that we already know the parents to. when
             finding new keys we will add nodes to this dict.
-        :return: [not_present_keys], [sorted_search_tips]
+        :param missing_keys: keys which are known to be missing in this index.
+            New entries that are found to be missing will be added to this set.
+        :return: [not_present_keys], [search_keys]
             A dict mapping {key: parent_keys} but including all
                 parent_keys that we encounter.
             not_present_keys are keys where we found the LeafNode, but the key
                 just isn't there.
-            search_tips parents that we found, which might exist in this
+            search_keys parents that we found, which might exist in this
                 index, but which we were unable to find immediately, callers
                 should re-query this index for those keys.
         """
@@ -1156,29 +1166,8 @@ class BTreeGraphIndex(object):
         # key listing its parents, we expect that the parent key is also likely
         # to sit on the same page. Allowing us to expand parents quickly
         # without suffering the full stack of bisecting, etc.
-        nodes_and_keys = [(0, sorted(keys))]
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(keys)
 
-        # Search through the internal nodes, until we get to the leaf nodes
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
-            node_indexes = [idx for idx, s_keys in nodes_and_keys]
-            nodes = self._get_internal_nodes(node_indexes)
-
-            next_nodes_and_keys = []
-            for node_index, sub_keys in nodes_and_keys:
-                node = nodes[node_index]
-                positions = self._multi_bisect_right(sub_keys, node.keys)
-                node_offset = next_row_start + node.offset
-                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
-                                           for pos, s_keys in positions])
-            nodes_and_keys = next_nodes_and_keys
-        # We should now be at the _LeafNodes
-        node_indexes = [idx for idx, s_keys in nodes_and_keys]
-
-        # TODO: We may *not* want to always read all the nodes in one
-        #       big go. Consider setting a max size on this.
-
-        # Should missing_keys be a set?
-        missing_keys = set()
         # These are parent keys which could not be immediately resolved on the
         # page where the child was present. Note that we may already be
         # searching for that key, and it may actually be present [or known
@@ -1201,7 +1190,6 @@ class BTreeGraphIndex(object):
         #   Mostly, it is an idea, one which should be benchmarked.
         parents_not_on_page = set()
 
-        nodes = self._get_leaf_nodes(node_indexes)
         for node_index, sub_keys in nodes_and_keys:
             if not sub_keys:
                 continue
@@ -1211,12 +1199,11 @@ class BTreeGraphIndex(object):
             node_keys = node.keys
             parents_to_check = set()
             for next_sub_key in sub_keys:
-                try:
-                    value, refs = node_keys[next_sub_key]
-                except KeyError:
-                    # This one is just not present
+                if next_sub_key not in node_keys:
+                    # This one is just not present in the index at all
                     missing_keys.add(next_sub_key)
                 else:
+                    value, refs = node_keys[next_sub_key]
                     parent_keys = refs[ref_list_num]
                     parent_map[next_sub_key] = parent_keys
                     parents_to_check.update(parent_keys)
@@ -1244,29 +1231,29 @@ class BTreeGraphIndex(object):
                         # of packs' is going to show a reasonable improvement
                         # from the check, because it avoids 'going around
                         # again' for everything that is in another index
-                        parents_not_on_page.add(key)
-                        # # Missing for some reason
-                        # if key < node.min_key:
-                        #     # in the case of bzr.dev, 3.4k/5.3k misses are
-                        #     # 'earlier' misses (65%)
-                        #     parents_not_on_page.add(key)
-                        # elif key > node.max_key:
-                        #     # This parent key would be present on a different
-                        #     # LeafNode
-                        #     parents_not_on_page.add(key)
-                        # else:
-                        #     # assert key != node.min_key and key != node.max_key
-                        #     # If it was going to be present, it would be on
-                        #     # *this* page, so mark it missing.
-                        #     missing_keys.add(key)
+                        # parents_not_on_page.add(key)
+                        # Missing for some reason
+                        if key < node.min_key:
+                            # in the case of bzr.dev, 3.4k/5.3k misses are
+                            # 'earlier' misses (65%)
+                            parents_not_on_page.add(key)
+                        elif key > node.max_key:
+                            # This parent key would be present on a different
+                            # LeafNode
+                            parents_not_on_page.add(key)
+                        else:
+                            # assert key != node.min_key and key != node.max_key
+                            # If it was going to be present, it would be on
+                            # *this* page, so mark it missing.
+                            missing_keys.add(key)
                 parents_to_check = next_parents_to_check.difference(parent_map)
                 # Might want to do another .difference() from missing_keys
         # parents_not_on_page could have been found on a different page, or be
         # known to be missing. So cull out everything that has already been
         # found.
-        search_tips = parents_not_on_page.difference(
+        search_keys = parents_not_on_page.difference(
             parent_map).difference(missing_keys)
-        return missing_keys, search_tips
+        return search_keys
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
