@@ -23,6 +23,7 @@ import zlib
 from bzrlib import (
     btree_index,
     errors,
+    osutils,
     tests,
     )
 from bzrlib.tests import (
@@ -992,6 +993,98 @@ class TestBTreeIndex(BTreeTestCase):
         search_keys = index.get_ancestry([key1], 0, parent_map, missing_keys)
         self.assertEqual({key1: (key2,), key2: ()}, parent_map)
         self.assertEqual(set(), missing_keys)
+
+    def test_get_ancestry_one_page_w_missing(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key2, key3], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual({key2: ()}, parent_map)
+        # we know that key3 is missing because we read the page that it would
+        # otherwise be on
+        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test_get_ancestry_one_parent_missing(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([key3],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key1], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        # all we know is that key3 wasn't present on the page we were reading
+        # but if you look, the last key is key2 which comes before key3, so we
+        # don't know whether key3 would land on this page or not.
+        self.assertEqual(set([key3]), search_keys)
+        search_keys = index.get_ancestry(search_keys, 0, parent_map,
+                                         missing_keys)
+        # passing it back in, we are sure it is 'missing'
+        self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
+        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual(set([]), search_keys)
+
+    def test_get_ancestry_multiple_pages(self):
+        # We need to use enough keys that we actually cause a split
+        start_time = 1249671539
+        email = "joebob@example.com"
+        nodes = []
+        ref_lists = ((),)
+        rev_keys = []
+        for i in xrange(400):
+            rev_id = '%s-%s-%s' % (email,
+                                   osutils.compact_date(start_time + i),
+                                   osutils.rand_chars(16))
+            rev_key = (rev_id,)
+            nodes.append((rev_key, 'value', ref_lists))
+            # We have a ref 'list' of length 1, with a list of parents, with 1
+            # parent which is a key
+            ref_lists = ((rev_key,),)
+            rev_keys.append(rev_key)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=nodes)
+        self.assertEqual(400, index.key_count())
+        self.assertEqual(3, len(index._row_offsets))
+        nodes = dict(index._read_nodes([1, 2]))
+        l1 = nodes[1]
+        l2 = nodes[2]
+        min_l2_key = l2.min_key
+        max_l1_key = l1.max_key
+        self.assertTrue(max_l1_key < min_l2_key)
+        parents_min_l2_key = l2.keys[min_l2_key][1][0]
+        self.assertEqual((l1.max_key,), parents_min_l2_key)
+        # Now, whatever key we select that would fall on the second page,
+        # should give us all the parents until the page break
+        key_idx = rev_keys.index(min_l2_key)
+        next_key = rev_keys[key_idx+1]
+        # So now when we get the parent map, we should get the key we are
+        # looking for, min_l2_key, and then a reference to go look for the
+        # parent of that key
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([next_key], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual([min_l2_key, next_key], sorted(parent_map))
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set([max_l1_key]), search_keys)
+        parent_map = {}
+        search_keys = index.get_ancestry([max_l1_key], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual(sorted(l1.keys), sorted(parent_map))
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set(), search_keys)
 
 
 class TestBTreeNodes(BTreeTestCase):
