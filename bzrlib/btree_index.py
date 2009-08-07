@@ -594,8 +594,8 @@ class _LeafNode(object):
         key_list = _btree_serializer._parse_leaf_lines(bytes,
             key_length, ref_list_length)
         if key_list:
-            self.min_key = key_list[0]
-            self.max_key = key_list[-1]
+            self.min_key = key_list[0][0]
+            self.max_key = key_list[-1][0]
         else:
             self.min_key = self.max_key = None
         self.keys = dict(key_list)
@@ -1222,15 +1222,10 @@ class BTreeGraphIndex(object):
                     parents_to_check.update(parent_keys)
             # Don't look for things we've already found
             parents_to_check = parents_to_check.difference(parent_map)
-            # TODO: we should really track what the minimum and maximum key is
-            #       on a given leaf node. We know it trivially when
-            #       deserializing the leaf node, and it would tell us right
-            #       away if a missing parent would be in this btree if it was
-            #       going to be present at all.
-            #       Also, if we knew a parent was supposed to come before this
-            #       page, we could cheaply check to see if node_index - 1 was
-            #       in nodes, or if node_index + 1 is in nodes and quickly look
-            #       there.
+            # this can be used to test the benefit of having the check loop
+            # inlined.
+            # parents_not_on_page.update(parents_to_check)
+            # continue
             while parents_to_check:
                 next_parents_to_check = set()
                 for key in parents_to_check:
@@ -1240,21 +1235,32 @@ class BTreeGraphIndex(object):
                         parent_map[key] = parent_keys
                         next_parents_to_check.update(parent_keys)
                     else:
-                        # Missing for some reason
-                        if key < node.min_key or key > node.max_key:
-                            # This parent key would be present on a different
-                            # LeafNode
-                            parents_not_on_page.add(key)
-                        else:
-                            assert key != node.min_key and key != node.max_key
-                            # If it was going to be present, it would be on
-                            # *this* page, so mark it missing.
-                            missing_keys.add(key)
+                        # This parent either is genuinely missing, or should be
+                        # found on another page. Perf test whether it is better
+                        # to check if this node should fit on this page or not.
+                        # in the 'everything-in-one-pack' scenario, this *not*
+                        # doing the check is 237ms vs 243ms.
+                        # So slightly better, but I assume the standard 'lots
+                        # of packs' is going to show a reasonable improvement
+                        # from the check, because it avoids 'going around
+                        # again' for everything that is in another index
+                        parents_not_on_page.add(key)
+                        # # Missing for some reason
+                        # if key < node.min_key:
+                        #     # in the case of bzr.dev, 3.4k/5.3k misses are
+                        #     # 'earlier' misses (65%)
+                        #     parents_not_on_page.add(key)
+                        # elif key > node.max_key:
+                        #     # This parent key would be present on a different
+                        #     # LeafNode
+                        #     parents_not_on_page.add(key)
+                        # else:
+                        #     # assert key != node.min_key and key != node.max_key
+                        #     # If it was going to be present, it would be on
+                        #     # *this* page, so mark it missing.
+                        #     missing_keys.add(key)
                 parents_to_check = next_parents_to_check.difference(parent_map)
-                # Some parents we will already know are missing from searching
-                # other LeafNodes, is it faster to check now, or just wait
-                # until later
-                # search_tips = search_tips.difference(missing_keys)
+                # Might want to do another .difference() from missing_keys
         # parents_not_on_page could have been found on a different page, or be
         # known to be missing. So cull out everything that has already been
         # found.
