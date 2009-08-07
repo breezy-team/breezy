@@ -1208,13 +1208,15 @@ class BTreeGraphIndex(object):
             # sub_keys is all of the keys we are looking for that should exist
             # on this page, if they aren't here, then they won't be found
             node = nodes[node_index]
+            node_keys = node.keys
             parents_to_check = set()
             for next_sub_key in sub_keys:
-                if next_sub_key not in node.keys:
+                try:
+                    value, refs = node_keys[next_sub_key]
+                except KeyError:
                     # This one is just not present
                     missing_keys.add(next_sub_key)
                 else:
-                    value, refs = node.keys[next_sub_key]
                     parent_keys = refs[ref_list_num]
                     parent_map[next_sub_key] = parent_keys
                     parents_to_check.update(parent_keys)
@@ -1232,8 +1234,8 @@ class BTreeGraphIndex(object):
             while parents_to_check:
                 next_parents_to_check = set()
                 for key in parents_to_check:
-                    if key in node.keys:
-                        value, refs = node.keys[key]
+                    if key in node_keys:
+                        value, refs = node_keys[key]
                         parent_keys = refs[ref_list_num]
                         parent_map[key] = parent_keys
                         next_parents_to_check.update(parent_keys)
