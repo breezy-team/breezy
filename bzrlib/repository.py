@@ -1424,6 +1424,8 @@ class Repository(object):
         """Commit the contents accrued within the current write group.
 
         :seealso: start_write_group.
+        
+        :return: it may return an opaque hint that can be passed to 'pack'.
         """
         if self._write_group is not self.get_transaction():
             # has an unlock or relock occured ?
@@ -4322,7 +4324,7 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or is has a
+        # The source is using CHKs, but the target either doesn't or it has a
         # different serializer.  The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.18,

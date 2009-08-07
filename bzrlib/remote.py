@@ -587,11 +587,6 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._ensure_real()
         return self._custom_format._serializer
 
-    @property
-    def repository_class(self):
-        self._ensure_real()
-        return self._custom_format.repository_class
-
 
 class RemoteRepository(_RpcHelper):
     """Repository accessed over rpc.
@@ -1682,9 +1677,6 @@ class RemoteRepository(_RpcHelper):
 
 class RemoteStreamSink(repository.StreamSink):
 
-    def __init__(self, target_repo):
-        repository.StreamSink.__init__(self, target_repo)
-
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
         sink = self.target_repo._real_repository._get_sink()
@@ -1706,6 +1698,10 @@ class RemoteStreamSink(repository.StreamSink):
         client = target._client
         medium = client._medium
         path = target.bzrdir._path_for_remote_call(client)
+        # Probe for the verb to use with an empty stream before sending the
+        # real stream to it.  We do this both to avoid the risk of sending a
+        # large request that is then rejected, and because we don't want to
+        # implement a way to buffer, rewind, or restart the stream.
         found_verb = False
         for verb, required_version in candidate_calls:
             if medium._is_remote_before(required_version):
