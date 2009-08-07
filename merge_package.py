@@ -22,6 +22,7 @@
 
 import os
 import re
+import sys
 import tempfile
 
 from debian_bundle.changelog import Version
@@ -36,6 +37,11 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 class WrongBranchType(errors.BzrError):
     _fmt = "The merge target is not a packaging branch."
 
+
+def _debug(lines):
+    for line in lines:
+        print line
+    sys.stdout.flush()
 
 def _read_file(branch, path):
     """Get content of file for given `branch` and `path."""
@@ -69,18 +75,23 @@ def get_upstream_revids(source, target):
 
     # Get the revision IDs for the most recent source and target
     # upstream versions respectively.
-    upstream_revs = []
+    _debug(['\n>> get_upstream_revids()\n'])
+    upstream_revids = []
     for branch in (source, target):
         db = DistributionBranch(branch, branch)
         version = _latest_version(branch)
         # print "Version : %s, %s\n" % (version, version.upstream_version)
-        upstream_revs.append(
+        upstream_revids.append(
             db.revid_of_upstream_version_from_branch(
                 version.upstream_version))
 
-    return upstream_revs
+    _debug(['upstream revids: %s' % upstream_revids,
+            '\n<< get_upstream_revids()\n'])
+    return upstream_revids
 
 def fix_upstream_ancestry(tree, source, upstream_revids):
+    _debug(['\n>> fix_upstream_ancestry()\n',
+            "!! Upstream branches diverged"])
     [source_upstream_revid, target_upstream_revid] = upstream_revids
 
     db = DistributionBranch(tree.branch, tree.branch)
@@ -90,24 +101,29 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     upstream_tree = db.upstream_tree
 
     # Merge upstream branch tips to obtain a shared upstream parent.
-    print("\n--> Merge upstream branch tips to obtain a shared upstream parent.\n")
-    import sys
-    sys.stdout.flush()
+    _debug(["\n--> Merge upstream branch tips to obtain a shared upstream parent.\n"])
     try:
         upstream_tree.lock_write()
-        conflicts = upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
-        print conflicts
-        sys.stdout.flush()
+        try:
+            uconflicts = upstream_tree.merge_from_branch(source, to_revision=source_upstream_revid)
+        except errors.PointlessMerge:
+            uconflicts = -1
+            _debug(['Upstream: Nothing to merge.'])
     finally:
         upstream_tree.unlock()
 
     # Merge shared upstream parent into the target merge branch.
-    print("\n--> Merge shared upstream parent into the target merge branch.\n")
-    sys.stdout.flush()
+    _debug(["\n--> Merge shared upstream parent into the target merge branch.\n"])
     try:
         tree.lock_write()
-        conflicts = tree.merge_from_branch(upstream_tree.branch)
-        print conflicts
-        sys.stdout.flush()
+        try:
+            tconflicts = tree.merge_from_branch(upstream_tree.branch)
+        except errors.PointlessMerge:
+            tconflicts = -1
+            _debug(['Target branch: Nothing to merge.'])
     finally:
         tree.unlock()
+
+    _debug(['merge conflicts: %s/%s' % (uconflicts, tconflicts),
+            '\n<< fix_upstream_ancestry()\n'])
+    return (uconflicts, tconflicts)

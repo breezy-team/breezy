@@ -883,9 +883,6 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source):
-        import sys
-        print('\n--> merge pack start\n')
-        sys.stdout.flush()
         source_branch = target_branch = None
         # Get the target branch.
         try:
@@ -913,13 +910,19 @@ class cmd_merge_package(Command):
             source_branch.unlock()
             target_branch.unlock()
 
-        print "Upstream branches diverged: %s\n" % upstreams_diverged
-        print "Upstream rev ids: %s\n" % upstream_revids
-        sys.stdout.flush()
+        merge_should_be_done = True
+
         if upstreams_diverged:
             # Fix upstream ancestry.
-            fix_upstream_ancestry(tree, source_branch, upstream_revids)
-        tree.merge_from_branch(source_branch)
+            conflicts = fix_upstream_ancestry(tree, source_branch, upstream_revids)
+            for datum in conflicts:
+                if datum != 0:
+                    merge_should_be_done = False
+                    break
+
+        # Merge source packaging branch in to the target packaging branch.
+        if merge_should_be_done:
+            tree.merge_from_branch(source_branch)
 
 
 class cmd_test_builddeb(Command):
