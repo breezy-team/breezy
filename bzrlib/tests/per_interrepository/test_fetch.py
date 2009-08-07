@@ -172,12 +172,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         unstacked_repo = stacked_branch.bzrdir.open_repository()
         unstacked_repo.lock_read()
         self.addCleanup(unstacked_repo.unlock)
-        if not unstacked_repo._format.supports_chks:
-            # These assertions aren't valid for groupcompress repos, which may
-            # transfer more data than strictly necessary to avoid breaking up an
-            # already-compressed block of data.
-            self.assertFalse(unstacked_repo.has_revision('left'))
-            self.assertFalse(unstacked_repo.has_revision('right'))
+        self.assertFalse(unstacked_repo.has_revision('left'))
+        self.assertFalse(unstacked_repo.has_revision('right'))
         self.assertTrue(unstacked_repo.has_revision('merge'))
         # We used to check for the presence of parent invs here, but what
         # really matters is that the repo can stream the new revision without
