@@ -1075,11 +1075,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
     def get_annotator(self):
         return annotate.Annotator(self)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
-        keys = self.keys()
-        for record in self.get_record_stream(keys, 'unordered', True):
-            record.get_bytes_as('fulltext')
+        if keys is None:
+            keys = self.keys()
+            for record in self.get_record_stream(keys, 'unordered', True):
+                record.get_bytes_as('fulltext')
+        else:
+            return self.get_record_stream(keys, 'unordered', True)
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""

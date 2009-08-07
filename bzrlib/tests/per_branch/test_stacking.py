@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -360,7 +361,7 @@ class TestStacking(TestCaseWithBranch):
             self.build_tree_contents([('stacked/a', ''.join(text_lines))])
             stacked_tree.commit('commit %d' % i)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -384,7 +385,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):

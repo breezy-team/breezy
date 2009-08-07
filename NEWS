@@ -70,6 +70,9 @@ Bug Fixes
   able to pass the Unicode path, but that would be client dependent.
   (John Arbash Meinel, #382709)
 
+* Fix a compile bug on Solaris having to do with const and
+  pointer-to-pointers. (John Arbash Meinel, #408441)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
@@ -156,7 +159,6 @@ Improvements
   the same way that sending Ctrl-\\ does on other platforms.
   (John Arbash Meinel)
 
-
 Documentation
 *************
 
@@ -181,6 +183,9 @@ API Changes
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
   (Martin Pool)
+
+* ``WorkingTree._check`` now requires a references dict with keys matching
+  those returned by ``WorkingTree._get_check_refs``. (Robert Collins)
 
 Internals
 *********
@@ -211,6 +216,9 @@ Internals
 
 Testing
 *******
+
+* Merge directive cherrypick tests must use the same root id.
+  (Martin Pool, #409684)
 
 * Spurious failure in ``check`` tests on rich-root formats fixed.
   (Martin Pool, #408199)
@@ -916,6 +924,9 @@ Internals
 * ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
+
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
 
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 

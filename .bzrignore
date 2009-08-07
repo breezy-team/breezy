@@ -11,7 +11,8 @@ bzr.1
 ./tutorial.html
 BRANCH-INFO
 # setup.py working directory
-build
+./build
+./build-win32
 # Editor temporary/working/backup files
 *$
 .*.sw[nop]
