@@ -1314,6 +1314,44 @@ class CombinedGraphIndex(object):
             except errors.NoSuchFile:
                 self._reload_or_raise()
 
+    def get_ancestry(self, keys):
+        """Find the complete ancestry for the given set of keys.
+
+        :param keys: An iterable of keys to look for
+        :return: (parent_map, missing_keys)
+        """
+        missing_keys = set()
+        parent_map = {}
+        keys_to_lookup = set(keys)
+        while keys_to_lookup:
+            # keys that *all* indexes claim are missing, stop searching them
+            all_index_missing = None
+            for index in self._indices:
+                index_missing_keys = set()
+                # Find all of the ancestry we can from this index
+                # keep looking until the search_keys set is empty, which means
+                # things we didn't find should be in index_missing_keys
+                search_keys = keys_to_lookup
+                while search_keys:
+                    search_keys = index.get_ancestry(search_keys, 0,
+                        parent_map, index_missing_keys)
+                # Now set whatever was missing to be searched in the next index
+                keys_to_lookup = index_missing_keys
+                if all_index_missing is None:
+                    all_index_missing = set(index_missing_keys)
+                else:
+                    all_index_missing.intersection_update(index_missing_keys)
+                if not keys_to_lookup:
+                    break
+            if all_index_missing is None:
+                # There were no indexes, so all search keys are 'missing'
+                missing_keys.update(keys_to_lookup)
+                keys_to_lookup = None
+            else:
+                missing_keys.update(all_index_missing)
+                keys_to_lookup.difference_update(all_index_missing)
+        return parent_map, missing_keys
+
     def key_count(self):
         """Return an estimate of the number of keys in this index.
 

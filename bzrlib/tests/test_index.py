@@ -1324,6 +1324,76 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
                                     ['1', '2', '3'])
         self.assertRaises(errors.NoSuchFile, index.validate)
 
+    def test_get_ancestry_across_indexes(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key3, 'value', ([key2],)),
+            (key4, 'value', ([key3],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        parent_map, missing_keys = c_index.get_ancestry([key1])
+        self.assertEqual({key1: ()}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        # Now look for a key from index2 which requires us to find the key in
+        # the second index, and then continue searching for parents in the
+        # first index
+        parent_map, missing_keys = c_index.get_ancestry([key3])
+        self.assertEqual({key1: (), key2: (key1,), key3: (key2,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+
+    def test_get_ancestry_missing_keys(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key3, 'value', ([key2],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        # Searching for a key which is actually not present at all should
+        # eventually converge
+        parent_map, missing_keys = c_index.get_ancestry([key4])
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([key4]), missing_keys)
+
+    def test_get_ancestry_no_indexes(self):
+        c_index = CombinedGraphIndex([])
+        key1 = ('key-1',)
+        parent_map, missing_keys = c_index.get_ancestry([key1])
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([key1]), missing_keys)
+
+    def test_get_ancestry_ghost_parent(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key4, 'value', ([key2, key3],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        # Searching for a key which is actually not present at all should
+        # eventually converge
+        parent_map, missing_keys = c_index.get_ancestry([key4])
+        self.assertEqual({key4: (key2, key3), key2: (key1,), key1: ()},
+                         parent_map)
+        self.assertEqual(set([key3]), missing_keys)
+
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):
 
