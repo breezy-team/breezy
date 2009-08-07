@@ -1,0 +1,264 @@
+#!/bin/bash
+#
+#   git-darcs - bidirectional operation between a darcs repo and git
+#
+#   Copyright (c) 2008 by Miklos Vajna <vmiklos@frugalware.org>
+#
+#   Based on git-bzr, which is
+#
+#   Copyright (c) 2008 Pieter de Bie <pdebie@ai.rug.nl>
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+#   USA.
+#
+
+add()
+{
+	name="$1"
+	shift
+	location="$1"
+	shift
+	if ! [ -n "$name" -a -n "$location" ]; then
+		echo "Usage: git darcs add name location [darcs-fast-export options]"
+		exit
+	fi
+	if git remote show |grep -q $name; then
+		echo "There is already a remote with that name"
+		exit
+	fi
+	if [ -n "$(git config git-darcs.$name.location)" ]; then
+		echo "There is already a darcs repo with that name"
+		exit
+	fi
+	if [ ! -d $location/_darcs ]; then
+		echo "Remote is not a darcs repository"
+		exit
+	fi
+	git config git-darcs.$name.location $location
+	git config git-darcs.$name.darcs-fast-export-options "$*"
+	echo "Darcs repo $name added. You can fetch it with 'git darcs fetch $name'"
+	if ! [ -z "$*" ]; then
+		echo "darcs-fast-export will get options: $*"
+	fi
+}
+
+get_location()
+{
+	l=$(git config git-darcs.$remote.location)
+	if [ -z "$l" ]; then
+		echo "Cannot find darcs remote with name '$remote'." >&2
+		exit
+	fi
+	echo $l
+}
+
+fetch()
+{
+	remote="$1"
+	shift
+	if ! [ -n "$remote" -a -z "$*" ]; then
+		echo "Usage: git darcs fetch reponame"
+		exit
+	fi
+	location=$(get_location $remote)
+	git_map=$git_dir/darcs-git/$remote-git-map
+	darcs_map=$git_dir/darcs-git/$remote-darcs-map
+	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=darcs/$remote"
+        dfe_opts=$(git config git-darcs.$remote.darcs-fast-export-options)
+	if [ ! -f $git_map -a ! -f $darcs_map ]; then
+		echo "There doesn't seem to be an existing refmap."
+		echo "Doing an initial import"
+		mkdir -p $git_dir/darcs-git
+		darcs-fast-export --export-marks=$darcs_map $common_opts $dfe_opts $location | \
+			git fast-import --export-marks=$git_map
+	elif [ -f $git_map -a -f $darcs_map ]; then
+		echo "Updating remote $remote"
+		old_rev=$(git rev-parse darcs/$remote)
+		darcs-fast-export --import-marks=$darcs_map --export-marks=$darcs_map $common_opts $dfe_opts $location | \
+			git fast-import --quiet --import-marks=$git_map --export-marks=$git_map
+		new_rev=$(git rev-parse darcs/$remote)
+		if [ "$old_rev" != "$new_rev" ]; then
+			echo "Fetched the following updates:"
+			git shortlog $old_rev..$new_rev
+		else
+			echo "Nothing fetched."
+			exit
+		fi
+	else
+		echo "One of the mapfiles is missing! Something went wrong!"
+		exit
+	fi
+}
+
+pull()
+{
+	remote="$1"
+	shift
+	if ! [ -n "$remote" -a -z "$*" ]; then
+		echo "Usage: git darcs pull reponame"
+		exit
+	fi
+	fetch $remote
+	# see if we need to merge or rebase
+	branch=$(git symbolic-ref HEAD|sed 's|.*/||')
+	if [ "$(git config branch.$branch.rebase)" = "true" ]; then
+		git rebase darcs/$remote
+	else
+		git merge darcs/$remote
+	fi
+}
+
+push()
+{
+	remote="$1"
+	shift
+	if ! [ -n "$remote" -a -z "$*" ]; then
+		echo "Usage: git darcs push reponame"
+		exit
+	fi
+	location=$(get_location $remote)
+	if [ -n "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^>/ p')" ]; then
+		echo "HEAD is not a strict child of $remote, cannot push. Merge first"
+		exit
+	fi
+	if [ -z "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^</ p')" ]; then
+		echo "Nothing to push. Commit something first"
+		exit
+	fi
+	git_map=$git_dir/darcs-git/$remote-git-map
+	darcs_map=$git_dir/darcs-git/$remote-darcs-map
+	if [ ! -f $git_map -o ! -f $darcs_map ]; then
+		echo "We do not have refmapping yet. Then how can I push?"
+		exit
+	fi
+	echo "Pushing the following updates:"
+	git shortlog darcs/$remote..
+	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
+		(cd $location; darcs-fast-import --import-marks=$darcs_map --export-marks=$darcs_map \
+		--logfile $git_dir/darcs-git/push.log)
+	if [ $? == 0 ]; then
+		git update-ref darcs/$remote HEAD
+	fi
+}
+
+# List the darcs remotes
+list()
+{
+	if [ -z "$*" ]
+	then
+		git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=.*//p}'
+		exit
+	elif [ "$#" -eq 1 ]
+	then
+		case $1 in
+			-v|--verbose)
+				git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=/\t/p}'
+				exit
+				;;
+		esac
+	fi
+	echo "Usage: git darcs list [-v|--verbose]"
+	exit 1
+}
+
+# Find the darcs commit(s) supporting a git SHA1 prefix
+find_darcs()
+{
+	sha1="$1"
+	shift
+	if [ -z "$sha1" -o -n "$*" ]
+	then
+		echo "Usage: git darcs find-darcs <sha1-prefix>"
+		exit 1
+	fi
+	for remote in $git_dir/darcs/*
+	do
+		remote=`basename $remote`
+		git_map=$git_dir/darcs-git/$remote-git-map
+		darcs_map=$git_dir/darcs-git/$remote-darcs-map
+		if [ ! -f $git_map -o ! -f $darcs_map ]
+		then
+			echo "Missing mappings for remote $remote"
+			exit 1
+		fi
+		for row in `sed -n -e "/:.* $sha1.*/ s/[^ ]*/&/p" $git_map`
+		do
+			sed -n -e "/$row / {s/[^ ]*//; s/.*/$remote\t&/p}" $darcs_map
+		done
+	done
+}
+
+# Find the git commit(s) supporting a darcs patch prefix
+find_git()
+{
+	patch="$1"
+	shift
+	if [ -z "$patch" -o -n "$*" ]
+	then
+		echo "Usage: git darcs find-git <patch-prefix>"
+		exit 1
+	fi
+	for remote in $git_dir/darcs/*
+	do
+		remote=`basename $remote`
+		git_map=$git_dir/darcs-git/$remote-git-map
+		darcs_map=$git_dir/darcs-git/$remote-darcs-map
+		if [ ! -f $git_map -o ! -f $darcs_map ]
+		then
+			echo "Missing mappings for remote $remote"
+			exit 1
+		fi
+		for row in `sed -n -e "/:.* $patch.*/ s/[^ ]*/&/p" $darcs_map`
+		do
+			sed -n -e "/$row / {s/[^ ]* \(.*\)/$remote\t\1/p}" $git_map
+		done
+	done
+}
+
+git rev-parse 2> /dev/null
+if [ $? != 0 ]; then
+	echo "Must be inside a git repository to work"
+	exit
+fi
+
+git_dir=$(git rev-parse --git-dir)
+# make it absolute
+cd $git_dir
+git_dir=$(pwd)
+cd - >/dev/null
+command="$1"
+shift
+
+case $command in
+	add|push|fetch|pull|list)
+		;;
+	find-darcs)
+		command=find_darcs
+		;;
+	find-git)
+		command=find_git
+		;;
+	*)
+		echo "Usage: git darcs [COMMAND] [OPTIONS]"
+		echo "Commands: add, push, fetch, pull, list, find-darcs, find-git"
+		exit
+		;;
+esac
+
+
+up=$(git rev-parse --show-cdup)
+[ -z "$up" ] && up="."
+cd $up
+$command "$@"
