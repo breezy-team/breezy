@@ -94,7 +94,10 @@ class SSHVendorManager(object):
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
-                raise errors.UnknownSSH(vendor_name)
+                vendor = self._get_vendor_from_path(vendor_name)
+                if vendor is None:
+                    raise errors.UnknownSSH(vendor_name)
+                vendor.executable_path = vendor_name
             return vendor
         return None
 
@@ -110,7 +113,7 @@ class SSHVendorManager(object):
             stdout = stderr = ''
         return stdout + stderr
 
-    def _get_vendor_by_version_string(self, version, args):
+    def _get_vendor_by_version_string(self, version, progname):
         """Return the vendor or None based on output from the subprocess.
 
         :param version: The output of 'ssh -V' like command.
@@ -123,9 +126,9 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
-        elif 'plink' in version and args[0] == 'plink':
+        elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -135,10 +138,16 @@ class SSHVendorManager(object):
         """Return the vendor or None by checking for known SSH implementations."""
         for args in (['ssh', '-V'], ['plink', '-V']):
             version = self._get_ssh_version_string(args)
-            vendor = self._get_vendor_by_version_string(version, args)
+            vendor = self._get_vendor_by_version_string(version, args[0])
             if vendor is not None:
                 return vendor
         return None
+
+    def _get_vendor_from_path(self, path):
+        """Return the vendor or None using the program at the given path"""
+        version = self._get_ssh_version_string([path, '-V'])
+        return self._get_vendor_by_version_string(version, 
+            os.path.splitext(os.path.basename(path))[0])
 
     def get_vendor(self, environment=None):
         """Find out what version of SSH is on the system.
@@ -401,9 +410,11 @@ class SubprocessVendor(SSHVendor):
 class OpenSSHSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from OpenSSH."""
 
+    executable_path = 'ssh'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['ssh',
+        args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
                 '-oClearAllForwardings=yes', '-oProtocol=2',
                 '-oNoHostAuthenticationForLocalhost=yes']
@@ -423,9 +434,11 @@ register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
 class SSHCorpSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from SSH Corporation."""
 
+    executable_path = 'ssh'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['ssh', '-x']
+        args = [self.executable_path, '-x']
         if port is not None:
             args.extend(['-p', str(port)])
         if username is not None:
@@ -436,15 +449,17 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
-register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
+register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'plink' executable from Putty."""
 
+    executable_path = 'plink'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
+        args = [self.executable_path, '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
         if username is not None:
