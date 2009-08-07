@@ -158,7 +158,7 @@ class CommitCommand(ImportCommand):
 
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
-        for f in self.file_iter():
+        for f in iter(self.file_iter):
             if child_lists is None:
                 continue
             try:
