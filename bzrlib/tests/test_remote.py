@@ -2290,10 +2290,10 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         self.assertFinished(client)
 
     def test_stream_with_inventory_deltas(self):
-        """'inventory-deltas' substreams can't be sent to the
-        Repository.insert_stream verb.  So when one is encountered the
-        RemoteSink immediately stops using that verb and falls back to VFS
-        insert_stream.
+        """'inventory-deltas' substreams cannot be sent to the
+        Repository.insert_stream verb, because not all servers that implement
+        that verb will accept them.  So when one is encountered the RemoteSink
+        immediately stops using that verb and falls back to VFS insert_stream.
         """
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)

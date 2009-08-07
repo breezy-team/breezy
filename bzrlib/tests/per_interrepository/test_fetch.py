@@ -173,8 +173,8 @@ class TestInterRepository(TestCaseWithInterRepository):
         unstacked_repo.lock_read()
         self.addCleanup(unstacked_repo.unlock)
         if not unstacked_repo._format.supports_chks:
-            # these assertions aren't valid for groupcompress repos, which may
-            # transfer data than strictly necessary to avoid breaking up an
+            # These assertions aren't valid for groupcompress repos, which may
+            # transfer more data than strictly necessary to avoid breaking up an
             # already-compressed block of data.
             self.assertFalse(unstacked_repo.has_revision('left'))
             self.assertFalse(unstacked_repo.has_revision('right'))
