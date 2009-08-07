@@ -37,7 +37,8 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     def get_handler(self):
         branch = self.make_branch('.', format=self.branch_format)
-        handler = generic_processor.GenericProcessor(branch.bzrdir)
+        handler = generic_processor.GenericProcessor(branch.bzrdir,
+            prune_empty_dirs=False)
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want

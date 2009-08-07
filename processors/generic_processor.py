@@ -116,6 +116,11 @@ class GenericProcessor(processor.ImportProcessor):
         'export-marks',
         ]
 
+    def __init__(self, bzrdir, params=None, verbose=False,
+            prune_empty_dirs=True):
+        processor.ImportProcessor.__init__(self, bzrdir, params, verbose)
+        self.prune_empty_dirs = prune_empty_dirs
+
     def pre_process(self):
         self._start_time = time.time()
         self._load_info_and_params()
@@ -454,7 +459,8 @@ class GenericProcessor(processor.ImportProcessor):
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
-            self.rev_store, verbose=self.verbose)
+            self.rev_store, verbose=self.verbose,
+            prune_empty_dirs=self.prune_empty_dirs)
         try:
             handler.process()
         except:
