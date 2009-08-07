@@ -20,6 +20,11 @@ New Features
 Improvements
 ------------
 
+# Directories that become empty following a delete or rename of
+  one of their children are now implicitly pruned. If required,
+  this will be made optional at a later date.
+  (Ian Clatworthy)
+
 * Updated the bundled version of hg-fast-export to be the latest
   code (25-May-2009) from http://repo.or.cz/w/fast-export.git.
   (Ian Clatworthy)
@@ -27,9 +32,17 @@ Improvements
 Bug Fixes
 ---------
 
+* Fixed the format used to create branches in a shared repository.
+  It now selects the best branch format based on the repository
+  format, rather than assume the default branch format is the right
+  one. (Ian Clatworthy)
+
 * Fixed inventory delta generation when deleting directories.
   (Previously the child paths included were relative to the
   directory when they ought to be relative to the root.)
+  (Ian Clatworthy)
+
+* Gracefully handle email addresses with unicode characters.
   (Ian Clatworthy)
 
 Documentation
