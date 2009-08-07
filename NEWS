@@ -30,6 +30,11 @@ Bug Fixes
   There are still some complex scenarios where it will fail (bug #399884)
   (John Arbash Meinel, #393366)
 
+* A progress bar is no longer left dangling when ``bzr selftest``
+  completes, and the progress bar updates with zero latency so the
+  displayed test name is always the one that's actually running.
+  (Martin Pool, #123688)
+
 * Authenticating against an ssh server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
@@ -37,13 +42,6 @@ Bug Fixes
 
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
-
-* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
-  always forces progress bars either on or off respectively.  Otherwise,
-  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
-  bzr always uses the 'text' user interface when run as a command, so
-  ``BZR_USE_TEXT_UI`` is no longer needed.
-  (Martin Pool, #339385, #387717)
 
 * ``bzr commit`` no longer saves the unversioning of missing files until
   the commit has completed on the branch. This means that aborting a
@@ -55,6 +53,12 @@ Bug Fixes
 
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
+
+* ``bzr send`` now generates valid bundles with ``--2a`` formats. However,
+  do to internal changes necessary to support this, older clients will
+  fail when trying to insert them. For newer clients, the bundle can be
+  used to apply the changes to any rich-root compatible format.
+  (John Arbash Meinel, #393349)
 
 * Cope with FTP servers that don't support restart/append by falling back
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
@@ -69,6 +73,10 @@ Bug Fixes
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
+
+* Fix ``AttributeError: 'TestUIFactory' object has no attribute 'tick'``
+  running send and similar commands on 2a formats.
+  (Martin Pool, #408201)
   
 * Fixed export to existing directory: if directory is empty then export 
   will succeed, otherwise it fails with error.
@@ -76,6 +84,9 @@ Bug Fixes
 
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
+
+* Fixed spurious transport activity indicator appearing while tests are
+  running.  (Martin Pool, #343532)
 
 * Merge now correctly handles empty right-hand revision specs.
   (Aaron Bentley, #333961)
@@ -91,10 +102,22 @@ Bug Fixes
 * Streaming from bzr servers where there is a chain of stacked branches
   (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
 
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
+  (Martin Pool, #339385, #387717)
+
 * The optional ``_knit_load_data_pyx`` C extension was never being
   imported.  This caused significant slowdowns when reading data from
   repositories.  (Andrew Bennetts, #405653)
   
+* The ``--hardlink`` option to ``branch`` and ``checkout`` is not
+  supported at the moment on workingtree formats that can do content
+  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  bzr now says so, rather than just ignoring the option.  (Martin Pool)
+
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
   something to a branch/repo on another drive, we would go into an
@@ -146,6 +169,9 @@ API Changes
 * New TransformPreview.commit() allows committing without a working tree.
   (Aaron Bentley)
 
+* ``pb`` parameter to ``TextTestResult`` is deprecated and ignored.
+  (Martin Pool)
+
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
   (Martin Pool)
@@ -166,6 +192,24 @@ Internals
 
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
+
+* The Windows all-in-one installer now bundles the PyQt image format
+  plugins, which allows previewing more images as part of 'qdiff'.
+  (Alexander Belchenko)
+
+
+Testing
+*******
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
+* The ``bzrlib.tests.TextTestRunner`` will no longer call
+  ``countTestsCases`` on the test being run. Progress information is
+  instead handled by having the test passed in call ``result.progress``
+  before running its contents. This improves the behaviour when using
+  ``TextTestRunner`` with test suites that don't support
+  ``countTestsCases``. (Robert Collins)
 
 
 bzr 1.17 "So late it's brunch" 2009-07-20

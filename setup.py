@@ -93,6 +93,7 @@ def get_bzrlib_packages():
 BZRLIB['packages'] = get_bzrlib_packages()
 
 
+from distutils import log
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -400,7 +401,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
-def get_qbzr_py2exe_info(includes, excludes, packages):
+def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     packages.append('PyQt4')
     excludes.append('PyQt4.elementtree.ElementTree')
@@ -414,10 +415,45 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
         QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
         qscintilla2.dll""".split())
     # the qt binaries might not be on PATH...
-    qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
-    path = os.environ.get("PATH","")
-    if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
-        os.environ["PATH"] = path + os.pathsep + qt_dir
+    # They seem to install to a place like C:\Python25\PyQt4\*
+    # Which is not the same as C:\Python25\Lib\site-packages\PyQt4
+    pyqt_dir = os.path.join(sys.prefix, "PyQt4")
+    pyqt_bin_dir = os.path.join(pyqt_dir, "bin")
+    if os.path.isdir(pyqt_bin_dir):
+        path = os.environ.get("PATH", "")
+        if pyqt_bin_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
+            os.environ["PATH"] = path + os.pathsep + pyqt_bin_dir
+    # also add all imageformat plugins to distribution
+    # We will look in 2 places, dirname(PyQt4.__file__) and pyqt_dir
+    base_dirs_to_check = []
+    if os.path.isdir(pyqt_dir):
+        base_dirs_to_check.append(pyqt_dir)
+    try:
+        import PyQt4
+    except ImportError:
+        pass
+    else:
+        pyqt4_base_dir = os.path.dirname(PyQt4.__file__)
+        if pyqt4_base_dir != pyqt_dir:
+            base_dirs_to_check.append(pyqt4_base_dir)
+    if not base_dirs_to_check:
+        log.warn("Can't find PyQt4 installation -> not including imageformat"
+                 " plugins")
+    else:
+        files = []
+        for base_dir in base_dirs_to_check:
+            plug_dir = os.path.join(base_dir, 'plugins', 'imageformats')
+            if os.path.isdir(plug_dir):
+                for fname in os.listdir(plug_dir):
+                    # Include plugin dlls, but not debugging dlls
+                    fullpath = os.path.join(plug_dir, fname)
+                    if fname.endswith('.dll') and not fname.endswith('d4.dll'):
+                        files.append(fullpath)
+        if files:
+            data_files.append(('imageformats', files))
+        else:
+            log.warn('PyQt4 was found, but we could not find any imageformat'
+                     ' plugins. Are you sure your configuration is correct?')
 
 
 def get_svn_py2exe_info(includes, excludes, packages):
@@ -600,7 +636,7 @@ elif 'py2exe' in sys.argv:
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
-        get_qbzr_py2exe_info(includes, excludes, packages)
+        get_qbzr_py2exe_info(includes, excludes, packages, data_files)
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
