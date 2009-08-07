@@ -23,8 +23,13 @@ from bzrlib import (
     inventory,
     osutils,
     revision,
+    serializer,
     )
 from bzrlib.plugins.fastimport import helpers, processor
+
+
+_serializer_handles_escaping = hasattr(serializer.Serializer,
+    'squashes_xml_invalid_characters')
 
 
 def copy_inventory(inv):
@@ -193,11 +198,15 @@ class GenericCommitHandler(processor.CommitHandler):
             author_id = self._format_name_email(author[0], author[1])
             if author_id != who:
                 rev_props['author'] = author_id
+        message = self.command.message
+        if not _serializer_handles_escaping:
+            # We need to assume the bad ol' days
+            message = helpers.escape_commit_message(message)
         return revision.Revision(
            timestamp=committer[2],
            timezone=committer[3],
            committer=who,
-           message=helpers.escape_commit_message(self.command.message),
+           message=message,
            revision_id=self.revision_id,
            properties=rev_props,
            parent_ids=self.parents)
