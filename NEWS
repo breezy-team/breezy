@@ -13,6 +13,10 @@ Compatability Breaks
 New Features
 ------------
 
+* darcs-fast-export is now bundled. In fact, the project has
+  merged into this one for the purposes of ongoing bug fixing
+  and development. (Miklos Vajna)
+
 Improvements
 ------------
 
