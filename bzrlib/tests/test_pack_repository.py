@@ -1014,8 +1014,8 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         tree.branch.push(remote_branch)
         autopack_calls = len([call for call in self.hpss_calls if call ==
             'PackRepository.autopack'])
-        streaming_calls = len([call for call in self.hpss_calls if call ==
-            'Repository.insert_stream'])
+        streaming_calls = len([call for call in self.hpss_calls if call in
+            ('Repository.insert_stream', 'Repository.insert_stream_1.18')])
         if autopack_calls:
             # Non streaming server
             self.assertEqual(1, autopack_calls)
