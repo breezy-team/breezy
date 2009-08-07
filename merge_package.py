@@ -27,7 +27,7 @@ import tempfile
 
 from debian_bundle.changelog import Version
 
-from bzrlib import builtins, errors, merge
+from bzrlib import builtins, errors, merge, trace
 from bzrlib.branch import Branch
 from bzrlib.commands import Command
 
@@ -37,8 +37,9 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 class WrongBranchType(errors.BzrError):
     _fmt = "The merge target is not a packaging branch."
 
-
 def _debug(lines):
+    if not trace.is_verbose():
+        return
     for line in lines:
         print line
     sys.stdout.flush()
@@ -91,7 +92,7 @@ def get_upstream_revids(source, target):
 
 def fix_upstream_ancestry(tree, source, upstream_revids):
     _debug(['\n>> fix_upstream_ancestry()\n',
-            "!! Upstream branches diverged"])
+            '!! Upstream branches diverged'])
     [source_upstream_revid, target_upstream_revid] = upstream_revids
 
     db = DistributionBranch(tree.branch, tree.branch)
@@ -101,7 +102,7 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     upstream_tree = db.upstream_tree
 
     # Merge upstream branch tips to obtain a shared upstream parent.
-    _debug(["\n--> Merge upstream branch tips to obtain a shared upstream parent.\n"])
+    _debug(["\n--> Merge upstream branch tips.\n"])
     try:
         upstream_tree.lock_write()
         try:
@@ -113,7 +114,7 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
         upstream_tree.unlock()
 
     # Merge shared upstream parent into the target merge branch.
-    _debug(["\n--> Merge shared upstream parent into the target merge branch.\n"])
+    _debug(["\n--> Merge shared upstream into target merge branch.\n"])
     try:
         tree.lock_write()
         try:
