@@ -702,6 +702,23 @@ class GraphIndex(object):
                 # the last thing looked up was a terminal element
                 yield (self, ) + key_dict
 
+    def get_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
+        """See BTreeIndex.get_ancestry."""
+        # The api can be implemented as a trivial overlay on top of
+        # iter_entries, it is not an efficient implementation, but it at least
+        # gets the job done.
+        found_keys = set()
+        search_keys = set()
+        for index, key, value, refs in self.iter_entries(keys):
+            parent_keys = refs[ref_list_num]
+            found_keys.add(key)
+            parent_map[key] = parent_keys
+            search_keys.update(parent_keys)
+        # Figure out what, if anything, was missing
+        missing_keys.update(set(keys).difference(found_keys))
+        search_keys = search_keys.difference(parent_map)
+        return search_keys
+
     def key_count(self):
         """Return an estimate of the number of keys in this index.
 

@@ -953,6 +953,59 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
             ])
         self.assertEqual(set([]), index.external_references(0))
 
+    def test_get_ancestry(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key1], 0, parent_map, missing_keys)
+        self.assertEqual({key1: (key2,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set([key2]), search_keys)
+        search_keys = index.get_ancestry(search_keys, 0, parent_map,
+                                         missing_keys)
+        self.assertEqual({key1: (key2,), key2: ()}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test_get_ancestry_w_missing(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key2, key3], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual({key2: ()}, parent_map)
+        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test_get_ancestry_dont_search_known(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([key3],)),
+            (key3, 'value', ([],)),
+            ])
+        # We already know about key2, so we won't try to search for key3
+        parent_map = {key2: (key3,)}
+        missing_keys = set()
+        search_keys = index.get_ancestry([key1], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set(), search_keys)
+
 
 class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
