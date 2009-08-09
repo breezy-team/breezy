@@ -82,10 +82,77 @@ friendly, helpful and always keen to welcome newcomers.
 Bazaar Development in a Nutshell
 ================================
 
-Looking for a 10 minute introduction to submitting a change?
-See http://bazaar-vcs.org/BzrGivingBack.
+.. was from bazaar-vcs.org/BzrGivingBack
 
-TODO: Merge that Wiki page into this document.
+One of the fun things about working on a version control system like Bazaar is
+that the users have a high level of proficiency in contributing back into
+the tool.  Consider the following very brief introduction to contributing back
+to Bazaar.  More detailed instructions are in the following sections.
+
+Making the change
+-----------------
+
+First, get a local copy of the development mainline (See `Why make a local
+copy of bzr.dev?`_.) 
+::
+
+ $ bzr init-repo ~/bzr
+ $ cd ~/bzr
+ $ bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+
+Now make your own branch::
+
+ $ bzr branch bzr.dev giveback
+
+This will give you a branch called "giveback" that you can work on and commit
+in. Here, you can study the code, make a fix or a new feature. Feel free to
+commit early and often (after all, it's your branch!). 
+
+Documentation improvements are an easy place to get started giving back to the
+Bazaar project.  The documentation is in the `doc/` subdirectory of the Bazaar
+source tree.
+
+When you are done, make sure that you commit your last set of changes as well!
+Once you are happy with your changes, ask for them to be merged, as described
+below.
+
+Making a Merge Proposal
+-----------------------
+
+The Bazaar developers use Launchpad to further enable a truly distributed
+style of development.  Anyone can propose a branch for merging into the Bazaar
+trunk.  To start this process, you need to push your branch to Launchpad.  To
+do this, you will need a Launchpad account and user name, e.g.
+`your_lp_username`.  You can push your branch to Launchpad directly from
+Bazaar::
+
+  $ bzr push lp:~your_lp_username/bzr/giveback
+
+After you have pushed your branch, you will need to propose it for merging to
+the Bazaar trunk.  Go to <https://launchpad.net/your_lp_username/bzr/giveback>
+and choose "Propose for merging into another branch".  Select "~bzr/bzr/trunk"
+to hand your changes off to the Bazaar developers for review and merging.
+
+Why make a local copy of bzr.dev?
+---------------------------------
+
+Making a local mirror of bzr.dev is not strictly necessary, but it means
+
+- You can use that copy of bzr.dev as your main bzr executable, and keep it
+  up-to-date using ``bzr pull``.  
+- Certain operations are faster, and can be done when offline.  For example:
+
+  - ``bzr bundle``
+  - ``bzr diff -r ancestor:...``
+  - ``bzr merge``
+
+- When it's time to create your next branch, it's more convenient.  When you 
+  have further contributions to make, you should do them in their own branch::
+
+    $ cd ~/bzr
+    $ bzr branch bzr.dev additional_fixes
+    $ cd additional_fixes # hack, hack, hack
+
 
 
 Understanding the Development Process
@@ -191,7 +258,7 @@ doc
     is in the ReStructuredText markup language.
 
 doc/developers 
-    Documentation specifically targetted at Bazaar and plugin developers.
+    Documentation specifically targeted at Bazaar and plugin developers.
     (Including this document.)
     
         
@@ -213,7 +280,7 @@ developers.  Use intelligent discretion if the patch is trivial.
 Good reviews do take time. They also regularly require a solid
 understanding of the overall code base. In practice, this means a small
 number of people often have a large review burden - with knowledge comes
-responsibility. No one like their merge requests sitting in a queue going
+responsibility. No one likes their merge requests sitting in a queue going
 nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
