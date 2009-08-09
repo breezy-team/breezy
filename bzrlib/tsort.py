@@ -20,6 +20,7 @@
 
 from bzrlib import errors
 import bzrlib.revision as _mod_revision
+from collections import deque
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -45,30 +46,36 @@ def topo_sort(graph):
     # store a dict of the graph.
     graph = dict(graph)
     # this is the stack storing on which the sorted nodes are pushed.
-    node_name_stack = []
+    node_stack = []
 
     # count the number of children for every node in the graph
-    nchildren = dict.fromkeys(graph.iterkeys(), 0)
+    node_child_count = dict.fromkeys(graph.iterkeys(), 0)
     for parents in graph.itervalues():
         for parent in parents:
-            if parent in nchildren:
-                nchildren[parent] += 1
+            # don't count the parent if it's a ghost
+            if parent in node_child_count:
+                node_child_count[parent] += 1
     # keep track of nodes without children in a separate list
-    nochildnodes = [node for (node, n) in nchildren.iteritems() if n == 0]
+    nochild_nodes = deque([node for (node, n) in node_child_count.iteritems() if n == 0])
 
-    while nochildnodes:
+    graph_pop = graph.pop
+    node_stack_append = node_stack.append
+    nochild_nodes_pop = nochild_nodes.pop
+    nochild_nodes_append = nochild_nodes.append
+
+    while nochild_nodes:
         # pick a node without a child and add it to the stack.
-        node_name = nochildnodes.pop()
-        node_name_stack.append(node_name)
+        node_name = nochild_nodes_pop()
+        node_stack_append(node_name)
 
         # the parents of the node lose it as a child; if it was the last
         # child, add the parent to the list of childless nodes.
-        parents = graph.pop(node_name)
+        parents = graph_pop(node_name)
         for parent in parents:
-            if parent in nchildren:
-                nchildren[parent] -= 1
-                if nchildren[parent] == 0:
-                    nochildnodes.append(parent)
+            if parent in node_child_count:
+                node_child_count[parent] -= 1
+                if node_child_count[parent] == 0:
+                    nochild_nodes_append(parent)
 
     # if there are still nodes left in the graph,
     # that means that there is a cycle
@@ -77,8 +84,8 @@ def topo_sort(graph):
 
     # the nodes where pushed on the stack child first, so this list needs to be
     # reversed before returning it.
-    node_name_stack.reverse()
-    return node_name_stack
+    node_stack.reverse()
+    return node_stack
 
 
 class TopoSorter(object):
