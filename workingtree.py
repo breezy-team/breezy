@@ -21,6 +21,7 @@
 from cStringIO import (
     StringIO,
     )
+import errno
 from dulwich.objects import (
     Blob,
     )
@@ -103,7 +104,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                 except (errors.NoSuchFile, IOError):
                     # TODO: Rather than come up with something here, use the old index
                     file = StringIO()
-                    stat_val = (0, 0, 0, 0, stat.S_IFREG | 0644, 0, 0, 0, 0, 0)
+                    from posix import stat_result
+                    stat_val = stat_result((stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
                 blob.set_raw_string(file.read())
             elif entry.kind == "symlink":
                 blob = Blob()
@@ -112,7 +114,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                 except (errors.NoSuchFile, OSError):
                     # TODO: Rather than come up with something here, use the 
                     # old index
-                    stat_val = (0, 0, 0, 0, stat.S_IFLNK, 0, 0, 0, 0, 0)
+                    from posix import stat_result
+                    stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
                 blob.set_raw_string(entry.symlink_target)
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.repository._git.object_store:
@@ -160,7 +163,12 @@ class GitWorkingTree(workingtree.WorkingTree):
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
             path = self._inventory.id2path(file_id)
-        return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
+        try:
+            return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
+        except OSError, (num, msg):
+            if num in (errno.EISDIR, errno.ENOENT):
+                return None
+            raise
 
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
