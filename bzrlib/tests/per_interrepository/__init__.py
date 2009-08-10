@@ -46,12 +46,12 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
     """Transform the input formats to a list of scenarios.
 
     :param formats: A list of tuples:
-        (interrepo_class, repository_format, repository_format_to).
+        (label, repository_format, repository_format_to).
     """
     result = []
-    for repository_format, repository_format_to in formats:
-        id = '%s,%s' % (repository_format.__class__.__name__,
-                        repository_format_to.__class__.__name__)
+    for label, repository_format, repository_format_to in formats:
+        id = '%s,%s,%s' % (label, repository_format.__class__.__name__,
+                           repository_format_to.__class__.__name__)
         scenario = (id,
             {"transport_server": transport_server,
              "transport_readonly_server": transport_readonly_server,
@@ -68,8 +68,8 @@ def default_test_list():
         knitrepo, pack_repo, weaverepo, groupcompress_repo,
         )
     result = []
-    def add_combo(from_format, to_format):
-        result.append((from_format, to_format))
+    def add_combo(label, from_format, to_format):
+        result.append((label, from_format, to_format))
     # test the default InterRepository between format 6 and the current
     # default format.
     # XXX: robertc 20060220 reinstate this when there are two supported
@@ -80,32 +80,47 @@ def default_test_list():
     for optimiser_class in InterRepository._optimisers:
         format_to_test = optimiser_class._get_repo_format_to_test()
         if format_to_test is not None:
-            add_combo(format_to_test, format_to_test)
+            add_combo(optimiser_class.__name__, format_to_test, format_to_test)
     # if there are specific combinations we want to use, we can add them
     # here. We want to test rich root upgrading.
-    add_combo(weaverepo.RepositoryFormat5(),
+    # XXX: although we attach InterRepository class names to these scenarios,
+    # there's nothing asserting that these labels correspond to what it
+    # actually used.
+    add_combo('InterRepository',
+              weaverepo.RepositoryFormat5(),
               knitrepo.RepositoryFormatKnit3())
-    add_combo(knitrepo.RepositoryFormatKnit1(),
+    add_combo('InterRepository',
+              knitrepo.RepositoryFormatKnit1(),
               knitrepo.RepositoryFormatKnit3())
-    add_combo(knitrepo.RepositoryFormatKnit1(),
+    add_combo('InterKnitRepo',
+              knitrepo.RepositoryFormatKnit1(),
               pack_repo.RepositoryFormatKnitPack1())
-    add_combo(pack_repo.RepositoryFormatKnitPack1(),
+    add_combo('InterKnitRepo',
+              pack_repo.RepositoryFormatKnitPack1(),
               knitrepo.RepositoryFormatKnit1())
-    add_combo(knitrepo.RepositoryFormatKnit3(),
+    add_combo('InterKnitRepo',
+              knitrepo.RepositoryFormatKnit3(),
               pack_repo.RepositoryFormatKnitPack3())
-    add_combo(pack_repo.RepositoryFormatKnitPack3(),
+    add_combo('InterKnitRepo',
+              pack_repo.RepositoryFormatKnitPack3(),
               knitrepo.RepositoryFormatKnit3())
-    add_combo(pack_repo.RepositoryFormatKnitPack3(),
+    add_combo('InterKnitRepo',
+              pack_repo.RepositoryFormatKnitPack3(),
               pack_repo.RepositoryFormatKnitPack4())
-    add_combo(pack_repo.RepositoryFormatKnitPack1(),
+    add_combo('InterDifferingSerializer',
+              pack_repo.RepositoryFormatKnitPack1(),
               pack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo(pack_repo.RepositoryFormatKnitPack6RichRoot(),
+    add_combo('InterDifferingSerializer',
+              pack_repo.RepositoryFormatKnitPack6RichRoot(),
               groupcompress_repo.RepositoryFormat2a())
-    add_combo(groupcompress_repo.RepositoryFormat2a(),
+    add_combo('InterDifferingSerializer',
+              groupcompress_repo.RepositoryFormat2a(),
               pack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo(groupcompress_repo.RepositoryFormatCHK2(),
+    add_combo('InterRepository',
+              groupcompress_repo.RepositoryFormatCHK2(),
               groupcompress_repo.RepositoryFormat2a())
-    add_combo(groupcompress_repo.RepositoryFormatCHK1(),
+    add_combo('InterDifferingSerializer',
+              groupcompress_repo.RepositoryFormatCHK1(),
               groupcompress_repo.RepositoryFormat2a())
     return result
 
