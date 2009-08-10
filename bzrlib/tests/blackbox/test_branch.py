@@ -329,7 +329,9 @@ class TestSmartServerBranching(ExternalBase):
             t.commit(message='commit %d' % count)
         tree2 = t.branch.bzrdir.sprout('feature', stacked=True
             ).open_workingtree()
-        tree2.commit('feature change')
+        local_tree = t.branch.bzrdir.sprout('local-working').open_workingtree()
+        local_tree.commit('feature change')
+        local_tree.branch.push(tree2.branch)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('feature'),
             'local-target'])
