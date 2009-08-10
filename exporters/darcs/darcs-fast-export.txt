@@ -59,3 +59,6 @@ repository. It supports incremental conversion as well, via the
 --progress::
 	Insert progress statements after every <n> patches, to be shown by the
 	fast importer during import.
+
+--authors-file::
+	Read author transformations in old=new format from <file>.
