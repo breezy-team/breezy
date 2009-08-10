@@ -17,7 +17,7 @@
 """Simplified and unified access to the various xxx-fast-export tools."""
 
 
-import os, subprocess, sys
+import gzip, os, subprocess, sys
 
 from bzrlib import errors
 from bzrlib.trace import note, warning
@@ -86,32 +86,30 @@ class _Exporter(object):
     def get_output_info(self, dest):
         """Get the output streams/filenames given a destination filename.
 
-        :return: outf, logf, marks, logname where
+        :return: outf, basename, marks where
           outf is a file-like object for storing the output,
-          logf is a file-like object for storing the log,
+          basename is the name without the .fi and .gz prefixes
           marks is the name of the marks file to use, if any
-          logname is the name of the log stream
         """
         if dest == '-':
-            return sys.stdout, sys.stderr, None, "standard error"
+            return sys.stdout, None, None
         else:
-            # TODO: implicitly compress the output if dest ends in '.gz'
-            outf = open(dest, 'w')
-            base = dest
+            if dest.endswith('.gz'):
+                outf = gzip.open(dest, 'wb')
+                base = dest[:-3]
+            else:
+                outf = open(dest, 'w')
+                base = dest
             if base.endswith(".fi"):
                 base = dest[:-3]
             marks = "%s.marks" % (base,)
-            #log = "%s.log" % (base,)
-            #logf = open(log, 'w')
-            #return outf, logf, marks, log
-            return outf, sys.stderr, marks, "standard error"
+            return outf, base, marks
 
-    def execute(self, args, outf, logf, cwd=None):
-        """Execute a command, capturing the output.
+    def execute(self, args, outf, cwd=None):
+        """Execute a command, capture the output and close files.
         
         :param args: list of arguments making up the command
         :param outf: a file-like object for storing the output,
-        :param logf: a file-like object for storing the log,
         :param cwd: current working directory to use
         :return: the return code
         """
@@ -119,21 +117,23 @@ class _Exporter(object):
             note("Executing %s in directory %s ..." % (" ".join(args), source))
         else:
             note("Executing %s ..." % (" ".join(args),))
-        # TODO: capture stderr *while still displaying it* and dump it to logf
-        p = subprocess.Popen(args, stdout=outf, cwd=cwd)
-        p.wait()
+        try:
+            p = subprocess.Popen(args, stdout=outf, cwd=cwd)
+            p.wait()
+        finally:
+            if outf != sys.stdout:
+                outf.close()
         return p.returncode
 
-    def report_results(self, retcode, destination, logname):
+    def report_results(self, retcode, destination):
         """Report whether the export succeeded or otherwise."""
         if retcode == 0:
             note("Export to %s completed successfully." % (destination,))
         else:
             warning("Export to %s exited with error code %d."
                 % (destination, retcode))
-                #" See %s for details." % (destination, retcode, logname))
 
-    def execute_exporter_script(self, args, outf, logf):
+    def execute_exporter_script(self, args, outf):
         """Execute an exporter script, capturing the output.
         
         The script must be a Python script under the exporters directory.
@@ -141,8 +141,6 @@ class _Exporter(object):
         :param args: list of arguments making up the script, the first of
           which is the script name relative to the exporters directory.
         :param outf: a file-like object for storing the output,
-        :param logf: a file-like object for storing the log,
-        :param cwd: current working directory to use
         :return: the return code
         """
         # Note: currently assume Python is on the path. We could work around
@@ -151,7 +149,7 @@ class _Exporter(object):
         exporters_dir = os.path.dirname(__file__)
         script_abspath = os.path.join(exporters_dir, args[0])
         actual_args = ['python', script_abspath] + args[1:]
-        return self.execute(actual_args, outf, logf)
+        return self.execute(actual_args, outf)
 
 
 class DarcsExporter(_Exporter):
@@ -162,12 +160,12 @@ class DarcsExporter(_Exporter):
     def generate(self, source, destination, verbose=False, parameters=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         args = ["darcs/darcs-fast-export"]
-        outf, logf, marks, logname = self.get_output_info(destination)
+        outf, base, marks = self.get_output_info(destination)
         if marks:
             args.append('--export-marks=%s' % marks)
         args.append(source)
-        retcode = self.execute_exporter_script(args, outf, logf)
-        self.report_results(retcode, destination, logname)
+        retcode = self.execute_exporter_script(args, outf)
+        self.report_results(retcode, destination)
 
 
 class MercurialExporter(_Exporter):
@@ -179,11 +177,11 @@ class MercurialExporter(_Exporter):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         # XXX: Should we add --force here?
         args = ["hg-fast-export.py", "-r", source, "-s"]
-        outf, logf, marks, logname = self.get_output_info(destination)
+        outf, base, marks = self.get_output_info(destination)
         if marks:
             args.append('--marks=%s' % marks)
-        retcode = self.execute_exporter_script(args, outf, logf)
-        self.report_results(retcode, destination, logname)
+        retcode = self.execute_exporter_script(args, outf)
+        self.report_results(retcode, destination)
 
 
 class GitExporter(_Exporter):
@@ -194,7 +192,7 @@ class GitExporter(_Exporter):
     def generate(self, source, destination, verbose=False, parameters=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         args = ["git", "fast-export", "--all", "--signed-tags=warn"]
-        outf, logf, marks, logname = self.get_output_info(destination)
+        outf, base, marks = self.get_output_info(destination)
         if marks:
             marks = os.path.abspath(marks)
             # Note: we don't pass import-marks because that creates
@@ -203,8 +201,8 @@ class GitExporter(_Exporter):
             #if os.path.exists(marks):
             #    args.append('--import-marks=%s' % marks)
             args.append('--export-marks=%s' % marks)
-        retcode = self.execute(args, outf, logf, cwd=source)
-        self.report_results(retcode, destination, logname)
+        retcode = self.execute(args, outf, cwd=source)
+        self.report_results(retcode, destination)
 
 
 class SubversionExporter(_Exporter):
