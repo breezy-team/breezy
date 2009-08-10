@@ -338,6 +338,12 @@ def mangle_mark(mark):
 def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,authors={},sob=False,force=False):
   _max=int(m)
 
+  try:
+    import msvcrt
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+  except ImportError:
+    pass
+
   marks_cache=load_cache(marksfile,mangle_mark)
   mapping_cache=load_cache(mappingfile)
   heads_cache=load_cache(headsfile)
@@ -431,12 +437,6 @@ if __name__=='__main__':
 
   if options.origin_name!=None:
     set_origin_name(options.origin_name)
-
-  try:
-    import msvcrt
-    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
-  except ImportError:
-    pass
 
   sys.exit(hg2git(options.repourl,m,options.marksfile,options.mappingfile,options.headsfile,
     options.statusfile,authors=a,sob=options.sob,force=options.force))

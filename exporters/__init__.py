@@ -116,9 +116,41 @@ class _Exporter(object):
         :param cwd: current working directory to use
         :return: the return code
         """
+        if cwd is not None:
+            note("Executing %s in directory %s ..." % (" ".join(args), source))
+        else:
+            note("Executing %s ..." % (" ".join(args),))
         p = subprocess.Popen(args, stdout=outf, stderr=logf, cwd=cwd)
         p.wait()
         return p.returncode
+
+    def report_results(self, retcode, destination, logname):
+        """Report whether the export succeeded or otherwise."""
+        if retcode == 0:
+            note("Export to %s completed successfully." % (destination,))
+        else:
+            warning("Export to %s exited with error code %d."
+                " See %s for details." % (destination, retcode, logname))
+
+    def execute_exporter_script(self, args, outf, logf):
+        """Execute an exporter script, capturing the output.
+        
+        The script must be a Python script under the exporters directory.
+
+        :param args: list of arguments making up the script, the first of
+          which is the script name relative to the exporters directory.
+        :param outf: a file-like object for storing the output,
+        :param logf: a file-like object for storing the log,
+        :param cwd: current working directory to use
+        :return: the return code
+        """
+        # Note: currently assume Python is on the path. We could work around
+        # this later (for Windows users say) by packaging the scripts as Python
+        # modules and calling their internals directly.
+        exporters_dir = os.path.dirname(__file__)
+        script_abspath = os.path.join(exporters_dir, args[0])
+        actual_args = ['python', script_abspath] + args[1:]
+        return self.execute(actual_args, outf, logf)
 
 
 class DarcsExporter(_Exporter):
@@ -131,6 +163,16 @@ class MercurialExporter(_Exporter):
 
     def __init__(self):
         self.check_install('Mercurial', '1.2', None, ['mercurial'])
+
+    def generate(self, source, destination, verbose=False, parameters=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        args = ["hg-fast-export.py", "-s", "--force"]
+        args.append('-r %s' % source)
+        outf, logf, marks, logname = self.get_output_info(destination)
+        if marks:
+            args.append('--marks=%s' % marks)
+        retcode = self.execute_exporter_script(args, outf, logf)
+        self.report_results(retcode, destination, logname)
 
 
 class GitExporter(_Exporter):
@@ -150,13 +192,8 @@ class GitExporter(_Exporter):
             #if os.path.exists(marks):
             #    args.append('--import-marks=%s' % marks)
             args.append('--export-marks=%s' % marks)
-        note("Executing %s in directory %s" % (" ".join(args), source))
         retcode = self.execute(args, outf, logf, cwd=source)
-        if retcode == 0:
-            note("Export to %s completed successfully." % (destination,))
-        else:
-            warning("Export to %s exited with error code %d."
-                " See %s for details." % (destination, retcode, logname))
+        self.report_results(retcode, destination, logname)
 
 
 class SubversionExporter(_Exporter):
