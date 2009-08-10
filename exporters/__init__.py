@@ -158,6 +158,16 @@ class DarcsExporter(_Exporter):
     def __init__(self):
         self.check_install('Darcs', '2.2', [('darcs', '--version')])
 
+    def generate(self, source, destination, verbose=False, parameters=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        args = ["darcs/darcs-fast-export"]
+        outf, logf, marks, logname = self.get_output_info(destination)
+        if marks:
+            args.append('--export-marks=%s' % marks)
+        args.append(source)
+        retcode = self.execute_exporter_script(args, outf, logf)
+        self.report_results(retcode, destination, logname)
+
 
 class MercurialExporter(_Exporter):
 
