@@ -105,7 +105,8 @@ class GitExporter(_Exporter):
 class SubversionExporter(_Exporter):
 
     def __init__(self):
-        self.check_install('Subversion', '1.4', None, ['svn.fs', 'svn.core', 'svn.repos'])
+        self.check_install('Python Subversion', '1.4', None,
+            ['svn.fs', 'svn.core', 'svn.repos'])
 
 
 def fast_export_from(source, destination, tool, verbose=False, parameters=None):
