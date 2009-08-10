@@ -1,4 +1,4 @@
-. lib.sh
+. ./lib.sh
 
 create_darcs test2 --darcs-2
 cd test2

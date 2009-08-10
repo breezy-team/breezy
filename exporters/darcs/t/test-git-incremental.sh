@@ -1,4 +1,4 @@
-. lib.sh
+. ./lib.sh
 
 create_darcs test --old-fashioned-inventory
 
