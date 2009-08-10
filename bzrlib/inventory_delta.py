@@ -29,6 +29,7 @@ from bzrlib.osutils import basename
 from bzrlib import inventory
 from bzrlib.revision import NULL_REVISION
 
+FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
 def _directory_content(entry):
     """Serialize the content component of entry which is a directory.
@@ -116,39 +117,22 @@ def _tree_to_entry(content, name, parent_id, file_id, last_modified,
 
 
 class InventoryDeltaSerializer(object):
-    """Serialize and deserialize inventory deltas."""
+    """Serialize inventory deltas."""
 
-    # XXX: really, the serializer and deserializer should be two separate
-    # classes.
-
-    FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
-
-    def __init__(self):
-        """Create an InventoryDeltaSerializer."""
-        self._versioned_root = None
-        self._tree_references = None
-        self._entry_to_content = {
-            'directory': _directory_content,
-            'file': _file_content,
-            'symlink': _link_content,
-        }
-
-    def require_flags(self, versioned_root=None, tree_references=None):
-        """Set the versioned_root and/or tree_references flags for this
-        (de)serializer.
+    def __init__(self, versioned_root, tree_references):
+        """Create an InventoryDeltaSerializer.
 
         :param versioned_root: If True, any root entry that is seen is expected
             to be versioned, and root entries can have any fileid.
         :param tree_references: If True support tree-reference entries.
         """
-        if versioned_root is not None and self._versioned_root is not None:
-            raise AssertionError(
-                "require_flags(versioned_root=...) already called.")
-        if tree_references is not None and self._tree_references is not None:
-            raise AssertionError(
-                "require_flags(tree_references=...) already called.")
         self._versioned_root = versioned_root
         self._tree_references = tree_references
+        self._entry_to_content = {
+            'directory': _directory_content,
+            'file': _file_content,
+            'symlink': _link_content,
+        }
         if tree_references:
             self._entry_to_content['tree-reference'] = _reference_content
 
@@ -184,7 +168,7 @@ class InventoryDeltaSerializer(object):
                     'to_line generated non-str output %r' % lines[-1])
             lines.append(line)
         lines.sort()
-        lines[0] = "format: %s\n" % InventoryDeltaSerializer.FORMAT_1
+        lines[0] = "format: %s\n" % FORMAT_1
         lines[1] = "parent: %s\n" % old_name
         lines[2] = "version: %s\n" % new_name
         lines[3] = "versioned_root: %s\n" % self._serialize_bool(
@@ -244,6 +228,32 @@ class InventoryDeltaSerializer(object):
             (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
                 content))
 
+
+class InventoryDeltaDeserializer(object):
+    """Deserialize inventory deltas."""
+
+    def __init__(self):
+        """Create an InventoryDeltaDeserializer."""
+        self._versioned_root = None
+        self._tree_references = None
+
+    def require_flags(self, versioned_root=None, tree_references=None):
+        """Set the versioned_root and/or tree_references flags for this
+        deserializer.
+
+        :param versioned_root: If True, any root entry that is seen is expected
+            to be versioned, and root entries can have any fileid.
+        :param tree_references: If True support tree-reference entries.
+        """
+        if versioned_root is not None and self._versioned_root is not None:
+            raise AssertionError(
+                "require_flags(versioned_root=...) already called.")
+        if tree_references is not None and self._tree_references is not None:
+            raise AssertionError(
+                "require_flags(tree_references=...) already called.")
+        self._versioned_root = versioned_root
+        self._tree_references = tree_references
+
     def _deserialize_bool(self, value):
         if value == "true":
             return True
@@ -268,7 +278,7 @@ class InventoryDeltaSerializer(object):
             last_line = bytes.rsplit('\n', 1)[-1]
             raise errors.BzrError('last line not empty: %r' % (last_line,))
         lines = bytes.split('\n')[:-1] # discard the last empty line
-        if not lines or lines[0] != 'format: %s' % InventoryDeltaSerializer.FORMAT_1:
+        if not lines or lines[0] != 'format: %s' % FORMAT_1:
             raise errors.BzrError('unknown format %r' % lines[0:1])
         if len(lines) < 2 or not lines[1].startswith('parent: '):
             raise errors.BzrError('missing parent: marker')

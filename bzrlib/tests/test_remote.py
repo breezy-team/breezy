@@ -2368,8 +2368,8 @@ class TestRepositoryInsertStream(TestRemoteRepository):
                 'directory', 'newdir', inv.root.file_id, 'newdir-id')
             entry.revision = 'ghost'
             delta = [(None, 'newdir', 'newdir-id', entry)]
-            serializer = inventory_delta.InventoryDeltaSerializer()
-            serializer.require_flags(True, False)
+            serializer = inventory_delta.InventoryDeltaSerializer(
+                versioned_root=True, tree_references=False)
             lines = serializer.delta_to_lines('rev1', 'rev2', delta)
             yield versionedfile.ChunkedContentFactory(
                 ('rev2',), (('rev1',)), None, lines)

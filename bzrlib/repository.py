@@ -4231,7 +4231,7 @@ class StreamSink(object):
         for record in substream:
             # Insert the delta directly
             inventory_delta_bytes = record.get_bytes_as('fulltext')
-            deserialiser = inventory_delta.InventoryDeltaSerializer()
+            deserialiser = inventory_delta.InventoryDeltaDeserializer()
             parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             # Make sure the delta is compatible with the target
@@ -4506,17 +4506,17 @@ class StreamSource(object):
         # method...
         inventories = self.from_repository.iter_inventories(
             revision_ids, 'topological')
-        # XXX: ideally these flags would be per-revision, not per-repo (e.g.
-        # streaming a non-rich-root revision out of a rich-root repo back into
-        # a non-rich-root repo ought to be allowed)
         format = from_repo._format
-        flags = (format.rich_root_data, format.supports_tree_reference)
         invs_sent_so_far = set([_mod_revision.NULL_REVISION])
         inventory_cache = lru_cache.LRUCache(50)
         null_inventory = from_repo.revision_tree(
             _mod_revision.NULL_REVISION).inventory
-        serializer = inventory_delta.InventoryDeltaSerializer()
-        serializer.require_flags(*flags)
+        # XXX: ideally the rich-root/tree-refs flags would be per-revision, not
+        # per-repo (e.g.  streaming a non-rich-root revision out of a rich-root
+        # repo back into a non-rich-root repo ought to be allowed)
+        serializer = inventory_delta.InventoryDeltaSerializer(
+            versioned_root=format.rich_root_data,
+            tree_references=format.supports_tree_reference)
         for inv in inventories:
             key = (inv.revision_id,)
             parent_keys = parent_map.get(key, ())
