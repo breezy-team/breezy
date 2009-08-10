@@ -4232,19 +4232,13 @@ class StreamSink(object):
             # Insert the delta directly
             inventory_delta_bytes = record.get_bytes_as('fulltext')
             deserialiser = inventory_delta.InventoryDeltaDeserializer()
-            parse_result = deserialiser.parse_text_bytes(inventory_delta_bytes)
-            basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
-            # Make sure the delta is compatible with the target
-            if rich_root and not target_rich_root:
+            try:
+                parse_result = deserialiser.parse_text_bytes(
+                    inventory_delta_bytes)
+            except inventory_delta._IncompatibleDelta, err:
+                trace.mutter("Incompatible delta: %s", err.msg)
                 raise errors.IncompatibleRevision(self.target_repo._format)
-            if tree_refs and not target_tree_refs:
-                # The source supports tree refs and the target doesn't.  Check
-                # the delta for tree refs; if it has any we can't insert it.
-                for delta_item in inv_delta:
-                    entry = delta_item[3]
-                    if entry.kind == 'tree-reference':
-                        raise errors.IncompatibleRevision(
-                            self.target_repo._format)
+            basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             revision_id = new_id
             parents = [key[0] for key in record.parents]
             self.target_repo.add_inventory_by_delta(

@@ -232,27 +232,15 @@ class InventoryDeltaSerializer(object):
 class InventoryDeltaDeserializer(object):
     """Deserialize inventory deltas."""
 
-    def __init__(self):
-        """Create an InventoryDeltaDeserializer."""
-        self._versioned_root = None
-        self._tree_references = None
-
-    def require_flags(self, versioned_root=None, tree_references=None):
-        """Set the versioned_root and/or tree_references flags for this
-        deserializer.
+    def __init__(self, allow_versioned_root=True, allow_tree_references=True):
+        """Create an InventoryDeltaDeserializer.
 
         :param versioned_root: If True, any root entry that is seen is expected
             to be versioned, and root entries can have any fileid.
         :param tree_references: If True support tree-reference entries.
         """
-        if versioned_root is not None and self._versioned_root is not None:
-            raise AssertionError(
-                "require_flags(versioned_root=...) already called.")
-        if tree_references is not None and self._tree_references is not None:
-            raise AssertionError(
-                "require_flags(tree_references=...) already called.")
-        self._versioned_root = versioned_root
-        self._tree_references = tree_references
+        self._allow_versioned_root = allow_versioned_root
+        self._allow_tree_references = allow_tree_references
 
     def _deserialize_bool(self, value):
         if value == "true":
@@ -292,16 +280,8 @@ class InventoryDeltaDeserializer(object):
         if len(lines) < 5 or not lines[4].startswith('tree_references: '):
             raise errors.BzrError('missing tree_references: marker')
         delta_tree_references = self._deserialize_bool(lines[4][17:])
-        if (self._versioned_root is not None and
-            delta_versioned_root != self._versioned_root):
-            raise errors.BzrError(
-                "serialized versioned_root flag is wrong: %s" %
-                (delta_versioned_root,))
-        if (self._tree_references is not None
-            and delta_tree_references != self._tree_references):
-            raise errors.BzrError(
-                "serialized tree_references flag is wrong: %s" %
-                (delta_tree_references,))
+        if (not self._allow_versioned_root and delta_versioned_root):
+            raise _IncompatibleDelta("versioned_root not allowed")
         result = []
         seen_ids = set()
         line_iter = iter(lines)
@@ -317,15 +297,20 @@ class InventoryDeltaDeserializer(object):
             seen_ids.add(file_id)
             if (newpath_utf8 == '/' and not delta_versioned_root and
                 last_modified != delta_version_id):
-                    # Delta claims to be not rich root, yet here's a root entry
-                    # with either non-default version, i.e. it's rich...
+                    # Delta claims to be not have a versioned root, yet here's
+                    # a root entry with a non-default version.
                     raise errors.BzrError("Versioned root found: %r" % line)
             elif newpath_utf8 != 'None' and last_modified[-1] == ':':
                 # Deletes have a last_modified of null:, but otherwise special
                 # revision ids should not occur.
                 raise errors.BzrError('special revisionid found: %r' % line)
-            if delta_tree_references is False and content.startswith('tree\x00'):
-                raise errors.BzrError("Tree reference found: %r" % line)
+            if content.startswith('tree\x00'):
+                if delta_tree_references is False:
+                    raise errors.BzrError(
+                            "Tree reference found (but header said "
+                            "tree_references: false): %r" % line)
+                elif not self._allow_tree_references:
+                    raise _IncompatibleDelta("Tree reference not allowed")
             if oldpath_utf8 == 'None':
                 oldpath = None
             elif oldpath_utf8[:1] != '/':
@@ -370,4 +355,11 @@ def _parse_entry(path, file_id, parent_id, last_modified, content):
     name = basename(path)
     return entry_factory[content[0]](
             content, name, parent_id, file_id, last_modified)
+
+
+class _IncompatibleDelta(errors.InternalBzrError):
+    """The delta could not be deserialised because its contents conflict with
+    the allow_versioned_root or allow_tree_references flags of the
+    deserializer.
+    """
 
