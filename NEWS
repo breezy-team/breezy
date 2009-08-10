@@ -7,11 +7,23 @@ Bazaar Release Notes
    :depth: 1
 
 
-In Development
-##############
+bzr 1.18
+########
 
-Compatibility Breaks
-********************
+:Codename: little traveller
+:1.18rc1: 2009-08-10
+
+This release of Bazaar marches on towards the 2.0 release in which the 2a
+'brisbane-core' format becomes generally recommended.  Most of the work in
+this release now focusses on bug fixes and stabilization, covering both 2a
+and previous formats.  There is a new text-mode interactive merge feature,
+a new guide to migration to 2a format in the user documentation, and
+pushing branches to a smart server is now much faster.  
+
+The Bazaar team decided that 2.0 will be a long-term supported release,
+with bugfix-only releases based on it continuing for at least six months
+or until the following stable release.
+
 
 New Features
 ************
@@ -939,7 +951,7 @@ Testing
   (Vincent Ladeuil, Robert Collins)
 
 bzr 1.14
-###########
+########
 :Codename: brisbane-core
 :1.14rc1: 2009-04-06
 :1.14rc2: 2009-04-19
