@@ -17,7 +17,7 @@
 """Simplified and unified access to the various xxx-fast-export tools."""
 
 
-import os, subprocess
+import os, subprocess, sys
 
 from bzrlib import errors
 from bzrlib.trace import note, warning
@@ -81,7 +81,6 @@ class _Exporter(object):
         :param verbose: if True, output additional diagnostics
         :param parameters: a dictionary of custom conversion parameters
         """
-        #raise errors.BzrError("fast-import file generation from %s still under development" % self.tool_name)
         raise NotImplementedError(self.generate)
 
     def get_output_info(self, dest):
@@ -101,11 +100,11 @@ class _Exporter(object):
             base = dest
             if base.endswith(".fi"):
                 base = dest[:-3]
-            log = "%s.log" % (base,)
-            logf = open(log, 'w')
             marks = "%s.marks" % (base,)
-            #print "%s output info is %s, %s" % (dest, log, marks)
-            return outf, logf, marks, log
+            #log = "%s.log" % (base,)
+            #logf = open(log, 'w')
+            #return outf, logf, marks, log
+            return outf, sys.stderr, marks, "standard error"
 
     def execute(self, args, outf, logf, cwd=None):
         """Execute a command, capturing the output.
@@ -120,7 +119,8 @@ class _Exporter(object):
             note("Executing %s in directory %s ..." % (" ".join(args), source))
         else:
             note("Executing %s ..." % (" ".join(args),))
-        p = subprocess.Popen(args, stdout=outf, stderr=logf, cwd=cwd)
+        # TODO: capture stderr *while still displaying it* and dump it to logf
+        p = subprocess.Popen(args, stdout=outf, cwd=cwd)
         p.wait()
         return p.returncode
 
@@ -130,7 +130,8 @@ class _Exporter(object):
             note("Export to %s completed successfully." % (destination,))
         else:
             warning("Export to %s exited with error code %d."
-                " See %s for details." % (destination, retcode, logname))
+                % (destination, retcode))
+                #" See %s for details." % (destination, retcode, logname))
 
     def execute_exporter_script(self, args, outf, logf):
         """Execute an exporter script, capturing the output.
@@ -176,8 +177,8 @@ class MercurialExporter(_Exporter):
 
     def generate(self, source, destination, verbose=False, parameters=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
-        args = ["hg-fast-export.py", "-s", "--force"]
-        args.append('-r %s' % source)
+        # XXX: Should we add --force here?
+        args = ["hg-fast-export.py", "-r", source, "-s"]
         outf, logf, marks, logname = self.get_output_info(destination)
         if marks:
             args.append('--marks=%s' % marks)
