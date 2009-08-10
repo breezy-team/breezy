@@ -604,7 +604,7 @@ class cmd_add(Command):
     adds as a conflict). It is also useful when merging another project
     into a subdirectory of this one.
     
-    Any files matching paterns in the ignore list will not be added
+    Any files matching patterns in the ignore list will not be added
     unless they are explicitly mentioned.
     """
     takes_args = ['file*']
