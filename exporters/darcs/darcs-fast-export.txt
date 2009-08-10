@@ -23,18 +23,18 @@ repository. It supports incremental conversion as well, via the
 -h, --help::
 	Display usage.
 
---import-marks::
-	Import marks from a given file. This is read at the beginning of the
+--import-marks=<file>::
+	Import marks from <file>. This is read at the beginning of the
 	conversion at once. Use it if you want to continue an incremental
 	conversion.
 
---export-marks::
-	Export marks to a given file at the end of the conversion. It can be the
+--export-marks=<file>::
+	Export marks to <file> at the end of the conversion. It can be the
 	same as the one for --import-marks as it is written only once at the
 	end. Use it if you want to be able to incrementally update the target
 	repository later.
 
---encoding::
+--encoding=<encoding>::
 	The encoding of the author names and commit messages in the repository.
 	The default is utf-8. If it is not the default, it will be guessed.
 	Given that it takes some time, you can explicitly specify it as an
@@ -42,23 +42,23 @@ repository. It supports incremental conversion as well, via the
 	as utf-8 and will be written that way to the target repository, unless
 	the importer re-encodes it again to some other character set.
 
---working::
+--working=<directory>::
 	The conversion is done by applying the patches one by one and recording
 	the state of the working directory. You can specify the path of this
 	directory using this option.
 
---logfile::
+--logfile=<logfile>::
 	The output of external commands are redirected to a log file. You can
 	specify the path of that file with this parameter.
 
---git-branch::
+--git-branch=<branch>::
 	There is only one branch in one darcs repository, but the fast-import
 	stream format allows multiple branches, thus the exporter has to name
 	darcs's branch. The default value is 'refs/heads/master'.
 
---progress::
+--progress=<n>::
 	Insert progress statements after every <n> patches, to be shown by the
-	fast importer during import.
+	fast importer during import. The default value is '100'.
 
---authors-file::
+--authors-file=<file>::
 	Read author transformations in old=new format from <file>.
