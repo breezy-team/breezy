@@ -421,8 +421,101 @@ class cmd_fast_export(Command):
         return exporter.run()
 
 
+class cmd_fast_export_from_darcs(Command):
+    """Generate a fast-import file from a Darcs repository.
+
+    If '-' is given as the destination, standard output is used.
+    If the destination ends in .gz, the output will be compressed.
+
+    Darcs 2.2 or later must be installed as various subcommands are
+    used to access the source repository. The source may be a network
+    URL but using a local URL is recommended for performance reasons.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose']
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        fast_export_from(source, destination, 'darcs', verbose)
+
+
+class cmd_fast_export_from_hg(Command):
+    """Generate a fast-import file from a Mercurial repository.
+
+    If '-' is given as the destination, standard output is used.
+    If the destination ends in .gz, the output will be compressed.
+
+    Mercurial 1.2 or later must be installed as its libraries are used
+    to access the source repository. Given the APIs currently used,
+    the source repository must be a local file, not a network URL.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose']
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        fast_export_from(source, destination, 'hg', verbose)
+
+
+class cmd_fast_export_from_git(Command):
+    """Generate a fast-import file from a Git repository.
+
+    If '-' is given as the destination, standard output is used.
+    If the destination ends in .gz, the output will be compressed.
+
+    Git 1.6 or later must be installed as the git fast-export
+    subcommand is used under the covers to generate the stream.
+    The source may be a network URL but using a local URL is
+    recommended for performance reasons.
+
+    Note: Earlier versions of Git may also work fine but are
+    likely to receive less active support if problems arise.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose']
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        fast_export_from(source, destination, 'git', verbose)
+
+
+class cmd_fast_export_from_svn(Command):
+    """Generate a fast-import file from a Subversion repository.
+
+    If '-' is given as the destination, standard output is used.
+    If the destination ends in .gz, the output will be compressed.
+
+    Python-Subversion (Python bindings to the Subversion APIs)
+    1.4 or later must be installed as this library is used to
+    access the source repository. The source may be a network URL
+    but using a local URL is recommended for performance reasons.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose']
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        fast_export_from(source, destination, 'svn', verbose)
+
+
 register_command(cmd_fast_import)
 register_command(cmd_fast_import_filter)
 register_command(cmd_fast_import_info)
 register_command(cmd_fast_import_query)
 register_command(cmd_fast_export)
+register_command(cmd_fast_export_from_darcs)
+register_command(cmd_fast_export_from_hg)
+register_command(cmd_fast_export_from_git)
+register_command(cmd_fast_export_from_svn)
