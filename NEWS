@@ -10,6 +10,16 @@ Bazaar Release Notes
 In Development
 ##############
 
+Improvements
+************
+
+* A better description of the platform is shown in crash tracebacks, ``bzr
+  --version`` and ``bzr selftest``.
+  (Martin Pool, #409137)
+
+bzr 1.18
+########
+
 Compatibility Breaks
 ********************
 

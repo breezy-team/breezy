@@ -226,13 +226,17 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._recordTestStartTime()
 
     def startTests(self):
+        import platform
         self.stream.write(
             'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
         self.stream.write(
-            '   %s (%s python%s)\n' % (
-                    bzrlib.__path__[0],
+            '   %s\n' % (
+                    bzrlib.__path__[0],))
+        self.stream.write(
+            '   bzr-%s python-%s %s\n' % (
                     bzrlib.version_string,
                     bzrlib._format_version_tuple(sys.version_info),
+                    platform.platform(),
                     ))
         self.stream.write('\n')
 

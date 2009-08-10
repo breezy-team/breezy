@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ from bzrlib.branch import Branch
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
+    import platform
+
     if to_file is None:
         to_file = sys.stdout
     to_file.write("Bazaar (bzr) %s\n" % bzrlib.__version__)
@@ -62,6 +64,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
+    to_file.write("  Platform: %s\n" % platform.platform())
     to_file.write("  bzrlib: ")
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
