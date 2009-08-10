@@ -471,8 +471,7 @@ class cmd_fast_export_from_git(Command):
 
     Git 1.6 or later must be installed as the git fast-export
     subcommand is used under the covers to generate the stream.
-    The source may be a network URL but using a local URL is
-    recommended for performance reasons.
+    The source must be a local directory.
 
     Note: Earlier versions of Git may also work fine but are
     likely to receive less active support if problems arise.
