@@ -1,4 +1,4 @@
-. lib.sh
+. ./lib.sh
 
 create_hg test
 

@@ -1,4 +1,4 @@
-. lib.sh
+. ./lib.sh
 
 rm -rf test
 mkdir test

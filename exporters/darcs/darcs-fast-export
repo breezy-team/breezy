@@ -211,7 +211,12 @@ else:
 	try:
 		xmldoc = xml.dom.minidom.parseString(buf)
 	except xml.parsers.expat.ExpatError:
-		import chardet
+		try:
+			import chardet
+		except ImportError:
+			sys.exit("Error, encoding is not utf-8. Please " +
+				"either specify it with the --encoding " +
+				"option or install chardet.")
 		progress("encoding is not utf8, guessing charset")
 		encoding = chardet.detect(buf)['encoding']
 		progress("detected encoding is %s" % encoding)
