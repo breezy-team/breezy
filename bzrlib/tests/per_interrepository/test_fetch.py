@@ -139,10 +139,14 @@ class TestInterRepository(TestCaseWithInterRepository):
         builder = self.make_branch_builder('branch')
         builder.start_series()
         builder.build_snapshot('base', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('left', ['base'], [])
-        builder.build_snapshot('right', ['base'], [])
-        builder.build_snapshot('merge', ['left', 'right'], [])
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('left', ['base'], [
+            ('modify', ('file-id', 'left content\n'))])
+        builder.build_snapshot('right', ['base'], [
+            ('modify', ('file-id', 'right content\n'))])
+        builder.build_snapshot('merge', ['left', 'right'], [
+            ('modify', ('file-id', 'left and right content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
         repo = self.make_to_repository('trunk')
@@ -161,6 +165,18 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertEqual(
             set([('left',), ('right',), ('merge',)]),
             unstacked_repo.inventories.keys())
+        # And the basis inventories have been copied correctly
+        trunk.lock_read()
+        self.addCleanup(trunk.unlock)
+        left_tree, right_tree = trunk.repository.revision_trees(
+            ['left', 'right'])
+        stacked_branch.lock_read()
+        self.addCleanup(stacked_branch.unlock)
+        (stacked_left_tree,
+         stacked_right_tree) = stacked_branch.repository.revision_trees(
+            ['left', 'right'])
+        self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
+        self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""

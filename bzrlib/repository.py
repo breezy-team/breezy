@@ -3817,9 +3817,10 @@ class InterDifferingSerializer(InterRepository):
             parent_ids.discard(_mod_revision.NULL_REVISION)
             parent_map = self.source.get_parent_map(parent_ids)
             for parent_tree in self.source.revision_trees(parent_ids):
-                basis_id, delta = self._get_delta_for_revision(tree, parent_ids, basis_id, cache)
                 current_revision_id = parent_tree.get_revision_id()
                 parents_parents = parent_map[current_revision_id]
+                basis_id, delta = self._get_delta_for_revision(parent_tree,
+                    parents_parents, basis_id, cache)
                 self.target.add_inventory_by_delta(
                     basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
