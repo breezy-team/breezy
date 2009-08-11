@@ -223,6 +223,17 @@ class SubversionExporter(_Exporter):
         self.check_install('Python Subversion', '1.4', None,
             ['svn.fs', 'svn.core', 'svn.repos'])
 
+    def generate(self, source, destination, verbose=False, custom=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        args = ["svn-fast-export.py"]
+        outf, base, marks = self.get_output_info(destination)
+        # Marks aren't supported by svn-fast-export so no need to set that option
+        if custom:
+            args.extend(custom)
+        args.append(source)
+        retcode = self.execute_exporter_script(args, outf)
+        self.report_results(retcode, destination)
+
 
 def fast_export_from(source, destination, tool, verbose=False, custom=None):
     # Get the exporter

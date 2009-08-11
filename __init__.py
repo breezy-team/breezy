@@ -504,12 +504,34 @@ class cmd_fast_export_from_svn(Command):
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source', 'destination']
-    takes_options = ['verbose']
+    takes_options = ['verbose',
+                    Option('trunk-path', type=str, argname="STR",
+                        help="Path in repo to /trunk.\n"
+                              "May be `regex:/cvs/(trunk)/proj1/(.*)` in "
+                              "which case the first group is used as the "
+                              "branch name and the second group is used "
+                              "to match files.",
+                        ),
+                    Option('branches-path', type=str, argname="STR",
+                        help="Path in repo to /branches."
+                        ),
+                    Option('tags-path', type=str, argname="STR",
+                        help="Path in repo to /tags."
+                        ),
+                    ]
     aliases = []
     encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
+    def run(self, source, destination, verbose=False, trunk_path=None,
+        branches_path=None, tags_path=None):
         from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'svn', verbose)
+        custom = []
+        if trunk_path is not None:
+            custom.extend(['--trunk-path', trunk_path])
+        if branches_path is not None:
+            custom.extend(['--branches-path', branches_path])
+        if tags_path is not None:
+            custom.extend(['--tags-path', tags_path])
+        fast_export_from(source, destination, 'svn', verbose, custom)
 
 
 register_command(cmd_fast_import)
