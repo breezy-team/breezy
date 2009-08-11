@@ -425,7 +425,6 @@ class cmd_fast_export_from_darcs(Command):
     """Generate a fast-import file from a Darcs repository.
 
     If '-' is given as the destination, standard output is used.
-    If the destination ends in .gz, the output will be compressed.
 
     Darcs 2.2 or later must be installed as various subcommands are
     used to access the source repository. The source may be a network
@@ -453,7 +452,6 @@ class cmd_fast_export_from_hg(Command):
     """Generate a fast-import file from a Mercurial repository.
 
     If '-' is given as the destination, standard output is used.
-    If the destination ends in .gz, the output will be compressed.
 
     Mercurial 1.2 or later must be installed as its libraries are used
     to access the source repository. Given the APIs currently used,
@@ -474,7 +472,6 @@ class cmd_fast_export_from_git(Command):
     """Generate a fast-import file from a Git repository.
 
     If '-' is given as the destination, standard output is used.
-    If the destination ends in .gz, the output will be compressed.
 
     Git 1.6 or later must be installed as the git fast-export
     subcommand is used under the covers to generate the stream.
@@ -498,7 +495,6 @@ class cmd_fast_export_from_svn(Command):
     """Generate a fast-import file from a Subversion repository.
 
     If '-' is given as the destination, standard output is used.
-    If the destination ends in .gz, the output will be compressed.
 
     Python-Subversion (Python bindings to the Subversion APIs)
     1.4 or later must be installed as this library is used to

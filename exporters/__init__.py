@@ -97,12 +97,12 @@ class _Exporter(object):
         if dest == '-':
             return sys.stdout, None, None
         else:
-            if dest.endswith('.gz'):
-                outf = gzip.open(dest, 'wb')
-                base = dest[:-3]
-            else:
-                outf = open(dest, 'w')
-                base = dest
+            #if dest.endswith('.gz'):
+            #    outf = gzip.open(dest, 'wb')
+            #    base = dest[:-3]
+            #else:
+            outf = open(dest, 'w')
+            base = dest
             if base.endswith(".fi"):
                 base = dest[:-3]
             marks = "%s.marks" % (base,)
