@@ -183,8 +183,11 @@ class MercurialExporter(_Exporter):
         # XXX: Should we add --force here?
         args = ["hg-fast-export.py", "-r", source, "-s"]
         outf, base, marks = self.get_output_info(destination)
-        if marks:
-            args.append('--marks=%s' % marks)
+        if base:
+            args.append('--marks=%s.marks' % (base,))
+            args.append('--mapping=%s.mapping' % (base,))
+            args.append('--heads=%s.heads' % (base,))
+            args.append('--status=%s.status' % (base,))
         if custom:
             args.extend(custom)
         retcode = self.execute_exporter_script(args, outf)
