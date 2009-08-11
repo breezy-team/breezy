@@ -132,6 +132,9 @@ class TestInterRepository(TestCaseWithInterRepository):
         altered by all revisions it contains, which means that it needs both
         the inventory for any revision it has, and the inventories of all that
         revision's parents.
+
+        However, we should also skip any revisions which are ghosts in the
+        parents.
         """
         to_repo = self.make_to_repository('to')
         if not to_repo._format.supports_external_lookups:
@@ -145,7 +148,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('modify', ('file-id', 'left content\n'))])
         builder.build_snapshot('right', ['base'], [
             ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right'], [
+        builder.build_snapshot('merge', ['left', 'right', 'ghost'], [
             ('modify', ('file-id', 'left and right content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
@@ -162,6 +165,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.addCleanup(unstacked_repo.unlock)
         self.assertFalse(unstacked_repo.has_revision('left'))
         self.assertFalse(unstacked_repo.has_revision('right'))
+        # 'ghost' should not be present
         self.assertEqual(
             set([('left',), ('right',), ('merge',)]),
             unstacked_repo.inventories.keys())

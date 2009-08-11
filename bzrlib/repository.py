@@ -3808,6 +3808,8 @@ class InterDifferingSerializer(InterRepository):
             # for the new revisions that we are about to insert.  We do this
             # before adding the revisions so that no revision is added until
             # all the inventories it may depend on are added.
+            # Note that this is overzealous, as we may have fetched these in an
+            # earlier batch.
             parent_ids = set()
             revision_ids = set()
             for revision in pending_revisions:
@@ -3816,7 +3818,9 @@ class InterDifferingSerializer(InterRepository):
             parent_ids.difference_update(revision_ids)
             parent_ids.discard(_mod_revision.NULL_REVISION)
             parent_map = self.source.get_parent_map(parent_ids)
-            for parent_tree in self.source.revision_trees(parent_ids):
+            # we iterate over parent_map and not parent_ids because we don't
+            # want to try copying any revision which is a ghost
+            for parent_tree in self.source.revision_trees(parent_map.keys()):
                 current_revision_id = parent_tree.get_revision_id()
                 parents_parents = parent_map[current_revision_id]
                 basis_id, delta = self._get_delta_for_revision(parent_tree,
