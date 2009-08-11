@@ -15,6 +15,11 @@ Bug Fixes
 * Further tweaks to handling of ``bzr add`` messages about ignored files.
   (Jason Spashett, #76616)
 
+New Features
+************
+
+* ``bzr branch --switch`` can now switch the checkout in the current directory
+  to the newly created branch. (Lukáš Lalinský)
 
 In Development
 ##############

@@ -52,6 +52,19 @@ class TestBranch(ExternalBase):
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
 
+    def test_branch_switch_no_checkout(self):
+        self.example_branch('a')
+        self.run_bzr_error(['Cannot switch a branch, only a checkout'],
+            'branch --switch a b', working_dir='.')
+
+    def test_branch_switch(self):
+        self.example_branch('a')
+        self.run_bzr('checkout --lightweight a tree')
+        out, err = self.run_bzr('branch --switch ../a ../b', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        self.assertEndsWith(tree.branch.base, '/b/')
+        self.assertContainsRe(err, "Switched to branch: .*/b/")
+
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.
         format = bzrdir.BzrDirMetaFormat1()
