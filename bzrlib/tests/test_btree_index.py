@@ -1105,6 +1105,16 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
 
+    def test_get_ancestry_empty_index(self):
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index.get_ancestry([('one',), ('two',)], 0, parent_map,
+                                         missing_keys)
+        self.assertEqual(set(), search_keys)
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([('one',), ('two',)]), missing_keys)
+
 
 class TestBTreeNodes(BTreeTestCase):
 

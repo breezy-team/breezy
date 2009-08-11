@@ -1134,30 +1134,36 @@ class BTreeGraphIndex(object):
                     else:
                         yield (self, next_sub_key, value)
 
-    def get_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
-        """Iterate over the given keys and all parents that are found.
+    def find_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
+        """Find the parent_map information for the set of keys.
 
-        :param keys: A sorted list keys whose ancestry we want to return
+        This populates the parent_map dict and missing_keys set based on the
+        queried keys. It also can fill out an arbitrary number of parents that
+        it finds while searching for the supplied keys.
+
+        It is unlikely that you want to call this directly. See
+        "CombinedGraphIndex.get_ancestry()" for a more appropriate API.
+
+        :param keys: A keys whose ancestry we want to return
+            Every key will either end up in 'parent_map' or 'missing_keys'.
         :param ref_list_num: This index in the ref_lists is the parents we
             care about.
-        :param parent_map: keys that we already know the parents to. when
-            finding new keys we will add nodes to this dict.
+        :param parent_map: {key: parent_keys} for keys that are present in this
+            index. This may contain more entries than were in 'keys', that are
+            reachable ancestors of the keys requested.
         :param missing_keys: keys which are known to be missing in this index.
-            New entries that are found to be missing will be added to this set.
-        :return: [not_present_keys], [search_keys]
-            A dict mapping {key: parent_keys} but including all
-                parent_keys that we encounter.
-            not_present_keys are keys where we found the LeafNode, but the key
-                just isn't there.
-            search_keys parents that we found, which might exist in this
-                index, but which we were unable to find immediately, callers
-                should re-query this index for those keys.
+            This may include parents that were not directly requested, but we
+            were able to determine that they are not present in this index.
+        :return: search_keys    parents that were found but not queried to know
+            if they are missing or present. Callers can re-query this index for
+            those keys, and they will be placed into parent_map or missing_keys
         """
         if not self.key_count():
             # We use key_count() to trigger reading the root node and
             # determining info about this BTreeGraphIndex
             # If we don't have any keys, then everything is missing
-            return keys, parent_map
+            missing_keys.update(keys)
+            return set()
         if ref_list_num >= self.node_ref_lists:
             raise ValueError('No ref list %d, index has %d ref lists'
                 % (ref_list_num, self.node_ref_lists))

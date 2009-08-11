@@ -702,8 +702,9 @@ class GraphIndex(object):
                 # the last thing looked up was a terminal element
                 yield (self, ) + key_dict
 
-    def get_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
-        """See BTreeIndex.get_ancestry."""
+    def get_local_parent_map(self, keys, ref_list_num, parent_map,
+                             missing_keys):
+        """See BTreeIndex.get_local_parent_map."""
         # The api can be implemented as a trivial overlay on top of
         # iter_entries, it is not an efficient implementation, but it at least
         # gets the job done.
