@@ -73,13 +73,16 @@ class _Exporter(object):
         except ImportError:
             raise MissingDependency(self.tool_name, self.minimum_version, lib)
 
-    def generate(self, source, destination, verbose=False, parameters=None):
+    def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream.
 
         :param source: the source filename or URL
         :param destination: filename or '-' for standard output
         :param verbose: if True, output additional diagnostics
-        :param parameters: a dictionary of custom conversion parameters
+        :param custom: a list of custom options to be added to the
+          command line of the underlying scripts used. If an option
+          and its argument are to be separated by a space, pass them
+          as consecutive items.
         """
         raise NotImplementedError(self.generate)
 
@@ -157,12 +160,14 @@ class DarcsExporter(_Exporter):
     def __init__(self):
         self.check_install('Darcs', '2.2', [('darcs', '--version')])
 
-    def generate(self, source, destination, verbose=False, parameters=None):
+    def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         args = ["darcs/darcs-fast-export"]
         outf, base, marks = self.get_output_info(destination)
         if marks:
             args.append('--export-marks=%s' % marks)
+        if custom:
+            args.extend(custom)
         args.append(source)
         retcode = self.execute_exporter_script(args, outf)
         self.report_results(retcode, destination)
@@ -173,13 +178,15 @@ class MercurialExporter(_Exporter):
     def __init__(self):
         self.check_install('Mercurial', '1.2', None, ['mercurial'])
 
-    def generate(self, source, destination, verbose=False, parameters=None):
+    def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         # XXX: Should we add --force here?
         args = ["hg-fast-export.py", "-r", source, "-s"]
         outf, base, marks = self.get_output_info(destination)
         if marks:
             args.append('--marks=%s' % marks)
+        if custom:
+            args.extend(custom)
         retcode = self.execute_exporter_script(args, outf)
         self.report_results(retcode, destination)
 
@@ -189,7 +196,7 @@ class GitExporter(_Exporter):
     def __init__(self):
         self.check_install('Git', '1.6', ['git'])
 
-    def generate(self, source, destination, verbose=False, parameters=None):
+    def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
         args = ["git", "fast-export", "--all", "--signed-tags=warn"]
         outf, base, marks = self.get_output_info(destination)
@@ -201,6 +208,8 @@ class GitExporter(_Exporter):
             #if os.path.exists(marks):
             #    args.append('--import-marks=%s' % marks)
             args.append('--export-marks=%s' % marks)
+        if custom:
+            args.extend(custom)
         retcode = self.execute(args, outf, cwd=source)
         self.report_results(retcode, destination)
 
@@ -212,7 +221,7 @@ class SubversionExporter(_Exporter):
             ['svn.fs', 'svn.core', 'svn.repos'])
 
 
-def fast_export_from(source, destination, tool, verbose=False, parameters=None):
+def fast_export_from(source, destination, tool, verbose=False, custom=None):
     # Get the exporter
     if tool == 'darcs':
         factory = DarcsExporter
@@ -229,4 +238,4 @@ def fast_export_from(source, destination, tool, verbose=False, parameters=None):
 
     # Do the export
     exporter.generate(source, destination, verbose=verbose,
-        parameters=parameters)
+        custom=custom)

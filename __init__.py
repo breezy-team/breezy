@@ -434,12 +434,19 @@ class cmd_fast_export_from_darcs(Command):
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source', 'destination']
-    takes_options = ['verbose']
+    takes_options = ['verbose',
+                    Option('encoding', type=str, argname='CODEC',
+                        help="Encoding used for commit messages if not utf-8."
+                        ),
+                    ]
     aliases = []
     encoding_type = 'exact'
-    def run(self, source, destination, verbose=False):
+    def run(self, source, destination, verbose=False, encoding=None):
         from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'darcs', verbose)
+        custom = None
+        if encoding is not None:
+            custom = ['--encoding', encoding]
+        fast_export_from(source, destination, 'darcs', verbose, custom)
 
 
 class cmd_fast_export_from_hg(Command):
