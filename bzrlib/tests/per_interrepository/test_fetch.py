@@ -296,8 +296,12 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
         recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
-        xml = to_repo.get_inventory_xml('foo-id')
-        computed_inv_sha1 = osutils.sha_string(xml)
+        to_repo.lock_read()
+        self.addCleanup(to_repo.unlock)
+        stream = to_repo.inventories.get_record_stream([('foo-id',)],
+                                                       'unordered', True)
+        bytes = stream.next().get_bytes_as('fulltext')
+        computed_inv_sha1 = osutils.sha_string(bytes)
         self.assertEqual(computed_inv_sha1, recorded_inv_sha1)
 
 
