@@ -23,7 +23,7 @@ import sys
 
 from bzrlib import config, rules
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.tests.workingtree_implementations import TestCaseWithWorkingTree
+from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.workingtree import WorkingTree
 
 
