@@ -13,6 +13,18 @@ Compatability Breaks
 New Features
 ------------
 
+* Wrapper commands simplifying the generation of fast-import
+  files from other tools are now provided. The general usage is:
+
+    bzr fast-export-from-xxx SOURCE project.fi
+
+  Before starting an export, these commands make an effort to
+  check that dependent tools are installed. The commands available
+  so far are fast-export-from-svn, fast-export-from-git,
+  fast-export-from-hg and fast-export-from-darcs. Similar wrappers
+  for other tools, particularly cvs and perforce, will hopefully
+  be added soon. (Ian Clatworthy)
+
 * darcs-fast-export is now bundled. In fact, the project has
   merged into this one for the purposes of ongoing bug fixing
   and development. (Miklos Vajna)
