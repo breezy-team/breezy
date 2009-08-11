@@ -1189,9 +1189,6 @@ class cmd_branch(Command):
             use_existing_dir=False, switch=False):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
-        if switch:
-            # Check if we have a WT in the current directory
-            wt, _ = WorkingTree.open_containing('.')
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if (accelerator_tree is not None and
@@ -1253,6 +1250,7 @@ class cmd_branch(Command):
                 note('Branched %d revision(s).' % branch.revno())
             if switch:
                 # Switch to the new branch
+                wt, _ = WorkingTree.open_containing('.')
                 _mod_switch.switch(wt.bzrdir, branch)
                 note('Switched to branch: %s',
                     urlutils.unescape_for_display(branch.base, 'utf-8'))
