@@ -68,7 +68,12 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
-    from bzrlib.repofmt import knitrepo, pack_repo, weaverepo
+    from bzrlib.repofmt import (
+        groupcompress_repo,
+        knitrepo,
+        pack_repo,
+        weaverepo,
+        )
     result = []
     # test the default InterRepository between format 6 and the current
     # default format.
@@ -111,6 +116,9 @@ def default_test_list():
     result.append((InterDifferingSerializer,
                    pack_repo.RepositoryFormatKnitPack1(),
                    pack_repo.RepositoryFormatKnitPack6RichRoot()))
+    result.append((InterDifferingSerializer,
+                   pack_repo.RepositoryFormatKnitPack6RichRoot(),
+                   groupcompress_repo.RepositoryFormat2a()))
     return result
 
 
