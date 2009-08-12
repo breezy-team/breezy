@@ -3820,7 +3820,7 @@ class InterDifferingSerializer(InterRepository):
             parent_map = self.source.get_parent_map(parent_ids)
             # we iterate over parent_map and not parent_ids because we don't
             # want to try copying any revision which is a ghost
-            for parent_tree in self.source.revision_trees(parent_map.keys()):
+            for parent_tree in self.source.revision_trees(parent_map):
                 current_revision_id = parent_tree.get_revision_id()
                 parents_parents = parent_map[current_revision_id]
                 basis_id, delta = self._get_delta_for_revision(parent_tree,
