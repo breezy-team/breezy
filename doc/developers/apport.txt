@@ -39,12 +39,8 @@ The process is
 
 #. We log it in apport-format to a file in ~/.bazaar/crash.
 
-#. We ask the user what they want to do: forget about it, report the crash
-   as a bug, turn off all crash reporting (temporarily?), see the report
-   and then decide, see just the traceback, just be told where the file is.
-
-   We'll do this through the UIFactory so that it can be presented as a
-   graphical dialog etc.
+#. We tell the user where that file is, and invite them to file a bug
+   report.
 
 * Developers probably want to turn this off?  Or is it enough to just have
   them say No, don't file it?
@@ -56,12 +52,12 @@ crash.  This can be handled at the OS level.
 Future ideas
 ------------
 
-* Record apport files into ~/.bazaar/crash
-
 * Capture apport data even for things not believed to be internal errors,
   because sometimes they are in fact bugs.  Then the user can attach the
   apport report later if they decide to file a bug.  There may be quite a
-  lot of them so we might need to limit the number that are stored.
+  lot of them so we might need to limit the number that are stored, or do
+  this when a debug flag is set.  At the moment they go into .bzr.log and
+  that's probably ok to start with.
 
 * Raising an error from the breakin debugger should cause this to fire.
 
@@ -69,6 +65,18 @@ Future ideas
   first instance just want to see the traceback. Apport files may be more
   longwinded than our current output and might make the traceback scroll
   off the screen.
+
+* Automatically include .bzr.log in the problem report.
+
+* Ask the user what they want to do with the report: automatically file
+  it, look at it, see just the traceback, just be told where it is.  This
+  could be done through the UIFactory so that it can be done through a
+  graphical dialog.
+
+  However, if we've already had an unhandled error in this process there
+  may be problems in Bazaar that prevent us presenting a clean message...
+
+  Possibly these bugs are better reported in the next time bzr runs.
 
 .. 
     vim: ft=rst
