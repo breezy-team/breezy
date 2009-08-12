@@ -21,7 +21,6 @@ Consequences for users
   normal way.
 
 
-
 Implementation notes
 --------------------
 
@@ -29,6 +28,9 @@ The use of apport by Bazaar is independent of the configuration in the OS.
 For example in Ubuntu, apport is normally inactive in release builds, and
 normally excludes software not installed from a package.  We'll bypass
 both of them.
+
+Putting in this handler may mean that an OS-wide exception handler never
+sees the error, but that was true with our existing exception-printer.
 
 The user should have the option to: forget about the crash (and ignore the
 bug report), see the contents of the report, 
@@ -41,9 +43,6 @@ The process is
 
 #. We tell the user where that file is, and invite them to file a bug
    report.
-
-* Developers probably want to turn this off?  Or is it enough to just have
-  them say No, don't file it?
 
 This won't be active for bugs that cause the whole Python interpreter to
 crash.  This can be handled at the OS level.
