@@ -3030,7 +3030,7 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat4()
+__default_format = WorkingTreeFormat6()
 WorkingTreeFormat.register_format(__default_format)
 WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
