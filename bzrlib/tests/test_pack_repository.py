@@ -865,7 +865,8 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         base.commit('foo')
         referencing = self.make_branch_and_tree('repo', format=self.get_format())
         referencing.branch.repository.add_fallback_repository(base.branch.repository)
-        referencing.commit('bar')
+        local_tree = referencing.branch.create_checkout('local')
+        local_tree.commit('bar')
         new_instance = referencing.bzrdir.open_repository()
         new_instance.lock_read()
         self.addCleanup(new_instance.unlock)
@@ -884,13 +885,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # and max packs policy - so we are checking the policy is honoured
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
+        local_tree = tree.branch.create_checkout('local')
         for x in range(9):
-            tree.commit('commit %s' % x)
+            local_tree.commit('commit %s' % x)
         # there should be 9 packs:
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # committing one more should coalesce to 1 of 10.
-        tree.commit('commit triggering pack')
+        local_tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
@@ -909,7 +911,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
-        tree.commit('commit not triggering pack')
+        local_tree.commit('commit not triggering pack')
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]

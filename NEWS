@@ -12,6 +12,12 @@ In Development
 Compatibility Breaks
 ********************
 
+* Committing directly to a stacked branch from a lightweight checkout will
+  no longer work. In previous versions this would appear to work but would
+  generate repositories with insufficient data to create deltas, leading
+  to later errors when branching or reading from the repository.
+  (Robert Collins, bug #375013)
+
 New Features
 ************
 

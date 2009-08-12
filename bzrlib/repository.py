@@ -1695,6 +1695,10 @@ class Repository(object):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
+        if self._fallback_repositories:
+            raise errors.BzrError("Cannot commit from a lightweight checkout "
+                "to a stacked branch. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
         self.start_write_group()
