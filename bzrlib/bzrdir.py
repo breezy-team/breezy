@@ -3867,4 +3867,4 @@ format_registry.register_metadir('default-rich-root',
     alias=True,
     )
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')
