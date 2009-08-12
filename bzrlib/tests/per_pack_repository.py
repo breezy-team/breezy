@@ -42,7 +42,7 @@ from bzrlib.repofmt import (
     pack_repo,
     groupcompress_repo,
     )
-from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
     server,
@@ -84,7 +84,7 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        if isinstance(format.repository_format, RepositoryFormatCHK1):
+        if isinstance(format.repository_format, RepositoryFormat2a):
             # TODO: This is currently a workaround. CHK format repositories
             #       ignore the 'deltas' flag, but during conversions, we can't
             #       do unordered delta fetches. Remove this clause once we
@@ -346,7 +346,7 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
-            if type(format.repository_format) is RepositoryFormatCHK1:
+            if type(format.repository_format) is RepositoryFormat2a:
                 # group_start, group_len, internal_start, internal_len
                 pos = map(int, val.split())
             else:
@@ -624,7 +624,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def make_write_ready_repo(self):
         format = self.get_format()
-        if isinstance(format.repository_format, RepositoryFormatCHK1):
+        if isinstance(format.repository_format, RepositoryFormat2a):
             raise TestNotApplicable("No missing compression parents")
         repo = self.make_repository('.', format=format)
         repo.lock_write()
