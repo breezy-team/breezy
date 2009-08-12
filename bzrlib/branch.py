@@ -2064,7 +2064,7 @@ BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
-BranchFormat.set_default_format(__format6)
+BranchFormat.set_default_format(__format7)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
