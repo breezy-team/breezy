@@ -110,7 +110,8 @@ def report_bug_to_apport(exc_info, stderr):
         "    %s.%s: %s\n"
         "Details have been written to\n"
         "    %s\n"
-        "Please report a bug at\n"
+        "\n"
+        "You can help us improve Bazaar by filing a bug at\n"
         "    http://bugs.launchpad.net/bzr/+filebug\n"
         "attaching this file, and your own description of the problem.\n"
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
