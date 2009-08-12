@@ -160,24 +160,24 @@ class cmd_fast_import(Command):
     usage. Development is planned so that this recipe becomes obsolete
     in the future, i.e. so that the simple recipe always works.
 
-    Examples::
+    :Examples:
 
-     Import a Subversion repository into Bazaar:
+     Import a Subversion repository into Bazaar::
 
        bzr fast-export-from-svn /svn/repo/path project.fi
        bzr fast-import project.fi
 
-     Import a Git repository into Bazaar:
+     Import a Git repository into Bazaar::
 
        bzr fast-export-from-git /git/repo/path project.fi
        bzr fast-import project.fi
 
-     Import a Mercurial repository into Bazaar:
+     Import a Mercurial repository into Bazaar::
 
        bzr fast-export-from-hg /hg/repo/path project.fi
        bzr fast-import project.fi
 
-     Import a Darcs repository into Bazaar:
+     Import a Darcs repository into Bazaar::
 
        bzr fast-export-from-darcs /darcs/repo/path project.fi
        bzr fast-import project.fi
@@ -274,23 +274,23 @@ class cmd_fast_import_filter(Command):
     Note: If a path has been renamed, take care to specify the *original*
     path name, not the final name that it ends up with.
 
-    Examples::
+    :Examples:
 
-      Create a new project from a library. (Note the trailing / on the
-      directory name of the library.)
+     Create a new project from a library (note the trailing / on the
+     directory name of the library)::
 
-        front-end | bzr fast-import-filter -i lib/xxx/ > xxx.fi
-        bzr init-repo mylibrary
-        cd mylibrary
-        bzr fast-import ../xxx.fi
-        (lib/xxx/foo is now foo)
+       front-end | bzr fast-import-filter -i lib/xxx/ > xxx.fi
+       bzr init-repo mylibrary
+       cd mylibrary
+       bzr fast-import ../xxx.fi
+       (lib/xxx/foo is now foo)
 
-      Create a new repository without a sensitive file.
+     Create a new repository without a sensitive file::
 
-        front-end | bzr fast-import-filter -x missile-codes.txt > clean.fi
-        bzr init-repo project.clean
-        cd project.clean
-        bzr fast-import ../clean.fi
+       front-end | bzr fast-import-filter -x missile-codes.txt > clean.fi
+       bzr init-repo project.clean
+       cd project.clean
+       bzr fast-import ../clean.fi
     """
     hidden = False
     _see_also = ['fast-import']
@@ -329,15 +329,15 @@ class cmd_fast_import_info(Command):
     To specify standard input as the input stream, use a source
     name of '-'.
 
-    Examples::
+    :Examples:
 
-     front-end | bzr fast-import-info -
+     Display statistics about the import stream produced by front-end::
 
-        Display statistics about the import stream produced by front-end.
+      front-end | bzr fast-import-info -
 
-     front-end | bzr fast-import-info -v - > front-end.cfg
+     Create a hints file for running fast-import on a large repository::
 
-       Create a hints file for running fast-import on a large repository.
+       front-end | bzr fast-import-info -v - > front-end.cfg
     """
     hidden = False
     _see_also = ['fast-import']
@@ -366,16 +366,16 @@ class cmd_fast_import_query(Command):
     Note: Binary fields (e.g. data for blobs) are masked out
     so it is generally safe to view the output in a terminal.
 
-    Examples::
+    :Examples:
+
+    Show all the fields of the reset and tag commands::
 
       front-end > xxx.fi
       bzr fast-import-query xxx.fi -Creset -Ctag
 
-        Show all the fields of the reset and tag commands.
+    Show the mark and merge fields of the commit commands::
 
       bzr fast-import-query xxx.fi -Ccommit=mark,merge
-
-        Show the mark and merge fields of the commit commands.
     """
     hidden = True
     _see_also = ['fast-import', 'fast-import-filter']
@@ -401,18 +401,20 @@ class cmd_fast_export(Command):
     git-fast-import(1). It preserves merges correctly, even merged branches with
     no common history (`bzr merge -r 0..-1`).
 
-    To import several unmerged but related branches into the same repository,
-    use the --{export,import}-marks options, and specify a name for the git
-    branch like this::
+    :Examples:
+
+     To import several unmerged but related branches into the same repository,
+     use the --{export,import}-marks options, and specify a name for the git
+     branch like this::
     
-        % bzr-fast-export --export-marks=marks.bzr project.dev |
+      bzr fast-export --export-marks=marks.bzr project.dev |
               GIT_DIR=project/.git git-fast-import --export-marks=marks.git
 
-        % bzr-fast-export --import-marks=marks.bzr -b other project.other |
+      bzr fast-export --import-marks=marks.bzr -b other project.other |
               GIT_DIR=project/.git git-fast-import --import-marks=marks.git
 
-    If you get a "Missing space after source" error from git-fast-import,
-    see the top of the commands.py module for a work-around.
+     If you get a "Missing space after source" error from git-fast-import,
+     see the top of the commands.py module for a work-around.
     """
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
@@ -506,8 +508,10 @@ class cmd_fast_export_from_git(Command):
     subcommand is used under the covers to generate the stream.
     The source must be a local directory.
 
-    Note: Earlier versions of Git may also work fine but are
-    likely to receive less active support if problems arise.
+    .. note::
+    
+       Earlier versions of Git may also work fine but are
+       likely to receive less active support if problems arise.
     """
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
