@@ -104,7 +104,7 @@ class ShelfCreator(object):
             self.shelve_deletion(change[1])
         elif change[0] == 'add file':
             self.shelve_creation(change[1])
-        elif change[0] == 'change kind':
+        elif change[0] in ('change kind', 'modify text'):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
             self.shelve_modify_target(change[1])

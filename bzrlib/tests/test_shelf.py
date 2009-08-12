@@ -109,7 +109,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         shelf_file = creator.shelf_transform._limbo_name(s_trans_id)
         self.assertFileEqual(expected_content, shelf_file)
 
-    def test_shelve_content_change(self):
+    def prepare_content_change(self):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -121,11 +121,21 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.addCleanup(creator.finalize)
         self.assertEqual([('modify text', 'foo-id')],
                          list(creator.iter_shelvable()))
+        return creator
+
+    def test_shelve_content_change(self):
+        creator = self.prepare_content_change()
         creator.shelve_lines('foo-id', ['a\n', 'c\n'])
         creator.transform()
         self.assertFileEqual('a\nc\n', 'foo')
         self.assertShelvedFileEqual('b\na\n', creator, 'foo-id')
 
+    def test_shelve_change_handles_modify_text(self):
+        creator = self.prepare_content_change()
+        creator.shelve_change(('modify text', 'foo-id'))
+        creator.transform()
+        self.assertFileEqual('a\n', 'foo')
+        self.assertShelvedFileEqual('b\na\nc\n', creator, 'foo-id')
 
     def prepare_shelve_creation(self):
         tree = self.make_branch_and_tree('.')
