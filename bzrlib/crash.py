@@ -76,7 +76,7 @@ def report_bug_to_apport(exc_info, stderr):
     # this is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
     try:
-        from apport.report import Report2
+        from apport.report import Report
     except ImportError, e:
         trace.warning("couldn't find apport bug-reporting library: %s" % e)
         return False
