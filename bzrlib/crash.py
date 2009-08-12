@@ -22,6 +22,7 @@
 # which adds a 'fail' command
 
 import os
+import pprint
 import sys
 import time
 
@@ -93,12 +94,8 @@ def report_bug_to_apport(exc_info, stderr):
     pr['UserEncoding'] = osutils.get_user_encoding()
     pr['FileSystemEncoding'] = sys.getfilesystemencoding()
     pr['Locale'] = os.environ.get('LANG')
-
-    plugin_lines = []
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    pr['BzrPlugins'] = '\n'.join(plugin_lines)
+    pr['BzrPlugins'] = _format_plugin_list()
+    pr['PythonLoadedModules'] = _format_module_list()
 
     crash_file = _open_crash_file()
     try:
@@ -129,3 +126,15 @@ def _open_crash_file():
         osutils.compact_date(time.time()),
         os.getpid(),)
     return open(osutils.pathjoin(crash_dir, filename), 'wt')
+
+
+def _format_plugin_list():
+    plugin_lines = []
+    for name, a_plugin in sorted(plugin.plugins().items()):
+        plugin_lines.append("  %-20s %s [%s]" %
+            (name, a_plugin.path(), a_plugin.__version__))
+    return '\n'.join(plugin_lines)
+
+
+def _format_module_list():
+    return pprint.pformat(sys.modules)
