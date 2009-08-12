@@ -136,8 +136,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         However, we should also skip any revisions which are ghosts in the
         parents.
         """
-        to_repo = self.make_to_repository('to')
-        if not to_repo._format.supports_external_lookups:
+        if not self.repository_format_to.supports_external_lookups:
             raise TestNotApplicable("Need stacking support in the target.")
         builder = self.make_branch_builder('branch')
         builder.start_series()
@@ -148,7 +147,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             ('modify', ('file-id', 'left content\n'))])
         builder.build_snapshot('right', ['base'], [
             ('modify', ('file-id', 'right content\n'))])
-        builder.build_snapshot('merge', ['left', 'right', 'ghost'], [
+        builder.build_snapshot('merge', ['left', 'right'], [
             ('modify', ('file-id', 'left and right content\n'))])
         builder.finish_series()
         branch = builder.get_branch()
@@ -165,7 +164,6 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.addCleanup(unstacked_repo.unlock)
         self.assertFalse(unstacked_repo.has_revision('left'))
         self.assertFalse(unstacked_repo.has_revision('right'))
-        # 'ghost' should not be present
         self.assertEqual(
             set([('left',), ('right',), ('merge',)]),
             unstacked_repo.inventories.keys())
@@ -181,6 +179,45 @@ class TestInterRepository(TestCaseWithInterRepository):
             ['left', 'right'])
         self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
         self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
+
+    def test_fetch_across_stacking_boundary_ignores_ghost(self):
+        if not self.repository_format_to.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the target.")
+        to_repo = self.make_to_repository('to')
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        builder.build_snapshot('base', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('second', ['base'], [
+            ('modify', ('file-id', 'second content\n'))])
+        builder.build_snapshot('third', ['second', 'ghost'], [
+            ('modify', ('file-id', 'third content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_to_repository('trunk')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'second')
+        repo = self.make_to_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'third')
+        unstacked_repo = stacked_branch.bzrdir.open_repository()
+        unstacked_repo.lock_read()
+        self.addCleanup(unstacked_repo.unlock)
+        self.assertFalse(unstacked_repo.has_revision('second'))
+        self.assertFalse(unstacked_repo.has_revision('ghost'))
+        self.assertEqual(
+            set([('second',), ('third',)]),
+            unstacked_repo.inventories.keys())
+        # And the basis inventories have been copied correctly
+        trunk.lock_read()
+        self.addCleanup(trunk.unlock)
+        second_tree = trunk.repository.revision_tree('second')
+        stacked_branch.lock_read()
+        self.addCleanup(stacked_branch.unlock)
+        stacked_second_tree = stacked_branch.repository.revision_tree('second')
+        self.assertEqual(second_tree.inventory, stacked_second_tree.inventory)
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""
