@@ -260,13 +260,15 @@ able to interoperate with all previous releases as at present.
 Each major release will have one recommended data format which will be the
 default.  The name of the format will indicate which release series (not
 specific release) it comes from: '2a' is the first supported format for
-the 2.0 series.
+the 2.0 series, '2b' the second, etc.  We don't mention the particular
+release that introduced it so as to avoid problems predicting precisely
+when it will land.
 
 During a development series we may have a series of experimental formats.
 We will not leave people stranded if they test these formats, but we also
 won't guarantee to keep supporting them in a future release.  If something
 inserted in one development release turns out to be bad it can just be
-removed in the next.  
+removed in the next.
 
 
 Hosting Services
