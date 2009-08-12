@@ -537,7 +537,7 @@ def report_bug_to_apport(exc_info):
 
     plugin_lines = []
     for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]\n" %
+        plugin_lines.append("  %-20s %s [%s]" %
             (name, a_plugin.path(), a_plugin.__version__))
     pr['BzrPlugins'] = '\n'.join(plugin_lines)
 
