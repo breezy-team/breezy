@@ -416,6 +416,11 @@ class GCCHKPacker(Packer):
         # get_parent_map(self.revision_keys), but that shouldn't be any faster
         # than this.
         inventory_keys = source_vf.keys()
+        missing_inventories = set(self.revision_keys).difference(inventory_keys)
+        if missing_inventories:
+            missing_inventories = sorted(missing_inventories)
+            raise ValueError('We are missing inventories for revisions: %s'
+                % (missing_inventories,))
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
