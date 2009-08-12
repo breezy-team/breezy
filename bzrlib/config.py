@@ -821,6 +821,25 @@ def user_ignore_config_filename():
     return osutils.pathjoin(config_dir(), 'ignore')
 
 
+def crash_dir():
+    """Return the directory name to store crash files.
+
+    This doesn't implicitly create it.
+
+    On Windows it's in the config directory; elsewhere in the XDG cache directory.
+    """
+    if sys.platform == 'win32':
+        return osutils.pathjoin(config_dir(), 'Crash')
+    else:
+        return osutils.pathjoin(xdg_cache_dir(), 'crash')
+
+
+def xdg_cache_dir():
+    # XXX: this should probably look at some environment variables too?
+    return osutils.pathjoin(os.path.expanduser('~'),
+        '.cache', 'bazaar')
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
