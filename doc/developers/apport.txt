@@ -45,7 +45,9 @@ The process is
    report.
 
 This won't be active for bugs that cause the whole Python interpreter to
-crash.  This can be handled at the OS level.
+crash.  This can be handled at the OS level.  The nice thing is that if
+apport is active system-wide, it will catch either exceptions in our
+in-process apport handler, or errors that crash the intrepreter.
 
 
 Future ideas
