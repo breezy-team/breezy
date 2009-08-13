@@ -102,11 +102,11 @@ copy of bzr.dev?`_.)
 
 Now make your own branch::
 
- $ bzr branch bzr.dev giveback
+ $ bzr branch bzr.dev 123456-my-bugfix
 
-This will give you a branch called "giveback" that you can work on and commit
-in. Here, you can study the code, make a fix or a new feature. Feel free to
-commit early and often (after all, it's your branch!). 
+This will give you a branch called "123456-my-bugfix" that you can work on
+and commit in. Here, you can study the code, make a fix or a new feature.
+Feel free to commit early and often (after all, it's your branch!). 
 
 Documentation improvements are an easy place to get started giving back to the
 Bazaar project.  The documentation is in the `doc/` subdirectory of the Bazaar
