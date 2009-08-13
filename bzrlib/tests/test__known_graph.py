@@ -16,6 +16,8 @@
 
 """Tests for the python and pyrex extensions of KnownGraph"""
 
+import pprint
+
 from bzrlib import (
     errors,
     graph as _mod_graph,
@@ -278,24 +280,24 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
 
     def test_topo_sort_cycle(self):
         """TopoSort traps graph with cycles"""
-        g = self.module.KnownGraph({0: [1],
-                                    1: [0]})
+        g = self.make_known_graph({0: [1],
+                                  1: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_2(self):
         """TopoSort traps graph with longer cycle"""
-        g = self.module.KnownGraph({0: [1],
-                                    1: [2],
-                                    2: [0]})
+        g = self.make_known_graph({0: [1],
+                                   1: [2],
+                                   2: [0]})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_cycle_with_tail(self):
         """TopoSort traps graph with longer cycle"""
-        g = self.module.KnownGraph({0: [1],
-                                    1: [2],
-                                    2: [3, 4],
-                                    3: [0],
-                                    4: []})
+        g = self.make_known_graph({0: [1],
+                                   1: [2],
+                                   2: [3, 4],
+                                   3: [0],
+                                   4: []})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_1(self):
@@ -326,3 +328,383 @@ class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
         """Sort nodes, but don't include some parents in the output"""
         self.assertTopoSortOrder({0: [1],
                                   1: [2]})
+
+
+class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
+
+    def assertSortAndIterate(self, ancestry, branch_tip, result_list):
+        """Check that merge based sorting and iter_topo_order on graph works."""
+        graph = self.make_known_graph(ancestry)
+        value = graph.merge_sort(branch_tip)
+        if result_list != value:
+            self.assertEqualDiff(pprint.pformat(result_list),
+                                 pprint.pformat(value))
+
+    def test_merge_sort_empty(self):
+        # sorting of an emptygraph does not error
+        self.assertSortAndIterate({}, None, [])
+        self.assertSortAndIterate({}, NULL_REVISION, [])
+
+    def test_merge_sort_not_empty_no_tip(self):
+        # merge sorting of a branch starting with None should result
+        # in an empty list: no revisions are dragged in.
+        self.assertSortAndIterate({0: []}, None, [])
+        self.assertSortAndIterate({0: []}, None, [])
+
+    def test_merge_sort_one_revision(self):
+        # sorting with one revision as the tip returns the correct fields:
+        # sequence - 0, revision id, merge depth - 0, end_of_merge
+        self.assertSortAndIterate({'id': []},
+                                  'id',
+                                  [(0, 'id', 0, (1,), True)])
+
+    def test_sequence_numbers_increase_no_merges(self):
+        # emit a few revisions with no merges to check the sequence
+        # numbering works in trivial cases
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['B']},
+            'C',
+            [(0, 'C', 0, (3,), False),
+             (1, 'B', 0, (2,), False),
+             (2, 'A', 0, (1,), True),
+             ],
+            )
+
+    def test_sequence_numbers_increase_with_merges(self):
+        # test that sequence numbers increase across merges
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['A', 'B']},
+            'C',
+            [(0, 'C', 0, (2,), False),
+             (1, 'B', 1, (1,1,1), True),
+             (2, 'A', 0, (1,), True),
+             ],
+            )
+
+    def test_merge_sort_race(self):
+        # A
+        # |
+        # B-.
+        # |\ \
+        # | | C
+        # | |/
+        # | D
+        # |/
+        # F
+        graph = {'A': [],
+                 'B': ['A'],
+                 'C': ['B'],
+                 'D': ['B', 'C'],
+                 'F': ['B', 'D'],
+                 }
+        self.assertSortAndIterate(graph, 'F',
+            [(0, 'F', 0, (3,), False),
+             (1, 'D', 1, (2,2,1), False),
+             (2, 'C', 1, (2,1,1), True), # XXX: Shouldn't it be merge_depth=2?
+             (3, 'B', 0, (2,), False),
+             (4, 'A', 0, (1,), True),
+             ])
+        # A
+        # |
+        # B-.
+        # |\ \
+        # | X C
+        # | |/
+        # | D
+        # |/
+        # F
+        graph = {'A': [],
+                 'B': ['A'],
+                 'C': ['B'],
+                 'X': ['B'],
+                 'D': ['X', 'C'],
+                 'F': ['B', 'D'],
+                 }
+        self.assertSortAndIterate(graph, 'F',
+            [(0, 'F', 0, (3,), False),
+             (1, 'D', 1, (2,1,2), False),
+             (2, 'C', 2, (2,2,1), True),
+             (3, 'X', 1, (2,1,1), True),
+             (4, 'B', 0, (2,), False),
+             (5, 'A', 0, (1,), True),
+             ])
+
+    def test_merge_depth_with_nested_merges(self):
+        # the merge depth marker should reflect the depth of the revision
+        # in terms of merges out from the mainline
+        # revid, depth, parents:
+        #  A 0   [D, B]
+        #  B  1  [C, F]
+        #  C  1  [H]
+        #  D 0   [H, E]
+        #  E  1  [G, F]
+        #  F   2 [G]
+        #  G  1  [H]
+        #  H 0
+        self.assertSortAndIterate(
+            {'A': ['D', 'B'],
+             'B': ['C', 'F'],
+             'C': ['H'],
+             'D': ['H', 'E'],
+             'E': ['G', 'F'],
+             'F': ['G'],
+             'G': ['H'],
+             'H': []
+             },
+            'A',
+            [(0, 'A', 0, (3,),  False),
+             (1, 'B', 1, (1,3,2), False),
+             (2, 'C', 1, (1,3,1), True),
+             (3, 'D', 0, (2,), False),
+             (4, 'E', 1, (1,1,2), False),
+             (5, 'F', 2, (1,2,1), True),
+             (6, 'G', 1, (1,1,1), True),
+             (7, 'H', 0, (1,), True),
+             ],
+            )
+
+    def test_dotted_revnos_with_simple_merges(self):
+        # A         1
+        # |\
+        # B C       2, 1.1.1
+        # | |\
+        # D E F     3, 1.1.2, 1.2.1
+        # |/ /|
+        # G H I     4, 1.2.2, 1.3.1
+        # |/ /
+        # J K       5, 1.3.2
+        # |/
+        # L         6
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['A'],
+             'D': ['B'],
+             'E': ['C'],
+             'F': ['C'],
+             'G': ['D', 'E'],
+             'H': ['F'],
+             'I': ['F'],
+             'J': ['G', 'H'],
+             'K': ['I'],
+             'L': ['J', 'K'],
+            },
+            'L',
+            [(0, 'L', 0, (6,), False),
+             (1, 'K', 1, (1,3,2), False),
+             (2, 'I', 1, (1,3,1), True),
+             (3, 'J', 0, (5,), False),
+             (4, 'H', 1, (1,2,2), False),
+             (5, 'F', 1, (1,2,1), True),
+             (6, 'G', 0, (4,), False),
+             (7, 'E', 1, (1,1,2), False),
+             (8, 'C', 1, (1,1,1), True),
+             (9, 'D', 0, (3,), False),
+             (10, 'B', 0, (2,), False),
+             (11, 'A', 0, (1,),  True),
+             ],
+            )
+        # Adding a shortcut from the first revision should not change any of
+        # the existing numbers
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['A'],
+             'D': ['B'],
+             'E': ['C'],
+             'F': ['C'],
+             'G': ['D', 'E'],
+             'H': ['F'],
+             'I': ['F'],
+             'J': ['G', 'H'],
+             'K': ['I'],
+             'L': ['J', 'K'],
+             'M': ['A'],
+             'N': ['L', 'M'],
+            },
+            'N',
+            [(0, 'N', 0, (7,), False),
+             (1, 'M', 1, (1,4,1), True),
+             (2, 'L', 0, (6,), False),
+             (3, 'K', 1, (1,3,2), False),
+             (4, 'I', 1, (1,3,1), True),
+             (5, 'J', 0, (5,), False),
+             (6, 'H', 1, (1,2,2), False),
+             (7, 'F', 1, (1,2,1), True),
+             (8, 'G', 0, (4,), False),
+             (9, 'E', 1, (1,1,2), False),
+             (10, 'C', 1, (1,1,1), True),
+             (11, 'D', 0, (3,), False),
+             (12, 'B', 0, (2,), False),
+             (13, 'A', 0, (1,),  True),
+             ],
+            )
+
+    def test_end_of_merge_not_last_revision_in_branch(self):
+        # within a branch only the last revision gets an
+        # end of merge marker.
+        self.assertSortAndIterate(
+            {'A': ['B'],
+             'B': [],
+             },
+            'A',
+            [(0, 'A', 0, (2,), False),
+             (1, 'B', 0, (1,), True)
+             ],
+            )
+
+    def test_end_of_merge_multiple_revisions_merged_at_once(self):
+        # when multiple branches are merged at once, both of their
+        # branch-endpoints should be listed as end-of-merge.
+        # Also, the order of the multiple merges should be
+        # left-right shown top to bottom.
+        # * means end of merge
+        # A 0    [H, B, E]
+        # B  1   [D, C]
+        # C   2  [D]       *
+        # D  1   [H]       *
+        # E  1   [G, F]
+        # F   2  [G]       *
+        # G  1   [H]       *
+        # H 0    []        *
+        self.assertSortAndIterate(
+            {'A': ['H', 'B', 'E'],
+             'B': ['D', 'C'],
+             'C': ['D'],
+             'D': ['H'],
+             'E': ['G', 'F'],
+             'F': ['G'],
+             'G': ['H'],
+             'H': [],
+             },
+            'A',
+            [(0, 'A', 0, (2,), False),
+             (1, 'B', 1, (1,3,2), False),
+             (2, 'C', 2, (1,4,1), True),
+             (3, 'D', 1, (1,3,1), True),
+             (4, 'E', 1, (1,1,2), False),
+             (5, 'F', 2, (1,2,1), True),
+             (6, 'G', 1, (1,1,1), True),
+             (7, 'H', 0, (1,), True),
+             ],
+            )
+
+    def test_parallel_root_sequence_numbers_increase_with_merges(self):
+        """When there are parallel roots, check their revnos."""
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': [],
+             'C': ['A', 'B']},
+            'C',
+            [(0, 'C', 0, (2,), False),
+             (1, 'B', 1, (0,1,1), True),
+             (2, 'A', 0, (1,), True),
+             ],
+            )
+
+    def test_revnos_are_globally_assigned(self):
+        """revnos are assigned according to the revision they derive from."""
+        # in this test we setup a number of branches that all derive from
+        # the first revision, and then merge them one at a time, which
+        # should give the revisions as they merge numbers still deriving from
+        # the revision were based on.
+        # merge 3: J: ['G', 'I']
+        # branch 3:
+        #  I: ['H']
+        #  H: ['A']
+        # merge 2: G: ['D', 'F']
+        # branch 2:
+        #  F: ['E']
+        #  E: ['A']
+        # merge 1: D: ['A', 'C']
+        # branch 1:
+        #  C: ['B']
+        #  B: ['A']
+        # root: A: []
+        self.assertSortAndIterate(
+            {'J': ['G', 'I'],
+             'I': ['H',],
+             'H': ['A'],
+             'G': ['D', 'F'],
+             'F': ['E'],
+             'E': ['A'],
+             'D': ['A', 'C'],
+             'C': ['B'],
+             'B': ['A'],
+             'A': [],
+             },
+            'J',
+            [(0, 'J', 0, (4,), False),
+             (1, 'I', 1, (1,3,2), False),
+             (2, 'H', 1, (1,3,1), True),
+             (3, 'G', 0, (3,), False),
+             (4, 'F', 1, (1,2,2), False),
+             (5, 'E', 1, (1,2,1), True),
+             (6, 'D', 0, (2,), False),
+             (7, 'C', 1, (1,1,2), False),
+             (8, 'B', 1, (1,1,1), True),
+             (9, 'A', 0, (1,), True),
+             ],
+            )
+
+    def test_roots_and_sub_branches_versus_ghosts(self):
+        """Extra roots and their mini branches use the same numbering.
+
+        All of them use the 0-node numbering.
+        """
+        #       A D   K
+        #       | |\  |\
+        #       B E F L M
+        #       | |/  |/
+        #       C G   N
+        #       |/    |\
+        #       H I   O P
+        #       |/    |/
+        #       J     Q
+        #       |.---'
+        #       R
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['B'],
+             'D': [],
+             'E': ['D'],
+             'F': ['D'],
+             'G': ['E', 'F'],
+             'H': ['C', 'G'],
+             'I': [],
+             'J': ['H', 'I'],
+             'K': [],
+             'L': ['K'],
+             'M': ['K'],
+             'N': ['L', 'M'],
+             'O': ['N'],
+             'P': ['N'],
+             'Q': ['O', 'P'],
+             'R': ['J', 'Q'],
+            },
+            'R',
+            [( 0, 'R', 0, (6,), False),
+             ( 1, 'Q', 1, (0,4,5), False),
+             ( 2, 'P', 2, (0,6,1), True),
+             ( 3, 'O', 1, (0,4,4), False),
+             ( 4, 'N', 1, (0,4,3), False),
+             ( 5, 'M', 2, (0,5,1), True),
+             ( 6, 'L', 1, (0,4,2), False),
+             ( 7, 'K', 1, (0,4,1), True),
+             ( 8, 'J', 0, (5,), False),
+             ( 9, 'I', 1, (0,3,1), True),
+             (10, 'H', 0, (4,), False),
+             (11, 'G', 1, (0,1,3), False),
+             (12, 'F', 2, (0,2,1), True),
+             (13, 'E', 1, (0,1,2), False),
+             (14, 'D', 1, (0,1,1), True),
+             (15, 'C', 0, (3,), False),
+             (16, 'B', 0, (2,), False),
+             (17, 'A', 0, (1,), True),
+             ],
+            )

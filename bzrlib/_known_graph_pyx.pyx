@@ -454,3 +454,22 @@ cdef class KnownGraph:
                     child.seen = 0
         # We started from the parents, so we don't need to do anymore work
         return topo_order
+
+
+    def merge_sort(self, tip_key):
+        """Compute the merge sorted graph output."""
+        cdef _KnownGraphNode node, parent_node
+        from bzrlib import tsort
+        # TODO: merge_sort doesn't handle ghosts (yet), figure out what to do
+        #       when we want it to.
+        as_parent_map = {}
+        for node in self._nodes.itervalues():
+            parent_keys = []
+            for parent_node in node.parents:
+                parent_keys.append(parent_node.key)
+            as_parent_map[node.key] = parent_keys
+        # We intentionally always generate revnos and never force the
+        # mainline_revisions
+        return tsort.merge_sort(as_parent_map, tip_key,
+                                mainline_revisions=None,
+                                generate_revno=True)
