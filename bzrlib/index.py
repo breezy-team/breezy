@@ -702,9 +702,8 @@ class GraphIndex(object):
                 # the last thing looked up was a terminal element
                 yield (self, ) + key_dict
 
-    def get_local_parent_map(self, keys, ref_list_num, parent_map,
-                             missing_keys):
-        """See BTreeIndex.get_local_parent_map."""
+    def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
+        """See BTreeIndex._find_ancestors."""
         # The api can be implemented as a trivial overlay on top of
         # iter_entries, it is not an efficient implementation, but it at least
         # gets the job done.
@@ -1315,10 +1314,15 @@ class CombinedGraphIndex(object):
             except errors.NoSuchFile:
                 self._reload_or_raise()
 
-    def get_ancestry(self, keys):
+    def find_ancestry(self, keys, ref_list_num):
         """Find the complete ancestry for the given set of keys.
 
+        Note that this is a whole-ancestry request, so it should be used
+        sparingly.
+
         :param keys: An iterable of keys to look for
+        :param ref_list_num: The reference list which references the parents
+            we care about.
         :return: (parent_map, missing_keys)
         """
         missing_keys = set()
@@ -1351,8 +1355,8 @@ class CombinedGraphIndex(object):
                     # TODO: ref_list_num should really be a parameter, since
                     #       CombinedGraphIndex does not know what the ref lists
                     #       mean.
-                    search_keys = index.get_ancestry(search_keys, 0,
-                        parent_map, index_missing_keys)
+                    search_keys = index._find_ancestors(search_keys,
+                        ref_list_num, parent_map, index_missing_keys)
                     # print '    \t  \t%2d\t%4d\t%5d\t%5d' % (
                     #     sub_generation, len(search_keys),
                     #     len(parent_map), len(index_missing_keys))

@@ -981,7 +981,7 @@ class TestBTreeIndex(BTreeTestCase):
             ])
         self.assertEqual(set([]), index.external_references(0))
 
-    def test_get_ancestry_one_page(self):
+    def test__find_ancestors_one_page(self):
         key1 = ('key-1',)
         key2 = ('key-2',)
         index = self.make_index(ref_lists=1, key_elements=1, nodes=[
@@ -990,12 +990,12 @@ class TestBTreeIndex(BTreeTestCase):
             ])
         parent_map = {}
         missing_keys = set()
-        search_keys = index.get_ancestry([key1], 0, parent_map, missing_keys)
+        search_keys = index._find_ancestors([key1], 0, parent_map, missing_keys)
         self.assertEqual({key1: (key2,), key2: ()}, parent_map)
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
 
-    def test_get_ancestry_one_page_w_missing(self):
+    def test__find_ancestors_one_page_w_missing(self):
         key1 = ('key-1',)
         key2 = ('key-2',)
         key3 = ('key-3',)
@@ -1005,15 +1005,15 @@ class TestBTreeIndex(BTreeTestCase):
             ])
         parent_map = {}
         missing_keys = set()
-        search_keys = index.get_ancestry([key2, key3], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([key2, key3], 0, parent_map,
+                                            missing_keys)
         self.assertEqual({key2: ()}, parent_map)
         # we know that key3 is missing because we read the page that it would
         # otherwise be on
         self.assertEqual(set([key3]), missing_keys)
         self.assertEqual(set(), search_keys)
 
-    def test_get_ancestry_one_parent_missing(self):
+    def test__find_ancestors_one_parent_missing(self):
         key1 = ('key-1',)
         key2 = ('key-2',)
         key3 = ('key-3',)
@@ -1023,22 +1023,22 @@ class TestBTreeIndex(BTreeTestCase):
             ])
         parent_map = {}
         missing_keys = set()
-        search_keys = index.get_ancestry([key1], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([key1], 0, parent_map,
+                                            missing_keys)
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
         self.assertEqual(set(), missing_keys)
         # all we know is that key3 wasn't present on the page we were reading
         # but if you look, the last key is key2 which comes before key3, so we
         # don't know whether key3 would land on this page or not.
         self.assertEqual(set([key3]), search_keys)
-        search_keys = index.get_ancestry(search_keys, 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors(search_keys, 0, parent_map,
+                                            missing_keys)
         # passing it back in, we are sure it is 'missing'
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
         self.assertEqual(set([key3]), missing_keys)
         self.assertEqual(set([]), search_keys)
 
-    def test_get_ancestry_dont_search_known(self):
+    def test__find_ancestors_dont_search_known(self):
         key1 = ('key-1',)
         key2 = ('key-2',)
         key3 = ('key-3',)
@@ -1050,13 +1050,13 @@ class TestBTreeIndex(BTreeTestCase):
         # We already know about key2, so we won't try to search for key3
         parent_map = {key2: (key3,)}
         missing_keys = set()
-        search_keys = index.get_ancestry([key1], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([key1], 0, parent_map,
+                                            missing_keys)
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
 
-    def test_get_ancestry_multiple_pages(self):
+    def test__find_ancestors_multiple_pages(self):
         # We need to use enough keys that we actually cause a split
         start_time = 1249671539
         email = "joebob@example.com"
@@ -1093,24 +1093,24 @@ class TestBTreeIndex(BTreeTestCase):
         # parent of that key
         parent_map = {}
         missing_keys = set()
-        search_keys = index.get_ancestry([next_key], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([next_key], 0, parent_map,
+                                            missing_keys)
         self.assertEqual([min_l2_key, next_key], sorted(parent_map))
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set([max_l1_key]), search_keys)
         parent_map = {}
-        search_keys = index.get_ancestry([max_l1_key], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([max_l1_key], 0, parent_map,
+                                            missing_keys)
         self.assertEqual(sorted(l1.keys), sorted(parent_map))
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
 
-    def test_get_ancestry_empty_index(self):
+    def test__find_ancestors_empty_index(self):
         index = self.make_index(ref_lists=1, key_elements=1, nodes=[])
         parent_map = {}
         missing_keys = set()
-        search_keys = index.get_ancestry([('one',), ('two',)], 0, parent_map,
-                                         missing_keys)
+        search_keys = index._find_ancestors([('one',), ('two',)], 0, parent_map,
+                                            missing_keys)
         self.assertEqual(set(), search_keys)
         self.assertEqual({}, parent_map)
         self.assertEqual(set([('one',), ('two',)]), missing_keys)

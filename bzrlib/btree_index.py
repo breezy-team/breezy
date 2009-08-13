@@ -1134,7 +1134,7 @@ class BTreeGraphIndex(object):
                     else:
                         yield (self, next_sub_key, value)
 
-    def find_ancestry(self, keys, ref_list_num, parent_map, missing_keys):
+    def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
         """Find the parent_map information for the set of keys.
 
         This populates the parent_map dict and missing_keys set based on the
@@ -1142,7 +1142,7 @@ class BTreeGraphIndex(object):
         it finds while searching for the supplied keys.
 
         It is unlikely that you want to call this directly. See
-        "CombinedGraphIndex.get_ancestry()" for a more appropriate API.
+        "CombinedGraphIndex.find_ancestry()" for a more appropriate API.
 
         :param keys: A keys whose ancestry we want to return
             Every key will either end up in 'parent_map' or 'missing_keys'.
