@@ -27,6 +27,11 @@ Bug Fixes
 * Further tweaks to handling of ``bzr add`` messages about ignored files.
   (Jason Spashett, #76616)
 
+* Properly handle fetching into a stacked branch while converting the
+  data, especially when there are also ghosts. The code was filling in
+  parent inventories incorrectly, and also not handling when one of the
+  parents was a ghost. (John Arbash Meinel, #402778, #412198)
+
 Improvements
 ************
 
