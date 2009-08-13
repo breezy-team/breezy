@@ -44,7 +44,7 @@ class TestAncestry(TestCaseWithTransport):
     def _check_ancestry(self, location='', result=None):
         out = self.run_bzr(['ancestry', location])[0]
         if result is None:
-            result = "A1\nB1\nA2\nA3\n"
+            result = "A1\nA2\nB1\nA3\n"
         self.assertEqualDiff(out, result)
 
     def test_ancestry(self):

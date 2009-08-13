@@ -20,6 +20,7 @@
 
 from bzrlib import errors
 import bzrlib.revision as _mod_revision
+from collections import deque
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
@@ -34,8 +35,57 @@ def topo_sort(graph):
     their children.
 
     node identifiers can be any hashable object, and are typically strings.
+
+    This function has the same purpose as the TopoSorter class, but uses a
+    different algorithm to sort the graph. That means that while both return a list
+    with parents before their child nodes, the exact ordering can be different.
+
+    topo_sort is faster when the whole list is needed, while when iterating over a
+    part of the list, TopoSorter.iter_topo_order should be used.
     """
-    return TopoSorter(graph).sorted()
+    # store a dict of the graph.
+    graph = dict(graph)
+    # this is the stack storing on which the sorted nodes are pushed.
+    node_stack = []
+
+    # count the number of children for every node in the graph
+    node_child_count = dict.fromkeys(graph.iterkeys(), 0)
+    for parents in graph.itervalues():
+        for parent in parents:
+            # don't count the parent if it's a ghost
+            if parent in node_child_count:
+                node_child_count[parent] += 1
+    # keep track of nodes without children in a separate list
+    nochild_nodes = deque([node for (node, n) in node_child_count.iteritems() if n == 0])
+
+    graph_pop = graph.pop
+    node_stack_append = node_stack.append
+    nochild_nodes_pop = nochild_nodes.pop
+    nochild_nodes_append = nochild_nodes.append
+
+    while nochild_nodes:
+        # pick a node without a child and add it to the stack.
+        node_name = nochild_nodes_pop()
+        node_stack_append(node_name)
+
+        # the parents of the node lose it as a child; if it was the last
+        # child, add the parent to the list of childless nodes.
+        parents = graph_pop(node_name)
+        for parent in parents:
+            if parent in node_child_count:
+                node_child_count[parent] -= 1
+                if node_child_count[parent] == 0:
+                    nochild_nodes_append(parent)
+
+    # if there are still nodes left in the graph,
+    # that means that there is a cycle
+    if graph:
+        raise errors.GraphCycleError(graph)
+
+    # the nodes where pushed on the stack child first, so this list needs to be
+    # reversed before returning it.
+    node_stack.reverse()
+    return node_stack
 
 
 class TopoSorter(object):
@@ -60,22 +110,8 @@ class TopoSorter(object):
         iteration or sorting may raise GraphCycleError if a cycle is present
         in the graph.
         """
-        # a dict of the graph.
+        # store a dict of the graph.
         self._graph = dict(graph)
-        self._visitable = set(self._graph)
-        ### if debugging:
-        # self._original_graph = dict(graph)
-
-        # this is a stack storing the depth first search into the graph.
-        self._node_name_stack = []
-        # at each level of 'recursion' we have to check each parent. This
-        # stack stores the parents we have not yet checked for the node at the
-        # matching depth in _node_name_stack
-        self._pending_parents_stack = []
-        # this is a set of the completed nodes for fast checking whether a
-        # parent in a node we are processing on the stack has already been
-        # emitted and thus can be skipped.
-        self._completed_node_names = set()
 
     def sorted(self):
         """Sort the graph and return as a list.
@@ -100,67 +136,64 @@ class TopoSorter(object):
         After finishing iteration the sorter is empty and you cannot continue
         iteration.
         """
-        while self._graph:
+        graph = self._graph
+        visitable = set(graph)
+
+        # this is a stack storing the depth first search into the graph.
+        pending_node_stack = []
+        # at each level of 'recursion' we have to check each parent. This
+        # stack stores the parents we have not yet checked for the node at the
+        # matching depth in pending_node_stack
+        pending_parents_stack = []
+
+        # this is a set of the completed nodes for fast checking whether a
+        # parent in a node we are processing on the stack has already been
+        # emitted and thus can be skipped.
+        completed_node_names = set()
+
+        while graph:
             # now pick a random node in the source graph, and transfer it to the
-            # top of the depth first search stack.
-            node_name, parents = self._graph.popitem()
-            self._push_node(node_name, parents)
-            while self._node_name_stack:
-                # loop until this call completes.
-                parents_to_visit = self._pending_parents_stack[-1]
-                # if all parents are done, the revision is done
+            # top of the depth first search stack of pending nodes.
+            node_name, parents = graph.popitem()
+            pending_node_stack.append(node_name)
+            pending_parents_stack.append(list(parents))
+
+            # loop until pending_node_stack is empty
+            while pending_node_stack:
+                parents_to_visit = pending_parents_stack[-1]
+                # if there are no parents left, the revision is done
                 if not parents_to_visit:
                     # append the revision to the topo sorted list
-                    # all the nodes parents have been added to the output, now
-                    # we can add it to the output.
-                    yield self._pop_node()
+                    # all the nodes parents have been added to the output,
+                    # now we can add it to the output.
+                    popped_node = pending_node_stack.pop()
+                    pending_parents_stack.pop()
+                    completed_node_names.add(popped_node)
+                    yield popped_node
                 else:
-                    while self._pending_parents_stack[-1]:
-                        # recurse depth first into a single parent
-                        next_node_name = self._pending_parents_stack[-1].pop()
-                        if next_node_name in self._completed_node_names:
-                            # this parent was completed by a child on the
-                            # call stack. skip it.
-                            continue
-                        if next_node_name not in self._visitable:
-                            continue
-                        # otherwise transfer it from the source graph into the
-                        # top of the current depth first search stack.
-                        try:
-                            parents = self._graph.pop(next_node_name)
-                        except KeyError:
-                            # if the next node is not in the source graph it has
-                            # already been popped from it and placed into the
-                            # current search stack (but not completed or we would
-                            # have hit the continue 4 lines up.
-                            # this indicates a cycle.
-                            raise errors.GraphCycleError(self._node_name_stack)
-                        self._push_node(next_node_name, parents)
-                        # and do not continue processing parents until this 'call'
-                        # has recursed.
-                        break
+                    # recurse depth first into a single parent
+                    next_node_name = parents_to_visit.pop()
 
-    def _push_node(self, node_name, parents):
-        """Add node_name to the pending node stack.
+                    if next_node_name in completed_node_names:
+                        # parent was already completed by a child, skip it.
+                        continue
+                    if next_node_name not in visitable:
+                        # parent is not a node in the original graph, skip it.
+                        continue
 
-        Names in this stack will get emitted into the output as they are popped
-        off the stack.
-        """
-        self._node_name_stack.append(node_name)
-        self._pending_parents_stack.append(list(parents))
-
-    def _pop_node(self):
-        """Pop the top node off the stack
-
-        The node is appended to the sorted output.
-        """
-        # we are returning from the flattened call frame:
-        # pop off the local variables
-        node_name = self._node_name_stack.pop()
-        self._pending_parents_stack.pop()
-
-        self._completed_node_names.add(node_name)
-        return node_name
+                    # transfer it along with its parents from the source graph
+                    # into the top of the current depth first search stack.
+                    try:
+                        parents = graph.pop(next_node_name)
+                    except KeyError:
+                        # if the next node is not in the source graph it has
+                        # already been popped from it and placed into the
+                        # current search stack (but not completed or we would
+                        # have hit the continue 6 lines up).  this indicates a
+                        # cycle.
+                        raise errors.GraphCycleError(pending_node_stack)
+                    pending_node_stack.append(next_node_name)
+                    pending_parents_stack.append(list(parents))
 
 
 def merge_sort(graph, branch_tip, mainline_revisions=None, generate_revno=False):

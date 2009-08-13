@@ -39,6 +39,20 @@ class TopoSortTests(TestCase):
                           list,
                           TopoSorter(graph).iter_topo_order())
 
+    def assertSortAndIterateOrder(self, graph):
+        """Check that sorting and iter_topo_order on graph really results in topological order.
+
+        For every child in the graph, check if it comes after all of it's parents.
+        """
+        sort_result = topo_sort(graph)
+        iter_result = list(TopoSorter(graph).iter_topo_order())
+        for (node, parents) in graph:
+            for parent in parents:
+                self.assertTrue(sort_result.index(node) > sort_result.index(parent),
+                    "parent %s must come before child %s:\n%s" % (parent, node, sort_result))
+                self.assertTrue(iter_result.index(node) > iter_result.index(parent),
+                    "parent %s must come before child %s:\n%s" % (parent, node, iter_result))
+
     def test_tsort_empty(self):
         """TopoSort empty list"""
         self.assertSortAndIterate([], [])
@@ -72,10 +86,10 @@ class TopoSortTests(TestCase):
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
 
-        If the graph does not give an order between two nodes, they are
-        returned in lexicographical order.
+        Multiple correct orderings are possible, so test for 
+        correctness, not for exact match on the resulting list.
         """
-        self.assertSortAndIterate(([(0, []),
+        self.assertSortAndIterateOrder([(0, []),
                                    (1, [0]),
                                    (2, [0]),
                                    (3, [0]),
@@ -83,8 +97,7 @@ class TopoSortTests(TestCase):
                                    (5, [1, 2]),
                                    (6, [1, 2]),
                                    (7, [2, 3]),
-                                   (8, [0, 1, 4, 5, 6])]),
-                                  [0, 1, 2, 3, 4, 5, 6, 7, 8])
+                                   (8, [0, 1, 4, 5, 6])])
 
     def test_tsort_unincluded_parent(self):
         """Sort nodes, but don't include some parents in the output"""
