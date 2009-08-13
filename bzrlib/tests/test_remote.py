@@ -2213,7 +2213,26 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
-class TestRepositoryInsertStream(TestRemoteRepository):
+class TestRepositoryInsertStreamBase(TestRemoteRepository):
+    """Base class for Repository.insert_stream and .insert_stream_1.18
+    tests.
+    """
+    
+    def checkInsertEmptyStream(self, repo, client):
+        """Insert an empty stream, checking the result.
+
+        This checks that there are no resume_tokens or missing_keys, and that
+        the client is finished.
+        """
+        sink = repo._get_sink()
+        fmt = repository.RepositoryFormat.get_default_format()
+        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
+        self.assertEqual([], resume_tokens)
+        self.assertEqual(set(), missing_keys)
+        self.assertFinished(client)
+
+
+class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
     """Tests for using Repository.insert_stream verb when the _1.18 variant is
     not available.
 
@@ -2236,12 +2255,7 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_no_lock_token(self):
         transport_path = 'quack'
@@ -2259,12 +2273,7 @@ class TestRepositoryInsertStream(TestRemoteRepository):
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
         repo.lock_write()
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_lock_token(self):
         transport_path = 'quack'
@@ -2282,12 +2291,7 @@ class TestRepositoryInsertStream(TestRemoteRepository):
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
             'success', ('ok',))
         repo.lock_write()
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_stream_with_inventory_deltas(self):
         """'inventory-deltas' substreams cannot be sent to the
@@ -2380,7 +2384,7 @@ class TestRepositoryInsertStream(TestRemoteRepository):
         return stream_with_inv_delta()
 
 
-class TestRepositoryInsertStream_1_18(TestRemoteRepository):
+class TestRepositoryInsertStream_1_18(TestRepositoryInsertStreamBase):
 
     def test_unlocked_repo(self):
         transport_path = 'quack'
@@ -2391,12 +2395,7 @@ class TestRepositoryInsertStream_1_18(TestRemoteRepository):
         client.add_expected_call(
             'Repository.insert_stream_1.18', ('quack/', ''),
             'success', ('ok',))
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_no_lock_token(self):
         transport_path = 'quack'
@@ -2411,12 +2410,7 @@ class TestRepositoryInsertStream_1_18(TestRemoteRepository):
             'Repository.insert_stream_1.18', ('quack/', ''),
             'success', ('ok',))
         repo.lock_write()
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_lock_token(self):
         transport_path = 'quack'
@@ -2431,12 +2425,7 @@ class TestRepositoryInsertStream_1_18(TestRemoteRepository):
             'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
             'success', ('ok',))
         repo.lock_write()
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
 
 class TestRepositoryTarball(TestRemoteRepository):
