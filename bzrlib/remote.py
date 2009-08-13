@@ -2028,6 +2028,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                     self._real_branch._format.network_name()
         else:
             self._format = format
+        # when we do _ensure_real we may need to pass ignore_fallbacks to the
+        # branch.open_branch method.
+        self._real_ignore_fallbacks = not setup_stacking
         if not self._format._network_name:
             # Did not get from open_branchV2 - old server.
             self._ensure_real()
@@ -2078,7 +2081,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                 raise AssertionError('smart server vfs must be enabled '
                     'to use vfs implementation')
             self.bzrdir._ensure_real()
-            self._real_branch = self.bzrdir._real_bzrdir.open_branch()
+            self._real_branch = self.bzrdir._real_bzrdir.open_branch(
+                ignore_fallbacks=self._real_ignore_fallbacks)
             if self.repository._real_repository is None:
                 # Give the remote repository the matching real repo.
                 real_repo = self._real_branch.repository
