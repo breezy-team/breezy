@@ -1575,6 +1575,8 @@ class RepositoryPackCollection(object):
         pack_operations = [[0, []]]
         for pack in self.all_packs():
             if hint is None or pack.name in hint:
+                # Either no hint was provided (so we are packing everything),
+                # or this pack was included in the hint.
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)

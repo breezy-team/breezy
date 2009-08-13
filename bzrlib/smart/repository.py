@@ -424,18 +424,21 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
         return None # Signal that we want a body.
 
     def _should_fake_unknown(self):
-        # This is a workaround for bugs in pre-1.18 clients that claim to
-        # support receiving streams of CHK repositories.  The pre-1.18 client
-        # expects inventory records to be serialized in the format defined by
-        # to_network_name, but in pre-1.18 (at least) that format definition
-        # tries to use the xml5 serializer, which does not correctly handle
-        # rich-roots.  After 1.18 the client can also accept inventory-deltas
-        # (which avoids this issue), and those clients will use the
-        # Repository.get_stream_1.18 verb instead of this one.
-        # So: if this repository is CHK, and the to_format doesn't match,
-        # we should just fake an UnknownSmartMethod error so that the client
-        # will fallback to VFS, rather than sending it a stream we know it
-        # cannot handle.
+        """Return True if we should return UnknownMethod to the client.
+        
+        This is a workaround for bugs in pre-1.18 clients that claim to
+        support receiving streams of CHK repositories.  The pre-1.18 client
+        expects inventory records to be serialized in the format defined by
+        to_network_name, but in pre-1.18 (at least) that format definition
+        tries to use the xml5 serializer, which does not correctly handle
+        rich-roots.  After 1.18 the client can also accept inventory-deltas
+        (which avoids this issue), and those clients will use the
+        Repository.get_stream_1.18 verb instead of this one.
+        So: if this repository is CHK, and the to_format doesn't match,
+        we should just fake an UnknownSmartMethod error so that the client
+        will fallback to VFS, rather than sending it a stream we know it
+        cannot handle.
+        """
         from_format = self._repository._format
         to_format = self._to_format
         if not from_format.supports_chks:
@@ -489,8 +492,7 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
 class SmartServerRepositoryGetStream_1_18(SmartServerRepositoryGetStream):
 
     def _should_fake_unknown(self):
-        # The client is at least 1.18, so we don't need to work around any
-        # bugs.
+        """Returns False; we don't need to workaround bugs in 1.18+ clients."""
         return False
 
 
