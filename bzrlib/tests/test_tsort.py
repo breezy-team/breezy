@@ -77,6 +77,15 @@ class TopoSortTests(TestCase):
                                         1: [2],
                                         2: [0]}.items())
 
+    def test_topo_sort_cycle_with_tail(self):
+        """TopoSort traps graph with longer cycle"""
+        self.assertSortAndIterateRaise(GraphCycleError,
+                                       {0: [1],
+                                        1: [2],
+                                        2: [3, 4],
+                                        3: [0],
+                                        4: []}.items())
+
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
         self.assertSortAndIterate({0: [3],

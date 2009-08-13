@@ -93,6 +93,9 @@ class TestKnownGraph(tests.TestCase):
         """
         graph = self.module.KnownGraph(ancestry)
         sort_result = graph.topo_sort()
+        # We should have an entry in sort_result for every entry present in the
+        # graph.
+        self.assertEqual(len(ancestry), len(sort_result))
         node_idx = dict((node, idx) for idx, node in enumerate(sort_result))
         for node in sort_result:
             parents = ancestry[node]
@@ -266,6 +269,15 @@ class TestKnownGraph(tests.TestCase):
         g = self.module.KnownGraph({0: [1],
                                     1: [2],
                                     2: [0]})
+        self.assertRaises(errors.GraphCycleError, g.topo_sort)
+
+    def test_topo_sort_cycle_with_tail(self):
+        """TopoSort traps graph with longer cycle"""
+        g = self.module.KnownGraph({0: [1],
+                                    1: [2],
+                                    2: [3, 4],
+                                    3: [0],
+                                    4: []})
         self.assertRaises(errors.GraphCycleError, g.topo_sort)
 
     def test_topo_sort_1(self):

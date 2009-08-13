@@ -45,10 +45,75 @@ cdef extern from "Python.h":
     void Py_INCREF(object)
 
 
-from bzrlib import revision
+from bzrlib import errors, revision
 
 cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION
+
+
+def topo_sort(graph):
+    cdef Py_ssize_t last_tip, pos
+    cdef PyObject *temp_key, *temp_value
+
+    graph = dict(graph)
+    # this is the stack storing on which the sorted nodes are pushed.
+    node_name_stack = []
+
+    # count the number of children for every node in the graph
+    num_children = dict.fromkeys(graph.iterkeys(), 0)
+    pos = 0
+    while PyDict_Next(graph, &pos, NULL, &temp_value):
+        parents = <object>temp_value
+        for parent in parents: # pretty sure this is a tuple
+            temp_value = PyDict_GetItem(num_children, parent)
+            if temp_value != NULL: # Ignore ghosts
+                n = (<object>temp_value) + 1
+                PyDict_SetItem(num_children, parent, n)
+    # keep track of nodes without children in a separate list
+    tips = []
+    pos = 0
+    while PyDict_Next(num_children, &pos, &temp_key, &temp_value):
+        value = <object>temp_value
+        if value == 0:
+            node_name = <object>temp_key
+            PyList_Append(tips, node_name)
+
+    graph_pop = graph.pop
+    last_tip = len(tips) - 1
+    while last_tip >= 0:
+        # pick a node without a child and add it to the stack.
+        temp_key = PyList_GET_ITEM(tips, last_tip)
+        node_name = <object>temp_key
+        last_tip -= 1
+        PyList_Append(node_name_stack, node_name)
+
+        # the parents of the node lose it as a child; if it was the last
+        # child, add the parent to the list of childless nodes.
+        parents = graph_pop(node_name)
+        for parent in parents:
+            temp_value = PyDict_GetItem(num_children, parent)
+            if temp_value == NULL:
+                # Ghost parent, skip it
+                continue
+            n = (<object>temp_value) - 1
+            PyDict_SetItem(num_children, parent, n)
+            if n == 0:
+                last_tip += 1
+                if PyList_GET_SIZE(tips) > last_tip:
+                    Py_INCREF(parent)
+                    PyList_SetItem(tips, last_tip, parent)
+                else:
+                    PyList_Append(tips, parent)
+
+    # if there are still nodes left in the graph,
+    # that means that there is a cycle
+    if graph:
+        raise errors.GraphCycleError(graph)
+
+    # the nodes where pushed on the stack child first, so this list needs to be
+    # reversed before returning it.
+    node_name_stack.reverse()
+    return node_name_stack
 
 
 cdef class _KnownGraphNode:
@@ -337,14 +402,55 @@ cdef class KnownGraph:
         return heads
 
     def topo_sort(self):
-        cdef _KnownGraphNode node, parent
-        from bzrlib import tsort
-        as_parent_map = {}
-        for node in self._nodes.itervalues():
-            if node.parents is None:
-                continue
-            parent_keys = []
-            for parent in node.parents:
-                parent_keys.append(parent.key)
-            as_parent_map[node.key] = parent_keys
-        return tsort.topo_sort(as_parent_map)
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        # This is, for the most part, the same iteration order that we used for
+        # _find_gdfo, consider finding a way to remove the duplication
+        # In general, we find the 'tails' (nodes with no parents), and then
+        # walk to the children. For children that have all of their parents
+        # yielded, we queue up the child to be yielded as well.
+        cdef _KnownGraphNode node
+        cdef _KnownGraphNode child
+        cdef PyObject *temp
+        cdef Py_ssize_t pos
+        cdef int replace
+        cdef Py_ssize_t last_item
+
+        pending = self._find_tails()
+        if PyList_GET_SIZE(pending) == 0 and len(self._nodes) > 0:
+            raise errors.GraphCycleError(self._nodes)
+
+        topo_order = []
+
+        last_item = PyList_GET_SIZE(pending) - 1
+        while last_item >= 0:
+            # Avoid pop followed by push, instead, peek, and replace
+            # timing shows this is 930ms => 770ms for OOo
+            node = _get_list_node(pending, last_item)
+            last_item = last_item - 1
+            if node.parents is not None:
+                # We don't include ghost parents
+                PyList_Append(topo_order, node.key)
+            for pos from 0 <= pos < PyList_GET_SIZE(node.children):
+                child = _get_list_node(node.children, pos)
+                if child.gdfo == -1:
+                    # We know we have a graph cycle because a node has a parent
+                    # which we couldn't find
+                    raise errors.GraphCycleError(self._nodes)
+                child.seen = child.seen + 1
+                if child.seen == PyTuple_GET_SIZE(child.parents):
+                    # All parents of this child have been yielded, queue this
+                    # one to be yielded as well
+                    last_item = last_item + 1
+                    if last_item < PyList_GET_SIZE(pending):
+                        Py_INCREF(child) # SetItem steals a ref
+                        PyList_SetItem(pending, last_item, child)
+                    else:
+                        PyList_Append(pending, child)
+                    # We have queued this node, we don't need to track it
+                    # anymore
+                    child.seen = 0
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order

@@ -31,17 +31,18 @@ def topo_sort(graph):
 
     graph -- sequence of pairs of node->parents_list.
 
-    The result is a list of node names, such that all parents come before
-    their children.
+    The result is a list of node names, such that all parents come before their
+    children.
 
     node identifiers can be any hashable object, and are typically strings.
 
     This function has the same purpose as the TopoSorter class, but uses a
-    different algorithm to sort the graph. That means that while both return a list
-    with parents before their child nodes, the exact ordering can be different.
+    different algorithm to sort the graph. That means that while both return a
+    list with parents before their child nodes, the exact ordering can be
+    different.
 
-    topo_sort is faster when the whole list is needed, while when iterating over a
-    part of the list, TopoSorter.iter_topo_order should be used.
+    topo_sort is faster when the whole list is needed, while when iterating
+    over a part of the list, TopoSorter.iter_topo_order should be used.
     """
     # store a dict of the graph.
     graph = dict(graph)
@@ -56,7 +57,8 @@ def topo_sort(graph):
             if parent in node_child_count:
                 node_child_count[parent] += 1
     # keep track of nodes without children in a separate list
-    nochild_nodes = deque([node for (node, n) in node_child_count.iteritems() if n == 0])
+    nochild_nodes = deque([node for (node, n) in node_child_count.iteritems()
+                                 if n == 0])
 
     graph_pop = graph.pop
     node_stack_append = node_stack.append
