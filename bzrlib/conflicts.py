@@ -480,7 +480,7 @@ class ParentLoop(HandledPathConflict):
 
 
 class UnversionedParent(HandledConflict):
-    """An attempt to version an file whose parent directory is not versioned.
+    """An attempt to version a file whose parent directory is not versioned.
     Typically, the result of a merge where one tree unversioned the directory
     and the other added a versioned file to it.
     """
