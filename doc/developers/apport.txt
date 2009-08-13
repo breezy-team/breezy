@@ -33,7 +33,9 @@ Putting in this handler may mean that an OS-wide exception handler never
 sees the error, but that was true with our existing exception-printer.
 
 The user should have the option to: forget about the crash (and ignore the
-bug report), see the contents of the report, 
+bug report), see the contents of the report, file a bug, or save the
+report to file later.  At the moment we just show them the filename and
+let them take it from there.
 
 The process is 
 
@@ -67,7 +69,9 @@ Future ideas
   longwinded than our current output and might make the traceback scroll
   off the screen.
 
-* Automatically include .bzr.log in the problem report.
+* Automatically trace messages (ie from .bzr.log) in the report.  We could
+  just include the whole file, but it may be long, and including the whole
+  thing has a greater risk of including sensitive data.
 
 * Ask the user what they want to do with the report: automatically file
   it, look at it, see just the traceback, just be told where it is.  This
