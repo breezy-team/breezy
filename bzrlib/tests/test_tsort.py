@@ -17,6 +17,7 @@
 
 """Tests for topological sort."""
 
+import pprint
 
 from bzrlib.tests import TestCase
 from bzrlib.tsort import topo_sort, TopoSorter, MergeSorter, merge_sort
@@ -127,12 +128,8 @@ class MergeSortTests(TestCase):
                            mainline_revisions=mainline_revisions,
                            generate_revno=generate_revno)
         if result_list != value:
-            import pprint
             self.assertEqualDiff(pprint.pformat(result_list),
                                  pprint.pformat(value))
-        self.assertEquals(result_list,
-            merge_sort(graph, branch_tip, mainline_revisions=mainline_revisions,
-                generate_revno=generate_revno))
         self.assertEqual(result_list,
             list(MergeSorter(
                 graph,
