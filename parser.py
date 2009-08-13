@@ -271,7 +271,7 @@ class ImportParser(LineBasedParser):
         self.date_parser = None
 
     def _warning(self, msg):
-        print "warning line %d: %s" % (self.lineno, msg)
+        sys.stderr.write("warning line %d: %s\n" % (self.lineno, msg))
 
     def iter_commands(self):
         """Iterator returning ImportCommand objects."""
