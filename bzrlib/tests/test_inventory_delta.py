@@ -26,6 +26,7 @@ from bzrlib import (
     inventory,
     inventory_delta,
     )
+from bzrlib.inventory_delta import InventoryDeltaError
 from bzrlib.inventory import Inventory
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase
@@ -95,25 +96,25 @@ class TestDeserialization(TestCase):
     def test_parse_no_bytes(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
         err = self.assertRaises(
-            errors.BzrError, deserializer.parse_text_bytes, '')
+            InventoryDeltaError, deserializer.parse_text_bytes, '')
         self.assertContainsRe(str(err), 'last line not empty')
 
     def test_parse_bad_format(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, 'format: foo\n')
         self.assertContainsRe(str(err), 'unknown format')
 
     def test_parse_no_parent(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes,
             'format: bzr inventory delta v1 (bzr 1.14)\n')
         self.assertContainsRe(str(err), 'missing parent: marker')
 
     def test_parse_no_version(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes,
             'format: bzr inventory delta v1 (bzr 1.14)\n'
             'parent: null:\n')
@@ -130,7 +131,7 @@ tree_references: true
 None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 None\x00/\x00an-id\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, double_root_lines)
         self.assertContainsRe(str(err), 'duplicate file id')
 
@@ -154,7 +155,7 @@ versioned_root: false
 tree_references: true
 None\x00/\x00TREE_ROOT\x00\x00null:\x00dir\x00\x00
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, root_only_lines)
         self.assertContainsRe(str(err), 'special revisionid found')
 
@@ -167,7 +168,7 @@ versioned_root: false
 tree_references: true
 None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir\x00\x00
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, root_only_lines)
         self.assertContainsRe(str(err), 'Versioned root found')
 
@@ -180,7 +181,7 @@ versioned_root: false
 tree_references: true
 None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, root_only_lines)
         self.assertContainsRe(str(err), 'Versioned root found')
 
@@ -198,14 +199,14 @@ None\x00/\x00an-id\x00\x00parent-id\x00dir\x00\x00
     def test_parse_versioned_root_when_disabled(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer(
             allow_versioned_root=False)
-        err = self.assertRaises(inventory_delta._IncompatibleDelta,
+        err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
             deserializer.parse_text_bytes, root_only_lines)
         self.assertEquals("versioned_root not allowed", str(err))
 
     def test_parse_tree_when_disabled(self):
         deserializer = inventory_delta.InventoryDeltaDeserializer(
             allow_tree_references=False)
-        err = self.assertRaises(inventory_delta._IncompatibleDelta,
+        err = self.assertRaises(inventory_delta.IncompatibleInventoryDelta,
             deserializer.parse_text_bytes, reference_lines)
         self.assertEquals("Tree reference not allowed", str(err))
 
@@ -221,7 +222,7 @@ versioned_root: false
 tree_references: false
 None\x00/foo\x00id\x00TREE_ROOT\x00changed\x00tree\x00subtree-version
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'Tree reference found')
 
@@ -237,7 +238,7 @@ versioned_root: false
 tree_references: false
 None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
 """
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'Versioned root found')
 
@@ -246,7 +247,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         # Trim the trailing newline from a valid serialization
         lines = root_only_lines[:-1]
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'last line not empty')
 
@@ -255,7 +256,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines = empty_lines
         lines += "None\x00bad\x00TREE_ROOT\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'newpath invalid')
 
@@ -264,7 +265,7 @@ None\x00/\x00TREE_ROOT\x00\x00a@e\xc3\xa5ample.com--2004\x00dir
         lines = root_only_lines
         lines += "bad\x00/new\x00file-id\x00\x00version\x00dir\n"
         deserializer = inventory_delta.InventoryDeltaDeserializer()
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             deserializer.parse_text_bytes, lines)
         self.assertContainsRe(str(err), 'oldpath invalid')
     
@@ -351,7 +352,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
         self.assertEqual(str(err), 'no version for fileid id')
 
@@ -363,7 +364,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
         self.assertEqual(str(err), 'no version for fileid TREE_ROOT')
 
@@ -376,7 +377,7 @@ class TestSerialization(TestCase):
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True)
-        err = self.assertRaises(errors.BzrError,
+        err = self.assertRaises(InventoryDeltaError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
         self.assertStartsWith(str(err), 'Version present for / in TREE_ROOT')
 
@@ -443,7 +444,7 @@ class TestSerialization(TestCase):
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=False, tree_references=True)
         self.assertRaises(
-            errors.BzrError, serializer.delta_to_lines, 'old-version',
+            InventoryDeltaError, serializer.delta_to_lines, 'old-version',
             'new-version', delta)
 
     def test_to_inventory_root_id_not_versioned(self):
@@ -452,7 +453,7 @@ class TestSerialization(TestCase):
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
         self.assertRaises(
-            errors.BzrError, serializer.delta_to_lines, 'old-version',
+            InventoryDeltaError, serializer.delta_to_lines, 'old-version',
             'new-version', delta)
 
     def test_to_inventory_has_tree_not_meant_to(self):
@@ -467,7 +468,7 @@ class TestSerialization(TestCase):
             ]
         serializer = inventory_delta.InventoryDeltaSerializer(
             versioned_root=True, tree_references=True)
-        self.assertRaises(errors.BzrError, serializer.delta_to_lines,
+        self.assertRaises(InventoryDeltaError, serializer.delta_to_lines,
             'old-version', 'new-version', delta)
 
     def test_to_inventory_torture(self):
@@ -571,13 +572,13 @@ class TestContent(TestCase):
     def test_file_without_size(self):
         file_entry = inventory.make_entry('file', 'a file', None, 'file-id')
         file_entry.text_sha1 = 'foo'
-        self.assertRaises(errors.BzrError,
+        self.assertRaises(InventoryDeltaError,
             inventory_delta._file_content, file_entry)
 
     def test_file_without_sha1(self):
         file_entry = inventory.make_entry('file', 'a file', None, 'file-id')
         file_entry.text_size = 10
-        self.assertRaises(errors.BzrError,
+        self.assertRaises(InventoryDeltaError,
             inventory_delta._file_content, file_entry)
 
     def test_link_empty_target(self):
@@ -600,7 +601,7 @@ class TestContent(TestCase):
 
     def test_link_no_target(self):
         entry = inventory.make_entry('symlink', 'a link', None)
-        self.assertRaises(errors.BzrError,
+        self.assertRaises(InventoryDeltaError,
             inventory_delta._link_content, entry)
 
     def test_reference_null(self):
@@ -617,5 +618,5 @@ class TestContent(TestCase):
 
     def test_reference_no_reference(self):
         entry = inventory.make_entry('tree-reference', 'a tree', None)
-        self.assertRaises(errors.BzrError,
+        self.assertRaises(InventoryDeltaError,
             inventory_delta._reference_content, entry)

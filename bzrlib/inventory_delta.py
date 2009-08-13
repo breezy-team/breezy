@@ -31,6 +31,24 @@ from bzrlib.revision import NULL_REVISION
 
 FORMAT_1 = 'bzr inventory delta v1 (bzr 1.14)'
 
+
+class InventoryDeltaError(errors.BzrError):
+    """An error when serializing or deserializing an inventory delta."""
+    
+    # Most errors when serializing and deserializing are due to bugs, although
+    # damaged input (i.e. a bug in a different process) could cause
+    # deserialization errors too.
+    internal_error = True
+
+
+class IncompatibleInventoryDelta(errors.BzrError):
+    """The delta could not be deserialised because its contents conflict with
+    the allow_versioned_root or allow_tree_references flags of the
+    deserializer.
+    """
+    internal_error = False
+
+
 def _directory_content(entry):
     """Serialize the content component of entry which is a directory.
     
@@ -50,7 +68,7 @@ def _file_content(entry):
         exec_bytes = ''
     size_exec_sha = (entry.text_size, exec_bytes, entry.text_sha1)
     if None in size_exec_sha:
-        raise errors.BzrError('Missing size or sha for %s' % entry.file_id)
+        raise InventoryDeltaError('Missing size or sha for %s' % entry.file_id)
     return "file\x00%d\x00%s\x00%s" % size_exec_sha
 
 
@@ -61,7 +79,7 @@ def _link_content(entry):
     """
     target = entry.symlink_target
     if target is None:
-        raise errors.BzrError('Missing target for %s' % entry.file_id)
+        raise InventoryDeltaError('Missing target for %s' % entry.file_id)
     return "link\x00%s" % target.encode('utf8')
 
 
@@ -72,7 +90,8 @@ def _reference_content(entry):
     """
     tree_revision = entry.reference_revision
     if tree_revision is None:
-        raise errors.BzrError('Missing reference revision for %s' % entry.file_id)
+        raise InventoryDeltaError(
+            'Missing reference revision for %s' % entry.file_id)
     return "tree\x00%s" % tree_revision
 
 
@@ -151,10 +170,6 @@ class InventoryDeltaSerializer(object):
             takes.
         :return: The serialized delta as lines.
         """
-        if self._versioned_root is None or self._tree_references is None:
-            raise AssertionError(
-                "Cannot serialise unless versioned_root/tree_references flags "
-                "are both set.")
         if type(old_name) is not str:
             raise TypeError('old_name should be str, got %r' % (old_name,))
         if type(new_name) is not str:
@@ -164,7 +179,7 @@ class InventoryDeltaSerializer(object):
         for delta_item in delta_to_new:
             line = to_line(delta_item, new_name)
             if line.__class__ != str:
-                raise errors.BzrError(
+                raise InventoryDeltaError(
                     'to_line generated non-str output %r' % lines[-1])
             lines.append(line)
         lines.sort()
@@ -218,11 +233,11 @@ class InventoryDeltaSerializer(object):
                 # file-ids other than TREE_ROOT, e.g. repo formats that use the
                 # xml5 serializer.
                 if last_modified != new_version:
-                    raise errors.BzrError(
+                    raise InventoryDeltaError(
                         'Version present for / in %s (%s != %s)'
                         % (file_id, last_modified, new_version))
             if last_modified is None:
-                raise errors.BzrError("no version for fileid %s" % file_id)
+                raise InventoryDeltaError("no version for fileid %s" % file_id)
             content = self._entry_to_content[entry.kind](entry)
         return ("%s\x00%s\x00%s\x00%s\x00%s\x00%s\n" %
             (oldpath_utf8, newpath_utf8, file_id, parent_id, last_modified,
@@ -248,7 +263,7 @@ class InventoryDeltaDeserializer(object):
         elif value == "false":
             return False
         else:
-            raise errors.BzrError("value %r is not a bool" % (value,))
+            raise InventoryDeltaError("value %r is not a bool" % (value,))
 
     def parse_text_bytes(self, bytes):
         """Parse the text bytes of a serialized inventory delta.
@@ -264,24 +279,24 @@ class InventoryDeltaDeserializer(object):
         """
         if bytes[-1:] != '\n':
             last_line = bytes.rsplit('\n', 1)[-1]
-            raise errors.BzrError('last line not empty: %r' % (last_line,))
+            raise InventoryDeltaError('last line not empty: %r' % (last_line,))
         lines = bytes.split('\n')[:-1] # discard the last empty line
         if not lines or lines[0] != 'format: %s' % FORMAT_1:
-            raise errors.BzrError('unknown format %r' % lines[0:1])
+            raise InventoryDeltaError('unknown format %r' % lines[0:1])
         if len(lines) < 2 or not lines[1].startswith('parent: '):
-            raise errors.BzrError('missing parent: marker')
+            raise InventoryDeltaError('missing parent: marker')
         delta_parent_id = lines[1][8:]
         if len(lines) < 3 or not lines[2].startswith('version: '):
-            raise errors.BzrError('missing version: marker')
+            raise InventoryDeltaError('missing version: marker')
         delta_version_id = lines[2][9:]
         if len(lines) < 4 or not lines[3].startswith('versioned_root: '):
-            raise errors.BzrError('missing versioned_root: marker')
+            raise InventoryDeltaError('missing versioned_root: marker')
         delta_versioned_root = self._deserialize_bool(lines[3][16:])
         if len(lines) < 5 or not lines[4].startswith('tree_references: '):
-            raise errors.BzrError('missing tree_references: marker')
+            raise InventoryDeltaError('missing tree_references: marker')
         delta_tree_references = self._deserialize_bool(lines[4][17:])
         if (not self._allow_versioned_root and delta_versioned_root):
-            raise _IncompatibleDelta("versioned_root not allowed")
+            raise IncompatibleInventoryDelta("versioned_root not allowed")
         result = []
         seen_ids = set()
         line_iter = iter(lines)
@@ -292,29 +307,30 @@ class InventoryDeltaDeserializer(object):
                 content) = line.split('\x00', 5)
             parent_id = parent_id or None
             if file_id in seen_ids:
-                raise errors.BzrError(
+                raise InventoryDeltaError(
                     "duplicate file id in inventory delta %r" % lines)
             seen_ids.add(file_id)
             if (newpath_utf8 == '/' and not delta_versioned_root and
                 last_modified != delta_version_id):
                     # Delta claims to be not have a versioned root, yet here's
                     # a root entry with a non-default version.
-                    raise errors.BzrError("Versioned root found: %r" % line)
+                    raise InventoryDeltaError("Versioned root found: %r" % line)
             elif newpath_utf8 != 'None' and last_modified[-1] == ':':
                 # Deletes have a last_modified of null:, but otherwise special
                 # revision ids should not occur.
-                raise errors.BzrError('special revisionid found: %r' % line)
+                raise InventoryDeltaError('special revisionid found: %r' % line)
             if content.startswith('tree\x00'):
                 if delta_tree_references is False:
-                    raise errors.BzrError(
+                    raise InventoryDeltaError(
                             "Tree reference found (but header said "
                             "tree_references: false): %r" % line)
                 elif not self._allow_tree_references:
-                    raise _IncompatibleDelta("Tree reference not allowed")
+                    raise IncompatibleInventoryDelta(
+                        "Tree reference not allowed")
             if oldpath_utf8 == 'None':
                 oldpath = None
             elif oldpath_utf8[:1] != '/':
-                raise errors.BzrError(
+                raise InventoryDeltaError(
                     "oldpath invalid (does not start with /): %r"
                     % (oldpath_utf8,))
             else:
@@ -323,7 +339,7 @@ class InventoryDeltaDeserializer(object):
             if newpath_utf8 == 'None':
                 newpath = None
             elif newpath_utf8[:1] != '/':
-                raise errors.BzrError(
+                raise InventoryDeltaError(
                     "newpath invalid (does not start with /): %r"
                     % (newpath_utf8,))
             else:
@@ -356,10 +372,4 @@ def _parse_entry(path, file_id, parent_id, last_modified, content):
     return entry_factory[content[0]](
             content, name, parent_id, file_id, last_modified)
 
-
-class _IncompatibleDelta(errors.InternalBzrError):
-    """The delta could not be deserialised because its contents conflict with
-    the allow_versioned_root or allow_tree_references flags of the
-    deserializer.
-    """
 
