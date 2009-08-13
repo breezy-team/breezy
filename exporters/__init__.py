@@ -217,6 +217,26 @@ class GitExporter(_Exporter):
         self.report_results(retcode, destination)
 
 
+class MonotoneExporter(_Exporter):
+
+    def __init__(self):
+        self.check_install('Monotone', '0.43', ['mnt'])
+
+    def generate(self, source, destination, verbose=False, custom=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        args = ["mnt", "git_export"]
+        outf, base, marks = self.get_output_info(destination)
+        if marks:
+            marks = os.path.abspath(marks)
+            if os.path.exists(marks):
+                args.append('--import-marks=%s' % marks)
+            args.append('--export-marks=%s' % marks)
+        if custom:
+            args.extend(custom)
+        retcode = self.execute(args, outf, cwd=source)
+        self.report_results(retcode, destination)
+
+
 class SubversionExporter(_Exporter):
 
     def __init__(self):
@@ -243,6 +263,8 @@ def fast_export_from(source, destination, tool, verbose=False, custom=None):
         factory = MercurialExporter
     elif tool == 'git':
         factory = GitExporter
+    elif tool == 'mnt':
+        factory = MonotoneExporter
     elif tool == 'svn':
         factory = SubversionExporter
     try:

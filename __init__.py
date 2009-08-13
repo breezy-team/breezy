@@ -527,6 +527,27 @@ class cmd_fast_export_from_git(Command):
         fast_export_from(source, destination, 'git', verbose)
 
 
+class cmd_fast_export_from_mnt(Command):
+    """Generate a fast-import file from a Monotone repository.
+
+    Destination is a dump file, typically named xxx.fi where xxx is
+    the name of the project. If '-' is given, standard output is used.
+
+    Monotone 0.43 or later must be installed as the mnt git_export
+    subcommand is used under the covers to generate the stream.
+    The source must be a local directory.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose']
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        fast_export_from(source, destination, 'mnt', verbose)
+
+
 class cmd_fast_export_from_svn(Command):
     """Generate a fast-import file from a Subversion repository.
 
@@ -579,4 +600,5 @@ register_command(cmd_fast_export)
 register_command(cmd_fast_export_from_darcs)
 register_command(cmd_fast_export_from_hg)
 register_command(cmd_fast_export_from_git)
+register_command(cmd_fast_export_from_mnt)
 register_command(cmd_fast_export_from_svn)
