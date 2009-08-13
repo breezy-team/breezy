@@ -30,13 +30,15 @@ def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
     scenarios = [
         ('python', {'module': _known_graph_py, 'do_cache': True}),
+    ]
+    caching_scenarios = [
         ('python-nocache', {'module': _known_graph_py, 'do_cache': False}),
     ]
     suite = loader.suiteClass()
     if CompiledKnownGraphFeature.available():
         from bzrlib import _known_graph_pyx
         scenarios.append(('C', {'module': _known_graph_pyx, 'do_cache': True}))
-        scenarios.append(('C-nocache',
+        caching_scenarios.append(('C-nocache',
                           {'module': _known_graph_pyx, 'do_cache': False}))
     else:
         # the compiled module isn't available, so we add a failing test
@@ -44,8 +46,14 @@ def load_tests(standard_tests, module, loader):
             def test_fail(self):
                 self.requireFeature(CompiledKnownGraphFeature)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
+    # TestKnownGraphHeads needs to be permutated with and without caching.
+    # All other TestKnownGraph tests only need to be tested across module
+    heads_suite, other_suite = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestKnownGraphHeads))
+    suite = tests.multiply_tests(other_suite, scenarios, suite)
+    suite = tests.multiply_tests(heads_suite, scenarios + caching_scenarios,
+                                 suite)
+    return suite
 
 
 class _CompiledKnownGraphFeature(tests.Feature):
@@ -73,39 +81,19 @@ CompiledKnownGraphFeature = _CompiledKnownGraphFeature()
 alt_merge = {'a': [], 'b': ['a'], 'c': ['b'], 'd': ['a', 'c']}
 
 
-class TestKnownGraph(tests.TestCase):
+class TestCaseWithKnownGraph(tests.TestCase):
 
     module = None # Set by load_tests
-    do_cache = None # Set by load_tests
 
     def make_known_graph(self, ancestry):
         return self.module.KnownGraph(ancestry, do_cache=self.do_cache)
 
+
+class TestKnownGraph(TestCaseWithKnownGraph):
+
     def assertGDFO(self, graph, rev, gdfo):
         node = graph._nodes[rev]
         self.assertEqual(gdfo, node.gdfo)
-
-    def assertTopoSortOrder(self, ancestry):
-        """Check topo_sort and iter_topo_order is genuinely topological order.
-
-        For every child in the graph, check if it comes after all of it's
-        parents.
-        """
-        graph = self.module.KnownGraph(ancestry)
-        sort_result = graph.topo_sort()
-        # We should have an entry in sort_result for every entry present in the
-        # graph.
-        self.assertEqual(len(ancestry), len(sort_result))
-        node_idx = dict((node, idx) for idx, node in enumerate(sort_result))
-        for node in sort_result:
-            parents = ancestry[node]
-            for parent in parents:
-                if parent not in ancestry:
-                    # ghost
-                    continue
-                if node_idx[node] <= node_idx[parent]:
-                    self.fail("parent %s must come before child %s:\n%s"
-                              % (parent, node, sort_result))
 
     def test_children_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -148,6 +136,11 @@ class TestKnownGraph(tests.TestCase):
         self.assertGDFO(graph, 'd', 4)
         self.assertGDFO(graph, 'a', 5)
         self.assertGDFO(graph, 'c', 5)
+
+
+class TestKnownGraphHeads(TestCaseWithKnownGraph):
+
+    do_cache = None # Set by load_tests
 
     def test_heads_null(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -249,6 +242,31 @@ class TestKnownGraph(tests.TestCase):
         self.assertEqual(set(['c']), graph.heads(['c', 'b', 'd', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'e', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))
+
+
+class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
+
+    def assertTopoSortOrder(self, ancestry):
+        """Check topo_sort and iter_topo_order is genuinely topological order.
+
+        For every child in the graph, check if it comes after all of it's
+        parents.
+        """
+        graph = self.make_known_graph(ancestry)
+        sort_result = graph.topo_sort()
+        # We should have an entry in sort_result for every entry present in the
+        # graph.
+        self.assertEqual(len(ancestry), len(sort_result))
+        node_idx = dict((node, idx) for idx, node in enumerate(sort_result))
+        for node in sort_result:
+            parents = ancestry[node]
+            for parent in parents:
+                if parent not in ancestry:
+                    # ghost
+                    continue
+                if node_idx[node] <= node_idx[parent]:
+                    self.fail("parent %s must come before child %s:\n%s"
+                              % (parent, node, sort_result))
 
     def test_topo_sort_empty(self):
         """TopoSort empty list"""
