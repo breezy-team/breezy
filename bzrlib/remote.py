@@ -1758,7 +1758,8 @@ class RemoteStreamSource(repository.StreamSource):
         """
         source = repo._get_source(self.to_format)
         if isinstance(source, RemoteStreamSource):
-            return repository.StreamSource.get_stream(source, search)
+            repo._ensure_real()
+            source = repo._real_repository._get_source(self.to_format)
         return source.get_stream(search)
 
     def _get_stream(self, repo, search):
