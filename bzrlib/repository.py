@@ -1462,9 +1462,10 @@ class Repository(object):
         """
         if using and not self.is_shared():
             try:
-                return [self.bzrdir.open_branch()]
+                yield self.bzrdir.open_branch()
+                return
             except errors.NotBranchError:
-                return []
+                return
         class Evaluator(object):
 
             def __init__(self):
@@ -1487,14 +1488,13 @@ class Repository(object):
                     value = (None, None)
                 return True, value
 
-        branches = []
         for branch, repository in bzrdir.BzrDir.find_bzrdirs(
                 self.bzrdir.root_transport, evaluate=Evaluator()):
             if branch is not None:
-                branches.append(branch)
+                yield branch
             if not using and repository is not None:
-                branches.extend(repository.find_branches())
-        return branches
+                for branch in repository.find_branches():
+                    yield branch
 
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
