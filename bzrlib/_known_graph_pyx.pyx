@@ -335,3 +335,16 @@ cdef class KnownGraph:
         if self.do_cache:
             PyDict_SetItem(self._known_heads, heads_key, heads)
         return heads
+
+    def topo_sort(self):
+        cdef _KnownGraphNode node, parent
+        from bzrlib import tsort
+        as_parent_map = {}
+        for node in self._nodes.itervalues():
+            if node.parents is None:
+                continue
+            parent_keys = []
+            for parent in node.parents:
+                parent_keys.append(parent.key)
+            as_parent_map[node.key] = parent_keys
+        return tsort.topo_sort(as_parent_map)

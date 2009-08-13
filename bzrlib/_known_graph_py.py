@@ -171,3 +171,9 @@ class KnownGraph(object):
             self._known_heads[heads_key] = heads
         return heads
 
+    def topo_sort(self):
+        from bzrlib import tsort
+        as_parent_map = dict((node.key, node.parent_keys)
+                             for node in self._nodes.itervalues()
+                              if node.parent_keys is not None)
+        return tsort.topo_sort(as_parent_map)
