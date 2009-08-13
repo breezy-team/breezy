@@ -446,10 +446,18 @@ class Branch(object):
         # start_revision_id.
         if self._merge_sorted_revisions_cache is None:
             last_revision = self.last_revision()
-            graph = self.repository.get_graph()
-            parent_map = dict(((key, value) for key, value in
-                     graph.iter_ancestry([last_revision]) if value is not None))
-            revision_graph = repository._strip_NULL_ghosts(parent_map)
+            last_rev_key = (last_revision,)
+            # TODO: we need to expose this on Repository
+            find_ancestry = self.repository.revisions._index._graph_index.find_ancestry
+            parent_map, missing_keys = find_ancestry([last_rev_key], 0)
+            # We now have the graph of keys, and a list of ghosts
+            # remove ghosts because they aren't handled by merge_sort, and
+            # convert back to simple revision_ids
+            # TODO: Is it faster to do "p in parent_map" or is it faster to do
+            # "p not in missing_keys"?
+            revision_graph = dict(
+                (r[-1], [p[-1] for p in parent_ids if p in parent_map])
+                for r, parent_ids in parent_map.iteritems())
             revs = tsort.merge_sort(revision_graph, last_revision, None,
                 generate_revno=True)
             # Drop the sequence # before caching
