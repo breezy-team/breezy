@@ -44,6 +44,9 @@ API Changes
 Internals
 *********
 
+* RemoteBranch.open now honours ignore_fallbacks correctly on bzr-v2
+  protocols. (Robert Collins)
+
 Testing
 *******
 
