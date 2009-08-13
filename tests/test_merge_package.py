@@ -22,9 +22,11 @@
 import os
 import unittest
 
-from debian_bundle.changelog import Version
+from bzrlib.errors import ConflictsInTree
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
+
+from bzrlib.plugins.builddeb.merge_package import (
+)
 
 _Debian_changelog = ['''\
 ipsec-tools (1:0.7.1-1.5) unstable; urgency=high
@@ -92,16 +94,6 @@ ipsec-tools (1:0.7.1-1.5ubuntu1) karmic; urgency=low
     - src/libipsec/policy_token.c: don't check return code of fwrite.
 
  -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 24 Jul 2009 13:24:17 -0500
-
-'''
-,
-'''
-ipsec-tools (1:0.7.1-1.3ubuntu1) karmic; urgency=low
-
-  * debian/rules: build with -fno-strict-aliasing, required with gcc 4.4.
-
- -- Steve Langasek <steve.langasek@ubuntu.com>  Tue, 21 Jul 2009 18:33:13 +0000
-
 '''
 ,
 '''
@@ -115,7 +107,6 @@ ipsec-tools (1:0.6.5-0ubuntu1) dapper; urgency=low
     translations for debconf templates (closes: #370148, #369409).
 
  -- Martin Pitt <martin.pitt@ubuntu.com>  Tue,  9 May 2006 11:33:01 +0200
-
 '''
 ,
 '''
@@ -124,7 +115,6 @@ ipsec-tools (1:0.5-5ubuntu1) breezy; urgency=low
   * No-change rebuild against libkrb5-3.
 
  -- LaMont Jones <lamont@ubuntu.com>  Wed, 28 Sep 2005 18:33:52 -0600
-
 ''']
 
 
@@ -134,6 +124,11 @@ def _merge_log(strings):
         result += s
     return result
 
+def _prepend_log(text, path):
+    content = open(path).read()
+    fh = open(path, 'wb')
+    fh.write(text+content)
+    fh.close()
 
 class MergePackageTests(TestCaseWithTransport):
 
@@ -144,7 +139,7 @@ class MergePackageTests(TestCaseWithTransport):
         finally:
             f.close()
 
-    def test_debian_upstream_newer(self):
+    def _setup_debian_upstream(self):
         # Set up debian upstream branch.
         debu_tree = self.make_branch_and_tree('debu')
         self.build_tree(['debu/a'])
@@ -163,6 +158,10 @@ class MergePackageTests(TestCaseWithTransport):
             [('debu/b', 'Debian upstream contents for b\n')])
         revid_debu_C = debu_tree.commit('add h', rev_id='du-3')
         debu_tree.branch.tags.set_tag('upstream-0.7.1', revid_debu_C)
+
+        return debu_tree
+
+    def test_debian_upstream_newer(self):
 
         # Set up ubuntu upstream branch.
         ubuu_tree = debu_tree.bzrdir.sprout(
@@ -211,10 +210,42 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_tree.pull(ubuu_tree.branch, stop_revision=revid_debu_A)
         conflicts = ubup_tree.merge_from_branch(
             debp_tree.branch, to_revision=revid_debp_A)
-        print("\n-> conflicts = %s\n" % conflicts)
+        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
         revid_ubup_A = ubup_tree.commit(
             'merged from debian (0.3.3-1)', rev_id='up-1')
         ubup_tree.branch.tags.set_tag('0.3.3-1ubuntu1', revid_ubup_A)
+
+        conflicts = ubup_tree.merge_from_branch(
+            debp_tree.branch, to_revision=revid_debp_B)
+        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
+        _prepend_log(
+            _Ubuntu_changelog[-1], '%s/work/ubup/debian/changelog' %
+            self.test_base_dir)
+        revid_ubup_B = ubup_tree.commit(
+            'merged from debian (1:0.5-5)', rev_id='up-2')
+        ubup_tree.branch.tags.set_tag('1:0.5-5ubuntu1', revid_ubup_B)
+
+        conflicts = ubup_tree.merge_from_branch(
+            ubuu_tree.branch, to_revision=revid_ubuu_A)
+        ubuu_tree.branch.tags.merge_to(ubup_tree.branch.tags)
+        _prepend_log(
+            _Ubuntu_changelog[-2], '%s/work/ubup/debian/changelog' %
+            self.test_base_dir)
+        revid_ubup_C = ubup_tree.commit(
+            'merged from upstream (0.6.5)', rev_id='up-3')
+        ubup_tree.branch.tags.set_tag('1:0.6.5-0ubuntu1', revid_ubup_C)
+
+        conflicts = ubup_tree.merge_from_branch(
+            debp_tree.branch, to_revision=revid_debp_D)
+        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
+        _prepend_log(
+            _Ubuntu_changelog[-3], '%s/work/ubup/debian/changelog' %
+            self.test_base_dir)
+        self.assertRaises(
+            ConflictsInTree, ubup_tree.commit,
+            ('merged from debian (1:0.7.1-1.5)',), dict(rev_id='up-4'))
+        # Undo the failed merge.
+        ubup_tree.revert()
 
         import pdb
         pdb.set_trace()
