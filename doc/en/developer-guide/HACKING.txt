@@ -82,10 +82,77 @@ friendly, helpful and always keen to welcome newcomers.
 Bazaar Development in a Nutshell
 ================================
 
-Looking for a 10 minute introduction to submitting a change?
-See http://bazaar-vcs.org/BzrGivingBack.
+.. was from bazaar-vcs.org/BzrGivingBack
 
-TODO: Merge that Wiki page into this document.
+One of the fun things about working on a version control system like Bazaar is
+that the users have a high level of proficiency in contributing back into
+the tool.  Consider the following very brief introduction to contributing back
+to Bazaar.  More detailed instructions are in the following sections.
+
+Making the change
+-----------------
+
+First, get a local copy of the development mainline (See `Why make a local
+copy of bzr.dev?`_.) 
+::
+
+ $ bzr init-repo ~/bzr
+ $ cd ~/bzr
+ $ bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+
+Now make your own branch::
+
+ $ bzr branch bzr.dev 123456-my-bugfix
+
+This will give you a branch called "123456-my-bugfix" that you can work on
+and commit in. Here, you can study the code, make a fix or a new feature.
+Feel free to commit early and often (after all, it's your branch!). 
+
+Documentation improvements are an easy place to get started giving back to the
+Bazaar project.  The documentation is in the `doc/` subdirectory of the Bazaar
+source tree.
+
+When you are done, make sure that you commit your last set of changes as well!
+Once you are happy with your changes, ask for them to be merged, as described
+below.
+
+Making a Merge Proposal
+-----------------------
+
+The Bazaar developers use Launchpad to further enable a truly distributed
+style of development.  Anyone can propose a branch for merging into the Bazaar
+trunk.  To start this process, you need to push your branch to Launchpad.  To
+do this, you will need a Launchpad account and user name, e.g.
+`your_lp_username`.  You can push your branch to Launchpad directly from
+Bazaar::
+
+  $ bzr push lp:~your_lp_username/bzr/giveback
+
+After you have pushed your branch, you will need to propose it for merging to
+the Bazaar trunk.  Go to <https://launchpad.net/your_lp_username/bzr/giveback>
+and choose "Propose for merging into another branch".  Select "~bzr/bzr/trunk"
+to hand your changes off to the Bazaar developers for review and merging.
+
+Why make a local copy of bzr.dev?
+---------------------------------
+
+Making a local mirror of bzr.dev is not strictly necessary, but it means
+
+- You can use that copy of bzr.dev as your main bzr executable, and keep it
+  up-to-date using ``bzr pull``.  
+- Certain operations are faster, and can be done when offline.  For example:
+
+  - ``bzr bundle``
+  - ``bzr diff -r ancestor:...``
+  - ``bzr merge``
+
+- When it's time to create your next branch, it's more convenient.  When you 
+  have further contributions to make, you should do them in their own branch::
+
+    $ cd ~/bzr
+    $ bzr branch bzr.dev additional_fixes
+    $ cd additional_fixes # hack, hack, hack
+
 
 
 Understanding the Development Process
@@ -135,7 +202,7 @@ As a starting suggestion though:
   
     bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
    
-* keep your copy of bzr.dev prestine (by not developing in it) and keep
+* keep your copy of bzr.dev pristine (by not developing in it) and keep
   it up to date (by using bzr pull)
 
 * create a new branch off your local bzr.dev copy for each issue
@@ -143,7 +210,7 @@ As a starting suggestion though:
 
 This approach makes it easy to go back and make any required changes
 after a code review. Resubmitting the change is then simple with no
-risk of accidentially including edits related to other issues you may
+risk of accidentally including edits related to other issues you may
 be working on. After the changes for an issue are accepted and merged,
 the associated branch can be deleted or archived as you wish.
 
@@ -191,7 +258,7 @@ doc
     is in the ReStructuredText markup language.
 
 doc/developers 
-    Documentation specifically targetted at Bazaar and plugin developers.
+    Documentation specifically targeted at Bazaar and plugin developers.
     (Including this document.)
     
         
@@ -213,7 +280,7 @@ developers.  Use intelligent discretion if the patch is trivial.
 Good reviews do take time. They also regularly require a solid
 understanding of the overall code base. In practice, this means a small
 number of people often have a large review burden - with knowledge comes
-responsibility. No one like their merge requests sitting in a queue going
+responsibility. No one likes their merge requests sitting in a queue going
 nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
@@ -322,7 +389,7 @@ Launchpad.
 
  * <https://help.launchpad.net/Code/Review>
 
-Anyone can propose or comment on a merge propsal just by creating a
+Anyone can propose or comment on a merge proposal just by creating a
 Launchpad account.
 
 There are two ways to create a new merge proposal: through the web
@@ -332,22 +399,24 @@ interface or by email.
 Proposing a merge through the web
 ---------------------------------
 
-To create the propsal through the web: push your branch to Launchpad, eg::
+To create the proposal through the web, first push your branch to Launchpad.
+For example, a branch dealing with documentation belonging to the Launchpad
+User mbp could be pushed as ::
 
   bzr push lp:~mbp/bzr/doc
 
-then go to the branch's web page, which in this case would be
-<https://code.launchpad.net/~mbp/bzr/doc>.  You can automate that by just
+Then go to the branch's web page, which in this case would be
+<https://code.launchpad.net/~mbp/bzr/doc>.  You can simplify this step by just
 running ::
  
   bzr lp-open
 
-You can then click "Propose for merging into another branch", and enter a
-cover letter into the web form.  Typically you'll want to merge into
-``~bzr/bzr/trunk`` which will be the default; you might also want to
-nominate merging into a release branch for a bug fix.  There is the option
-to specify a specific reviewer or type of review, and you shouldn't
-normally change those.
+You can then click "Propose for merging into another branch", and enter your
+cover letter (see above) into the web form.  Typically you'll want to merge
+into ``~bzr/bzr/trunk`` which will be the default; you might also want to
+nominate merging into a release branch for a bug fix.  There is the option to
+specify a specific reviewer or type of review, and you shouldn't normally
+change those.
 
 Submitting the form takes you to the new page about the merge proposal
 containing the diff of the changes, comments by interested people, and
@@ -511,7 +580,7 @@ future::
         marmalade,
         )
 
-There should be spaces between function paramaters, but not between the
+There should be spaces between function parameters, but not between the
 keyword name and the value::
 
     call(1, 3, cheese=quark)
@@ -799,7 +868,7 @@ When renaming such supported API's, be sure to leave a deprecated_method (or
 _function or ...) behind which forwards to the new API. See the
 bzrlib.symbol_versioning module for decorators that take care of the
 details for you - such as updating the docstring, and issuing a warning
-when the old api is used.
+when the old API is used.
 
 For unsupported API's, it does not hurt to follow this discipline, but it's
 not required. Minimally though, please try to rename things so that
@@ -922,7 +991,7 @@ can show the progress moving along towards the expected total.
 The user should call `finish` on the `ProgressTask` when the logical
 operation has finished, so it can be removed from the stack.
 
-Progress tasks have a complex relatioship with generators: it's a very
+Progress tasks have a complex relationship with generators: it's a very
 good place to use them, but because python2.4 does not allow ``finally``
 blocks in generators it's hard to clean them up properly.  In this case
 it's probably better to have the code calling the generator allocate a
@@ -1236,8 +1305,8 @@ handled.  This parameter can take one of 3 values:
     Attempting to print an unprintable character will cause a UnicodeError.
     This is for commands that are intended more as scripting support, rather
     than plain user review.
-    For exampl: ``bzr ls`` is designed to be used with shell scripting. One
-    use would be ``bzr ls --null --unknows | xargs -0 rm``.  If ``bzr``
+    For example: ``bzr ls`` is designed to be used with shell scripting. One
+    use would be ``bzr ls --null --unknowns | xargs -0 rm``.  If ``bzr``
     printed a filename with a '?', the wrong file could be deleted. (At the
     very least, the correct file would not be deleted). An error is used to
     indicate that the requested action could not be performed.
@@ -1542,7 +1611,7 @@ is done using Launchpad's relevant tracker,
 https://blueprints.launchpad.net/bzr/. Once a blueprint for ready for
 review, please announce it on the mailing list.
 
-Alternatively, send an email begining with [RFC] with the proposal to the
+Alternatively, send an email beginning with [RFC] with the proposal to the
 list. In some cases, you may wish to attach proposed code  or a proposed
 developer document if that best communicates the idea. Debate can then
 proceed using the normal merge review processes.
