@@ -111,7 +111,7 @@ def report_bug_to_apport(exc_info, stderr):
         "This probably indicates a bug in Bazaar.  You can help us fix it\n"
         "by filing a bug report at\n"
         "    http://bugs.launchpad.net/bzr/+filebug\n"
-        "attaching this file, and your own description of the problem.\n"
+        "attaching this file, and including a description of the problem.\n"
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
            crash_file.name))
     return True
