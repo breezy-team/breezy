@@ -65,7 +65,10 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
 def default_test_list():
     """Generate the default list of interrepo permutations to test."""
     from bzrlib.repofmt import (
-        knitrepo, pack_repo, weaverepo, groupcompress_repo,
+        groupcompress_repo,
+        knitrepo,
+        pack_repo,
+        weaverepo,
         )
     result = []
     def add_combo(label, from_format, to_format):

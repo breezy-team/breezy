@@ -2801,7 +2801,8 @@ class TestStacking(tests.TestCaseWithTransport):
         tree1.commit('rev1', rev_id='rev1')
         tree2 = tree1.branch.bzrdir.sprout('tree2', stacked=True
             ).open_workingtree()
-        tree2.commit('local changes make me feel good.')
+        local_tree = tree2.branch.create_checkout('local')
+        local_tree.commit('local changes make me feel good.')
         branch2 = Branch.open(self.get_url('tree2'))
         branch2.lock_read()
         self.addCleanup(branch2.unlock)
@@ -2877,7 +2878,8 @@ class TestStacking(tests.TestCaseWithTransport):
             _, stacked = self.prepare_stacked_remote_branch()
             tree = stacked.bzrdir.sprout('tree3', stacked=True
                 ).open_workingtree()
-            tree.commit('more local changes are better')
+            local_tree = tree.branch.create_checkout('local-tree3')
+            local_tree.commit('more local changes are better')
             branch = Branch.open(self.get_url('tree3'))
             branch.lock_read()
             return None, branch
@@ -2894,8 +2896,9 @@ class TestStacking(tests.TestCaseWithTransport):
         # stacked upon sources in topological order.
         rev_ord, expected_revs = self.get_ordered_revs('knit', 'topological')
         self.assertEqual(expected_revs, rev_ord)
-        # Getting topological sort requires VFS calls still
-        self.assertLength(12, self.hpss_calls)
+        # Getting topological sort requires VFS calls still - one of which is
+        # pushing up from the bound branch.
+        self.assertLength(13, self.hpss_calls)
 
     def test_stacked_get_stream_groupcompress(self):
         # Repository._get_source.get_stream() from a stacked repository with
