@@ -2214,7 +2214,7 @@ class TestRepositoryHasRevision(TestRemoteRepository):
 
 
 class TestRepositoryInsertStreamBase(TestRemoteRepository):
-    """Base class for Repository.insert_stream and .insert_stream_1.18
+    """Base class for Repository.insert_stream and .insert_stream_1.19
     tests.
     """
     
@@ -2233,22 +2233,22 @@ class TestRepositoryInsertStreamBase(TestRemoteRepository):
 
 
 class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
-    """Tests for using Repository.insert_stream verb when the _1.18 variant is
+    """Tests for using Repository.insert_stream verb when the _1.19 variant is
     not available.
 
-    This test case is very similar to TestRepositoryInsertStream_1_18.
+    This test case is very similar to TestRepositoryInsertStream_1_19.
     """
 
     def setUp(self):
         TestRemoteRepository.setUp(self)
-        self.disable_verb('Repository.insert_stream_1.18')
+        self.disable_verb('Repository.insert_stream_1.19')
 
     def test_unlocked_repo(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
-            'unknown', ('Repository.insert_stream_1.18',))
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
@@ -2264,8 +2264,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', ''))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
-            'unknown', ('Repository.insert_stream_1.18',))
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
@@ -2282,8 +2282,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'a token'))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
-            'unknown', ('Repository.insert_stream_1.18',))
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
+            'unknown', ('Repository.insert_stream_1.19',))
         client.add_expected_call(
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
             'success', ('ok',))
@@ -2302,8 +2302,8 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
-            'unknown', ('Repository.insert_stream_1.18',))
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
@@ -2384,16 +2384,16 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         return stream_with_inv_delta()
 
 
-class TestRepositoryInsertStream_1_18(TestRepositoryInsertStreamBase):
+class TestRepositoryInsertStream_1_19(TestRepositoryInsertStreamBase):
 
     def test_unlocked_repo(self):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
+            'Repository.insert_stream_1.19', ('quack/', ''),
             'success', ('ok',))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
+            'Repository.insert_stream_1.19', ('quack/', ''),
             'success', ('ok',))
         self.checkInsertEmptyStream(repo, client)
 
@@ -2404,10 +2404,10 @@ class TestRepositoryInsertStream_1_18(TestRepositoryInsertStreamBase):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', ''))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
+            'Repository.insert_stream_1.19', ('quack/', ''),
             'success', ('ok',))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', ''),
+            'Repository.insert_stream_1.19', ('quack/', ''),
             'success', ('ok',))
         repo.lock_write()
         self.checkInsertEmptyStream(repo, client)
@@ -2419,10 +2419,10 @@ class TestRepositoryInsertStream_1_18(TestRepositoryInsertStreamBase):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'a token'))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
             'success', ('ok',))
         client.add_expected_call(
-            'Repository.insert_stream_1.18', ('quack/', '', 'a token'),
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
             'success', ('ok',))
         repo.lock_write()
         self.checkInsertEmptyStream(repo, client)

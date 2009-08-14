@@ -29,6 +29,6 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
 -Dstream          Trace fetch streams.
--DIDS:never       Never use InterDifferingSerializer when fetching.
--DIDS:always      Always use InterDifferingSerializer to fetch if appropriate
+-DIDS_never       Never use InterDifferingSerializer when fetching.
+-DIDS_always      Always use InterDifferingSerializer to fetch if appropriate
                   for the format, even for non-local fetches.

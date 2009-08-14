@@ -553,7 +553,7 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
 request_handlers.register_lazy(
-    'Repository.insert_stream_1.18', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_18')
+    'Repository.insert_stream_1.19', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_19')
 request_handlers.register_lazy(
     'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
@@ -572,8 +572,8 @@ request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')
 request_handlers.register_lazy(
-    'Repository.get_stream_1.18', 'bzrlib.smart.repository',
-    'SmartServerRepositoryGetStream_1_18')
+    'Repository.get_stream_1.19', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetStream_1_19')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')

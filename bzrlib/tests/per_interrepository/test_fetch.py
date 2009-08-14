@@ -133,7 +133,7 @@ class TestInterRepository(TestCaseWithInterRepository):
 
     def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
         self.setup_smart_server_with_call_log()
-        self.disable_verb('Repository.insert_stream_1.18')
+        self.disable_verb('Repository.insert_stream_1.19')
         self.test_fetch_parent_inventories_at_stacking_boundary()
 
     def test_fetch_parent_inventories_at_stacking_boundary(self):

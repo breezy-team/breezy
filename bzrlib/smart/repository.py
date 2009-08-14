@@ -426,14 +426,14 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
     def _should_fake_unknown(self):
         """Return True if we should return UnknownMethod to the client.
         
-        This is a workaround for bugs in pre-1.18 clients that claim to
-        support receiving streams of CHK repositories.  The pre-1.18 client
+        This is a workaround for bugs in pre-1.19 clients that claim to
+        support receiving streams of CHK repositories.  The pre-1.19 client
         expects inventory records to be serialized in the format defined by
-        to_network_name, but in pre-1.18 (at least) that format definition
+        to_network_name, but in pre-1.19 (at least) that format definition
         tries to use the xml5 serializer, which does not correctly handle
-        rich-roots.  After 1.18 the client can also accept inventory-deltas
+        rich-roots.  After 1.19 the client can also accept inventory-deltas
         (which avoids this issue), and those clients will use the
-        Repository.get_stream_1.18 verb instead of this one.
+        Repository.get_stream_1.19 verb instead of this one.
         So: if this repository is CHK, and the to_format doesn't match,
         we should just fake an UnknownSmartMethod error so that the client
         will fallback to VFS, rather than sending it a stream we know it
@@ -489,10 +489,10 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.unlock()
 
 
-class SmartServerRepositoryGetStream_1_18(SmartServerRepositoryGetStream):
+class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
 
     def _should_fake_unknown(self):
-        """Returns False; we don't need to workaround bugs in 1.18+ clients."""
+        """Returns False; we don't need to workaround bugs in 1.19+ clients."""
         return False
 
 
@@ -697,7 +697,7 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
             return SuccessfulSmartServerResponse(('ok', ))
 
 
-class SmartServerRepositoryInsertStream_1_18(SmartServerRepositoryInsertStreamLocked):
+class SmartServerRepositoryInsertStream_1_19(SmartServerRepositoryInsertStreamLocked):
     """Insert a record stream from a RemoteSink into a repository.
 
     Same as SmartServerRepositoryInsertStreamLocked, except:
@@ -705,7 +705,7 @@ class SmartServerRepositoryInsertStream_1_18(SmartServerRepositoryInsertStreamLo
      - servers that implement this verb accept 'inventory-delta' records in the
        stream.
 
-    New in 1.18.
+    New in 1.19.
     """
 
     def do_repository_request(self, repository, resume_tokens, lock_token=None):

@@ -1690,7 +1690,7 @@ class RemoteStreamSink(repository.StreamSink):
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
-        candidate_calls = [('Repository.insert_stream_1.18', (1, 18))]
+        candidate_calls = [('Repository.insert_stream_1.19', (1, 19))]
         if target._lock_token:
             candidate_calls.append(('Repository.insert_stream_locked', (1, 14)))
             lock_args = (target._lock_token or '',)
@@ -1727,7 +1727,7 @@ class RemoteStreamSink(repository.StreamSink):
             return self._insert_real(stream, src_format, resume_tokens)
         self._last_inv_record = None
         self._last_substream = None
-        if required_version < (1, 18):
+        if required_version < (1, 19):
             # Remote side doesn't support inventory deltas.  Wrap the stream to
             # make sure we don't send any.  If the stream contains inventory
             # deltas we'll interrupt the smart insert_stream request and
@@ -1857,7 +1857,7 @@ class RemoteStreamSource(repository.StreamSource):
         search_bytes = repo._serialise_search_result(search)
         args = (path, self.to_format.network_name())
         candidate_verbs = [
-            ('Repository.get_stream_1.18', (1, 18)),
+            ('Repository.get_stream_1.19', (1, 19)),
             ('Repository.get_stream', (1, 13))]
         found_verb = False
         for verb, version in candidate_verbs:

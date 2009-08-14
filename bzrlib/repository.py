@@ -3701,7 +3701,7 @@ class InterDifferingSerializer(InterRepository):
         # This is redundant with format.check_conversion_target(), however that
         # raises an exception, and we just want to say "False" as in we won't
         # support converting between these formats.
-        if 'IDS:never' in debug.debug_flags:
+        if 'IDS_never' in debug.debug_flags:
             return False
         if source.supports_rich_root() and not target.supports_rich_root():
             return False
@@ -3712,7 +3712,7 @@ class InterDifferingSerializer(InterRepository):
             # IDS doesn't know how to copy CHKs for the parent inventories it
             # adds to stacked repos.
             return False
-        if 'IDS:always' in debug.debug_flags:
+        if 'IDS_always' in debug.debug_flags:
             return True
         # Only use this code path for local source and target.  IDS does far
         # too much IO (both bandwidth and roundtrips) over a network.
@@ -4483,7 +4483,7 @@ class StreamSource(object):
         # The source is using CHKs, but the target either doesn't or it has a
         # different serializer.  The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
-        # be converted.  That means inventory deltas (if the remote is <1.18,
+        # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
         yield ('inventory-deltas',
            self._stream_invs_as_deltas(revision_ids,
