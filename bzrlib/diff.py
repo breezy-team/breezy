@@ -765,6 +765,14 @@ class DiffFromTool(DiffPath):
         components.extend(['new', new_path])
         return osutils.pathjoin(*components)
 
+    def read_new_file(self, new_path):
+        new_abs_path = self.get_new_path(new_path, abspath=True)
+        new_file = open(new_abs_path, 'r')
+        try:
+            return new_file.read()
+        finally:
+            new_file.close()
+
 
 class DiffTree(object):
     """Provides textual representations of the difference between two trees.

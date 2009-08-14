@@ -175,32 +175,42 @@ class Shelver(object):
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
-            for change in creator.iter_shelvable():
-                if change[0] == 'modify text':
-                    try:
-                        changes_shelved += self.handle_modify_text(creator,
-                                                                   change[1])
-                    except errors.BinaryFile:
-                        if self.prompt_bool(self.reporter.vocab['binary']):
-                            changes_shelved += 1
-                            creator.shelve_content_change(change[1])
-                else:
-                    if self.prompt_bool(self.reporter.prompt_change(change)):
-                        creator.shelve_change(change)
-                        changes_shelved += 1
-            if changes_shelved > 0:
-                self.reporter.selected_changes(creator.work_transform)
-                if (self.auto_apply or self.prompt_bool(
-                    self.reporter.vocab['final'] % changes_shelved)):
-                    if self.destroy:
-                        creator.transform()
-                        self.reporter.changes_destroyed()
+            old_tree = self.target_tree
+            new_tree = self.work_tree
+            differ = diff.DiffFromTool.from_string('gvimdiff -f -o',
+                                                   old_tree, new_tree,
+                                                   sys.stdout)
+            differ.force_temp = True
+            differ.allow_write = True
+            try:
+                for change in creator.iter_shelvable():
+                    if change[0] == 'modify text':
+                        try:
+                            changes_shelved += self.handle_modify_text(
+                                creator, change[1], differ)
+                        except errors.BinaryFile:
+                            if self.prompt_bool(self.reporter.vocab['binary']):
+                                changes_shelved += 1
+                                creator.shelve_content_change(change[1])
                     else:
-                        shelf_id = self.manager.shelve_changes(creator,
-                                                               self.message)
-                        self.reporter.shelved_id(shelf_id)
-            else:
-                self.reporter.no_changes()
+                        if self.prompt_bool(self.reporter.prompt_change(change)):
+                            creator.shelve_change(change)
+                            changes_shelved += 1
+                if changes_shelved > 0:
+                    self.reporter.selected_changes(creator.work_transform)
+                    if (self.auto_apply or self.prompt_bool(
+                        self.reporter.vocab['final'] % changes_shelved)):
+                        if self.destroy:
+                            creator.transform()
+                            self.reporter.changes_destroyed()
+                        else:
+                            shelf_id = self.manager.shelve_changes(creator,
+                                                                   self.message)
+                            self.reporter.shelved_id(shelf_id)
+                else:
+                    self.reporter.no_changes()
+            finally:
+                differ.finish()
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
@@ -273,11 +283,11 @@ class Shelver(object):
         else:
             return False
 
-    def handle_modify_text(self, creator, file_id):
+    def handle_modify_text(self, creator, file_id, differ):
         try:
             lines, change_count = self._select_hunks(creator, file_id)
         except UseEditor:
-            lines, change_count = self._edit_file(creator, file_id)
+            lines, change_count = self._edit_file(creator, file_id, differ)
         if change_count != 0:
             creator.shelve_lines(file_id, lines)
         return change_count
@@ -325,28 +335,12 @@ class Shelver(object):
         lines = list(patched)
         return lines, change_count
 
-    def _edit_file(self, creator, file_id):
-        old_tree = self.target_tree
-        new_tree = self.work_tree
-        differ = diff.DiffFromTool.from_string('gvimdiff -f -o',
-                                               old_tree, new_tree,
-                                               sys.stdout)
-        try:
-            differ.force_temp = True
-            differ.allow_write = True
-            old_path = old_tree.id2path(file_id)
-            new_path = new_tree.id2path(file_id)
-            differ.diff(file_id, old_path, new_path, 'file', 'file')
-            new_abs_path = differ.get_new_path(new_path, abspath=True)
-            new_lines_file = open(new_abs_path, 'r')
-            try:
-                lines = osutils.split_lines(new_lines_file.read())
-                return lines, len(lines)
-            finally:
-                new_lines_file.close()
-        finally:
-            differ.finish()
-
+    def _edit_file(self, creator, file_id, differ):
+        old_path = differ.old_tree.id2path(file_id)
+        new_path = differ.new_tree.id2path(file_id)
+        differ.diff(file_id, old_path, new_path, 'file', 'file')
+        lines = osutils.split_lines(differ.read_new_file(new_path))
+        return lines, len(lines)
 
 
 class Unshelver(object):
