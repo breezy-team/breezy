@@ -130,8 +130,7 @@ class BzrDir(object):
 
     def check_conversion_target(self, target_format):
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        self.open_repository()._format.check_conversion_target(target_repo_format)
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
