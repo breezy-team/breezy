@@ -795,9 +795,15 @@ class CHKInventoryRepository(KnitPackRepository):
             yield inventory.CHKInventory.deserialise(self.chk_bytes, texts[key], key)
 
     def _iter_inventory_xmls(self, revision_ids):
-        # Without a native 'xml' inventory, this method doesn't make sense, so
-        # make it raise to trap naughty direct users.
-        raise NotImplementedError(self._iter_inventory_xmls)
+        # Without a native 'xml' inventory, this method doesn't make sense.
+        # However older working trees, and older bundles want it - so we supply
+        # it allowing get_inventory_xml to work. Bundles currently use the
+        # serializer directly; this also isn't ideal, but there isn't an xml
+        # iteration interface offered at all for repositories. We could make
+        # _iter_inventory_xmls be part of the contract, even if kept private.
+        inv_to_str = self._serializer.write_inventory_to_string
+        for inv in self.iter_inventories(revision_ids):
+            yield inv_to_str(inv), inv.revision_id
 
     def _find_present_inventory_keys(self, revision_keys):
         parent_map = self.inventories.get_parent_map(revision_keys)
