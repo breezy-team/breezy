@@ -40,6 +40,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.repofmt import (
+    groupcompress_repo,
     pack_repo,
     weaverepo,
     )
@@ -215,24 +216,24 @@ class TestRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_repository import formats_to_scenarios
         formats = [("(c)", remote.RemoteRepositoryFormat()),
                    ("(d)", repository.format_registry.get(
-                        'Bazaar pack repository format 1 (needs bzr 0.92)\n'))]
+                    'Bazaar repository format 2a (needs bzr 1.16 or later)\n'))]
         no_vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             None)
         vfs_scenarios = formats_to_scenarios(formats, "server", "readonly",
             vfs_transport_factory="vfs")
         # no_vfs generate scenarios without vfs_transport_factory
-        self.assertEqual([
+        expected = [
             ('RemoteRepositoryFormat(c)',
              {'bzrdir_format': remote.RemoteBzrDirFormat(),
               'repository_format': remote.RemoteRepositoryFormat(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server'}),
-            ('RepositoryFormatKnitPack1(d)',
+            ('RepositoryFormat2a(d)',
              {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
-              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
+              'repository_format': groupcompress_repo.RepositoryFormat2a(),
               'transport_readonly_server': 'readonly',
-              'transport_server': 'server'})],
-            no_vfs_scenarios)
+              'transport_server': 'server'})]
+        self.assertEqual(expected, no_vfs_scenarios)
         self.assertEqual([
             ('RemoteRepositoryFormat(c)',
              {'bzrdir_format': remote.RemoteBzrDirFormat(),
@@ -240,9 +241,9 @@ class TestRepositoryScenarios(tests.TestCase):
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'}),
-            ('RepositoryFormatKnitPack1(d)',
+            ('RepositoryFormat2a(d)',
              {'bzrdir_format': bzrdir.BzrDirMetaFormat1(),
-              'repository_format': pack_repo.RepositoryFormatKnitPack1(),
+              'repository_format': groupcompress_repo.RepositoryFormat2a(),
               'transport_readonly_server': 'readonly',
               'transport_server': 'server',
               'vfs_transport_factory': 'vfs'})],
