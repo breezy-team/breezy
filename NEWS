@@ -81,6 +81,13 @@ Internals
 * RemoteBranch.open now honours ignore_fallbacks correctly on bzr-v2
   protocols. (Robert Collins)
 
+* The index code now has some specialized routines to extract the full
+  ancestry of a key in a more efficient manner.
+  ``CombinedGraphIndex.find_ancestry()``. This is not fully exposed to the
+  higher levels yet, but has the potential to improve grabbing the full
+  ancestry tremendously. (Time to get ancestry for bzr.dev drops from 1.5s
+  down to 300ms. For OOo from 33s => 10.5s) (John Arbash Meinel)
+
 Testing
 *******
 
