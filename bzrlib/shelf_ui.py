@@ -22,6 +22,7 @@ import tempfile
 
 from bzrlib import (
     builtins,
+    commands,
     delta,
     diff,
     errors,
@@ -117,7 +118,8 @@ class Shelver(object):
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False, manager=None, reporter=None):
+                 destroy=False, manager=None, reporter=None,
+                 change_editor=None):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -131,6 +133,7 @@ class Shelver(object):
             changes.
         :param manager: The shelf manager to use.
         :param reporter: Object for reporting changes to user.
+        :param change_editor: Editor for changed files.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
@@ -148,6 +151,7 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
+        self.change_editor = change_editor
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -169,6 +173,17 @@ class Shelver(object):
         return klass(tree, target_tree, diff_writer, all, all, files, message,
                      destroy)
 
+    def set_change_editor(self):
+        config =  self.work_tree.branch.get_config()
+        commandline = config.get_user_option('change_editor')
+        if commandline is None:
+            return
+        command = commands.shlex_split_unicode(commandline)
+        if '%' not in commandline:
+            command.extend(['%(old_path)s', '%(new_path)s'])
+        self.change_editor = diff.DiffFromTool(command, self.target_tree,
+                                               self.work_tree, sys.stdout)
+
     def run(self):
         """Interactively shelve the changes."""
         creator = shelf.ShelfCreator(self.work_tree, self.target_tree,
@@ -176,40 +191,32 @@ class Shelver(object):
         self.tempdir = tempfile.mkdtemp()
         changes_shelved = 0
         try:
-            old_tree = self.target_tree
-            new_tree = self.work_tree
-            command = ['gvimdiff', '-fo', '%(new_path)s', '%(old_path)s']
-            differ = diff.DiffFromTool(command, old_tree, new_tree,
-                                       sys.stdout)
-            try:
-                for change in creator.iter_shelvable():
-                    if change[0] == 'modify text':
-                        try:
-                            changes_shelved += self.handle_modify_text(
-                                creator, change[1], differ)
-                        except errors.BinaryFile:
-                            if self.prompt_bool(self.reporter.vocab['binary']):
-                                changes_shelved += 1
-                                creator.shelve_content_change(change[1])
-                    else:
-                        if self.prompt_bool(self.reporter.prompt_change(change)):
-                            creator.shelve_change(change)
+            for change in creator.iter_shelvable():
+                if change[0] == 'modify text':
+                    try:
+                        changes_shelved += self.handle_modify_text(
+                            creator, change[1])
+                    except errors.BinaryFile:
+                        if self.prompt_bool(self.reporter.vocab['binary']):
                             changes_shelved += 1
-                if changes_shelved > 0:
-                    self.reporter.selected_changes(creator.work_transform)
-                    if (self.auto_apply or self.prompt_bool(
-                        self.reporter.vocab['final'] % changes_shelved)):
-                        if self.destroy:
-                            creator.transform()
-                            self.reporter.changes_destroyed()
-                        else:
-                            shelf_id = self.manager.shelve_changes(creator,
-                                                                   self.message)
-                            self.reporter.shelved_id(shelf_id)
+                            creator.shelve_content_change(change[1])
                 else:
-                    self.reporter.no_changes()
-            finally:
-                differ.finish()
+                    if self.prompt_bool(self.reporter.prompt_change(change)):
+                        creator.shelve_change(change)
+                        changes_shelved += 1
+            if changes_shelved > 0:
+                self.reporter.selected_changes(creator.work_transform)
+                if (self.auto_apply or self.prompt_bool(
+                    self.reporter.vocab['final'] % changes_shelved)):
+                    if self.destroy:
+                        creator.transform()
+                        self.reporter.changes_destroyed()
+                    else:
+                        shelf_id = self.manager.shelve_changes(creator,
+                                                               self.message)
+                        self.reporter.shelved_id(shelf_id)
+            else:
+                self.reporter.no_changes()
         finally:
             shutil.rmtree(self.tempdir)
             creator.finalize()
@@ -282,11 +289,11 @@ class Shelver(object):
         else:
             return False
 
-    def handle_modify_text(self, creator, file_id, differ):
+    def handle_modify_text(self, creator, file_id):
         try:
             lines, change_count = self._select_hunks(creator, file_id)
         except UseEditor:
-            lines, change_count = self._edit_file(creator, file_id, differ)
+            lines, change_count = self._edit_file(creator, file_id)
         if change_count != 0:
             creator.shelve_lines(file_id, lines)
         return change_count
@@ -316,7 +323,8 @@ class Shelver(object):
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
                 selected = self.prompt_bool(self.reporter.vocab['hunk'],
-                                            allow_editor=True)
+                                            allow_editor=(self.change_editor
+                                                          is not None))
                 if not self.reporter.invert_diff:
                     selected = (not selected)
                 if selected:
@@ -334,9 +342,9 @@ class Shelver(object):
         lines = list(patched)
         return lines, change_count
 
-    def _edit_file(self, creator, file_id, differ):
+    def _edit_file(self, creator, file_id):
         work_tree_lines = creator.work_tree.get_file_lines(file_id)
-        lines = osutils.split_lines(differ.edit_file(file_id))
+        lines = osutils.split_lines(self.change_editor.edit_file(file_id))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 
     @staticmethod

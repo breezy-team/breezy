@@ -5622,8 +5622,15 @@ class cmd_shelve(Command):
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
         try:
-            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
-                              message, destroy=destroy).run()
+            shelver = Shelver.from_args(writer(sys.stdout), revision, all,
+                                       file_list, message,
+                                       destroy=destroy)
+            shelver.set_change_editor()
+            try:
+                shelver.run()
+            finally:
+                if shelver.change_editor is not None:
+                    shelver.change_editor.finish()
         except errors.UserAbort:
             return 0
 
