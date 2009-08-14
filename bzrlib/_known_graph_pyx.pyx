@@ -480,6 +480,7 @@ cdef class _MergeSorter:
             parent_node = _get_parent(ms_node.node.parents, 0)
             ms_parent_node = self._ms_nodes[parent_node.key]
             if not ms_node.is_first_child:
+                # Not the first child, make a new branch
                 base_revno = ms_parent_node.revno[0]
                 branch_count = self._revno_to_branch_count.get(base_revno, 0)
                 branch_count = branch_count + 1
@@ -487,17 +488,16 @@ cdef class _MergeSorter:
                 revno = (base_revno, branch_count, 1)
             else:
                 # First child just increments the final digit
-                revno = ms_parent_node.revno[:-1] + (ms_parent_node.revno[-1] +
-                                                        1,)
+                final = ms_parent_node.revno[-1] + 1
+                revno = ms_parent_node.revno[:-1] + (final,)
         else:
-            root_count = self._revno_to_branch_count.get(0, 0)
-            if root_count == 0:
-                revno = (1,)
-            else:
-                revno = (0, root_count, 1)
+            root_count = self._revno_to_branch_count.get(0, -1)
             root_count = root_count + 1
+            if root_count:
+                revno = (0, root_count, 1)
+            else:
+                revno = (1,)
             self._revno_to_branch_count[0] = root_count
-            print ms_node, root_count
         ms_node.revno = revno
         self._completed_node_names.add(ms_node.node.key)
         self._scheduled_nodes.append(ms_node)
