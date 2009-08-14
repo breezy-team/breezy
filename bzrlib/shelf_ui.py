@@ -27,6 +27,7 @@ from bzrlib import (
     errors,
     osutils,
     patches,
+    patiencediff,
     shelf,
     textfile,
     trace,
@@ -334,8 +335,16 @@ class Shelver(object):
         return lines, change_count
 
     def _edit_file(self, creator, file_id, differ):
+        work_tree_lines = creator.work_tree.get_file_lines(file_id)
         lines = osutils.split_lines(differ.edit_file(file_id))
-        return lines, len(lines)
+        return lines, self._count_changed_regions(work_tree_lines, lines)
+
+    @staticmethod
+    def _count_changed_regions(old_lines, new_lines):
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_lines,
+                                                       new_lines)
+        blocks = matcher.get_matching_blocks()
+        return len(blocks) - 2
 
 
 class Unshelver(object):
