@@ -3166,7 +3166,15 @@ class RepositoryFormat(object):
         raise NotImplementedError(self.network_name)
 
     def check_conversion_target(self, target_format):
-        raise NotImplementedError(self.check_conversion_target)
+        if self.rich_root_data and not target_format.rich_root_data:
+            raise errors.BadConversionTarget(
+                'Does not support rich root data.', target_format,
+                from_format=self)
+        if (self.supports_tree_reference and 
+            not getattr(target_format, 'supports_tree_reference', False)):
+            raise errors.BadConversionTarget(
+                'Does not support nested trees', target_format,
+                from_format=self)
 
     def open(self, a_bzrdir, _found=False):
         """Return an instance of this format for the bzrdir a_bzrdir.
