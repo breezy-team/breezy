@@ -180,8 +180,6 @@ class Shelver(object):
             differ = diff.DiffFromTool.from_string('gvimdiff -f -o',
                                                    old_tree, new_tree,
                                                    sys.stdout)
-            differ.force_temp = True
-            differ.allow_write = True
             try:
                 for change in creator.iter_shelvable():
                     if change[0] == 'modify text':
@@ -336,10 +334,7 @@ class Shelver(object):
         return lines, change_count
 
     def _edit_file(self, creator, file_id, differ):
-        old_path = differ.old_tree.id2path(file_id)
-        new_path = differ.new_tree.id2path(file_id)
-        differ.diff(file_id, old_path, new_path, 'file', 'file')
-        lines = osutils.split_lines(differ.read_new_file(new_path))
+        lines = osutils.split_lines(differ.edit_file(file_id))
         return lines, len(lines)
 
 
