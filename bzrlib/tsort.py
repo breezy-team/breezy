@@ -706,11 +706,12 @@ class MergeSorter(object):
         else:
             # no parents, use the root sequence
             root_count = self._revno_to_branch_count.get(0, 0)
+            root_count = self._revno_to_branch_count.get(0, -1)
+            root_count += 1
             if root_count:
                 revno = (0, root_count, 1)
             else:
                 revno = (1,)
-            root_count += 1
             self._revno_to_branch_count[0] = root_count
 
         # store the revno for this node for future reference
