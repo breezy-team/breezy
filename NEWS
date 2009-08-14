@@ -24,6 +24,12 @@ New Features
 Bug Fixes
 *********
 
+* Fetching from 2a branches from a version-2 bzr protocol would fail to
+  copy the internal inventory pages from the CHK store. This cannot happen
+  in normal use as all 2a compatible clients and servers support the
+  version-3 protocol, but it does cause test suite failures when testing
+  downlevel protocol behaviour. (Robert Collins)
+
 * Fixed "Pack ... already exists" error when running ``bzr pack`` on a
   fully packed 2a repository.  (Andrew Bennetts, #382463)
 
@@ -64,6 +70,9 @@ Internals
   would have used InterDifferingSerializer now use the more network
   friendly StreamSource, which now automatically does the same
   transformations as InterDifferingSerializer.  (Andrew Bennetts)
+
+* RemoteBranch.open now honours ignore_fallbacks correctly on bzr-v2
+  protocols. (Robert Collins)
 
 Testing
 *******
