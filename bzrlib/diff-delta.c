@@ -713,7 +713,10 @@ create_delta_index_from_delta(const struct source_info *src,
     prev_val = ~0;
     data = buffer;
     /* target size */
-    get_delta_hdr_size(&data, top);
+    /* get_delta_hdr_size doesn't mutate the content, just moves the
+     * start-of-data pointer, so it is safe to do the cast.
+     */
+    get_delta_hdr_size((unsigned char**)&data, top);
     entry = entries; /* start at the first slot */
     num_entries = 0; /* calculate the real number of entries */
     while (data < top) {

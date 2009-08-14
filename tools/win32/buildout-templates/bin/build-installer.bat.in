@@ -49,8 +49,16 @@ if not defined PLUGIN_TARGET (set PLUGIN_TARGET=release)
 %PYTHON% %ROOT%/ostools.py makedir %INSTALLERS%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
+rem Use %COMSPEC% /c in case bzr is actually a .bat file
+%COMSPEC% /c bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+rem Build the python-installer first, because we don't want to
+rem include any of the 3rd-party plugins, because we don't bundle
+rem their dependencies.
+cd %TARGET%
+make python-installer PYTHON=%CYG_PYTHON% PYTHON24=${settings:python24} PYTHON25=${settings:python25} PYTHON26=${settings:python26}
+rem @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/subvertpy/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%
@@ -68,7 +76,7 @@ cd %ROOT%/bzr-svn/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-cd %ROOT%/bzr-rebase/%PLUGIN_TARGET%
+cd %ROOT%/bzr-rewrite/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
@@ -79,16 +87,6 @@ cd %ROOT%/tbzr/trunk
 
 cd %TARGET%
 make installer PYTHON=%CYG_PYTHON%
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-rem Enable this when this branch is merged.
-rem make python-installer PYTHON24=${settings:python24} PYTHON25=${settings:python25}
-rem @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-${settings:python24} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
-@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
-
-${settings:python25} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 %PYTHON% %ROOT%/ostools.py copytodir %TARGET%/bzr*.exe %INSTALLERS%

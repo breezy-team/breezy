@@ -49,17 +49,17 @@ class CapturingUIFactory(ui.UIFactory):
         self.depth = 0
 
     def clear(self):
-        """See progress.ProgressBar.clear()."""
+        """See progress.ProgressTask.clear()."""
 
     def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
+        """See progress.ProgressTask.clear_term()."""
 
     def finished(self):
-        """See progress.ProgressBar.finished()."""
+        """See progress.ProgressTask.finished()."""
         self.depth -= 1
 
     def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
+        """See progress.ProgressTask.note()."""
 
     def progress_bar(self):
         return self
@@ -69,7 +69,7 @@ class CapturingUIFactory(ui.UIFactory):
         return self
 
     def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
+        """See progress.ProgressTask.update()."""
         if self.depth == 1:
             self._calls.append(("update", count, total, message))
 

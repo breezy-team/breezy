@@ -54,6 +54,12 @@ Bug Fixes
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
 
+* ``bzr send`` now generates valid bundles with ``--2a`` formats. However,
+  do to internal changes necessary to support this, older clients will
+  fail when trying to insert them. For newer clients, the bundle can be
+  used to apply the changes to any rich-root compatible format.
+  (John Arbash Meinel, #393349)
+
 * Cope with FTP servers that don't support restart/append by falling back
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
   fallback may be slow for some access patterns.)  (Nils Durner, #294709)
@@ -63,6 +69,9 @@ Bug Fixes
   not ascii, but are present in the current locale. Ideally we would be
   able to pass the Unicode path, but that would be client dependent.
   (John Arbash Meinel, #382709)
+
+* Fix a compile bug on Solaris having to do with const and
+  pointer-to-pointers. (John Arbash Meinel, #408441)
 
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
@@ -107,6 +116,11 @@ Bug Fixes
   imported.  This caused significant slowdowns when reading data from
   repositories.  (Andrew Bennetts, #405653)
   
+* The ``--hardlink`` option to ``branch`` and ``checkout`` is not
+  supported at the moment on workingtree formats that can do content
+  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  bzr now says so, rather than just ignoring the option.  (Martin Pool)
+
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
   something to a branch/repo on another drive, we would go into an
@@ -131,7 +145,6 @@ Improvements
 * Sending Ctrl-Break on Windows will now drop you into the debugger, in
   the same way that sending Ctrl-\\ does on other platforms.
   (John Arbash Meinel)
-
 
 Documentation
 *************
@@ -158,6 +171,9 @@ API Changes
   UIFactory. 
   (Martin Pool)
 
+* ``WorkingTree._check`` now requires a references dict with keys matching
+  those returned by ``WorkingTree._get_check_refs``. (Robert Collins)
+
 Internals
 *********
 
@@ -175,8 +191,16 @@ Internals
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
 
+* The Windows all-in-one installer now bundles the PyQt image format
+  plugins, which allows previewing more images as part of 'qdiff'.
+  (Alexander Belchenko)
+
+
 Testing
 *******
+
+* Merge directive cherrypick tests must use the same root id.
+  (Martin Pool, #409684)
 
 * Spurious failure in ``check`` tests on rich-root formats fixed.
   (Martin Pool, #408199)
@@ -882,6 +906,9 @@ Internals
 * ``-Dlock`` when passed to the selftest (e.g. ``bzr -Dlock selftest``) will
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
+
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
 
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 
