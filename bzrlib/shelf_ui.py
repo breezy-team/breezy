@@ -177,9 +177,9 @@ class Shelver(object):
         try:
             old_tree = self.target_tree
             new_tree = self.work_tree
-            differ = diff.DiffFromTool.from_string('gvimdiff -f -o',
-                                                   old_tree, new_tree,
-                                                   sys.stdout)
+            command = ['gvimdiff', '-fo', '%(new_path)s', '%(old_path)s']
+            differ = diff.DiffFromTool(command, old_tree, new_tree,
+                                       sys.stdout)
             try:
                 for change in creator.iter_shelvable():
                     if change[0] == 'modify text':
