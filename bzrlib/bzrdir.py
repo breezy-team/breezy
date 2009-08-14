@@ -3860,11 +3860,8 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
-    alias=True,
-    )
+    format_registry.get('2a'),
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
 format_registry.set_default('2a')
