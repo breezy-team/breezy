@@ -15,8 +15,8 @@ Starting the release phase
 
 When it's time to make the release candidate:
 
-#. We create a new pqm-controlled branch for this release series.  The
-   branch must be created by Robert Collins on the pqm server.  
+#. We create a new pqm-controlled branch for this release series, by
+   asking a Canonical sysadmin.  
    This branch means that from the first release candidate onwards,
    general development continues on the trunk, and only
    specifically-targetted fixes go into the release.
@@ -244,7 +244,7 @@ Starting a cycle
 To start a new release cycle:
 
 #. Send mail to the list with the key dates, who will be the release
-   manager, and the main hemes or targeted bugs.  Ask people to nominate
+   manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,
    or that interact with other changes.
 
