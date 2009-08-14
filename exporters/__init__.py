@@ -63,7 +63,8 @@ class _Exporter(object):
                 args = [cmd]
             else:
                 args = cmd
-            retcode = subprocess.call(args, stdout=subprocess.PIPE)
+            retcode = subprocess.call(args, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
         except OSError:
             raise MissingDependency(self.tool_name, self.minimum_version, cmd)
 
@@ -153,6 +154,26 @@ class _Exporter(object):
         script_abspath = os.path.join(exporters_dir, args[0])
         actual_args = ['python', script_abspath] + args[1:]
         return self.execute(actual_args, outf)
+
+
+class CvsExporter(_Exporter):
+
+    def __init__(self):
+        self.check_install('cvs2svn', '2.30', ['cvs2bzr'])
+        self.check_install('CVS', '1.11', ['cvs'])
+
+    def generate(self, source, destination, verbose=False, custom=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        # TODO: pass a custom cvs2bzr-default.options file as soon as
+        # cvs2bzr handles --options along with others.
+        args = ["cvs2bzr", "--dumpfile", destination]
+        outf, base, marks = self.get_output_info(destination)
+        # Marks aren't supported by cvs2bzr so no need to set that option
+        if custom:
+            args.extend(custom)
+        args.append(source)
+        retcode = self.execute(args, outf)
+        self.report_results(retcode, destination)
 
 
 class DarcsExporter(_Exporter):
@@ -257,7 +278,9 @@ class SubversionExporter(_Exporter):
 
 def fast_export_from(source, destination, tool, verbose=False, custom=None):
     # Get the exporter
-    if tool == 'darcs':
+    if tool == 'cvs':
+        factory = CvsExporter
+    elif tool == 'darcs':
         factory = DarcsExporter
     elif tool == 'hg':
         factory = MercurialExporter

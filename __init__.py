@@ -46,9 +46,11 @@ that certain dependencies are installed so it checks for these before
 starting. A wrapper may also provide a limited set of options. See the
 online help for the individual commands for details::
 
+  bzr help fast-export-from-cvs
   bzr help fast-export-from-darcs
   bzr help fast-export-from-hg
   bzr help fast-export-from-git
+  bzr help fast-export-from-mnt
   bzr help fast-export-from-svn
 
 Once a fast-import dump file is created, it can be imported into a
@@ -452,6 +454,73 @@ class cmd_fast_export(Command):
         return exporter.run()
 
 
+class cmd_fast_export_from_cvs(Command):
+    """Generate a fast-import file from a CVS repository.
+
+    Destination is a dump file, typically named xxx.fi where xxx is
+    the name of the project. If '-' is given, standard output is used.
+
+    cvs2svn 2.3 or later must be installed as its cvs2bzr script is used
+    under the covers to do the export. (If cvs2bzr is not included in
+    cvs2svn yet, grab the branch from
+    https://code.launchpad.net/~ian-clatworthy/+junk/cvs2svn and use it.)
+    
+    The source must be the path on your filesystem to the part of the
+    repository you wish to convert. i.e. either that path or a parent
+    directory must contain a CVSROOT subdirectory. The path may point to
+    either the top of a repository or to a path within it. In the latter
+    case, only that project within the repository will be converted.
+
+    .. note::
+       Remote access to the repository is not sufficient - the path
+       must point into a copy of the repository itself. See
+       http://cvs2svn.tigris.org/faq.html#repoaccess for instructions
+       on how to clone a remote CVS repository locally.
+
+    By default, the trunk, branches and tags are all exported. If you
+    only want the trunk, use the --trunk-only option.
+
+    By default, filenames, log messages and author names are expected
+    to be encoded in ascii. Use the --encoding option to specify an
+    alternative. If multiple encodings are used, specify the option
+    multiple times. For a list of valid encoding names, see
+    http://docs.python.org/lib/standard-encodings.html.
+
+    Windows users need to install GNU sort and use the --sort
+    option to specify its location. GNU sort can be downloaded from
+    http://unxutils.sourceforge.net/.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = ['verbose',
+                    Option('trunk-only',
+                        help="Export just the trunk, ignoring tags and branches."
+                        ),
+                    ListOption('encoding', type=str, argname='CODEC',
+                        help="Encoding used for filenames, commit messages "
+                             "and author names if not ascii."
+                        ),
+                    Option('sort', type=str, argname='PATH',
+                        help="GNU sort program location if not on the path."
+                        ),
+                    ]
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False, trunk_only=False,
+        encoding=None, sort=None):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        custom = []
+        if trunk_only:
+            custom.append("--trunk-only")
+        if encoding:
+            for enc in encoding:
+                custom.extend(['--encoding', enc])
+        if sort:
+            custom.extend(['--sort', sort])
+        fast_export_from(source, destination, 'cvs', verbose, custom)
+
+
 class cmd_fast_export_from_darcs(Command):
     """Generate a fast-import file from a Darcs repository.
 
@@ -597,6 +666,7 @@ register_command(cmd_fast_import_filter)
 register_command(cmd_fast_import_info)
 register_command(cmd_fast_import_query)
 register_command(cmd_fast_export)
+register_command(cmd_fast_export_from_cvs)
 register_command(cmd_fast_export_from_darcs)
 register_command(cmd_fast_export_from_hg)
 register_command(cmd_fast_export_from_git)
