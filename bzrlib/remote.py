@@ -431,6 +431,10 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._supports_tree_reference = None
         self._rich_root_data = None
 
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
+
     @property
     def fast_deltas(self):
         self._ensure_real()
