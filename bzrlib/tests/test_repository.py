@@ -486,6 +486,8 @@ class DummyRepository(object):
     _serializer = None
 
     def supports_rich_root(self):
+        if self._format is not None:
+            return self._format.rich_root_data
         return False
 
     def get_graph(self):
@@ -542,11 +544,17 @@ class TestInterRepository(TestCaseWithTransport):
         # pair that it returns true on for the is_compatible static method
         # check
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
+        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_b._serializer = repo._serializer
+        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.rich_root_data = repo._format.rich_root_data
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
