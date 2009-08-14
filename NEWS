@@ -66,6 +66,13 @@ API Changes
 Internals
 *********
 
+* ``-Dstrict_locks`` can now be used to check that read and write locks
+  are treated properly w.r.t. exclusivity. (We don't try to take an OS
+  read lock on a file that we already have an OS write lock on.) This is
+  now set by default for all tests, if you have a test which cannot be
+  fixed, you can use ``self.thisFailsStrictLockCheck()`` as a
+  compatibility knob. (John Arbash Meinel)
+
 * InterDifferingSerializer is now only used locally.  Other fetches that
   would have used InterDifferingSerializer now use the more network
   friendly StreamSource, which now automatically does the same

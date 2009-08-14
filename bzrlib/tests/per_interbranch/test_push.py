@@ -361,6 +361,7 @@ class TestPushHook(TestCaseWithInterBranch):
             self.hook_calls)
 
     def test_post_push_nonempty_history(self):
+        self.thisFailsStrictLockCheck()
         target = self.make_to_branch_and_tree('target')
         target.lock_write()
         target.add('')
