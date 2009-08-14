@@ -1186,7 +1186,7 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.get_inventory(revision_id)
 
-    def iter_inventories(self, revision_ids, ordering='unordered'):
+    def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
         return self._real_repository.iter_inventories(revision_ids, ordering)
 
