@@ -410,7 +410,18 @@ class GCCHKPacker(Packer):
 
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
-        self._copy_stream(source_vf, target_vf, self.revision_keys,
+        # It is not sufficient to just use self.revision_keys, as stacked
+        # repositories can have more inventories than they have revisions.
+        # One alternative would be to do something with
+        # get_parent_map(self.revision_keys), but that shouldn't be any faster
+        # than this.
+        inventory_keys = source_vf.keys()
+        missing_inventories = set(self.revision_keys).difference(inventory_keys)
+        if missing_inventories:
+            missing_inventories = sorted(missing_inventories)
+            raise ValueError('We are missing inventories for revisions: %s'
+                % (missing_inventories,))
+        self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
     def _copy_chk_texts(self):
@@ -1110,7 +1121,7 @@ class RepositoryFormatCHK2(RepositoryFormatCHK1):
 
 class RepositoryFormat2a(RepositoryFormatCHK2):
     """A CHK repository that uses the bencode revision serializer.
-    
+
     This is the same as RepositoryFormatCHK2 but with a public name.
     """
 
