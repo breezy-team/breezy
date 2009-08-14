@@ -3039,7 +3039,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
