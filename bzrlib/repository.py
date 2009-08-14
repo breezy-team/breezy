@@ -3020,6 +3020,8 @@ class RepositoryFormat(object):
     # help), and for fetching when data won't have come from the same
     # compressor.
     pack_compresses = False
+    # Does the repository inventory storage understand references to trees?
+    supports_tree_reference = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
