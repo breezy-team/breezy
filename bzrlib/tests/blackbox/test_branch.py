@@ -22,7 +22,10 @@ import os
 from bzrlib import (branch, bzrdir, errors, repository)
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import HardlinkFeature
+from bzrlib.tests import (
+    KnownFailure,
+    HardlinkFeature,
+    )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
@@ -93,10 +96,18 @@ class TestBranch(ExternalBase):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        self.run_bzr(['branch', 'source', 'target', '--hardlink'])
+        out, err = self.run_bzr(['branch', 'source', 'target', '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        self.assertEqual(source_stat, target_stat)
+        same_file = (source_stat == target_stat)
+        if same_file:
+            pass
+        else:
+            # https://bugs.edge.launchpad.net/bzr/+bug/408193
+            self.assertContainsRe(err, "hardlinking working copy files is "
+                "not currently supported")
+            raise KnownFailure("--hardlink doesn't work in formats "
+                "that support content filtering (#408193)")
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
@@ -138,29 +149,6 @@ class TestBranch(ExternalBase):
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
 
-    def check_shallow_branch(self, branch_revid, stacked_on):
-        """Assert that the branch 'newbranch' has been published correctly.
-
-        :param stacked_on: url of a branch this one is stacked upon.
-        :param branch_revid: a revision id that should be the only
-            revision present in the stacked branch, and it should not be in
-            the reference branch.
-        """
-        new_branch = branch.Branch.open('newbranch')
-        # The branch refers to the mainline
-        self.assertEqual(stacked_on, new_branch.get_stacked_on_url())
-        # and the branch's work was pushed
-        self.assertTrue(new_branch.repository.has_revision(branch_revid))
-        # The newly committed revision shoud be present in the stacked branch,
-        # but not in the stacked-on branch.  Because stacking is set up by the
-        # branch object, if we open the stacked branch's repository directly,
-        # bypassing the branch, we see only what's in the stacked repository.
-        stacked_repo = bzrdir.BzrDir.open('newbranch').open_repository()
-        stacked_repo_revisions = set(stacked_repo.all_revision_ids())
-        if len(stacked_repo_revisions) != 1:
-            self.fail("wrong revisions in stacked repository: %r"
-                % (stacked_repo_revisions,))
-
     def assertRevisionInRepository(self, repo_path, revid):
         """Check that a revision is in a repository, disregarding stacking."""
         repo = bzrdir.BzrDir.open(repo_path).open_repository()
@@ -187,12 +175,14 @@ class TestBranchStacked(ExternalBase):
             format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        branch_tree.commit('moar work plz')
+        work_tree = trunk_tree.branch.bzrdir.sprout('local').open_workingtree()
+        work_tree.commit('moar work plz')
+        work_tree.branch.push(branch_tree.branch)
         # branching our local branch gives us a new stacked branch pointing at
         # mainline.
         out, err = self.run_bzr(['branch', 'branch', 'newbranch'])
         self.assertEqual('', out)
-        self.assertEqual('Branched 1 revision(s).\n',
+        self.assertEqual('Branched 2 revision(s).\n',
             err)
         # it should have preserved the branch format, and so it should be
         # capable of supporting stacking, but not actually have a stacked_on
@@ -211,7 +201,9 @@ class TestBranchStacked(ExternalBase):
             format='1.9')
         branch_tree.branch.set_stacked_on_url(trunk_tree.branch.base)
         # with some work on it
-        branch_revid = branch_tree.commit('moar work plz')
+        work_tree = trunk_tree.branch.bzrdir.sprout('local').open_workingtree()
+        branch_revid = work_tree.commit('moar work plz')
+        work_tree.branch.push(branch_tree.branch)
         # you can chain branches on from there
         out, err = self.run_bzr(['branch', 'branch', '--stacked', 'branch2'])
         self.assertEqual('', out)
@@ -220,7 +212,8 @@ class TestBranchStacked(ExternalBase):
         self.assertEqual(branch_tree.branch.base,
             branch.Branch.open('branch2').get_stacked_on_url())
         branch2_tree = WorkingTree.open('branch2')
-        branch2_revid = branch2_tree.commit('work on second stacked branch')
+        branch2_revid = work_tree.commit('work on second stacked branch')
+        work_tree.branch.push(branch2_tree.branch)
         self.assertRevisionInRepository('branch2', branch2_revid)
         self.assertRevisionsInBranchRepository(
             [trunk_revid, branch_revid, branch2_revid],
@@ -239,9 +232,8 @@ class TestBranchStacked(ExternalBase):
         self.assertEqual('Created new stacked branch referring to %s.\n' %
             trunk_tree.branch.base, err)
         self.assertRevisionNotInRepository('newbranch', original_revid)
-        new_tree = WorkingTree.open('newbranch')
-        new_revid = new_tree.commit('new work')
-        self.check_shallow_branch(new_revid, trunk_tree.branch.base)
+        new_branch = branch.Branch.open('newbranch')
+        self.assertEqual(trunk_tree.branch.base, new_branch.get_stacked_on_url())
 
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
@@ -318,7 +310,9 @@ class TestSmartServerBranching(ExternalBase):
             t.commit(message='commit %d' % count)
         tree2 = t.branch.bzrdir.sprout('feature', stacked=True
             ).open_workingtree()
-        tree2.commit('feature change')
+        local_tree = t.branch.bzrdir.sprout('local-working').open_workingtree()
+        local_tree.commit('feature change')
+        local_tree.branch.push(tree2.branch)
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('feature'),
             'local-target'])

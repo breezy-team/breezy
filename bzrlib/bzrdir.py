@@ -77,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -1384,6 +1385,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -1630,6 +1634,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
+        # XXX: this shouldn't implicitly create the directory if it's just
+        # promising to get a transport -- mbp 20090727
         if branch_format is None:
             return self.transport.clone('branch')
         try:
@@ -3033,7 +3039,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__

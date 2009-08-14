@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -149,8 +150,8 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -172,8 +173,8 @@ class TestStacking(TestCaseWithBranch):
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -337,7 +338,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_fetch_copies_from_stacked_on_and_stacked(self):
         stacked, unstacked = self.prepare_stacked_on_fetch()
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
@@ -359,13 +361,15 @@ class TestStacking(TestCaseWithBranch):
         stack_on.add('a')
         stack_on.commit('base commit')
         stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
-        stacked_tree = stacked_dir.open_workingtree()
+        stacked_branch = stacked_dir.open_branch()
+        local_tree = stack_on.bzrdir.sprout('local').open_workingtree()
         for i in range(20):
             text_lines[0] = 'changed in %d\n' % i
-            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
-            stacked_tree.commit('commit %d' % i)
-        stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+            self.build_tree_contents([('local/a', ''.join(text_lines))])
+            local_tree.commit('commit %d' % i)
+            local_tree.branch.push(stacked_branch)
+        stacked_branch.repository.pack()
+        check.check_dwim(stacked_branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -389,7 +393,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):
@@ -475,7 +479,8 @@ class TestStacking(TestCaseWithBranch):
         except errors.NoWorkingTree:
             stacked = stacked_dir.open_branch().create_checkout(
                 'stacked-checkout', lightweight=True)
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         # Sanity check: stacked's repo should not contain rev1, otherwise this
         # test isn't testing what it's supposed to.
         repo = stacked.branch.repository.bzrdir.open_repository()

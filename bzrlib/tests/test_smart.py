@@ -1242,6 +1242,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(tests.TestCaseWithMemoryTranspor
             SmartServerResponse(('history-incomplete', 2, r2)),
             request.execute('stacked', 1, (3, r3)))
 
+
 class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):

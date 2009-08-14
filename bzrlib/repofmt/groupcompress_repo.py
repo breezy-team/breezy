@@ -154,6 +154,8 @@ class GCPack(NewPack):
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
+        # no name until we finish writing the content
+        self.name = None
 
     def _check_references(self):
         """Make sure our external references are present.
@@ -410,7 +412,18 @@ class GCCHKPacker(Packer):
 
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
-        self._copy_stream(source_vf, target_vf, self.revision_keys,
+        # It is not sufficient to just use self.revision_keys, as stacked
+        # repositories can have more inventories than they have revisions.
+        # One alternative would be to do something with
+        # get_parent_map(self.revision_keys), but that shouldn't be any faster
+        # than this.
+        inventory_keys = source_vf.keys()
+        missing_inventories = set(self.revision_keys).difference(inventory_keys)
+        if missing_inventories:
+            missing_inventories = sorted(missing_inventories)
+            raise ValueError('We are missing inventories for revisions: %s'
+                % (missing_inventories,))
+        self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
     def _copy_chk_texts(self):
@@ -466,6 +479,15 @@ class GCCHKPacker(Packer):
         if not self._use_pack(self.new_pack):
             self.new_pack.abort()
             return None
+        self.new_pack.finish_content()
+        if len(self.packs) == 1:
+            old_pack = self.packs[0]
+            if old_pack.name == self.new_pack._hash.hexdigest():
+                # The single old pack was already optimally packed.
+                trace.mutter('single pack %s was already optimally packed',
+                    old_pack.name)
+                self.new_pack.abort()
+                return None
         self.pb.update('finishing repack', 6, 7)
         self.new_pack.finish()
         self._pack_collection.allocate(self.new_pack)
@@ -580,7 +602,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             packer = GCCHKPacker(self, packs, '.autopack',
                                  reload_func=reload_func)
             try:
-                packer.pack()
+                result = packer.pack()
             except errors.RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
                 # this packer has cleaned up. Packer() doesn't set its new_pack
@@ -589,6 +611,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 if packer.new_pack is not None:
                     packer.new_pack.abort()
                 raise
+            if result is None:
+                return
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
@@ -766,10 +790,16 @@ class CHKInventoryRepository(KnitPackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def _iter_inventories(self, revision_ids):
+    def deserialise_inventory(self, revision_id, bytes):
+        return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
+            (revision_id,))
+
+    def _iter_inventories(self, revision_ids, ordering):
         """Iterate over many inventory objects."""
+        if ordering is None:
+            ordering = 'unordered'
         keys = [(revision_id,) for revision_id in revision_ids]
-        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        stream = self.inventories.get_record_stream(keys, ordering, True)
         texts = {}
         for record in stream:
             if record.storage_kind != 'absent':
@@ -779,7 +809,7 @@ class CHKInventoryRepository(KnitPackRepository):
         for key in keys:
             yield inventory.CHKInventory.deserialise(self.chk_bytes, texts[key], key)
 
-    def _iter_inventory_xmls(self, revision_ids):
+    def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense, so
         # make it raise to trap naughty direct users.
         raise NotImplementedError(self._iter_inventory_xmls)
@@ -879,14 +909,11 @@ class CHKInventoryRepository(KnitPackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if isinstance(to_format, remote.RemoteRepositoryFormat):
-            # Can't just check attributes on to_format with the current code,
-            # work around this:
-            to_format._ensure_real()
-            to_format = to_format._custom_format
-        if to_format.__class__ is self._format.__class__:
+        if self._format._serializer == to_format._serializer:
             # We must be exactly the same format, otherwise stuff like the chk
-            # page layout might be different
+            # page layout might be different.
+            # Actually, this test is just slightly looser than exact so that
+            # CHK2 <-> 2a transfers will work.
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
@@ -1074,16 +1101,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
         return ("Development repository format - rich roots, group compression"
             " and chk inventories")
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if (self.supports_tree_reference and 
-            not getattr(target_format, 'supports_tree_reference', False)):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-
-
 
 class RepositoryFormatCHK2(RepositoryFormatCHK1):
     """A CHK repository that uses the bencode revision serializer."""
@@ -1106,7 +1123,7 @@ class RepositoryFormatCHK2(RepositoryFormatCHK1):
 
 class RepositoryFormat2a(RepositoryFormatCHK2):
     """A CHK repository that uses the bencode revision serializer.
-    
+
     This is the same as RepositoryFormatCHK2 but with a public name.
     """
 

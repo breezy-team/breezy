@@ -26,6 +26,7 @@ import sys
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     lockdir,
     osutils,
@@ -38,7 +39,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -1741,8 +1741,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
-                         False)
+            check.check_dwim(self.get_url('.'), False, True, True)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')
