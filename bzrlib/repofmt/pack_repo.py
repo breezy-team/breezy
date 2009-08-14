@@ -2563,14 +2563,6 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n"
@@ -2608,11 +2600,6 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2695,11 +2682,6 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n"
@@ -2745,11 +2727,6 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2826,11 +2803,6 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n"
@@ -2871,14 +2843,6 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""

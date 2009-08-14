@@ -431,6 +431,10 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._supports_tree_reference = None
         self._rich_root_data = None
 
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
+
     @property
     def fast_deltas(self):
         self._ensure_real()
@@ -565,11 +569,13 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def check_conversion_target(self, target_format):
         if self.rich_root_data and not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
         if (self.supports_tree_reference and
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
+                'Does not support nested trees', target_format,
+                from_format=self)
 
     def network_name(self):
         if self._network_name:
