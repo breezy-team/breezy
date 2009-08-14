@@ -236,7 +236,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             '   bzr-%s python-%s %s\n' % (
                     bzrlib.version_string,
                     bzrlib._format_version_tuple(sys.version_info),
-                    platform.platform(),
+                    platform.platform(aliased=1),
                     ))
         self.stream.write('\n')
 

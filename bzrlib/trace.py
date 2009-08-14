@@ -484,7 +484,7 @@ def report_bug(exc_info, err_file):
     err_file.write('bzr %s on python %s %s\n' % \
                        (bzrlib.__version__,
                         bzrlib._format_version_tuple(sys.version_info),
-                        platform.platform()))
+                        platform.platform(aliased=1)))
     err_file.write('arguments: %r\n' % sys.argv)
     err_file.write(
         'encoding: %r, fsenc: %r, lang: %r\n' % (
