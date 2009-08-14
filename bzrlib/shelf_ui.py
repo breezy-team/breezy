@@ -316,17 +316,13 @@ class Shelver(object):
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
         sys.stdout.flush()
-        if not self.reporter.invert_diff and (
-            len(parsed.hunks) == len(final_hunks)):
-            return work_tree_lines, 0
-        if self.reporter.invert_diff and len(final_hunks) == 0:
-            return work_tree_lines, 0
-        patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
-        lines = list(patched)
         if self.reporter.invert_diff:
             change_count = len(final_hunks)
         else:
             change_count = len(parsed.hunks) - len(final_hunks)
+        patched = patches.iter_patched_from_hunks(target_lines,
+                                                  final_hunks)
+        lines = list(patched)
         return lines, change_count
 
     def _edit_file(self, creator, file_id):
