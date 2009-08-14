@@ -84,6 +84,9 @@ Internals
 Testing
 *******
 
+* Install the test ssl certificate and key so that installed bzr
+  can run the https tests. (Denys Duchier, #392401)
+  
 
 bzr 1.18
 ########
