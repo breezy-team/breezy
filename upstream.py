@@ -386,7 +386,7 @@ class UpstreamProvider(object):
                 os.makedirs(self.store_dir)
             try:
                 self.source.get_specific_version(self.package, 
-                    self.version.upstream_version, target_dir)
+                    self.version.upstream_version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_name())
         else:
