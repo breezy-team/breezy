@@ -2566,10 +2566,12 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
         if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
+                'Does not support nested trees', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2612,7 +2614,8 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2698,7 +2701,8 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2749,7 +2753,8 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2829,7 +2834,8 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2875,10 +2881,12 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
         if not getattr(target_format, 'supports_tree_reference', False):
             raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
+                'Does not support nested trees', target_format,
+                from_format=self)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""

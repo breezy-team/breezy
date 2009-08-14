@@ -1104,11 +1104,13 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     def check_conversion_target(self, target_format):
         if not target_format.rich_root_data:
             raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
+                'Does not support rich root data.', target_format,
+                from_format=self)
         if (self.supports_tree_reference and 
             not getattr(target_format, 'supports_tree_reference', False)):
             raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
+                'Does not support nested trees', target_format,
+                from_format=self)
 
 
 
