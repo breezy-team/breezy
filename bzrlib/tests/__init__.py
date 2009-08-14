@@ -1938,6 +1938,16 @@ class TestCase(unittest.TestCase):
         sio.encoding = output_encoding
         return sio
 
+    def disable_verb(self, verb):
+        """Disable a smart server verb for one test."""
+        from bzrlib.smart import request
+        request_handlers = request.request_handlers
+        orig_method = request_handlers.get(verb)
+        request_handlers.remove(verb)
+        def restoreVerb():
+            request_handlers.register(verb, orig_method)
+        self.addCleanup(restoreVerb)
+
 
 class CapturedCall(object):
     """A helper for capturing smart server calls for easy debug analysis."""

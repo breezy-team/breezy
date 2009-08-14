@@ -28,6 +28,9 @@ from bzrlib import (
 from bzrlib.errors import (
     NoSuchRevision,
     )
+from bzrlib.graph import (
+    SearchResult,
+    )
 from bzrlib.revision import (
     NULL_REVISION,
     Revision,
@@ -124,6 +127,15 @@ class TestInterRepository(TestCaseWithInterRepository):
             to_repo.texts.get_record_stream([('foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
 
+    def test_fetch_parent_inventories_at_stacking_boundary_smart(self):
+        self.setup_smart_server_with_call_log()
+        self.test_fetch_parent_inventories_at_stacking_boundary()
+
+    def test_fetch_parent_inventories_at_stacking_boundary_smart_old(self):
+        self.setup_smart_server_with_call_log()
+        self.disable_verb('Repository.insert_stream_1.19')
+        self.test_fetch_parent_inventories_at_stacking_boundary()
+
     def test_fetch_parent_inventories_at_stacking_boundary(self):
         """Fetch to a stacked branch copies inventories for parents of
         revisions at the stacking boundary.
@@ -180,6 +192,28 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertEqual(left_tree.inventory, stacked_left_tree.inventory)
         self.assertEqual(right_tree.inventory, stacked_right_tree.inventory)
 
+        # Finally, it's not enough to see that the basis inventories are
+        # present.  The texts introduced in merge (and only those) should be
+        # present, and also generating a stream should succeed without blowing
+        # up.
+        self.assertTrue(unstacked_repo.has_revision('merge'))
+        expected_texts = set([('file-id', 'merge')])
+        if stacked_branch.repository.texts.get_parent_map([('root-id',
+            'merge')]):
+            # If a (root-id,merge) text exists, it should be in the stacked
+            # repo.
+            expected_texts.add(('root-id', 'merge'))
+        self.assertEqual(expected_texts, unstacked_repo.texts.keys())
+        self.assertCanStreamRevision(unstacked_repo, 'merge')
+
+    def assertCanStreamRevision(self, repo, revision_id):
+        exclude_keys = set(repo.all_revision_ids()) - set([revision_id])
+        search = SearchResult([revision_id], exclude_keys, 1, [revision_id])
+        source = repo._get_source(repo._format)
+        for substream_kind, substream in source.get_stream(search):
+            # Consume the substream
+            list(substream)
+
     def test_fetch_across_stacking_boundary_ignores_ghost(self):
         if not self.repository_format_to.supports_external_lookups:
             raise TestNotApplicable("Need stacking support in the target.")
@@ -218,6 +252,19 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.addCleanup(stacked_branch.unlock)
         stacked_second_tree = stacked_branch.repository.revision_tree('second')
         self.assertEqual(second_tree.inventory, stacked_second_tree.inventory)
+        # Finally, it's not enough to see that the basis inventories are
+        # present.  The texts introduced in merge (and only those) should be
+        # present, and also generating a stream should succeed without blowing
+        # up.
+        self.assertTrue(unstacked_repo.has_revision('third'))
+        expected_texts = set([('file-id', 'third')])
+        if stacked_branch.repository.texts.get_parent_map([('root-id',
+            'third')]):
+            # If a (root-id,third) text exists, it should be in the stacked
+            # repo.
+            expected_texts.add(('root-id', 'third'))
+        self.assertEqual(expected_texts, unstacked_repo.texts.keys())
+        self.assertCanStreamRevision(unstacked_repo, 'third')
 
     def test_fetch_missing_basis_text(self):
         """If fetching a delta, we should die if a basis is not present."""

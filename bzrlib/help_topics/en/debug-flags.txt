@@ -12,6 +12,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
                   operations.
 -Dfetch           Trace history copying between repositories.
 -Dfilters         Emit information for debugging content filtering.
+-Dforceinvdeltas  Force use of inventory deltas during generic streaming fetch.
 -Dgraph           Trace graph traversal.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
@@ -27,3 +28,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dunlock          Some errors during unlock are treated as warnings.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.
+-Dstream          Trace fetch streams.
+-DIDS_never       Never use InterDifferingSerializer when fetching.
+-DIDS_always      Always use InterDifferingSerializer to fetch if appropriate
+                  for the format, even for non-local fetches.

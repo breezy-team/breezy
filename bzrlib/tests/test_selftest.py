@@ -124,7 +124,7 @@ class TestTransportScenarios(tests.TestCase):
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
 
-    def test_scenarios_invlude_all_modules(self):
+    def test_scenarios_include_all_modules(self):
         # this checks that the scenario generator returns as many permutations
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
@@ -293,18 +293,16 @@ class TestInterRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        formats = [("C0", "C1", "C2"), ("D0", "D1", "D2")]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
-            ('str,str,str',
-             {'interrepo_class': str,
-              'repository_format': 'C1',
+            ('C0,str,str',
+             {'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'}),
-            ('int,str,str',
-             {'interrepo_class': int,
-              'repository_format': 'D1',
+            ('D0,str,str',
+             {'repository_format': 'D1',
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
