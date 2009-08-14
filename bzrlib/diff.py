@@ -664,6 +664,8 @@ class DiffFromTool(DiffPath):
         DiffPath.__init__(self, old_tree, new_tree, to_file, path_encoding)
         self.command_template = command_template
         self._root = osutils.mkdtemp(prefix='bzr-diff-')
+        self.force_temp = False
+        self.allow_write = False
 
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,
@@ -710,7 +712,7 @@ class DiffFromTool(DiffPath):
 
     def _write_file(self, file_id, tree, prefix, relpath):
         full_path = osutils.pathjoin(self._root, prefix, relpath)
-        if self._try_symlink_root(tree, prefix):
+        if not self.force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
         try:
@@ -727,7 +729,8 @@ class DiffFromTool(DiffPath):
                 target.close()
         finally:
             source.close()
-        osutils.make_readonly(full_path)
+        if not self.allow_write:
+            osutils.make_readonly(full_path)
         mtime = tree.get_file_mtime(file_id)
         os.utime(full_path, (mtime, mtime))
         return full_path
@@ -752,7 +755,15 @@ class DiffFromTool(DiffPath):
             return DiffPath.CANNOT_DIFF
         self._prepare_files(file_id, old_path, new_path)
         self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+                      self.get_new_path(new_path))
+
+    def get_new_path(self, new_path, abspath=False):
+        if abspath:
+            components = [self._root]
+        else:
+            components = []
+        components.extend(['new', new_path])
+        return osutils.pathjoin(*components)
 
 
 class DiffTree(object):

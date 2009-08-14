@@ -35,6 +35,10 @@ from bzrlib import (
 )
 
 
+class UseEditor(Exception):
+    """Use an editor instead of selecting hunks."""
+
+
 class ShelfReporter(object):
 
     vocab = {'add file': 'Shelve adding file "%(path)s"?',
@@ -235,7 +239,7 @@ class Shelver(object):
         sys.stdout.flush()
         return char
 
-    def prompt_bool(self, question, long=False):
+    def prompt_bool(self, question, long=False, allow_editor=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -245,13 +249,20 @@ class Shelver(object):
         """
         if self.auto:
             return True
+        editor_string = ''
         if long:
-            prompt = ' [(y)es, (N)o, (f)inish, or (q)uit]'
+            if allow_editor:
+                editor_string = '(E)dit manually, '
+            prompt = ' [(y)es, (N)o, %s(f)inish, or (q)uit]' % editor_string
         else:
-            prompt = ' [yNfq?]'
+            if allow_editor:
+                editor_string = 'e'
+            prompt = ' [yN%sfq?]' % editor_string
         char = self.prompt(question + prompt)
         if char == 'y':
             return True
+        elif char == 'e' and allow_editor:
+            raise UseEditor
         elif char == 'f':
             self.auto = True
             return True
@@ -263,6 +274,15 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        try:
+            lines, change_count = self._select_hunks(creator, file_id)
+        except UseEditor:
+            lines, change_count = self._edit_file(creator, file_id)
+        if change_count != 0:
+            creator.shelve_lines(file_id, lines)
+        return change_count
+
+    def _select_hunks(self, creator, file_id):
         """Provide diff hunk selection for modified text.
 
         If self.reporter.invert_diff is True, the diff is inverted so that
@@ -276,7 +296,8 @@ class Shelver(object):
             target_lines = self.work_tree.get_file_lines(file_id)
         else:
             target_lines = self.target_tree.get_file_lines(file_id)
-        textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
+        work_tree_lines = self.work_tree.get_file_lines(file_id)
+        textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
         final_hunks = []
@@ -285,7 +306,8 @@ class Shelver(object):
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                selected = self.prompt_bool(self.reporter.vocab['hunk'])
+                selected = self.prompt_bool(self.reporter.vocab['hunk'],
+                                            allow_editor=True)
                 if not self.reporter.invert_diff:
                     selected = (not selected)
                 if selected:
@@ -296,14 +318,39 @@ class Shelver(object):
         sys.stdout.flush()
         if not self.reporter.invert_diff and (
             len(parsed.hunks) == len(final_hunks)):
-            return 0
+            return work_tree_lines, 0
         if self.reporter.invert_diff and len(final_hunks) == 0:
-            return 0
+            return work_tree_lines, 0
         patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
-        creator.shelve_lines(file_id, list(patched))
+        lines = list(patched)
         if self.reporter.invert_diff:
-            return len(final_hunks)
-        return len(parsed.hunks) - len(final_hunks)
+            change_count = len(final_hunks)
+        else:
+            change_count = len(parsed.hunks) - len(final_hunks)
+        return lines, change_count
+
+    def _edit_file(self, creator, file_id):
+        old_tree = self.target_tree
+        new_tree = self.work_tree
+        differ = diff.DiffFromTool.from_string('gvimdiff -f -o',
+                                               old_tree, new_tree,
+                                               sys.stdout)
+        try:
+            differ.force_temp = True
+            differ.allow_write = True
+            old_path = old_tree.id2path(file_id)
+            new_path = new_tree.id2path(file_id)
+            differ.diff(file_id, old_path, new_path, 'file', 'file')
+            new_abs_path = differ.get_new_path(new_path, abspath=True)
+            new_lines_file = open(new_abs_path, 'r')
+            try:
+                lines = osutils.split_lines(new_lines_file.read())
+                return lines, len(lines)
+            finally:
+                new_lines_file.close()
+        finally:
+            differ.finish()
+
 
 
 class Unshelver(object):
