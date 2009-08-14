@@ -421,6 +421,11 @@ cdef class _MergeSorter:
     that KnownGraph knows, like knowing the child lists, etc.
     """
 
+    # Current performance numbers for merge_sort(bzr_dev_parent_map):
+    #  310ms tsort.merge_sort()
+    #  194ms graph.KnownGraph().merge_sort()
+    #  143ms kg.merge_sort()
+
     cdef KnownGraph graph
     cdef object _stack  # list
     cdef object _seen_parents # Set of keys
