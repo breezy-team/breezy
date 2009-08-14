@@ -25,9 +25,6 @@ import unittest
 from bzrlib.errors import ConflictsInTree
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.merge_package import (
-)
-
 _Debian_changelog = ['''\
 ipsec-tools (1:0.7.1-1.5) unstable; urgency=high
 
@@ -144,79 +141,85 @@ class MergePackageTests(TestCaseWithTransport):
         debu_tree = self.make_branch_and_tree('debu')
         self.build_tree(['debu/a'])
         debu_tree.add(['a'], ['a-id'])
-        revid_debu_A = debu_tree.commit('add a', rev_id='du-1')
-        debu_tree.branch.tags.set_tag('upstream-0.3.3', revid_debu_A)
+        self.revid_debu_A = debu_tree.commit('add a', rev_id='du-1')
+        debu_tree.branch.tags.set_tag('upstream-0.3.3', self.revid_debu_A)
 
         self.build_tree(['debu/b'])
         debu_tree.add(['b'], ['b-id'])
-        revid_debu_B = debu_tree.commit('add b', rev_id='du-2')
-        debu_tree.branch.tags.set_tag('upstream-0.5', revid_debu_B)
+        self.revid_debu_B = debu_tree.commit('add b', rev_id='du-2')
+        debu_tree.branch.tags.set_tag('upstream-0.5', self.revid_debu_B)
 
         self.build_tree(['debu/c'])
         debu_tree.add(['c'], ['c-id'])
         self.build_tree_contents(
             [('debu/b', 'Debian upstream contents for b\n')])
-        revid_debu_C = debu_tree.commit('add h', rev_id='du-3')
-        debu_tree.branch.tags.set_tag('upstream-0.7.1', revid_debu_C)
+        self.revid_debu_C = debu_tree.commit('add h', rev_id='du-3')
+        debu_tree.branch.tags.set_tag('upstream-0.7.1', self.revid_debu_C)
 
         return debu_tree
 
-    def test_debian_upstream_newer(self):
-
+    def _setup_ubuntu_upstream(self, debu_tree):
         # Set up ubuntu upstream branch.
         ubuu_tree = debu_tree.bzrdir.sprout(
-            'ubuu', revision_id=revid_debu_B).open_workingtree()
+            'ubuu', revision_id=self.revid_debu_B).open_workingtree()
 
         self.build_tree_contents(
             [('ubuu/b', 'Ubuntu upstream contents for b\n')])
-        revid_ubuu_A = ubuu_tree.commit('modifying b', rev_id='uu-1')
-        ubuu_tree.branch.tags.set_tag('upstream-0.6.5', revid_ubuu_A)
+        self.revid_ubuu_A = ubuu_tree.commit('modifying b', rev_id='uu-1')
+        ubuu_tree.branch.tags.set_tag('upstream-0.6.5', self.revid_ubuu_A)
 
+        return ubuu_tree
+
+    def _setup_debian_packaging(self, debu_tree):
         # Set up debian packaging branch.
         debp_tree = self.make_branch_and_tree('debp')
-        debp_tree.pull(debu_tree.branch, stop_revision=revid_debu_A)
+        debp_tree.pull(debu_tree.branch, stop_revision=self.revid_debu_A)
 
         self.build_tree(['debp/debian/', 'debp/debian/changelog'])
         debp_tree.add(['debian/', 'debian/changelog'])
         self.build_tree_contents(
             [('debp/debian/changelog', _merge_log(_Debian_changelog[-2:]))])
-        revid_debp_A = debp_tree.commit('add debian/changelog', rev_id='dp-1')
-        debp_tree.branch.tags.set_tag('0.3.3-1', revid_debp_A)
+        self.revid_debp_A = debp_tree.commit(
+            'add debian/changelog', rev_id='dp-1')
+        debp_tree.branch.tags.set_tag('0.3.3-1', self.revid_debp_A)
 
         debp_tree.merge_from_branch(
-            debu_tree.branch, to_revision=revid_debu_B)
+            debu_tree.branch, to_revision=self.revid_debu_B)
         self.build_tree_contents(
             [('debp/debian/changelog', _merge_log(_Debian_changelog[-3:]))])
-        revid_debp_B = debp_tree.commit(
+        self.revid_debp_B = debp_tree.commit(
             'modify debian/changelog', rev_id='dp-2')
-        debp_tree.branch.tags.set_tag('1:0.5-5', revid_debp_B)
+        debp_tree.branch.tags.set_tag('1:0.5-5', self.revid_debp_B)
 
         debp_tree.merge_from_branch(
-            debu_tree.branch, to_revision=revid_debu_C)
+            debu_tree.branch, to_revision=self.revid_debu_C)
         self.build_tree_contents(
             [('debp/debian/changelog', _merge_log(_Debian_changelog[-4:]))])
-        revid_debp_C = debp_tree.commit(
+        self.revid_debp_C = debp_tree.commit(
             'modify debian/changelog', rev_id='dp-3')
-        debp_tree.branch.tags.set_tag('1:0.7.1-1.3', revid_debp_C)
+        debp_tree.branch.tags.set_tag('1:0.7.1-1.3', self.revid_debp_C)
 
         self.build_tree_contents(
             [('debp/debian/changelog', _merge_log(_Debian_changelog))])
-        revid_debp_D = debp_tree.commit(
+        self.revid_debp_D = debp_tree.commit(
             'modify debian/changelog', rev_id='dp-4')
-        debp_tree.branch.tags.set_tag('1:0.7.1-1.5', revid_debp_D)
+        debp_tree.branch.tags.set_tag('1:0.7.1-1.5', self.revid_debp_D)
 
+        return debp_tree
+
+    def _setup_ubuntu_packaging(self, ubuu_tree, debp_tree):
         # Set up ubuntu packaging branch.
         ubup_tree = self.make_branch_and_tree('ubup')
-        ubup_tree.pull(ubuu_tree.branch, stop_revision=revid_debu_A)
+        ubup_tree.pull(ubuu_tree.branch, stop_revision=self.revid_debu_A)
         conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=revid_debp_A)
+            debp_tree.branch, to_revision=self.revid_debp_A)
         debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
         revid_ubup_A = ubup_tree.commit(
             'merged from debian (0.3.3-1)', rev_id='up-1')
         ubup_tree.branch.tags.set_tag('0.3.3-1ubuntu1', revid_ubup_A)
 
         conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=revid_debp_B)
+            debp_tree.branch, to_revision=self.revid_debp_B)
         debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
         _prepend_log(
             _Ubuntu_changelog[-1], '%s/work/ubup/debian/changelog' %
@@ -226,7 +229,7 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_tree.branch.tags.set_tag('1:0.5-5ubuntu1', revid_ubup_B)
 
         conflicts = ubup_tree.merge_from_branch(
-            ubuu_tree.branch, to_revision=revid_ubuu_A)
+            ubuu_tree.branch, to_revision=self.revid_ubuu_A)
         ubuu_tree.branch.tags.merge_to(ubup_tree.branch.tags)
         _prepend_log(
             _Ubuntu_changelog[-2], '%s/work/ubup/debian/changelog' %
@@ -235,8 +238,18 @@ class MergePackageTests(TestCaseWithTransport):
             'merged from upstream (0.6.5)', rev_id='up-3')
         ubup_tree.branch.tags.set_tag('1:0.6.5-0ubuntu1', revid_ubup_C)
 
+        return ubup_tree
+
+    def test_debian_upstream_newer(self):
+        debu_tree = self._setup_debian_upstream()
+        ubuu_tree = self._setup_ubuntu_upstream(debu_tree)
+        debp_tree = self._setup_debian_packaging(debu_tree)
+        ubup_tree = self._setup_ubuntu_packaging(ubuu_tree, debp_tree)
+
+        # Try merging the debian packaging branch into the Ubuntu one.
+        # This will fail due to upstream merge conflicts.
         conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=revid_debp_D)
+            debp_tree.branch, to_revision=self.revid_debp_D)
         debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
         _prepend_log(
             _Ubuntu_changelog[-3], '%s/work/ubup/debian/changelog' %

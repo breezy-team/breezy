@@ -29,7 +29,6 @@ from debian_bundle.changelog import Version
 
 from bzrlib import builtins, errors, merge, trace
 from bzrlib.branch import Branch
-from bzrlib.commands import Command
 
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 
@@ -37,15 +36,29 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 class WrongBranchType(errors.BzrError):
     _fmt = "The merge target is not a packaging branch."
 
+
+class InvalidChangelogFormat(errors.BzrError):
+    _fmt = "The debian/changelog is empty or not in valid format."
+
+
 def _debug(lines):
+    """Write lines of debug output and flush stdout if in verbose mode.
+
+    :param lines: A sequence of strings, the debug output to write.
+    """
     if not trace.is_verbose():
         return
     for line in lines:
         print line
     sys.stdout.flush()
 
+
 def _read_file(branch, path):
-    """Get content of file for given `branch` and `path."""
+    """Get content of file for given `branch` and `path.
+    
+    :param branch: A Branch object containing the file of interest.
+    :param path: The path of the file to read.
+    """
     try:
         tree = branch.basis_tree()
         tree.lock_read()
@@ -56,9 +69,13 @@ def _read_file(branch, path):
 
     return content
 
+
 def _latest_version(branch):
-    """Version the most recent source package upload in given `branch`."""
-    upload_version = None
+    """Version of the most recent source package upload in the given `branch`.
+    
+    :param branch: A Branch object containing the source upload of interest.
+    """
+    upload_version = ''
     changelog = _read_file(branch, "debian/changelog")
 
     for line in changelog.splitlines():
@@ -69,66 +86,122 @@ def _latest_version(branch):
             (upload_version,) = match.groups(1)
             break
 
+    upload_version = upload_version.strip()
+    if len(upload_version) <= 0:
+        raise InvalidChangelogFormat()
+
     return Version(upload_version)
 
-def get_upstream_revids(source, target):
-    # Please note: both branches must have been read-locked beforehand.
 
-    # Get the revision IDs for the most recent source and target
-    # upstream versions respectively.
+def get_upstream_revids(source, target):
+    """Revision IDs for the most recent source and target upstream versions.
+
+    Please note: both branches must have been read-locked beforehand.
+
+    :param source: The source (packaging) branch in the merge.
+    :param target: The target (packaging) branch in the merge.
+    """
     _debug(['\n>> get_upstream_revids()\n'])
-    upstream_revids = dict()
+    results = dict()
     for branch_name, branch in dict(source=source, target=target).iteritems():
         db = DistributionBranch(branch, branch)
-        version = _latest_version(branch)
-        # print "Version : %s, %s\n" % (version, version.upstream_version)
-        upstream_revids[branch_name] = (
-            version.upstream_version,
-            db.revid_of_upstream_version_from_branch(
-                version.upstream_version))
+        uver = _latest_version(branch).upstream_version
+        results[branch_name] = (
+            uver, db.revid_of_upstream_version_from_branch(uver))
 
-    _debug(['upstream revids: %s' % upstream_revids,
-            '\n<< get_upstream_revids()\n'])
-    return upstream_revids
+    _debug(['upstream revids: %s' % results, '\n<< get_upstream_revids()\n'])
+    return results
+
 
 def fix_upstream_ancestry(tree, source, upstream_revids):
-    _debug(['\n>> fix_upstream_ancestry()\n',
-            '!! Upstream branches diverged'])
+    """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
-    # "Unpack" the versions and revision ids.
+    Merging J->I given the following ancestry tree is likely to result in
+    upstream merge conflicts:
+
+    debian-upstream                 ,------------------H
+                       A-----------B                    \
+    ubuntu-upstream     \           \`-------G           \
+                         \           \        \           \
+    debian-packaging      \ ,---------D--------\-----------J
+                           C           \        \
+    ubuntu-packaging        `----E------F--------I
+
+    Here there was a new upstream release (G) that Ubuntu packaged (I), and
+    then another one that Debian packaged, skipping G, at H and J.
+
+    Now, the way to solve this is to introduce the missing link.
+
+    debian-upstream                 ,------------------H------.
+                       A-----------B                    \      \
+    ubuntu-upstream     \           \`-------G-----------\------K
+                         \           \        \           \
+    debian-packaging      \ ,---------D--------\-----------J
+                           C           \        \
+    ubuntu-packaging        `----E------F--------I
+
+    at K, which isn't a real merge, as we just use the tree from H, but add
+    G as a parent and then we merge that in to Ubuntu.
+
+    debian-upstream                 ,------------------H------.
+                       A-----------B                    \      \
+    ubuntu-upstream     \           \`-------G-----------\------K
+                         \           \        \           \      \
+    debian-packaging      \ ,---------D--------\-----------J      \
+                           C           \        \                  \
+    ubuntu-packaging        `----E------F--------I------------------L
+
+    At this point we can merge J->L to merge the Debian and Ubuntu changes.
+
+    :param tree: The `WorkingTree` of the merge target branch.
+    :param source: The merge source (packaging) branch.
+    :param upstream_revids: A dict with the source/target branch upstream
+        versions and revision IDs.
+    """
+    _debug(['\n>> fix_upstream_ancestry()\n', '!! Upstream branches diverged'])
+
+    # "Unpack" the upstream versions and revision ids for the merge source and
+    # target branch respectively.
     source_ver = Version(upstream_revids['source'][0])
     source_revid = upstream_revids['source'][1]
     target_ver = Version(upstream_revids['target'][0])
     target_revid = upstream_revids['target'][1]
 
+    # Instantiate a `DistributionBranch` object for the merge target
+    # (packaging) branch.
     db = DistributionBranch(tree.branch, tree.branch)
     tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
     db._extract_upstream_tree(target_revid, tempdir)
 
-    upstream_tree = db.upstream_tree
+    tmp_target_upstream_tree = db.upstream_tree
 
-    # Merge upstream branch tips to obtain a shared upstream parent.
+    # Merge upstream branch tips to obtain a shared upstream parent. This will
+    # add revision K (see graph above) to a temporary merge target upstream
+    # tree.
     _debug(["\n--> Merge upstream branch tips.\n"])
     try:
-        upstream_tree.lock_write()
+        tmp_target_upstream_tree.lock_write()
 
         if source_ver > target_ver:
             # The source upstream tree is more recent and the temporary
             # target tree needs to be reshaped to match it.
             _debug(["\n--> Reverting upstream target tree.\n"])
-            upstream_tree.revert(None, source.repository.revision_tree(source_revid))
+            tmp_target_upstream_tree.revert(
+                None, source.repository.revision_tree(source_revid))
         _debug(["--> Setting parent IDs on upstream tree.\n"])
-        upstream_tree.set_parent_ids((target_revid, source_revid))
+        tmp_target_upstream_tree.set_parent_ids((target_revid, source_revid))
         _debug(["--> Committing upstream tree.\n"])
-        upstream_tree.commit('Consolidated upstream tree for merging into target branch')
+        tmp_target_upstream_tree.commit(
+            'Consolidated upstream tree for merging into target branch')
     finally:
-        upstream_tree.unlock()
+        tmp_target_upstream_tree.unlock()
 
-    # Merge shared upstream parent into the target merge branch.
+    # Merge shared upstream parent into the target merge branch. This creates
+    # revison L in the digram above.
     _debug(["\n--> Merge shared upstream into target merge branch.\n"])
     try:
         tree.lock_write()
-        conflicts = tree.merge_from_branch(upstream_tree.branch)
+        conflicts = tree.merge_from_branch(tmp_target_upstream_tree.branch)
         tree.commit('Merging source packaging branch in to target.')
     finally:
         tree.unlock()
