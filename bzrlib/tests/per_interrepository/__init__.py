@@ -87,7 +87,7 @@ def default_test_list():
     # if there are specific combinations we want to use, we can add them
     # here. We want to test rich root upgrading.
     # XXX: although we attach InterRepository class names to these scenarios,
-    # there's nothing asserting that these labels correspond to what it
+    # there's nothing asserting that these labels correspond to what is
     # actually used.
     add_combo('InterRepository',
               weaverepo.RepositoryFormat5(),
