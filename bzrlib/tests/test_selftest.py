@@ -998,19 +998,20 @@ class TestRunner(tests.TestCase):
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
-        self.assertEqual([
-            '',
-            '======================================================================',
-            'FAIL: unittest.FunctionTestCase (failing_test)',
-            '----------------------------------------------------------------------',
-            'Traceback (most recent call last):',
-            '    raise AssertionError(\'foo\')',
-            'AssertionError: foo',
-            '',
-            '----------------------------------------------------------------------',
-            '',
-            'FAILED (failures=1, known_failure_count=1)'],
-            lines[3:8] + lines[9:13] + lines[14:])
+        self.assertContainsRe(stream.getvalue(),
+            '(?sm)^testing.*$'
+            '.*'
+            '^======================================================================\n'
+            '^FAIL: unittest.FunctionTestCase \\(failing_test\\)\n'
+            '^----------------------------------------------------------------------\n'
+            'Traceback \\(most recent call last\\):\n'
+            '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
+            '    raise AssertionError\\(\'foo\'\\)\n'
+            '.*'
+            '^----------------------------------------------------------------------\n'
+            '.*'
+            'FAILED \\(failures=1, known_failure_count=1\\)'
+            )
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
