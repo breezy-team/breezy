@@ -40,6 +40,11 @@ class WrongBranchType(errors.BzrError):
 class InvalidChangelogFormat(errors.BzrError):
     _fmt = "The debian/changelog is empty or not in valid format."
 
+class SourceUpstreamConflictsWithTargetPackaging(errors.BzrError):
+    _fmt = (
+        "The source upstream branch conflicts with "
+        "the target packaging branch")
+
 
 def _debug(lines):
     """Write lines of debug output and flush stdout if in verbose mode.
@@ -93,27 +98,39 @@ def _latest_version(branch):
     return Version(upload_version)
 
 
-def get_upstream_revids(source, target):
-    """Revision IDs for the most recent source and target upstream versions.
+def _upstream_version_data(source, target):
+    """Most recent upstream versions/revision IDs of the merge source/target.
 
-    Please note: both branches must have been read-locked beforehand.
+    Please note: both packaing branches must have been read-locked beforehand.
 
-    :param source: The source (packaging) branch in the merge.
-    :param target: The target (packaging) branch in the merge.
+    :param source: The merge source branch.
+    :param target: The merge target branch.
     """
     _debug(['\n>> get_upstream_revids()\n'])
-    results = dict()
-    for branch_name, branch in dict(source=source, target=target).iteritems():
+    results = list()
+    for branch in (source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
-        results[branch_name] = (
-            uver, db.revid_of_upstream_version_from_branch(uver))
+        results.append((uver, db.revid_of_upstream_version_from_branch(uver)))
 
     _debug(['upstream revids: %s' % results, '\n<< get_upstream_revids()\n'])
     return results
 
 
-def fix_upstream_ancestry(tree, source, upstream_revids):
+def _upstreams_diverged(source, target, upstream_revids):
+    """Did the upstream branches of the merge source and target diverge?
+
+    :param source: The merge source (packaging) branch.
+    :param target: The merge target (packaging) branch.
+    :param upstream_revids: The source/target branch upstream revision IDs.
+    """
+    graph = source.repository.get_graph(target.repository)
+    # Get the number of heads for the combined upstream branches graph.
+    heads = graph.heads(upstream_revids)
+    return (len(heads) > 1)
+
+
+def fix_ancestry_if_needed(tree, source, upstream_revids):
     """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
     Merging J->I given the following ancestry tree is likely to result in
@@ -158,23 +175,38 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     :param upstream_revids: A dict with the source/target branch upstream
         versions and revision IDs.
     """
-    _debug(['\n>> fix_upstream_ancestry()\n', '!! Upstream branches diverged'])
+    _debug(['\n>> fix_ancestry_if_needed()\n', '!! Upstream branches diverged'])
+
+    upstreams_diverged = False
+    target = tree.branch
+
+    try:
+        source.lock_read()
+        target.lock_read()
+        upstream_vdata = _upstream_version_data(source, target)
+        revids = [vdata[1] for vdata in upstream_vdata]
+        upstreams_diverged = _upstreams_diverged(source, target, revids)
+    finally:
+        source.unlock()
+        target.unlock()
+
+    if not upstreams_diverged:
+        return upstreams_diverged
 
     # "Unpack" the upstream versions and revision ids for the merge source and
     # target branch respectively.
-    source_ver = Version(upstream_revids['source'][0])
-    source_revid = upstream_revids['source'][1]
-    target_ver = Version(upstream_revids['target'][0])
-    target_revid = upstream_revids['target'][1]
+    [(usource_v, usource_revid), (utarget_v, utarget_revid)] = upstream_vdata
 
     # Instantiate a `DistributionBranch` object for the merge target
     # (packaging) branch.
     db = DistributionBranch(tree.branch, tree.branch)
     tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
-    db._extract_upstream_tree(target_revid, tempdir)
 
+    # Extract the merge target's upstream tree into a temporary directory.
+    db._extract_upstream_tree(utarget_revid, tempdir)
     tmp_target_upstream_tree = db.upstream_tree
 
+    # TODO: fix comment below.
     # Merge upstream branch tips to obtain a shared upstream parent. This will
     # add revision K (see graph above) to a temporary merge target upstream
     # tree.
@@ -182,15 +214,18 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     try:
         tmp_target_upstream_tree.lock_write()
 
-        if source_ver > target_ver:
+        if usource_v > utarget_v:
             # The source upstream tree is more recent and the temporary
             # target tree needs to be reshaped to match it.
             _debug(["\n--> Reverting upstream target tree.\n"])
             tmp_target_upstream_tree.revert(
-                None, source.repository.revision_tree(source_revid))
-        _debug(["--> Setting parent IDs on upstream tree.\n"])
-        tmp_target_upstream_tree.set_parent_ids((target_revid, source_revid))
-        _debug(["--> Committing upstream tree.\n"])
+                None, source.repository.revision_tree(usource_revid))
+
+        _debug(["--> Setting parent IDs on temporary upstream tree.\n"])
+        tmp_target_upstream_tree.set_parent_ids(
+            (utarget_revid, usource_revid))
+
+        _debug(["--> Committing temporary upstream tree.\n"])
         tmp_target_upstream_tree.commit(
             'Consolidated upstream tree for merging into target branch')
     finally:
@@ -201,11 +236,15 @@ def fix_upstream_ancestry(tree, source, upstream_revids):
     _debug(["\n--> Merge shared upstream into target merge branch.\n"])
     try:
         tree.lock_write()
-        conflicts = tree.merge_from_branch(tmp_target_upstream_tree.branch)
-        tree.commit('Merging source packaging branch in to target.')
+        try:
+            tree.merge_from_branch(tmp_target_upstream_tree.branch)
+            tree.commit('Merging source packaging branch in to target.')
+        except ConflictsInTree:
+            raise SourceUpstreamConflictsWithTargetPackaging()
     finally:
         tree.unlock()
 
     _debug(['merge conflicts: %s' % conflicts,
-            '\n<< fix_upstream_ancestry()\n'])
-    return conflicts
+            '\n<< fix_ancestry_if_needed()\n'])
+
+    return upstreams_diverged

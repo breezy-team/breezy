@@ -69,8 +69,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscCache,
         DscComp,
         )
-from bzrlib.plugins.builddeb.merge_package import (
-    get_upstream_revids, fix_upstream_ancestry)
+from bzrlib.plugins.builddeb.merge_package import fix_ancestry_if_needed
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
@@ -897,22 +896,11 @@ class cmd_merge_package(Command):
         except NotBranchError:
             raise BzrCommandError("Invalid source branch URL?")
 
-        # Do the upstream branches of the merge source and target diverge?
-        try:
-            source_branch.lock_read()
-            target_branch.lock_read()
-            upstream_revids = get_upstream_revids(source_branch, target_branch)
-            graph = source_branch.repository.get_graph(target_branch.repository)
-            # Get the number of heads for the combined upstream branches graph.
-            heads = graph.heads(upstream_revids)
-            upstreams_diverged = (len(heads) > 1)
-        finally:
-            source_branch.unlock()
-            target_branch.unlock()
-
         merge_should_be_done = True
 
-        if upstreams_diverged:
+        conflicts = fix_ancestry_if_needed(tree, source_branch)
+
+        if upstream_branches_diverged(source_branch, target_branch):
             # Fix upstream ancestry.
             conflicts = fix_upstream_ancestry(tree, source_branch, upstream_revids)
             if conflicts != 0:
