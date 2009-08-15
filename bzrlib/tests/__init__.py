@@ -227,8 +227,12 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def startTests(self):
         import platform
+        if getattr(sys, 'frozen', None) is None:
+            bzr_path = osutils.realpath(sys.argv[0])
+        else:
+            bzr_path = sys.executable
         self.stream.write(
-            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+            'testing: %s\n' % (bzr_path,))
         self.stream.write(
             '   %s\n' % (
                     bzrlib.__path__[0],))
