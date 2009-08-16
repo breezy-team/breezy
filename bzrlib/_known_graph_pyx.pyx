@@ -402,16 +402,46 @@ cdef class _MergeSortNode:
 
     cdef _KnownGraphNode node
     cdef Py_ssize_t merge_depth
-    cdef int left_subtree_pushed # True/False
-    cdef object pending_parents # list of _KnownGraphNode
+    cdef _MergeSortNode left_ms_parent
+    cdef _MergeSortNode left_pending_parent
+    cdef object pending_parents # list of _MergeSortNode for non-left parents
     cdef object revno # tuple of dotted revnos
+    # TODO: turn these into flag/bit fields rather than individual members
     cdef int is_first_child # Is this the first child?
-    # cdef int seen_by_child # A child node has seen this parent
+    cdef int seen_by_child # A child node has seen this parent
+    cdef int completed # Fully Processed
+
+    def __init__(self, node):
+        self.node = node
+        self.merge_depth = -1
+        self.left_ms_parent = None
+        self.left_pending_parent = None
+        self.pending_parents = None
+        self.revno = None
+        self.is_first_child = 0
+        self.seen_by_child = 0
+        self.completed = 0
 
     def __repr__(self):
-        return '_MSN(%s depth:%s lp:%s rev:%s)' % (#self.__class__.__name__,
-            self.node.key, self.merge_depth, self.left_subtree_pushed,
-            self.revno)
+        cdef _MergeSortNode ms_par
+        left_key = None
+        if self.left_ms_parent is not None:
+            left_key = self.left_ms_parent.node.key
+        left_pp = None
+        if self.left_pending_parent is not None:
+            left_pp = self.left_pending_parent.node.key
+        pp = []
+        if self.pending_parents:
+            for ms_par in self.pending_parents:
+                pp.append(ms_par.node.key)
+        return '%s(%s depth:%s rev:%s first:%s seen:%s)' % (self.__class__.__name__,
+            self.node.key, self.merge_depth, self.revno,
+            self.is_first_child, self.seen_by_child)
+
+    cdef int has_pending_parents(self):
+        if self.left_pending_parent is not None or self.pending_parents:
+            return 1
+        return 0
 
 
 cdef class _MergeSorter:
@@ -431,70 +461,80 @@ cdef class _MergeSorter:
     cdef object _seen_parents # Set of keys
     cdef object _ms_nodes # dict of key => _MergeSortNode
     cdef object _revno_to_branch_count # {revno => num child branches}
-    cdef object _completed_node_names # Set of keys that have been completed
     cdef object _scheduled_nodes # List of nodes ready to be yielded
 
     def __init__(self, known_graph, tip_key):
+        cdef _KnownGraphNode node
+        cdef _MergeSortNode ms_node
         self.graph = known_graph
         self._ms_nodes = {}
         self._revno_to_branch_count = {}
-        self._seen_parents = set()
         self._stack = []
-        self._completed_node_names = set()
         self._scheduled_nodes = []
         if tip_key is not None and tip_key != NULL_REVISION:
             node = self.graph._nodes[tip_key]
-            self._push_node(node, 0)
+            ms_node = self._get_or_create_node(node)
+            self._push_node(ms_node, 0)
 
-    cdef _push_node(self, _KnownGraphNode node, Py_ssize_t merge_depth):
+    cdef _MergeSortNode _get_or_create_node(self, _KnownGraphNode node):
+        cdef PyObject *temp_node
+        cdef _MergeSortNode ms_node
+
+        temp_node = PyDict_GetItem(self._ms_nodes, node.key)
+        if temp_node == NULL:
+            ms_node = _MergeSortNode(node)
+            PyDict_SetItem(self._ms_nodes, node.key, ms_node)
+        else:
+            ms_node = <_MergeSortNode>temp_node
+        return ms_node
+
+    cdef _push_node(self, _MergeSortNode ms_node, Py_ssize_t merge_depth):
         cdef _KnownGraphNode parent_node
-        cdef _MergeSortNode ms_node, ms_parent_node
+        cdef _MergeSortNode ms_parent_node
+        cdef Py_ssize_t pos
 
-        ms_node = _MergeSortNode()
-        ms_node.node = node
         ms_node.merge_depth = merge_depth
-        ms_node.left_subtree_pushed = 0
-        # TODO: turn this into a list of pending _MergeSortNode rather than
-        # keys
-        ms_node.pending_parents = list(node.parents)
+        if PyTuple_GET_SIZE(ms_node.node.parents) > 0:
+            parent_node = _get_parent(ms_node.node.parents, 0)
+            ms_node.left_ms_parent = self._get_or_create_node(
+                parent_node)
+            ms_node.left_pending_parent = ms_node.left_ms_parent
+        if PyTuple_GET_SIZE(ms_node.node.parents) > 1:
+            ms_node.pending_parents = []
+            for pos from 1 <= pos < PyTuple_GET_SIZE(ms_node.node.parents):
+                parent_node = _get_parent(ms_node.node.parents, pos)
+                PyList_Append(ms_node.pending_parents,
+                    self._get_or_create_node(parent_node))
+
         ms_node.revno = None
         ms_node.is_first_child = 1
-        # ms_node.seen_by_child = 0
         self._stack.append(ms_node)
-        if node.parents:
-            parent_node = _get_parent(node.parents, 0)
-
-            # TODO: could we use a '.seen' member instead of a set?
-            #       alternatively, track self._ms_nodes = {}, etc.
-            #       If we use _ms_nodes, then we have to be able to create a
-            #       new parent node 'on demand' even when we don't know the
-            #       rest of the info yet.
-            if parent_node.key in self._seen_parents:
+        if ms_node.left_ms_parent is not None:
+            if ms_node.left_ms_parent.seen_by_child:
                 ms_node.is_first_child = 0
-            self._seen_parents.add(parent_node.key)
-        self._ms_nodes[ms_node.node.key] = ms_node
+            ms_node.left_ms_parent.seen_by_child = 1
+        # print 'pushed: %s' % (ms_node,)
 
     cdef _pop_node(self):
-        cdef _MergeSortNode ms_node, ms_parent_node
+        cdef _MergeSortNode ms_node
         cdef _KnownGraphNode parent_node
 
         ms_node = self._stack.pop()
-        if ms_node.node.parents:
+        # print 'popping: %s' % (ms_node,)
+        if ms_node.left_ms_parent is not None:
             # Assign the revision number for *this* node, from its left-hand
             # parent
-            parent_node = _get_parent(ms_node.node.parents, 0)
-            ms_parent_node = self._ms_nodes[parent_node.key]
-            if not ms_node.is_first_child:
+            if ms_node.is_first_child:
+                # First child just increments the final digit
+                final = ms_node.left_ms_parent.revno[-1] + 1
+                revno = ms_node.left_ms_parent.revno[:-1] + (final,)
+            else:
                 # Not the first child, make a new branch
-                base_revno = ms_parent_node.revno[0]
+                base_revno = ms_node.left_ms_parent.revno[0]
                 branch_count = self._revno_to_branch_count.get(base_revno, 0)
                 branch_count = branch_count + 1
                 self._revno_to_branch_count[base_revno] = branch_count
                 revno = (base_revno, branch_count, 1)
-            else:
-                # First child just increments the final digit
-                final = ms_parent_node.revno[-1] + 1
-                revno = ms_parent_node.revno[:-1] + (final,)
         else:
             root_count = self._revno_to_branch_count.get(0, -1)
             root_count = root_count + 1
@@ -504,25 +544,27 @@ cdef class _MergeSorter:
                 revno = (1,)
             self._revno_to_branch_count[0] = root_count
         ms_node.revno = revno
-        self._completed_node_names.add(ms_node.node.key)
+        ms_node.completed = 1
         self._scheduled_nodes.append(ms_node)
 
     cdef _schedule_stack(self):
-        cdef _MergeSortNode ms_node, ms_last_node
-        cdef _KnownGraphNode next_node
+        cdef _MergeSortNode ms_node, ms_last_node, ms_next_node
+        cdef Py_ssize_t next_merge_depth
         ordered = []
         while self._stack:
             # Peek at the last item on the stack
             # print self._stack
             # print '  ', self._scheduled_nodes
             ms_last_node = self._stack[-1]
-            if not ms_last_node.pending_parents:
+            if not ms_last_node.has_pending_parents():
+                # Processed all parents, pop this node
                 self._pop_node()
                 continue
-            while ms_last_node.pending_parents:
-                if not ms_last_node.left_subtree_pushed:
+            while ms_last_node.has_pending_parents():
+                if ms_last_node.left_pending_parent is not None:
                     # recurse depth first into the primary parent
-                    next_node = ms_last_node.pending_parents.pop(0)
+                    ms_next_node = ms_last_node.left_pending_parent
+                    ms_last_node.left_pending_parent = None
                 else:
                     # place any merges in right-to-left order for scheduling
                     # which gives us left-to-right order after we reverse
@@ -531,8 +573,8 @@ cdef class _MergeSorter:
                     # subtree rather than the left most, which will
                     # display nicely (you get smaller trees at the top
                     # of the combined merge).
-                    next_node = ms_last_node.pending_parents.pop()
-                if next_node.key in self._completed_node_names:
+                    ms_next_node = ms_last_node.pending_parents.pop()
+                if ms_next_node.completed:
                     # this parent was completed by a child on the
                     # call stack. skip it.
                     continue
@@ -549,14 +591,14 @@ cdef class _MergeSorter:
                 ##     # this indicates a cycle.
                 ##     raise errors.GraphCycleError(self._stack)
 
+                assert ms_next_node is not None
                 next_merge_depth = 0
-                if ms_last_node.left_subtree_pushed:
-                    next_merge_depth = 1
-                else:
+                if ms_next_node is ms_last_node.left_ms_parent:
                     next_merge_depth = 0
-                    ms_last_node.left_subtree_pushed = 1
+                else:
+                    next_merge_depth = 1
                 next_merge_depth = next_merge_depth + ms_last_node.merge_depth
-                self._push_node(next_node, next_merge_depth)
+                self._push_node(ms_next_node, next_merge_depth)
                 # and do not continue processing parents until this 'call'
                 # has recursed.
                 break
