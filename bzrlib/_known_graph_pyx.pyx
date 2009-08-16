@@ -44,6 +44,7 @@ cdef extern from "Python.h":
 
     void Py_INCREF(object)
 
+import gc
 
 from bzrlib import errors, revision
 
@@ -129,12 +130,20 @@ cdef class KnownGraph:
 
         :param parent_map: A dictionary mapping key => parent_keys
         """
+        cdef int was_enabled
         # tests at pre-allocating the node dict actually slowed things down
         self._nodes = {}
         # Maps {sorted(revision_id, revision_id): heads}
         self._known_heads = {}
         self.do_cache = int(do_cache)
+        was_enabled = gc.isenabled()
+        if was_enabled:
+            gc.disable()
+        # This allocates a lot of nodes but nothing that can be gc'd
+        # disable gc while building
         self._initialize_nodes(parent_map)
+        if was_enabled:
+            gc.enable()
         self._find_gdfo()
 
     def __dealloc__(self):
@@ -444,6 +453,13 @@ cdef class _MergeSortNode:
         return 0
 
 
+cdef _MergeSortNode _get_ms_node(lst, Py_ssize_t pos):
+    cdef PyObject *temp_node
+
+    temp_node = PyList_GET_ITEM(lst, pos)
+    return <_MergeSortNode>temp_node
+
+
 cdef class _MergeSorter:
     """This class does the work of computing the merge_sort ordering.
 
@@ -453,12 +469,12 @@ cdef class _MergeSorter:
 
     # Current performance numbers for merge_sort(bzr_dev_parent_map):
     #  310ms tsort.merge_sort()
-    #  138ms graph.KnownGraph().merge_sort()
-    #   89ms kg.merge_sort()
+    #  127ms graph.KnownGraph().merge_sort()
+    #   77ms kg.merge_sort()
 
     cdef KnownGraph graph
-    cdef object _stack  # list
-    cdef object _seen_parents # Set of keys
+    cdef object _depth_first_stack  # list
+    cdef Py_ssize_t _last_stack_item # offset to last item on stack
     cdef object _ms_nodes # dict of key => _MergeSortNode
     cdef object _revno_to_branch_count # {revno => num child branches}
     cdef object _scheduled_nodes # List of nodes ready to be yielded
@@ -469,7 +485,8 @@ cdef class _MergeSorter:
         self.graph = known_graph
         self._ms_nodes = {}
         self._revno_to_branch_count = {}
-        self._stack = []
+        self._depth_first_stack = []
+        self._last_stack_item = -1
         self._scheduled_nodes = []
         if tip_key is not None and tip_key != NULL_REVISION:
             node = self.graph._nodes[tip_key]
@@ -508,18 +525,27 @@ cdef class _MergeSorter:
 
         ms_node.revno = None
         ms_node.is_first_child = 1
-        self._stack.append(ms_node)
         if ms_node.left_ms_parent is not None:
             if ms_node.left_ms_parent.seen_by_child:
                 ms_node.is_first_child = 0
             ms_node.left_ms_parent.seen_by_child = 1
+        self._last_stack_item = self._last_stack_item + 1
+        if self._last_stack_item < PyList_GET_SIZE(self._depth_first_stack):
+            Py_INCREF(ms_node) # SetItem steals a ref
+            PyList_SetItem(self._depth_first_stack, self._last_stack_item,
+                           ms_node)
+        else:
+            PyList_Append(self._depth_first_stack, ms_node)
         # print 'pushed: %s' % (ms_node,)
 
     cdef _pop_node(self):
+        cdef PyObject *temp_node
         cdef _MergeSortNode ms_node
         cdef _KnownGraphNode parent_node
 
-        ms_node = self._stack.pop()
+        assert self._last_stack_item >= 0
+        ms_node = _get_ms_node(self._depth_first_stack, self._last_stack_item)
+        self._last_stack_item = self._last_stack_item - 1
         # print 'popping: %s' % (ms_node,)
         if ms_node.left_ms_parent is not None:
             # Assign the revision number for *this* node, from its left-hand
@@ -551,11 +577,12 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node, ms_last_node, ms_next_node
         cdef Py_ssize_t next_merge_depth
         ordered = []
-        while self._stack:
+        while self._last_stack_item >= 0:
             # Peek at the last item on the stack
-            # print self._stack
+            # print self._depth_first_stack
             # print '  ', self._scheduled_nodes
-            ms_last_node = self._stack[-1]
+            ms_last_node = _get_ms_node(self._depth_first_stack,
+                                        self._last_stack_item)
             if not ms_last_node.has_pending_parents():
                 # Processed all parents, pop this node
                 self._pop_node()
@@ -589,7 +616,7 @@ cdef class _MergeSorter:
                 ##     # current search stack (but not completed or we would
                 ##     # have hit the continue 4 lines up.
                 ##     # this indicates a cycle.
-                ##     raise errors.GraphCycleError(self._stack)
+                ##     raise errors.GraphCycleError(self._depth_first_stack)
 
                 assert ms_next_node is not None
                 next_merge_depth = 0
