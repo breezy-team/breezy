@@ -474,8 +474,8 @@ cdef class _MergeSorter:
 
     # Current performance numbers for merge_sort(bzr_dev_parent_map):
     #  310ms tsort.merge_sort()
-    #  112ms graph.KnownGraph().merge_sort()
-    #   64ms kg.merge_sort()
+    #  103ms graph.KnownGraph().merge_sort()
+    #   55ms kg.merge_sort()
 
     cdef KnownGraph graph
     cdef object _depth_first_stack  # list
@@ -567,14 +567,17 @@ cdef class _MergeSorter:
                 else:
                     base_revno = ms_node.left_ms_parent.revno_first
                 temp = PyDict_GetItem(self._revno_to_branch_count,
-                                           base_revno)
+                                      base_revno)
                 if temp == NULL:
                     branch_count = 1
                 else:
                     branch_count = (<object>temp) + 1
                 PyDict_SetItem(self._revno_to_branch_count, base_revno,
                                branch_count)
-                ms_node.revno_first = base_revno
+                if ms_node.left_ms_parent.revno_first == -1:
+                    ms_node.revno_first = ms_node.left_ms_parent.revno_last
+                else:
+                    ms_node.revno_first = ms_node.left_ms_parent.revno_first
                 ms_node.revno_second = branch_count
                 ms_node.revno_last = 1
         else:
@@ -653,6 +656,7 @@ cdef class _MergeSorter:
     cdef topo_order(self):
         cdef _MergeSortNode ms_node, ms_last_node
         cdef _KnownGraphNode next_node
+        cdef Py_ssize_t pos
 
         # print
         self._schedule_stack()
@@ -662,14 +666,17 @@ cdef class _MergeSorter:
         # output.
         sequence_number = 0
         ordered = []
-        while self._scheduled_nodes:
-            ms_node = self._scheduled_nodes.pop()
-            # TODO: stop_revision not supported
-            # if ms_node == stop_revision:
-            if len(self._scheduled_nodes) == 0:
+        pos = PyList_GET_SIZE(self._scheduled_nodes) - 1
+        if pos >= 0:
+            ms_last_node = _get_ms_node(self._scheduled_nodes, pos)
+        while pos >= 0:
+            ms_node = ms_last_node
+            pos = pos - 1
+            if pos == -1:
+                # Final node is always the end-of-chain
                 end_of_merge = True
             else:
-                ms_last_node = self._scheduled_nodes[-1]
+                ms_last_node = _get_ms_node(self._scheduled_nodes, pos)
                 if ms_last_node.merge_depth < ms_node.merge_depth:
                     # Next node is to our left, so this is the end of the right
                     # chain
@@ -687,7 +694,9 @@ cdef class _MergeSorter:
             else:
                 revno = (ms_node.revno_first, ms_node.revno_second,
                          ms_node.revno_last)
-            ordered.append((sequence_number, ms_node.node.key,
-                            ms_node.merge_depth, revno, end_of_merge))
+            PyList_Append(ordered, (sequence_number, ms_node.node.key,
+                                    ms_node.merge_depth, revno, end_of_merge))
             sequence_number = sequence_number + 1
+        # Clear out the scheduled nodes
+        self._scheduled_nodes = []
         return ordered
