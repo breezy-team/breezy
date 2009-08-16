@@ -381,6 +381,13 @@ a_list = hmm, who knows ? # This interpreted as a list !
         self.assertIs(None, get_option('an_invalid_bool'))
         self.assertIs(None, get_option('not_defined_in_this_config'))
 
+    def test_retain_format_markers(self):
+        """Format markers are not interpolated."""
+        my_config = config.IniBasedConfig(None)
+        my_config._get_parser(file=StringIO('option=me%(string)s'))
+        self.assertEqual('me%(string)s', my_config.get_user_option('option'))
+
+
 class TestGetConfig(tests.TestCase):
 
     def test_constructs(self):
