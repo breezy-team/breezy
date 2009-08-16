@@ -1571,13 +1571,14 @@ class NetworkRecordStream(object):
             record.get_bytes_as(record.storage_kind) call.
         """
         self._bytes_iterator = bytes_iterator
-        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
-            'knit-delta-gz':knit.knit_network_to_record,
-            'knit-annotated-ft-gz':knit.knit_network_to_record,
-            'knit-annotated-delta-gz':knit.knit_network_to_record,
-            'knit-delta-closure':knit.knit_delta_closure_to_records,
-            'fulltext':fulltext_network_to_record,
-            'groupcompress-block':groupcompress.network_block_to_records,
+        self._kind_factory = {
+            'fulltext': fulltext_network_to_record,
+            'groupcompress-block': groupcompress.network_block_to_records,
+            'knit-ft-gz': knit.knit_network_to_record,
+            'knit-delta-gz': knit.knit_network_to_record,
+            'knit-annotated-ft-gz': knit.knit_network_to_record,
+            'knit-annotated-delta-gz': knit.knit_network_to_record,
+            'knit-delta-closure': knit.knit_delta_closure_to_records,
             }
 
     def read(self):

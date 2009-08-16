@@ -31,6 +31,9 @@ class TestFlush(TestCaseWithWorkingTree):
             tree.unlock()
 
     def test_flush_when_inventory_is_modified(self):
+        # This takes a write lock on the source tree, then opens a second copy
+        # and tries to grab a read lock, which is a bit bogus
+        self.thisFailsStrictLockCheck()
         # when doing a flush the inventory should be written if needed.
         # we test that by changing the inventory (using
         # _set_inventory for now until add etc have lazy writes of

@@ -35,6 +35,14 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestInfo(ExternalBase):
 
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self._repo_strings = (
+            "1.6 or 1.6.1-rich-root "
+            "or 1.9 or 1.9-rich-root "
+            "or dirstate or dirstate-tags or "
+            "pack-0.92 or rich-root or rich-root-pack")
+
     def test_info_non_existing(self):
         if sys.platform == "win32":
             location = "C:/i/do/not/exist/"
@@ -276,10 +284,7 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root \
-or 1.9 or 1.9-rich-root \
-or dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -308,7 +313,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (datestring_first, datestring_first,), out)
+""" % (self._repo_strings, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -441,10 +446,7 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -475,7 +477,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (datestring_first, datestring_last,), out)
+""" % (self._repo_strings, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -576,10 +578,7 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -609,7 +608,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        ), out)
@@ -698,10 +697,7 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -733,7 +729,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        ), out)
@@ -1134,10 +1130,7 @@ more info
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: '1.6 or 1.6.1-rich-root'
-                        ' or 1.9 or 1.9-rich-root'
-                        ' or dirstate or dirstate-tags or pack-0.92'
-                        ' or rich-root or rich-root-pack',
+        format = {True: self._repo_strings,
                   False: 'dirstate'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()
@@ -1339,6 +1332,7 @@ Repository:
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
             raise TestSkipped("don't use oslocks on win32 in unix manner")
+        self.thisFailsStrictLockCheck()
 
         tree = self.make_branch_and_tree('branch',
                                          format=bzrdir.BzrDirFormat6())

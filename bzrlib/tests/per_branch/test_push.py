@@ -261,14 +261,15 @@ class TestPush(TestCaseWithBranch):
         self.assertFalse(local.is_locked())
         local.push(remote)
         hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream' in hpss_call_names)
-        insert_stream_idx = hpss_call_names.index('Repository.insert_stream')
+        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
+        insert_stream_idx = hpss_call_names.index(
+            'Repository.insert_stream_1.19')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
         self.assertEqual(
-            ['Repository.insert_stream', 'Repository.insert_stream', 'get',
-             'Branch.set_last_revision_info', 'Branch.unlock'],
+            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
+             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
             calls_after_insert_stream)
 
     def disableOptimisticGetParentMap(self):
