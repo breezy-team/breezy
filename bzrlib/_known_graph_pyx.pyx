@@ -453,8 +453,8 @@ cdef class _MergeSorter:
 
     # Current performance numbers for merge_sort(bzr_dev_parent_map):
     #  310ms tsort.merge_sort()
-    #  194ms graph.KnownGraph().merge_sort()
-    #  143ms kg.merge_sort()
+    #  138ms graph.KnownGraph().merge_sort()
+    #   89ms kg.merge_sort()
 
     cdef KnownGraph graph
     cdef object _stack  # list
