@@ -446,14 +446,12 @@ class Branch(object):
         # start_revision_id.
         if self._merge_sorted_revisions_cache is None:
             last_revision = self.last_revision()
-            graph = self.repository.get_graph()
-            parent_map = dict(((key, value) for key, value in
-                     graph.iter_ancestry([last_revision]) if value is not None))
-            revision_graph = repository._strip_NULL_ghosts(parent_map)
-            revs = tsort.merge_sort(revision_graph, last_revision, None,
-                generate_revno=True)
-            # Drop the sequence # before caching
-            self._merge_sorted_revisions_cache = [r[1:] for r in revs]
+            last_key = (last_revision,)
+            known_graph = self.repository.revisions.get_known_graph_ancestry(
+                [last_key])
+            revs = known_graph.merge_sort(last_key)
+            self._merge_sorted_revisions_cache = [(key[-1], d, rn, eom)
+                for sn, key, d, rn, eom in revs]
 
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,

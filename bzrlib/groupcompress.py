@@ -1099,6 +1099,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
 
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index._graph_index.find_ancestry(keys,
+                                                                          0)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
+
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
 

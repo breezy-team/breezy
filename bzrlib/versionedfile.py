@@ -228,6 +228,10 @@ class VersionedFile(object):
         """Copy this versioned file to name on transport."""
         raise NotImplementedError(self.copy_to)
 
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        raise NotImplementedError(self.get_known_graph_ancestry)
+
     def get_record_stream(self, versions, ordering, include_delta_closure):
         """Get a stream of records for versions.
 

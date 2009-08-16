@@ -509,11 +509,12 @@ cdef class _MergeSorter:
             ms_node.left_parent = parent_node
             ms_node.left_pending_parent = parent_node
         if PyTuple_GET_SIZE(node.parents) > 1:
-            ms_node.pending_parents = list(node.parents[1:])
-            # ms_node.pending_parents = []
-            # for pos from 1 <= pos < PyTuple_GET_SIZE(node.parents):
-            #     parent_node = _get_parent(node.parents, pos)
-            #     PyList_Append(ms_node.pending_parents, parent_node)
+            ms_node.pending_parents = []
+            for pos from 1 <= pos < PyTuple_GET_SIZE(node.parents):
+                parent_node = _get_parent(node.parents, pos)
+                if parent_node.parents is None: # ghost
+                    continue
+                PyList_Append(ms_node.pending_parents, parent_node)
 
         ms_node.is_first_child = 1
         if ms_node.left_parent is not None:
