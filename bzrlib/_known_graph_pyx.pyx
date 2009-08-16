@@ -664,6 +664,9 @@ cdef class _MergeSorter:
 
         # We've set up the basic schedule, now we can continue processing the
         # output.
+        # TODO: This final loop costs us 55ms => 41.2ms (14ms) on bzr.dev, to
+        #       evaluate end-of-merge and convert the internal Object
+        #       representation into a Tuple representation...
         sequence_number = 0
         ordered = []
         pos = PyList_GET_SIZE(self._scheduled_nodes) - 1
