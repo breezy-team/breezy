@@ -2344,7 +2344,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
-        if sys.platform == 'win32':
+        if sys.platform in ('win32', 'cygwin'):
             name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
             # windows is likely to have path-length limits so use a short name
             name_prefix = name_prefix[-30:]
