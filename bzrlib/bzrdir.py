@@ -3548,6 +3548,10 @@ class RepositoryAcquisitionPolicy(object):
             if self._require_stacking:
                 raise
 
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
+
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
         if self._stack_on is None:
