@@ -118,7 +118,7 @@ class _Exporter(object):
         :return: the return code
         """
         if cwd is not None:
-            note("Executing %s in directory %s ..." % (" ".join(args), source))
+            note("Executing %s in directory %s ..." % (" ".join(args), cwd))
         else:
             note("Executing %s ..." % (" ".join(args),))
         try:
