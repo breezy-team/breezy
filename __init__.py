@@ -126,7 +126,7 @@ class cmd_fast_import(Command):
     creating a repository or branch. If you are running Bazaar 1.17
     up to Bazaar 2.0, the default format for Bazaar 2.x ("2a") is used.
     Otherwise, the current default format ("pack-0.92" for Bazaar 1.x)
-    is used. If you wish to specify a custom format, use the --format
+    is used. If you wish to specify a custom format, use the `--format`
     option.
 
      .. note::
@@ -185,7 +185,6 @@ class cmd_fast_import(Command):
      git-fast-export) that reuse blob data across commits.
      The recipe is::
 
-       front-end > xxx.fi
        bzr fast-import-info -v xxx.fi > xxx.cfg
        bzr fast-import xxx.fi --info xxx.cfg xxx.bzr
 
@@ -328,7 +327,7 @@ class cmd_fast_import_filter(Command):
     subdirectory (or subdirectory containing the file) as the root. As
     fast-import doesn't know in advance whether a path is a file or
     directory in the stream, you need to specify a trailing '/' on
-    directories passed to the --includes option. If multiple files or
+    directories passed to the `--includes option`. If multiple files or
     directories are given, the new root is the deepest common directory.
 
     To specify standard input as the input stream, use a source
@@ -535,15 +534,15 @@ class cmd_fast_export_from_cvs(Command):
        on how to clone a remote CVS repository locally.
 
     By default, the trunk, branches and tags are all exported. If you
-    only want the trunk, use the --trunk-only option.
+    only want the trunk, use the `--trunk-only` option.
 
     By default, filenames, log messages and author names are expected
-    to be encoded in ascii. Use the --encoding option to specify an
+    to be encoded in ascii. Use the `--encoding` option to specify an
     alternative. If multiple encodings are used, specify the option
     multiple times. For a list of valid encoding names, see
     http://docs.python.org/lib/standard-encodings.html.
 
-    Windows users need to install GNU sort and use the --sort
+    Windows users need to install GNU sort and use the `--sort`
     option to specify its location. GNU sort can be downloaded from
     http://unxutils.sourceforge.net/.
     """
