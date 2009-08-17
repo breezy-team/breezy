@@ -41,6 +41,18 @@ class _KnownGraphNode(object):
             self.parent_keys, self.child_keys)
 
 
+class _MergeSortNode(object):
+    """Information about a specific node in the merge graph."""
+
+    __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
+
+    def __init__(self, key, merge_depth, revno, end_of_merge):
+        self.key = key
+        self.merge_depth = merge_depth
+        self.revno = revno
+        self.end_of_merge = end_of_merge
+
+
 class KnownGraph(object):
     """This is a class which assumes we already know the full graph."""
 
@@ -215,6 +227,8 @@ class KnownGraph(object):
         # We intentionally always generate revnos and never force the
         # mainline_revisions
         # Strip the sequence_number that merge_sort generates
-        return [info[1:] for info in tsort.merge_sort(as_parent_map, tip_key,
-                                mainline_revisions=None,
-                                generate_revno=True)]
+        return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
+                for _, key, merge_depth, revno, end_of_merge
+                 in tsort.merge_sort(as_parent_map, tip_key,
+                                     mainline_revisions=None,
+                                     generate_revno=True)]

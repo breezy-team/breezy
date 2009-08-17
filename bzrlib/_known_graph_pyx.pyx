@@ -412,27 +412,32 @@ cdef class KnownGraph:
 cdef class _MergeSortNode:
     """Tracks information about a node during the merge_sort operation."""
 
-    cdef long merge_depth
+    # Public api
+    cdef public object key
+    cdef public long merge_depth
+    cdef public object end_of_merge # True/False Is this the end of the current merge
+
+    # Private api, used while computing the information
     cdef _KnownGraphNode left_parent
     cdef _KnownGraphNode left_pending_parent
     cdef object pending_parents # list of _KnownGraphNode for non-left parents
-    cdef long revno_first
-    cdef long revno_second
-    cdef long revno_last
+    cdef long _revno_first
+    cdef long _revno_second
+    cdef long _revno_last
     # TODO: turn these into flag/bit fields rather than individual members
     cdef int is_first_child # Is this the first child?
     cdef int seen_by_child # A child node has seen this parent
     cdef int completed # Fully Processed
-    cdef object end_of_merge # True/False Is this the end of the current merge
 
-    def __init__(self):
+    def __init__(self, key):
+        self.key = key
         self.merge_depth = -1
         self.left_parent = None
         self.left_pending_parent = None
         self.pending_parents = None
-        self.revno_first = -1
-        self.revno_second = -1
-        self.revno_last = -1
+        self._revno_first = -1
+        self._revno_second = -1
+        self._revno_last = -1
         self.is_first_child = 0
         self.seen_by_child = 0
         self.completed = 0
@@ -440,13 +445,25 @@ cdef class _MergeSortNode:
     def __repr__(self):
         return '%s(depth:%s rev:%s,%s,%s first:%s seen:%s)' % (self.__class__.__name__,
             self.merge_depth,
-            self.revno_first, self.revno_second, self.revno_last,
+            self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
 
     cdef int has_pending_parents(self):
         if self.left_pending_parent is not None or self.pending_parents:
             return 1
         return 0
+
+    cdef object _revno(self):
+        if self._revno_first == -1:
+            if self._revno_second != -1:
+                raise RuntimeError('Something wrong with: %s' % (self,))
+            return (self._revno_last,)
+        else:
+            return (self._revno_first, self._revno_second, self._revno_last)
+
+    property revno:
+        def __get__(self):
+            return self._revno()
 
 
 cdef class _MergeSorter:
@@ -487,7 +504,7 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node
 
         if node.extra is None:
-            ms_node = _MergeSortNode()
+            ms_node = _MergeSortNode(node.key)
             node.extra = ms_node
         else:
             ms_node = <_MergeSortNode>node.extra
@@ -539,17 +556,17 @@ cdef class _MergeSorter:
             ms_parent_node = <_MergeSortNode>ms_node.left_parent.extra
             if ms_node.is_first_child:
                 # First child just increments the final digit
-                ms_node.revno_first = ms_parent_node.revno_first
-                ms_node.revno_second = ms_parent_node.revno_second
-                ms_node.revno_last = ms_parent_node.revno_last + 1
+                ms_node._revno_first = ms_parent_node._revno_first
+                ms_node._revno_second = ms_parent_node._revno_second
+                ms_node._revno_last = ms_parent_node._revno_last + 1
             else:
                 # Not the first child, make a new branch
                 #  (mainline_revno, branch_count, 1)
-                if ms_parent_node.revno_first == -1:
+                if ms_parent_node._revno_first == -1:
                     # Mainline ancestor, the increment is on the last digit
-                    base_revno = ms_parent_node.revno_last
+                    base_revno = ms_parent_node._revno_last
                 else:
-                    base_revno = ms_parent_node.revno_first
+                    base_revno = ms_parent_node._revno_first
                 temp = PyDict_GetItem(self._revno_to_branch_count,
                                       base_revno)
                 if temp == NULL:
@@ -558,22 +575,22 @@ cdef class _MergeSorter:
                     branch_count = (<object>temp) + 1
                 PyDict_SetItem(self._revno_to_branch_count, base_revno,
                                branch_count)
-                ms_node.revno_first = base_revno
-                ms_node.revno_second = branch_count
-                ms_node.revno_last = 1
+                ms_node._revno_first = base_revno
+                ms_node._revno_second = branch_count
+                ms_node._revno_last = 1
         else:
             temp = PyDict_GetItem(self._revno_to_branch_count, 0)
             if temp == NULL:
                 # The first root node doesn't have a 3-digit revno
                 root_count = 0
-                ms_node.revno_first = -1
-                ms_node.revno_second = -1
-                ms_node.revno_last = 1
+                ms_node._revno_first = -1
+                ms_node._revno_second = -1
+                ms_node._revno_last = 1
             else:
                 root_count = (<object>temp) + 1
-                ms_node.revno_first = 0
-                ms_node.revno_second = root_count
-                ms_node.revno_last = 1
+                ms_node._revno_first = 0
+                ms_node._revno_second = root_count
+                ms_node._revno_last = 1
             PyDict_SetItem(self._revno_to_branch_count, 0, root_count)
         ms_node.completed = 1
         if PyList_GET_SIZE(self._scheduled_nodes) == 0:
@@ -665,23 +682,12 @@ cdef class _MergeSorter:
         #       7ms is computing the return tuple
         #       4ms is PyList_Append()
         ordered = []
-        # output the result in reverse order, and convert from objects into
-        # tuples...
+        # output the result in reverse order, and separate the generated info
         for pos from PyList_GET_SIZE(self._scheduled_nodes) > pos >= 0:
             node = _get_list_node(self._scheduled_nodes, pos)
             ms_node = <_MergeSortNode>node.extra
-            if ms_node.revno_first == -1:
-                if ms_node.revno_second != -1:
-                    raise RuntimeError('Something wrong with: %s' % (ms_node,))
-                revno = (ms_node.revno_last,)
-            else:
-                revno = (ms_node.revno_first, ms_node.revno_second,
-                         ms_node.revno_last)
-            PyList_Append(ordered, (node.key,
-                                    ms_node.merge_depth, revno,
-                                    ms_node.end_of_merge))
-            # Get rid of the extra stored info
+            PyList_Append(ordered, ms_node)
             node.extra = None
-        # Clear out the scheduled nodes
+        # Clear out the scheduled nodes now that we're done
         self._scheduled_nodes = []
         return ordered

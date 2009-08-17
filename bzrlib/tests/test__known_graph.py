@@ -336,6 +336,8 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         """Check that merge based sorting and iter_topo_order on graph works."""
         graph = self.make_known_graph(ancestry)
         value = graph.merge_sort(branch_tip)
+        value = [(n.key, n.merge_depth, n.revno, n.end_of_merge)
+                 for n in value]
         if result_list != value:
             self.assertEqualDiff(pprint.pformat(result_list),
                                  pprint.pformat(value))

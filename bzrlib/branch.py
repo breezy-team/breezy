@@ -449,10 +449,8 @@ class Branch(object):
             last_key = (last_revision,)
             known_graph = self.repository.revisions.get_known_graph_ancestry(
                 [last_key])
-            revs = known_graph.merge_sort(last_key)
-            self._merge_sorted_revisions_cache = [(key[-1], d, rn, eom)
-                for key, d, rn, eom in revs]
-
+            self._merge_sorted_revisions_cache = known_graph.merge_sort(
+                last_key)
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id, stop_rule)
@@ -468,27 +466,34 @@ class Branch(object):
         """Iterate over an inclusive range of sorted revisions."""
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id != start_revision_id:
                     continue
                 else:
                     # The decision to include the start or not
                     # depends on the stop_rule if a stop is provided
-                    rev_iter = chain(
-                        iter([(rev_id, depth, revno, end_of_merge)]),
-                        rev_iter)
+                    # so pop this node back into the iterator
+                    rev_iter = chain(iter([node]), rev_iter)
                     break
         if stop_revision_id is None:
-            for rev_id, depth, revno, end_of_merge in rev_iter:
-                yield rev_id, depth, revno, end_of_merge
+            # Yield everything
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'exclude':
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id == stop_revision_id:
                     return
-                yield rev_id, depth, revno, end_of_merge
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'include':
-            for rev_id, depth, revno, end_of_merge in rev_iter:
-                yield rev_id, depth, revno, end_of_merge
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
                 if rev_id == stop_revision_id:
                     return
         elif stop_rule == 'with-merges':
@@ -497,10 +502,12 @@ class Branch(object):
                 left_parent = stop_rev.parent_ids[0]
             else:
                 left_parent = _mod_revision.NULL_REVISION
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id == left_parent:
                     return
-                yield rev_id, depth, revno, end_of_merge
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
