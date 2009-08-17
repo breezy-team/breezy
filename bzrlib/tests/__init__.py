@@ -3815,13 +3815,11 @@ def _rmtree_temp_dir(dirname):
     try:
         osutils.rmtree(dirname)
     except OSError, e:
-        if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write('Permission denied: '
-                             'unable to remove testing dir '
-                             '%s\n%s'
-                             % (os.path.basename(dirname), e))
-        else:
-            raise
+        # We don't want to fail here because some useful display will be lost
+        # otherwise. Polluting the tmp dir is bad, but not giving all the
+        # possible info to the test runner is even worse.
+        sys.stderr.write('Unable to remove testing dir %s\n%s'
+                         % (os.path.basename(dirname), e))
 
 
 class Feature(object):
