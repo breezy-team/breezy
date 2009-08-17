@@ -451,7 +451,7 @@ class Branch(object):
                 [last_key])
             revs = known_graph.merge_sort(last_key)
             self._merge_sorted_revisions_cache = [(key[-1], d, rn, eom)
-                for sn, key, d, rn, eom in revs]
+                for key, d, rn, eom in revs]
 
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,

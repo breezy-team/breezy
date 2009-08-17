@@ -214,6 +214,7 @@ class KnownGraph(object):
                               if node.parent_keys is not None)
         # We intentionally always generate revnos and never force the
         # mainline_revisions
-        return tsort.merge_sort(as_parent_map, tip_key,
+        # Strip the sequence_number that merge_sort generates
+        return [info[1:] for info in tsort.merge_sort(as_parent_map, tip_key,
                                 mainline_revisions=None,
-                                generate_revno=True)
+                                generate_revno=True)]

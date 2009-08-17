@@ -664,7 +664,6 @@ cdef class _MergeSorter:
         #       2ms is walking the data and computing revno tuples
         #       7ms is computing the return tuple
         #       4ms is PyList_Append()
-        sequence_number = 0
         ordered = []
         # output the result in reverse order, and convert from objects into
         # tuples...
@@ -678,12 +677,11 @@ cdef class _MergeSorter:
             else:
                 revno = (ms_node.revno_first, ms_node.revno_second,
                          ms_node.revno_last)
-            PyList_Append(ordered, (sequence_number, node.key,
+            PyList_Append(ordered, (node.key,
                                     ms_node.merge_depth, revno,
                                     ms_node.end_of_merge))
             # Get rid of the extra stored info
             node.extra = None
-            sequence_number = sequence_number + 1
         # Clear out the scheduled nodes
         self._scheduled_nodes = []
         return ordered
