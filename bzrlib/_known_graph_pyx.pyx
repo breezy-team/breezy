@@ -63,8 +63,6 @@ cdef class _KnownGraphNode:
     cdef object extra
 
     def __init__(self, key):
-        cdef int i
-
         self.key = key
         self.parents = None
 
@@ -192,11 +190,16 @@ cdef class KnownGraph:
             parent_keys = <object>temp_parent_keys
             num_parent_keys = len(parent_keys)
             node = self._get_or_create_node(key)
-            # We know how many parents, so we could pre allocate an exact sized
-            # tuple here
+            # We know how many parents, so we pre allocate the tuple
             parent_nodes = PyTuple_New(num_parent_keys)
-            # We use iter here, because parent_keys maybe be a list or tuple
             for pos2 from 0 <= pos2 < num_parent_keys:
+                # Note: it costs us 10ms out of 40ms to lookup all of these
+                #       parents, it doesn't seem to be an allocation overhead,
+                #       but rather a lookup overhead. There doesn't seem to be
+                #       a way around it, and that is one reason why
+                #       KnownGraphNode maintains a direct pointer to the parent
+                #       node.
+                # We use [] because parent_keys may be a tuple or list
                 parent_node = self._get_or_create_node(parent_keys[pos2])
                 # PyTuple_SET_ITEM will steal a reference, so INCREF first
                 Py_INCREF(parent_node)
