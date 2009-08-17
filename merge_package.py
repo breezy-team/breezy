@@ -130,7 +130,7 @@ def _upstreams_diverged(source, target, upstream_revids):
     return (len(heads) > 1)
 
 
-def fix_ancestry_if_needed(tree, source, upstream_revids):
+def fix_ancestry_as_needed(tree, source, upstream_revids):
     """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
     Merging J->I given the following ancestry tree is likely to result in
@@ -175,7 +175,7 @@ def fix_ancestry_if_needed(tree, source, upstream_revids):
     :param upstream_revids: A dict with the source/target branch upstream
         versions and revision IDs.
     """
-    _debug(['\n>> fix_ancestry_if_needed()\n', '!! Upstream branches diverged'])
+    _debug(['\n>> fix_ancestry_as_needed()\n', '!! Upstream branches diverged'])
 
     upstreams_diverged = False
     target = tree.branch
@@ -245,6 +245,6 @@ def fix_ancestry_if_needed(tree, source, upstream_revids):
         tree.unlock()
 
     _debug(['merge conflicts: %s' % conflicts,
-            '\n<< fix_ancestry_if_needed()\n'])
+            '\n<< fix_ancestry_as_needed()\n'])
 
     return upstreams_diverged

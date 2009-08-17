@@ -69,7 +69,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscCache,
         DscComp,
         )
-from bzrlib.plugins.builddeb.merge_package import fix_ancestry_if_needed
+from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
@@ -896,19 +896,10 @@ class cmd_merge_package(Command):
         except NotBranchError:
             raise BzrCommandError("Invalid source branch URL?")
 
-        merge_should_be_done = True
-
-        conflicts = fix_ancestry_if_needed(tree, source_branch)
-
-        if upstream_branches_diverged(source_branch, target_branch):
-            # Fix upstream ancestry.
-            conflicts = fix_upstream_ancestry(tree, source_branch, upstream_revids)
-            if conflicts != 0:
-                merge_should_be_done = False
+        fix_ancestry_as_needed(tree, source_branch)
 
         # Merge source packaging branch in to the target packaging branch.
-        if merge_should_be_done:
-            tree.merge_from_branch(source_branch)
+        tree.merge_from_branch(source_branch)
 
 
 class cmd_test_builddeb(Command):
@@ -921,4 +912,3 @@ class cmd_test_builddeb(Command):
         passed = selftest(test_suite_factory=test_suite)
         # invert for shell exit code rules
         return not passed
-
