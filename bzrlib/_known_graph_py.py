@@ -20,7 +20,6 @@
 from bzrlib import (
     errors,
     revision,
-    tsort,
     )
 
 
@@ -209,6 +208,7 @@ class KnownGraph(object):
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
+        from bzrlib import tsort
         as_parent_map = dict((node.key, node.parent_keys)
                              for node in self._nodes.itervalues()
                               if node.parent_keys is not None)
