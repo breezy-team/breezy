@@ -9,6 +9,12 @@ Bazaar Release Notes
 In Development
 ##############
 
+Bug Fixes
+*********
+
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
 Improvements
 ************
 
