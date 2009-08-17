@@ -1258,7 +1258,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # repository is the same as the external location of the stacked-on
         # branch.
         balloon = self.make_bzrdir('balloon')
-        if isinstance(balloon, bzrdir.BzrDirMetaFormat1):
+        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
