@@ -2798,8 +2798,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
-    # tell the result object how many tests will be running:
-    decorators.append(CountingDecorator)
+    # tell the result object how many tests will be running: (except if
+    # --parallel=fork is being used. Robert said it will provide a better
+    # progress design later -- vila 20090817)
+    if decorators[-1] is not fork_decorator:
+        decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
