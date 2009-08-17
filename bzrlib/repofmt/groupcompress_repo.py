@@ -154,6 +154,8 @@ class GCPack(NewPack):
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
+        # no name until we finish writing the content
+        self.name = None
 
     def _check_references(self):
         """Make sure our external references are present.
@@ -477,6 +479,15 @@ class GCCHKPacker(Packer):
         if not self._use_pack(self.new_pack):
             self.new_pack.abort()
             return None
+        self.new_pack.finish_content()
+        if len(self.packs) == 1:
+            old_pack = self.packs[0]
+            if old_pack.name == self.new_pack._hash.hexdigest():
+                # The single old pack was already optimally packed.
+                trace.mutter('single pack %s was already optimally packed',
+                    old_pack.name)
+                self.new_pack.abort()
+                return None
         self.pb.update('finishing repack', 6, 7)
         self.new_pack.finish()
         self._pack_collection.allocate(self.new_pack)
@@ -591,7 +602,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             packer = GCCHKPacker(self, packs, '.autopack',
                                  reload_func=reload_func)
             try:
-                packer.pack()
+                result = packer.pack()
             except errors.RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
                 # this packer has cleaned up. Packer() doesn't set its new_pack
@@ -600,6 +611,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 if packer.new_pack is not None:
                     packer.new_pack.abort()
                 raise
+            if result is None:
+                return
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
@@ -781,10 +794,12 @@ class CHKInventoryRepository(KnitPackRepository):
         return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
             (revision_id,))
 
-    def _iter_inventories(self, revision_ids):
+    def _iter_inventories(self, revision_ids, ordering):
         """Iterate over many inventory objects."""
+        if ordering is None:
+            ordering = 'unordered'
         keys = [(revision_id,) for revision_id in revision_ids]
-        stream = self.inventories.get_record_stream(keys, 'unordered', True)
+        stream = self.inventories.get_record_stream(keys, ordering, True)
         texts = {}
         for record in stream:
             if record.storage_kind != 'absent':
@@ -794,7 +809,7 @@ class CHKInventoryRepository(KnitPackRepository):
         for key in keys:
             yield inventory.CHKInventory.deserialise(self.chk_bytes, texts[key], key)
 
-    def _iter_inventory_xmls(self, revision_ids):
+    def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
         # it allowing get_inventory_xml to work. Bundles currently use the
@@ -802,7 +817,7 @@ class CHKInventoryRepository(KnitPackRepository):
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.
         inv_to_str = self._serializer.write_inventory_to_string
-        for inv in self.iter_inventories(revision_ids):
+        for inv in self.iter_inventories(revision_ids, ordering):
             yield inv_to_str(inv), inv.revision_id
 
     def _find_present_inventory_keys(self, revision_keys):
@@ -900,14 +915,11 @@ class CHKInventoryRepository(KnitPackRepository):
 
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
-        if isinstance(to_format, remote.RemoteRepositoryFormat):
-            # Can't just check attributes on to_format with the current code,
-            # work around this:
-            to_format._ensure_real()
-            to_format = to_format._custom_format
-        if to_format.__class__ is self._format.__class__:
+        if self._format._serializer == to_format._serializer:
             # We must be exactly the same format, otherwise stuff like the chk
-            # page layout might be different
+            # page layout might be different.
+            # Actually, this test is just slightly looser than exact so that
+            # CHK2 <-> 2a transfers will work.
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
@@ -1094,16 +1106,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format - rich roots, group compression"
             " and chk inventories")
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if (self.supports_tree_reference and 
-            not getattr(target_format, 'supports_tree_reference', False)):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-
 
 
 class RepositoryFormatCHK2(RepositoryFormatCHK1):

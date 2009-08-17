@@ -460,14 +460,6 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar Knit Repository Format 3 (bzr 0.15)\n"
@@ -508,11 +500,6 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""

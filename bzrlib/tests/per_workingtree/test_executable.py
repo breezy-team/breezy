@@ -30,6 +30,7 @@ class TestExecutable(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestExecutable, self).setUp()
+        self.thisFailsStrictLockCheck()
 
         self.a_id = "a-20051208024829-849e76f7968d7a86"
         self.b_id = "b-20051208024829-849e76f7968d7a86"

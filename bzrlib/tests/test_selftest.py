@@ -125,7 +125,7 @@ class TestTransportScenarios(tests.TestCase):
         self.assertEqual(sample_permutation,
                          get_transport_test_permutations(MockModule()))
 
-    def test_scenarios_invlude_all_modules(self):
+    def test_scenarios_include_all_modules(self):
         # this checks that the scenario generator returns as many permutations
         # as there are in all the registered transport modules - we assume if
         # this matches its probably doing the right thing especially in
@@ -294,18 +294,16 @@ class TestInterRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [(str, "C1", "C2"), (int, "D1", "D2")]
+        formats = [("C0", "C1", "C2"), ("D0", "D1", "D2")]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
-            ('str,str,str',
-             {'interrepo_class': str,
-              'repository_format': 'C1',
+            ('C0,str,str',
+             {'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'}),
-            ('int,str,str',
-             {'interrepo_class': int,
-              'repository_format': 'D1',
+            ('D0,str,str',
+             {'repository_format': 'D1',
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
               'transport_server': 'a'})],
@@ -598,7 +596,12 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
-        self.assertEqual(1, len(result.errors))
+        if self._lock_check_thorough:
+            self.assertEqual(1, len(result.errors))
+        else:
+            # When _lock_check_thorough is disabled, then we don't trigger a
+            # failure
+            self.assertEqual(0, len(result.errors))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -996,19 +999,20 @@ class TestRunner(tests.TestCase):
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
-        self.assertEqual([
-            '',
-            '======================================================================',
-            'FAIL: unittest.FunctionTestCase (failing_test)',
-            '----------------------------------------------------------------------',
-            'Traceback (most recent call last):',
-            '    raise AssertionError(\'foo\')',
-            'AssertionError: foo',
-            '',
-            '----------------------------------------------------------------------',
-            '',
-            'FAILED (failures=1, known_failure_count=1)'],
-            lines[3:8] + lines[9:13] + lines[14:])
+        self.assertContainsRe(stream.getvalue(),
+            '(?sm)^testing.*$'
+            '.*'
+            '^======================================================================\n'
+            '^FAIL: unittest.FunctionTestCase \\(failing_test\\)\n'
+            '^----------------------------------------------------------------------\n'
+            'Traceback \\(most recent call last\\):\n'
+            '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
+            '    raise AssertionError\\(\'foo\'\\)\n'
+            '.*'
+            '^----------------------------------------------------------------------\n'
+            '.*'
+            'FAILED \\(failures=1, known_failure_count=1\\)'
+            )
 
     def test_known_failure_ok_run(self):
         # run a test that generates a known failure which should be printed in the final output.
@@ -1264,6 +1268,7 @@ class SampleTestCase(tests.TestCase):
 class _TestException(Exception):
     pass
 
+
 class TestTestCase(tests.TestCase):
     """Tests that test the core bzrlib TestCase."""
 
@@ -1318,7 +1323,10 @@ class TestTestCase(tests.TestCase):
         # we could set something and run a test that will check
         # it gets santised, but this is probably sufficient for now:
         # if someone runs the test with -Dsomething it will error.
-        self.assertEqual(set(), bzrlib.debug.debug_flags)
+        flags = set()
+        if self._lock_check_thorough:
+            flags.add('strict_locks')
+        self.assertEqual(flags, bzrlib.debug.debug_flags)
 
     def change_selftest_debug_flags(self, new_flags):
         orig_selftest_flags = tests.selftest_debug_flags
@@ -1339,7 +1347,43 @@ class TestTestCase(tests.TestCase):
                 self.flags = set(bzrlib.debug.debug_flags)
         test = TestThatRecordsFlags('test_foo')
         test.run(self.make_test_result())
-        self.assertEqual(set(['a-flag']), self.flags)
+        flags = set(['a-flag'])
+        if 'disable_lock_checks' not in tests.selftest_debug_flags:
+            flags.add('strict_locks')
+        self.assertEqual(flags, self.flags)
+
+    def test_disable_lock_checks(self):
+        """The -Edisable_lock_checks flag disables thorough checks."""
+        class TestThatRecordsFlags(tests.TestCase):
+            def test_foo(nested_self):
+                self.flags = set(bzrlib.debug.debug_flags)
+                self.test_lock_check_thorough = nested_self._lock_check_thorough
+        self.change_selftest_debug_flags(set())
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        # By default we do strict lock checking and thorough lock/unlock
+        # tracking.
+        self.assertTrue(self.test_lock_check_thorough)
+        self.assertEqual(set(['strict_locks']), self.flags)
+        # Now set the disable_lock_checks flag, and show that this changed.
+        self.change_selftest_debug_flags(set(['disable_lock_checks']))
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertFalse(self.test_lock_check_thorough)
+        self.assertEqual(set(), self.flags)
+
+    def test_this_fails_strict_lock_check(self):
+        class TestThatRecordsFlags(tests.TestCase):
+            def test_foo(nested_self):
+                self.flags1 = set(bzrlib.debug.debug_flags)
+                self.thisFailsStrictLockCheck()
+                self.flags2 = set(bzrlib.debug.debug_flags)
+        # Make sure lock checking is active
+        self.change_selftest_debug_flags(set())
+        test = TestThatRecordsFlags('test_foo')
+        test.run(self.make_test_result())
+        self.assertEqual(set(['strict_locks']), self.flags1)
+        self.assertEqual(set(), self.flags2)
 
     def test_debug_flags_restored(self):
         """The bzrlib debug flags should be restored to their original state
