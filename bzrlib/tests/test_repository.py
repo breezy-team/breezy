@@ -1033,7 +1033,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def make_packs_and_alt_repo(self, write_lock=False):
         """Create a pack repo with 3 packs, and access it via a second repo."""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format=self.get_format())
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('one')
