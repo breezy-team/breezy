@@ -461,7 +461,7 @@ cdef class _MergeSorter:
     # Current performance numbers for merge_sort(bzr_dev_parent_map):
     #  302ms tsort.merge_sort()
     #   91ms graph.KnownGraph().merge_sort()
-    #   41ms kg.merge_sort()
+    #   40ms kg.merge_sort()
 
     cdef KnownGraph graph
     cdef object _depth_first_stack  # list
@@ -527,7 +527,6 @@ cdef class _MergeSorter:
                            node)
         else:
             PyList_Append(self._depth_first_stack, node)
-        # print 'pushed: %s' % (ms_node,)
 
     cdef _pop_node(self):
         cdef PyObject *temp
@@ -537,7 +536,6 @@ cdef class _MergeSorter:
         node = _get_list_node(self._depth_first_stack, self._last_stack_item)
         ms_node = <_MergeSortNode>node.extra
         self._last_stack_item = self._last_stack_item - 1
-        # print 'popping: %s' % (ms_node,)
         if ms_node.left_parent is not None:
             # Assign the revision number from the left-hand parent
             ms_parent_node = <_MergeSortNode>ms_node.left_parent.extra
@@ -606,11 +604,11 @@ cdef class _MergeSorter:
         ordered = []
         while self._last_stack_item >= 0:
             # Peek at the last item on the stack
-            # print self._depth_first_stack
-            # print '  ', self._scheduled_nodes
             last_node = _get_list_node(self._depth_first_stack,
                                        self._last_stack_item)
             if last_node.gdfo == -1:
+                # if _find_gdfo skipped a node, that means there is a graph
+                # cycle, error out now
                 raise errors.GraphCycleError(self.graph._nodes)
             ms_last_node = <_MergeSortNode>last_node.extra
             if not ms_last_node.has_pending_parents():
@@ -625,11 +623,11 @@ cdef class _MergeSorter:
                 else:
                     # place any merges in right-to-left order for scheduling
                     # which gives us left-to-right order after we reverse
-                    # the scheduled queue. XXX: This has the effect of
-                    # allocating common-new revisions to the right-most
-                    # subtree rather than the left most, which will
-                    # display nicely (you get smaller trees at the top
-                    # of the combined merge).
+                    # the scheduled queue.
+                    # Note: This has the effect of allocating common-new
+                    #       revisions to the right-most subtree rather than the
+                    #       left most, which will display nicely (you get
+                    #       smaller trees at the top of the combined merge).
                     next_node = ms_last_node.pending_parents.pop()
                 ms_next_node = self._get_ms_node(next_node)
                 if ms_next_node.completed:
@@ -638,16 +636,6 @@ cdef class _MergeSorter:
                     continue
                 # otherwise transfer it from the source graph into the
                 # top of the current depth first search stack.
-                # TODO: Check for GraphCycleError
-                ## try:
-                ##     parents = graph_pop(next_node_name)
-                ## except KeyError:
-                ##     # if the next node is not in the source graph it has
-                ##     # already been popped from it and placed into the
-                ##     # current search stack (but not completed or we would
-                ##     # have hit the continue 4 lines up.
-                ##     # this indicates a cycle.
-                ##     raise errors.GraphCycleError(self._depth_first_stack)
 
                 if next_node is ms_last_node.left_parent:
                     next_merge_depth = ms_last_node.merge_depth
@@ -662,10 +650,13 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node
         cdef _KnownGraphNode node
         cdef Py_ssize_t pos
+        cdef PyObject *temp_key, *temp_node
 
-        # print
+        # Note: allocating a _MergeSortNode and deallocating it for all nodes
+        #       costs approx 8.52ms (21%) of the total runtime
+        #       We might consider moving the attributes into the base
+        #       KnownGraph object.
         self._schedule_stack()
-        # print self._scheduled_nodes
 
         # We've set up the basic schedule, now we can continue processing the
         # output.
