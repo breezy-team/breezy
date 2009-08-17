@@ -131,6 +131,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
 
+
 class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_empty_get_missing_parent_inventories(self):
@@ -332,8 +333,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_insert_stream_passes_resume_info(self):
         repo = self.make_repository('test-repo')
-        if not repo._format.supports_external_lookups:
-            raise TestNotApplicable('only valid in resumable repos')
+        if (not repo._format.supports_external_lookups or
+            isinstance(repo, remote.RemoteRepository)):
+            raise TestNotApplicable(
+                'only valid for direct connections to resumable repos')
         # log calls to get_missing_parent_inventories, so that we can assert it
         # is called with the correct parameters
         call_log = []
