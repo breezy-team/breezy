@@ -261,6 +261,8 @@ class MonotoneExporter(_Exporter):
 class PerforceExporter(_Exporter):
 
     def __init__(self):
+        self.check_install('p4', '2009.1', ['p4'])
+        self.check_install('Perforce Python API', '2009.1', None, ['P4'])
         self.check_install('bzrp4', '', None, ['bzrlib.plugins.bzrp4'])
 
     def generate(self, source, destination, verbose=False, custom=None):
