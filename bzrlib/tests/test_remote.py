@@ -2355,6 +2355,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         """
         # Define a stream using generators so that it isn't rewindable.
         inv = inventory.Inventory(revision_id='rev1')
+        inv.root.revision = 'rev1'
         def stream_with_inv_delta():
             yield ('inventories', inventories_substream())
             yield ('inventory-deltas', inventory_delta_substream())
