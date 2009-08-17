@@ -130,20 +130,15 @@ cdef class KnownGraph:
 
         :param parent_map: A dictionary mapping key => parent_keys
         """
-        cdef int was_enabled
         # tests at pre-allocating the node dict actually slowed things down
         self._nodes = {}
         # Maps {sorted(revision_id, revision_id): heads}
         self._known_heads = {}
         self.do_cache = int(do_cache)
-        was_enabled = gc.isenabled()
-        if was_enabled:
-            gc.disable()
-        # This allocates a lot of nodes but nothing that can be gc'd
-        # disable gc while building
+        # TODO: consider disabling gc since we are allocating a lot of nodes
+        #       that won't be collectable anyway. real world testing has not
+        #       shown a specific impact, yet.
         self._initialize_nodes(parent_map)
-        if was_enabled:
-            gc.enable()
         self._find_gdfo()
 
     def __dealloc__(self):
@@ -407,6 +402,9 @@ cdef class KnownGraph:
         """Compute the merge sorted graph output."""
         cdef _MergeSorter sorter
 
+        # TODO: consider disabling gc since we are allocating a lot of nodes
+        #       that won't be collectable anyway. real world testing has not
+        #       shown a specific impact, yet.
         sorter = _MergeSorter(self, tip_key)
         return sorter.topo_order()
 
@@ -660,7 +658,7 @@ cdef class _MergeSorter:
 
         # We've set up the basic schedule, now we can continue processing the
         # output.
-        # TODO: This final loop costs us 40.0ms => 28.8ms (11ms, 25%) on
+        # Note: This final loop costs us 40.0ms => 28.8ms (11ms, 25%) on
         #       bzr.dev, to convert the internal Object representation into a
         #       Tuple representation...
         #       2ms is walking the data and computing revno tuples
