@@ -3864,7 +3864,9 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    format_registry.get('2a'),
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
     help='Same as 2a.')
 
