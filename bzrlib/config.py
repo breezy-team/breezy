@@ -322,7 +322,7 @@ class IniBasedConfig(Config):
             input = file
         try:
             self._parser = ConfigObj(input, encoding='utf-8',
-            options={'interpolation': False})
+                                     options={'interpolation': False})
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser

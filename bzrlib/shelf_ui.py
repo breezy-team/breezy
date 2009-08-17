@@ -118,8 +118,7 @@ class Shelver(object):
 
     def __init__(self, work_tree, target_tree, diff_writer=None, auto=False,
                  auto_apply=False, file_list=None, message=None,
-                 destroy=False, manager=None, reporter=None,
-                 change_editor=None):
+                 destroy=False, manager=None, reporter=None):
         """Constructor.
 
         :param work_tree: The working tree to shelve changes from.
@@ -133,7 +132,6 @@ class Shelver(object):
             changes.
         :param manager: The shelf manager to use.
         :param reporter: Object for reporting changes to user.
-        :param change_editor: Editor for changed files.
         """
         self.work_tree = work_tree
         self.target_tree = target_tree
@@ -151,7 +149,7 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
-        self.change_editor = change_editor
+        self.change_editor = None
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -174,7 +172,7 @@ class Shelver(object):
                      destroy)
 
     def set_change_editor(self):
-        config =  self.work_tree.branch.get_config()
+        config = self.work_tree.branch.get_config()
         commandline = config.get_user_option('change_editor')
         if commandline is None:
             return
@@ -194,8 +192,8 @@ class Shelver(object):
             for change in creator.iter_shelvable():
                 if change[0] == 'modify text':
                     try:
-                        changes_shelved += self.handle_modify_text(
-                            creator, change[1])
+                        changes_shelved += self.handle_modify_text(creator,
+                                                                   change[1])
                     except errors.BinaryFile:
                         if self.prompt_bool(self.reporter.vocab['binary']):
                             changes_shelved += 1
@@ -290,15 +288,23 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        """Handle modified text, by using hunk selection or file editing.
+
+        :param creator: A ShelfCreator.
+        :param file_id: The id of the file that was modified.
+        :return: The number of changes.
+        """
+        work_tree_lines = self.work_tree.get_file_lines(file_id)
         try:
-            lines, change_count = self._select_hunks(creator, file_id)
+            lines, change_count = self._select_hunks(creator, file_id,
+                                                     work_tree_lines)
         except UseEditor:
-            lines, change_count = self._edit_file(creator, file_id)
+            lines, change_count = self._edit_file(file_id, work_tree_lines)
         if change_count != 0:
             creator.shelve_lines(file_id, lines)
         return change_count
 
-    def _select_hunks(self, creator, file_id):
+    def _select_hunks(self, creator, file_id, work_tree_lines):
         """Provide diff hunk selection for modified text.
 
         If self.reporter.invert_diff is True, the diff is inverted so that
@@ -306,13 +312,13 @@ class Shelver(object):
 
         :param creator: a ShelfCreator
         :param file_id: The id of the file to shelve.
+        :param work_tree_lines: Line contents of the file in the working tree.
         :return: number of shelved hunks.
         """
         if self.reporter.invert_diff:
-            target_lines = self.work_tree.get_file_lines(file_id)
+            target_lines = work_tree_lines
         else:
             target_lines = self.target_tree.get_file_lines(file_id)
-        work_tree_lines = self.work_tree.get_file_lines(file_id)
         textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
@@ -342,8 +348,14 @@ class Shelver(object):
         lines = list(patched)
         return lines, change_count
 
-    def _edit_file(self, creator, file_id):
-        work_tree_lines = creator.work_tree.get_file_lines(file_id)
+    def _edit_file(self, file_id, work_tree_lines):
+        """
+        :param file_id: id of the file to edit.
+        :param work_tree_lines: Line contents of the file in the working tree.
+        :return: (lines, change_region_count), where lines is the new line
+            content of the file, and change_region_count is the number of
+            changed regions.
+        """
         lines = osutils.split_lines(self.change_editor.edit_file(file_id))
         return lines, self._count_changed_regions(work_tree_lines, lines)
 

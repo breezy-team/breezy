@@ -756,7 +756,7 @@ class DiffFromTool(DiffPath):
             return DiffPath.CANNOT_DIFF
         self._prepare_files(file_id, old_path, new_path)
         self._execute(osutils.pathjoin('old', old_path),
-                      self.get_new_path(new_path))
+                      osutils.pathjoin('new', new_path))
 
     def edit_file(self, file_id):
         """Use this tool to edit a file.
@@ -773,20 +773,12 @@ class DiffFromTool(DiffPath):
                                            allow_write_new=True,
                                            force_temp=True)[1]
         self._execute(osutils.pathjoin('old', old_path),
-                      self.get_new_path(new_path))
+                      osutils.pathjoin('new', new_path))
         new_file = open(new_abs_path, 'r')
         try:
             return new_file.read()
         finally:
             new_file.close()
-
-    def get_new_path(self, new_path, abspath=False):
-        if abspath:
-            components = [self._root]
-        else:
-            components = []
-        components.extend(['new', new_path])
-        return osutils.pathjoin(*components)
 
 
 class DiffTree(object):
