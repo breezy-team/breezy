@@ -2799,9 +2799,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     if suite_decorators:
         decorators.extend(suite_decorators)
     # tell the result object how many tests will be running: (except if
-    # --parallel=fork is being used. Robert said it will provide a better
+    # --parallel=fork is being used. Robert said he will provide a better
     # progress design later -- vila 20090817)
-    if decorators[-1] is not fork_decorator:
+    if fork_decorator not in decorators:
         decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
