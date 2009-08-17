@@ -13,17 +13,23 @@ Compatability Breaks
 New Features
 ------------
 
+* The fast-import command now takes an optional but recommended
+  DESTINATION argument. A repository will be created at this
+  location and branches will be created within there. If the user
+  is running bzr 1.17 up to 2.0, format "2a" is used for these,
+  otherwise the default format is used. A format can be explicitly
+  given using the new --format option. (Ian Clatworthy)
+
 * Wrapper commands simplifying the generation of fast-import
   files from other tools are now provided. The general usage is:
 
     bzr fast-export-from-xxx SOURCE project.fi
 
   Before starting an export, these commands make an effort to
-  check that dependent tools are installed. The commands available
-  so far are fast-export-from-svn, fast-export-from-git,
-  fast-export-from-hg and fast-export-from-darcs. Similar wrappers
-  for other tools, particularly cvs and perforce, will hopefully
-  be added soon. (Ian Clatworthy)
+  check that dependent tools are installed. So far, wrapper
+  commands are available for cvs, darcs, git, hg (Mercurial),
+  mnt (Monotone), p4 (Perforce) and svn (Subversion).
+  (Ian Clatworthy, Matt McClure)
 
 * darcs-fast-export is now bundled. In fact, the project has
   merged into this one for the purposes of ongoing bug fixing
@@ -32,7 +38,11 @@ New Features
 Improvements
 ------------
 
-# Directories that become empty following a delete or rename of
+* The working tree is now implicitly updated for trunk. Other
+  branches still need to be explicitly created using 'bzr update'.
+  (Ian Clatworthy)
+
+* Directories that become empty following a delete or rename of
   one of their children are now implicitly pruned. If required,
   this will be made optional at a later date.
   (Ian Clatworthy)

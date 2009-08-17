@@ -26,7 +26,7 @@ from bzrlib import (
     progress,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.trace import note
+from bzrlib.trace import note, mutter
 import bzrlib.util.configobj.configobj as configobj
 from bzrlib.plugins.fastimport import (
     branch_updater,
@@ -298,7 +298,7 @@ class GenericProcessor(processor.ImportProcessor):
         if branches_lost:
             if not self.repo.is_shared():
                 self.warning("Cannot import multiple branches into "
-                    "an unshared repository")
+                    "a standalone branch")
             self.warning("Not creating branches for these head revisions:")
             for lost_info in branches_lost:
                 head_revision = lost_info[1]
@@ -315,17 +315,18 @@ class GenericProcessor(processor.ImportProcessor):
         elif self.params.get('trees', False):
             trees = self._get_working_trees(branches_updated)
             if trees:
-                self.note("Updating the working trees ...")
-                if self.verbose:
-                    report = delta._ChangeReporter()
-                else:
-                    reporter = None
-                for wt in trees:
-                    wt.update(reporter)
-                    self._tree_count += 1
+                self._update_working_trees(trees)
                 remind_about_update = False
             else:
                 self.warning("No working trees available to update")
+        else:
+            # Update just the trunk. (This is always the first branch
+            # returned by the branch updater.)
+            trunk_branch = branches_updated[0]
+            trees = self._get_working_trees([trunk_branch])
+            if trees:
+                self._update_working_trees(trees)
+                remind_about_update = self._branch_count > 1
 
         # Dump the cache stats now because we clear it before the final pack
         if self.verbose:
@@ -341,8 +342,18 @@ class GenericProcessor(processor.ImportProcessor):
         self.dump_stats()
         if remind_about_update:
             # This message is explicitly not timestamped.
-            note("To refresh the working tree for a branch, "
-                "use 'bzr update'.")
+            note("To refresh the working tree for other branches, "
+                "use 'bzr update' inside that branch.")
+
+    def _update_working_trees(self, trees):
+        if self.verbose:
+            reporter = delta._ChangeReporter()
+        else:
+            reporter = None
+        for wt in trees:
+            self.note("Updating the working tree for %s ...", wt.basedir)
+            wt.update(reporter)
+            self._tree_count += 1
 
     def _pack_repository(self, final=True):
         # Before packing, free whatever memory we can and ensure
@@ -377,17 +388,16 @@ class GenericProcessor(processor.ImportProcessor):
         result = []
         wt_expected = self.repo.make_working_trees()
         for br in branches:
-            if br == self.branch and br is not None:
-                wt = self.working_tree
+            if br is None:
+                continue
+            elif br == self.branch:
+                if self.working_tree:
+                    result.append(self.working_tree)
             elif wt_expected:
                 try:
-                    wt = br.bzrdir.open_workingtree()
+                    result.append(br.bzrdir.open_workingtree())
                 except errors.NoWorkingTree:
                     self.warning("No working tree for branch %s", br)
-                    continue
-            else:
-                continue
-            result.append(wt)
         return result
 
     def dump_stats(self):

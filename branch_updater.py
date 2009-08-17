@@ -52,7 +52,7 @@ class BranchUpdater(object):
         lost of information.
 
         :return: updated, lost_heads where
-          updated = the list of branches updated
+          updated = the list of branches updated ('trunk' is first)
           lost_heads = a list of (bazaar-name,revision) for branches that
             would have been created had the repository been shared
         """
@@ -66,9 +66,9 @@ class BranchUpdater(object):
     def _get_matching_branches(self):
         """Get the Bazaar branches.
 
-        :return: default_tip, branch_tips, lost_heads where
-          default_tip = the last commit mark for the default branch
-          branch_tips = a list of (branch,tip) tuples for other branches.
+        :return: branch_tips, lost_heads where
+          branch_tips = a list of (branch,tip) tuples for branches. The
+            first tip is the 'trunk'.
           lost_heads = a list of (bazaar-name,revision) for branches that
             would have been created had the repository been shared and
             everything succeeded
@@ -82,13 +82,22 @@ class BranchUpdater(object):
             branch_tips.append((self.branch, default_tip))
             ref_names.remove(trunk)
 
-        # Convert the reference names into Bazaar speak
+        # Convert the reference names into Bazaar speak. If we haven't
+        # already put the 'trunk' first, do it now.
         git_to_bzr_map = self.name_mapper.git_to_bzr(ref_names)
+        if ref_names and self.branch is None:
+            trunk = self.select_trunk(ref_names)
+            git_bzr_items = [(trunk, git_to_bzr_map[trunk])]
+            del git_to_bzr_map[trunk]
+        else:
+            git_bzr_items = []
+        git_bzr_items.extend(sorted(git_to_bzr_map.items(), key=itemgetter(1)))
 
         # Policy for locating branches
         def dir_under_current(name, ref_name):
             # Using the Bazaar name, get a directory under the current one
-            return name
+            repo_base = self.repo.bzrdir.transport.base
+            return osutils.pathjoin(repo_base, "..", name)
         def dir_sister_branch(name, ref_name):
             # Using the Bazaar name, get a sister directory to the branch
             return osutils.pathjoin(self.branch.base, "..", name)
@@ -99,7 +108,6 @@ class BranchUpdater(object):
 
         # Create/track missing branches
         shared_repo = self.repo.is_shared()
-        git_bzr_items = sorted(git_to_bzr_map.items(), key=itemgetter(1))
         for ref_name, name in git_bzr_items:
             tip = self.heads_by_ref[ref_name][0]
             if shared_repo:
