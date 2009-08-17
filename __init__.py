@@ -25,16 +25,14 @@ Source it.
 
 The normal import recipe is::
 
-  bzr init-repo .
   bzr fast-export-from-xxx SOURCE project.fi
-  bzr fast-import project.fi
+  bzr fast-import project.fi project.bzr
 
 If fast-export-from-xxx doesn't exist yet for the tool you're importing
 from, the alternative recipe is::
 
-  bzr init-repo .
   front-end > project.fi
-  bzr fast-import project.fi
+  bzr fast-import project.fi project.fi
 
 The list of known front-ends and their status is documented on
 http://bazaar-vcs.org/BzrFastImport/FrontEnds. The fast-export-from-xxx
@@ -107,67 +105,111 @@ def _run(source, processor_factory, control, params, verbose):
 class cmd_fast_import(Command):
     """Backend for fast Bazaar data importers.
 
-    This command reads a mixed command/data stream and
-    creates branches in the current repository accordingly.
-    The usual recipe is::
+    This command reads a mixed command/data stream and creates
+    branches in a Bazaar repository accordingly. The preferred
+    recipe is::
 
-      bzr fast-import project.fi
+      bzr fast-import project.fi project.bzr
 
+    Numerous commands are provided for generating a fast-import file
+    to use as input. These are named fast-export-from-xxx where xxx
+    is one of cvs, darcs, git, hg, mnt, p4 or svn.
     To specify standard input as the input stream, use a
-    source name of '-' (instead of project.fi). Numerous commands
-    are provided for generating a fast-import stream to use as input.
-    These include fast-export-from-svn, fast-export-from-git,
-    fast-export-from-hg and fast-export-from-darcs.
+    source name of '-' (instead of project.fi).
+    
+    project.bzr will be created if it doesn't exist. If it exists
+    already, it should be empty or be an existing Bazaar repository
+    or branch. If not specified, the current directory is assumed.
+ 
+    fast-import will intelligently select the format to use when
+    creating a repository or branch. If you are running Bazaar 1.17
+    up to Bazaar 2.0, the default format for Bazaar 2.x ("2a") is used.
+    Otherwise, the current default format ("pack-0.92" for Bazaar 1.x)
+    is used. If you wish to specify a custom format, use the --format
+    option.
 
-    If you wish to write a custom exporter for your project, see
-    http://bazaar-vcs.org/BzrFastImport for the detailed protocol
-    specification. In many cases, exporters can be written quite
-    quickly using whatever scripting/programming language you like.
+     .. note::
+     
+        To maintain backwards compatibility, fast-import lets you
+        create the target repository or standalone branch yourself.
+        It is recommended though that you let fast-import create
+        these for you instead.
 
-    If run inside a branch using a shared repository, then
-    the current branch is made the trunk and other branches,
-    if any, are created in sister directories. If run inside
-    a standalone tree, the current branch is also made the
-    trunk, but warnings are output about other branches found.
+    :Branch mapping rules:
 
-    Git reference names are mapped to bzr branch names as follows:
+     Git reference names are mapped to Bazaar branch names as follows:
       
-    * refs/heads/foo is mapped to foo
-    * refs/remotes/origin/foo is mapped to foo.remote
-    * refs/tags/foo is mapped to foo.tag
-    * */master is mapped to trunk, trunk.remote, etc.
-    * */trunk is mapped to git-trunk, git-trunk.remote, etc.
+     * refs/heads/foo is mapped to foo
+     * refs/remotes/origin/foo is mapped to foo.remote
+     * refs/tags/foo is mapped to foo.tag
+     * */master is mapped to trunk, trunk.remote, etc.
+     * */trunk is mapped to git-trunk, git-trunk.remote, etc.
 
+    :Branch creation rules:
 
-    At checkpoints and on completion, the commit-id -> revision-id
-    map is saved to a file called 'fastimport-id-map' in the control
-    directory for the repository (e.g. .bzr/repository). If the import
-    is interrupted or unexpectedly crashes, it can be started again
-    and this file will be used to skip over already loaded revisions.
-    As long as subsequent exports from the original source begin
-    with exactly the same revisions, you can use this feature to
-    maintain a mirror of a repository managed by a foreign tool.
-    If and when Bazaar is used to manage the repository, this file
-    can be safely deleted.
+     When a shared repository is created or found at the destination,
+     branches are created inside it. In the simple case of a single
+     branch (refs/heads/master) inside the input file, the branch is
+     project.bzr/trunk.
 
-    Note: A slightly more complex recipe is required when importing large
-    projects via exporters that reuse blob data across commits, namely::
+     When a standalone branch is found at the destination, the trunk
+     is imported there and warnings are output about any other branches
+     found in the input file.
 
-      bzr init-repo .
-      front-end > xxx.fi
-      bzr fast-import-info -v xxx.fi > xxx.cfg
-      bzr fast-import xxx.fi --info xxx.cfg
+     When a branch in a shared repository is found at the destination,
+     that branch is made the trunk and other branches, if any, are
+     created in sister directories.
 
-    In this scenario, the xxx.cfg file generated by the first pass
-    holds caching hints that the second pass uses to lower memory
-    usage. Development is planned so that this recipe becomes obsolete
-    in the future, i.e. so that the simple recipe always works.
+    :Custom exporters:
+
+     The fast-export-from-xxx commands typically call more advanced
+     xxx-fast-export scripts. You are welcome to use the advanced
+     scripts if you prefer.
+
+     If you wish to write a custom exporter for your project, see
+     http://bazaar-vcs.org/BzrFastImport for the detailed protocol
+     specification. In many cases, exporters can be written quite
+     quickly using whatever scripting/programming language you like.
+
+    :Reducing memory usage:
+
+     A slightly more complex recipe is required when importing large
+     projects via exporters (like fast-export-from-git and
+     git-fast-export) that reuse blob data across commits.
+     The recipe is::
+
+       front-end > xxx.fi
+       bzr fast-import-info -v xxx.fi > xxx.cfg
+       bzr fast-import xxx.fi --info xxx.cfg xxx.bzr
+
+     In this scenario, the xxx.cfg file generated by the first pass
+     holds caching hints that the second pass uses to lower memory
+     usage. Development is planned so that this recipe becomes obsolete
+     in the future, i.e. so that the simple recipe always works.
+
+    :Restarting an import:
+
+     At checkpoints and on completion, the commit-id -> revision-id
+     map is saved to a file called 'fastimport-id-map' in the control
+     directory for the repository (e.g. .bzr/repository). If the import
+     is interrupted or unexpectedly crashes, it can be started again
+     and this file will be used to skip over already loaded revisions.
+     As long as subsequent exports from the original source begin
+     with exactly the same revisions, you can use this feature to
+     maintain a mirror of a repository managed by a foreign tool.
+     If and when Bazaar is used to manage the repository, this file
+     can be safely deleted.
 
     :Examples:
 
      Import a Subversion repository into Bazaar::
 
        bzr fast-export-from-svn /svn/repo/path project.fi
+       bzr fast-import project.fi
+
+     Import a CVS repository into Bazaar::
+
+       bzr fast-export-from-cvs /cvs/repo/path project.fi
        bzr fast-import project.fi
 
      Import a Git repository into Bazaar::
@@ -294,17 +336,13 @@ class cmd_fast_import_filter(Command):
      directory name of the library)::
 
        front-end | bzr fast-import-filter -i lib/xxx/ > xxx.fi
-       bzr init-repo mylibrary
-       cd mylibrary
-       bzr fast-import ../xxx.fi
+       bzr fast-import xxx.fi mylibrary.bzr
        (lib/xxx/foo is now foo)
 
      Create a new repository without a sensitive file::
 
        front-end | bzr fast-import-filter -x missile-codes.txt > clean.fi
-       bzr init-repo project.clean
-       cd project.clean
-       bzr fast-import ../clean.fi
+       bzr fast-import clean.fi clean.bzr
     """
     hidden = False
     _see_also = ['fast-import']
