@@ -481,9 +481,10 @@ cdef class _MergeSorter:
         self._scheduled_nodes = []
         if tip_key is not None and tip_key != NULL_REVISION:
             node = self.graph._nodes[tip_key]
+            self._get_ms_node(node)
             self._push_node(node, 0)
 
-    cdef _MergeSortNode _get_or_create_node(self, _KnownGraphNode node):
+    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
         cdef PyObject *temp_node
         cdef _MergeSortNode ms_node
 
@@ -499,7 +500,7 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node, ms_parent_node
         cdef Py_ssize_t pos
 
-        ms_node = self._get_or_create_node(node)
+        ms_node = self._get_ms_node(node)
         ms_node.merge_depth = merge_depth
         if PyTuple_GET_SIZE(node.parents) > 0:
             parent_node = _get_parent(node.parents, 0)
@@ -515,7 +516,7 @@ cdef class _MergeSorter:
 
         ms_node.is_first_child = 1
         if ms_node.left_parent is not None:
-            ms_parent_node = self._get_or_create_node(ms_node.left_parent)
+            ms_parent_node = self._get_ms_node(ms_node.left_parent)
             if ms_parent_node.seen_by_child:
                 ms_node.is_first_child = 0
             ms_parent_node.seen_by_child = 1
@@ -538,8 +539,7 @@ cdef class _MergeSorter:
         self._last_stack_item = self._last_stack_item - 1
         # print 'popping: %s' % (ms_node,)
         if ms_node.left_parent is not None:
-            # Assign the revision number for *this* node, from its left-hand
-            # parent
+            # Assign the revision number from the left-hand parent
             ms_parent_node = <_MergeSortNode>ms_node.left_parent.extra
             if ms_node.is_first_child:
                 # First child just increments the final digit
@@ -548,6 +548,7 @@ cdef class _MergeSorter:
                 ms_node.revno_last = ms_parent_node.revno_last + 1
             else:
                 # Not the first child, make a new branch
+                #  (mainline_revno, branch_count, 1)
                 if ms_parent_node.revno_first == -1:
                     # Mainline ancestor, the increment is on the last digit
                     base_revno = ms_parent_node.revno_last
@@ -561,28 +562,26 @@ cdef class _MergeSorter:
                     branch_count = (<object>temp) + 1
                 PyDict_SetItem(self._revno_to_branch_count, base_revno,
                                branch_count)
-                if ms_parent_node.revno_first == -1:
-                    ms_node.revno_first = ms_parent_node.revno_last
-                else:
-                    ms_node.revno_first = ms_parent_node.revno_first
+                ms_node.revno_first = base_revno
                 ms_node.revno_second = branch_count
                 ms_node.revno_last = 1
         else:
-            root_count = self._revno_to_branch_count.get(0, -1)
-            root_count = root_count + 1
-            if root_count:
-                ms_node.revno_first = 0
-                ms_node.revno_second = root_count
-                ms_node.revno_last = 1
-            else:
+            temp = PyDict_GetItem(self._revno_to_branch_count, 0)
+            if temp == NULL:
                 # The first root node doesn't have a 3-digit revno
+                root_count = 0
                 ms_node.revno_first = -1
                 ms_node.revno_second = -1
                 ms_node.revno_last = 1
-            self._revno_to_branch_count[0] = root_count
+            else:
+                root_count = (<object>temp) + 1
+                ms_node.revno_first = 0
+                ms_node.revno_second = root_count
+                ms_node.revno_last = 1
+            PyDict_SetItem(self._revno_to_branch_count, 0, root_count)
         ms_node.completed = 1
         if PyList_GET_SIZE(self._scheduled_nodes) == 0:
-            # The final node is always the end of merge
+            # The first scheduled node is always the end of merge
             ms_node.end_of_merge = True
         else:
             prev_node = _get_list_node(self._scheduled_nodes,
@@ -632,7 +631,7 @@ cdef class _MergeSorter:
                     # display nicely (you get smaller trees at the top
                     # of the combined merge).
                     next_node = ms_last_node.pending_parents.pop()
-                ms_next_node = self._get_or_create_node(next_node)
+                ms_next_node = self._get_ms_node(next_node)
                 if ms_next_node.completed:
                     # this parent was completed by a child on the
                     # call stack. skip it.
