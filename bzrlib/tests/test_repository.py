@@ -1349,7 +1349,7 @@ class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
     def test_pack_optimizes_pack_order(self):
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('A', None, [
             ('add', ('', 'root-id', 'directory', None)),
