@@ -51,6 +51,7 @@ online help for the individual commands for details::
   bzr help fast-export-from-hg
   bzr help fast-export-from-git
   bzr help fast-export-from-mnt
+  bzr help fast-export-from-p4
   bzr help fast-export-from-svn
 
 Once a fast-import dump file is created, it can be imported into a
@@ -617,6 +618,38 @@ class cmd_fast_export_from_mnt(Command):
         fast_export_from(source, destination, 'mnt', verbose)
 
 
+class cmd_fast_export_from_p4(Command):
+    """Generate a fast-import file from a Perforce repository.
+
+    Source is a Perforce depot path, e.g., //depot/project
+
+    Destination is a dump file, typically named xxx.fi where xxx is
+    the name of the project. If '-' is given, standard output is used.
+
+    bzrp4 must be installed as its p4_fast_export.py module is used under
+    the covers to do the export.  bzrp4 can be downloaded from
+    https://launchpad.net/bzrp4/.
+    
+    The P4PORT environment variable must be set, and you must be logged
+    into the Perforce server.
+
+    By default, only the HEAD changelist is exported.  To export all
+    changelists, append '@all' to the source.  To export a revision range,
+    append a comma-delimited pair of changelist numbers to the source,
+    e.g., '100,200'.
+    """
+    hidden = False
+    _see_also = ['fast-import', 'fast-import-filter']
+    takes_args = ['source', 'destination']
+    takes_options = []
+    aliases = []
+    encoding_type = 'exact'
+    def run(self, source, destination, verbose=False):
+        from bzrlib.plugins.fastimport.exporters import fast_export_from
+        custom = []
+        fast_export_from(source, destination, 'p4', verbose, custom)
+
+
 class cmd_fast_export_from_svn(Command):
     """Generate a fast-import file from a Subversion repository.
 
@@ -671,4 +704,5 @@ register_command(cmd_fast_export_from_darcs)
 register_command(cmd_fast_export_from_hg)
 register_command(cmd_fast_export_from_git)
 register_command(cmd_fast_export_from_mnt)
+register_command(cmd_fast_export_from_p4)
 register_command(cmd_fast_export_from_svn)

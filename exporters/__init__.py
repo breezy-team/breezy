@@ -258,6 +258,28 @@ class MonotoneExporter(_Exporter):
         self.report_results(retcode, destination)
 
 
+class PerforceExporter(_Exporter):
+
+    def __init__(self):
+        self.check_install('p4', '2009.1', ['p4'])
+        self.check_install('Perforce Python API', '2009.1', None, ['P4'])
+        self.check_install('bzrp4', '', None, ['bzrlib.plugins.bzrp4'])
+
+    def generate(self, source, destination, verbose=False, custom=None):
+        """Generate a fast import stream. See _Exporter.generate() for details."""
+        from bzrlib.plugins.bzrp4 import p4_fast_export
+        outf, base, marks = self.get_output_info(destination)
+        # Marks aren't supported by p4_fast_export so no need to set that
+        # option
+        original_stdout = sys.stdout
+        sys.stdout = outf
+        try:
+            retcode = p4_fast_export.main([source])
+        finally:
+            sys.stdout = original_stdout
+            self.report_results(retcode, destination)
+
+
 class SubversionExporter(_Exporter):
 
     def __init__(self):
@@ -288,6 +310,8 @@ def fast_export_from(source, destination, tool, verbose=False, custom=None):
         factory = GitExporter
     elif tool == 'mnt':
         factory = MonotoneExporter
+    elif tool == 'p4':
+        factory = PerforceExporter
     elif tool == 'svn':
         factory = SubversionExporter
     try:
