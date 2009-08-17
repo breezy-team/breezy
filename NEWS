@@ -9,12 +9,39 @@ Bazaar Release Notes
 In Development
 ##############
 
+Compatibility Breaks
+********************
+
+* The default format for bzr is now ``2a``. This format brings many
+  significant performance and size improvements. bzr can pull from
+  any existing repository into a ``2a`` one, but can only transfer
+  into ``rich-root`` repositories from ``2a``. The Upgrade guide
+  has more information about this change. (Robert Collins)
+
+New Features
+************
+
+Bug Fixes
+*********
+
 Improvements
 ************
 
 * A better description of the platform is shown in crash tracebacks, ``bzr
   --version`` and ``bzr selftest``.
   (Martin Pool, #409137)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 bzr 1.18
 ########
@@ -110,8 +137,8 @@ Testing
   can run the https tests. (Denys Duchier, #392401)
   
 
-bzr 1.18
-########
+bzr 1.18rc1
+###########
 
 :Codename: little traveller
 :1.18rc1: 2009-08-10
