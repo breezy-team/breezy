@@ -160,6 +160,12 @@ class cmd_fast_import(Command):
      that branch is made the trunk and other branches, if any, are
      created in sister directories.
 
+    :Working tree updates:
+
+     The working tree is generated for the trunk branch. If multiple
+     branches are created, a message is output on completion explaining
+     how to create the working trees for other branches.
+
     :Custom exporters:
 
      The fast-export-from-xxx commands typically call more advanced
@@ -205,27 +211,27 @@ class cmd_fast_import(Command):
      Import a Subversion repository into Bazaar::
 
        bzr fast-export-from-svn /svn/repo/path project.fi
-       bzr fast-import project.fi
+       bzr fast-import project.fi project.bzr
 
      Import a CVS repository into Bazaar::
 
        bzr fast-export-from-cvs /cvs/repo/path project.fi
-       bzr fast-import project.fi
+       bzr fast-import project.fi project.bzr
 
      Import a Git repository into Bazaar::
 
        bzr fast-export-from-git /git/repo/path project.fi
-       bzr fast-import project.fi
+       bzr fast-import project.fi project.bzr
 
      Import a Mercurial repository into Bazaar::
 
        bzr fast-export-from-hg /hg/repo/path project.fi
-       bzr fast-import project.fi
+       bzr fast-import project.fi project.bzr
 
      Import a Darcs repository into Bazaar::
 
        bzr fast-export-from-darcs /darcs/repo/path project.fi
-       bzr fast-import project.fi
+       bzr fast-import project.fi project.bzr
     """
     hidden = False
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
@@ -235,7 +241,7 @@ class cmd_fast_import(Command):
                         help="Path to file containing caching hints.",
                         ),
                     Option('trees',
-                        help="Update working trees.",
+                        help="Update all working trees, not just trunk's.",
                         ),
                     Option('count', type=int,
                         help="Import this many revisions then exit.",
