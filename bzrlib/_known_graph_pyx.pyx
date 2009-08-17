@@ -422,6 +422,7 @@ cdef class _MergeSortNode:
     cdef int is_first_child # Is this the first child?
     cdef int seen_by_child # A child node has seen this parent
     cdef int completed # Fully Processed
+    cdef object end_of_merge # True/False Is this the end of the current merge
 
     def __init__(self):
         self.merge_depth = -1
@@ -533,8 +534,8 @@ cdef class _MergeSorter:
 
     cdef _pop_node(self):
         cdef PyObject *temp
-        cdef _MergeSortNode ms_node, ms_parent_node
-        cdef _KnownGraphNode node, parent_node
+        cdef _MergeSortNode ms_node, ms_parent_node, ms_prev_node
+        cdef _KnownGraphNode node, parent_node, prev_node
 
         assert self._last_stack_item >= 0
         node = _get_list_node(self._depth_first_stack, self._last_stack_item)
@@ -585,6 +586,23 @@ cdef class _MergeSorter:
                 ms_node.revno_last = 1
             self._revno_to_branch_count[0] = root_count
         ms_node.completed = 1
+        if PyList_GET_SIZE(self._scheduled_nodes) == 0:
+            # The final node is always the end of merge
+            ms_node.end_of_merge = True
+        else:
+            prev_node = _get_list_node(self._scheduled_nodes,
+                                    PyList_GET_SIZE(self._scheduled_nodes) - 1)
+            ms_prev_node = <_MergeSortNode>prev_node.extra
+            if ms_prev_node.merge_depth < ms_node.merge_depth:
+                # The previously pushed node is to our left, so this is the end
+                # of this right-hand chain
+                ms_node.end_of_merge = True
+            elif (ms_prev_node.merge_depth == ms_node.merge_depth
+                  and prev_node not in node.parents):
+                # The next node is not a direct parent of this node
+                ms_node.end_of_merge = True
+            else:
+                ms_node.end_of_merge = False
         PyList_Append(self._scheduled_nodes, node)
 
     cdef _schedule_stack(self):
@@ -648,8 +666,8 @@ cdef class _MergeSorter:
                 break
 
     cdef topo_order(self):
-        cdef _MergeSortNode ms_node, ms_prev_node
-        cdef _KnownGraphNode node, prev_node
+        cdef _MergeSortNode ms_node
+        cdef _KnownGraphNode node
         cdef Py_ssize_t pos
 
         # print
@@ -663,33 +681,11 @@ cdef class _MergeSorter:
         #       representation into a Tuple representation...
         sequence_number = 0
         ordered = []
-        pos = PyList_GET_SIZE(self._scheduled_nodes) - 1
-        if pos >= 0:
-            prev_node = _get_list_node(self._scheduled_nodes, pos)
-            ms_prev_node = <_MergeSortNode>prev_node.extra
-        while pos >= 0:
-            if node is not None:
-                # Clear out the extra info we don't need
-                node.extra = None
-            node = prev_node
-            ms_node = ms_prev_node
-            pos = pos - 1
-            if pos == -1:
-                # Final node is always the end-of-chain
-                end_of_merge = True
-            else:
-                prev_node = _get_list_node(self._scheduled_nodes, pos)
-                ms_prev_node = <_MergeSortNode>prev_node.extra
-                if ms_prev_node.merge_depth < ms_node.merge_depth:
-                    # Next node is to our left, so this is the end of the right
-                    # chain
-                    end_of_merge = True
-                elif (ms_prev_node.merge_depth == ms_node.merge_depth
-                      and prev_node not in node.parents):
-                    # The next node is not a direct parent of this node
-                    end_of_merge = True
-                else:
-                    end_of_merge = False
+        # output the result in reverse order, and convert from objects into
+        # tuples...
+        for pos from PyList_GET_SIZE(self._scheduled_nodes) > pos >= 0:
+            node = _get_list_node(self._scheduled_nodes, pos)
+            ms_node = <_MergeSortNode>node.extra
             if ms_node.revno_first == -1:
                 if ms_node.revno_second != -1:
                     raise ValueError('Something wrong with: %s' % (ms_node,))
@@ -698,10 +694,11 @@ cdef class _MergeSorter:
                 revno = (ms_node.revno_first, ms_node.revno_second,
                          ms_node.revno_last)
             PyList_Append(ordered, (sequence_number, node.key,
-                                    ms_node.merge_depth, revno, end_of_merge))
-            sequence_number = sequence_number + 1
-        if node is not None:
+                                    ms_node.merge_depth, revno,
+                                    ms_node.end_of_merge))
+            # Get rid of the extra stored info
             node.extra = None
+            sequence_number = sequence_number + 1
         # Clear out the scheduled nodes
         self._scheduled_nodes = []
         return ordered
