@@ -411,13 +411,13 @@ cdef class KnownGraph:
 cdef class _MergeSortNode:
     """Tracks information about a node during the merge_sort operation."""
 
-    cdef Py_ssize_t merge_depth
+    cdef long merge_depth
     cdef _KnownGraphNode left_parent
     cdef _KnownGraphNode left_pending_parent
     cdef object pending_parents # list of _KnownGraphNode for non-left parents
-    cdef Py_ssize_t revno_first
-    cdef Py_ssize_t revno_second
-    cdef Py_ssize_t revno_last
+    cdef long revno_first
+    cdef long revno_second
+    cdef long revno_last
     # TODO: turn these into flag/bit fields rather than individual members
     cdef int is_first_child # Is this the first child?
     cdef int seen_by_child # A child node has seen this parent
@@ -498,7 +498,7 @@ cdef class _MergeSorter:
             ms_node = <_MergeSortNode>node.extra
         return ms_node
 
-    cdef _push_node(self, _KnownGraphNode node, Py_ssize_t merge_depth):
+    cdef _push_node(self, _KnownGraphNode node, long merge_depth):
         cdef _KnownGraphNode parent_node
         cdef _MergeSortNode ms_node, ms_parent_node
         cdef Py_ssize_t pos
@@ -608,7 +608,7 @@ cdef class _MergeSorter:
     cdef _schedule_stack(self):
         cdef _KnownGraphNode last_node, next_node
         cdef _MergeSortNode ms_node, ms_last_node, ms_next_node
-        cdef Py_ssize_t next_merge_depth
+        cdef long next_merge_depth
         ordered = []
         while self._last_stack_item >= 0:
             # Peek at the last item on the stack
@@ -654,12 +654,10 @@ cdef class _MergeSorter:
                 ##     raise errors.GraphCycleError(self._depth_first_stack)
 
                 assert ms_next_node is not None
-                next_merge_depth = 0
                 if next_node is ms_last_node.left_parent:
-                    next_merge_depth = 0
+                    next_merge_depth = ms_last_node.merge_depth
                 else:
-                    next_merge_depth = 1
-                next_merge_depth = next_merge_depth + ms_last_node.merge_depth
+                    next_merge_depth = ms_last_node.merge_depth + 1
                 self._push_node(next_node, next_merge_depth)
                 # and do not continue processing parents until this 'call'
                 # has recursed.
@@ -676,9 +674,12 @@ cdef class _MergeSorter:
 
         # We've set up the basic schedule, now we can continue processing the
         # output.
-        # TODO: This final loop costs us 55ms => 41.2ms (14ms) on bzr.dev, to
-        #       evaluate end-of-merge and convert the internal Object
-        #       representation into a Tuple representation...
+        # TODO: This final loop costs us 41.4ms => 28.3ms (13ms, 30%) on
+        #       bzr.dev, to convert the internal Object representation into a
+        #       Tuple representation...
+        #       2ms is walking the data and computing revno tuples
+        #       7ms is computing the return tuple
+        #       4ms is PyList_Append()
         sequence_number = 0
         ordered = []
         # output the result in reverse order, and convert from objects into
@@ -693,9 +694,11 @@ cdef class _MergeSorter:
             else:
                 revno = (ms_node.revno_first, ms_node.revno_second,
                          ms_node.revno_last)
-            PyList_Append(ordered, (sequence_number, node.key,
-                                    ms_node.merge_depth, revno,
-                                    ms_node.end_of_merge))
+            t = (sequence_number, node.key,
+                 ms_node.merge_depth, revno,
+                 ms_node.end_of_merge)
+            PyList_Append(ordered, t)
+            # PyList_Append(ordered, )
             # Get rid of the extra stored info
             node.extra = None
             sequence_number = sequence_number + 1
