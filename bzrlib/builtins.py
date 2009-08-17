@@ -5629,8 +5629,7 @@ class cmd_shelve(Command):
             try:
                 shelver.run()
             finally:
-                if shelver.change_editor is not None:
-                    shelver.change_editor.finish()
+                shelver.finalize()
         except errors.UserAbort:
             return 0
 

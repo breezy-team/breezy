@@ -213,6 +213,10 @@ class Shelver(object):
             shutil.rmtree(self.tempdir)
             creator.finalize()
 
+    def finalize(self):
+        if self.change_editor is not None:
+            self.change_editor.finish()
+
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
