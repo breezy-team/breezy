@@ -1740,6 +1740,8 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
 
     def test_get_known_graph_ancestry(self):
         f = self.get_versionedfiles()
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
         key_a = self.get_simple_key('a')
         key_b = self.get_simple_key('b')
         key_c = self.get_simple_key('c')

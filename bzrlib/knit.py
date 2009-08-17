@@ -1192,7 +1192,7 @@ class KnitVersionedFiles(VersionedFiles):
 
     def get_known_graph_ancestry(self, keys):
         """Get a KnownGraph instance with the ancestry of keys."""
-        parent_map, missing_keys = self._index.find_ancestry(keys, 0)
+        parent_map, missing_keys = self._index.find_ancestry(keys)
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
 

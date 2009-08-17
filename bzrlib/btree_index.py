@@ -444,6 +444,22 @@ class BTreeBuilder(index.GraphIndexBuilder):
             return iterators[0]
         return self._iter_smallest(iterators)
 
+    def find_ancestry(self, keys, ref_list_num):
+        """See CombinedGraphIndex.find_ancestry()"""
+        pending = set(keys)
+        parent_map = {}
+        missing_keys = set()
+        while pending:
+            next_pending = set()
+            for _, key, value, ref_lists in self.iter_entries(pending):
+                parent_keys = ref_lists[ref_list_num]
+                parent_map[key] = parent_keys
+                next_pending.update([p for p in parent_keys if p not in
+                                     parent_map])
+                missing_keys.update(pending.difference(parent_map))
+            pending = next_pending
+        return parent_map, missing_keys
+
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
