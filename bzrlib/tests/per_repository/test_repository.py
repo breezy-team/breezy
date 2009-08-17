@@ -929,8 +929,14 @@ class TestRepository(TestCaseWithRepository):
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
         branch = BzrBranchFormat6().initialize(target_bzrdir)
-        #branch = self.make_branch('repo/branch', format='pack-0.92')
-        self.make_branch('stack-on-me')
+        if not repo.supports_rich_root():
+            stack_on_format = "pack-0.92"
+        else:
+            if repo._format.supports_chks:
+                stack_on_format = "2a"
+            else:
+                stack_on_format = "1.9-rich-root"
+        self.make_branch('stack-on-me', format=stack_on_format)
         self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
         target = branch.bzrdir.clone(self.get_url('target'))
         # The target branch supports stacking if the source repository does.
