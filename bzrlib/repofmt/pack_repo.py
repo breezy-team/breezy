@@ -2529,9 +2529,6 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits without subtree support"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """A subtrees parameterized Pack repository.
@@ -2646,9 +2643,6 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs 5 (adds stacking support, requires bzr 1.6)"
-
-    def check_conversion_target(self, target_format):
-        pass
 
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
@@ -2770,9 +2764,6 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Packs 6 (uses btree indexes, requires bzr 1.9)"
-
-    def check_conversion_target(self, target_format):
-        pass
 
 
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
