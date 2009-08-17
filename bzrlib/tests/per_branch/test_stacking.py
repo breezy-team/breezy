@@ -278,14 +278,28 @@ class TestStacking(TestCaseWithBranch):
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
                           cloned_bzrdir.open_branch().get_stacked_on_url)
 
+    def make_stacked_on_matching(self, source):
+        if source.repository.supports_rich_root():
+            if source.repository._format.supports_chks:
+                format = "2a"
+            else:
+                format = "1.9-rich-root"
+        else:
+            format = "1.9"
+        return self.make_branch('stack-on', format)
+
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        stack_on = self.make_branch('stack-on')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -293,13 +307,17 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         self.thisFailsStrictLockCheck()
-        stack_on = self.make_branch('stack-on')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.clone('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we clone we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -309,13 +327,15 @@ class TestStacking(TestCaseWithBranch):
         """Obey policy where possible, ignore otherwise."""
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
-        stack_on = self.make_branch('stack-on')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         url = self.make_smart_server('target').base
         target = source.bzrdir.sprout(url).open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -352,10 +372,10 @@ class TestStacking(TestCaseWithBranch):
         # repository boundaries.  however, i didn't actually get this test to
         # fail on that code. -- mbp
         # see https://bugs.launchpad.net/bzr/+bug/252821
-        if not self.branch_format.supports_stacking():
+        stack_on = self.make_branch_and_tree('stack-on')
+        if not stack_on.branch._format.supports_stacking():
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
-        stack_on = self.make_branch_and_tree('stack-on')
         text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
         self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
         stack_on.add('a')
