@@ -708,3 +708,45 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              (17, 'A', 0, (1,), True),
              ],
             )
+
+    def test_ghost(self):
+        # merge_sort should be able to ignore ghosts
+        # A
+        # |
+        # B ghost
+        # |/
+        # C
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['B', 'ghost'],
+            },
+            'C',
+            [(0, 'C', 0, (3,), False),
+             (1, 'B', 0, (2,), False),
+             (2, 'A', 0, (1,), True),
+            ])
+
+    def test_graph_cycle(self):
+        # merge_sort should fail with a simple error when a graph cycle is
+        # encountered.
+        #
+        # A
+        # |,-.
+        # B  |
+        # |  |
+        # C  ^
+        # |  |
+        # D  |
+        # |'-'
+        # E
+        self.assertRaises(errors.GraphCycleError,
+            self.assertSortAndIterate,
+                {'A': [],
+                 'B': ['D'],
+                 'C': ['B'],
+                 'D': ['C'],
+                 'E': ['D'],
+                },
+                'E',
+                [])

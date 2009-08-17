@@ -448,13 +448,6 @@ cdef class _MergeSortNode:
         return 0
 
 
-# cdef _MergeSortNode _get_ms_node(lst, Py_ssize_t pos):
-#     cdef PyObject *temp_node
-# 
-#     temp_node = PyList_GET_ITEM(lst, pos)
-#     return <_MergeSortNode>temp_node
-# 
-
 cdef class _MergeSorter:
     """This class does the work of computing the merge_sort ordering.
 
@@ -463,9 +456,9 @@ cdef class _MergeSorter:
     """
 
     # Current performance numbers for merge_sort(bzr_dev_parent_map):
-    #  310ms tsort.merge_sort()
-    #   92ms graph.KnownGraph().merge_sort()
-    #   42ms kg.merge_sort()
+    #  302ms tsort.merge_sort()
+    #   91ms graph.KnownGraph().merge_sort()
+    #   41ms kg.merge_sort()
 
     cdef KnownGraph graph
     cdef object _depth_first_stack  # list
@@ -537,7 +530,6 @@ cdef class _MergeSorter:
         cdef _MergeSortNode ms_node, ms_parent_node, ms_prev_node
         cdef _KnownGraphNode node, parent_node, prev_node
 
-        assert self._last_stack_item >= 0
         node = _get_list_node(self._depth_first_stack, self._last_stack_item)
         ms_node = <_MergeSortNode>node.extra
         self._last_stack_item = self._last_stack_item - 1
@@ -616,6 +608,8 @@ cdef class _MergeSorter:
             # print '  ', self._scheduled_nodes
             last_node = _get_list_node(self._depth_first_stack,
                                        self._last_stack_item)
+            if last_node.gdfo == -1:
+                raise errors.GraphCycleError(self.graph._nodes)
             ms_last_node = <_MergeSortNode>last_node.extra
             if not ms_last_node.has_pending_parents():
                 # Processed all parents, pop this node
@@ -653,7 +647,6 @@ cdef class _MergeSorter:
                 ##     # this indicates a cycle.
                 ##     raise errors.GraphCycleError(self._depth_first_stack)
 
-                assert ms_next_node is not None
                 if next_node is ms_last_node.left_parent:
                     next_merge_depth = ms_last_node.merge_depth
                 else:
@@ -674,7 +667,7 @@ cdef class _MergeSorter:
 
         # We've set up the basic schedule, now we can continue processing the
         # output.
-        # TODO: This final loop costs us 41.4ms => 28.3ms (13ms, 30%) on
+        # TODO: This final loop costs us 40.0ms => 28.8ms (11ms, 25%) on
         #       bzr.dev, to convert the internal Object representation into a
         #       Tuple representation...
         #       2ms is walking the data and computing revno tuples
@@ -689,16 +682,14 @@ cdef class _MergeSorter:
             ms_node = <_MergeSortNode>node.extra
             if ms_node.revno_first == -1:
                 if ms_node.revno_second != -1:
-                    raise ValueError('Something wrong with: %s' % (ms_node,))
+                    raise RuntimeError('Something wrong with: %s' % (ms_node,))
                 revno = (ms_node.revno_last,)
             else:
                 revno = (ms_node.revno_first, ms_node.revno_second,
                          ms_node.revno_last)
-            t = (sequence_number, node.key,
-                 ms_node.merge_depth, revno,
-                 ms_node.end_of_merge)
-            PyList_Append(ordered, t)
-            # PyList_Append(ordered, )
+            PyList_Append(ordered, (sequence_number, node.key,
+                                    ms_node.merge_depth, revno,
+                                    ms_node.end_of_merge))
             # Get rid of the extra stored info
             node.extra = None
             sequence_number = sequence_number + 1

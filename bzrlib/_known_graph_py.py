@@ -180,10 +180,9 @@ class KnownGraph(object):
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
-        # TODO: merge_sort doesn't handle ghosts (yet), figure out what to do
-        #       when we want it to.
         as_parent_map = dict((node.key, node.parent_keys)
-                             for node in self._nodes.itervalues())
+                             for node in self._nodes.itervalues()
+                              if node.parent_keys is not None)
         # We intentionally always generate revnos and never force the
         # mainline_revisions
         return tsort.merge_sort(as_parent_map, tip_key,

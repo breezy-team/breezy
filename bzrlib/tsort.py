@@ -606,7 +606,11 @@ class MergeSorter(object):
                         # current search stack (but not completed or we would
                         # have hit the continue 4 lines up.
                         # this indicates a cycle.
-                        raise errors.GraphCycleError(node_name_stack)
+                        if next_node_name in self._original_graph:
+                            raise errors.GraphCycleError(node_name_stack)
+                        else:
+                            # This is just a ghost parent, ignore it
+                            continue
                     next_merge_depth = 0
                     if is_left_subtree:
                         # a new child branch from name_stack[-1]
