@@ -165,3 +165,50 @@ def best_format_for_objects_in_a_repository(repo):
         return format
     else:
         return None
+
+
+def open_destination_directory(location, format=None, verbose=True):
+    """Open a destination directory and return the BzrDir.
+
+    If destination has a control directory, it will be returned.
+    Otherwise, the destination should be empty or non-existent and
+    a shared repository will be created there.
+
+    :param location: the destination directory
+    :param format: the format to use or None for the default
+    :param verbose: display the format used if a repository is created.
+    :return: BzrDir for the destination
+    """
+    import os
+    from bzrlib import bzrdir, errors, transport
+    try:
+        control, relpath = bzrdir.BzrDir.open_containing(location)
+        # XXX: Check the relpath is None here?
+        return control
+    except errors.NotBranchError:
+        pass
+
+    # If the directory exists, check it is empty. Otherwise create it.
+    if os.path.exists(location):
+        contents = os.listdir(location)
+        if contents:
+            errors.BzrCommandError("Destination must have a .bzr directory, "
+                " not yet exist or be empty - files found in %s" % (location,))
+    else:
+        try:
+            os.mkdir(location)
+        except IOError, ex:
+            errors.BzrCommandError("Unable to create %s: %s" %
+                (location, ex))
+
+    # Create a repository for the nominated format.
+    if format is None:
+        format = bzrdir.format_registry.make_bzrdir('default')
+    to_transport = transport.get_transport(location)
+    to_transport.ensure_base()
+    control = format.initialize_on_transport(to_transport)
+    repo = control.create_repository(shared=True)
+    if verbose:
+        from bzrlib.info import show_bzrdir_info
+        show_bzrdir_info(repo.bzrdir, verbose=0)
+    return control

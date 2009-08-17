@@ -75,6 +75,7 @@ page on Launchpad, https://launchpad.net/bzr-fastimport.
 
 version_info = (0, 9, 0, 'dev', 0)
 
+from bzrlib import bzrdir
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option, ListOption, RegistryOption
 
@@ -186,7 +187,7 @@ class cmd_fast_import(Command):
     """
     hidden = False
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
-    takes_args = ['source']
+    takes_args = ['source', 'destination?']
     takes_options = ['verbose',
                     Option('info', type=str,
                         help="Path to file containing caching hints.",
@@ -221,22 +222,24 @@ class cmd_fast_import(Command):
                     Option('export-marks', type=str,
                         help="Export marks to file."
                         ),
+                    RegistryOption('format',
+                            help='Specify a format for the created repository. See'
+                                 ' "bzr help formats" for details.',
+                            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+                            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+                            value_switches=False, title='Repository format'),
                      ]
     aliases = []
-    def run(self, source, verbose=False, info=None, trees=False,
-        count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-        mode=None, import_marks=None, export_marks=None):
-        from bzrlib import bzrdir
+    def run(self, source, destination='.', verbose=False, info=None,
+        trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
+        mode=None, import_marks=None, export_marks=None, format=None):
         from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
+        from bzrlib.plugins.fastimport.helpers import (
+            open_destination_directory,
+            )
         if mode is None:
             mode = 'default'
-        try:
-            control, relpath = bzrdir.BzrDir.open_containing('.')
-        except NotBranchError:
-            raise BzrCommandError("current directory has no .bzr"
-                " directory - use bzr init-repo or bzr init to initialize"
-                " before using bzr fast-import")
         params = {
             'info': info,
             'trees': trees,
@@ -248,6 +251,15 @@ class cmd_fast_import(Command):
             'import-marks': import_marks,
             'export-marks': export_marks,
             }
+        # If no format is given and the user is running a release
+        # leading up to 2.0, select 2a for them. Otherwise, use
+        # the default format.
+        if format is None:
+            import bzrlib
+            bzr_version = bzrlib.version_info[0:2]
+            if bzr_version in [(1,17), (1,18), (2,0)]:
+                format = bzrdir.format_registry.make_bzrdir('2a')
+        control = open_destination_directory(destination, format=format)
         return _run(source, generic_processor.GenericProcessor, control,
             params, verbose)
 
