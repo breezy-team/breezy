@@ -669,7 +669,8 @@ class DiffFromTool(DiffPath):
     def from_string(klass, command_string, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
         command_template = commands.shlex_split_unicode(command_string)
-        command_template.extend(['%(old_path)s', '%(new_path)s'])
+        if '%' not in command_string:
+            command_template.extend(['%(old_path)s', '%(new_path)s'])
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 

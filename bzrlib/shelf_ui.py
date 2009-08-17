@@ -173,14 +173,8 @@ class Shelver(object):
 
     def set_change_editor(self):
         config = self.work_tree.branch.get_config()
-        commandline = config.get_user_option('change_editor')
-        if commandline is None:
-            return
-        command = commands.shlex_split_unicode(commandline)
-        if '%' not in commandline:
-            command.extend(['%(old_path)s', '%(new_path)s'])
-        self.change_editor = diff.DiffFromTool(command, self.target_tree,
-                                               self.work_tree, sys.stdout)
+        self.change_editor = config.get_change_editor(self.target_tree,
+                                                      self.work_tree)
 
     def run(self):
         """Interactively shelve the changes."""

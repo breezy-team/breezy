@@ -153,6 +153,15 @@ class Config(object):
         """Get the users pop up editor."""
         raise NotImplementedError
 
+    def get_change_editor(self, old_tree, new_tree):
+        from bzrlib import diff
+        cmd = self._get_change_editor()
+        if cmd is None:
+            return None
+        return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
+                                             sys.stdout)
+
+
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
@@ -346,6 +355,9 @@ class IniBasedConfig(Config):
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
         return POLICY_NONE
+
+    def _get_change_editor(self):
+        return self.get_user_option('change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -679,6 +691,9 @@ class BranchConfig(Config):
             pass
 
         return self._get_best_value('_get_user_id')
+
+    def _get_change_editor(self):
+        return self._get_best_value('_get_change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
