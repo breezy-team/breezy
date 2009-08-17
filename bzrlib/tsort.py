@@ -18,8 +18,11 @@
 """Topological sorting routines."""
 
 
-from bzrlib import errors
-import bzrlib.revision as _mod_revision
+from bzrlib import (
+    errors,
+    graph as _mod_graph,
+    revision as _mod_revision,
+    )
 from collections import deque
 
 
@@ -44,50 +47,8 @@ def topo_sort(graph):
     topo_sort is faster when the whole list is needed, while when iterating
     over a part of the list, TopoSorter.iter_topo_order should be used.
     """
-    # store a dict of the graph.
-    graph = dict(graph)
-    # this is the stack storing on which the sorted nodes are pushed.
-    node_stack = []
-
-    # count the number of children for every node in the graph
-    node_child_count = dict.fromkeys(graph.iterkeys(), 0)
-    for parents in graph.itervalues():
-        for parent in parents:
-            # don't count the parent if it's a ghost
-            if parent in node_child_count:
-                node_child_count[parent] += 1
-    # keep track of nodes without children in a separate list
-    nochild_nodes = deque([node for (node, n) in node_child_count.iteritems()
-                                 if n == 0])
-
-    graph_pop = graph.pop
-    node_stack_append = node_stack.append
-    nochild_nodes_pop = nochild_nodes.pop
-    nochild_nodes_append = nochild_nodes.append
-
-    while nochild_nodes:
-        # pick a node without a child and add it to the stack.
-        node_name = nochild_nodes_pop()
-        node_stack_append(node_name)
-
-        # the parents of the node lose it as a child; if it was the last
-        # child, add the parent to the list of childless nodes.
-        parents = graph_pop(node_name)
-        for parent in parents:
-            if parent in node_child_count:
-                node_child_count[parent] -= 1
-                if node_child_count[parent] == 0:
-                    nochild_nodes_append(parent)
-
-    # if there are still nodes left in the graph,
-    # that means that there is a cycle
-    if graph:
-        raise errors.GraphCycleError(graph)
-
-    # the nodes where pushed on the stack child first, so this list needs to be
-    # reversed before returning it.
-    node_stack.reverse()
-    return node_stack
+    kg = _mod_graph.KnownGraph(graph)
+    return kg.topo_sort()
 
 
 class TopoSorter(object):

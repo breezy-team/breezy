@@ -18,6 +18,7 @@
 """
 
 from bzrlib import (
+    errors,
     revision,
     tsort,
     )
@@ -173,10 +174,38 @@ class KnownGraph(object):
         return heads
 
     def topo_sort(self):
-        as_parent_map = dict((node.key, node.parent_keys)
-                             for node in self._nodes.itervalues()
-                              if node.parent_keys is not None)
-        return tsort.topo_sort(as_parent_map)
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        for node in self._nodes.itervalues():
+            if node.gdfo is None:
+                raise errors.GraphCycleError(self._nodes)
+        pending = self._find_tails()
+        pending_pop = pending.pop
+        pending_append = pending.append
+
+        topo_order = []
+        topo_order_append = topo_order.append
+
+        num_seen_parents = dict.fromkeys(self._nodes, 0)
+        while pending:
+            node = pending_pop()
+            if node.parent_keys is not None:
+                # We don't include ghost parents
+                topo_order_append(node.key)
+            for child_key in node.child_keys:
+                child_node = self._nodes[child_key]
+                seen_parents = num_seen_parents[child_key] + 1
+                if seen_parents == len(child_node.parent_keys):
+                    # All parents have been processed, enqueue this child
+                    pending_append(child_node)
+                    # This has been queued up, stop tracking it
+                    del num_seen_parents[child_key]
+                else:
+                    num_seen_parents[child_key] = seen_parents
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
