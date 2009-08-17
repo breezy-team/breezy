@@ -456,7 +456,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
     def test_stacked_branch(self):
         """Opening a stacked branch does not open the stacked-on branch."""
         trunk = self.make_branch('trunk')
-        feature = self.make_branch('feature', format='1.9')
+        feature = self.make_branch('feature')
         feature.set_stacked_on_url(trunk.base)
         opened_branches = []
         Branch.hooks.install_named_hook('open', opened_branches.append, None)
