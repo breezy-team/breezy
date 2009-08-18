@@ -151,6 +151,9 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 
     # Don't need to test revno's explicitly since TRS_revno already
     # covers that well for us
+    def test_dwim_spec_revno(self):
+        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertAsRevisionId('alt_r2', '1.1.1')
 
     def test_dwim_spec_revid(self):
         self.assertInHistoryIs(2, 'r2', 'r2')
@@ -170,18 +173,11 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
 
     def test_dwim_spec_nonexistent(self):
         self.assertInvalid('somethingrandom', invalid_as_revision_id=False)
-
-
-class TestRevnoFromString(TestCase):
-
-    def test_from_string_dotted_decimal(self):
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '-1.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.2..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.')
-        self.assertIsInstance(RevisionSpec.from_string('1.1'), RevisionSpec_revno)
-        self.assertIsInstance(RevisionSpec.from_string('1.1.3'), RevisionSpec_revno)
+        self.assertInvalid('-1.1', invalid_as_revision_id=False)
+        self.assertInvalid('.1', invalid_as_revision_id=False)
+        self.assertInvalid('1..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.2..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.', invalid_as_revision_id=False)
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
