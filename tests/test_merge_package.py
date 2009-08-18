@@ -99,8 +99,11 @@ class MergePackageTests(TestCaseWithTransport):
         conflict in 'debian/changelog'.
 
         The upstream conflict will be resolved by fix_ancestry_as_needed().
+        Please note that the debian ancestry is more recent.
         """
         ubup_o, debp_n = self._setup_debian_un()
+
+        # Attempt a plain merge first.
         conflicts = ubup_o.merge_from_branch(
             debp_n.branch, to_revision=self.revid_debp_n_C)
 
@@ -116,6 +119,7 @@ class MergePackageTests(TestCaseWithTransport):
         # The first conflict is resolved by calling fix_ancestry_as_needed().
         MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
 
+        # Try merging again.
         conflicts = ubup_o.merge_from_branch(
             debp_n.branch, to_revision=self.revid_debp_n_C)
 
@@ -153,6 +157,7 @@ class MergePackageTests(TestCaseWithTransport):
         Please note that the debian and ubuntu branches will have a conflict
         with respect to the file 'c'.
         """
+        # Set up the debian upstream branch.
         name = 'debu-n'
         vdata = [
             ('upstream-1.0', ('a',), None, None),
@@ -161,6 +166,7 @@ class MergePackageTests(TestCaseWithTransport):
             ]
         debu_n = self._setup_branch(name, vdata)
 
+        # Set up the debian packaging branch.
         name = 'debp-n'
         debp_n = self.make_branch_and_tree(name)
         debp_n.pull(debu_n.branch, stop_revision=self.revid_debu_n_A)
@@ -172,6 +178,7 @@ class MergePackageTests(TestCaseWithTransport):
             ]
         self._setup_branch(name, vdata, debp_n, 'd')
 
+        # Set up the ubuntu upstream branch.
         name = 'ubuu-o'
         ubuu_o = debu_n.bzrdir.sprout(
             name, revision_id=self.revid_debu_n_B).open_workingtree()
@@ -181,6 +188,7 @@ class MergePackageTests(TestCaseWithTransport):
             ]
         self._setup_branch(name, vdata, ubuu_o)
 
+        # Set up the ubuntu packaging branch.
         name = 'ubup-o'
         ubup_o = debu_n.bzrdir.sprout(
             name, revision_id=self.revid_debu_n_A).open_workingtree()
@@ -191,6 +199,7 @@ class MergePackageTests(TestCaseWithTransport):
             ]
         self._setup_branch(name, vdata, ubup_o, 'u')
 
+        # Return the ubuntu and the debian packaging branches.
         return (ubup_o, debp_n)
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
