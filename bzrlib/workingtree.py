@@ -1893,8 +1893,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
-                inv = self.branch.repository.deserialise_inventory(
-                    new_revision, xml)
+                inv = self.branch.repository._serializer.read_inventory_from_string(
+                    xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(xml)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
