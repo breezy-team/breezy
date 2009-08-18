@@ -49,7 +49,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEquals('r1', basis_inv.revision_id)
 
         store_inv = b.repository.get_inventory('r1')
-        self.assertEquals(store_inv._byid, basis_inv._byid)
+        self.assertEqual([], store_inv._make_delta(basis_inv))
 
         open('b', 'wb').write('b\n')
         t.add('b')
@@ -62,7 +62,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         self.assertEquals('r2', basis_inv.revision_id)
         store_inv = b.repository.get_inventory('r2')
 
-        self.assertEquals(store_inv._byid, basis_inv._byid)
+        self.assertEqual([], store_inv._make_delta(basis_inv))
 
     def test_wrong_format(self):
         """WorkingTree.basis safely ignores junk basis inventories"""

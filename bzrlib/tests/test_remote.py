@@ -31,6 +31,8 @@ from bzrlib import (
     config,
     errors,
     graph,
+    inventory,
+    inventory_delta,
     pack,
     remote,
     repository,
@@ -38,6 +40,7 @@ from bzrlib import (
     tests,
     treebuilder,
     urlutils,
+    versionedfile,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir, BzrDirFormat
@@ -331,15 +334,6 @@ class TestRemote(tests.TestCaseWithMemoryTransport):
     def get_repo_format(self):
         reference_bzrdir_format = bzrdir.format_registry.get('default')()
         return reference_bzrdir_format.repository_format
-
-    def disable_verb(self, verb):
-        """Disable a verb for one test."""
-        request_handlers = smart.request.request_handlers
-        orig_method = request_handlers.get(verb)
-        request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
 
     def assertFinished(self, fake_client):
         """Assert that all of a FakeClient's expected calls have occurred."""
@@ -2219,23 +2213,49 @@ class TestRepositoryHasRevision(TestRemoteRepository):
         self.assertEqual([], client._calls)
 
 
-class TestRepositoryInsertStream(TestRemoteRepository):
+class TestRepositoryInsertStreamBase(TestRemoteRepository):
+    """Base class for Repository.insert_stream and .insert_stream_1.19
+    tests.
+    """
+    
+    def checkInsertEmptyStream(self, repo, client):
+        """Insert an empty stream, checking the result.
 
-    def test_unlocked_repo(self):
-        transport_path = 'quack'
-        repo, client = self.setup_fake_client_and_repository(transport_path)
-        client.add_expected_call(
-            'Repository.insert_stream', ('quack/', ''),
-            'success', ('ok',))
-        client.add_expected_call(
-            'Repository.insert_stream', ('quack/', ''),
-            'success', ('ok',))
+        This checks that there are no resume_tokens or missing_keys, and that
+        the client is finished.
+        """
         sink = repo._get_sink()
         fmt = repository.RepositoryFormat.get_default_format()
         resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
         self.assertEqual([], resume_tokens)
         self.assertEqual(set(), missing_keys)
         self.assertFinished(client)
+
+
+class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
+    """Tests for using Repository.insert_stream verb when the _1.19 variant is
+    not available.
+
+    This test case is very similar to TestRepositoryInsertStream_1_19.
+    """
+
+    def setUp(self):
+        TestRemoteRepository.setUp(self)
+        self.disable_verb('Repository.insert_stream_1.19')
+
+    def test_unlocked_repo(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_no_lock_token(self):
         transport_path = 'quack'
@@ -2244,18 +2264,16 @@ class TestRepositoryInsertStream(TestRemoteRepository):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', ''))
         client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
+        client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
         client.add_expected_call(
             'Repository.insert_stream', ('quack/', ''),
             'success', ('ok',))
         repo.lock_write()
-        sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
-        self.assertFinished(client)
+        self.checkInsertEmptyStream(repo, client)
 
     def test_locked_repo_with_lock_token(self):
         transport_path = 'quack'
@@ -2264,18 +2282,150 @@ class TestRepositoryInsertStream(TestRemoteRepository):
             'Repository.lock_write', ('quack/', ''),
             'success', ('ok', 'a token'))
         client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
+            'unknown', ('Repository.insert_stream_1.19',))
+        client.add_expected_call(
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
             'success', ('ok',))
         client.add_expected_call(
             'Repository.insert_stream_locked', ('quack/', '', 'a token'),
             'success', ('ok',))
         repo.lock_write()
+        self.checkInsertEmptyStream(repo, client)
+
+    def test_stream_with_inventory_deltas(self):
+        """'inventory-deltas' substreams cannot be sent to the
+        Repository.insert_stream verb, because not all servers that implement
+        that verb will accept them.  So when one is encountered the RemoteSink
+        immediately stops using that verb and falls back to VFS insert_stream.
+        """
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'unknown', ('Repository.insert_stream_1.19',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream', ('quack/', ''),
+            'success', ('ok',))
+        # Create a fake real repository for insert_stream to fall back on, so
+        # that we can directly see the records the RemoteSink passes to the
+        # real sink.
+        class FakeRealSink:
+            def __init__(self):
+                self.records = []
+            def insert_stream(self, stream, src_format, resume_tokens):
+                for substream_kind, substream in stream:
+                    self.records.append(
+                        (substream_kind, [record.key for record in substream]))
+                return ['fake tokens'], ['fake missing keys']
+        fake_real_sink = FakeRealSink()
+        class FakeRealRepository:
+            def _get_sink(self):
+                return fake_real_sink
+        repo._real_repository = FakeRealRepository()
         sink = repo._get_sink()
         fmt = repository.RepositoryFormat.get_default_format()
-        resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
-        self.assertEqual([], resume_tokens)
-        self.assertEqual(set(), missing_keys)
+        stream = self.make_stream_with_inv_deltas(fmt)
+        resume_tokens, missing_keys = sink.insert_stream(stream, fmt, [])
+        # Every record from the first inventory delta should have been sent to
+        # the VFS sink.
+        expected_records = [
+            ('inventory-deltas', [('rev2',), ('rev3',)]),
+            ('texts', [('some-rev', 'some-file')])]
+        self.assertEqual(expected_records, fake_real_sink.records)
+        # The return values from the real sink's insert_stream are propagated
+        # back to the original caller.
+        self.assertEqual(['fake tokens'], resume_tokens)
+        self.assertEqual(['fake missing keys'], missing_keys)
         self.assertFinished(client)
+
+    def make_stream_with_inv_deltas(self, fmt):
+        """Make a simple stream with an inventory delta followed by more
+        records and more substreams to test that all records and substreams
+        from that point on are used.
+
+        This sends, in order:
+           * inventories substream: rev1, rev2, rev3.  rev2 and rev3 are
+             inventory-deltas.
+           * texts substream: (some-rev, some-file)
+        """
+        # Define a stream using generators so that it isn't rewindable.
+        inv = inventory.Inventory(revision_id='rev1')
+        def stream_with_inv_delta():
+            yield ('inventories', inventories_substream())
+            yield ('inventory-deltas', inventory_delta_substream())
+            yield ('texts', [
+                versionedfile.FulltextContentFactory(
+                    ('some-rev', 'some-file'), (), None, 'content')])
+        def inventories_substream():
+            # An empty inventory fulltext.  This will be streamed normally.
+            text = fmt._serializer.write_inventory_to_string(inv)
+            yield versionedfile.FulltextContentFactory(
+                ('rev1',), (), None, text)
+        def inventory_delta_substream():
+            # An inventory delta.  This can't be streamed via this verb, so it
+            # will trigger a fallback to VFS insert_stream.
+            entry = inv.make_entry(
+                'directory', 'newdir', inv.root.file_id, 'newdir-id')
+            entry.revision = 'ghost'
+            delta = [(None, 'newdir', 'newdir-id', entry)]
+            serializer = inventory_delta.InventoryDeltaSerializer(
+                versioned_root=True, tree_references=False)
+            lines = serializer.delta_to_lines('rev1', 'rev2', delta)
+            yield versionedfile.ChunkedContentFactory(
+                ('rev2',), (('rev1',)), None, lines)
+            # Another delta.
+            lines = serializer.delta_to_lines('rev1', 'rev3', delta)
+            yield versionedfile.ChunkedContentFactory(
+                ('rev3',), (('rev1',)), None, lines)
+        return stream_with_inv_delta()
+
+
+class TestRepositoryInsertStream_1_19(TestRepositoryInsertStreamBase):
+
+    def test_unlocked_repo(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'success', ('ok',))
+        self.checkInsertEmptyStream(repo, client)
+
+    def test_locked_repo_with_no_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', ''))
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', ''),
+            'success', ('ok',))
+        repo.lock_write()
+        self.checkInsertEmptyStream(repo, client)
+
+    def test_locked_repo_with_lock_token(self):
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'Repository.lock_write', ('quack/', ''),
+            'success', ('ok', 'a token'))
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        client.add_expected_call(
+            'Repository.insert_stream_1.19', ('quack/', '', 'a token'),
+            'success', ('ok',))
+        repo.lock_write()
+        self.checkInsertEmptyStream(repo, client)
 
 
 class TestRepositoryTarball(TestRemoteRepository):

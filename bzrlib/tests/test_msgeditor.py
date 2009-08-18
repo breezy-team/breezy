@@ -81,6 +81,7 @@ added:
 
     def make_multiple_pending_tree(self):
         from bzrlib import config
+        self.thisFailsStrictLockCheck() # clone?
         config.GlobalConfig().set_user_option('email',
                                               'Bilbo Baggins <bb@hobbit.net>')
         tree = self.make_branch_and_tree('a')
