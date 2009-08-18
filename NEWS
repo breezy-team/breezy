@@ -12,6 +12,10 @@ In Development
 Improvements
 ************
 
+* Revision specifiers can now be given in a more DWIM form, without
+  needing explicit prefixes for specifiers like tags or revision id's.
+  See ``bzr help revisionspec`` for full details.  (Matthew Fuller)
+
 * A better description of the platform is shown in crash tracebacks, ``bzr
   --version`` and ``bzr selftest``.
   (Martin Pool, #409137)
