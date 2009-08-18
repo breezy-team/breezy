@@ -60,7 +60,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def test_upstreams_diverged(self):
         """Check detection of diverged upstream branches."""
-        ubup_o, debp_n = self._setup_debian_un()
+        ubup_o, debp_n = self._setup_debian_upstrem_newer()
         source = debp_n.branch
         target = ubup_o.branch
 
@@ -80,7 +80,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
-        ubup_o, debp_n = self._setup_debian_un()
+        ubup_o, debp_n = self._setup_debian_upstrem_newer()
 
         # Ubuntu upstream.
         self.assertEquals(
@@ -101,7 +101,7 @@ class MergePackageTests(TestCaseWithTransport):
         The upstream conflict will be resolved by fix_ancestry_as_needed().
         Please note that the debian ancestry is more recent.
         """
-        ubup_o, debp_n = self._setup_debian_un()
+        ubup_o, debp_n = self._setup_debian_upstrem_newer()
 
         # Attempt a plain merge first.
         conflicts = ubup_o.merge_from_branch(
@@ -146,7 +146,7 @@ class MergePackageTests(TestCaseWithTransport):
         The upstream conflict will be resolved by fix_ancestry_as_needed().
         Please note that the debian ancestry is older in this case.
         """
-        ubup_n, debp_o = self._setup_debian_uo()
+        ubup_n, debp_o = self._setup_debian_upstream_older()
 
         # Attempt a plain merge first.
         conflicts = ubup_n.merge_from_branch(
@@ -179,7 +179,7 @@ class MergePackageTests(TestCaseWithTransport):
         conflict_paths = sorted([c.path for c in ubup_n.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
-    def _setup_debian_un(self):
+    def _setup_debian_upstrem_newer(self):
         """
         Set up the following test configuration (debian upstrem newer).
 
@@ -253,7 +253,7 @@ class MergePackageTests(TestCaseWithTransport):
         # Return the ubuntu and the debian packaging branches.
         return (ubup_o, debp_n)
 
-    def _setup_debian_uo(self):
+    def _setup_debian_upstream_older(self):
         """
         Set up the following test configuration (debian upstrem older).
 
