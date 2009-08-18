@@ -28,7 +28,7 @@ from bzrlib.errors import ConflictsInTree
 from bzrlib.merge import WeaveMerger
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb import merge_package 
+from bzrlib.plugins.builddeb import merge_package as MP
 
 _Debian_changelog = '''\
 ipsec-tools (%s) unstable; urgency=high
@@ -49,13 +49,6 @@ ipsec-tools (%s) karmic; urgency=low
 '''
 
 
-def _merge_log(strings):
-    result = ""
-    for s in strings:
-        result += s
-    return result
-
-
 def _prepend_log(text, path):
     content = open(path).read()
     fh = open(path, 'wb')
@@ -65,12 +58,15 @@ def _prepend_log(text, path):
 
 class MergePackageTests(TestCaseWithTransport):
 
-    def set_file_content(self, path, content):
-        f = open(path, 'wb')
-        try:
-            f.write(content)
-        finally:
-            f.close()
+    def test_latest_upstream_versions(self):
+        ubup_o, debp_n = self._setup_debian_un()
+
+        # Ubuntu upstream.
+        self.assertEquals(
+            MP._latest_version(ubup_o.branch).upstream_version, '1.1.2')
+        # Debian upstream.
+        self.assertEquals(
+            MP._latest_version(debp_n.branch).upstream_version, '2.0')
 
     def test_debian_un(self):
         """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
@@ -82,6 +78,59 @@ class MergePackageTests(TestCaseWithTransport):
         conflict in 'debian/changelog'.
 
         The upstream conflict will be resolved by fix_ancestry_as_needed().
+        """
+        ubup_o, debp_n = self._setup_debian_un()
+        conflicts = ubup_o.merge_from_branch(
+            debp_n.branch, to_revision=self.revid_debp_n_C)
+
+        # There are two conflicts in the 'c' and the 'debian/changelog' files
+        # respectively.
+        self.assertEquals(conflicts, 2)
+        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
+        self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
+
+        # Undo the failed merge.
+        ubup_o.revert()
+
+        # The first conflict is resolved by calling fix_ancestry_as_needed().
+        MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
+
+        conflicts = ubup_o.merge_from_branch(
+            debp_n.branch, to_revision=self.revid_debp_n_C)
+
+        # And, voila, only the packaging branch conflict remains.
+        self.assertEquals(conflicts, 1)
+        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
+        self.assertEquals(conflict_paths, [u'debian/changelog'])
+
+    def _setup_debian_un(self):
+        """
+        Set up the following test configuration (debian upstrem newer).
+
+        debian-upstream                 ,------------------H
+                           A-----------B                    \
+        ubuntu-upstream     \           \`-------G           \
+                             \           \        \           \
+        debian-packaging      \ ,---------D--------\-----------J
+                               C                    \
+        ubuntu-packaging        `----E---------------I
+
+        where:
+             - A = 1.0
+             - B = 1.1
+             - H = 2.0
+
+             - G = 1.1.2
+
+             - C = 1.0-1
+             - D = 1.1-1
+             - J = 2.0-1
+
+             - E = 1.0-1ubuntu1
+             - I = 1.1.2-0ubuntu1
+
+        Please note that the debian and ubuntu branches will have a conflict
+        with respect to the file 'c'.
         """
         name = 'debu-n'
         vdata = [
@@ -121,28 +170,7 @@ class MergePackageTests(TestCaseWithTransport):
             ]
         self._setup_branch(name, vdata, ubup_o, 'u')
 
-        conflicts = ubup_o.merge_from_branch(
-            debp_n.branch, to_revision=self.revid_debp_n_C)
-
-        # There are two conflicts in the 'c' and the 'debian/changelog' files
-        # respectively.
-        self.assertEquals(conflicts, 2)
-        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
-        self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
-
-        # Undo the failed merge.
-        ubup_o.revert()
-
-        # The first conflict is resolved by calling fix_ancestry_as_needed().
-        merge_package.fix_ancestry_as_needed(ubup_o, debp_n.branch)
-
-        conflicts = ubup_o.merge_from_branch(
-            debp_n.branch, to_revision=self.revid_debp_n_C)
-
-        # And, voila, only the packaging branch conflict remains.
-        self.assertEquals(conflicts, 1)
-        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
-        self.assertEquals(conflict_paths, [u'debian/changelog'])
+        return (ubup_o, debp_n)
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
         vids = list(string.ascii_uppercase)
