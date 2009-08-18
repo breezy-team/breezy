@@ -9,6 +9,12 @@ Bazaar Release Notes
 In Development
 ##############
 
+Bug Fixes
+*********
+
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
 Improvements
 ************
 
@@ -57,6 +63,11 @@ Bug Fixes
 
 * StreamSource generates rich roots from non-rich root sources correctly
   now.  (Andrew Bennetts, #368921)
+
+* When deciding whether a repository was compatible for upgrading or
+  fetching, we previously incorrectly checked the default repository
+  format for the bzrdir format, rather than the format that was actually
+  present on disk.  (Martin Pool, #408824)
 
 Improvements
 ************

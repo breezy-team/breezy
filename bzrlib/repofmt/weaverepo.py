@@ -320,9 +320,6 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.chk_bytes = None
         return result
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -494,9 +491,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 7"
-
-    def check_conversion_target(self, target_format):
-        pass
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

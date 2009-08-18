@@ -566,17 +566,6 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
-    def check_conversion_target(self, target_format):
-        if self.rich_root_data and not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format,
-                from_format=self)
-        if (self.supports_tree_reference and
-            not getattr(target_format, 'supports_tree_reference', False)):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format,
-                from_format=self)
-
     def network_name(self):
         if self._network_name:
             return self._network_name

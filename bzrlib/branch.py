@@ -1152,6 +1152,9 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        if (repository_policy is not None and
+            repository_policy.requires_stacking()):
+            to_bzrdir._format.require_stacking(_skip_repo=True)
         result = to_bzrdir.create_branch()
         result.lock_write()
         try:

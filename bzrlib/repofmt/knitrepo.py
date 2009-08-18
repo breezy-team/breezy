@@ -424,9 +424,6 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 1"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnit3(RepositoryFormatKnit):
     """Bzr repository knit format 3.
