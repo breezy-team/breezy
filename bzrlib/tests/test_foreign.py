@@ -309,6 +309,7 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         self.build_tree_contents([('br1/bla', 'original contents\n')])
         wt.add('bla', 'bla-a')
         wt.commit('bla-a')
+        root_id = wt.get_root_id()
         target = wt.bzrdir.sprout('br2').open_workingtree()
         target.unversion(['bla-a'])
         target.add('bla', 'bla-b')
@@ -319,7 +320,7 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEquals(["TREE_ROOT", "bla-b"], list(wt.inventory))
+            self.assertEquals([root_id, "bla-b"], list(wt.inventory))
         finally:
             wt.unlock()
 

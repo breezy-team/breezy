@@ -130,8 +130,7 @@ class BzrDir(object):
 
     def check_conversion_target(self, target_format):
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        self.open_repository()._format.check_conversion_target(target_repo_format)
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -3039,7 +3038,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
@@ -3547,6 +3547,10 @@ class RepositoryAcquisitionPolicy(object):
                 errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise
+
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
 
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
