@@ -494,7 +494,8 @@ cdef class _MergeSorter:
         self._depth_first_stack = []
         self._last_stack_item = -1
         self._scheduled_nodes = []
-        if tip_key is not None and tip_key != NULL_REVISION:
+        if (tip_key is not None and tip_key != NULL_REVISION
+            and tip_key != (NULL_REVISION,)):
             node = self.graph._nodes[tip_key]
             self._get_ms_node(node)
             self._push_node(node, 0)

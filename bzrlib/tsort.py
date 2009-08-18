@@ -409,7 +409,8 @@ class MergeSorter(object):
 
         # seed the search with the tip of the branch
         if (branch_tip is not None and
-            branch_tip != _mod_revision.NULL_REVISION):
+            branch_tip != _mod_revision.NULL_REVISION and
+            branch_tip != (_mod_revision.NULL_REVISION,)):
             parents = self._graph.pop(branch_tip)
             self._push_node(branch_tip, 0, parents)
 

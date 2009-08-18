@@ -346,12 +346,14 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
         # sorting of an emptygraph does not error
         self.assertSortAndIterate({}, None, [])
         self.assertSortAndIterate({}, NULL_REVISION, [])
+        self.assertSortAndIterate({}, (NULL_REVISION,), [])
 
     def test_merge_sort_not_empty_no_tip(self):
         # merge sorting of a branch starting with None should result
         # in an empty list: no revisions are dragged in.
         self.assertSortAndIterate({0: []}, None, [])
-        self.assertSortAndIterate({0: []}, None, [])
+        self.assertSortAndIterate({0: []}, NULL_REVISION, [])
+        self.assertSortAndIterate({0: []}, (NULL_REVISION,), [])
 
     def test_merge_sort_one_revision(self):
         # sorting with one revision as the tip returns the correct fields:
