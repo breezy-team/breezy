@@ -817,7 +817,7 @@ class CHKInventoryRepository(KnitPackRepository):
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.
         inv_to_str = self._serializer.write_inventory_to_string
-        for inv in self.iter_inventories(revision_ids, ordering):
+        for inv in self.iter_inventories(revision_ids, ordering=ordering):
             yield inv_to_str(inv), inv.revision_id
 
     def _find_present_inventory_keys(self, revision_keys):
