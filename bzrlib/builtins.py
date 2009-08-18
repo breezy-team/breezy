@@ -603,6 +603,9 @@ class cmd_add(Command):
     branches that will be merged later (without showing the two different
     adds as a conflict). It is also useful when merging another project
     into a subdirectory of this one.
+    
+    Any files matching patterns in the ignore list will not be added
+    unless they are explicitly mentioned.
     """
     takes_args = ['file*']
     takes_options = [
@@ -616,7 +619,7 @@ class cmd_add(Command):
                help='Lookup file ids from this tree.'),
         ]
     encoding_type = 'replace'
-    _see_also = ['remove']
+    _see_also = ['remove', 'ignore']
 
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
@@ -654,14 +657,6 @@ class cmd_add(Command):
                     for path in ignored[glob]:
                         self.outf.write("ignored %s matching \"%s\"\n"
                                         % (path, glob))
-            else:
-                match_len = 0
-                for glob, paths in ignored.items():
-                    match_len += len(paths)
-                self.outf.write("ignored %d file(s).\n" % match_len)
-            self.outf.write("If you wish to add ignored files, "
-                            "please add them explicitly by name. "
-                            "(\"bzr ignored\" gives a list)\n")
 
 
 class cmd_mkdir(Command):
@@ -1472,7 +1467,7 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Only delete files if they can be'
                  ' safely recovered (default).',
-            keep="Don't delete any files.",
+            keep='Delete from bzr but leave the working copy.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
     aliases = ['rm', 'del']

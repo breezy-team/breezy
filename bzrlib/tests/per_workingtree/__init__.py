@@ -66,7 +66,7 @@ def workingtree_formats():
 
 
 def load_tests(standard_tests, module, loader):
-    per_wt_mod_names = [
+    test_names = [
         'add_reference',
         'add',
         'annotate_iter',
@@ -74,6 +74,7 @@ def load_tests(standard_tests, module, loader):
         'basis_tree',
         'break_lock',
         'changes_from',
+        'check',
         'content_filters',
         'commit',
         'eol_conversion',
@@ -106,6 +107,9 @@ def load_tests(standard_tests, module, loader):
         'walkdirs',
         'workingtree',
         ]
+    test_workingtree_implementations = [
+        'bzrlib.tests.per_workingtree.test_' + name for
+        name in test_names]
 
     scenarios = make_scenarios(
         tests.default_transport,
@@ -117,7 +121,5 @@ def load_tests(standard_tests, module, loader):
 
     # add the tests for the sub modules
     return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(
-        ['bzrlib.tests.per_workingtree.test_' + name
-         for name in per_wt_mod_names]),
+        loader.loadTestsFromModuleNames(test_workingtree_implementations),
         scenarios, standard_tests)

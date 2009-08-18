@@ -117,6 +117,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_create_rename(self):
         """Rename an inventory entry while creating the file"""
+        self.thisFailsStrictLockCheck()
         tree =self.make_branch_and_tree('.')
         file('name1', 'wb').write('Hello')
         tree.add('name1')
@@ -127,6 +128,7 @@ class TestMerge(TestCaseWithTransport):
 
     def test_layered_rename(self):
         """Rename both child and parent at same time"""
+        self.thisFailsStrictLockCheck()
         tree =self.make_branch_and_tree('.')
         os.mkdir('dirname1')
         tree.add('dirname1')
@@ -213,6 +215,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertFileEqual('text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
+        self.thisFailsStrictLockCheck()
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', 'content_1')])
         tree_a.add('file')

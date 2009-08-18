@@ -486,6 +486,8 @@ class DummyRepository(object):
     _serializer = None
 
     def supports_rich_root(self):
+        if self._format is not None:
+            return self._format.rich_root_data
         return False
 
     def get_graph(self):
@@ -542,11 +544,17 @@ class TestInterRepository(TestCaseWithTransport):
         # pair that it returns true on for the is_compatible static method
         # check
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
+        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_b._serializer = repo._serializer
+        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.rich_root_data = repo._format.rich_root_data
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -1008,14 +1016,17 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        # See bug https://bugs.launchpad.net/bzr/+bug/389141 for information
-        # about why this was turned into expectFailure
-        self.expectFailure('new Stream fetch fills in missing compression'
-           ' parents (bug #389141)',
-           self.assertRaises, (errors.RevisionNotPresent, errors.BzrCheckError),
-                              empty_repo.fetch, broken_repo)
-        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
-                          empty_repo.fetch, broken_repo)
+        try:
+            empty_repo.fetch(broken_repo)
+        except (errors.RevisionNotPresent, errors.BzrCheckError):
+            # Test successful: compression parent not being copied leads to
+            # error.
+            return
+        empty_repo.lock_read()
+        self.addCleanup(empty_repo.unlock)
+        text = empty_repo.texts.get_record_stream(
+            [('file2-id', 'rev3')], 'topological', True).next()
+        self.assertEqual('line\n', text.get_bytes_as('fulltext'))
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1030,7 +1041,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def make_packs_and_alt_repo(self, write_lock=False):
         """Create a pack repo with 3 packs, and access it via a second repo."""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format=self.get_format())
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('one')
@@ -1346,7 +1357,7 @@ class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
     def test_pack_optimizes_pack_order(self):
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('A', None, [
             ('add', ('', 'root-id', 'directory', None)),

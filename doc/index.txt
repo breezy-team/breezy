@@ -21,9 +21,6 @@ Core Documentation
 
 * `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_ 
 
-* `Developer Document Catalog <developers/index.html>`_ |--| for developers
-  of Bazaar and plugins
-
 
 Tutorials
 =========
@@ -36,6 +33,12 @@ Tutorials
 
 * `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
 
+
+Developer Documentation
+=======================
+
+* `Developer Document Catalog <developers/index.html>`_ |--| for developers
+  of Bazaar and plugins
 
 Web links
 =========

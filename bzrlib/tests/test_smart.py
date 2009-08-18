@@ -202,7 +202,7 @@ class TestSmartServerRequestCreateRepository(tests.TestCaseWithMemoryTransport):
         self.make_bzrdir('.')
         request_class = bzrlib.smart.bzrdir.SmartServerRequestCreateRepository
         request = request_class(backing)
-        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_bzrdir_format = bzrdir.format_registry.get('pack-0.92')()
         reference_format = reference_bzrdir_format.repository_format
         network_name = reference_format.network_name()
         expected = SuccessfulSmartServerResponse(
@@ -247,17 +247,21 @@ class TestSmartServerRequestFindRepository(tests.TestCaseWithMemoryTransport):
             subtrees = 'yes'
         else:
             subtrees = 'no'
+        if repo._format.supports_external_lookups:
+            external = 'yes'
+        else:
+            external = 'no'
         if (smart.bzrdir.SmartServerRequestFindRepositoryV3 ==
             self._request_class):
             return SuccessfulSmartServerResponse(
-                ('ok', '', rich_root, subtrees, 'no',
+                ('ok', '', rich_root, subtrees, external,
                  repo._format.network_name()))
         elif (smart.bzrdir.SmartServerRequestFindRepositoryV2 ==
             self._request_class):
             # All tests so far are on formats, and for non-external
             # repositories.
             return SuccessfulSmartServerResponse(
-                ('ok', '', rich_root, subtrees, 'no'))
+                ('ok', '', rich_root, subtrees, external))
         else:
             return SuccessfulSmartServerResponse(('ok', '', rich_root, subtrees))
 
@@ -603,6 +607,43 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
         branch.unlock()
 
 
+class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
+    # Only called when the branch format and tags match [yay factory
+    # methods] so only need to test straight forward cases.
+
+    def test_set_bytes(self):
+        base_branch = self.make_branch('base')
+        tag_bytes = base_branch._get_tags_bytes()
+        # get_lock_tokens takes out a lock.
+        branch_token, repo_token = self.get_lock_tokens(base_branch)
+        request = smart.branch.SmartServerBranchSetTagsBytes(
+            self.get_transport())
+        response = request.execute('base', branch_token, repo_token)
+        self.assertEqual(None, response)
+        response = request.do_chunk(tag_bytes)
+        self.assertEqual(None, response)
+        response = request.do_end()
+        self.assertEquals(
+            SuccessfulSmartServerResponse(()), response)
+        base_branch.unlock()
+
+    def test_lock_failed(self):
+        base_branch = self.make_branch('base')
+        base_branch.lock_write()
+        tag_bytes = base_branch._get_tags_bytes()
+        request = smart.branch.SmartServerBranchSetTagsBytes(
+            self.get_transport())
+        self.assertRaises(errors.TokenMismatch, request.execute,
+            'base', 'wrong token', 'wrong token')
+        # The request handler will keep processing the message parts, so even
+        # if the request fails immediately do_chunk and do_end are still
+        # called.
+        request.do_chunk(tag_bytes)
+        request.do_end()
+        base_branch.unlock()
+
+
+
 class SetLastRevisionTestBase(TestLockedBranch):
     """Base test case for verbs that implement set_last_revision."""
 
@@ -872,8 +913,8 @@ class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
 
 
 class TestSmartServerBranchRequestGetTagsBytes(tests.TestCaseWithMemoryTransport):
-# Only called when the branch format and tags match [yay factory
-# methods] so only need to test straight forward cases.
+    # Only called when the branch format and tags match [yay factory
+    # methods] so only need to test straight forward cases.
 
     def test_get_bytes(self):
         base_branch = self.make_branch('base')
@@ -1204,6 +1245,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(tests.TestCaseWithMemoryTranspor
         self.assertEqual(
             SmartServerResponse(('history-incomplete', 2, r2)),
             request.execute('stacked', 1, (3, r3)))
+
 
 class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
 

@@ -1045,8 +1045,15 @@ class KnitVersionedFiles(VersionedFiles):
     def get_annotator(self):
         return _KnitAnnotator(self)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        if keys is None:
+            return self._logical_check()
+        else:
+            # At the moment, check does not extra work over get_record_stream
+            return self.get_record_stream(keys, 'unordered', True)
+
+    def _logical_check(self):
         # This doesn't actually test extraction of everything, but that will
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
@@ -3621,6 +3628,6 @@ class _KnitAnnotator(annotate.Annotator):
                     to_process.extend(self._process_pending(key))
 
 try:
-    from bzrlib._knit_load_data_c import _load_data_c as _load_data
+    from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
 except ImportError:
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

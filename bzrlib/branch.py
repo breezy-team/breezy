@@ -149,6 +149,14 @@ class Branch(object):
         if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
 
+    def _get_check_refs(self):
+        """Get the references needed for check().
+
+        See bzrlib.check.
+        """
+        revid = self.last_revision()
+        return [('revision-existence', revid), ('lefthand-distance', revid)]
+
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
         """Open the branch rooted at base.
@@ -1139,6 +1147,9 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        if (repository_policy is not None and
+            repository_policy.requires_stacking()):
+            to_bzrdir._format.require_stacking(_skip_repo=True)
         result = to_bzrdir.create_branch()
         result.lock_write()
         try:
@@ -1212,7 +1223,7 @@ class Branch(object):
         target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
-    def check(self):
+    def check(self, refs):
         """Check consistency of the branch.
 
         In particular this checks that revisions given in the revision-history
@@ -1221,42 +1232,23 @@ class Branch(object):
 
         Callers will typically also want to check the repository.
 
+        :param refs: Calculated refs for this branch as specified by
+            branch._get_check_refs()
         :return: A BranchCheckResult.
         """
-        ret = BranchCheckResult(self)
-        mainline_parent_id = None
+        result = BranchCheckResult(self)
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = []
-        try:
-            for revid in self.repository.iter_reverse_revision_history(
-                last_revision_id):
-                real_rev_history.append(revid)
-        except errors.RevisionNotPresent:
-            ret.ghosts_in_mainline = True
-        else:
-            ret.ghosts_in_mainline = False
-        real_rev_history.reverse()
-        if len(real_rev_history) != last_revno:
-            raise errors.BzrCheckError('revno does not match len(mainline)'
-                ' %s != %s' % (last_revno, len(real_rev_history)))
-        # TODO: We should probably also check that real_rev_history actually
-        #       matches self.revision_history()
-        for revision_id in real_rev_history:
-            try:
-                revision = self.repository.get_revision(revision_id)
-            except errors.NoSuchRevision, e:
-                raise errors.BzrCheckError("mainline revision {%s} not in repository"
-                            % revision_id)
-            # In general the first entry on the revision history has no parents.
-            # But it's not illegal for it to have parents listed; this can happen
-            # in imports from Arch when the parents weren't reachable.
-            if mainline_parent_id is not None:
-                if mainline_parent_id not in revision.parent_ids:
-                    raise errors.BzrCheckError("previous revision {%s} not listed among "
-                                        "parents of {%s}"
-                                        % (mainline_parent_id, revision_id))
-            mainline_parent_id = revision_id
-        return ret
+        actual_revno = refs[('lefthand-distance', last_revision_id)]
+        if actual_revno != last_revno:
+            result.errors.append(errors.BzrCheckError(
+                'revno does not match len(mainline) %s != %s' % (
+                last_revno, actual_revno)))
+        # TODO: We should probably also check that self.revision_history
+        # matches the repository for older branch formats.
+        # If looking for the code that cross-checks repository parents against
+        # the iter_reverse_revision_history output, that is now a repository
+        # specific check.
+        return result
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2839,7 +2831,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
-        self.ghosts_in_mainline = False
+        self.errors = []
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2847,11 +2839,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s',
-             self.branch.base,
-             self.branch._format)
-        if self.ghosts_in_mainline:
-            note('branch contains ghosts in mainline')
+        note('checked branch %s format %s', self.branch.base,
+            self.branch._format)
+        for error in self.errors:
+            note('found error:%s', error)
 
 
 class Converter5to6(object):
