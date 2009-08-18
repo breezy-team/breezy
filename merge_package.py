@@ -176,6 +176,7 @@ def fix_ancestry_as_needed(tree, source):
     _debug(['\n>> fix_ancestry_as_needed()\n', '!! Upstream branches diverged'])
 
     upstreams_diverged = False
+    t_upstream_reverted = False
     target = tree.branch
 
     try:
@@ -189,7 +190,7 @@ def fix_ancestry_as_needed(tree, source):
         target.unlock()
 
     if not upstreams_diverged:
-        return upstreams_diverged
+        return (upstreams_diverged, t_upstream_reverted)
 
     # "Unpack" the upstream versions and revision ids for the merge source and
     # target branch respectively.
@@ -218,6 +219,7 @@ def fix_ancestry_as_needed(tree, source):
             _debug(["\n--> Reverting upstream target tree.\n"])
             tmp_target_upstream_tree.revert(
                 None, source.repository.revision_tree(usource_revid))
+            t_upstream_reverted = True
 
         _debug(["--> Setting parent IDs on temporary upstream tree.\n"])
         tmp_target_upstream_tree.set_parent_ids(
@@ -244,4 +246,4 @@ def fix_ancestry_as_needed(tree, source):
 
     _debug(['\n<< fix_ancestry_as_needed()\n'])
 
-    return upstreams_diverged
+    return (upstreams_diverged, t_upstream_reverted)

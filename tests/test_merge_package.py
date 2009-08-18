@@ -89,7 +89,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEquals(
             MP._latest_version(debp_n.branch).upstream_version, '2.0')
 
-    def test_debian_un(self):
+    def test_debian_upstream_newer(self):
         """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
 
         The debian and ubuntu upstream branches will differ with regard to
@@ -117,7 +117,13 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_o.revert()
 
         # The first conflict is resolved by calling fix_ancestry_as_needed().
-        MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
+        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
+
+        # The ancestry did diverge and needed to be fixed.
+        self.assertEquals(upstreams_diverged, True)
+        # The (temporary) target upstream branch had to be reverted to the
+        # source upstream branch since the latter was more recent.
+        self.assertEquals(t_upstream_reverted, True)
 
         # Try merging again.
         conflicts = ubup_o.merge_from_branch(
@@ -126,6 +132,51 @@ class MergePackageTests(TestCaseWithTransport):
         # And, voila, only the packaging branch conflict remains.
         self.assertEquals(conflicts, 1)
         conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
+        self.assertEquals(conflict_paths, [u'debian/changelog'])
+
+    def test_debian_upstream_older(self):
+        """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
+
+        The debian and ubuntu upstream branches will differ with regard to
+        the content of the file 'c'.
+
+        Furthermore the respective packaging branches will have a text
+        conflict in 'debian/changelog'.
+
+        The upstream conflict will be resolved by fix_ancestry_as_needed().
+        Please note that the debian ancestry is older in this case.
+        """
+        ubup_n, debp_o = self._setup_debian_uo()
+
+        # Attempt a plain merge first.
+        conflicts = ubup_n.merge_from_branch(
+            debp_o.branch, to_revision=self.revid_debp_o_C)
+
+        # There are two conflicts in the 'c' and the 'debian/changelog' files
+        # respectively.
+        self.assertEquals(conflicts, 2)
+        conflict_paths = sorted([c.path for c in ubup_n.conflicts()])
+        self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
+
+        # Undo the failed merge.
+        ubup_n.revert()
+
+        # The first conflict is resolved by calling fix_ancestry_as_needed().
+        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup_n, debp_o.branch)
+
+        # The ancestry did diverge and needed to be fixed.
+        self.assertEquals(upstreams_diverged, True)
+        # The target upstream branch was more recent in this case and hence
+        # was not reverted to the source upstream branch.
+        self.assertEquals(t_upstream_reverted, False)
+
+        # Try merging again.
+        conflicts = ubup_n.merge_from_branch(
+            debp_o.branch, to_revision=self.revid_debp_o_C)
+
+        # And, voila, only the packaging branch conflict remains.
+        self.assertEquals(conflicts, 1)
+        conflict_paths = sorted([c.path for c in ubup_n.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def _setup_debian_un(self):
@@ -201,6 +252,80 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Return the ubuntu and the debian packaging branches.
         return (ubup_o, debp_n)
+
+    def _setup_debian_uo(self):
+        """
+        Set up the following test configuration (debian upstrem older).
+
+        debian-upstream                 ,----H-------------.
+                           A-----------B                    \
+        ubuntu-upstream     \           \`-----------G       \
+                             \           \            \       \
+        debian-packaging      \ ,---------D------------\-------J
+                               C                        \
+        ubuntu-packaging        `----E-------------------I
+
+        where:
+             - A = 1.0
+             - B = 1.1
+             - H = 1.1.3
+
+             - G = 2.1
+
+             - C = 1.0-1
+             - D = 1.1-1
+             - J = 1.1.3-1
+
+             - E = 1.0-1ubuntu1
+             - I = 2.1-0ubuntu1
+
+        Please note that the debian and ubuntu branches will have a conflict
+        with respect to the file 'c'.
+        """
+        # Set up the debian upstream branch.
+        name = 'debu-o'
+        vdata = [
+            ('upstream-1.0', ('a',), None, None),
+            ('upstream-1.1', ('b',), None, None),
+            ('upstream-1.1.3', ('c',), None, None),
+            ]
+        debu_o = self._setup_branch(name, vdata)
+
+        # Set up the debian packaging branch.
+        name = 'debp-o'
+        debp_o = self.make_branch_and_tree(name)
+        debp_o.pull(debu_o.branch, stop_revision=self.revid_debu_o_A)
+
+        vdata = [
+            ('1.0-1', ('debian/', 'debian/changelog'), None, None),
+            ('1.1-1', ('o',), debu_o, self.revid_debu_o_B),
+            ('1.1.3-1', ('p',), debu_o, self.revid_debu_o_C),
+            ]
+        self._setup_branch(name, vdata, debp_o, 'd')
+
+        # Set up the ubuntu upstream branch.
+        name = 'ubuu-n'
+        ubuu_n = debu_o.bzrdir.sprout(
+            name, revision_id=self.revid_debu_o_B).open_workingtree()
+
+        vdata = [
+            ('upstream-2.1', ('c',), None, None),
+            ]
+        self._setup_branch(name, vdata, ubuu_n)
+
+        # Set up the ubuntu packaging branch.
+        name = 'ubup-n'
+        ubup_n = debu_o.bzrdir.sprout(
+            name, revision_id=self.revid_debu_o_A).open_workingtree()
+
+        vdata = [
+            ('1.0-1ubuntu1', (), debp_o, self.revid_debp_o_A),
+            ('2.1-0ubuntu1', (), ubuu_n, self.revid_ubuu_n_A),
+            ]
+        self._setup_branch(name, vdata, ubup_n, 'u')
+
+        # Return the ubuntu and the debian packaging branches.
+        return (ubup_n, debp_o)
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
         vids = list(string.ascii_uppercase)
