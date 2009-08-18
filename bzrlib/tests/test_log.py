@@ -142,6 +142,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
+        if msg == committed_msg:
+            raise tests.KnownFailure(
+                "Commit message was preserved, but it wasn't expected to be.")
         self.assertNotEqual(msg, committed_msg)
         self.assertTrue(len(committed_msg) > len(msg))
 
