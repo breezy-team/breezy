@@ -146,12 +146,6 @@ class TestOddRevisionSpec(TestRevisionSpec):
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
-    def test_unregistered_spec(self):
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, 'foo')
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, '123a')
-
 
 class TestRevisionSpec_dwim(TestRevisionSpec):
 
