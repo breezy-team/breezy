@@ -58,7 +58,28 @@ def _prepend_log(text, path):
 
 class MergePackageTests(TestCaseWithTransport):
 
+    def test_upstreams_diverged(self):
+        """Check detection of diverged upstream branches."""
+        ubup_o, debp_n = self._setup_debian_un()
+        source = debp_n.branch
+        target = ubup_o.branch
+
+        upstreams_diverged = False
+
+        try:
+            source.lock_read()
+            target.lock_read()
+            upstream_vdata = MP._upstream_version_data(source, target)
+            revids = [vdata[1] for vdata in upstream_vdata]
+            upstreams_diverged = MP._upstreams_diverged(source, target, revids)
+        finally:
+            source.unlock()
+            target.unlock()
+
+        self.assertEquals(upstreams_diverged, True)
+
     def test_latest_upstream_versions(self):
+        """Check correctness of upstream version computation."""
         ubup_o, debp_n = self._setup_debian_un()
 
         # Ubuntu upstream.
