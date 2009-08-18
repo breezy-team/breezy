@@ -25,6 +25,7 @@ from bzrlib import (
     errors,
     gpg,
     graph,
+    info,
     osutils,
     remote,
     repository,
@@ -33,6 +34,9 @@ from bzrlib import (
 from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import CommonInventory, Inventory, InventoryDirectory
+from bzrlib.repofmt.pack_repo import (
+    RepositoryFormatKnitPack5RichRootBroken,
+    )
 from bzrlib.repofmt.weaverepo import (
     RepositoryFormat5,
     RepositoryFormat6,
@@ -913,35 +917,49 @@ class TestRepository(TestCaseWithRepository):
             local_branch.repository._format.supports_external_lookups,
             remote_branch.repository._format.supports_external_lookups)
 
-    def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
-        """Cloning an unstackable branch format to a somewhere with a default
-        stack-on branch preserves the repository format.  (i.e. if the source
-        repository is stackable, the branch format is upgraded but the
-        repository format is preserved.)
+    def test_clone_stacking_policy_upgrades(self):
+        """Cloning an unstackable branch format to somewhere with a default
+        stack-on branch upgrades branch and repo to match the target and honour
+        the policy.
         """
         try:
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise TestNotApplicable('Cannot make a shared repository')
+        if isinstance(repo.bzrdir, bzrdir.BzrDirPreSplitOut):
+            raise KnownFailure("pre metadir branches do not upgrade on push "
+                "with stacking policy")
+        if isinstance(repo._format, RepositoryFormatKnitPack5RichRootBroken):
+            raise TestNotApplicable("unsupported format")
         # Make a source branch in 'repo' in an unstackable branch format
         bzrdir_format = self.repository_format._matchingbzrdir
         transport = self.get_transport('repo/branch')
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
         branch = BzrBranchFormat6().initialize(target_bzrdir)
-        if not repo.supports_rich_root():
-            stack_on_format = "pack-0.92"
+        # Ensure that stack_on will be stackable and match the serializer of
+        # repo.
+        if isinstance(repo, remote.RemoteRepository):
+            repo._ensure_real()
+            info_repo = repo._real_repository
         else:
-            if repo._format.supports_chks:
-                stack_on_format = "2a"
-            else:
-                stack_on_format = "1.9-rich-root"
-        self.make_branch('stack-on-me', format=stack_on_format)
+            info_repo = repo
+        format_description = info.describe_format(info_repo.bzrdir,
+            info_repo, None, None)
+        formats = format_description.split(' or ')
+        stack_on_format = formats[0]
+        if stack_on_format in ["pack-0.92", "dirstate", "metaweave"]:
+            stack_on_format = "1.9"
+        elif stack_on_format in ["dirstate-with-subtree", "rich-root",
+            "rich-root-pack", "pack-0.92-subtree"]:
+            stack_on_format = "1.9-rich-root"
+        # formats not tested for above are already stackable, so we can use the
+        # format as-is.
+        stack_on = self.make_branch('stack-on-me', format=stack_on_format)
         self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
         target = branch.bzrdir.clone(self.get_url('target'))
-        # The target branch supports stacking if the source repository does.
-        self.assertEqual(repo._format.supports_external_lookups,
-                         target.open_branch()._format.supports_stacking())
+        # The target branch supports stacking.
+        self.assertTrue(target.open_branch()._format.supports_stacking())
         if isinstance(repo, remote.RemoteRepository):
             repo._ensure_real()
             repo = repo._real_repository
@@ -949,8 +967,12 @@ class TestRepository(TestCaseWithRepository):
         if isinstance(target_repo, remote.RemoteRepository):
             target_repo._ensure_real()
             target_repo = target_repo._real_repository
-        # The repository format is preserved.
-        self.assertEqual(repo._format, target_repo._format)
+        # The repository format is unchanged if it could already stack, or the
+        # same as the stack on.
+        if repo._format.supports_external_lookups:
+            self.assertEqual(repo._format, target_repo._format)
+        else:
+            self.assertEqual(stack_on.repository._format, target_repo._format)
 
     def test__get_sink(self):
         repo = self.make_repository('repo')
