@@ -545,6 +545,8 @@ class MergeSorter(object):
                     if not left_subtree_pushed_stack[-1]:
                         # recurse depth first into the primary parent
                         next_node_name = pending_parents_stack[-1].pop(0)
+                        is_left_subtree = True
+                        left_subtree_pushed_stack[-1] = True
                     else:
                         # place any merges in right-to-left order for scheduling
                         # which gives us left-to-right order after we reverse
@@ -554,6 +556,7 @@ class MergeSorter(object):
                         # display nicely (you get smaller trees at the top
                         # of the combined merge).
                         next_node_name = pending_parents_stack[-1].pop()
+                        is_left_subtree = False
                     if next_node_name in completed_node_names:
                         # this parent was completed by a child on the
                         # call stack. skip it.
@@ -570,12 +573,11 @@ class MergeSorter(object):
                         # this indicates a cycle.
                         raise errors.GraphCycleError(node_name_stack)
                     next_merge_depth = 0
-                    if left_subtree_pushed_stack[-1]:
+                    if is_left_subtree:
                         # a new child branch from name_stack[-1]
-                        next_merge_depth = 1
-                    else:
                         next_merge_depth = 0
-                        left_subtree_pushed_stack[-1] = True
+                    else:
+                        next_merge_depth = 1
                     next_merge_depth = (
                         node_merge_depth_stack[-1] + next_merge_depth)
                     push_node(

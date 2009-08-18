@@ -1209,6 +1209,8 @@ def _iter_with_errors(iterable):
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
+            mutter('_iter_with_errors caught error')
+            log_exception_quietly()
             yield sys.exc_info(), None
             return
 
