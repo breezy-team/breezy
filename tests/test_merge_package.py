@@ -20,99 +20,35 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
+import random
+import shutil
+import string
 import unittest
 
 from bzrlib.errors import ConflictsInTree
+from bzrlib.merge import WeaveMerger
 from bzrlib.tests import TestCaseWithTransport
 
-_Debian_changelog = ['''\
-ipsec-tools (1:0.7.1-1.5) unstable; urgency=high
+from bzrlib.plugins.builddeb.merge_package import (
+    fix_ancestry_as_needed)
 
-  * Non-maintainer upload by the Security Team.
-  * Fix multiple memory leaks in NAT traversal and RSA authentication
-    code of racoon leading to DoS because (CVE-2009-1632; Closes: #528933).
+_Debian_changelog = '''\
+ipsec-tools (%s) unstable; urgency=high
 
- -- Nico Golde <nion@debian.org>  Tue, 19 May 2009 13:26:14 +0200
+  * debian packaging -- %s
+
+ -- Nico Golde <nion@debian.org>  Tue, %02d May 2009 13:26:14 +0200
+
 '''
-,
+
+_Ubuntu_changelog = '''\
+ipsec-tools (%s) karmic; urgency=low
+
+  * ubuntu packaging -- %s
+
+ -- Jamie Strandboge <jamie@ubuntu.com>  Fri, %02d Jul 2009 13:24:17 -0500
+
 '''
-ipsec-tools (1:0.7.1-1.3) unstable; urgency=low
-
-  * Non-maintainer upload
-  * Racoon should depend on at least the current version of ipsec-tools
-    (Closes: #507071)
-
- -- Evan Broder <broder@mit.edu>  Sat, 13 Dec 2008 15:40:55 -0500
-'''
-,
-'''
-ipsec-tools (1:0.5-5) unstable; urgency=high
-
-  * Fix ISAKMP Header Parsing DoS bug (closes: #299716). 
-  * Quote URL in README.Debian to avoid confusion (closes: #297179).
-
- -- Ganesan Rajagopal <rganesan@debian.org>  Wed, 16 Mar 2005 09:31:30 +0530
-'''
-,
-'''
-ipsec-tools (0.3.3-1) unstable; urgency=high
-
-  * Security upload.  Updated to vesion 0.3.3 which fixes a "authentication
-    bug in KAME's racoon" in eay_check_x509cert() (Bugtraq
-    http://seclists.org/lists/bugtraq/2004/Jun/0219.html) (closes: #254663).
-  * Fix for "racooninit" in racoon-tool.conf.  Applied patch submitted by
-    Teddy Hogeborn <teddy@fukt.bth.se>. (closes: #249222)
-  * Stopped patching racoon.conf.5 manpage as the "Japlish" fix is now in the
-    source tree.
-
- -- Matthew Grant <grantma@anathoth.gen.nz>  Thu, 17 Jun 2004 09:05:50 +1200
-'''
-,
-'''
-ipsec-tools (0.3.3) unstable; urgency=high
-
-  * Import upstream version 0.3.3
-
- -- Matthew Grant <grantma@anathoth.gen.nz>  Thu, 17 Jun 2004 09:05:50 +1200
-''']
-
-_Ubuntu_changelog = ['''
-ipsec-tools (1:0.7.1-1.5ubuntu1) karmic; urgency=low
-
-  * Merge from debian unstable, remaining changes:
-    - debian/control:
-      - Set Ubuntu maintainer address.
-      - Depend on lsb-base.
-    - debian/ipsec-tools.setkey.init: LSB init script.
-    - debian/rules: build with -fno-strict-aliasing, required with gcc 4.4.
-    - Enable build with hardened options:
-      - src/setkey/setkey.c: stop scanning stdin if fgets fails.
-  * Dropped
-    - src/libipsec/policy_token.c: don't check return code of fwrite.
-
- -- Jamie Strandboge <jamie@ubuntu.com>  Fri, 24 Jul 2009 13:24:17 -0500
-'''
-,
-'''
-ipsec-tools (1:0.6.5-0ubuntu1) dapper; urgency=low
-
-  * New upstream release.
-  * Added debconf-updatepo in clean target (closes: #372910).
-  * Compiled with PAM support (closes: #299806, #371053).
-  * Fixed typo in racoon.templates and corresponding po files.
-  * Updated Brazilian Portugese, Vietnamese, Swedish, French and Czech 
-    translations for debconf templates (closes: #370148, #369409).
-
- -- Martin Pitt <martin.pitt@ubuntu.com>  Tue,  9 May 2006 11:33:01 +0200
-'''
-,
-'''
-ipsec-tools (1:0.5-5ubuntu1) breezy; urgency=low
-
-  * No-change rebuild against libkrb5-3.
-
- -- LaMont Jones <lamont@ubuntu.com>  Wed, 28 Sep 2005 18:33:52 -0600
-''']
 
 
 def _merge_log(strings):
@@ -121,11 +57,13 @@ def _merge_log(strings):
         result += s
     return result
 
+
 def _prepend_log(text, path):
     content = open(path).read()
     fh = open(path, 'wb')
     fh.write(text+content)
     fh.close()
+
 
 class MergePackageTests(TestCaseWithTransport):
 
@@ -136,134 +74,144 @@ class MergePackageTests(TestCaseWithTransport):
         finally:
             f.close()
 
-    def _setup_debian_upstream(self):
-        # Set up debian upstream branch.
-        debu_tree = self.make_branch_and_tree('debu')
-        self.build_tree(['debu/a'])
-        debu_tree.add(['a'], ['a-id'])
-        self.revid_debu_A = debu_tree.commit('add a', rev_id='du-1')
-        debu_tree.branch.tags.set_tag('upstream-0.3.3', self.revid_debu_A)
+    def test_debian_un(self):
+        name = 'debu-n'
+        vdata = [
+            ('upstream-1.0', ('a',), None, None),
+            ('upstream-1.1', ('b',), None, None),
+            ('upstream-2.0', ('c',), None, None),
+            ]
+        debu_n = self._setup_branch(name, vdata)
 
-        self.build_tree(['debu/b'])
-        debu_tree.add(['b'], ['b-id'])
-        self.revid_debu_B = debu_tree.commit('add b', rev_id='du-2')
-        debu_tree.branch.tags.set_tag('upstream-0.5', self.revid_debu_B)
+        name = 'debp-n'
+        debp_n = self.make_branch_and_tree(name)
+        debp_n.pull(debu_n.branch, stop_revision=self.revid_debu_n_A)
 
-        self.build_tree(['debu/c'])
-        debu_tree.add(['c'], ['c-id'])
-        self.build_tree_contents(
-            [('debu/b', 'Debian upstream contents for b\n')])
-        self.revid_debu_C = debu_tree.commit('add h', rev_id='du-3')
-        debu_tree.branch.tags.set_tag('upstream-0.7.1', self.revid_debu_C)
+        vdata = [
+            ('1.0-1', ('debian/', 'debian/changelog'), None, None),
+            ('1.1-1', ('o',), debu_n, self.revid_debu_n_B),
+            ('2.0-1', ('p',), debu_n, self.revid_debu_n_C),
+            ]
+        self._setup_branch(name, vdata, debp_n, 'd')
 
-        return debu_tree
+        name = 'ubuu-o'
+        ubuu_o = debu_n.bzrdir.sprout(
+            name, revision_id=self.revid_debu_n_B).open_workingtree()
 
-    def _setup_ubuntu_upstream(self, debu_tree):
-        # Set up ubuntu upstream branch.
-        ubuu_tree = debu_tree.bzrdir.sprout(
-            'ubuu', revision_id=self.revid_debu_B).open_workingtree()
+        vdata = [
+            ('upstream-1.1.2', ('c',), None, None),
+            ]
+        self._setup_branch(name, vdata, ubuu_o)
 
-        self.build_tree_contents(
-            [('ubuu/b', 'Ubuntu upstream contents for b\n')])
-        self.revid_ubuu_A = ubuu_tree.commit('modifying b', rev_id='uu-1')
-        ubuu_tree.branch.tags.set_tag('upstream-0.6.5', self.revid_ubuu_A)
+        name = 'ubup-o'
+        ubup_o = debu_n.bzrdir.sprout(
+            name, revision_id=self.revid_debu_n_A).open_workingtree()
 
-        return ubuu_tree
+        vdata = [
+            ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
+            ('1.1.2-0ubuntu1', (), ubuu_o, self.revid_ubuu_o_A),
+            ]
+        self._setup_branch(name, vdata, ubup_o, 'u')
 
-    def _setup_debian_packaging(self, debu_tree):
-        # Set up debian packaging branch.
-        debp_tree = self.make_branch_and_tree('debp')
-        debp_tree.pull(debu_tree.branch, stop_revision=self.revid_debu_A)
+        debp_n_path = '%s/work/debp-n/debian/changelog' % self.test_base_dir
+        ubup_o_path = '%s/work/ubup-o/debian/changelog' % self.test_base_dir
 
-        self.build_tree(['debp/debian/', 'debp/debian/changelog'])
-        debp_tree.add(['debian/', 'debian/changelog'])
-        self.build_tree_contents(
-            [('debp/debian/changelog', _merge_log(_Debian_changelog[-2:]))])
-        self.revid_debp_A = debp_tree.commit(
-            'add debian/changelog', rev_id='dp-1')
-        debp_tree.branch.tags.set_tag('0.3.3-1', self.revid_debp_A)
-
-        debp_tree.merge_from_branch(
-            debu_tree.branch, to_revision=self.revid_debu_B)
-        self.build_tree_contents(
-            [('debp/debian/changelog', _merge_log(_Debian_changelog[-3:]))])
-        self.revid_debp_B = debp_tree.commit(
-            'modify debian/changelog', rev_id='dp-2')
-        debp_tree.branch.tags.set_tag('1:0.5-5', self.revid_debp_B)
-
-        debp_tree.merge_from_branch(
-            debu_tree.branch, to_revision=self.revid_debu_C)
-        self.build_tree_contents(
-            [('debp/debian/changelog', _merge_log(_Debian_changelog[-4:]))])
-        self.revid_debp_C = debp_tree.commit(
-            'modify debian/changelog', rev_id='dp-3')
-        debp_tree.branch.tags.set_tag('1:0.7.1-1.3', self.revid_debp_C)
-
-        self.build_tree_contents(
-            [('debp/debian/changelog', _merge_log(_Debian_changelog))])
-        self.revid_debp_D = debp_tree.commit(
-            'modify debian/changelog', rev_id='dp-4')
-        debp_tree.branch.tags.set_tag('1:0.7.1-1.5', self.revid_debp_D)
-
-        return debp_tree
-
-    def _setup_ubuntu_packaging(self, ubuu_tree, debp_tree):
-        # Set up ubuntu packaging branch.
-        ubup_tree = self.make_branch_and_tree('ubup')
-        ubup_tree.pull(ubuu_tree.branch, stop_revision=self.revid_debu_A)
-        conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=self.revid_debp_A)
-        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
-        revid_ubup_A = ubup_tree.commit(
-            'merged from debian (0.3.3-1)', rev_id='up-1')
-        ubup_tree.branch.tags.set_tag('0.3.3-1ubuntu1', revid_ubup_A)
-
-        conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=self.revid_debp_B)
-        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
-        _prepend_log(
-            _Ubuntu_changelog[-1], '%s/work/ubup/debian/changelog' %
-            self.test_base_dir)
-        revid_ubup_B = ubup_tree.commit(
-            'merged from debian (1:0.5-5)', rev_id='up-2')
-        ubup_tree.branch.tags.set_tag('1:0.5-5ubuntu1', revid_ubup_B)
-
-        conflicts = ubup_tree.merge_from_branch(
-            ubuu_tree.branch, to_revision=self.revid_ubuu_A)
-        ubuu_tree.branch.tags.merge_to(ubup_tree.branch.tags)
-        _prepend_log(
-            _Ubuntu_changelog[-2], '%s/work/ubup/debian/changelog' %
-            self.test_base_dir)
-        revid_ubup_C = ubup_tree.commit(
-            'merged from upstream (0.6.5)', rev_id='up-3')
-        ubup_tree.branch.tags.set_tag('1:0.6.5-0ubuntu1', revid_ubup_C)
-
-        return ubup_tree
-
-    def test_debian_upstream_newer(self):
-        debu_tree = self._setup_debian_upstream()
-        ubuu_tree = self._setup_ubuntu_upstream(debu_tree)
-        debp_tree = self._setup_debian_packaging(debu_tree)
-        ubup_tree = self._setup_ubuntu_packaging(ubuu_tree, debp_tree)
-
-        # Try merging the debian packaging branch into the Ubuntu one.
-        # This will fail due to upstream merge conflicts.
-        conflicts = ubup_tree.merge_from_branch(
-            debp_tree.branch, to_revision=self.revid_debp_D)
-        debp_tree.branch.tags.merge_to(ubup_tree.branch.tags)
-        _prepend_log(
-            _Ubuntu_changelog[-3], '%s/work/ubup/debian/changelog' %
-            self.test_base_dir)
-        self.assertRaises(
-            ConflictsInTree, ubup_tree.commit,
-            ('merged from debian (1:0.7.1-1.5)',), dict(rev_id='up-4'))
-        # Undo the failed merge.
-        ubup_tree.revert()
+        shutil.copy(debp_n_path, ubup_o_path)
+        ubup_o.commit('remove packaging branch conflict')
 
         import pdb
         pdb.set_trace()
-        import sys
-        sys.exit(1)
+
+        conflicts = ubup_o.merge_from_branch(
+            debp_n.branch, to_revision=self.revid_debp_n_C)
+
+        self.assertEquals(conflicts, 1)
+
+        self.assertRaises(
+            ConflictsInTree, ubup_o.commit,
+            ('merged from debian (2.0-1)',), dict(rev_id='ubup-o-C'))
+
+        # Undo the failed merge.
+        ubup_o.revert()
+
+        fix_ancestry_as_needed(ubup_o, debp_n.branch)
+
+        conflicts = ubup_o.merge_from_branch(
+            debp_n.branch, to_revision=self.revid_debp_n_C)
+
+        un_resolved, resolved = ubup_o.auto_resolve()
+
+        import pdb
+        pdb.set_trace()
+
+        self.assertEquals(un_resolved, 0)
+
+        ubup_o.commit('done!')
+        #self.assertRaises(
+        #    ConflictsInTree, ubup_o.commit,
+        #    ('merged from debian (2.0-1)',), dict(rev_id='ubup-o-C'))
+
+    def _setup_branch(self, name, vdata, tree=None, log_format=None):
+        vids = list(string.ascii_uppercase)
+        days = range(len(string.ascii_uppercase))
+
+        if tree is None:
+            tree = self.make_branch_and_tree(name)
+
+        def revid_name(vid):
+            return 'revid_%s_%s' % (name.replace('-', '_'), vid)
+
+        def add_paths(paths):
+            qpaths = ['%s/%s' % (name, path) for path in paths]
+            self.build_tree(qpaths)
+            tree.add(paths)
+
+        def changelog(vdata, vid):
+            result = ''
+            day = days.pop(0)
+            if isinstance(vdata, tuple):
+                uver, dver = vdata[:2]
+                ucle = _Ubuntu_changelog % (uver, vid, day)
+                dcle = _Debian_changelog % (dver, vid, day)
+                result = ucle + dcle
+            else:
+                if log_format == 'u':
+                    result = _Ubuntu_changelog % (vdata, vid, day)
+                elif log_format == 'd':
+                    result = _Debian_changelog % (vdata, vid, day)
+
+            return result
+
+        def commit(msg, version):
+            vid = vids.pop(0)
+            if log_format is not None:
+                cle = changelog(version, vid)
+                p = '%s/work/%s/debian/changelog' % (self.test_base_dir, name)
+                _prepend_log(cle, p)
+            revid = tree.commit('%s: %s' % (vid, msg), rev_id='%s-%s' % (name, vid))
+            setattr(self, revid_name(vid), revid)
+            tree.branch.tags.set_tag(version, revid)
+
+        def tree_nick(tree):
+            return str(tree)[1:-1].split('/')[-1]
+            
+        for version, paths, utree, urevid in vdata:
+            msg = ''
+            if utree is not None:
+                tree.merge_from_branch(
+                    utree.branch, to_revision=urevid, merge_type=WeaveMerger)
+                utree.branch.tags.merge_to(tree.branch.tags)
+                if urevid is not None:
+                    msg += 'Merged tree %s|%s. ' % (tree_nick(utree), urevid)
+                else:
+                    msg += 'Merged tree %s. ' % utree
+            if paths is not None:
+                add_paths(paths)
+                msg += 'Added paths: %s. ' % str(paths)
+
+            commit(msg, version)
+                
+        return tree
 
 
 if __name__ == '__main__':
