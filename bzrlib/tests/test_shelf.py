@@ -61,11 +61,13 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                          shelf_trans_id))
 
     def test_shelve_rename(self):
+        self.thisFailsStrictLockCheck()
         creator = self.prepare_shelve_rename()
         creator.shelve_rename('foo-id')
         self.check_shelve_rename(creator)
 
     def test_shelve_change_handles_rename(self):
+        self.thisFailsStrictLockCheck()
         creator = self.prepare_shelve_rename()
         creator.shelve_change(('rename', 'foo-id', 'foo', 'bar'))
         self.check_shelve_rename(creator)
@@ -95,11 +97,13 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual('foo/baz', tree.id2path('baz-id'))
 
     def test_shelve_move(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_move()
         creator.shelve_rename('baz-id')
         self.check_shelve_move(creator, tree)
 
     def test_shelve_change_handles_move(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_move()
         creator.shelve_change(('rename', 'baz-id', 'foo/baz', 'bar/baz'))
         self.check_shelve_move(creator, tree)
@@ -110,6 +114,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertFileEqual(expected_content, shelf_file)
 
     def prepare_content_change(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -172,6 +177,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
             creator.shelf_transform.final_kind(s_bar_trans_id))
 
     def test_shelve_creation(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_creation()
         creator.shelve_creation('foo-id')
         creator.shelve_creation('bar-id')
@@ -179,6 +185,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.check_shelve_creation(creator, tree)
 
     def test_shelve_change_handles_creation(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_creation()
         creator.shelve_change(('add file', 'foo-id', 'file', 'foo'))
         creator.shelve_change(('add file', 'bar-id', 'directory', 'bar'))
@@ -211,14 +218,17 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual(link_target, ptree.get_symlink_target('foo-id'))
 
     def test_shelve_symlink_creation(self):
+        self.thisFailsStrictLockCheck()
         self._test_shelve_symlink_creation('foo', 'bar')
 
     def test_shelve_unicode_symlink_creation(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
+        self.thisFailsStrictLockCheck()
         self._test_shelve_symlink_creation(u'fo\N{Euro Sign}o',
                                            u'b\N{Euro Sign}ar')
 
     def test_shelve_change_handles_symlink_creation(self):
+        self.thisFailsStrictLockCheck()
         self._test_shelve_symlink_creation('foo', 'bar', shelve_change=True)
 
     def _test_shelve_symlink_target_change(self, link_name,
@@ -252,18 +262,22 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual(new_target, ptree.get_symlink_target('foo-id'))
 
     def test_shelve_symlink_target_change(self):
+        self.thisFailsStrictLockCheck()
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz')
 
     def test_shelve_unicode_symlink_target_change(self):
+        self.thisFailsStrictLockCheck()
         self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_shelve_symlink_target_change(
             u'fo\N{Euro Sign}o', u'b\N{Euro Sign}ar', u'b\N{Euro Sign}az')
 
     def test_shelve_change_handles_symlink_target_change(self):
+        self.thisFailsStrictLockCheck()
         self._test_shelve_symlink_target_change('foo', 'bar', 'baz',
                                                 shelve_change=True)
 
     def test_shelve_creation_no_contents(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -308,6 +322,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertFileEqual('baz', 'tree/foo/bar')
 
     def test_shelve_deletion(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_deletion()
         creator.shelve_deletion('foo-id')
         creator.shelve_deletion('bar-id')
@@ -315,6 +330,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.check_shelve_deletion(tree)
 
     def test_shelve_change_handles_deletion(self):
+        self.thisFailsStrictLockCheck()
         creator, tree = self.prepare_shelve_deletion()
         creator.shelve_change(('delete file', 'foo-id', 'directory', 'foo'))
         creator.shelve_change(('delete file', 'bar-id', 'file', 'foo/bar'))
@@ -322,6 +338,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.check_shelve_deletion(tree)
 
     def test_shelve_delete_contents(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo',])
         tree.add('foo', 'foo-id')
@@ -355,12 +372,14 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
                          creator.shelf_transform._new_contents[s_trans_id])
 
     def test_shelve_change_kind(self):
+        self.thisFailsStrictLockCheck()
         creator = self.prepare_shelve_change_kind()
         creator.shelve_content_change('foo-id')
         creator.transform()
         self.check_shelve_change_kind(creator)
 
     def test_shelve_change_handles_change_kind(self):
+        self.thisFailsStrictLockCheck()
         creator = self.prepare_shelve_change_kind()
         creator.shelve_change(('change kind', 'foo-id', 'file', 'directory',
                                'foo'))
@@ -368,6 +387,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.check_shelve_change_kind(creator)
 
     def test_shelve_change_unknown_change(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
@@ -375,6 +395,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertEqual('Unknown change kind: "unknown"', str(e))
 
     def test_shelve_unversion(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo',])
         tree.add('foo', 'foo-id')
@@ -389,6 +410,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.failUnlessExists('tree/foo')
 
     def test_shelve_serialization(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('.')
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
@@ -401,6 +423,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         self.assertFileEqual(EMPTY_SHELF, 'shelf')
 
     def test_write_shelf(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', 'foo-id')
@@ -427,6 +450,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tt.deserialize(records)
 
     def test_shelve_unversioned(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         self.assertRaises(errors.PathsNotVersionedError,
                           shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
@@ -444,6 +468,7 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 class TestUnshelver(tests.TestCaseWithTransport):
 
     def test_make_merger(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.commit('first commit')
         self.build_tree_contents([('tree/foo', 'bar')])
@@ -466,6 +491,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.close()
 
     def test_unshelve_changed(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -488,6 +514,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
 
     def test_unshelve_deleted(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -517,6 +544,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFalse('bar-id' in tree)
 
     def test_unshelve_base(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -537,6 +565,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertEqual('rev1', unshelver.base_tree.get_revision_id())
 
     def test_unshelve_serialization(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('shelf', EMPTY_SHELF)])
         shelf_file = open('shelf', 'rb')
@@ -544,6 +573,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
 
     def test_corrupt_shelf(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('shelf', EMPTY_SHELF.replace('metadata',
                                                                 'foo'))])
