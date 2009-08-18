@@ -23,7 +23,6 @@ from bzrlib import (
     graph as _mod_graph,
     revision as _mod_revision,
     )
-from collections import deque
 
 
 __all__ = ["topo_sort", "TopoSorter", "merge_sort", "MergeSorter"]
