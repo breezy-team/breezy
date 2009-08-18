@@ -16,6 +16,13 @@ Improvements
   --version`` and ``bzr selftest``.
   (Martin Pool, #409137)
 
+Documentation
+*************
+
+* The main table of contents now provides links to the new Migration Docs
+  and Plugins Guide. (Ian Clatworthy)
+
+
 bzr 1.18
 ########
 
