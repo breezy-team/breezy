@@ -267,6 +267,9 @@ class DebBuildConfig(object):
   export_upstream = _opt_property('export-upstream',
                          "Get the upstream source from another branch")
 
+  export_upstream_revision = _opt_property('export-upstream-revision',
+                         "The revision of the upstream source to use.")
+
 
 def _test():
   import doctest
