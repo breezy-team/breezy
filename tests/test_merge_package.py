@@ -78,6 +78,26 @@ class MergePackageTests(TestCaseWithTransport):
 
         self.assertEquals(upstreams_diverged, True)
 
+    def test_upstreams_not_diverged(self):
+        """Check detection of non-diverged upstream branches."""
+        ubuntup, debianp = self._setup_upstreams_not_diverged()
+        source = debianp.branch
+        target = ubuntup.branch
+
+        upstreams_diverged = False
+
+        try:
+            source.lock_read()
+            target.lock_read()
+            upstream_vdata = MP._upstream_version_data(source, target)
+            revids = [vdata[1] for vdata in upstream_vdata]
+            upstreams_diverged = MP._upstreams_diverged(source, target, revids)
+        finally:
+            source.unlock()
+            target.unlock()
+
+        self.assertEquals(upstreams_diverged, False)
+
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
         ubup_o, debp_n = self._setup_debian_upstrem_newer()
@@ -177,6 +197,46 @@ class MergePackageTests(TestCaseWithTransport):
         # And, voila, only the packaging branch conflict remains.
         self.assertEquals(conflicts, 1)
         conflict_paths = sorted([c.path for c in ubup_n.conflicts()])
+        self.assertEquals(conflict_paths, [u'debian/changelog'])
+
+    def test_upstreams_not_diverged(self):
+        """fix_ancestry_as_needed() has no effect for non-diverging upstreams.
+
+        The debian and ubuntu upstream branches will not have diverged
+        this time.
+
+        The packaging branches will have a text conflict in 'debian/changelog'.
+        """
+        ubuntup, debianp = self._setup_upstreams_not_diverged()
+
+        # Attempt a plain merge first.
+        conflicts = ubuntup.merge_from_branch(
+            debianp.branch, to_revision=self.revid_debianp_C)
+
+        # There is only a conflict in the 'debian/changelog' file.
+        self.assertEquals(conflicts, 1)
+        conflict_paths = sorted([c.path for c in ubuntup.conflicts()])
+        self.assertEquals(conflict_paths, [u'debian/changelog'])
+
+        # Undo the failed merge.
+        ubuntup.revert()
+
+        # The conflict is *not* resolved by calling fix_ancestry_as_needed().
+        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubuntup, debianp.branch)
+
+        # The ancestry did *not* diverge.
+        self.assertEquals(upstreams_diverged, False)
+        # The upstreams have not diverged, hence no need to fix/revert 
+        # either of them.
+        self.assertEquals(t_upstream_reverted, False)
+
+        # Try merging again.
+        conflicts = ubuntup.merge_from_branch(
+            debianp.branch, to_revision=self.revid_debianp_C)
+
+        # The packaging branch conflict we saw above is still there.
+        self.assertEquals(conflicts, 1)
+        conflict_paths = sorted([c.path for c in ubuntup.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def _setup_debian_upstrem_newer(self):
@@ -326,6 +386,77 @@ class MergePackageTests(TestCaseWithTransport):
 
         # Return the ubuntu and the debian packaging branches.
         return (ubup_n, debp_o)
+
+    def _setup_upstreams_not_diverged(self):
+        """
+        Set up a test configuration where the usptreams have not diverged.
+
+        debian-upstream                       .-----G
+                           A-----------B-----H       \
+        ubuntu-upstream     \           \     \       \
+                             \           \     \       \
+        debian-packaging      \ ,---------D-----\-------J
+                               C                 \ 
+        ubuntu-packaging        `----E------------I
+
+        where:
+             - A = 1.0
+             - B = 1.1
+             - H = 1.4
+
+             - G = 2.2
+
+             - C = 1.0-1
+             - D = 1.1-1
+             - J = 2.2-1
+
+             - E = 1.0-1ubuntu1
+             - I = 1.4-0ubuntu1
+
+        Please note that there's only one shared upstream branch in this case.
+        """
+        # Set up the upstream branch.
+        name = 'upstream'
+        vdata = [
+            ('upstream-1.0', ('a',), None, None),
+            ('upstream-1.1', ('b',), None, None),
+            ('upstream-1.4', ('c',), None, None),
+            ]
+        upstream = self._setup_branch(name, vdata)
+
+        # Set up the debian upstream branch.
+        name = 'dupstream'
+        dupstream = upstream.bzrdir.sprout(name).open_workingtree()
+        vdata = [
+            ('upstream-2.2', (), None, None),
+            ]
+        dupstream = self._setup_branch(name, vdata, dupstream)
+
+        # Set up the debian packaging branch.
+        name = 'debianp'
+        debianp = self.make_branch_and_tree(name)
+        debianp.pull(dupstream.branch, stop_revision=self.revid_upstream_A)
+
+        vdata = [
+            ('1.0-1', ('debian/', 'debian/changelog'), None, None),
+            ('1.1-1', ('o',), dupstream, self.revid_upstream_B),
+            ('2.2-1', ('p',), dupstream, self.revid_dupstream_A),
+            ]
+        self._setup_branch(name, vdata, debianp, 'd')
+
+        # Set up the ubuntu packaging branch.
+        name = 'ubuntup'
+        ubuntup = upstream.bzrdir.sprout(
+            name, revision_id=self.revid_upstream_A).open_workingtree()
+
+        vdata = [
+            ('1.0-1ubuntu1', (), debianp, self.revid_debianp_A),
+            ('1.4-0ubuntu1', (), upstream, self.revid_upstream_C),
+            ]
+        self._setup_branch(name, vdata, ubuntup, 'u')
+
+        # Return the ubuntu and the debian packaging branches.
+        return (ubuntup, debianp)
 
     def _setup_branch(self, name, vdata, tree=None, log_format=None):
         vids = list(string.ascii_uppercase)
