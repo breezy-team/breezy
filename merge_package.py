@@ -27,8 +27,7 @@ import tempfile
 
 from debian_bundle.changelog import Version
 
-from bzrlib import builtins, errors, merge, trace
-from bzrlib.branch import Branch
+from bzrlib import errors
 
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 
@@ -40,22 +39,11 @@ class WrongBranchType(errors.BzrError):
 class InvalidChangelogFormat(errors.BzrError):
     _fmt = "The debian/changelog is empty or not in valid format."
 
+
 class SourceUpstreamConflictsWithTargetPackaging(errors.BzrError):
     _fmt = (
         "The source upstream branch conflicts with "
         "the target packaging branch")
-
-
-def _debug(lines):
-    """Write lines of debug output and flush stdout if in verbose mode.
-
-    :param lines: A sequence of strings, the debug output to write.
-    """
-    if not trace.is_verbose():
-        return
-    for line in lines:
-        print line
-    sys.stdout.flush()
 
 
 def _read_file(branch, path):
@@ -106,14 +94,12 @@ def _upstream_version_data(source, target):
     :param source: The merge source branch.
     :param target: The merge target branch.
     """
-    _debug(['\n>> get_upstream_revids()\n'])
     results = list()
     for branch in (source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
         results.append((uver, db.revid_of_upstream_version_from_branch(uver)))
 
-    _debug(['upstream revids: %s' % results, '\n<< get_upstream_revids()\n'])
     return results
 
 
@@ -173,8 +159,6 @@ def fix_ancestry_as_needed(tree, source):
     :param tree: The `WorkingTree` of the merge target branch.
     :param source: The merge source (packaging) branch.
     """
-    _debug(['\n>> fix_ancestry_as_needed()\n', '!! Upstream branches diverged'])
-
     upstreams_diverged = False
     t_upstream_reverted = False
     target = tree.branch
@@ -209,23 +193,19 @@ def fix_ancestry_as_needed(tree, source):
     # Merge upstream branch tips to obtain a shared upstream parent. This will
     # add revision K (see graph above) to a temporary merge target upstream
     # tree.
-    _debug(["\n--> Merge upstream branch tips.\n"])
     try:
         tmp_target_upstream_tree.lock_write()
 
         if usource_v > utarget_v:
             # The source upstream tree is more recent and the temporary
             # target tree needs to be reshaped to match it.
-            _debug(["\n--> Reverting upstream target tree.\n"])
             tmp_target_upstream_tree.revert(
                 None, source.repository.revision_tree(usource_revid))
             t_upstream_reverted = True
 
-        _debug(["--> Setting parent IDs on temporary upstream tree.\n"])
         tmp_target_upstream_tree.set_parent_ids(
             (utarget_revid, usource_revid))
 
-        _debug(["--> Committing temporary upstream tree.\n"])
         tmp_target_upstream_tree.commit(
             'Consolidated upstream tree for merging into target branch')
     finally:
@@ -233,7 +213,6 @@ def fix_ancestry_as_needed(tree, source):
 
     # Merge shared upstream parent into the target merge branch. This creates
     # revison L in the digram above.
-    _debug(["\n--> Merge shared upstream into target merge branch.\n"])
     try:
         tree.lock_write()
         try:
@@ -243,7 +222,5 @@ def fix_ancestry_as_needed(tree, source):
             raise SourceUpstreamConflictsWithTargetPackaging()
     finally:
         tree.unlock()
-
-    _debug(['\n<< fix_ancestry_as_needed()\n'])
 
     return (upstreams_diverged, t_upstream_reverted)

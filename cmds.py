@@ -875,8 +875,10 @@ class cmd_merge_package(Command):
     """Merges source packaging branch into target packaging branch.
 
     This will first check whether the upstream branches have diverged.
-    In that case an attempt will be made to fix upstream ancestry so that
-    the user only needs dealing wth packaging branch merge issues.
+
+    If that's the case an attempt will be made to fix the upstream ancestry
+    so that the user only needs to deal wth packaging branch merge issues.
+
     In the opposite case a normal merge will be performed.
     """
     takes_args = ['source']
