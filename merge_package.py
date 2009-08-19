@@ -178,10 +178,9 @@ def fix_ancestry_as_needed(tree, source):
     db.extract_upstream_tree(utarget_revid, tempdir)
     tmp_target_upstream_tree = db.upstream_tree
 
-    # TODO: fix comment below.
-    # Merge upstream branch tips to obtain a shared upstream parent. This will
-    # add revision K (see graph above) to a temporary merge target upstream
-    # tree.
+    # Merge upstream branch tips to obtain a shared upstream parent. This
+    # will add revision K (see graph above) to a temporary merge target
+    # upstream tree.
     try:
         tmp_target_upstream_tree.lock_write()
 
