@@ -441,6 +441,9 @@ class MergePackageTests(TestCaseWithTransport):
         if tree is None:
             tree = self.make_branch_and_tree(name)
 
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
         def revid_name(vid):
             return 'revid_%s_%s' % (name.replace('-', '_'), vid)
 
