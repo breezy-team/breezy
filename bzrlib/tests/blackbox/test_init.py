@@ -35,7 +35,7 @@ class TestInit(ExternalBase):
 
     def setUp(self):
         ExternalBase.setUp(self)
-        self._default_label = 'pack-0.92'
+        self._default_label = '2a'
 
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
