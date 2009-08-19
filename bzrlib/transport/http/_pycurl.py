@@ -92,6 +92,7 @@ CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
 CURLE_SEND_ERROR = _get_pycurl_errcode('E_SEND_ERROR', 55)
+CURLE_RECV_ERROR = _get_pycurl_errcode('E_RECV_ERROR', 56)
 CURLE_SSL_CACERT = _get_pycurl_errcode('E_SSL_CACERT', 60)
 CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 
@@ -362,6 +363,7 @@ class PyCurlTransport(HttpTransportBase):
                         CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
+                        CURLE_RECV_ERROR,
                         CURLE_SSL_CACERT,
                         CURLE_SSL_CACERT_BADFILE,
                         ):
