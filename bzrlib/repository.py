@@ -3769,6 +3769,29 @@ class InterDifferingSerializer(InterRepository):
         pending_deltas = []
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
+        # Are there any parent inventories for stacking we need to copy?
+        # (Note that in cases like upgrade the source may be not have
+        # _fallback_repositories even though it is stacked.)
+        parent_revs = set()
+        for parents in parent_map.values():
+            parent_revs.update(parents)
+        present_parents = self.source.get_parent_map(parent_revs)
+        absent_parents = set(parent_revs).difference(present_parents)
+        parent_invs_keys_for_stacking = self.source.inventories.get_parent_map(
+            (rev_id,) for rev_id in absent_parents)
+        parent_inv_ids = [key[-1] for key in parent_invs_keys_for_stacking]
+        mutter('parent_inv_ids: %r', parent_inv_ids)
+        for parent_tree in self.source.revision_trees(parent_inv_ids):
+            current_revision_id = parent_tree.get_revision_id()
+            parents_parents_keys = parent_invs_keys_for_stacking[
+                (current_revision_id,)]
+            parents_parents = [key[-1] for key in parents_parents_keys]
+            basis_id, delta = self._get_delta_for_revision(parent_tree,
+                parents_parents, basis_id, cache)
+            self.target.add_inventory_by_delta(
+                basis_id, delta, current_revision_id, parents_parents)
+            cache[current_revision_id] = parent_tree
+        # Ok, back to business.
         for tree in self.source.revision_trees(revision_ids):
             current_revision_id = tree.get_revision_id()
             parent_ids = parent_map.get(current_revision_id, ())
