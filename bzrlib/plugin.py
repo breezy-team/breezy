@@ -91,6 +91,52 @@ def set_plugins_path(path=None):
     return path
 
 
+def _append_new_path(paths, new_path):
+    """Append a new path if it set and not already known."""
+    if new_path is not None and new_path not in paths:
+        paths.append(new_path)
+    return paths
+
+
+def get_core_plugin_path():
+    core_path = None
+    bzr_exe = bool(getattr(sys, 'frozen', None))
+    if bzr_exe:    # expand path for bzr.exe
+        # We need to use relative path to system-wide plugin
+        # directory because bzrlib from standalone bzr.exe
+        # could be imported by another standalone program
+        # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
+        # will become standalone exe). [bialix 20071123]
+        # __file__ typically is
+        # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
+        # then plugins directory is
+        # C:\Program Files\Bazaar\plugins
+        # so relative path is ../../../plugins
+        core_path = osutils.abspath(osutils.pathjoin(
+                osutils.dirname(__file__), '../../../plugins'))
+    else:     # don't look inside library.zip
+        # search the plugin path before the bzrlib installed dir
+        core_path = os.path.dirname(_mod_plugins.__file__)
+    return core_path
+
+
+def get_site_plugin_path():
+    """Returns the path for the site installed plugins."""
+    site_path = None
+    try:
+        from distutils.sysconfig import get_python_lib
+    except ImportError:
+        # If distutuils is not available, we just don't know where they are
+        pass
+    else:
+        site_path = osutils.pathjoin(get_python_lib(), 'bzrlib', 'plugins')
+    return site_path
+
+
+def get_user_plugin_path():
+    return osutils.pathjoin(config.config_dir(), 'plugins')
+
+
 def get_standard_plugins_path():
     """Determine a plugin path suitable for general use."""
     path = os.environ.get('BZR_PLUGIN_PATH',

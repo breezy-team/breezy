@@ -597,34 +597,36 @@ class TestModuleHelpTopic(tests.TestCase):
         self.assertEqual('foo_bar', topic.get_help_topic())
 
 
-def clear_plugins(test_case):
-    # Save the attributes that we're about to monkey-patch.
-    old_plugins_path = bzrlib.plugins.__path__
-    old_loaded = plugin._loaded
-    old_load_from_path = plugin.load_from_path
-    # Change bzrlib.plugin to think no plugins have been loaded yet.
-    bzrlib.plugins.__path__ = []
-    plugin._loaded = False
-    # Monkey-patch load_from_path to stop it from actually loading anything.
-    def load_from_path(dirs):
-        pass
-    plugin.load_from_path = load_from_path
-    def restore_plugins():
-        bzrlib.plugins.__path__ = old_plugins_path
-        plugin._loaded = old_loaded
-        plugin.load_from_path = old_load_from_path
-    test_case.addCleanup(restore_plugins)
+class TestLoadFromPath(tests.TestCaseInTempDir):
 
+    def setUp(self):
+        super(TestLoadFromPath, self).setUp()
+        # Save the attributes that we're about to monkey-patch.
+        old_plugins_path = bzrlib.plugins.__path__
+        old_loaded = plugin._loaded
+        old_load_from_path = plugin.load_from_path
 
-class TestPluginPaths(tests.TestCase):
+        def restore():
+            bzrlib.plugins.__path__ = old_plugins_path
+            plugin._loaded = old_loaded
+            plugin.load_from_path = old_load_from_path
+
+        self.addCleanup(restore)
+
+        # Change bzrlib.plugin to think no plugins have been loaded yet.
+        bzrlib.plugins.__path__ = []
+        plugin._loaded = False
+
+        # Monkey-patch load_from_path to stop it from actually loading anything.
+        def load_from_path(dirs):
+            pass
+        plugin.load_from_path = load_from_path
 
     def test_set_plugins_path_with_args(self):
-        clear_plugins(self)
         plugin.set_plugins_path(['a', 'b'])
         self.assertEqual(['a', 'b'], bzrlib.plugins.__path__)
 
     def test_set_plugins_path_defaults(self):
-        clear_plugins(self)
         plugin.set_plugins_path()
         self.assertEqual(plugin.get_standard_plugins_path(),
                          bzrlib.plugins.__path__)
@@ -651,11 +653,7 @@ class TestPluginPaths(tests.TestCase):
         os.environ['BZR_PLUGIN_PATH'] = 'foo/'
         self.assertEqual('foo', plugin.get_standard_plugins_path()[0])
 
-
-class TestLoadPlugins(tests.TestCaseInTempDir):
-
     def test_load_plugins(self):
-        clear_plugins(self)
         plugin.load_plugins(['.'])
         self.assertEqual(bzrlib.plugins.__path__, ['.'])
         # subsequent loads are no-ops
@@ -663,7 +661,35 @@ class TestLoadPlugins(tests.TestCaseInTempDir):
         self.assertEqual(bzrlib.plugins.__path__, ['.'])
 
     def test_load_plugins_default(self):
-        clear_plugins(self)
         plugin.load_plugins()
         path = plugin.get_standard_plugins_path()
         self.assertEqual(path, bzrlib.plugins.__path__)
+
+
+class TestEnvPluginPath(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestEnvPluginPath, self).setUp()
+        old_default = plugin.DEFAULT_PLUGIN_PATH
+
+        def restore():
+            plugin.DEFAULT_PLUGIN_PATH = old_default
+
+        self.addCleanup(restore)
+
+        plugin.DEFAULT_PLUGIN_PATH = None
+
+        self.user = plugin.get_user_plugin_path()
+        self.site = plugin.get_site_plugin_path()
+        self.core = plugin.get_core_plugin_path()
+
+    def _list2path(self, *args):
+        paths = []
+        for p in args:
+            plugin._append_new_path(paths, p)
+        return paths
+
+    def test_default(self):
+        self.assertEquals(self._list2path(self.user, self.core, self.site),
+                          plugin.get_standard_plugins_path())
+
