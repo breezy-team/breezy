@@ -363,11 +363,13 @@ class PyCurlTransport(HttpTransportBase):
                         CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
-                        CURLE_RECV_ERROR,
                         CURLE_SSL_CACERT,
                         CURLE_SSL_CACERT_BADFILE,
                         ):
                 raise errors.ConnectionError(
+                    'curl connection error (%s)\non %s' % (e[1], url))
+            elif e[0] == CURLE_RECV_ERROR:
+                raise errors.ConnectionReset(
                     'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
                 # Pycurl itself has detected a short read.  We do not have all
