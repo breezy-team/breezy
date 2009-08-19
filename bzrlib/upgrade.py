@@ -185,7 +185,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
         # The URL is a repository. If it successfully upgrades,
         # then upgrade the dependent branches as well.
         if repo.is_shared():
-            dependents = repo.find_branches()
+            dependents = repo.find_branches(using=True)
 
     # Do the conversions
     attempted = [control_dir]
