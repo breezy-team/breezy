@@ -435,6 +435,11 @@ class DirStateWorkingTree(WorkingTree3):
         return osutils.lexists(pathjoin(
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
+    def has_or_had_id(self, file_id):
+        state = self.current_dirstate()
+        row, parents = self._get_entry(file_id=file_id)
+        return row is not None
+
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
@@ -1195,13 +1200,16 @@ class DirStateWorkingTree(WorkingTree3):
                 # just forget the whole block.
                 entry_index = 0
                 while entry_index < len(block[1]):
-                    # Mark this file id as having been removed
                     entry = block[1][entry_index]
-                    ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
-                                               # entries
-                        or not state._make_absent(entry)):
+                    if entry[1][0][0] in 'ar':
+                        # don't remove absent or renamed entries
                         entry_index += 1
+                    else:
+                        # Mark this file id as having been removed
+                        ids_to_unversion.discard(entry[0][2])
+                        if not state._make_absent(entry):
+                            # The block has not shrunk.
+                            entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
                 # dirblocks)
                 block_index += 1
@@ -1415,6 +1423,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 # applied so we can't safely build the inventory delta from
                 # the source tree.
                 if wt.supports_content_filtering():
+                    if hardlink:
+                        # see https://bugs.edge.launchpad.net/bzr/+bug/408193
+                        trace.warning("hardlinking working copy files is not currently "
+                            "supported in %r" % (wt,))
                     accelerator_tree = None
                     delta_from_tree = False
                 else:

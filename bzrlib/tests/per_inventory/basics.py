@@ -148,7 +148,7 @@ class TestInventoryApplyDelta(TestInventory):
             ])
         self.assertEqual('a', inv.id2path('a-id'))
         a_ie = inv['a-id']
-        inv.apply_delta([("a", None, "a-id", a_ie)])
+        inv.apply_delta([("a", None, "a-id", None)])
         self.assertRaises(errors.NoSuchId, inv.id2path, 'a-id')
 
     def test_apply_delta_rename(self):

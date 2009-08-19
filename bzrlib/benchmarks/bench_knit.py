@@ -65,7 +65,7 @@ class BenchKnitIndex(Benchmark):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        from bzrlib._knit_load_data_c import _load_data_c
+        from bzrlib._knit_load_data_pyx import _load_data_c
         knit._load_data = _load_data_c
 
     def setup_load_data_py(self):

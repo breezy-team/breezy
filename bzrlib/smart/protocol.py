@@ -897,7 +897,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
-            log_exception_quietly()
+            if not isinstance(exception.exc_value, errors.UnknownSmartMethod):
+                log_exception_quietly()
             self.message_handler.protocol_error(exception.exc_value)
             # The state machine is ready to continue decoding, but the
             # exception has interrupted the loop that runs the state machine.
@@ -1208,6 +1209,8 @@ def _iter_with_errors(iterable):
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
+            mutter('_iter_with_errors caught error')
+            log_exception_quietly()
             yield sys.exc_info(), None
             return
 

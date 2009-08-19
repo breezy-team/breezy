@@ -26,9 +26,9 @@ are all an additional 8-bits wide leading to a sparse upper tree.
 
 Updates to a CHKMap are done preferentially via the apply_delta method, to
 allow optimisation of the update operation; but individual map/unmap calls are
-possible and supported. All changes via map/unmap are buffered in memory until
-the _save method is called to force serialisation of the tree. apply_delta
-performs a _save implicitly.
+possible and supported. Individual changes via map/unmap are buffered in memory
+until the _save method is called to force serialisation of the tree.
+apply_delta records its changes immediately by performing an implicit _save.
 
 TODO:
 -----
@@ -41,7 +41,10 @@ import heapq
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
-from bzrlib import versionedfile
+from bzrlib import (
+    errors,
+    versionedfile,
+    )
 """)
 from bzrlib import (
     lru_cache,
@@ -56,6 +59,9 @@ from bzrlib import (
 _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+
+def clear_cache():
+    _page_cache.clear()
 
 # If a ChildNode falls below this many bytes, we check for a remap
 _INTERESTING_NEW_SIZE = 50
@@ -105,6 +111,14 @@ class CHKMap(object):
             of old_key is removed.
         """
         delete_count = 0
+        # Check preconditions first.
+        new_items = set([key for (old, key, value) in delta if key is not None
+            and old is None])
+        existing_new = list(self.iteritems(key_filter=new_items))
+        if existing_new:
+            raise errors.InconsistentDeltaDelta(delta,
+                "New items are already in the map %r." % existing_new)
+        # Now apply changes.
         for old, new, value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
@@ -482,7 +496,11 @@ class CHKMap(object):
         return len(self._root_node)
 
     def map(self, key, value):
-        """Map a key tuple to value."""
+        """Map a key tuple to value.
+        
+        :param key: A key to map.
+        :param value: The value to assign to key.
+        """
         # Need a root object.
         self._ensure_root()
         prefix, node_details = self._root_node.map(self._store, key, value)

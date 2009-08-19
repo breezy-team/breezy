@@ -142,6 +142,9 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
+        if msg == committed_msg:
+            raise tests.KnownFailure(
+                "Commit message was preserved, but it wasn't expected to be.")
         self.assertNotEqual(msg, committed_msg)
         self.assertTrue(len(committed_msg) > len(msg))
 
@@ -1197,28 +1200,35 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         # 4a: 3.1.1
         return mainline_revs, rev_nos, wt
 
-    def make_tree_with_many_merges(self):
+    def make_branch_with_many_merges(self):
         """Create a tree with well-known revision ids"""
-        wt = self.make_branch_and_tree('tree1')
-        self.build_tree_contents([('tree1/f', '1\n')])
-        wt.add(['f'], ['f-id'])
-        wt.commit('commit one', rev_id='1')
-        wt.commit('commit two', rev_id='2')
+        builder = self.make_branch_builder('tree1')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),
+            ('add', ('f', 'f-id', 'file', '1\n'))])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('3a', ['2'], [
+            ('modify', ('f-id', '1\n2\n3a\n'))])
+        builder.build_snapshot('3b', ['2', '3a'], [
+            ('modify', ('f-id', '1\n2\n3a\n'))])
+        builder.build_snapshot('3c', ['2', '3b'], [
+            ('modify', ('f-id', '1\n2\n3a\n'))])
+        builder.build_snapshot('4a', ['3b'], [])
+        builder.build_snapshot('4b', ['3c', '4a'], [])
+        builder.finish_series()
 
-        tree3 = wt.bzrdir.sprout('tree3').open_workingtree()
-        self.build_tree_contents([('tree3/f', '1\n2\n3a\n')])
-        tree3.commit('commit three a', rev_id='3a')
-
-        tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-        tree2.merge_from_branch(tree3.branch)
-        tree2.commit('commit three b', rev_id='3b')
-
-        wt.merge_from_branch(tree2.branch)
-        wt.commit('commit three c', rev_id='3c')
-        tree2.commit('four-a', rev_id='4a')
-
-        wt.merge_from_branch(tree2.branch)
-        wt.commit('four-b', rev_id='4b')
+        # 1
+        # |
+        # 2-.
+        # |\ \
+        # | | 3a
+        # | |/
+        # | 3b
+        # |/|
+        # 3c4a
+        # |/
+        # 4b
 
         mainline_revs = [None, '1', '2', '3c', '4b']
         rev_nos = {'1':1, '2':2, '3c': 3, '4b':4}
@@ -1231,7 +1241,7 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
             '4a': '2.2.2', # second commit tree 2
             '4b': '4', # merges 4a to main
             }
-        return mainline_revs, rev_nos, wt
+        return mainline_revs, rev_nos, builder.get_branch()
 
     def test_get_view_revisions_forward(self):
         """Test the get_view_revisions method"""
@@ -1297,17 +1307,17 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
 
     def test_get_view_revisions_merge2(self):
         """Test get_view_revisions when there are merges"""
-        mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
+        mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
+        b.lock_read()
+        self.addCleanup(b.unlock)
         revisions = list(log.get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward'))
+                mainline_revs, rev_nos, b, 'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
-                    ('3a', '2.1.1', 1), ('3b', '2.2.1', 1), ('4b', '4', 0),
+                    ('3b', '2.2.1', 1), ('3a', '2.1.1', 2), ('4b', '4', 0),
                     ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
         revisions = list(log.get_view_revisions(
-                mainline_revs, rev_nos, wt.branch, 'forward',
+                mainline_revs, rev_nos, b, 'forward',
                 include_merges=False))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
                           ('4b', '4', 0)],
@@ -1315,9 +1325,9 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
 
 
     def test_file_id_for_range(self):
-        mainline_revs, rev_nos, wt = self.make_tree_with_many_merges()
-        wt.lock_read()
-        self.addCleanup(wt.unlock)
+        mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
+        b.lock_read()
+        self.addCleanup(b.unlock)
 
         def rev_from_rev_id(revid, branch):
             revspec = revisionspec.RevisionSpec.from_string('revid:%s' % revid)
@@ -1325,7 +1335,7 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
 
         def view_revs(start_rev, end_rev, file_id, direction):
             revs = log.calculate_view_revisions(
-                wt.branch,
+                b,
                 start_rev, # start_revision
                 end_rev, # end_revision
                 direction, # direction
@@ -1334,12 +1344,12 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
                 )
             return revs
 
-        rev_3a = rev_from_rev_id('3a', wt.branch)
-        rev_4b = rev_from_rev_id('4b', wt.branch)
-        self.assertEqual([('3c', '3', 0), ('3a', '2.1.1', 1)],
+        rev_3a = rev_from_rev_id('3a', b)
+        rev_4b = rev_from_rev_id('4b', b)
+        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1), ('3a', '2.1.1', 2)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
         # Note: 3c still appears before 3a here because of depth-based sorting
-        self.assertEqual([('3c', '3', 0), ('3a', '2.1.1', 1)],
+        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1), ('3a', '2.1.1', 2)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
 
 

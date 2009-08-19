@@ -37,8 +37,10 @@ unlock() method.
 import errno
 import os
 import sys
+import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     trace,
@@ -84,6 +86,23 @@ class LockResult(object):
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
+
+
+def cant_unlock_not_held(locked_object):
+    """An attempt to unlock failed because the object was not locked.
+
+    This provides a policy point from which we can generate either a warning 
+    or an exception.
+    """
+    # This is typically masking some other error and called from a finally
+    # block, so it's useful to have the option not to generate a new error
+    # here.  You can use -Werror to make it fatal.  It should possibly also
+    # raise LockNotHeld.
+    if 'unlock' in debug.debug_flags:
+        warnings.warn("%r is already unlocked" % (locked_object,),
+            stacklevel=3)
+    else:
+        raise errors.LockNotHeld(locked_object)
 
 
 try:
@@ -171,6 +190,13 @@ if have_fcntl:
             if self.filename in _fcntl_WriteLock._open_locks:
                 self._clear_f()
                 raise errors.LockContention(self.filename)
+            if self.filename in _fcntl_ReadLock._open_locks:
+                if 'strict_locks' in debug.debug_flags:
+                    self._clear_f()
+                    raise errors.LockContention(self.filename)
+                else:
+                    trace.mutter('Write lock taken w/ an open read lock on: %s'
+                                 % (self.filename,))
 
             self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
@@ -201,6 +227,14 @@ if have_fcntl:
         def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
             self.filename = osutils.realpath(filename)
+            if self.filename in _fcntl_WriteLock._open_locks:
+                if 'strict_locks' in debug.debug_flags:
+                    # We raise before calling _open so we don't need to
+                    # _clear_f
+                    raise errors.LockContention(self.filename)
+                else:
+                    trace.mutter('Read lock taken w/ an open write lock on: %s'
+                                 % (self.filename,))
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
             self._open(filename, 'rb')
@@ -399,15 +433,15 @@ if have_ctypes_win32:
             DWORD,                 # dwFlagsAndAttributes
             HANDLE                 # hTemplateFile
         )((_function_name, ctypes.windll.kernel32))
-    
+
     INVALID_HANDLE_VALUE = -1
-    
+
     GENERIC_READ = 0x80000000
     GENERIC_WRITE = 0x40000000
     FILE_SHARE_READ = 1
     OPEN_ALWAYS = 4
     FILE_ATTRIBUTE_NORMAL = 128
-    
+
     ERROR_ACCESS_DENIED = 5
     ERROR_SHARING_VIOLATION = 32
 

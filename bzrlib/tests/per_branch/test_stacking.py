@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -149,8 +150,8 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -172,8 +173,8 @@ class TestStacking(TestCaseWithBranch):
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -184,11 +185,17 @@ class TestStacking(TestCaseWithBranch):
         trunk_revid = trunk_tree.commit('revision on mainline')
         # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+            new_dir = trunk_tree.bzrdir.sprout(self.get_url('newbranch'),
+                stacked=True)
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        # TODO: we'd like to commit in the stacked repository; that requires
+        # some care (maybe a BranchBuilder) if it's remote and has no
+        # workingtree
+        ##newbranch_revid = new_dir.open_workingtree().commit('revision in '
+            ##'newbranch')
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()
@@ -219,6 +226,7 @@ class TestStacking(TestCaseWithBranch):
         return stacked_bzrdir
 
     def test_clone_from_stacked_branch_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         # We can clone from the bzrdir of a stacked branch. If
         # preserve_stacking is True, the cloned branch is stacked on the
         # same branch as the original.
@@ -235,6 +243,7 @@ class TestStacking(TestCaseWithBranch):
             pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         # If a branch's stacked-on url is relative, we can still clone
         # from it with preserve_stacking True and get a branch stacked
         # on an appropriately adjusted relative url.
@@ -249,6 +258,7 @@ class TestStacking(TestCaseWithBranch):
             cloned_bzrdir.open_branch().get_stacked_on_url())
 
     def test_clone_from_stacked_branch_no_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors, e:
@@ -262,19 +272,34 @@ class TestStacking(TestCaseWithBranch):
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
+        self.thisFailsStrictLockCheck()
         branch = self.make_branch('source')
         cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
                           cloned_bzrdir.open_branch().get_stacked_on_url)
 
+    def make_stacked_on_matching(self, source):
+        if source.repository.supports_rich_root():
+            if source.repository._format.supports_chks:
+                format = "2a"
+            else:
+                format = "1.9-rich-root"
+        else:
+            format = "1.9"
+        return self.make_branch('stack-on', format)
+
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        stack_on = self.make_branch('stack-on')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -282,12 +307,17 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        stack_on = self.make_branch('stack-on')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
+        self.thisFailsStrictLockCheck()
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.clone('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we clone we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -297,13 +327,15 @@ class TestStacking(TestCaseWithBranch):
         """Obey policy where possible, ignore otherwise."""
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
-        stack_on = self.make_branch('stack-on')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         url = self.make_smart_server('target').base
         target = source.bzrdir.sprout(url).open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -326,7 +358,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_fetch_copies_from_stacked_on_and_stacked(self):
         stacked, unstacked = self.prepare_stacked_on_fetch()
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
@@ -339,22 +372,24 @@ class TestStacking(TestCaseWithBranch):
         # repository boundaries.  however, i didn't actually get this test to
         # fail on that code. -- mbp
         # see https://bugs.launchpad.net/bzr/+bug/252821
-        if not self.branch_format.supports_stacking():
+        stack_on = self.make_branch_and_tree('stack-on')
+        if not stack_on.branch._format.supports_stacking():
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
-        stack_on = self.make_branch_and_tree('stack-on')
         text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
         self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
         stack_on.add('a')
         stack_on.commit('base commit')
         stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
-        stacked_tree = stacked_dir.open_workingtree()
+        stacked_branch = stacked_dir.open_branch()
+        local_tree = stack_on.bzrdir.sprout('local').open_workingtree()
         for i in range(20):
             text_lines[0] = 'changed in %d\n' % i
-            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
-            stacked_tree.commit('commit %d' % i)
-        stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+            self.build_tree_contents([('local/a', ''.join(text_lines))])
+            local_tree.commit('commit %d' % i)
+            local_tree.branch.push(stacked_branch)
+        stacked_branch.repository.pack()
+        check.check_dwim(stacked_branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -378,7 +413,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):
@@ -432,6 +467,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual(['../stack-on'], hook_calls)
 
     def test_stack_on_repository_branch(self):
+        self.thisFailsStrictLockCheck()
         # Stacking should work when the repo isn't co-located with the
         # stack-on branch.
         try:
@@ -463,7 +499,8 @@ class TestStacking(TestCaseWithBranch):
         except errors.NoWorkingTree:
             stacked = stacked_dir.open_branch().create_checkout(
                 'stacked-checkout', lightweight=True)
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         # Sanity check: stacked's repo should not contain rev1, otherwise this
         # test isn't testing what it's supposed to.
         repo = stacked.branch.repository.bzrdir.open_repository()

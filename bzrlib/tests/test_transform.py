@@ -1916,6 +1916,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
         self.assertNotEqual(_mod_revision.NULL_REVISION,
@@ -2145,6 +2146,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def create_tree(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'content 1')])
+        tree.set_root_id('TREE_ROOT')
         tree.add('a', 'a-id')
         tree.commit('rev1', rev_id='rev1')
         return tree.branch.repository.revision_tree('rev1')
@@ -2666,10 +2668,12 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_merge_preview_into_workingtree(self):
         tree = self.make_branch_and_tree('tree')
+        tree.set_root_id('TREE_ROOT')
         tt = TransformPreview(tree)
         self.addCleanup(tt.finalize)
         tt.new_file('name', tt.root, 'content', 'file-id')
         tree2 = self.make_branch_and_tree('tree2')
+        tree2.set_root_id('TREE_ROOT')
         pb = progress.DummyProgress()
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
                                          pb, tree.basis_tree())

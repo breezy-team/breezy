@@ -281,6 +281,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._control_files.break_lock()
         self.branch.break_lock()
 
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+        
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: bzrlib.check for details about check_refs.
+        """
+        return []
+
     def requires_rich_root(self):
         return self._format.requires_rich_root
 
@@ -1476,9 +1486,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         from_tail = splitpath(from_rel)[-1]
         from_id = inv.path2id(from_rel)
         if from_id is None:
-            raise errors.BzrRenameFailedError(from_rel,to_rel,
-                errors.NotVersionedError(path=str(from_rel)))
-        from_entry = inv[from_id]
+            # if file is missing in the inventory maybe it's in the basis_tree
+            basis_tree = self.branch.basis_tree()
+            from_id = basis_tree.path2id(from_rel)
+            if from_id is None:
+                raise errors.BzrRenameFailedError(from_rel,to_rel,
+                    errors.NotVersionedError(path=str(from_rel)))
+            # put entry back in the inventory so we can rename it
+            from_entry = basis_tree.inventory[from_id].copy()
+            inv.add(from_entry)
+        else:
+            from_entry = inv[from_id]
         from_parent_id = from_entry.parent_id
         to_dir, to_tail = os.path.split(to_rel)
         to_dir_id = inv.path2id(to_dir)
@@ -1875,8 +1893,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
-                inv = self.branch.repository.deserialise_inventory(
-                    new_revision, xml)
+                inv = self.branch.repository._serializer.read_inventory_from_string(
+                    xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(xml)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
@@ -2528,12 +2546,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return un_resolved, resolved
 
     @needs_read_lock
-    def _check(self):
+    def _check(self, references):
+        """Check the tree for consistency.
+
+        :param references: A dict with keys matching the items returned by
+            self._get_check_refs(), and values from looking those keys up in
+            the repository.
+        """
         tree_basis = self.basis_tree()
         tree_basis.lock_read()
         try:
-            repo_basis = self.branch.repository.revision_tree(
-                self.last_revision())
+            repo_basis = references[('trees', self.last_revision())]
             if len(list(repo_basis.iter_changes(tree_basis))) > 0:
                 raise errors.BzrCheckError(
                     "Mismatched basis inventory content.")
@@ -2584,6 +2607,10 @@ class WorkingTree2(WorkingTree):
         # have a read lock.
         if self._inventory is None:
             self.read_working_inventory()
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     def lock_tree_write(self):
         """See WorkingTree.lock_tree_write().
@@ -2646,6 +2673,10 @@ class WorkingTree3(WorkingTree):
             self._transport.put_bytes('last-revision', revision_id,
                 mode=self.bzrdir._get_file_mode())
             return True
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     @needs_tree_write_lock
     def set_conflicts(self, conflicts):
@@ -2999,10 +3030,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat4()
+__default_format = WorkingTreeFormat6()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
+WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable

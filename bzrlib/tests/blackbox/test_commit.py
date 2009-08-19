@@ -255,6 +255,10 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
+        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
+        #       guess is that the change to use Unicode command lines means
+        #       that we no longer pay any attention to LANG=C when decoding the
+        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -639,25 +643,3 @@ class TestCommit(ExternalBase):
         out, err = self.run_bzr("commit tree/hello.txt")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
-
-    def test_commit_and_mv_dance_a(self):
-        # see https://bugs.launchpad.net/bzr/+bug/395556
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["a"])
-        tree.add("a")
-        self.check_output("a => b\n", ["mv", "a", "b"])
-        self.check_output("", ["commit", "-q", "-m", "Actually no, b"])
-        self.check_output("b => a\n", ["mv", "b", "a"])
-        self.check_output("", ["commit", "-q", "-m", "No, really, a"])
-
-    def test_commit_and_mv_dance_b(self):
-        # see https://bugs.launchpad.net/bzr/+bug/395556
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["b"])
-        tree.add("b")
-        self.check_output("b => a\n", ["mv", "b", "a"])
-        self.check_output("", ["commit", "-q", "-m", "Actually no, a"])
-        self.check_output("a => b\n", ["mv", "a", "b"])
-        self.expectFailure("bug 395556: gives DuplicateFileId "
-            "committing renames",
-            self.check_output, "", ["commit", "-q", "-m", "No, really, b"])

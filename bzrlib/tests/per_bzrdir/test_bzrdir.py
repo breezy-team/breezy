@@ -26,6 +26,7 @@ import sys
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     lockdir,
     osutils,
@@ -38,7 +39,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -57,6 +57,9 @@ from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir, RemoteRepository
 from bzrlib.repofmt import weaverepo
@@ -525,6 +528,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_clone_bzrdir_tree_branch_repo(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -565,6 +569,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -619,6 +624,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      ])
 
     def test_clone_bzrdir_tree_revision(self):
+        self.thisFailsStrictLockCheck()
         # test for revision limiting, [smoke test, not corner case checks].
         # make a tree with a revision with a last-revision
         # and clone it with a revision limit.
@@ -1252,7 +1258,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # repository is the same as the external location of the stacked-on
         # branch.
         balloon = self.make_bzrdir('balloon')
-        if isinstance(balloon, bzrdir.BzrDirMetaFormat1):
+        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
@@ -1735,8 +1741,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
-                         False)
+            check.check_dwim(self.get_url('.'), False, True, True)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')
@@ -1774,7 +1779,6 @@ class TestBreakLock(TestCaseWithBzrDir):
         # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
 
     def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory
@@ -1800,7 +1804,7 @@ class TestBreakLock(TestCaseWithBzrDir):
             return
         # only one yes needed here: it should only be unlocking
         # the repo
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
         try:
             repo.bzrdir.break_lock()
         except NotImplementedError:
@@ -1831,17 +1835,19 @@ class TestBreakLock(TestCaseWithBzrDir):
             # two yes's : branch and repository. If the repo in this
             # dir is inappropriately accessed, 3 will be needed, and
             # we'll see that because the stream will be fully consumed
-            bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\n")
+            bzrlib.ui.ui_factory = CannedInputUIFactory([True, True, True])
             # determine if the repository will have been locked;
             this_repo_locked = \
                 thisdir.open_repository().get_physical_lock_status()
             master.bzrdir.break_lock()
             if this_repo_locked:
                 # only two ys should have been read
-                self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())
+                self.assertEqual([True],
+                    bzrlib.ui.ui_factory.responses)
             else:
                 # only one y should have been read
-                self.assertEqual("y\ny\n", bzrlib.ui.ui_factory.stdin.read())
+                self.assertEqual([True, True],
+                    bzrlib.ui.ui_factory.responses)
             # we should be able to lock a newly opened branch now
             branch = master.bzrdir.open_branch()
             branch.lock_write()
@@ -1865,7 +1871,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         tree = self.make_branch_and_tree('.')
         tree.lock_write()
         # three yes's : tree, branch and repository.
-        bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\ny\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True, True, True])
         try:
             tree.bzrdir.break_lock()
         except (NotImplementedError, errors.LockActive):
@@ -1875,7 +1881,8 @@ class TestBreakLock(TestCaseWithBzrDir):
             # object.
             tree.unlock()
             return
-        self.assertEqual("y\n", bzrlib.ui.ui_factory.stdin.read())
+        self.assertEqual([True],
+                bzrlib.ui.ui_factory.responses)
         lock_tree = tree.bzrdir.open_workingtree()
         lock_tree.lock_write()
         lock_tree.unlock()

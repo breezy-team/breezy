@@ -35,6 +35,7 @@ from bzrlib import (
         symbol_versioning,
         transport,
         tsort,
+        ui,
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
@@ -147,6 +148,14 @@ class Branch(object):
             stop_index=stop_index, stop_revision=stop_revision)
         if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
+
+    def _get_check_refs(self):
+        """Get the references needed for check().
+
+        See bzrlib.check.
+        """
+        revid = self.last_revision()
+        return [('revision-existence', revid), ('lefthand-distance', revid)]
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -662,6 +671,9 @@ class Branch(object):
         """
         if not self._format.supports_stacking():
             raise errors.UnstackableBranchFormat(self._format, self.base)
+        # XXX: Changing from one fallback repository to another does not check
+        # that all the data you need is present in the new fallback.
+        # Possibly it should.
         self._check_stackable_repo()
         if not url:
             try:
@@ -669,27 +681,67 @@ class Branch(object):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat):
                 return
-            url = ''
-            # XXX: Lock correctness - should unlock our old repo if we were
-            # locked.
-            # repositories don't offer an interface to remove fallback
-            # repositories today; take the conceptually simpler option and just
-            # reopen it.
-            self.repository = self.bzrdir.find_repository()
-            self.repository.lock_write()
-            # for every revision reference the branch has, ensure it is pulled
-            # in.
-            source_repository = self._get_fallback_repository(old_url)
-            for revision_id in chain([self.last_revision()],
-                self.tags.get_reverse_tag_dict()):
-                self.repository.fetch(source_repository, revision_id,
-                    find_ghosts=True)
+            self._unstack()
         else:
             self._activate_fallback_location(url)
         # write this out after the repository is stacked to avoid setting a
         # stacked config that doesn't work.
         self._set_config_location('stacked_on_location', url)
 
+    def _unstack(self):
+        """Change a branch to be unstacked, copying data as needed.
+        
+        Don't call this directly, use set_stacked_on_url(None).
+        """
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            pb.update("Unstacking")
+            # The basic approach here is to fetch the tip of the branch,
+            # including all available ghosts, from the existing stacked
+            # repository into a new repository object without the fallbacks. 
+            #
+            # XXX: See <https://launchpad.net/bugs/397286> - this may not be
+            # correct for CHKMap repostiories
+            old_repository = self.repository
+            if len(old_repository._fallback_repositories) != 1:
+                raise AssertionError("can't cope with fallback repositories "
+                    "of %r" % (self.repository,))
+            # unlock it, including unlocking the fallback
+            old_repository.unlock()
+            old_repository.lock_read()
+            try:
+                # Repositories don't offer an interface to remove fallback
+                # repositories today; take the conceptually simpler option and just
+                # reopen it.  We reopen it starting from the URL so that we
+                # get a separate connection for RemoteRepositories and can
+                # stream from one of them to the other.  This does mean doing
+                # separate SSH connection setup, but unstacking is not a
+                # common operation so it's tolerable.
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+                new_repository = new_bzrdir.find_repository()
+                self.repository = new_repository
+                if self.repository._fallback_repositories:
+                    raise AssertionError("didn't expect %r to have "
+                        "fallback_repositories"
+                        % (self.repository,))
+                # this is not paired with an unlock because it's just restoring
+                # the previous state; the lock's released when set_stacked_on_url
+                # returns
+                self.repository.lock_write()
+                # XXX: If you unstack a branch while it has a working tree
+                # with a pending merge, the pending-merged revisions will no
+                # longer be present.  You can (probably) revert and remerge.
+                #
+                # XXX: This only fetches up to the tip of the repository; it
+                # doesn't bring across any tags.  That's fairly consistent
+                # with how branch works, but perhaps not ideal.
+                self.repository.fetch(old_repository,
+                    revision_id=self.last_revision(),
+                    find_ghosts=True)
+            finally:
+                old_repository.unlock()
+        finally:
+            pb.finished()
 
     def _set_tags_bytes(self, bytes):
         """Mirror method for _get_tags_bytes.
@@ -1095,6 +1147,9 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        if (repository_policy is not None and
+            repository_policy.requires_stacking()):
+            to_bzrdir._format.require_stacking(_skip_repo=True)
         result = to_bzrdir.create_branch()
         result.lock_write()
         try:
@@ -1168,7 +1223,7 @@ class Branch(object):
         target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
-    def check(self):
+    def check(self, refs):
         """Check consistency of the branch.
 
         In particular this checks that revisions given in the revision-history
@@ -1177,42 +1232,23 @@ class Branch(object):
 
         Callers will typically also want to check the repository.
 
+        :param refs: Calculated refs for this branch as specified by
+            branch._get_check_refs()
         :return: A BranchCheckResult.
         """
-        ret = BranchCheckResult(self)
-        mainline_parent_id = None
+        result = BranchCheckResult(self)
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = []
-        try:
-            for revid in self.repository.iter_reverse_revision_history(
-                last_revision_id):
-                real_rev_history.append(revid)
-        except errors.RevisionNotPresent:
-            ret.ghosts_in_mainline = True
-        else:
-            ret.ghosts_in_mainline = False
-        real_rev_history.reverse()
-        if len(real_rev_history) != last_revno:
-            raise errors.BzrCheckError('revno does not match len(mainline)'
-                ' %s != %s' % (last_revno, len(real_rev_history)))
-        # TODO: We should probably also check that real_rev_history actually
-        #       matches self.revision_history()
-        for revision_id in real_rev_history:
-            try:
-                revision = self.repository.get_revision(revision_id)
-            except errors.NoSuchRevision, e:
-                raise errors.BzrCheckError("mainline revision {%s} not in repository"
-                            % revision_id)
-            # In general the first entry on the revision history has no parents.
-            # But it's not illegal for it to have parents listed; this can happen
-            # in imports from Arch when the parents weren't reachable.
-            if mainline_parent_id is not None:
-                if mainline_parent_id not in revision.parent_ids:
-                    raise errors.BzrCheckError("previous revision {%s} not listed among "
-                                        "parents of {%s}"
-                                        % (mainline_parent_id, revision_id))
-            mainline_parent_id = revision_id
-        return ret
+        actual_revno = refs[('lefthand-distance', last_revision_id)]
+        if actual_revno != last_revno:
+            result.errors.append(errors.BzrCheckError(
+                'revno does not match len(mainline) %s != %s' % (
+                last_revno, actual_revno)))
+        # TODO: We should probably also check that self.revision_history
+        # matches the repository for older branch formats.
+        # If looking for the code that cross-checks repository parents against
+        # the iter_reverse_revision_history output, that is now a repository
+        # specific check.
+        return result
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2031,7 +2067,7 @@ BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
-BranchFormat.set_default_format(__format6)
+BranchFormat.set_default_format(__format7)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
@@ -2795,7 +2831,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
-        self.ghosts_in_mainline = False
+        self.errors = []
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2803,11 +2839,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s',
-             self.branch.base,
-             self.branch._format)
-        if self.ghosts_in_mainline:
-            note('branch contains ghosts in mainline')
+        note('checked branch %s format %s', self.branch.base,
+            self.branch._format)
+        for error in self.errors:
+            note('found error:%s', error)
 
 
 class Converter5to6(object):
