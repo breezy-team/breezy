@@ -67,7 +67,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
-        ubup_o, debp_n = self._setup_debian_upstrem_newer()
+        ubup_o, debp_n = self._setup_debian_upstream_newer()
         # Ubuntu upstream.
         self.assertEquals(
             self._latest_version(ubup_o.branch), '1.1.2')
@@ -95,7 +95,7 @@ class MergePackageTests(TestCaseWithTransport):
         The upstream conflict will be resolved by fix_ancestry_as_needed().
         Please note that the debian ancestry is more recent.
         """
-        ubup_o, debp_n = self._setup_debian_upstrem_newer()
+        ubup_o, debp_n = self._setup_debian_upstream_newer()
 
         # Attempt a plain merge first.
         conflicts = ubup_o.merge_from_branch(
@@ -215,9 +215,9 @@ class MergePackageTests(TestCaseWithTransport):
         conflict_paths = sorted([c.path for c in ubuntup.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
-    def _setup_debian_upstrem_newer(self):
+    def _setup_debian_upstream_newer(self):
         """
-        Set up the following test configuration (debian upstrem newer).
+        Set up the following test configuration (debian upstream newer).
 
         debian-upstream                 ,------------------H
                            A-----------B                    \
@@ -291,7 +291,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def _setup_debian_upstream_older(self):
         """
-        Set up the following test configuration (debian upstrem older).
+        Set up the following test configuration (debian upstream older).
 
         debian-upstream                 ,----H-------------.
                            A-----------B                    \

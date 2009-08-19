@@ -186,6 +186,19 @@ class InvalidChangelogFormat(BzrError):
 
 
 class SourceUpstreamConflictsWithTargetPackaging(BzrError):
-    _fmt = (
-        "The shared upstream revision conflicts with "
-        "the target packaging branch")
+    _fmt = ('''\
+        The "merge-package" command has detected diverged upstream
+        branches for the merge source and target. A shared upstream
+        revision was constructed to remedy the problem.
+
+        However, merging the shared upstream revision into the merge
+        target resulted in conflicts.
+
+        Please proceed as follows:
+
+          1 - Resolve the current merge conflicts in the merge target
+              and commit the changes.
+          2 - Perform a plain "bzr merge <source-packaging-branch>"
+              command, resolve any ensuing packaging branch conflicts
+              and commit once satisfied with the changes.
+    ''')
