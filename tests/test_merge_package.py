@@ -56,8 +56,8 @@ def _prepend_log(text, path):
 class MergePackageTests(TestCaseWithTransport):
 
     def _latest_version(self, branch):
+        branch.lock_read()
         try:
-            branch.lock_read()
             result = MP._latest_version(branch).upstream_version
         finally:
             branch.unlock()
