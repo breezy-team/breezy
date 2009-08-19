@@ -103,19 +103,6 @@ def _upstream_version_data(source, target):
     return results
 
 
-def _upstreams_diverged(source, target, upstream_revids):
-    """Did the upstream branches of the merge source and target diverge?
-
-    :param source: The merge source (packaging) branch.
-    :param target: The merge target (packaging) branch.
-    :param upstream_revids: The source/target branch upstream revision IDs.
-    """
-    graph = source.repository.get_graph(target.repository)
-    # Get the number of heads for the combined upstream branches graph.
-    heads = graph.heads(upstream_revids)
-    return (len(heads) > 1)
-
-
 def fix_ancestry_as_needed(tree, source):
     """Manipulate the merge target's ancestry to avoid upstream conflicts.
 
@@ -167,8 +154,10 @@ def fix_ancestry_as_needed(tree, source):
         source.lock_read()
         target.lock_read()
         upstream_vdata = _upstream_version_data(source, target)
+        # Did the upstream branches of the merge source and target diverge?
         revids = [vdata[1] for vdata in upstream_vdata]
-        upstreams_diverged = _upstreams_diverged(source, target, revids)
+        graph = source.repository.get_graph(target.repository)
+        upstreams_diverged = (len(graph.heads(revids)) > 1)
     finally:
         source.unlock()
         target.unlock()

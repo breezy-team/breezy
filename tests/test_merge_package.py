@@ -58,56 +58,23 @@ def _prepend_log(text, path):
 
 class MergePackageTests(TestCaseWithTransport):
 
-    def test_upstreams_diverged(self):
-        """Check detection of diverged upstream branches."""
-        ubup_o, debp_n = self._setup_debian_upstrem_newer()
-        source = debp_n.branch
-        target = ubup_o.branch
-
-        upstreams_diverged = False
-
-        try:
-            source.lock_read()
-            target.lock_read()
-            upstream_vdata = MP._upstream_version_data(source, target)
-            revids = [vdata[1] for vdata in upstream_vdata]
-            upstreams_diverged = MP._upstreams_diverged(source, target, revids)
-        finally:
-            source.unlock()
-            target.unlock()
-
-        self.assertEquals(upstreams_diverged, True)
-
-    def test_upstreams_not_diverged(self):
-        """Check detection of non-diverged upstream branches."""
-        ubuntup, debianp = self._setup_upstreams_not_diverged()
-        source = debianp.branch
-        target = ubuntup.branch
-
-        upstreams_diverged = False
-
-        try:
-            source.lock_read()
-            target.lock_read()
-            upstream_vdata = MP._upstream_version_data(source, target)
-            revids = [vdata[1] for vdata in upstream_vdata]
-            upstreams_diverged = MP._upstreams_diverged(source, target, revids)
-        finally:
-            source.unlock()
-            target.unlock()
-
-        self.assertEquals(upstreams_diverged, False)
-
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
         ubup_o, debp_n = self._setup_debian_upstrem_newer()
-
         # Ubuntu upstream.
         self.assertEquals(
             MP._latest_version(ubup_o.branch).upstream_version, '1.1.2')
         # Debian upstream.
         self.assertEquals(
             MP._latest_version(debp_n.branch).upstream_version, '2.0')
+
+        ubuntup, debianp = self._setup_upstreams_not_diverged()
+        # Ubuntu upstream.
+        self.assertEquals(
+            MP._latest_version(ubuntup.branch).upstream_version, '1.4')
+        # Debian upstream.
+        self.assertEquals(
+            MP._latest_version(debianp.branch).upstream_version, '2.2')
 
     def test_debian_upstream_newer(self):
         """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
