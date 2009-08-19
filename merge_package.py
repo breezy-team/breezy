@@ -32,31 +32,17 @@ from bzrlib import errors
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 
 
-class WrongBranchType(errors.BzrError):
-    _fmt = "The merge target is not a packaging branch."
-
-
-class InvalidChangelogFormat(errors.BzrError):
-    _fmt = "The debian/changelog is empty or not in valid format."
-
-
-class SourceUpstreamConflictsWithTargetPackaging(errors.BzrError):
-    _fmt = (
-        "The source upstream branch conflicts with "
-        "the target packaging branch")
-
-
 def _read_file(branch, path):
     """Get content of file for given `branch` and `path.
     
+    Please note: the `branch` must have been read-locked beforehand.
+
     :param branch: A Branch object containing the file of interest.
     :param path: The path of the file to read.
     """
     try:
         tree = branch.basis_tree()
-        tree.lock_read()
         content = tree.get_file_text(tree.path2id(path))
-        tree.unlock()
     except errors.NoSuchId:
         raise WrongBranchType()
 
@@ -151,24 +137,25 @@ def fix_ancestry_as_needed(tree, source):
     t_upstream_reverted = False
     target = tree.branch
 
+    source.lock_read()
     try:
-        source.lock_read()
-        target.lock_read()
-        upstream_vdata = _upstream_version_data(source, target)
-        # Did the upstream branches of the merge source and target diverge?
-        revids = [vdata[1] for vdata in upstream_vdata]
-        graph = source.repository.get_graph(target.repository)
-        upstreams_diverged = (len(graph.heads(revids)) > 1)
+        tree.lock_read()
+        try:
+            # "Unpack" the upstream versions and revision ids for the merge
+            # source and target branch respectively.
+            uvdata = _upstream_version_data(source, target)
+            [(us_ver, us_revid), (ut_ver, ut_revid)] = uvdata
+
+            # Did the upstream branches of the merge source/target diverge?
+            graph = source.repository.get_graph(target.repository)
+            upstreams_diverged = (len(graph.heads([us_revid, ut_revid])) > 1)
+        finally:
+            tree.unlock()
     finally:
         source.unlock()
-        target.unlock()
 
     if not upstreams_diverged:
         return (upstreams_diverged, t_upstream_reverted)
-
-    # "Unpack" the upstream versions and revision ids for the merge source and
-    # target branch respectively.
-    [(usource_v, usource_revid), (utarget_v, utarget_revid)] = upstream_vdata
 
     # Instantiate a `DistributionBranch` object for the merge target
     # (packaging) branch.
@@ -176,24 +163,23 @@ def fix_ancestry_as_needed(tree, source):
     tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
 
     # Extract the merge target's upstream tree into a temporary directory.
-    db.extract_upstream_tree(utarget_revid, tempdir)
+    db.extract_upstream_tree(ut_revid, tempdir)
     tmp_target_upstream_tree = db.upstream_tree
 
     # Merge upstream branch tips to obtain a shared upstream parent. This
     # will add revision K (see graph above) to a temporary merge target
     # upstream tree.
+    tmp_target_upstream_tree.lock_write()
     try:
-        tmp_target_upstream_tree.lock_write()
-
-        if usource_v > utarget_v:
+        if us_ver > ut_ver:
             # The source upstream tree is more recent and the temporary
             # target tree needs to be reshaped to match it.
             tmp_target_upstream_tree.revert(
-                None, source.repository.revision_tree(usource_revid))
+                None, source.repository.revision_tree(us_revid))
             t_upstream_reverted = True
 
         tmp_target_upstream_tree.set_parent_ids(
-            (utarget_revid, usource_revid))
+            (ut_revid, us_revid))
 
         tmp_target_upstream_tree.commit(
             'Consolidated upstream tree for merging into target branch')
@@ -202,13 +188,13 @@ def fix_ancestry_as_needed(tree, source):
 
     # Merge shared upstream parent into the target merge branch. This creates
     # revison L in the digram above.
+    tree.lock_write()
     try:
-        tree.lock_write()
-        try:
-            tree.merge_from_branch(tmp_target_upstream_tree.branch)
-            tree.commit('Merging source packaging branch in to target.')
-        except ConflictsInTree:
+        conflicts = tree.merge_from_branch(tmp_target_upstream_tree.branch)
+        if conflicts > 0:
             raise SourceUpstreamConflictsWithTargetPackaging()
+        else:
+            tree.commit('Merging shared upstream rev in to target branch.')
     finally:
         tree.unlock()
 

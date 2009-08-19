@@ -55,23 +55,31 @@ def _prepend_log(text, path):
 
 class MergePackageTests(TestCaseWithTransport):
 
+    def _latest_version(self, branch):
+        try:
+            branch.lock_read()
+            result = MP._latest_version(branch).upstream_version
+        finally:
+            branch.unlock()
+        return result
+
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
         ubup_o, debp_n = self._setup_debian_upstrem_newer()
         # Ubuntu upstream.
         self.assertEquals(
-            MP._latest_version(ubup_o.branch).upstream_version, '1.1.2')
+            self._latest_version(ubup_o.branch), '1.1.2')
         # Debian upstream.
         self.assertEquals(
-            MP._latest_version(debp_n.branch).upstream_version, '2.0')
+            self._latest_version(debp_n.branch), '2.0')
 
         ubuntup, debianp = self._setup_upstreams_not_diverged()
         # Ubuntu upstream.
         self.assertEquals(
-            MP._latest_version(ubuntup.branch).upstream_version, '1.4')
+            self._latest_version(ubuntup.branch), '1.4')
         # Debian upstream.
         self.assertEquals(
-            MP._latest_version(debianp.branch).upstream_version, '2.2')
+            self._latest_version(debianp.branch), '2.2')
 
     def test_debian_upstream_newer(self):
         """Diverging upstreams (debian newer) don't cause merge conflicts.
@@ -461,7 +469,7 @@ class MergePackageTests(TestCaseWithTransport):
                 cle = changelog(version, vid)
                 p = '%s/work/%s/debian/changelog' % (self.test_base_dir, name)
                 _prepend_log(cle, p)
-            revid = tree.commit('%s: %s' % (vid, msg), rev_id='%s-%s' % (name, vid))
+            revid = tree.commit('%s: %s' % (vid, msg))
             setattr(self, revid_name(vid), revid)
             tree.branch.tags.set_tag(version, revid)
 

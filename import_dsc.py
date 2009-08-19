@@ -1575,6 +1575,7 @@ class DistributionBranch(object):
         # tree for it.
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
+        # TODO: remove the _extract_upstream_tree alias below.
         to_location = os.path.join(basedir, "upstream")
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
@@ -1582,12 +1583,7 @@ class DistributionBranch(object):
         self.upstream_tree = dir_to.open_workingtree()
         self.upstream_branch = self.upstream_tree.branch
 
-    def _extract_upstream_tree(self, upstream_tip, basedir):
-        # This method is now being used outside this module and hence
-        # not really private any longer.
-        # TODO: obsolete/remove this method and start using
-        # extract_upstream_tree() instead.
-        self.extract_upstream_tree(upstream_tip, basedir)
+    _extract_upstream_tree = extract_upstream_tree
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
@@ -1622,11 +1618,11 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
-    def _revid_of_upstream_version_from_branch(self, version):
         """The private method below will go away eventually."""
         return self.revid_of_upstream_version_from_branch(version)
 
     def revid_of_upstream_version_from_branch(self, version):
+        # TODO: remove the _revid_of_upstream_version_from_branch alias below.
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name):
@@ -1639,6 +1635,8 @@ class DistributionBranch(object):
             return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
+
+    _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None):

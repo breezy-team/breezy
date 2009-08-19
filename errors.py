@@ -175,3 +175,17 @@ class PristineTarError(BzrError):
 
     def __init__(self, error):
         BzrError.__init__(self, error=error)
+
+
+class WrongBranchType(BzrError):
+    _fmt = "The merge target is not a packaging branch."
+
+
+class InvalidChangelogFormat(BzrError):
+    _fmt = "The debian/changelog is empty or not in valid format."
+
+
+class SourceUpstreamConflictsWithTargetPackaging(BzrError):
+    _fmt = (
+        "The shared upstream revision conflicts with "
+        "the target packaging branch")

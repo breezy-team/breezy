@@ -40,7 +40,7 @@ commands = {
         "import_dsc": [],
         "bd_do": [],
         "mark_uploaded": [],
-        "merge_package": ["mp"]
+        "merge_package": []
         }
 
 for command, aliases in commands.iteritems():
