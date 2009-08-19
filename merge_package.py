@@ -202,7 +202,7 @@ def fix_ancestry_as_needed(tree, source):
     tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
 
     # Extract the merge target's upstream tree into a temporary directory.
-    db._extract_upstream_tree(utarget_revid, tempdir)
+    db.extract_upstream_tree(utarget_revid, tempdir)
     tmp_target_upstream_tree = db.upstream_tree
 
     # TODO: fix comment below.

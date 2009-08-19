@@ -1570,7 +1570,7 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tempdir)
 
-    def _extract_upstream_tree(self, upstream_tip, basedir):
+    def extract_upstream_tree(self, upstream_tip, basedir):
         # Extract that to a tempdir so we can get a working
         # tree for it.
         # TODO: should stack rather than trying to use the repository,
@@ -1581,6 +1581,13 @@ class DistributionBranch(object):
                 accelerator_tree=self.tree)
         self.upstream_tree = dir_to.open_workingtree()
         self.upstream_branch = self.upstream_tree.branch
+
+    def _extract_upstream_tree(self, upstream_tip, basedir):
+        # This method is now being used outside this module and hence
+        # not really private any longer.
+        # TODO: obsolete/remove this method and start using
+        # extract_upstream_tree() instead.
+        self.extract_upstream_tree(upstream_tip, basedir)
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
@@ -1645,12 +1652,12 @@ class DistributionBranch(object):
                         previous_version.upstream_version):
                     upstream_tip = self.revid_of_upstream_version_from_branch(
                             previous_version.upstream_version)
-                    self._extract_upstream_tree(upstream_tip, tempdir)
+                    self.extract_upstream_tree(upstream_tip, tempdir)
                 elif (upstream_branch is not None and 
                       previous_upstream_revision is not None):
                     upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
                     assert isinstance(upstream_tip, str)
-                    self._extract_upstream_tree(upstream_tip, tempdir)
+                    self.extract_upstream_tree(upstream_tip, tempdir)
                 else:
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "

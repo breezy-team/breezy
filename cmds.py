@@ -722,7 +722,7 @@ class cmd_import_dsc(Command):
                                     db.upstream_tag_name(last_version)))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version)
-                    db._extract_upstream_tree(upstream_tip, tempdir)
+                    db.extract_upstream_tree(upstream_tip, tempdir)
                 else:
                     db._create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
