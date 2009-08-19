@@ -89,7 +89,8 @@ def _latest_version(branch):
 def _upstream_version_data(source, target):
     """Most recent upstream versions/revision IDs of the merge source/target.
 
-    Please note: both packaing branches must have been read-locked beforehand.
+    Please note: both packaging branches must have been read-locked
+    beforehand.
 
     :param source: The merge source branch.
     :param target: The merge target branch.

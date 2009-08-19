@@ -19,13 +19,10 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-import os
-import random
 import string
 import unittest
 
 from bzrlib.errors import ConflictsInTree
-from bzrlib.merge import WeaveMerger
 from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb import merge_package as MP
@@ -474,8 +471,7 @@ class MergePackageTests(TestCaseWithTransport):
         for version, paths, utree, urevid in vdata:
             msg = ''
             if utree is not None:
-                tree.merge_from_branch(
-                    utree.branch, to_revision=urevid, merge_type=WeaveMerger)
+                tree.merge_from_branch(utree.branch, to_revision=urevid)
                 utree.branch.tags.merge_to(tree.branch.tags)
                 if urevid is not None:
                     msg += 'Merged tree %s|%s. ' % (tree_nick(utree), urevid)
@@ -491,7 +487,6 @@ class MergePackageTests(TestCaseWithTransport):
 
 
 if __name__ == '__main__':
-    # unittest.main()
     suite = unittest.TestLoader().loadTestsFromTestCase(MergePackageTests)
     unittest.TextTestRunner(verbosity=2).run(suite)
 
