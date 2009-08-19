@@ -286,6 +286,10 @@ class GenericProcessor(processor.ImportProcessor):
             marks_file.export_marks(self.params.get("export-marks"),
                 self.cache_mgr.revision_ids)
 
+        if self.cache_mgr.last_ref == None:
+            """Nothing to refresh"""
+            return
+
         # Update the branches
         self.note("Updating branch information ...")
         updater = branch_updater.BranchUpdater(self.repo, self.branch,
