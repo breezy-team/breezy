@@ -77,7 +77,7 @@ class MergePackageTests(TestCaseWithTransport):
             MP._latest_version(debianp.branch).upstream_version, '2.2')
 
     def test_debian_upstream_newer(self):
-        """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
+        """Diverging upstreams (debian newer) don't cause merge conflicts.
 
         The debian and ubuntu upstream branches will differ with regard to
         the content of the file 'c'.
@@ -122,7 +122,7 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def test_debian_upstream_older(self):
-        """Make sure fix_ancestry_as_needed() resolves upstream conflicts.
+        """Diverging upstreams (debian older) don't cause merge conflicts.
 
         The debian and ubuntu upstream branches will differ with regard to
         the content of the file 'c'.
@@ -167,12 +167,14 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def test_upstreams_not_diverged(self):
-        """fix_ancestry_as_needed() has no effect for non-diverging upstreams.
+        """Non-diverging upstreams result in a normal merge.
 
         The debian and ubuntu upstream branches will not have diverged
         this time.
 
-        The packaging branches will have a text conflict in 'debian/changelog'.
+        The packaging branches will have a conflict in 'debian/changelog'.
+        fix_ancestry_as_needed() will return as soon as establishing that
+        the upstreams have not diverged.
         """
         ubuntup, debianp = self._setup_upstreams_not_diverged()
 
@@ -489,4 +491,7 @@ class MergePackageTests(TestCaseWithTransport):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(MergePackageTests)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+
