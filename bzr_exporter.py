@@ -243,7 +243,8 @@ class BzrFastExporter(object):
 
         # Print the commit
         git_ref = 'refs/heads/%s' % (git_branch,)
-        mark = self.revid_to_mark[revid] = ncommits + 1
+        mark = ncommits + 1
+        self.revid_to_mark[revid] = str(mark)
         file_cmds = self._get_filecommands(parent, revid)
         self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
             file_cmds))
