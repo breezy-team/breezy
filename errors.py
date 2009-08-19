@@ -177,14 +177,6 @@ class PristineTarError(BzrError):
         BzrError.__init__(self, error=error)
 
 
-class WrongBranchType(BzrError):
-    _fmt = "The merge target is not a packaging branch."
-
-
-class InvalidChangelogFormat(BzrError):
-    _fmt = "The debian/changelog is empty or not in valid format."
-
-
 class SourceUpstreamConflictsWithTargetPackaging(BzrError):
     _fmt = ('''\
         The "merge-package" command has detected diverged upstream
