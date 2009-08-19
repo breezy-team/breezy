@@ -49,8 +49,10 @@ ipsec-tools (%s) karmic; urgency=low
 def _prepend_log(text, path):
     content = open(path).read()
     fh = open(path, 'wb')
-    fh.write(text+content)
-    fh.close()
+    try:
+        fh.write(text+content)
+    finally:
+        fh.close()
 
 
 class MergePackageTests(TestCaseWithTransport):
