@@ -30,23 +30,7 @@ from debian_bundle.changelog import Version
 from bzrlib import errors
 
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
-
-
-def _read_file(branch, path):
-    """Get content of file for given `branch` and `path.
-    
-    Please note: the `branch` must have been read-locked beforehand.
-
-    :param branch: A Branch object containing the file of interest.
-    :param path: The path of the file to read.
-    """
-    try:
-        tree = branch.basis_tree()
-        content = tree.get_file_text(tree.path2id(path))
-    except errors.NoSuchId:
-        raise WrongBranchType()
-
-    return content
+from bzrlib.plugins.builddeb.util import find_changelog
 
 
 def _latest_version(branch):
@@ -54,22 +38,9 @@ def _latest_version(branch):
     
     :param branch: A Branch object containing the source upload of interest.
     """
-    upload_version = ''
-    changelog = _read_file(branch, "debian/changelog")
+    changelog, _ignore = find_changelog(branch.basis_tree(), False)
 
-    for line in changelog.splitlines():
-        # Look for the top-level changelog stanza, extract the
-        # upload version from it and break on success.
-        match = re.search('^.+\(([^)]+)\).*$', line)
-        if match is not None:
-            (upload_version,) = match.groups(1)
-            break
-
-    upload_version = upload_version.strip()
-    if len(upload_version) <= 0:
-        raise InvalidChangelogFormat()
-
-    return Version(upload_version)
+    return changelog.version
 
 
 def _upstream_version_data(source, target):
