@@ -142,11 +142,11 @@ class TestShowLog(tests.TestCaseWithTransport):
         lf = LogCatcher()
         log.show_log(wt.branch, lf, verbose=True)
         committed_msg = lf.revisions[0].rev.message
-        if msg == committed_msg:
-            raise tests.KnownFailure(
-                "Commit message was preserved, but it wasn't expected to be.")
-        self.assertNotEqual(msg, committed_msg)
-        self.assertTrue(len(committed_msg) > len(msg))
+        if wt.branch.repository._serializer.squashes_xml_invalid_characters:
+            self.assertNotEqual(msg, committed_msg)
+            self.assertTrue(len(committed_msg) > len(msg))
+        else:
+            self.assertEqual(msg, committed_msg)
 
     def test_commit_message_without_control_chars(self):
         wt = self.make_branch_and_tree('.')
