@@ -163,7 +163,7 @@ def fix_ancestry_as_needed(tree, source):
     try:
         conflicts = tree.merge_from_branch(tmp_target_upstream_tree.branch)
         if conflicts > 0:
-            raise SourceUpstreamConflictsWithTargetPackaging()
+            raise errors.SharedUpstreamConflictsWithTargetPackaging()
         else:
             tree.commit('Merging shared upstream rev in to target branch.')
     finally:
