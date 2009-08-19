@@ -62,16 +62,15 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for item in parent_map.iteritems():
-        key = item[0]
+    for key, value in parent_map.iteritems():
         if isinstance(key, str) or len(key) == 1:
             prefix = ''
         else:
             prefix = key[0]
         try:
-            per_prefix_map[prefix].append(item)
+            per_prefix_map[prefix][key] = value
         except KeyError:
-            per_prefix_map[prefix] = [item]
+            per_prefix_map[prefix] = {key: value}
 
     present_keys = []
     for prefix in sorted(per_prefix_map):

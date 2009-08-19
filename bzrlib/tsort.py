@@ -46,7 +46,7 @@ def topo_sort(graph):
     topo_sort is faster when the whole list is needed, while when iterating
     over a part of the list, TopoSorter.iter_topo_order should be used.
     """
-    kg = _mod_graph.KnownGraph(graph)
+    kg = _mod_graph.KnownGraph(dict(graph))
     return kg.topo_sort()
 
 
