@@ -3737,19 +3737,61 @@ class InterDifferingSerializer(InterRepository):
 
         :return: (basis_id, delta)
         """
-        possible_trees = [(parent_id, cache[parent_id])
-                          for parent_id in parent_ids
-                           if parent_id in cache]
+        possible_trees = []
+        for parent_id in parent_ids:
+            if parent_id in cache:
+                possible_trees.append((parent_id, cache[parent_id]))
+            else:
+                # Not cached, but inventory might be present anyway.
+                try:
+                    parent_tree = self.source.revision_tree(parent_id)
+                except errors.NoSuchRevision:
+                    # Nope, parent is ghost.
+                    pass
+                else:
+                    cache[parent_id] = parent_tree
+                    possible_trees.append((parent_id, parent_tree))
         if len(possible_trees) == 0:
             # There either aren't any parents, or the parents aren't in the
             # cache, so just use the last converted tree
             possible_trees.append((basis_id, cache[basis_id]))
         deltas = []
+        # Generate deltas against each tree, to find the shortest.
+        # Also, we want to know which text records are unique to this tree vs.
+        # the non-ghost parents.  So we examine each delta for directory and
+        # text entries.
+        texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
             delta = tree.inventory._make_delta(basis_tree.inventory)
+            for old_path, new_path, file_id, new_entry in delta:
+                if new_path is None:
+                    # This file_id isn't present in the new rev, so we don't
+                    # care about it.
+                    continue
+                if not new_path:
+                    # Rich roots are handled elsewhere...
+                    continue
+                kind = new_entry.kind
+                if kind != 'directory' and kind != 'file':
+                    # No text record associated with this inventory entry.
+                    continue
+                # This is a directory or file that has changed somehow.
+                texts_possibly_new_in_tree.add((file_id, new_entry.revision))
             deltas.append((len(delta), basis_id, delta))
         deltas.sort()
-        return deltas[0][1:]
+        # Remove any file version in texts_possibly_new_in_tree that can be
+        # found in any basis tree.
+        for basis_id, basis_tree in possible_trees:
+            basis_inv = basis_tree.inventory
+            for file_key in list(texts_possibly_new_in_tree):
+                file_id, file_revision = file_key
+                try:
+                    ie = basis_inv[file_id]
+                except errors.NoSuchId:
+                    continue
+                if ie.revision == file_revision:
+                    texts_possibly_new_in_tree.remove(file_key)
+        return deltas[0][1:], texts_possibly_new_in_tree
 
     def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
@@ -3786,21 +3828,36 @@ class InterDifferingSerializer(InterRepository):
             parents_parents_keys = parent_invs_keys_for_stacking[
                 (current_revision_id,)]
             parents_parents = [key[-1] for key in parents_parents_keys]
-            basis_id, delta = self._get_delta_for_revision(parent_tree,
-                parents_parents, basis_id, cache)
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
+            delta = parent_tree.inventory._make_delta(basis_tree.inventory)
             self.target.add_inventory_by_delta(
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
         # Ok, back to business.
+#        inv_keys = [(rev_id,) for rev_id in revision_ids]
+#        inv_parent_map = self.source.inventories.get_parent_map(inv_keys)
+#        parent_map = {}
+#        import operator
+#        key_to_id = operator.itemgetter(-1)
+#        for inv_key, parent_keys in inv_parent_map.iteritems():
+#            rev_key = inv_key[-1]
+#            parent_ids = map(key_to_id, parent_keys)
+#            parent_map[rev_key] = parent_ids
+#        del inv_key, rev_key, parent_keys, parent_ids
+#        #parent_map = self.source.get_parent_map(revision_ids)
         for tree in self.source.revision_trees(revision_ids):
+            # Find a inventory delta for this revision.
+            # Find text entries that need to be copied, too.
             current_revision_id = tree.get_revision_id()
             parent_ids = parent_map.get(current_revision_id, ())
-            basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
-                                                           basis_id, cache)
+            (basis_id, delta), new_text_keys = self._get_delta_for_revision(
+                tree, parent_ids, basis_id, cache)
+            mutter('%r', new_text_keys)
+            text_keys.update(new_text_keys)
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
-            # Find text entries that need to be copied
             for old_path, new_path, file_id, entry in delta:
                 if new_path is not None:
                     if not new_path:
@@ -3814,7 +3871,8 @@ class InterDifferingSerializer(InterRepository):
                             # it specially
                             root_keys_to_create.add((file_id, entry.revision))
                             continue
-                    text_keys.add((file_id, entry.revision))
+                    mutter('would add: %r', (file_id, entry.revision))
+                    #text_keys.add((file_id, entry.revision))
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
@@ -3856,7 +3914,7 @@ class InterDifferingSerializer(InterRepository):
             for parent_tree in self.source.revision_trees(parent_map):
                 current_revision_id = parent_tree.get_revision_id()
                 parents_parents = parent_map[current_revision_id]
-                basis_id, delta = self._get_delta_for_revision(parent_tree,
+                (basis_id, delta), _ = self._get_delta_for_revision(parent_tree,
                     parents_parents, basis_id, cache)
                 self.target.add_inventory_by_delta(
                     basis_id, delta, current_revision_id, parents_parents)
@@ -3955,8 +4013,9 @@ class InterDifferingSerializer(InterRepository):
         first_rev = self.source.get_revision(first_revision_id)
         try:
             basis_id = first_rev.parent_ids[0]
-            # only valid as a basis if the target has it
-            self.target.get_revision(basis_id)
+            # XXX
+#            # only valid as a basis if the target has it
+#            self.target.get_revision(basis_id)
             # Try to get a basis tree - if its a ghost it will hit the
             # NoSuchRevision case.
             basis_tree = self.source.revision_tree(basis_id)
