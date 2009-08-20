@@ -86,7 +86,7 @@ def report_bug_to_apport(exc_info, stderr):
     try:
         from apport.report import Report
     except ImportError, e:
-        trace.warning("couldn't find apport bug-reporting library: %s" % e)
+        trace.mutter("couldn't find apport bug-reporting library: %s" % e)
         return False
 
     crash_file = _open_crash_file()
