@@ -362,7 +362,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                             wt.get_parent_ids())
 
     def test_clone_preserves_content(self):
-        self.thisFailsStrictLockCheck()
         wt = self.make_branch_and_tree('source')
         self.build_tree(['added', 'deleted', 'notadded'],
                         transport=wt.bzrdir.transport.clone('..'))
