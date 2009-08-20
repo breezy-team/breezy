@@ -625,14 +625,17 @@ class TestWallServer(TestSpecificRequestHandler):
         # for details) make no distinction between a closed
         # socket and badly formatted status line, so we can't
         # just test for ConnectionError, we have to test
-        # InvalidHttpResponse too.
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        # InvalidHttpResponse too. And pycurl may raise ConnectionReset
+        # instead of ConnectionError too.
+        self.assertRaises(( errors.ConnectionError, errors.ConnectionReset,
+                            errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+                           errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
 
 

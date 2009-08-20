@@ -24,6 +24,10 @@ New Features
 Bug Fixes
 *********
 
+* Fix a pycurl related test failure on karmic by recognizing an error
+  raised by newer versions of pycurl.
+  (Vincent Ladeuil, #306264)
+
 Improvements
 ************
 
