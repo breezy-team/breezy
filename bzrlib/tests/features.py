@@ -28,5 +28,8 @@ class _ApportFeature(Feature):
         else:
             return True
 
+    def feature_name(self):
+        return 'apport'
+
 
 ApportFeature = _ApportFeature()
