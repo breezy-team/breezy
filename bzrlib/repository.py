@@ -3732,34 +3732,30 @@ class InterDifferingSerializer(InterRepository):
             return False
         return True
 
-    def _get_delta_for_revision(self, tree, parent_ids, basis_id, cache):
-        """Get the best delta and base for this revision.
-
-        :return: (basis_id, delta)
-        """
+    def _get_trees(self, revision_ids, cache):
         possible_trees = []
-        for parent_id in parent_ids:
-            if parent_id in cache:
-                possible_trees.append((parent_id, cache[parent_id]))
+        for rev_id in revision_ids:
+            if rev_id in cache:
+                possible_trees.append((rev_id, cache[rev_id]))
             else:
                 # Not cached, but inventory might be present anyway.
                 try:
-                    parent_tree = self.source.revision_tree(parent_id)
+                    tree = self.source.revision_tree(rev_id)
                 except errors.NoSuchRevision:
                     # Nope, parent is ghost.
                     pass
                 else:
-                    cache[parent_id] = parent_tree
-                    possible_trees.append((parent_id, parent_tree))
-        if len(possible_trees) == 0:
-            # There either aren't any parents, or the parents aren't in the
-            # cache, so just use the last converted tree
-            possible_trees.append((basis_id, cache[basis_id]))
+                    cache[rev_id] = tree
+                    possible_trees.append((rev_id, tree))
+        return possible_trees
+
+    def _get_delta_for_revision(self, tree, parent_ids, possible_trees):
+        """Get the best delta and base for this revision.
+
+        :return: (basis_id, delta)
+        """
         deltas = []
         # Generate deltas against each tree, to find the shortest.
-        # Also, we want to know which text records are unique to this tree vs.
-        # the non-ghost parents.  So we examine each delta for directory and
-        # text entries.
         texts_possibly_new_in_tree = set()
         for basis_id, basis_tree in possible_trees:
             delta = tree.inventory._make_delta(basis_tree.inventory)
@@ -3779,19 +3775,36 @@ class InterDifferingSerializer(InterRepository):
                 texts_possibly_new_in_tree.add((file_id, new_entry.revision))
             deltas.append((len(delta), basis_id, delta))
         deltas.sort()
-        # Remove any file version in texts_possibly_new_in_tree that can be
-        # found in any basis tree.
-        for basis_id, basis_tree in possible_trees:
-            basis_inv = basis_tree.inventory
-            for file_key in list(texts_possibly_new_in_tree):
-                file_id, file_revision = file_key
-                try:
-                    ie = basis_inv[file_id]
-                except errors.NoSuchId:
-                    continue
-                if ie.revision == file_revision:
-                    texts_possibly_new_in_tree.remove(file_key)
-        return deltas[0][1:], texts_possibly_new_in_tree
+        return deltas[0][1:]
+
+    def _fetch_parent_invs_for_stacking(self, parent_map, cache):
+        """Find all parent revisions that are absent, but for which the
+        inventory is present, and copy those inventories.
+
+        This is necessary to preserve correctness when the source is stacked
+        without fallbacks configured.  (Note that in cases like upgrade the
+        source may be not have _fallback_repositories even though it is
+        stacked.)
+        """
+        parent_revs = set()
+        for parents in parent_map.values():
+            parent_revs.update(parents)
+        present_parents = self.source.get_parent_map(parent_revs)
+        absent_parents = set(parent_revs).difference(present_parents)
+        parent_invs_keys_for_stacking = self.source.inventories.get_parent_map(
+            (rev_id,) for rev_id in absent_parents)
+        parent_inv_ids = [key[-1] for key in parent_invs_keys_for_stacking]
+        for parent_tree in self.source.revision_trees(parent_inv_ids):
+            current_revision_id = parent_tree.get_revision_id()
+            parents_parents_keys = parent_invs_keys_for_stacking[
+                (current_revision_id,)]
+            parents_parents = [key[-1] for key in parents_parents_keys]
+            basis_id = _mod_revision.NULL_REVISION
+            basis_tree = self.source.revision_tree(basis_id)
+            delta = parent_tree.inventory._make_delta(basis_tree.inventory)
+            self.target.add_inventory_by_delta(
+                basis_id, delta, current_revision_id, parents_parents)
+            cache[current_revision_id] = parent_tree
 
     def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
@@ -3811,68 +3824,54 @@ class InterDifferingSerializer(InterRepository):
         pending_deltas = []
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
-        # Are there any parent inventories for stacking we need to copy?
-        # (Note that in cases like upgrade the source may be not have
-        # _fallback_repositories even though it is stacked.)
-        parent_revs = set()
-        for parents in parent_map.values():
-            parent_revs.update(parents)
-        present_parents = self.source.get_parent_map(parent_revs)
-        absent_parents = set(parent_revs).difference(present_parents)
-        parent_invs_keys_for_stacking = self.source.inventories.get_parent_map(
-            (rev_id,) for rev_id in absent_parents)
-        parent_inv_ids = [key[-1] for key in parent_invs_keys_for_stacking]
-        mutter('parent_inv_ids: %r', parent_inv_ids)
-        for parent_tree in self.source.revision_trees(parent_inv_ids):
-            current_revision_id = parent_tree.get_revision_id()
-            parents_parents_keys = parent_invs_keys_for_stacking[
-                (current_revision_id,)]
-            parents_parents = [key[-1] for key in parents_parents_keys]
-            basis_id = _mod_revision.NULL_REVISION
-            basis_tree = self.source.revision_tree(basis_id)
-            delta = parent_tree.inventory._make_delta(basis_tree.inventory)
-            self.target.add_inventory_by_delta(
-                basis_id, delta, current_revision_id, parents_parents)
-            cache[current_revision_id] = parent_tree
-        # Ok, back to business.
-#        inv_keys = [(rev_id,) for rev_id in revision_ids]
-#        inv_parent_map = self.source.inventories.get_parent_map(inv_keys)
-#        parent_map = {}
-#        import operator
-#        key_to_id = operator.itemgetter(-1)
-#        for inv_key, parent_keys in inv_parent_map.iteritems():
-#            rev_key = inv_key[-1]
-#            parent_ids = map(key_to_id, parent_keys)
-#            parent_map[rev_key] = parent_ids
-#        del inv_key, rev_key, parent_keys, parent_ids
-#        #parent_map = self.source.get_parent_map(revision_ids)
+        self._fetch_parent_invs_for_stacking(parent_map, cache)
         for tree in self.source.revision_trees(revision_ids):
             # Find a inventory delta for this revision.
             # Find text entries that need to be copied, too.
             current_revision_id = tree.get_revision_id()
             parent_ids = parent_map.get(current_revision_id, ())
-            (basis_id, delta), new_text_keys = self._get_delta_for_revision(
-                tree, parent_ids, basis_id, cache)
-            mutter('%r', new_text_keys)
-            text_keys.update(new_text_keys)
+            parent_trees = self._get_trees(parent_ids, cache)
+            possible_trees = list(parent_trees)
+            if len(possible_trees) == 0:
+                # There either aren't any parents, or the parents are ghosts,
+                # so just use the last converted tree.
+                possible_trees.append((basis_id, cache[basis_id]))
+            basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
+                                                           possible_trees)
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
+            # Determine which texts are in present in this revision but not in
+            # any of the available parents.
+            texts_possibly_new_in_tree = set()
             for old_path, new_path, file_id, entry in delta:
-                if new_path is not None:
-                    if not new_path:
-                        # This is the root
-                        if not self.target.supports_rich_root():
-                            # The target doesn't support rich root, so we don't
-                            # copy
-                            continue
-                        if self._converting_to_rich_root:
-                            # This can't be copied normally, we have to insert
-                            # it specially
-                            root_keys_to_create.add((file_id, entry.revision))
-                            continue
-                    mutter('would add: %r', (file_id, entry.revision))
-                    #text_keys.add((file_id, entry.revision))
+                if new_path is None:
+                    # This file_id isn't present in the new rev
+                    continue
+                if not new_path:
+                    # This is the root
+                    if not self.target.supports_rich_root():
+                        # The target doesn't support rich root, so we don't
+                        # copy
+                        continue
+                    if self._converting_to_rich_root:
+                        # This can't be copied normally, we have to insert
+                        # it specially
+                        root_keys_to_create.add((file_id, entry.revision))
+                        continue
+                kind = entry.kind
+                texts_possibly_new_in_tree.add((file_id, entry.revision))
+            for basis_id, basis_tree in possible_trees:
+                basis_inv = basis_tree.inventory
+                for file_key in list(texts_possibly_new_in_tree):
+                    file_id, file_revision = file_key
+                    try:
+                        entry = basis_inv[file_id]
+                    except errors.NoSuchId:
+                        continue
+                    if entry.revision == file_revision:
+                        texts_possibly_new_in_tree.remove(file_key)
+            text_keys.update(texts_possibly_new_in_tree)
             revision = self.source.get_revision(current_revision_id)
             pending_deltas.append((basis_id, delta,
                 current_revision_id, revision.parent_ids))
@@ -3914,8 +3913,13 @@ class InterDifferingSerializer(InterRepository):
             for parent_tree in self.source.revision_trees(parent_map):
                 current_revision_id = parent_tree.get_revision_id()
                 parents_parents = parent_map[current_revision_id]
-                (basis_id, delta), _ = self._get_delta_for_revision(parent_tree,
-                    parents_parents, basis_id, cache)
+                possible_trees = self._get_trees(parents_parents, cache)
+                if len(possible_trees) == 0:
+                    # There either aren't any parents, or the parents are
+                    # ghosts, so just use the last converted tree.
+                    possible_trees.append((basis_id, cache[basis_id]))
+                basis_id, delta = self._get_delta_for_revision(parent_tree,
+                    parents_parents, possible_trees)
                 self.target.add_inventory_by_delta(
                     basis_id, delta, current_revision_id, parents_parents)
         # insert signatures and revisions
@@ -4013,9 +4017,8 @@ class InterDifferingSerializer(InterRepository):
         first_rev = self.source.get_revision(first_revision_id)
         try:
             basis_id = first_rev.parent_ids[0]
-            # XXX
-#            # only valid as a basis if the target has it
-#            self.target.get_revision(basis_id)
+            # only valid as a basis if the target has it
+            self.target.get_revision(basis_id)
             # Try to get a basis tree - if its a ghost it will hit the
             # NoSuchRevision case.
             basis_tree = self.source.revision_tree(basis_id)
