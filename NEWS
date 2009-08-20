@@ -24,12 +24,12 @@ New Features
 Bug Fixes
 *********
 
+* Fix a pycurl related test failure on karmic by recognizing an error
+  raised by newer versions of pycurl.
+  (Vincent Ladeuil, #306264)
+
 Improvements
 ************
-
-* A better description of the platform is shown in crash tracebacks, ``bzr
-  --version`` and ``bzr selftest``.
-  (Martin Pool, #409137)
 
 Documentation
 *************
