@@ -26,7 +26,11 @@ from StringIO import StringIO
 import sys
 import zipfile
 
-from bzrlib import plugin, tests
+from bzrlib import (
+    osutils,
+    plugin,
+    tests,
+    )
 import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
@@ -454,41 +458,6 @@ class TestPluginHelp(TestCaseInTempDir):
                 delattr(bzrlib.plugins, 'myplug')
 
 
-class TestSetPluginsPath(TestCase):
-
-    def test_set_plugins_path(self):
-        """set_plugins_path should set the module __path__ correctly."""
-        old_path = bzrlib.plugins.__path__
-        try:
-            bzrlib.plugins.__path__ = []
-            expected_path = bzrlib.plugin.set_plugins_path()
-            self.assertEqual(expected_path, bzrlib.plugins.__path__)
-        finally:
-            bzrlib.plugins.__path__ = old_path
-
-    def test_set_plugins_path_with_trailing_slashes(self):
-        """set_plugins_path should set the module __path__ based on
-        BZR_PLUGIN_PATH after removing all trailing slashes."""
-        old_path = bzrlib.plugins.__path__
-        old_env = os.environ.get('BZR_PLUGIN_PATH')
-        try:
-            bzrlib.plugins.__path__ = []
-            os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
-                "second/\\/\\/"
-            bzrlib.plugin.set_plugins_path()
-            # We expect our nominated paths to have all path-seps removed,
-            # and this is testing only that.
-            expected_path = ['first', 'second']
-            self.assertEqual(expected_path,
-                bzrlib.plugins.__path__[:len(expected_path)])
-        finally:
-            bzrlib.plugins.__path__ = old_path
-            if old_env is not None:
-                os.environ['BZR_PLUGIN_PATH'] = old_env
-            else:
-                del os.environ['BZR_PLUGIN_PATH']
-
-
 class TestHelpIndex(tests.TestCase):
     """Tests for the PluginsHelpIndex class."""
 
@@ -633,7 +602,6 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
 
     def test_get_standard_plugins_path(self):
         path = plugin.get_standard_plugins_path()
-        self.assertEqual(plugin.get_default_plugin_path(), path[0])
         for directory in path:
             self.assertNotContainsRe(directory, r'\\/$')
         try:
@@ -651,7 +619,9 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
 
     def test_get_standard_plugins_path_env(self):
         os.environ['BZR_PLUGIN_PATH'] = 'foo/'
-        self.assertEqual('foo', plugin.get_standard_plugins_path()[0])
+        path = plugin.get_standard_plugins_path()
+        for directory in path:
+            self.assertNotContainsRe(directory, r'\\/$')
 
     def test_load_plugins(self):
         plugin.load_plugins(['.'])
@@ -683,13 +653,70 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
         self.site = plugin.get_site_plugin_path()
         self.core = plugin.get_core_plugin_path()
 
-    def _list2path(self, *args):
+    def _list2paths(self, *args):
         paths = []
         for p in args:
             plugin._append_new_path(paths, p)
         return paths
 
+    def _set_path(self, *args):
+        path = os.pathsep.join(self._list2paths(*args))
+        osutils.set_or_unset_env('BZR_PLUGIN_PATH', path)
+
+    def check_path(self, expected_dirs, setting_dirs):
+        if setting_dirs:
+            self._set_path(*setting_dirs)
+        actual = plugin.get_standard_plugins_path()
+        self.assertEquals(self._list2paths(*expected_dirs), actual)
+
     def test_default(self):
-        self.assertEquals(self._list2path(self.user, self.core, self.site),
-                          plugin.get_standard_plugins_path())
+        self.check_path([self.user, self.core, self.site],
+                        None)
+
+    def test_adhoc_policy(self):
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+core', '+site'])
+
+    def test_fallback_policy(self):
+        self.check_path([self.core, self.site, self.user],
+                        ['+core', '+site', '+user'])
+
+    def test_override_policy(self):
+        self.check_path([self.user, self.site, self.core],
+                        ['+user', '+site', '+core'])
+
+    def test_disable_user(self):
+        self.check_path([self.core, self.site], ['-user'])
+
+    def test_disable_user_twice(self):
+        # Ensures multiple removals don't left cruft
+        self.check_path([self.core, self.site], ['-user', '-user'])
+
+    def test_disable_overrides_disable(self):
+        self.check_path([self.core, self.site], ['-user', '+user'])
+
+    def test_disable_core(self):
+        self.check_path([self.user, self.site], ['-core'])
+
+    def test_disable_site(self):
+        self.check_path([self.user, self.core], ['-site'])
+
+    def test_override_site(self):
+        self.check_path([self.core, 'mysite', self.user],
+                        ['+core', 'mysite', '-site', '+user'])
+        self.check_path([self.user, self.core, 'mysite'],
+                        ['mysite', '-site'])
+
+    def test_override_core(self):
+        self.check_path(['mycore', self.site, self.user],
+                        ['mycore', '-core', '+site', '+user'])
+        self.check_path([self.user, self.site, 'mycore'],
+                        ['mycore', '-core'])
+
+    def test_my_plugin_only(self):
+        self.check_path(['myplugin'], ['myplugin', '-user', '-core', '-site'])
+
+    def test_my_plugin_first(self):
+        self.check_path(['myplugin', self.core, self.site, self.user],
+                        ['myplugin', '+core', '+site', '+user'])
 

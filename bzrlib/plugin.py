@@ -139,42 +139,58 @@ def get_user_plugin_path():
 
 def get_standard_plugins_path():
     """Determine a plugin path suitable for general use."""
-    path = os.environ.get('BZR_PLUGIN_PATH',
-                          get_default_plugin_path()).split(os.pathsep)
+    # Ad-Hoc default: core is not overriden by site but user can overrides both
+    defaults = ['+user', '+core', '+site']
+    env_paths = []
+    env_path = os.environ.get('BZR_PLUGIN_PATH', None)
+    if env_path:
+        env_paths = env_path.split(os.pathsep)
+
+    # The predefined references
+    refs = dict(core=get_core_plugin_path(),
+                site=get_site_plugin_path(),
+                user=get_user_plugin_path())
+
+    # Handle removals first
+    def unset_ref(p):
+        if p.startswith('-'):
+            key = p[1:]
+            if key in refs: # Needed to handle multiple removals
+                refs[key] = None
+                p = None
+        return p
+
+    defaults = [p for p in defaults if unset_ref(p) is not None]
+    env_paths = [p for p in env_paths if unset_ref(p) is not None]
+
+    for k, v in refs.iteritems():
+        added = '+%s' % k
+        if v is None:
+            # References removed can't be used anymore
+            if added in env_paths:
+                env_paths.remove(added)
+            if added in defaults:
+                defaults.remove(added)
+        else:
+            # Explicit beats implicit
+            if added in env_paths:
+                defaults.remove(added)
+
+    # Prepend the remaining defaults
+    paths = defaults + env_paths
+
+    # Resolve references
+    def resolve_ref(p):
+        if p.startswith('+') and refs.get(p[1:], None) is not None:
+            p = refs[p[1:]]
+        return p
+
+    paths = [resolve_ref(p) for p in paths]
+
     # Get rid of trailing slashes, since Python can't handle them when
     # it tries to import modules.
-    path = map(_strip_trailing_sep, path)
-    bzr_exe = bool(getattr(sys, 'frozen', None))
-    if bzr_exe:    # expand path for bzr.exe
-        # We need to use relative path to system-wide plugin
-        # directory because bzrlib from standalone bzr.exe
-        # could be imported by another standalone program
-        # (e.g. bzr-config; or TortoiseBzr/Olive if/when they
-        # will become standalone exe). [bialix 20071123]
-        # __file__ typically is
-        # C:\Program Files\Bazaar\lib\library.zip\bzrlib\plugin.pyc
-        # then plugins directory is
-        # C:\Program Files\Bazaar\plugins
-        # so relative path is ../../../plugins
-        path.append(osutils.abspath(osutils.pathjoin(
-            osutils.dirname(__file__), '../../../plugins')))
-    if not bzr_exe:     # don't look inside library.zip
-        # search the plugin path before the bzrlib installed dir
-        path.append(os.path.dirname(_mod_plugins.__file__))
-    # search the arch independent path if we can determine that and
-    # the plugin is found nowhere else
-    if sys.platform != 'win32':
-        try:
-            from distutils.sysconfig import get_python_lib
-        except ImportError:
-            # If distutuils is not available, we just won't add that path
-            pass
-        else:
-            archless_path = osutils.pathjoin(get_python_lib(), 'bzrlib',
-                    'plugins')
-            if archless_path not in path:
-                path.append(archless_path)
-    return path
+    paths = map(_strip_trailing_sep, paths)
+    return paths
 
 
 def load_plugins(path=None):
