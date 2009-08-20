@@ -29,6 +29,7 @@ import time
 import bzrlib
 from bzrlib import (
     config,
+    debug,
     osutils,
     plugin,
     trace,
@@ -36,8 +37,14 @@ from bzrlib import (
 
 
 def report_bug(exc_info, stderr):
-    report_bug_to_apport(exc_info, stderr) or \
-        report_bug_legacy(exc_info, stderr)
+    if 'no_apport' not in debug.debug_flags:
+        try:
+            report_bug_to_apport(exc_info, stderr)
+            return
+        except Exception, e:
+            sys.stderr.write("failed to report crash using apport: %r"  % e)
+            pass
+    report_bug_legacy(exc_info, stderr)
 
 
 def report_bug_legacy(exc_info, err_file):
