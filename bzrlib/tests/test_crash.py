@@ -52,3 +52,6 @@ class TestApportReporting(TestCase):
             'AssertionError')
         self.assertContainsRe(report,
             'test_apport_report_contents')
+        # should also be in there
+        self.assertContainsRe(report,
+            '(?m)^CommandLine:.*selftest')
