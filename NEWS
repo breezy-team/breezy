@@ -11,6 +11,7 @@ bzr 1.18
 ########
 
 :Codename: little traveller
+:1.18:    2009-08-20
 :1.18rc1: 2009-08-10
 
 This release of Bazaar marches on towards the 2.0 release in which the 2a
@@ -24,6 +25,7 @@ The Bazaar team decided that 2.0 will be a long-term supported release,
 with bugfix-only releases based on it continuing for at least six months
 or until the following stable release.
 
+There are no changes from 1.18rc1 to 1.18.
 
 New Features
 ************
