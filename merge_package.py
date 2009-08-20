@@ -114,8 +114,7 @@ def fix_ancestry_as_needed(tree, source):
         try:
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
-            uvdata = _upstream_version_data(source, target)
-            [(us_ver, us_revid), (ut_ver, ut_revid)] = uvdata
+            [(us_ver, us_revid), (ut_ver, ut_revid)] = _upstream_version_data(source, target)
 
             # Did the upstream branches of the merge source/target diverge?
             graph = source.repository.get_graph(target.repository)
