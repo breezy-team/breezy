@@ -140,11 +140,19 @@ def get_user_plugin_path():
 def get_standard_plugins_path():
     """Determine a plugin path suitable for general use."""
     # Ad-Hoc default: core is not overriden by site but user can overrides both
-    defaults = ['+user', '+core', '+site']
-    env_paths = []
-    env_path = os.environ.get('BZR_PLUGIN_PATH', None)
-    if env_path:
-        env_paths = env_path.split(os.pathsep)
+    # The rationale is that:
+    # - 'site' comes last, because these plugins should always be available and
+    #   are supposed to be in sync with the bzr installed on site.
+    # - 'core' comes before 'site' so that running bzr from sources or a user
+    #   installed version overrides the site version.
+    # - 'user' comes first, because... user is always right.
+    # - the above rules clearly defines which plugin version will be loaded if
+    #   several exist. Yet, it is sometimes desirable to disable some directory
+    #   so that a set of plugin is disabled as once. This can be done via
+    #   -site, -core, -user.
+
+    env_paths = os.environ.get('BZR_PLUGIN_PATH', '+user').split(os.pathsep)
+    defaults = ['+core', '+site']
 
     # The predefined references
     refs = dict(core=get_core_plugin_path(),
@@ -173,11 +181,11 @@ def get_standard_plugins_path():
                 defaults.remove(added)
         else:
             # Explicit beats implicit
-            if added in env_paths:
+            if added in env_paths and added in defaults:
                 defaults.remove(added)
 
-    # Prepend the remaining defaults
-    paths = defaults + env_paths
+    # Append the remaining defaults
+    paths = env_paths + defaults
 
     # Resolve references
     def resolve_ref(p):

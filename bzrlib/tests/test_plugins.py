@@ -696,21 +696,23 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
         self.check_path([self.core, self.site], ['-user', '+user'])
 
     def test_disable_core(self):
-        self.check_path([self.user, self.site], ['-core'])
+        self.check_path([self.site], ['-core'])
+        self.check_path([self.user, self.site], ['+user', '-core'])
 
     def test_disable_site(self):
-        self.check_path([self.user, self.core], ['-site'])
+        self.check_path([self.core], ['-site'])
+        self.check_path([self.user, self.core], ['-site', '+user'])
 
     def test_override_site(self):
-        self.check_path([self.core, 'mysite', self.user],
-                        ['+core', 'mysite', '-site', '+user'])
-        self.check_path([self.user, self.core, 'mysite'],
+        self.check_path(['mysite', self.user, self.core],
+                        ['mysite', '-site', '+user'])
+        self.check_path(['mysite', self.core],
                         ['mysite', '-site'])
 
     def test_override_core(self):
-        self.check_path(['mycore', self.site, self.user],
-                        ['mycore', '-core', '+site', '+user'])
-        self.check_path([self.user, self.site, 'mycore'],
+        self.check_path(['mycore', self.user, self.site],
+                        ['mycore', '-core', '+user', '+site'])
+        self.check_path(['mycore', self.site],
                         ['mycore', '-core'])
 
     def test_my_plugin_only(self):
