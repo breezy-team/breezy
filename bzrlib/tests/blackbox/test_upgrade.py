@@ -160,14 +160,22 @@ finished
         self.run_bzr('init --format=pack-0.92 branch-foo')
         self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
 
+    def _assert_branch_format(self, dir, format):
+        branch = bzrdir.BzrDir.open_tree_or_branch(self.get_url(dir))[1]
+        branch_format = branch._format
+        meta_format = bzrdir.format_registry.make_bzrdir(format)
+        expected_format = meta_format.get_branch_format()
+        self.assertEqual(expected_format, branch_format)
+
     def test_upgrade_clean_supported(self):
         self._assert_option_legal('--clean')
-
-    def test_upgrade_pack_supported(self):
-        self._assert_option_legal('--pack')
+        self._assert_branch_format('branch-foo', '2a')
+        backup_bzr_dir = os.path.join("branch-foo", "backup.bzr")
+        self.assertFalse(os.path.exists(backup_bzr_dir))
 
     def test_upgrade_dry_run_supported(self):
         self._assert_option_legal('--dry-run')
+        self._assert_branch_format('branch-foo', 'pack-0.92')
 
 
 class SFTPTests(TestCaseWithSFTPServer):
