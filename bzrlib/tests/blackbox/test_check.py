@@ -34,24 +34,22 @@ class TestCheck(ExternalBase):
         tree = self.make_branch_and_tree('.')
         tree.commit('hallelujah')
         out, err = self.run_bzr('check')
+        self.assertContainsRe(err, r"Checking working tree at '.*'\.\n")
+        self.assertContainsRe(err, r"Checking repository at '.*'\.\n")
         # the root directory may be in the texts for rich root formats
-        self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n"
-                                   r"Checking repository at '.*'\.\n"
-                                   r"checked repository.*\n"
+        self.assertContainsRe(err, r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     [01] file-ids\n"
-                                   r"     0 unique file texts\n"
-                                   r"     0 repeated file texts\n"
-                                   r"     0 unreferenced text versions\n"
-                                   r"Checking branch at '.*'\.\n"
-                                   r"checked branch.*\n$")
+                                   )
+        self.assertContainsRe(err, r"Checking branch at '.*'\.\n")
+        self.assertContainsRe(err, r"checked branch.*")
 
     def test_check_branch(self):
         tree = self.make_branch_and_tree('.')
         tree.commit('foo')
         out, err = self.run_bzr('check --branch')
         self.assertContainsRe(err, r"^Checking branch at '.*'\.\n"
-                                   r"checked branch.*\n$")
+                                   r"checked branch.*")
 
     def test_check_repository(self):
         tree = self.make_branch_and_tree('.')
@@ -61,9 +59,7 @@ class TestCheck(ExternalBase):
                                    r"checked repository.*\n"
                                    r"     1 revisions\n"
                                    r"     [01] file-ids\n"
-                                   r"     0 unique file texts\n"
-                                   r"     0 repeated file texts\n"
-                                   r"     0 unreferenced text versions$")
+                                   )
 
     def test_check_tree(self):
         tree = self.make_branch_and_tree('.')
@@ -77,7 +73,7 @@ class TestCheck(ExternalBase):
         out, err = self.run_bzr('check --tree --branch')
         self.assertContainsRe(err, r"^Checking working tree at '.*'\.\n"
                                    r"Checking branch at '.*'\.\n"
-                                   r"checked branch.*\n$")
+                                   r"checked branch.*")
 
     def test_check_missing_tree(self):
         branch = self.make_branch('.')
@@ -88,9 +84,9 @@ class TestCheck(ExternalBase):
         branch = self.make_branch('.')
         out, err = self.run_bzr('check --tree --branch')
         self.assertContainsRe(err,
-            r"^No working tree found at specified location\.\n"
             r"Checking branch at '.*'\.\n"
-            r"checked branch.*\n$")
+            r"No working tree found at specified location\.\n"
+            r"checked branch.*")
 
     def test_check_missing_branch_in_shared_repo(self):
         self.make_repository('shared', shared=True)

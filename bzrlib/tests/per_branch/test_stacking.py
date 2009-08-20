@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -149,8 +150,8 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -172,8 +173,8 @@ class TestStacking(TestCaseWithBranch):
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -225,6 +226,7 @@ class TestStacking(TestCaseWithBranch):
         return stacked_bzrdir
 
     def test_clone_from_stacked_branch_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         # We can clone from the bzrdir of a stacked branch. If
         # preserve_stacking is True, the cloned branch is stacked on the
         # same branch as the original.
@@ -241,6 +243,7 @@ class TestStacking(TestCaseWithBranch):
             pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         # If a branch's stacked-on url is relative, we can still clone
         # from it with preserve_stacking True and get a branch stacked
         # on an appropriately adjusted relative url.
@@ -255,6 +258,7 @@ class TestStacking(TestCaseWithBranch):
             cloned_bzrdir.open_branch().get_stacked_on_url())
 
     def test_clone_from_stacked_branch_no_preserve_stacking(self):
+        self.thisFailsStrictLockCheck()
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors, e:
@@ -268,6 +272,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
+        self.thisFailsStrictLockCheck()
         branch = self.make_branch('source')
         cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
@@ -288,6 +293,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
+        self.thisFailsStrictLockCheck()
         stack_on = self.make_branch('stack-on')
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
@@ -332,7 +338,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_fetch_copies_from_stacked_on_and_stacked(self):
         stacked, unstacked = self.prepare_stacked_on_fetch()
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
@@ -354,13 +361,15 @@ class TestStacking(TestCaseWithBranch):
         stack_on.add('a')
         stack_on.commit('base commit')
         stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
-        stacked_tree = stacked_dir.open_workingtree()
+        stacked_branch = stacked_dir.open_branch()
+        local_tree = stack_on.bzrdir.sprout('local').open_workingtree()
         for i in range(20):
             text_lines[0] = 'changed in %d\n' % i
-            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
-            stacked_tree.commit('commit %d' % i)
-        stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+            self.build_tree_contents([('local/a', ''.join(text_lines))])
+            local_tree.commit('commit %d' % i)
+            local_tree.branch.push(stacked_branch)
+        stacked_branch.repository.pack()
+        check.check_dwim(stacked_branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -384,7 +393,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):
@@ -438,6 +447,7 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual(['../stack-on'], hook_calls)
 
     def test_stack_on_repository_branch(self):
+        self.thisFailsStrictLockCheck()
         # Stacking should work when the repo isn't co-located with the
         # stack-on branch.
         try:
@@ -469,7 +479,8 @@ class TestStacking(TestCaseWithBranch):
         except errors.NoWorkingTree:
             stacked = stacked_dir.open_branch().create_checkout(
                 'stacked-checkout', lightweight=True)
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         # Sanity check: stacked's repo should not contain rev1, otherwise this
         # test isn't testing what it's supposed to.
         repo = stacked.branch.repository.bzrdir.open_repository()

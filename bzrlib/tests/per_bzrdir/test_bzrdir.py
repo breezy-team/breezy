@@ -26,6 +26,7 @@ import sys
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     lockdir,
     osutils,
@@ -38,7 +39,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -528,6 +528,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_clone_bzrdir_tree_branch_repo(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -568,6 +569,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -622,6 +624,7 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      ])
 
     def test_clone_bzrdir_tree_revision(self):
+        self.thisFailsStrictLockCheck()
         # test for revision limiting, [smoke test, not corner case checks].
         # make a tree with a revision with a last-revision
         # and clone it with a revision limit.
@@ -1738,8 +1741,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
-                         False)
+            check.check_dwim(self.get_url('.'), False, True, True)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')

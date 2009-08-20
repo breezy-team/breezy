@@ -7,8 +7,8 @@ VERSIONS = {
     'bzr': '1.17',
     'qbzr': '0.12',
     'bzrtools': '1.17.0',
-    'bzr-svn': '0.6.3-win32-1',
-    'bzr-rewrite': '0.5.1',
+    'bzr-svn': '0.6.3',
+    'bzr-rewrite': '0.5.2',
     'subvertpy': '0.6.8',
 }
 
@@ -85,9 +85,10 @@ def update_bzr():
     bzr_dir = get_bzr_dir()
     if not os.path.isdir(bzr_dir):
         bzr_version = VERSIONS['bzr']
-        bzr_url = 'http://bazaar-vcs.org/bzr/bzr.' + bzr_version
+        # bzr_url = 'http://bazaar-vcs.org/bzr/bzr.' + bzr_version
+        bzr_url = 'lp:bzr/' + bzr_version
         print "Getting bzr release %s from %s" % (bzr_version, bzr_url)
-        call_or_fail([bzr(), 'co', bzr_url])
+        call_or_fail([bzr(), 'co', bzr_url, bzr_dir])
     else:
         print "Ensuring %s is up-to-date" % (bzr_dir,)
         call_or_fail([bzr(), 'update', bzr_dir])
