@@ -111,7 +111,6 @@ def report_bug_to_apport(exc_info, stderr):
 
 
 def _write_apport_report_to_file(exc_info, crash_file):
-    import platform
     import traceback
     from apport.report import Report
 
