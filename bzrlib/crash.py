@@ -65,12 +65,11 @@ def report_bug_legacy(exc_info, err_file):
         err_file.write("  %-20s %s [%s]\n" %
             (name, a_plugin.path(), a_plugin.__version__))
     err_file.write(
-"""\
-*** Bazaar has encountered an internal error.
-    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
-    including this traceback, and a description of what you
-    were doing when the error occurred.
-""")
+        "*** Bazaar has encountered an internal error.  This probably indicates a\n"
+        "*** bug in Bazaar.  You can help us fix it by filing a bug report at\n"
+        "***     https://bugs.launchpad.net/bzr/+filebug\n"
+        "*** including this traceback and a description of the problem.\n"
+        )
 
 
 def report_bug_to_apport(exc_info, stderr):
@@ -110,15 +109,14 @@ def report_bug_to_apport(exc_info, stderr):
     finally:
         crash_file.close()
 
-    stderr.write("Bazaar has encountered an internal error:\n"
-        "    %s.%s: %s\n"
-        "Details have been written to\n"
-        "    %s\n"
+    stderr.write("bzr: ERROR: %s.%s: %s\n" 
         "\n"
-        "This probably indicates a bug in Bazaar.  You can help us fix it\n"
-        "by filing a bug report at\n"
-        "    https://bugs.launchpad.net/bzr/+filebug\n"
-        "attaching the crash file, and including a description of the problem.\n"
+        "*** Bazaar has encountered an internal error.  This probably indicates a\n"
+        "*** bug in Bazaar.  You can help us fix it by filing a bug report at\n"
+        "***     https://bugs.launchpad.net/bzr/+filebug\n"
+        "*** attaching the crash file\n"
+        "***     %s\n"
+        "*** and including a description of the problem.\n"
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
            crash_file.name))
     return True
