@@ -31,6 +31,17 @@ Bug Fixes
 Improvements
 ************
 
+* A better description of the platform is shown in crash tracebacks, ``bzr
+  --version`` and ``bzr selftest``.
+  (Martin Pool, #409137)
+
+* bzr can now (again) capture crash data through the apport library, 
+  so that a single human-readable file can be attached to bug reports.
+  This can be disabled by using ``-Dno_apport`` on the command line, or by
+  putting ``no_apport`` into the ``debug_flags`` section of
+  ``bazaar.conf``.
+  (Martin Pool, Robert Collins, #389328)
+
 Documentation
 *************
 
