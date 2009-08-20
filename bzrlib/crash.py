@@ -42,6 +42,9 @@ def report_bug(exc_info, stderr):
         try:
             report_bug_to_apport(exc_info, stderr)
             return
+        except ImportError, e:
+            trace.mutter("couldn't find apport bug-reporting library: %s" % e)
+            pass
         except Exception, e:
             # this should only happen if apport is installed but it didn't
             # work, eg because of an io error writing the crash file
@@ -77,17 +80,13 @@ def report_bug_legacy(exc_info, err_file):
 
 def report_bug_to_apport(exc_info, stderr):
     """Report a bug to apport for optional automatic filing.
-    
-    :returns: True if the bug was filed or otherwise handled; 
-        False to use a fallback method.
     """
     # this is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
-    try:
-        from apport.report import Report
-    except ImportError, e:
-        trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-        return False
+
+    # if this fails its caught at a higher level; we don't want to open the
+    # crash file unless apport can be loaded.
+    import apport
 
     crash_file = _open_crash_file()
     try:
@@ -108,7 +107,6 @@ def report_bug_to_apport(exc_info, stderr):
         "    private information.\n"
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
            crash_file.name))
-    return True
 
 
 def _write_apport_report_to_file(exc_info, crash_file):
