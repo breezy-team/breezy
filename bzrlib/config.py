@@ -835,9 +835,13 @@ def crash_dir():
 
 
 def xdg_cache_dir():
-    # XXX: this should probably look at some environment variables too?
-    return osutils.pathjoin(os.path.expanduser('~'),
-        '.cache', 'bazaar')
+    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
+    # Possibly this should be different on Windows?
+    e = os.environ.get('XDG_CACHE_DIR', None)
+    if e:
+        return e
+    else:
+        return os.path.expanduser('~/.cache')
 
 
 def _auto_user_id():
