@@ -18,8 +18,8 @@
 """Handling and reporting crashes.
 """
 
-# for testing this, see http://code.launchpad.net/~mbp/bzr/bzr-fail
-# which adds a 'fail' command
+# for interactive testing, try the 'bzr assert-fail' command 
+# or see http://code.launchpad.net/~mbp/bzr/bzr-fail
 
 import os
 import pprint
@@ -117,8 +117,8 @@ def report_bug_to_apport(exc_info, stderr):
         "\n"
         "This probably indicates a bug in Bazaar.  You can help us fix it\n"
         "by filing a bug report at\n"
-        "    http://bugs.launchpad.net/bzr/+filebug\n"
-        "attaching this file, and including a description of the problem.\n"
+        "    https://bugs.launchpad.net/bzr/+filebug\n"
+        "attaching the crash file, and including a description of the problem.\n"
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
            crash_file.name))
     return True
