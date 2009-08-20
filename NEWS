@@ -24,11 +24,9 @@ New Features
 * ``upgrade`` now upgrades dependent branches when a shared repository is
   specified. It also supports several new options:
 
-  * --dry-run for showing what will happen
+  * ``--dry-run`` for showing what will happen
 
-  * --clean to remove the backup.dir directory on successful completion
-
-  * --pack to pack the repository on successful completion.
+  * ``--clean`` to remove the backup.dir directory on successful completion.
 
   (Ian Clatworthy)
 

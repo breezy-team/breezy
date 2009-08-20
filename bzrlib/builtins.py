@@ -3119,14 +3119,18 @@ class cmd_check(Command):
 class cmd_upgrade(Command):
     """Upgrade a repository, branch or working tree to a newer format.
 
-    The check command or Bazaar developers may sometimes advise you to run
-    this command. When the default format has changed after a major new
-    release of Bazaar, you may also be warned during other operations
-    that you should upgrade.
+    When the default format has changed after a major new release of
+    Bazaar, you may be informed during certain operations that you
+    should upgrade. Upgrading to a newer format may improve performance
+    or make new features available. It may however limit interoperability
+    with older repositories or with older versions of Bazaar.
 
-    If the location given is a shared repository, dependent branches
-    are also converted provided the repository converts successfully.
-    If the conversion of a branch fails, remaining branches are still tried.
+    If you wish to upgrade to a particular format rather than the
+    current default, that can be specified using the --format option.
+    As a consequence, you can use the upgrade command this way to
+    "downgrade" to an earlier format, though some conversions are
+    a one way process (e.g. changing from the 1.x default to the
+    2.x default) so downgrading is not always possible.
 
     A backup.bzr directory is created at the start of the conversion
     process. By default, this is left there on completion. If the
@@ -3136,14 +3140,16 @@ class cmd_upgrade(Command):
     Alternatively, you can delete it by hand if everything looks
     good afterwards.
 
-    It is often a good idea to pack the repository after an upgrade.
-    Use the --pack option to request this or do it separately using
-    the pack command.
+    If the location given is a shared repository, dependent branches
+    are also converted provided the repository converts successfully.
+    If the conversion of a branch fails, remaining branches are still
+    tried.
 
-    For more information on upgrades, see the Bazaar 2.0 Upgrade Guide.
+    For more information on upgrades, see the Bazaar 2.0 Upgrade Guide,
+    http://doc.bazaar-vcs.org/latest/en/upgrade-guide/.
     """
 
-    _see_also = ['check', 'reconcile', 'pack']
+    _see_also = ['check', 'reconcile', 'formats']
     takes_args = ['url?']
     takes_options = [
         RegistryOption('format',
@@ -3154,17 +3160,13 @@ class cmd_upgrade(Command):
             value_switches=True, title='Branch format'),
         Option('clean',
             help='Remove the backup.bzr directory if successful.'),
-        Option('pack',
-            help='Pack repositories that successful upgrade.'),
         Option('dry-run',
             help="Show what would be done, but don't actually do anything."),
     ]
 
-    def run(self, url='.', format=None, clean=False, pack=False,
-        dry_run=False):
+    def run(self, url='.', format=None, clean=False, dry_run=False):
         from bzrlib.upgrade import upgrade
-        exceptions = upgrade(url, format, clean_up=clean, pack=pack,
-            dry_run=dry_run)
+        exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
         if exceptions:
             if len(exceptions) == 1:
                 # This provides backwards compatibility
