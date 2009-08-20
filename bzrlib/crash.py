@@ -42,6 +42,8 @@ def report_bug(exc_info, stderr):
             report_bug_to_apport(exc_info, stderr)
             return
         except Exception, e:
+            # this should only happen if apport is installed but it didn't
+            # work, eg because of an io error writing the crash file
             sys.stderr.write("failed to report crash using apport: %r"  % e)
             pass
     report_bug_legacy(exc_info, stderr)
@@ -78,8 +80,6 @@ def report_bug_to_apport(exc_info, stderr):
     :returns: True if the bug was filed or otherwise handled; 
         False to use a fallback method.
     """
-    import platform
-
     # this is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
     try:
@@ -88,24 +88,9 @@ def report_bug_to_apport(exc_info, stderr):
         trace.warning("couldn't find apport bug-reporting library: %s" % e)
         return False
 
-    pr = Report()
-    # add_proc_info gives you the memory map of the process: this seems rarely
-    # useful for Bazaar and it does make the report harder to scan, though it
-    # does tell you what binary modules are loaded.
-    # pr.add_proc_info()
-    pr.add_user_info()
-    pr['BzrVersion'] = bzrlib.__version__
-    pr['PythonVersion'] = bzrlib._format_version_tuple(sys.version_info)
-    pr['Platform'] = platform.platform(aliased=1)
-    pr['UserEncoding'] = osutils.get_user_encoding()
-    pr['FileSystemEncoding'] = sys.getfilesystemencoding()
-    pr['Locale'] = os.environ.get('LANG')
-    pr['BzrPlugins'] = _format_plugin_list()
-    pr['PythonLoadedModules'] = _format_module_list()
-
     crash_file = _open_crash_file()
     try:
-        pr.write(crash_file)
+        _write_apport_report_to_file(crash_file)
     finally:
         crash_file.close()
 
@@ -120,6 +105,26 @@ def report_bug_to_apport(exc_info, stderr):
         % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
            crash_file.name))
     return True
+
+
+def _write_apport_report_to_file(exc_info, crash_file):
+    import platform
+    from apport.report import Report
+    pr = Report()
+    # add_proc_info gives you the memory map of the process: this seems rarely
+    # useful for Bazaar and it does make the report harder to scan, though it
+    # does tell you what binary modules are loaded.
+    # pr.add_proc_info()
+    pr.add_user_info()
+    pr['BzrVersion'] = bzrlib.__version__
+    pr['PythonVersion'] = bzrlib._format_version_tuple(sys.version_info)
+    pr['Platform'] = platform.platform(aliased=1)
+    pr['UserEncoding'] = osutils.get_user_encoding()
+    pr['FileSystemEncoding'] = sys.getfilesystemencoding()
+    pr['Locale'] = os.environ.get('LANG')
+    pr['BzrPlugins'] = _format_plugin_list()
+    pr['PythonLoadedModules'] = _format_module_list()
+    pr.write(crash_file)
 
 
 def _open_crash_file():

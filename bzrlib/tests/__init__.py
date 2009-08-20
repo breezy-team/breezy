@@ -3425,6 +3425,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_counted_lock',
+                   'bzrlib.tests.test_crash',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_debug',
