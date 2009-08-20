@@ -58,6 +58,7 @@ from bzrlib.symbol_versioning import deprecated_function
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
 
+@deprecated_function(deprecated_in((2, 0, 0)))
 def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
