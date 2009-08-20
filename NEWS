@@ -21,6 +21,9 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr branch --switch`` can now switch the checkout in the current directory
+  to the newly created branch. (Lukáš Lalinský)
+
 Bug Fixes
 *********
 
