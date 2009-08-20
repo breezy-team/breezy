@@ -3057,6 +3057,8 @@ class RepositoryFormat(object):
     # help), and for fetching when data won't have come from the same
     # compressor.
     pack_compresses = False
+    # Does the repository inventory storage understand references to trees?
+    supports_tree_reference = None
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -4349,7 +4351,7 @@ class StreamSource(object):
         phase = 'file'
         revs = search.get_keys()
         graph = self.from_repository.get_graph()
-        revs = list(graph.iter_topo_order(revs))
+        revs = tsort.topo_sort(graph.get_parent_map(revs))
         data_to_fetch = self.from_repository.item_keys_introduced_by(revs)
         text_keys = []
         for knit_kind, file_id, revisions in data_to_fetch:

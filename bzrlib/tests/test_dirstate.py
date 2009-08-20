@@ -419,7 +419,7 @@ class TestTreeToDirState(TestCaseWithDirState):
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
-              ('d', '', 0, False, rev_id2), # second parent details
+              ('d', '', 0, False, rev_id), # second parent details
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -500,7 +500,7 @@ class TestTreeToDirState(TestCaseWithDirState):
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
-              ('d', '', 0, False, rev_id2), # second parent details
+              ('d', '', 0, False, rev_id), # second parent details
              ]),
             (('', 'a file', 'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
@@ -1000,7 +1000,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 [(('', '', root_id), [
                   ('d', '', 0, False, dirstate.DirState.NULLSTAT),
                   ('d', '', 0, False, revid1),
-                  ('d', '', 0, False, revid2)
+                  ('d', '', 0, False, revid1)
                   ])],
                 list(state._iter_entries()))
         finally:
@@ -1034,7 +1034,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             (('', '', root_id), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT),
              ('d', '', 0, False, revid1.encode('utf8')),
-             ('d', '', 0, False, revid2.encode('utf8'))
+             ('d', '', 0, False, revid1.encode('utf8'))
              ]),
             (('', 'a file', 'file-id'), [
              ('a', '', 0, False, ''),

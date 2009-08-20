@@ -2344,7 +2344,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
-        if sys.platform == 'win32':
+        if sys.platform in ('win32', 'cygwin'):
             name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
             # windows is likely to have path-length limits so use a short name
             name_prefix = name_prefix[-30:]
@@ -2798,8 +2798,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
-    # tell the result object how many tests will be running:
-    decorators.append(CountingDecorator)
+    # tell the result object how many tests will be running: (except if
+    # --parallel=fork is being used. Robert said he will provide a better
+    # progress design later -- vila 20090817)
+    if fork_decorator not in decorators:
+        decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
@@ -3431,6 +3434,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_versionedfile',
                    'bzrlib.tests.per_workingtree',
                    'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
@@ -3583,7 +3587,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
-                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -3816,13 +3819,11 @@ def _rmtree_temp_dir(dirname):
     try:
         osutils.rmtree(dirname)
     except OSError, e:
-        if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write('Permission denied: '
-                             'unable to remove testing dir '
-                             '%s\n%s'
-                             % (os.path.basename(dirname), e))
-        else:
-            raise
+        # We don't want to fail here because some useful display will be lost
+        # otherwise. Polluting the tmp dir is bad, but not giving all the
+        # possible info to the test runner is even worse.
+        sys.stderr.write('Unable to remove testing dir %s\n%s'
+                         % (os.path.basename(dirname), e))
 
 
 class Feature(object):

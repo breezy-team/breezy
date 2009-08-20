@@ -708,9 +708,10 @@ class TestCommit(TestCaseWithTransport):
         cb = self.Callback(u'commit 2', self)
         repository = tree.branch.repository
         # simulate network failure
-        def raise_(self, arg, arg2):
+        def raise_(self, arg, arg2, arg3=None, arg4=None):
             raise errors.NoSuchFile('foo')
         repository.add_inventory = raise_
+        repository.add_inventory_by_delta = raise_
         self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 
