@@ -2921,7 +2921,7 @@ class CannotBindAddress(BzrError):
 
     def __init__(self, host, port, orig_error):
         BzrError.__init__(self, host=host, port=port,
-            orig_error=orig_error[1])
+            orig_error=repr(orig_error))
 
 
 class UnknownRules(BzrError):
