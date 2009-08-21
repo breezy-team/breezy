@@ -65,12 +65,12 @@ BZR_PLUGIN_PATH
 The path to the plugins directory that Bazaar should use.
 If not set, Bazaar will search for plugins in:
 
-* the user specific plugin directory (containing the user plugins),
+* the user specific plugin directory (containing the ``user`` plugins),
 
-* the bzrlib directory (containing the core plugins),
+* the bzrlib directory (containing the ``core`` plugins),
 
-* the size specific plugin directory if applicable (containing
-  the site plugins).
+* the site specific plugin directory if applicable (containing
+  the ``site`` plugins).
 
 If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the
 the way the plugin are searched. 
@@ -80,8 +80,9 @@ specified in ``BZR_PLUGIN_PATH`` they should be separated by the
 platform specific appropriate character (':' on Unix/Linux/etc,
 ';' on windows)
 
-By default all directories specified in ``BZR_PLUGIN_PATH``
-replace 'user' in the but keep searching in 'core' then 'site'.
+By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
+in ``user``.  However it will continue to search in ``core`` and
+``site`` unless they are explicitly removed.
 
 If you need to change the order or remove one of these
 directories, you should use special values:

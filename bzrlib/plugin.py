@@ -52,7 +52,10 @@ from bzrlib import (
 from bzrlib import plugins as _mod_plugins
 """)
 
-from bzrlib.symbol_versioning import deprecated_function
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 DEFAULT_PLUGIN_PATH = None
@@ -123,6 +126,10 @@ def get_core_plugin_path():
 
 def get_site_plugin_path():
     """Returns the path for the site installed plugins."""
+    if sys.platform == 'win32':
+        # We don't have (yet) a good answer for windows since that is certainly
+        # related to the way we build the installers. -- vila20090821
+        return None
     site_path = None
     try:
         from distutils.sysconfig import get_python_lib
@@ -160,41 +167,27 @@ def get_standard_plugins_path():
                 site=get_site_plugin_path(),
                 user=get_user_plugin_path())
 
-    # Handle removals first
-    def unset_ref(p):
-        if p.startswith('-'):
-            key = p[1:]
-            if key in refs: # Needed to handle multiple removals
-                refs[key] = None
-                p = None
-        return p
+    # Unset paths that should be removed
+    for k,v in refs.iteritems():
+        removed = '-%s' % k
+        # defaults can never mention removing paths as that will make it
+        # impossible for the user to revoke these removals.
+        if removed in env_paths:
+            env_paths.remove(removed)
+            refs[k] = None
 
-    defaults = [p for p in defaults if unset_ref(p) is not None]
-    env_paths = [p for p in env_paths if unset_ref(p) is not None]
-
-    for k, v in refs.iteritems():
-        added = '+%s' % k
-        if v is None:
-            # References removed can't be used anymore
-            if added in env_paths:
-                env_paths.remove(added)
-            if added in defaults:
-                defaults.remove(added)
-        else:
-            # Explicit beats implicit
-            if added in env_paths and added in defaults:
-                defaults.remove(added)
-
-    # Append the remaining defaults
-    paths = env_paths + defaults
-
-    # Resolve references
-    def resolve_ref(p):
-        if p.startswith('+') and refs.get(p[1:], None) is not None:
-            p = refs[p[1:]]
-        return p
-
-    paths = [resolve_ref(p) for p in paths]
+    # Expand references
+    paths = []
+    for p in env_paths + defaults:
+        if p.startswith('+'):
+            # Resolve reference if they are known
+            try:
+                p = refs[p[1:]]
+            except KeyError:
+                # Leave them untouched otherwise, user may have paths starting
+                # with '+'...
+                pass
+        _append_new_path(paths, p)
 
     # Get rid of trailing slashes, since Python can't handle them when
     # it tries to import modules.

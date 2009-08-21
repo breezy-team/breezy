@@ -692,6 +692,16 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
         # Ensures multiple removals don't left cruft
         self.check_path([self.core, self.site], ['-user', '-user'])
 
+    def test_duplicates_are_removed(self):
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+user'])
+        # And only the first reference is kept (since the later references will
+        # onnly produce <plugin> already loaded mutters)
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+user', '+core',
+                         '+user', '+site', '+site',
+                         '+core'])
+
     def test_disable_overrides_disable(self):
         self.check_path([self.core, self.site], ['-user', '+user'])
 
@@ -722,3 +732,6 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
         self.check_path(['myplugin', self.core, self.site, self.user],
                         ['myplugin', '+core', '+site', '+user'])
 
+    def test_bogus_references(self):
+        self.check_path(['+foo', '-bar', self.core, self.site],
+                        ['+foo', '-bar'])
