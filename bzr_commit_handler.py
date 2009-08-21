@@ -76,9 +76,9 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Tell the RevisionStore we're starting a new commit
         self.revision = self.build_revision()
-        parent_invs = [self.get_inventory(p) for p in self.parents]
+        self.parent_invs = [self.get_inventory(p) for p in self.parents]
         self.rev_store.start_new_revision(self.revision, self.parents,
-            parent_invs)
+            self.parent_invs)
 
         # cache of per-file parents for this commit, indexed by file-id
         self.per_file_parents_for_commit = {}
@@ -154,19 +154,23 @@ class GenericCommitHandler(processor.CommitHandler):
         :return: file_id, is_new where
           is_new = True if the file_id is newly created
         """
-        try:
-            id = self.cache_mgr.fetch_file_id(self.branch_ref, path)
+        # Try the basis inventory
+        id = self.basis_inventory.path2id(path)
+        if id is not None:
             return id, False
-        except KeyError:
-            # Not in the cache, try the inventory
-            id = self.basis_inventory.path2id(path)
-            if id is None:
-                # Doesn't exist yet so create it
-                id = generate_ids.gen_file_id(path)
-                self.debug("Generated new file id %s for '%s' in '%s'",
-                    id, path, self.branch_ref)
-            self.cache_mgr.store_file_id(self.branch_ref, path, id)
-            return id, True
+        
+        # Try the other inventories
+        if len(self.parents) > 1:
+            for inv in self.parent_invs[1:]:
+                id = self.basis_inventory.path2id(path)
+                if id is not None:
+                    return id, False
+
+        # Doesn't exist yet so create it
+        id = generate_ids.gen_file_id(path)
+        self.debug("Generated new file id %s for '%s' in revision-id '%s'",
+            id, path, self.revision_id)
+        return id, True
 
     def bzr_file_id(self, path):
         """Get a Bazaar file identifier for a path."""
@@ -350,7 +354,6 @@ class GenericCommitHandler(processor.CommitHandler):
         if new_file_id is not None:
             self.record_delete(new_path, inv[new_file_id])
         self.record_rename(old_path, new_path, file_id, ie)
-        self.cache_mgr.rename_path(self.branch_ref, old_path, new_path)
 
         # The revision-id for this entry will be/has been updated and
         # that means the loader then needs to know what the "new" text is.
@@ -445,51 +448,6 @@ class InventoryCommitHandler(GenericCommitHandler):
         new_basename, new_parent_id = self._ensure_directory(new_path,
             self.inventory)
         self.inventory.rename(file_id, new_parent_id, new_basename)
-
-    def _delete_item(self, path, inv):
-        # NOTE: I'm retaining this method for now, instead of using the
-        # one in the superclass, because it's taken quite a lot of tweaking
-        # to cover all the edge cases seen in the wild. Long term, it can
-        # probably go once the higher level method does "warn_unless_in_merges"
-        # and handles all the various special cases ...
-        fileid = self.bzr_file_id(path)
-        dirname, basename = osutils.split(path)
-        if (fileid in inv and
-            isinstance(inv[fileid], inventory.InventoryDirectory)):
-            for child_path in inv[fileid].children.keys():
-                self._delete_item(osutils.pathjoin(path, child_path), inv)
-            # We need to clean this out of the directory entries as well
-            try:
-                del self.directory_entries[path]
-            except KeyError:
-                pass
-        try:
-            if self.inventory.id2path(fileid) == path:
-                del inv[fileid]
-            else:
-                # already added by some other name?
-                try:
-                    parent_id = self.cache_mgr.fetch_file_id(self.branch_ref,
-                        dirname)
-                except KeyError:
-                    pass
-                else:
-                    del inv[parent_id].children[basename]
-        except KeyError:
-            self._warn_unless_in_merges(fileid, path)
-        except errors.NoSuchId:
-            self._warn_unless_in_merges(fileid, path)
-        except AttributeError, ex:
-            if ex.args[0] == 'children':
-                # A directory has changed into a file and then one
-                # of it's children is being deleted!
-                self._warn_unless_in_merges(fileid, path)
-            else:
-                raise
-        try:
-            self.cache_mgr.delete_path(self.branch_ref, path)
-        except KeyError:
-            pass
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
