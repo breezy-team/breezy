@@ -157,8 +157,10 @@ def best_format_for_objects_in_a_repository(repo):
     non_aliases.difference_update(bzrdir.format_registry.aliases())
     for key in non_aliases:
         format = bzrdir.format_registry.make_bzrdir(key)
-        if format.repository_format == repo_format:
-            candidates.append((key, format))
+        # LocalGitBzrDirFormat has no repository_format
+        if hasattr(format, "repository_format"):
+            if format.repository_format == repo_format:
+                candidates.append((key, format))
     if len(candidates):
         # Assume the first one. Is there any reason not to do that?
         name, format = candidates[0]
