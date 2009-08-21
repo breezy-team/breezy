@@ -42,8 +42,11 @@ class ImportProcessor(object):
 
     known_params = []
 
-    def __init__(self, bzrdir, params=None, verbose=False):
-        self.outf = sys.stdout
+    def __init__(self, bzrdir, params=None, verbose=False, outf=None):
+        if outf is None:
+            self.outf = sys.stdout
+        else:
+            self.outf = outf
         self.verbose = verbose
         if params is None:
             self.params = {}

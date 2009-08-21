@@ -40,9 +40,10 @@ class InfoProcessor(processor.ImportProcessor):
     the source.
     """
 
-    def __init__(self, target=None, params=None, verbose=0):
+    def __init__(self, target=None, params=None, verbose=0, outf=None):
         # Allow creation without a target
-        processor.ImportProcessor.__init__(self, target, params, verbose)
+        processor.ImportProcessor.__init__(self, target, params, verbose,
+            outf=outf)
 
     def pre_process(self):
         # Init statistics
@@ -155,20 +156,20 @@ class InfoProcessor(processor.ImportProcessor):
           before displaying it in verbose mode
         """
         if self.verbose:
-            print "[%s]" % (title,)
+            self.outf.write("[%s]\n" % (title,))
             for name, value in zip(names, values):
                 if verbose_formatter is not None:
                     value = verbose_formatter(value)
                 if type(name) == str:
                     name = name.replace(' ', '-')
-                print "%s = %s" % (name, value)
-            print ""
+                self.outf.write("%s = %s\n" % (name, value))
+            self.outf.write("\n")
         else:
-            print "%s:" % (title,)
+            self.outf.write("%s:\n" % (title,))
             for name, value in zip(names, values):
                 if normal_formatter is not None:
                     value = normal_formatter(value)
-                print "\t%s\t%s" % (value, name)
+                self.outf.write("\t%s\t%s\n" % (value, name))
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
