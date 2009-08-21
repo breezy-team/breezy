@@ -31,6 +31,9 @@ Bug Fixes
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
 
+* Fix IndexError printing CannotBindAddress errors.
+  (Martin Pool, #286871)
+
 Improvements
 ************
 
