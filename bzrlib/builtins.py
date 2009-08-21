@@ -1167,6 +1167,9 @@ class cmd_branch(Command):
         help='Hard-link working tree files where possible.'),
         Option('no-tree',
             help="Create a branch without a working-tree."),
+        Option('switch',
+            help="Switch the checkout in the current directory "
+                 "to the new branch."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1183,9 +1186,9 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False):
+            use_existing_dir=False, switch=False):
+        from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
-
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if (accelerator_tree is not None and
@@ -1245,6 +1248,12 @@ class cmd_branch(Command):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())
+            if switch:
+                # Switch to the new branch
+                wt, _ = WorkingTree.open_containing('.')
+                _mod_switch.switch(wt.bzrdir, branch)
+                note('Switched to branch: %s',
+                    urlutils.unescape_for_display(branch.base, 'utf-8'))
         finally:
             br_from.unlock()
 

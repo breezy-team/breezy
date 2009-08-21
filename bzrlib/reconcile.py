@@ -33,7 +33,7 @@ from bzrlib import (
     repofmt,
     )
 from bzrlib.trace import mutter, note
-from bzrlib.tsort import TopoSorter
+from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
 
@@ -247,8 +247,7 @@ class RepoReconciler(object):
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self._rev_graph))
-        revision_keys = [(rev_id,) for rev_id in
-            TopoSorter(self._rev_graph.items()).iter_topo_order()]
+        revision_keys = [(rev_id,) for rev_id in topo_sort(self._rev_graph)]
         stream = self._change_inv_parents(
             self.inventory.get_record_stream(revision_keys, 'unordered', True),
             self._new_inv_parents,
@@ -378,7 +377,7 @@ class KnitReconciler(RepoReconciler):
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
         graph = self.revisions.get_parent_map(self.revisions.keys())
-        revision_keys = list(TopoSorter(graph).iter_topo_order())
+        revision_keys = topo_sort(graph)
         revision_ids = [key[-1] for key in revision_keys]
         self._setup_steps(len(revision_keys))
         stream = self._change_inv_parents(

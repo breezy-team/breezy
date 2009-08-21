@@ -138,31 +138,13 @@ def _enumerate_with_merges(branch, ancestry, graph, tip_revno, tip,
     if not ancestry: #Empty ancestry, no need to do any work
         return []
 
-    mainline_revs, rev_nos, start_rev_id, end_rev_id = log._get_mainline_revs(
-        branch, None, tip_revno)
-    if not mainline_revs:
-        return []
-
-    # This asks for all mainline revisions, which is size-of-history and
-    # should be addressed (but currently the only way to get correct
-    # revnos).
-
-    # mainline_revisions always includes an extra revision at the
-    # beginning, so don't request it.
-    parent_map = dict(((key, value) for key, value
-                       in graph.iter_ancestry(mainline_revs[1:])
-                       if value is not None))
-    # filter out ghosts; merge_sort errors on ghosts.
-    # XXX: is this needed here ? -- vila080910
-    rev_graph = _mod_repository._strip_NULL_ghosts(parent_map)
-    # XXX: what if rev_graph is empty now ? -- vila080910
-    merge_sorted_revisions = tsort.merge_sort(rev_graph, tip,
-                                              mainline_revs,
-                                              generate_revno=True)
+    merge_sorted_revisions = branch.iter_merge_sorted_revisions()
     # Now that we got the correct revnos, keep only the relevant
     # revisions.
     merge_sorted_revisions = [
-        (s, revid, n, d, e) for s, revid, n, d, e in merge_sorted_revisions
+        # log.reverse_by_depth expects seq_num to be present, but it is
+        # stripped by iter_merge_sorted_revisions()
+        (0, revid, n, d, e) for revid, n, d, e in merge_sorted_revisions
         if revid in ancestry]
     if not backward:
         merge_sorted_revisions = log.reverse_by_depth(merge_sorted_revisions)
