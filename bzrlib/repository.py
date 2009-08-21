@@ -4436,7 +4436,7 @@ class StreamSource(object):
         phase = 'file'
         revs = search.get_keys()
         graph = self.from_repository.get_graph()
-        revs = list(graph.iter_topo_order(revs))
+        revs = tsort.topo_sort(graph.get_parent_map(revs))
         data_to_fetch = self.from_repository.item_keys_introduced_by(revs)
         text_keys = []
         for knit_kind, file_id, revisions in data_to_fetch:

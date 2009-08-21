@@ -27,6 +27,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dprogress        Trace progress bar operations.
 -Dmerge           Emit information for debugging merges.
+-Dno_apport       Don't use apport to report crashes.
 -Dunlock          Some errors during unlock are treated as warnings.
 -Dpack            Emit information about pack operations.
 -Dsftp            Trace SFTP internals.

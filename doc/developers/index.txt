@@ -70,6 +70,9 @@ Specifications
 
 * `API versioning <api-versioning.html>`_ |--| bzrlib API versioning.
 
+* `Apport error reporting <apport.html>`_ |--| Capture data to report
+  bugs.
+
 * `Authentication ring <authentication-ring.html>`_ |--| Configuring
   authentication.
 
