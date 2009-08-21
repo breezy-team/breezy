@@ -104,12 +104,17 @@ class ShelfCreator(object):
             self.shelve_deletion(change[1])
         elif change[0] == 'add file':
             self.shelve_creation(change[1])
-        elif change[0] == 'change kind':
+        elif change[0] in ('change kind', 'modify text'):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
             self.shelve_modify_target(change[1])
         else:
             raise ValueError('Unknown change kind: "%s"' % change[0])
+
+    def shelve_all(self):
+        """Shelve all changes."""
+        for change in self.iter_shelvable():
+            self.shelve_change(change)
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.

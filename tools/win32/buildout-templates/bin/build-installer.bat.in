@@ -53,12 +53,22 @@ rem Use %COMSPEC% /c in case bzr is actually a .bat file
 %COMSPEC% /c bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
 @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
-rem Build the python-installer first, because we don't want to
+rem Build the python installers first, because we don't want to
 rem include any of the 3rd-party plugins, because we don't bundle
 rem their dependencies.
 cd %TARGET%
-make python-installer PYTHON=%CYG_PYTHON% PYTHON24=${settings:python24} PYTHON25=${settings:python25} PYTHON26=${settings:python26}
-rem @if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+rem This is slightly redundant with 'make installer-all'
+rem except in that case we have to do cygwin path translations for all the
+rem different versions of python
+${settings:python24} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python25} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python26} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
 
 cd %ROOT%/subvertpy/%PLUGIN_TARGET%
 %PYTHON% setup.py install -O1 --install-lib=%TARGET%

@@ -2006,12 +2006,14 @@ class UninitializableFormat(BzrError):
 
 class BadConversionTarget(BzrError):
 
-    _fmt = "Cannot convert to format %(format)s.  %(problem)s"
+    _fmt = "Cannot convert from format %(from_format)s to format %(format)s." \
+            "    %(problem)s"
 
-    def __init__(self, problem, format):
+    def __init__(self, problem, format, from_format=None):
         BzrError.__init__(self)
         self.problem = problem
         self.format = format
+        self.from_format = from_format or '(unspecified)'
 
 
 class NoDiffFound(BzrError):
@@ -2918,8 +2920,9 @@ class CannotBindAddress(BzrError):
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
 
     def __init__(self, host, port, orig_error):
+        # nb: in python2.4 socket.error doesn't have a useful repr
         BzrError.__init__(self, host=host, port=port,
-            orig_error=orig_error[1])
+            orig_error=repr(orig_error.args))
 
 
 class UnknownRules(BzrError):

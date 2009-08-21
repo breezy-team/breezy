@@ -422,6 +422,8 @@ class NewPack(Pack):
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
+        # no name until we finish writing the content
+        self.name = None
 
     def abort(self):
         """Cancel creating this pack."""
@@ -448,6 +450,14 @@ class NewPack(Pack):
             self.signature_index.key_count() or
             (self.chk_index is not None and self.chk_index.key_count()))
 
+    def finish_content(self):
+        if self.name is not None:
+            return
+        self._writer.end()
+        if self._buffer[1]:
+            self._write_data('', flush=True)
+        self.name = self._hash.hexdigest()
+
     def finish(self, suspend=False):
         """Finish the new pack.
 
@@ -459,10 +469,7 @@ class NewPack(Pack):
          - stores the index size tuple for the pack in the index_sizes
            attribute.
         """
-        self._writer.end()
-        if self._buffer[1]:
-            self._write_data('', flush=True)
-        self.name = self._hash.hexdigest()
+        self.finish_content()
         if not suspend:
             self._check_references()
         # write indices
@@ -1567,7 +1574,9 @@ class RepositoryPackCollection(object):
         # determine which packs need changing
         pack_operations = [[0, []]]
         for pack in self.all_packs():
-            if not hint or pack.name in hint:
+            if hint is None or pack.name in hint:
+                # Either no hint was provided (so we are packing everything),
+                # or this pack was included in the hint.
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
@@ -2093,6 +2102,7 @@ class RepositoryPackCollection(object):
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 return self._save_pack_names()
+        return []
 
     def _suspend_write_group(self):
         tokens = [pack.name for pack in self._resumed_packs]
@@ -2519,9 +2529,6 @@ class RepositoryFormatKnitPack1(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return "Packs containing knits without subtree support"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnitPack3(RepositoryFormatPack):
     """A subtrees parameterized Pack repository.
@@ -2552,14 +2559,6 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2598,11 +2597,6 @@ class RepositoryFormatKnitPack4(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2650,9 +2644,6 @@ class RepositoryFormatKnitPack5(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return "Packs 5 (adds stacking support, requires bzr 1.6)"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
     """A repository with rich roots and stacking.
@@ -2684,11 +2675,6 @@ class RepositoryFormatKnitPack5RichRoot(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2736,11 +2722,6 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
 
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
         return "Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n"
@@ -2784,9 +2765,6 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return "Packs 6 (uses btree indexes, requires bzr 1.9)"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     """A repository with rich roots, no subtrees, stacking and btree indexes.
@@ -2815,11 +2793,6 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -2861,14 +2834,6 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""

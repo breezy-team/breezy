@@ -33,8 +33,9 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         referring = self.make_branch_and_tree('referring')
         readonly_base = self.readonly_repository('base')
         referring.branch.repository.add_fallback_repository(readonly_base)
-        self.build_tree_contents([('referring/file', 'change')])
-        rev2_id = referring.commit('two')
+        local_tree = referring.branch.create_checkout('local')
+        self.build_tree_contents([('local/file', 'change')])
+        rev2_id = local_tree.commit('two')
         check_result = referring.branch.repository.check(
             referring.branch.repository.all_revision_ids())
         check_result.report_results(verbose=False)
