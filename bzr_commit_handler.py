@@ -533,6 +533,8 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         result = []
         for dir in candidates:
             file_id = new_inv.path2id(dir)
+            if file_id is None:
+                continue
             ie = new_inv[file_id]
             if len(ie.children) == 0:
                 result.append((dir, file_id))

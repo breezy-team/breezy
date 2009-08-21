@@ -450,9 +450,11 @@ class GenericProcessor(processor.ImportProcessor):
         # Commit the current write group and start a new one
         self.repo.commit_write_group()
         self._save_id_map()
-        self.checkpoint_count += 1
-        if self.checkpoint_count % self.autopack_every == 0:
-            self._pack_repository(final=False)
+        # track the number of automatic checkpoints done
+        if cmd is None:
+            self.checkpoint_count += 1
+            if self.checkpoint_count % self.autopack_every == 0:
+                self._pack_repository(final=False)
         self.repo.start_write_group()
 
     def commit_handler(self, cmd):
