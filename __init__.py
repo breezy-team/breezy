@@ -517,9 +517,7 @@ class cmd_fast_export_from_cvs(Command):
     the name of the project. If '-' is given, standard output is used.
 
     cvs2svn 2.3 or later must be installed as its cvs2bzr script is used
-    under the covers to do the export. (If cvs2bzr is not included in
-    cvs2svn yet, grab the branch from
-    https://code.launchpad.net/~ian-clatworthy/+junk/cvs2svn and use it.)
+    under the covers to do the export.
     
     The source must be the path on your filesystem to the part of the
     repository you wish to convert. i.e. either that path or a parent
