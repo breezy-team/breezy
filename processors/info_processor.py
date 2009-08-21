@@ -46,6 +46,7 @@ class InfoProcessor(processor.ImportProcessor):
             outf=outf)
 
     def pre_process(self):
+        self.note("Collecting statistics ...")
         # Init statistics
         self.cmd_counts = {}
         for cmd in commands.COMMAND_NAMES:

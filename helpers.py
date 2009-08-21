@@ -180,7 +180,7 @@ def open_destination_directory(location, format=None, verbose=True):
     :return: BzrDir for the destination
     """
     import os
-    from bzrlib import bzrdir, errors, transport
+    from bzrlib import bzrdir, errors, trace, transport
     try:
         control, relpath = bzrdir.BzrDir.open_containing(location)
         # XXX: Check the relpath is None here?
@@ -202,6 +202,7 @@ def open_destination_directory(location, format=None, verbose=True):
                 (location, ex))
 
     # Create a repository for the nominated format.
+    trace.note("Creating destination repository ...")
     if format is None:
         format = bzrdir.format_registry.make_bzrdir('default')
     to_transport = transport.get_transport(location)
