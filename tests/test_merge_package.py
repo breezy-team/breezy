@@ -62,7 +62,7 @@ class MergePackageTests(TestCaseWithTransport):
 
     def test_latest_upstream_versions(self):
         """Check correctness of upstream version computation."""
-        ubup_o, debp_n = self._setup_debian_upstream_newer()
+        ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
         # Ubuntu upstream.
         self.assertEquals(
             MP._latest_version(ubup_o).upstream_version, '1.1.2')
@@ -90,32 +90,39 @@ class MergePackageTests(TestCaseWithTransport):
         The upstream conflict will be resolved by fix_ancestry_as_needed().
         Please note that the debian ancestry is more recent.
         """
-        ubup_o, debp_n = self._setup_debian_upstream_newer()
+        ubup, debp, ubuu, debu = self._setup_debian_upstream_newer()
 
         # Attempt a plain merge first.
-        conflicts = ubup_o.merge_from_branch(
-            debp_n.branch, to_revision=self.revid_debp_n_C)
+        conflicts = ubup.merge_from_branch(
+            debp.branch, to_revision=self.revid_debp_n_C)
 
         # There are two conflicts in the 'c' and the 'debian/changelog' files
         # respectively.
         self.assertEquals(conflicts, 2)
-        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
+        conflict_paths = sorted([c.path for c in ubup.conflicts()])
         self.assertEquals(conflict_paths, [u'c.moved', u'debian/changelog'])
 
         # Undo the failed merge.
-        ubup_o.revert()
+        ubup.revert()
 
         # Check the versions present in the tree with the fixed ancestry.
         v3 = "1.1.2"
         v4 = "2.0"
-        db1 = DistributionBranch(ubup_o.branch, ubup_o.branch)
+        db1 = DistributionBranch(ubup.branch, ubup.branch)
         self.assertEqual(db1.has_upstream_version(v3), True)
         # This version is in the diverged debian upstream tree and will
         # hence not be present in the target ubuntu packaging branch.
         self.assertEqual(db1.has_upstream_version(v4), False)
 
+        # The ubuntu upstream branch tip.
+        ubuu_tip = ubuu.branch.revision_history()[-1]
+        # The debian upstream branch tip.
+        debu_tip = debu.branch.revision_history()[-1]
+        # The ubuntu packaging branch tip.
+        ubup_tip_pre_fix = ubup.branch.revision_history()[-1]
+
         # The first conflict is resolved by calling fix_ancestry_as_needed().
-        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
+        upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup, debp.branch)
 
         # The ancestry did diverge and needed to be fixed.
         self.assertEquals(upstreams_diverged, True)
@@ -124,20 +131,34 @@ class MergePackageTests(TestCaseWithTransport):
         self.assertEquals(t_upstream_reverted, True)
 
         # Check the versions present in the tree with the fixed ancestry.
-        db2 = DistributionBranch(ubup_o.branch, ubup_o.branch)
+        db2 = DistributionBranch(ubup.branch, ubup.branch)
         self.assertEqual(db2.has_upstream_version(v3), True)
         # The ancestry has been fixed and the missing debian upstream
         # version should now be present in the target ubuntu packaging
         # branch.
         self.assertEqual(db2.has_upstream_version(v4), True)
 
+        # Now let's take a look at the fixed ubuntu packaging branch.
+        ubup_tip_post_fix = ubup.branch.revision_history()[-1]
+        ubup_parents_post_fix = ubup.branch.repository.revision_tree(ubup_tip_post_fix).get_parent_ids()
+
+        # The tip of the fixed ubuntu packaging branch has 2 parents.
+        self.assertEquals(len(ubup_parents_post_fix), 2)
+
+        # The left parent is the packaging branch tip before fixing.
+        self.assertEquals(ubup_parents_post_fix[0], ubup_tip_pre_fix)
+
+        # The right parent is derived from a merge 
+        ubup_parents_sharedupstream = ubup.branch.repository.revision_tree(ubup_parents_post_fix[1]).get_parent_ids()
+        self.assertEquals(ubup_parents_sharedupstream, [ubuu_tip, debu_tip])
+
         # Try merging again.
-        conflicts = ubup_o.merge_from_branch(
-            debp_n.branch, to_revision=self.revid_debp_n_C)
+        conflicts = ubup.merge_from_branch(
+            debp.branch, to_revision=self.revid_debp_n_C)
 
         # And, voila, only the packaging branch conflict remains.
         self.assertEquals(conflicts, 1)
-        conflict_paths = sorted([c.path for c in ubup_o.conflicts()])
+        conflict_paths = sorted([c.path for c in ubup.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
     def test_debian_upstream_older(self):
@@ -299,7 +320,7 @@ class MergePackageTests(TestCaseWithTransport):
         self._setup_branch(name, vdata, ubup_o, 'u')
 
         # Return the ubuntu and the debian packaging branches.
-        return (ubup_o, debp_n)
+        return (ubup_o, debp_n, ubuu_o, debu_n)
 
     def _setup_debian_upstream_older(self):
         """
