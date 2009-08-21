@@ -1190,6 +1190,12 @@ class KnitVersionedFiles(VersionedFiles):
         generator = _VFContentMapGenerator(self, [key])
         return generator._get_content(key)
 
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index.find_ancestry(keys)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
+
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
 
@@ -2560,6 +2566,33 @@ class _KndxIndex(object):
         except KeyError:
             raise RevisionNotPresent(key, self)
 
+    def find_ancestry(self, keys):
+        """See CombinedGraphIndex.find_ancestry()"""
+        prefixes = set(key[:-1] for key in keys)
+        self._load_prefixes(prefixes)
+        result = {}
+        parent_map = {}
+        missing_keys = set()
+        pending_keys = list(keys)
+        # This assumes that keys will not reference parents in a different
+        # prefix, which is accurate so far.
+        while pending_keys:
+            key = pending_keys.pop()
+            if key in parent_map:
+                continue
+            prefix = key[:-1]
+            try:
+                suffix_parents = self._kndx_cache[prefix][0][key[-1]][4]
+            except KeyError:
+                missing_keys.add(key)
+            else:
+                parent_keys = tuple([prefix + (suffix,)
+                                     for suffix in suffix_parents])
+                parent_map[key] = parent_keys
+                pending_keys.extend([p for p in parent_keys
+                                        if p not in parent_map])
+        return parent_map, missing_keys
+
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
 
@@ -3048,6 +3081,10 @@ class _KnitGraphIndex(object):
         if node[2][0] == 'N':
             options.append('no-eol')
         return options
+
+    def find_ancestry(self, keys):
+        """See CombinedGraphIndex.find_ancestry()"""
+        return self._graph_index.find_ancestry(keys, 0)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.

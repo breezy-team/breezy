@@ -26,6 +26,7 @@ from StringIO import StringIO
 
 from bzrlib import (
     errors,
+    graph as _mod_graph,
     groupcompress,
     knit as _mod_knit,
     osutils,
@@ -1736,6 +1737,25 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         self.assertEqual('\n',
             f.get_record_stream([key_b], 'unordered', True
                 ).next().get_bytes_as('fulltext'))
+
+    def test_get_known_graph_ancestry(self):
+        f = self.get_versionedfiles()
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
+        key_a = self.get_simple_key('a')
+        key_b = self.get_simple_key('b')
+        key_c = self.get_simple_key('c')
+        # A
+        # |\
+        # | B
+        # |/
+        # C
+        f.add_lines(key_a, [], ['\n'])
+        f.add_lines(key_b, [key_a], ['\n'])
+        f.add_lines(key_c, [key_a, key_b], ['\n'])
+        kg = f.get_known_graph_ancestry([key_c])
+        self.assertIsInstance(kg, _mod_graph.KnownGraph)
+        self.assertEqual([key_a, key_b, key_c], list(kg.topo_sort()))
 
     def test_get_record_stream_empty(self):
         """An empty stream can be requested without error."""
