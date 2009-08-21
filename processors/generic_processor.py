@@ -116,7 +116,7 @@ class GenericProcessor(processor.ImportProcessor):
         'export-marks',
         ]
 
-    def __init__(self, bzrdir, params=None, verbose=False,
+    def __init__(self, bzrdir, params=None, verbose=False, outf=None,
             prune_empty_dirs=True):
         processor.ImportProcessor.__init__(self, bzrdir, params, verbose)
         self.prune_empty_dirs = prune_empty_dirs
