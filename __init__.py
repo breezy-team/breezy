@@ -32,7 +32,14 @@ If fast-export-from-xxx doesn't exist yet for the tool you're importing
 from, the alternative recipe is::
 
   front-end > project.fi
-  bzr fast-import project.fi project.fi
+  bzr fast-import project.fi project.bzr
+
+In either case, if you wish to save disk space, project.fi can be
+compressed to gzip format after it is generated like this::
+
+  (generate project.fi)
+  gzip project.fi
+  bzr fast-import project.fi.gz project.bzr
 
 The list of known front-ends and their status is documented on
 http://bazaar-vcs.org/BzrFastImport/FrontEnds. The fast-export-from-xxx
@@ -87,7 +94,9 @@ def test_suite():
 def _run(source, processor_factory, control, params, verbose):
     """Create and run a processor.
     
-    :param source: a filename or '-' for standard input
+    :param source: a filename or '-' for standard input. If the
+      filename ends in .gz, it will be opened as a gzip file and
+      the stream will be implicitly uncompressed
     :param processor_factory: a callable for creating a processor
     :param control: the BzrDir of the destination or None if no
       destination is expected
@@ -96,6 +105,9 @@ def _run(source, processor_factory, control, params, verbose):
     if source == '-':
         import sys
         stream = helpers.binary_stream(sys.stdin)
+    elif source.endswith('.gz'):
+        import gzip
+        stream = gzip.open(source, "rb")
     else:
         stream = open(source, "rb")
     proc = processor_factory(control, params=params, verbose=verbose)
@@ -116,7 +128,8 @@ class cmd_fast_import(Command):
     to use as input. These are named fast-export-from-xxx where xxx
     is one of cvs, darcs, git, hg, mnt, p4 or svn.
     To specify standard input as the input stream, use a
-    source name of '-' (instead of project.fi).
+    source name of '-' (instead of project.fi). If the source name
+    ends in '.gz', it is assumed to be compressed in gzip format.
     
     project.bzr will be created if it doesn't exist. If it exists
     already, it should be empty or be an existing Bazaar repository
@@ -330,8 +343,9 @@ class cmd_fast_import_filter(Command):
     directories passed to the `--includes option`. If multiple files or
     directories are given, the new root is the deepest common directory.
 
-    To specify standard input as the input stream, use a source
-    name of '-'.
+    To specify standard input as the input stream, use a source name
+    of '-'. If the source name ends in '.gz', it is assumed to be
+    compressed in gzip format.
 
     Note: If a path has been renamed, take care to specify the *original*
     path name, not the final name that it ends up with.
@@ -384,8 +398,9 @@ class cmd_fast_import_info(Command):
     configuration file that can be passed to fast-import to
     assist it in intelligently caching objects.
 
-    To specify standard input as the input stream, use a source
-    name of '-'.
+    To specify standard input as the input stream, use a source name
+    of '-'. If the source name ends in '.gz', it is assumed to be
+    compressed in gzip format.
 
     :Examples:
 
@@ -410,10 +425,13 @@ class cmd_fast_import_info(Command):
 class cmd_fast_import_query(Command):
     """Query a fast-import stream displaying selected commands.
 
-    To specify standard input as the input stream, use a source
-    name of '-'. To specify the commands to display, use the -C
-    option one or more times. To specify just some fields for
-    a command, use the syntax::
+    To specify standard input as the input stream, use a source name
+    of '-'. If the source name ends in '.gz', it is assumed to be
+    compressed in gzip format.
+
+    To specify the commands to display, use the -C option one or
+    more times. To specify just some fields for a command, use the
+    syntax::
 
       command=field1,...
 
@@ -426,12 +444,12 @@ class cmd_fast_import_query(Command):
 
     :Examples:
 
-    Show all the fields of the reset and tag commands::
+     Show all the fields of the reset and tag commands::
 
       front-end > xxx.fi
       bzr fast-import-query xxx.fi -Creset -Ctag
 
-    Show the mark and merge fields of the commit commands::
+     Show the mark and merge fields of the commit commands::
 
       bzr fast-import-query xxx.fi -Ccommit=mark,merge
     """
