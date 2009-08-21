@@ -575,11 +575,27 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         result = []
         for dir in candidates:
             file_id = new_inv.path2id(dir)
-            children = new_inv[file_id].children
-            if len(children) == 0:
+            ie = new_inv[file_id]
+            if len(ie.children) == 0:
+                result.append((dir, file_id))
                 if self.verbose:
                     self.note("pruning empty directory %s" % (dir,))
-                result.append((dir, file_id))
+                # Check parents in case deleting this dir makes *them* empty
+                while True:
+                    file_id = ie.parent_id
+                    if file_id == inventory.ROOT_ID:
+                        # We've reach the root
+                        break
+                    try:
+                        ie = new_inv[file_id]
+                    except errors.NoSuchId:
+                        break
+                    if len(ie.children) > 1:
+                        break
+                    dir = new_inv.id2path(file_id)
+                    result.append((dir, file_id))
+                    if self.verbose:
+                        self.note("pruning empty directory parent %s" % (dir,))
         return result
 
     def _add_entry(self, entry):

@@ -428,6 +428,16 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
             expected_removed=[('a',), (path,)])
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
 
+    def test_delete_file_in_deep_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/b/c/d'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), ('a/b',), ('a/b/c',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('a',), ('a/b',), ('a/b/c',), (path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+
 
 class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
