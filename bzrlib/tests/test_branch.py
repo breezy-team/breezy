@@ -40,6 +40,7 @@ from bzrlib.branch import (
     BzrBranch5,
     BzrBranchFormat5,
     BzrBranchFormat6,
+    BzrBranchFormat7,
     PullResult,
     _run_with_write_locked_target,
     )
@@ -60,7 +61,7 @@ class TestDefaultFormat(TestCase):
     def test_default_format(self):
         # update this if you change the default branch format
         self.assertIsInstance(BranchFormat.get_default_format(),
-                BzrBranchFormat6)
+                BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was

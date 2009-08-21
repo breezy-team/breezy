@@ -661,8 +661,9 @@ class TestBzrDirCreateRepository(TestRemote):
         network_name = reference_format.network_name()
         client.add_expected_call(
             'BzrDir.create_repository', ('quack/',
-                'Bazaar pack repository format 1 (needs bzr 0.92)\n', 'False'),
-            'success', ('ok', 'no', 'no', 'no', network_name))
+                'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+                'False'),
+            'success', ('ok', 'yes', 'yes', 'yes', network_name))
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
         repo = a_bzrdir.create_repository()
@@ -670,9 +671,9 @@ class TestBzrDirCreateRepository(TestRemote):
         self.assertIsInstance(repo, remote.RemoteRepository)
         # its format should have the settings from the response
         format = repo._format
-        self.assertFalse(format.rich_root_data)
-        self.assertFalse(format.supports_tree_reference)
-        self.assertFalse(format.supports_external_lookups)
+        self.assertTrue(format.rich_root_data)
+        self.assertTrue(format.supports_tree_reference)
+        self.assertTrue(format.supports_external_lookups)
         self.assertEqual(network_name, format.network_name())
 
 
@@ -2354,6 +2355,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         """
         # Define a stream using generators so that it isn't rewindable.
         inv = inventory.Inventory(revision_id='rev1')
+        inv.root.revision = 'rev1'
         def stream_with_inv_delta():
             yield ('inventories', inventories_substream())
             yield ('inventory-deltas', inventory_delta_substream())

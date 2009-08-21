@@ -148,12 +148,11 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['False'], stanza.get_all('clean'))
 
-        # XXX: This assumes it's being run against a repository that updates
-        # the root revision on every commit.  Newer ones that use
-        # RootCommitBuilder won't update it on each commit.
+        # This assumes it's being run against a tree that does not update the
+        # root revision on every commit.
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c'], file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'r3', 'r2', 'unversioned'],
+        self.assertEqual(['r1', 'r3', 'r2', 'unversioned'],
             file_rev_stanza.get_all('revision'))
         os.remove('branch/c')
 
@@ -171,7 +170,7 @@ class TestVersionInfo(TestCaseWithTransport):
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'modified', 'renamed to d', 'new',
+        self.assertEqual(['r1', 'modified', 'renamed to d', 'new',
                           'renamed from b'],
                          file_rev_stanza.get_all('revision'))
 
@@ -181,7 +180,7 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'c', 'd'], file_rev_stanza.get_all('path'))
-        self.assertEqual(['r4', 'r4', 'unversioned', 'removed'],
+        self.assertEqual(['r1', 'r4', 'unversioned', 'removed'],
                          file_rev_stanza.get_all('revision'))
 
     def test_python_null(self):
