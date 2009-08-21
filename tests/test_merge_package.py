@@ -22,10 +22,13 @@
 import string
 import unittest
 
+from debian_bundle.changelog import Version
+
 from bzrlib.errors import ConflictsInTree
 from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb import merge_package as MP
+from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 
 _Debian_changelog = '''\
 ipsec-tools (%s) unstable; urgency=high
@@ -102,6 +105,15 @@ class MergePackageTests(TestCaseWithTransport):
         # Undo the failed merge.
         ubup_o.revert()
 
+        # Check the versions present in the tree with the fixed ancestry.
+        v3 = "1.1.2"
+        v4 = "2.0"
+        db1 = DistributionBranch(ubup_o.branch, ubup_o.branch)
+        self.assertEqual(db1.has_upstream_version(v3), True)
+        # This version is in the diverged debian upstream tree and will
+        # hence not be present in the target ubuntu packaging branch.
+        self.assertEqual(db1.has_upstream_version(v4), False)
+
         # The first conflict is resolved by calling fix_ancestry_as_needed().
         upstreams_diverged, t_upstream_reverted = MP.fix_ancestry_as_needed(ubup_o, debp_n.branch)
 
@@ -110,6 +122,14 @@ class MergePackageTests(TestCaseWithTransport):
         # The (temporary) target upstream branch had to be reverted to the
         # source upstream branch since the latter was more recent.
         self.assertEquals(t_upstream_reverted, True)
+
+        # Check the versions present in the tree with the fixed ancestry.
+        db2 = DistributionBranch(ubup_o.branch, ubup_o.branch)
+        self.assertEqual(db2.has_upstream_version(v3), True)
+        # The ancestry has been fixed and the missing debian upstream
+        # version should now be present in the target ubuntu packaging
+        # branch.
+        self.assertEqual(db2.has_upstream_version(v4), True)
 
         # Try merging again.
         conflicts = ubup_o.merge_from_branch(
@@ -494,4 +514,3 @@ class MergePackageTests(TestCaseWithTransport):
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(MergePackageTests)
     unittest.TextTestRunner(verbosity=2).run(suite)
-
