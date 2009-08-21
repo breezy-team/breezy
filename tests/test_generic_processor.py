@@ -37,8 +37,7 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     def get_handler(self):
         branch = self.make_branch('.', format=self.branch_format)
-        handler = generic_processor.GenericProcessor(branch.bzrdir,
-            prune_empty_dirs=False)
+        handler = generic_processor.GenericProcessor(branch.bzrdir)
         return handler, branch
 
     # FIXME: [] as a default is bad, as it is mutable, but I want
@@ -407,7 +406,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         revtree0, revtree1 = self.assertChanges(branch, 1,
             expected_added=[('a',), (path,)])
         revtree1, revtree2 = self.assertChanges(branch, 2,
-            expected_removed=[(path,)])
+            expected_removed=[('a',), (path,)])
         self.assertContent(branch, revtree1, path, "aaa")
 
     def test_delete_symlink_in_root(self):
@@ -426,7 +425,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         revtree0, revtree1 = self.assertChanges(branch, 1,
             expected_added=[('a',), (path,)])
         revtree1, revtree2 = self.assertChanges(branch, 2,
-            expected_removed=[(path,)])
+            expected_removed=[('a',), (path,)])
         self.assertSymlinkTarget(branch, revtree1, path, "aaa")
 
 
@@ -511,8 +510,10 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
         old_path = 'a/a'
         new_path = 'b/a'
         handler.process(self.get_command_iter(old_path, new_path))
-        self.assertChanges(branch, 2, expected_renamed=[(old_path, new_path)],
-            expected_added=[('b',)])
+        self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)],
+            expected_added=[('b',)],
+            expected_removed=[('a',)])
 
 
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
