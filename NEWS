@@ -34,6 +34,9 @@ Bug Fixes
 * Fix a test failure on karmic by making a locale test more robust.
   (Vincent Ladeuil, #413514)
 
+* Fix IndexError printing CannotBindAddress errors.
+  (Martin Pool, #286871)
+
 Improvements
 ************
 
