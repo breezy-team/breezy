@@ -356,6 +356,13 @@ class GenericCommitHandler(processor.CommitHandler):
                 kind, path)
 
     def _rename_item(self, old_path, new_path, inv):
+        existing = self._new_file_ids.get(old_path)
+        if existing:
+            # We've only just added this path earlier in this commit.
+            # Change the add of old_path to an add of new_path
+            self._rename_pending_add(old_path, new_path, existing)
+            return
+
         file_id = inv.path2id(old_path)
         if file_id is None:
             self.warning(
@@ -598,9 +605,14 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         if existing is not None:
             old_path = existing[0]
             entry = (old_path, new_path, file_id, ie)
-        self._delta_entries_by_fileid[file_id] = entry
+        if new_path is None and old_path is None:
+            # This is a delete cancelling a previous add
+            del self._delta_entries_by_fileid[file_id]
+            return
+        else:
+            self._delta_entries_by_fileid[file_id] = entry
 
-        # Collect parent direcctories that might become empty
+        # Collect parent directories that might become empty
         if new_path is None:
             # delete
             parent_dir = osutils.dirname(old_path)
@@ -661,6 +673,35 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
         self._add_entry((old_path, new_path, file_id, new_ie))
+
+    def _rename_pending_add(self, old_path, new_path, file_id):
+        """Instead of adding old-path, add new-path instead."""
+        # note: delta entries look like (old, new, file-id, ie)
+        old_ie = self._delta_entries_by_fileid[file_id][3]
+
+        # Delete the old path. Note that this might trigger implicit
+        # deletion of newly created parents that could now become empty.
+        self.record_delete(old_path, old_ie)
+
+        # Update the dictionary used for tracking new file-ids
+        del self._new_file_ids[old_path]
+        self._new_file_ids[new_path] = file_id
+
+        # Create the new InventoryEntry
+        kind = old_ie.kind
+        basename, parent_id = self._ensure_directory(new_path,
+            self.basis_inventory)
+        ie = inventory.make_entry(kind, basename, parent_id, file_id)
+        ie.revision = self.revision_id
+        if kind == 'file':
+            ie.executable = old_ie.executable
+            ie.text_sha1 = old_ie.text_sha1
+            ie.text_size = old_ie.text_size
+        elif kind == 'symlink':
+            ie.symlink_target = old_ie.symlink_target
+
+        # Record it
+        self.record_new(new_path, ie)
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:

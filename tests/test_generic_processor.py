@@ -561,6 +561,39 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
             expected_removed=[('a',)])
 
 
+class TestImportToPackRenameNew(TestCaseForGenericProcessor):
+
+    def get_command_iter(self, old_path, new_path):
+        # Revno 1: create a file and rename it
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(old_path, 'file', False,
+                        None, "aaa")
+                yield commands.FileRenameCommand(old_path, new_path)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+        return command_list
+
+    def test_rename_new_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(new_path,)])
+        self.assertRevisionRoot(revtree1, new_path)
+
+    def test_rename_new_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'a/a'
+        new_path = 'a/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (new_path,)])
+
+
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
@@ -776,6 +809,9 @@ class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
 class TestImportToRichRootRename(TestImportToPackRename):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootRenameNew(TestImportToPackRenameNew):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
     branch_format = "1.9-rich-root"
 
@@ -804,6 +840,9 @@ try:
         branch_format = "development6-rich-root"
 
     class TestImportToChkRename(TestImportToPackRename):
+        branch_format = "development6-rich-root"
+
+    class TestImportToChkRenameNew(TestImportToPackRenameNew):
         branch_format = "development6-rich-root"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
