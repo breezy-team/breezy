@@ -896,6 +896,100 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree1, dest_path, "aaa")
 
 
+#class TestImportToPackCopyModified(TestCaseForGenericProcessor):
+#    """Test copy of a modified file."""
+#
+#    def file_command_iter(self, src_path, dest_path, kind='file'):
+#        # Revno 1: create a file or symlink
+#        # Revno 2: modify and copy it
+#        def command_list():
+#            author = ['', 'bugs@a.com', time.time(), time.timezone]
+#            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+#            def files_one():
+#                yield commands.FileModifyCommand(src_path, kind, False,
+#                        None, "aaa")
+#            yield commands.CommitCommand('head', '1', author,
+#                committer, "commit 1", None, [], files_one)
+#            def files_two():
+#                yield commands.FileModifyCommand(src_path, kind, False,
+#                        None, "bbb")
+#                yield commands.FileCopyCommand(src_path, dest_path)
+#            yield commands.CommitCommand('head', '2', author,
+#                committer, "commit 2", ":1", [], files_two)
+#        return command_list
+#
+#    def test_copy_modified_file_in_root(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a'
+#        dest_path = 'b'
+#        handler.process(self.file_command_iter(src_path, dest_path))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_modified=[(src_path,)],
+#            expected_added=[(dest_path,)])
+#        self.assertContent(branch, revtree1, src_path, "aaa")
+#        self.assertContent(branch, revtree2, src_path, "bbb")
+#        self.assertContent(branch, revtree2, dest_path, "bbb")
+#        self.assertRevisionRoot(revtree1, src_path)
+#        self.assertRevisionRoot(revtree2, dest_path)
+#
+#    def test_copy_modified_file_in_subdir(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a/a'
+#        dest_path = 'a/b'
+#        handler.process(self.file_command_iter(src_path, dest_path))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_added=[(dest_path,)])
+#        self.assertContent(branch, revtree1, src_path, "aaa")
+#        self.assertContent(branch, revtree2, src_path, "aaa")
+#        self.assertContent(branch, revtree2, dest_path, "bbb")
+#
+#    def test_copy_modified_file_to_new_dir(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a/a'
+#        dest_path = 'b/a'
+#        handler.process(self.file_command_iter(src_path, dest_path))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_added=[('b',), (dest_path,)])
+#        self.assertContent(branch, revtree1, src_path, "aaa")
+#        self.assertContent(branch, revtree2, src_path, "aaa")
+#        self.assertContent(branch, revtree2, dest_path, "bbb")
+#
+#    def test_copy_modified_symlink_in_root(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a'
+#        dest_path = 'b'
+#        handler.process(self.file_command_iter(src_path, dest_path, 'symlink'))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_added=[(dest_path,)])
+#        self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, dest_path, "bbb")
+#        self.assertRevisionRoot(revtree1, src_path)
+#        self.assertRevisionRoot(revtree2, dest_path)
+#
+#    def test_copy_modified_symlink_in_subdir(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a/a'
+#        dest_path = 'a/b'
+#        handler.process(self.file_command_iter(src_path, dest_path, 'symlink'))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_added=[(dest_path,)])
+#        self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, dest_path, "bbb")
+#
+#    def test_copy_modified_symlink_to_new_dir(self):
+#        handler, branch = self.get_handler()
+#        src_path = 'a/a'
+#        dest_path = 'b/a'
+#        handler.process(self.file_command_iter(src_path, dest_path, 'symlink'))
+#        revtree1, revtree2 = self.assertChanges(branch, 2,
+#            expected_added=[('b',), (dest_path,)])
+#        self.assertSymlinkTarget(branch, revtree1, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, src_path, "aaa")
+#        self.assertSymlinkTarget(branch, revtree2, dest_path, "bbb")
+
+
 class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 
     def get_command_iter(self, path, kind, content):
