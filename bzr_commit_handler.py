@@ -53,6 +53,10 @@ class GenericCommitHandler(processor.CommitHandler):
         self.verbose = verbose
         self.branch_ref = command.ref
         self.prune_empty_dirs = prune_empty_dirs
+        # This tracks path->file-id for things we're creating this commit.
+        # If the same path is created multiple times, we need to warn the
+        # user and add it just once.
+        self._new_file_ids = {}
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -170,6 +174,7 @@ class GenericCommitHandler(processor.CommitHandler):
         id = generate_ids.gen_file_id(path)
         self.debug("Generated new file id %s for '%s' in revision-id '%s'",
             id, path, self.revision_id)
+        self._new_file_ids[path] = id
         return id, True
 
     def bzr_file_id(self, path):
@@ -219,6 +224,15 @@ class GenericCommitHandler(processor.CommitHandler):
 
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
+        # If we've already added this, warn the user that we're ignoring it.
+        # In the future, it might be nice to double check that the new data
+        # is the same as the old but, frankly, exporters should be fixed
+        # not to produce bad data streams in the first place ...
+        existing = self._new_file_ids.get(path)
+        if existing:
+            self.warning("%s already added in this commit - ignoring" % (path,))
+            return
+
         # Create the new InventoryEntry
         basename, parent_id = self._ensure_directory(path, inv)
         file_id = self.bzr_file_id(path)

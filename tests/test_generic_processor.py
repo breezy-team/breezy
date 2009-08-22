@@ -292,6 +292,41 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
         self.assertExecutable(branch, revtree2, path, False)
 
 
+class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
+    """This tests when the same file is modified twice in the one commit.
+    
+    Note: hg-fast-export produces data like this on occasions.
+    """
+
+    def file_command_iter(self, path, kind='file', content='aaa',
+        executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        # Revno 1: create a file twice
+        if to_kind is None:
+            to_kind = kind
+        if to_executable is None:
+            to_executable = executable
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, executable,
+                        None, content)
+                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                        None, to_content)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+        return command_list
+
+    def test_modify_file_twice_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+        self.assertRevisionRoot(revtree1, path)
+
+
 class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, path2, kind='file'):
@@ -726,6 +761,9 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 class TestImportToRichRootModify(TestImportToPackModify):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootModifyTwice(TestImportToPackModifyTwice):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootModifyTricky(TestImportToPackModifyTricky):
     branch_format = "1.9-rich-root"
 
@@ -751,6 +789,9 @@ try:
     from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
 
     class TestImportToChkModify(TestImportToPackModify):
+        branch_format = "development6-rich-root"
+
+    class TestImportToChkModifyTwice(TestImportToPackModifyTwice):
         branch_format = "development6-rich-root"
 
     class TestImportToChkModifyTricky(TestImportToPackModifyTricky):
