@@ -603,12 +603,15 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
     def _get_proposed_inventory(self, delta):
         if len(self.parents):
             new_inv = self.basis_inventory._get_mutable_inventory()
-            new_inv.apply_delta(delta)
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
             del new_inv[inventory.ROOT_ID]
+        try:
             new_inv.apply_delta(delta)
+        except errors.InconsistentDelta:
+            self.mutter("INCONSISTENT DELTA IS:\n%s" % "\n".join([str(de) for de in delta]))
+            raise
         return new_inv
 
     def _add_entry(self, entry):
