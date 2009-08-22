@@ -474,6 +474,53 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
         self.assertContent(branch, revtree1, path, "aaa")
 
 
+class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
+    """Test deletion of a newly added file."""
+
+    def file_command_iter(self, path, kind='file'):
+        # Revno 1: create a file or symlink then delete it
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, False,
+                        None, "aaa")
+                yield commands.FileDeleteCommand(path)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+        return command_list
+
+    def test_delete_new_file_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,)
+
+    def test_delete_new_file_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,)
+
+    def test_delete_new_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,)
+
+    def test_delete_new_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,)
+
+    def test_delete_new_file_in_deep_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/b/c/d'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,)
+
+
 class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, dir):
@@ -803,6 +850,9 @@ class TestImportToRichRootModifyTricky(TestImportToPackModifyTricky):
 class TestImportToRichRootDelete(TestImportToPackDelete):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootDeleteNew(TestImportToPackDeleteNew):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
     branch_format = "1.9-rich-root"
 
@@ -834,6 +884,9 @@ try:
         branch_format = "development6-rich-root"
 
     class TestImportToChkDelete(TestImportToPackDelete):
+        branch_format = "development6-rich-root"
+
+    class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
         branch_format = "development6-rich-root"
 
     class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):

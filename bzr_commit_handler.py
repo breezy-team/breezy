@@ -323,16 +323,23 @@ class GenericCommitHandler(processor.CommitHandler):
         return result
 
     def _delete_item(self, path, inv):
-        file_id = inv.path2id(path)
-        if file_id is None:
-            self.mutter("ignoring delete of %s as not in inventory", path)
-            return
-        try:
-            ie = inv[file_id]
-        except errors.NoSuchId:
-            self.mutter("ignoring delete of %s as not in inventory", path)
+        newly_added = self._new_file_ids.get(path)
+        if newly_added:
+            # We've only just added this path earlier in this commit.
+            file_id = newly_added
+            # note: delta entries look like (old, new, file-id, ie)
+            ie = self._delta_entries_by_fileid[file_id][3]
         else:
-            self.record_delete(path, ie)
+            file_id = inv.path2id(path)
+            if file_id is None:
+                self.mutter("ignoring delete of %s as not in inventory", path)
+                return
+            try:
+                ie = inv[file_id]
+            except errors.NoSuchId:
+                self.mutter("ignoring delete of %s as not in inventory", path)
+                return
+        self.record_delete(path, ie)
 
     def _copy_item(self, src_path, dest_path, inv):
         if not self.parents:
@@ -543,14 +550,22 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
             candidates = osutils.minimum_path_selection(
                 self._dirs_that_might_become_empty)
+            never_born = set()
             for path, file_id in self._empty_after_delta(delta, candidates):
-                delta.append((path, None, file_id, None))
-        #print "delta:\n%s\n\n" % "\n".join([str(de) for de in delta])
+                newly_added = self._new_file_ids.get(path)
+                if newly_added:
+                    never_born.add(newly_added)
+                else:
+                    delta.append((path, None, file_id, None))
+            # Clean up entries that got deleted before they were ever added
+            if never_born:
+                delta = [de for de in delta if de[2] not in never_born]
         return delta
 
     def _empty_after_delta(self, delta, candidates):
-        new_inv = self.basis_inventory._get_mutable_inventory()
-        new_inv.apply_delta(delta)
+        #self.mutter("delta so far is:\n%s" % "\n".join([str(de) for de in delta]))
+        #self.mutter("candidates for deletion are:\n%s" % "\n".join([c for c in candidates]))
+        new_inv = self._get_proposed_inventory(delta)
         result = []
         for dir in candidates:
             file_id = new_inv.path2id(dir)
@@ -578,6 +593,17 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
                     if self.verbose:
                         self.note("pruning empty directory parent %s" % (dir,))
         return result
+
+    def _get_proposed_inventory(self, delta):
+        if len(self.parents):
+            new_inv = self.basis_inventory._get_mutable_inventory()
+            new_inv.apply_delta(delta)
+        else:
+            new_inv = inventory.Inventory(revision_id=self.revision_id)
+            # This is set in the delta so remove it to prevent a duplicate
+            del new_inv[inventory.ROOT_ID]
+            new_inv.apply_delta(delta)
+        return new_inv
 
     def _add_entry(self, entry):
         # We need to combine the data if multiple entries have the same file-id.
@@ -608,6 +634,10 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         if new_path is None and old_path is None:
             # This is a delete cancelling a previous add
             del self._delta_entries_by_fileid[file_id]
+            parent_dir = osutils.dirname(existing[1])
+            self.mutter("cancelling add of %s with parent %s" % (existing[1], parent_dir))
+            if parent_dir:
+                self._dirs_that_might_become_empty.add(parent_dir)
             return
         else:
             self._delta_entries_by_fileid[file_id] = entry
