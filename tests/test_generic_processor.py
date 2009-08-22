@@ -1050,43 +1050,43 @@ class TestImportToRichRootFileKinds(TestImportToPackFileKinds):
     branch_format = "1.9-rich-root"
 
 try:
-    from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
+    from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
     class TestImportToChkModify(TestImportToPackModify):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkModifyTwice(TestImportToPackModifyTwice):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkModifyTricky(TestImportToPackModifyTricky):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkDelete(TestImportToPackDelete):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkRename(TestImportToPackRename):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkRenameNew(TestImportToPackRenameNew):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkCopy(TestImportToPackCopy):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkCopyNew(TestImportToPackCopyNew):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
     class TestImportToChkFileKinds(TestImportToPackFileKinds):
-        branch_format = "development6-rich-root"
+        branch_format = "2a"
 
 except ImportError:
     pass
