@@ -342,19 +342,25 @@ class GenericCommitHandler(processor.CommitHandler):
         self.record_delete(path, ie)
 
     def _copy_item(self, src_path, dest_path, inv):
-        if not self.parents:
-            self.warning("ignoring copy of %s to %s - no parent revisions",
-                src_path, dest_path)
-            return
-        file_id = inv.path2id(src_path)
-        if file_id is None:
-            self.warning("ignoring copy of %s to %s - source does not exist",
-                src_path, dest_path)
-            return
-        ie = inv[file_id]
+        newly_added = self._new_file_ids.get(src_path)
+        if newly_added:
+            # We've only just added this path earlier in this commit.
+            file_id = newly_added
+            # note: delta entries look like (old, new, file-id, ie)
+            ie = self._delta_entries_by_fileid[file_id][3]
+        else:
+            file_id = inv.path2id(src_path)
+            if file_id is None:
+                self.warning("ignoring copy of %s to %s - source does not exist",
+                    src_path, dest_path)
+                return
+            ie = inv[file_id]
         kind = ie.kind
         if kind == 'file':
-            content = self.rev_store.get_file_text(self.parents[0], file_id)
+            if newly_added:
+                content = ''.join(self.lines_for_commit[file_id])
+            else:
+                content = self.rev_store.get_file_text(self.parents[0], file_id)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
             self._modify_item(dest_path, kind, False, ie.symlink_target, inv)
