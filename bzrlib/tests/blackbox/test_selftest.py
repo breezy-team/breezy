@@ -93,17 +93,9 @@ class TestOptions(TestCase):
         self.assertSubset(["list_only", "random_seed"], params[1])
 
     def test_subunit(self):
-        """Passing --subunit results in subunit output."""
         self.requireFeature(SubUnitFeature)
-        from subunit import ProtocolTestCase
-        stdout = self.run_bzr(
-            'selftest --subunit --no-plugins '
-            'tests.test_selftest.SelftestTests.test_import_tests')[0]
-        stream = StringIO(str(stdout))
-        test = ProtocolTestCase(stream)
-        result = unittest.TestResult()
-        test.run(result)
-        self.assertEqual(1, result.testsRun)
+        params = self.get_params_passed_to_core('selftest --subunit')
+        self.assertEqual(tests.SubUnitBzrRunner, params[1]['runner_class'])
 
 
 class TestRunBzr(ExternalBase):

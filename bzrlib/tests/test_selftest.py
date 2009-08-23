@@ -50,6 +50,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.tests import (
+    SubUnitFeature,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -1830,6 +1831,16 @@ class TestSelftest(tests.TestCase):
         repeated = self.run_selftest(test_suite_factory=self.factory,
             list_only=True, random_seed="123")
         self.assertEqual(expected.getvalue(), repeated.getvalue())
+
+    def test_runner_class(self):
+        self.requireFeature(SubUnitFeature)
+        from subunit import ProtocolTestCase
+        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+            test_suite_factory=self.factory)
+        test = ProtocolTestCase(stream)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(3, result.testsRun)
 
     def check_transport_set(self, transport_server):
         captured_transport = []
