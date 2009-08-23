@@ -503,9 +503,14 @@ class cmd_fast_import_query(Command):
 class cmd_fast_export(Command):
     """Generate a fast-import stream from a Bazaar branch.
 
-    This program generates a stream from a bzr branch in the format required by
-    git-fast-import(1). It preserves merges correctly, even merged branches with
-    no common history (`bzr merge -r 0..-1`).
+    This program generates a stream from a bzr branch in the format
+    required by git-fast-import(1). It preserves merges correctly,
+    even merged branches with no common history (`bzr merge -r 0..-1`).
+
+    If no destination is given or the destination is '-', standard output
+    is used. Otherwise, the destination is the name of a file. If the
+    destination ends in '.gz', the output will be compressed into gzip
+    format.
 
     :Examples:
 
@@ -524,7 +529,7 @@ class cmd_fast_export(Command):
     """
     hidden = False
     _see_also = ['fast-import', 'fast-import-filter']
-    takes_args = ['source']
+    takes_args = ['source', 'destination?']
     takes_options = ['verbose', 'revision',
                     Option('git-branch', short_name='b', type=str,
                         argname='FILE',
@@ -545,13 +550,15 @@ class cmd_fast_export(Command):
                      ]
     aliases = []
     encoding_type = 'exact'
-    def run(self, source, verbose=False, git_branch="master", checkpoint=10000,
-        marks=None, import_marks=None, export_marks=None, revision=None):
+    def run(self, source, destination=None, verbose=False,
+        git_branch="master", checkpoint=10000, marks=None,
+        import_marks=None, export_marks=None, revision=None):
         from bzrlib.plugins.fastimport import bzr_exporter
 
         if marks:                                              
             import_marks = export_marks = marks
         exporter = bzr_exporter.BzrFastExporter(source,
+            destination=destination,
             git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
             revision=revision, verbose=verbose)

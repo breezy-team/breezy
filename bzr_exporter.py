@@ -75,11 +75,17 @@ def _iter_linear_revisions(branch, start_rev_id, end_rev_id):
 
 class BzrFastExporter(object):
 
-    def __init__(self, source, git_branch=None, checkpoint=-1,
+    def __init__(self, source, destination, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
         verbose=False):
         self.source = source
-        self.outf = helpers.binary_stream(sys.stdout)
+        if destination is None or destination == '-':
+            self.outf = helpers.binary_stream(sys.stdout)
+        elif destination.endswith('gz'):
+            import gzip
+            self.outf = gzip.open(destination, 'wb')
+        else:
+            self.outf = open(destination, 'wb')
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file
@@ -244,7 +250,7 @@ class BzrFastExporter(object):
         # Print the commit
         git_ref = 'refs/heads/%s' % (git_branch,)
         mark = ncommits + 1
-        self.revid_to_mark[revid] = ':' + str(mark)
+        self.revid_to_mark[revid] = mark
         file_cmds = self._get_filecommands(parent, revid)
         self.print_cmd(self._get_commit_command(git_ref, mark, revobj,
             file_cmds))
