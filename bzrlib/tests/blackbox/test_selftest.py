@@ -26,6 +26,7 @@ import unittest
 import bzrlib
 from bzrlib import (
     osutils,
+    tests,
     )
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
@@ -512,59 +513,55 @@ class TestSelftestListOnly(TestCase):
         return (header,body,footer)
 
     def test_list_only(self):
-        # check that bzr selftest --list-only works correctly
-        out,err = self.run_bzr('selftest selftest --list-only')
-        (header,body,footer) = self._parse_test_list(out.splitlines())
-        num_tests = len(body)
-        self.assertLength(0, header)
-        self.assertLength(0, footer)
-        self.assertEqual('', err)
+        # check that bzr selftest --list-only outputs no ui noise
+        def selftest(*args, **kwargs):
+            """Capture the arguments selftest was run with."""
+            return True
+        def outputs_nothing(cmdline):
+            out,err = self.run_bzr(cmdline)
+            (header,body,footer) = self._parse_test_list(out.splitlines())
+            num_tests = len(body)
+            self.assertLength(0, header)
+            self.assertLength(0, footer)
+            self.assertEqual('', err)
+        # Yes this prevents using threads to run the test suite in parallel,
+        # however we don't have a clean dependency injector for commands, 
+        # and even if we did - we'd still be testing that the glue is wired
+        # up correctly. XXX: TODO: Solve this testing problem.
+        original_selftest = tests.selftest
+        tests.selftest = selftest
+        try:
+            outputs_nothing('selftest --list-only')
+            outputs_nothing('selftest --list-only selftest')
+            outputs_nothing(['selftest', '--list-only', '--exclude', 'selftest'])
+        finally:
+            tests.selftest = original_selftest
 
-    def test_list_only_filtered(self):
-        # check that a filtered --list-only works, both include and exclude
-        out_all,err_all = self.run_bzr('selftest --list-only')
-        tests_all = self._parse_test_list(out_all.splitlines())[1]
-        out_incl,err_incl = self.run_bzr('selftest --list-only selftest')
-        tests_incl = self._parse_test_list(out_incl.splitlines())[1]
-        self.assertSubset(tests_incl, tests_all)
-        out_excl,err_excl = self.run_bzr(['selftest', '--list-only',
-                                          '--exclude', 'selftest'])
-        tests_excl = self._parse_test_list(out_excl.splitlines())[1]
-        self.assertSubset(tests_excl, tests_all)
-        set_incl = set(tests_incl)
-        set_excl = set(tests_excl)
-        intersection = set_incl.intersection(set_excl)
-        self.assertEquals(0, len(intersection))
-        self.assertEquals(len(tests_all), len(tests_incl) + len(tests_excl))
-
-    def test_list_only_random(self):
-        # check that --randomize works correctly
-        out_all,err_all = self.run_bzr('selftest --list-only selftest')
-        tests_all = self._parse_test_list(out_all.splitlines())[1]
-        # XXX: It looks like there are some orders for generating tests that
-        # fail as of 20070504 - maybe because of import order dependencies.
-        # So unfortunately this will rarely intermittently fail at the moment.
-        # -- mbp 20070504
-        out_rand,err_rand = self.run_bzr(['selftest', '--list-only',
-                                          'selftest', '--randomize', 'now'])
-        (header_rand,tests_rand,dummy) = self._parse_test_list(
-            out_rand.splitlines(), 1)
-        # XXX: The following line asserts that the randomized order is not the
-        # same as the default order.  It is just possible that they'll get
-        # randomized into the same order and this will falsely fail, but
-        # that's very unlikely in practice because there are thousands of
-        # tests.
-        self.assertNotEqual(tests_all, tests_rand)
-        self.assertEqual(sorted(tests_all), sorted(tests_rand))
-        # Check that the seed can be reused to get the exact same order
-        seed_re = re.compile('Randomizing test order using seed (\w+)')
-        match_obj = seed_re.search(header_rand[-1])
-        seed = match_obj.group(1)
-        out_rand2,err_rand2 = self.run_bzr(['selftest', '--list-only',
-                                            'selftest', '--randomize', seed])
-        (header_rand2,tests_rand2,dummy) = self._parse_test_list(
-            out_rand2.splitlines(), 1)
-        self.assertEqual(tests_rand, tests_rand2)
+    def test_parameters_passed_to_core(self):
+        params = []
+        def selftest(*args, **kwargs):
+            """Capture the arguments selftest was run with."""
+            params.append((args, kwargs))
+            return True
+        # Yes this prevents using threads to run the test suite in parallel,
+        # however we don't have a clean dependency injector for commands, 
+        # and even if we did - we'd still be testing that the glue is wired
+        # up correctly. XXX: TODO: Solve this testing problem.
+        original_selftest = tests.selftest
+        tests.selftest = selftest
+        try:
+            self.run_bzr('selftest --list-only')
+            self.run_bzr('selftest --list-only selftest')
+            self.run_bzr(['selftest', '--list-only', '--exclude', 'selftest'])
+            self.run_bzr(['selftest', '--list-only', 'selftest',
+                '--randomize', 'now'])
+            # list_only should have been passed in each invocation.
+            self.assertTrue("list_only" in params[0][1])
+            self.assertTrue("list_only" in params[1][1])
+            self.assertTrue("list_only" in params[2][1])
+            self.assertSubset(["list_only", "random_seed"], params[2][1])
+        finally:
+            tests.selftest = original_selftest
 
 
 class TestSelftestWithIdList(TestCaseInTempDir):

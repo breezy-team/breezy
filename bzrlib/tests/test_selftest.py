@@ -1770,6 +1770,60 @@ class TestSelftest(tests.TestCase):
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
 
+    def factory(self):
+        """A test suite factory."""
+        class Test(tests.TestCase):
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def run_selftest(self, **kwargs):
+        """Run selftest returning its output."""
+        output = StringIO()
+        self.assertEqual(True, tests.selftest(stream=output, **kwargs))
+        output.seek(0)
+        return output
+
+    def test_list_only(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True)
+        self.assertEqual(3, len(output.readlines()))
+
+    def test_list_only_filtered(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, pattern="Test.b")
+        self.assertEndsWith(output.getvalue(), "Test.b\n")
+        self.assertLength(1, output.readlines())
+
+    def test_list_only_excludes(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, exclude_pattern="Test.b")
+        self.assertNotContainsRe("Test.b", output.getvalue())
+        self.assertLength(2, output.readlines())
+
+    def test_random(self):
+        # test randomising by listing a number of tests.
+        output_123 = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        output_234 = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="234")
+        self.assertNotEqual(output_123, output_234)
+        # "Randominzing test order..\n\n
+        self.assertLength(5, output_123.readlines())
+        self.assertLength(5, output_234.readlines())
+
+    def test_random_reuse_is_same_order(self):
+        # test randomising by listing a number of tests.
+        expected = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        repeated = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        self.assertEqual(expected.getvalue(), repeated.getvalue())
+
 
 class TestKnownFailure(tests.TestCase):
 
