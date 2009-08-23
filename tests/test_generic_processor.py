@@ -675,7 +675,7 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
         handler.process(self.get_command_iter(old_path, new_path))
         self.assertChanges(branch, 2, expected_renamed=[(old_path, new_path)])
 
-    def test_move_to_new_dir(self):
+    def test_rename_to_new_dir(self):
         handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'b/a'
@@ -718,6 +718,74 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
         handler.process(self.get_command_iter(old_path, new_path))
         revtree0, revtree1 = self.assertChanges(branch, 1,
             expected_added=[('a',), (new_path,)])
+
+
+class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
+    """Test rename to a destination path deleted in this commit."""
+
+    def get_command_iter(self, old_path, new_path):
+        # Revno 1: create two files
+        # Revno 2: delete one, rename the other one to that path
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(old_path, 'file', False,
+                        None, "aaa")
+                yield commands.FileModifyCommand(new_path, 'file', False,
+                        None, "bbb")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(new_path)
+                yield commands.FileRenameCommand(old_path, new_path)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_rename_to_deleted_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "bbb")
+        self.assertContent(branch, revtree2, new_path, "aaa")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree1, new_path)
+
+    def test_rename_to_deleted_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "bbb")
+        self.assertContent(branch, revtree2, new_path, "aaa")
+
+    def test_rename_to_deleted_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), (old_path,), ('d2',), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('d1',), (new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "bbb")
+        self.assertContent(branch, revtree2, new_path, "aaa")
 
 
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
@@ -1118,6 +1186,9 @@ class TestImportToRichRootRename(TestImportToPackRename):
 class TestImportToRichRootRenameNew(TestImportToPackRenameNew):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootRenameToDeleted(TestImportToPackRenameToDeleted):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
     branch_format = "1.9-rich-root"
 
@@ -1158,6 +1229,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkRenameNew(TestImportToPackRenameNew):
+        branch_format = "2a"
+
+    class TestImportToChkRenameToDeleted(TestImportToPackRenameToDeleted):
         branch_format = "2a"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
