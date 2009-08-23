@@ -521,6 +521,84 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
         revtree0, revtree1 = self.assertChanges(branch, 1,)
 
 
+class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
+    """Test delete followed by an add. Merges can cause this."""
+
+    def file_command_iter(self, path, kind='file', content='aaa',
+        executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        # Revno 1: create a file or symlink
+        # Revno 2: delete it and add it
+        if to_kind is None:
+            to_kind = kind
+        if to_executable is None:
+            to_executable = executable
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path, kind, executable,
+                        None, content)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(path)
+                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                        None, to_content)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_then_add_file_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)],
+            expected_added=[(path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+        self.assertContent(branch, revtree2, path, "bbb")
+        self.assertRevisionRoot(revtree1, path)
+        self.assertRevisionRoot(revtree2, path)
+
+    def test_delete_then_add_file_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)],
+            expected_added=[(path,)])
+        self.assertContent(branch, revtree1, path, "aaa")
+        self.assertContent(branch, revtree2, path, "bbb")
+
+    def test_delete_then_add_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)],
+            expected_added=[(path,)])
+        self.assertSymlinkTarget(branch, revtree1, path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, path, "bbb")
+        self.assertRevisionRoot(revtree1, path)
+        self.assertRevisionRoot(revtree2, path)
+
+    def test_delete_then_add_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        path = 'a/a'
+        handler.process(self.file_command_iter(path, kind='symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(path,)],
+            expected_added=[(path,)])
+        self.assertSymlinkTarget(branch, revtree1, path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, path, "bbb")
+
+
 class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, dir):
@@ -1028,6 +1106,9 @@ class TestImportToRichRootDelete(TestImportToPackDelete):
 class TestImportToRichRootDeleteNew(TestImportToPackDeleteNew):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootDeleteThenAdd(TestImportToPackDeleteThenAdd):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
     branch_format = "1.9-rich-root"
 
@@ -1065,6 +1146,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
+        branch_format = "2a"
+
+    class TestImportToChkDeleteThenAdd(TestImportToPackDeleteThenAdd):
         branch_format = "2a"
 
     class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):

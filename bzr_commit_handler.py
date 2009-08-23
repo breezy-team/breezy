@@ -57,6 +57,10 @@ class GenericCommitHandler(processor.CommitHandler):
         # If the same path is created multiple times, we need to warn the
         # user and add it just once.
         self._new_file_ids = {}
+        # This tracks the paths for things we're deleting this commit.
+        # If the same path is added or the destination of a rename say,
+        # then a fresh file-id is required.
+        self._paths_deleted_this_commit = set()
 
     def pre_process_files(self):
         """Prepare for committing."""
@@ -158,17 +162,18 @@ class GenericCommitHandler(processor.CommitHandler):
         :return: file_id, is_new where
           is_new = True if the file_id is newly created
         """
-        # Try the basis inventory
-        id = self.basis_inventory.path2id(path)
-        if id is not None:
-            return id, False
-        
-        # Try the other inventories
-        if len(self.parents) > 1:
-            for inv in self.parent_invs[1:]:
-                id = self.basis_inventory.path2id(path)
-                if id is not None:
-                    return id, False
+        if path not in self._paths_deleted_this_commit:
+            # Try the basis inventory
+            id = self.basis_inventory.path2id(path)
+            if id is not None:
+                return id, False
+            
+            # Try the other inventories
+            if len(self.parents) > 1:
+                for inv in self.parent_invs[1:]:
+                    id = self.basis_inventory.path2id(path)
+                    if id is not None:
+                        return id, False
 
         # Doesn't exist yet so create it
         id = generate_ids.gen_file_id(path)
@@ -698,11 +703,13 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def record_delete(self, path, ie):
         self._add_entry((path, None, ie.file_id, None))
+        self._paths_deleted_this_commit.add(path)
         if ie.kind == 'directory':
             for child_relpath, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
                 child_path = osutils.pathjoin(path, child_relpath)
                 self._add_entry((child_path, None, entry.file_id, None))
+                self._paths_deleted_this_commit.add(child_path)
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
