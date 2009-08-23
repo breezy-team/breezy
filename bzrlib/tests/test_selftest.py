@@ -1784,7 +1784,14 @@ class TestSelftest(tests.TestCase):
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
         output = StringIO()
-        self.assertEqual(True, tests.selftest(stream=output, **kwargs))
+        old_transport = bzrlib.tests.default_transport
+        old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
+        tests.TestCaseWithMemoryTransport.TEST_ROOT = None
+        try:
+            self.assertEqual(True, tests.selftest(stream=output, **kwargs))
+        finally:
+            bzrlib.tests.default_transport = old_transport
+            tests.TestCaseWithMemoryTransport.TEST_ROOT = old_root
         output.seek(0)
         return output
 
@@ -1823,6 +1830,28 @@ class TestSelftest(tests.TestCase):
         repeated = self.run_selftest(test_suite_factory=self.factory,
             list_only=True, random_seed="123")
         self.assertEqual(expected.getvalue(), repeated.getvalue())
+
+    def check_transport_set(self, transport_server):
+        captured_transport = []
+        def seen_transport(a_transport):
+            captured_transport.append(a_transport)
+        class Capture(tests.TestCase):
+            def a(self):
+                seen_transport(bzrlib.tests.default_transport)
+        def factory():
+            return TestUtil.TestSuite([Capture("a")])
+        self.run_selftest(transport=transport_server, test_suite_factory=factory)
+        self.assertEqual(transport_server, captured_transport[0])
+
+    def test_transport_sftp(self):
+        try:
+            import bzrlib.transport.sftp
+        except ParamikoNotPresent:
+            raise TestSkipped("Paramiko not present")
+        self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
+
+    def test_transport_memory(self):
+        self.check_transport_set(bzrlib.transport.memory.MemoryServer)
 
 
 class TestKnownFailure(tests.TestCase):

@@ -43,54 +43,54 @@ from bzrlib.tests.blackbox import ExternalBase
 
 class TestOptions(TestCase):
 
-    current_test = None
-
     def test_transport_set_to_sftp(self):
-        # test the --transport option has taken effect from within the
-        # test_transport test
+        # Test that we can pass a transport to the selftest core - sftp
+        # version.
         try:
             import bzrlib.transport.sftp
         except ParamikoNotPresent:
             raise TestSkipped("Paramiko not present")
-        if TestOptions.current_test != "test_transport_set_to_sftp":
-            return
+        params = self.get_params_passed_to_core('selftest --transport=sftp')
         self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
-                         bzrlib.tests.default_transport)
+            params[1]["transport"])
 
     def test_transport_set_to_memory(self):
-        # test the --transport option has taken effect from within the
-        # test_transport test
+        # Test that we can pass a transport to the selftest core - memory
+        # version.
         import bzrlib.transport.memory
-        if TestOptions.current_test != "test_transport_set_to_memory":
-            return
+        params = self.get_params_passed_to_core('selftest --transport=memory')
         self.assertEqual(bzrlib.transport.memory.MemoryServer,
-                         bzrlib.tests.default_transport)
+            params[1]["transport"])
 
-    def test_transport(self):
-        # test that --transport=sftp works
+    def get_params_passed_to_core(self, cmdline):
+        params = []
+        def selftest(*args, **kwargs):
+            """Capture the arguments selftest was run with."""
+            params.append((args, kwargs))
+            return True
+        # Yes this prevents using threads to run the test suite in parallel,
+        # however we don't have a clean dependency injector for commands, 
+        # and even if we did - we'd still be testing that the glue is wired
+        # up correctly. XXX: TODO: Solve this testing problem.
+        original_selftest = tests.selftest
+        tests.selftest = selftest
         try:
-            import bzrlib.transport.sftp
-        except ParamikoNotPresent:
-            raise TestSkipped("Paramiko not present")
-        old_transport = bzrlib.tests.default_transport
-        old_root = TestCaseWithMemoryTransport.TEST_ROOT
-        TestCaseWithMemoryTransport.TEST_ROOT = None
-        try:
-            TestOptions.current_test = "test_transport_set_to_sftp"
-            stdout = self.run_bzr(
-                'selftest --transport=sftp test_transport_set_to_sftp')[0]
-            self.assertContainsRe(stdout, 'Ran 1 test')
-            self.assertEqual(old_transport, bzrlib.tests.default_transport)
-
-            TestOptions.current_test = "test_transport_set_to_memory"
-            stdout = self.run_bzr(
-                'selftest --transport=memory test_transport_set_to_memory')[0]
-            self.assertContainsRe(stdout, 'Ran 1 test')
-            self.assertEqual(old_transport, bzrlib.tests.default_transport)
+            self.run_bzr(cmdline)
+            return params[0]
         finally:
-            bzrlib.tests.default_transport = old_transport
-            TestOptions.current_test = None
-            TestCaseWithMemoryTransport.TEST_ROOT = old_root
+            tests.selftest = original_selftest
+
+    def test_parameters_passed_to_core(self):
+        params = self.get_params_passed_to_core('selftest --list-only')
+        self.assertTrue("list_only" in params[1])
+        params = self.get_params_passed_to_core('selftest --list-only selftest')
+        self.assertTrue("list_only" in params[1])
+        params = self.get_params_passed_to_core(['selftest', '--list-only',
+            '--exclude', 'selftest'])
+        self.assertTrue("list_only" in params[1])
+        params = self.get_params_passed_to_core(['selftest', '--list-only',
+            'selftest', '--randomize', 'now'])
+        self.assertSubset(["list_only", "random_seed"], params[1])
 
     def test_subunit(self):
         """Passing --subunit results in subunit output."""
@@ -534,32 +534,6 @@ class TestSelftestListOnly(TestCase):
             outputs_nothing('selftest --list-only')
             outputs_nothing('selftest --list-only selftest')
             outputs_nothing(['selftest', '--list-only', '--exclude', 'selftest'])
-        finally:
-            tests.selftest = original_selftest
-
-    def test_parameters_passed_to_core(self):
-        params = []
-        def selftest(*args, **kwargs):
-            """Capture the arguments selftest was run with."""
-            params.append((args, kwargs))
-            return True
-        # Yes this prevents using threads to run the test suite in parallel,
-        # however we don't have a clean dependency injector for commands, 
-        # and even if we did - we'd still be testing that the glue is wired
-        # up correctly. XXX: TODO: Solve this testing problem.
-        original_selftest = tests.selftest
-        tests.selftest = selftest
-        try:
-            self.run_bzr('selftest --list-only')
-            self.run_bzr('selftest --list-only selftest')
-            self.run_bzr(['selftest', '--list-only', '--exclude', 'selftest'])
-            self.run_bzr(['selftest', '--list-only', 'selftest',
-                '--randomize', 'now'])
-            # list_only should have been passed in each invocation.
-            self.assertTrue("list_only" in params[0][1])
-            self.assertTrue("list_only" in params[1][1])
-            self.assertTrue("list_only" in params[2][1])
-            self.assertSubset(["list_only", "random_seed"], params[2][1])
         finally:
             tests.selftest = original_selftest
 
