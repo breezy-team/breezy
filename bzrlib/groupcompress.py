@@ -1438,8 +1438,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if source is self:
                 for key in keys:
                     if key in self._unadded_refs:
-                        # flush batch, then yield unadded ref from
-                        # self._compressor
+                        # Flush batch, then yield unadded ref from
+                        # self._compressor.
                         for _ in batcher.yield_factories(full_flush=True):
                             yield _
                         bytes, sha1 = self._compressor.extract(key)
@@ -1448,7 +1448,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         continue
                     batcher.add_key(key)
                     if batcher.total_bytes > BATCH_SIZE:
-                        # Ok!  Our batch is full.  Let's do it.
+                        # Ok, this batch is big enough.  Yield some results.
                         for _ in batcher.yield_factories():
                             yield _
             else:
