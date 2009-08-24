@@ -992,10 +992,10 @@ class _Batcher(object):
         # shouldn't count towards this total.
         self.total_bytes += end - start
         
-    def _frob_batch(self, keys, last_read_memo, manager, full_flush=False):
+    def _frob_batch(self, last_read_memo, manager, full_flush=False):
         blocks_to_get = []
         last_read_memo_tmp = last_read_memo
-        for key in keys:
+        for key in self.keys:
             index_memo, _, parents, (method, _) = self.locations[key]
             read_memo = index_memo[0:3]
             if last_read_memo != read_memo:
@@ -1007,7 +1007,7 @@ class _Batcher(object):
         block_map = {}
         for block, (key, _) in zip(blocks, blocks_to_get):
             block_map[key] = block
-        for key in keys:
+        for key in self.keys:
             index_memo, _, parents, (method, _) = self.locations[key]
             read_memo = index_memo[0:3]
             if last_read_memo != read_memo:
@@ -1432,15 +1432,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 #  - we encounter an unadded ref, or
                 #  - we run out of keys, or
                 #  - the total bytes to retrieve for this batch > 64k
-                key_batch = []
                 batch_bytes_total = 0
                 batcher = _Batcher(self, locations)
                 for key in keys:
                     if key in self._unadded_refs:
                         # flush batch, then yield unadded ref from
                         # self._compressor
-                        for _ in batcher._frob_batch(key_batch, last_read_memo,
-                                manager, full_flush=True):
+                        for _ in batcher._frob_batch(last_read_memo, manager,
+                                full_flush=True):
                             yield _
                         last_read_memo = batcher.last_read_memo
                         manager = batcher.manager
@@ -1449,17 +1448,15 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         yield FulltextContentFactory(key, parents, sha1, bytes)
                         continue
                     batcher.add_key(key)
-                    key_batch.append(key)
                     if batcher.total_bytes > 2**16:
                         # Ok!  Our batch is full.  Let's do it.
-                        for _ in batcher._frob_batch(key_batch, last_read_memo,
-                                manager):
+                        for _ in batcher._frob_batch(last_read_memo, manager):
                             yield _
                         last_read_memo = batcher.last_read_memo
                         manager = batcher.manager
                 if batcher.keys:
-                    for _ in batcher._frob_batch(key_batch, last_read_memo,
-                            manager, full_flush=True):
+                    for _ in batcher._frob_batch(last_read_memo, manager,
+                            full_flush=True):
                         yield _
                     last_read_memo = batcher.last_read_memo
                     manager = batcher.manager
