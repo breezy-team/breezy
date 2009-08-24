@@ -1570,17 +1570,20 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tempdir)
 
-    def _extract_upstream_tree(self, upstream_tip, basedir):
+    def extract_upstream_tree(self, upstream_tip, basedir):
         # Extract that to a tempdir so we can get a working
         # tree for it.
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
+        # TODO: remove the _extract_upstream_tree alias below.
         to_location = os.path.join(basedir, "upstream")
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
         self.upstream_tree = dir_to.open_workingtree()
         self.upstream_branch = self.upstream_tree.branch
+
+    _extract_upstream_tree = extract_upstream_tree
 
     def _create_empty_upstream_tree(self, basedir):
         to_location = os.path.join(basedir, "upstream")
@@ -1615,7 +1618,11 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
-    def _revid_of_upstream_version_from_branch(self, version):
+        """The private method below will go away eventually."""
+        return self.revid_of_upstream_version_from_branch(version)
+
+    def revid_of_upstream_version_from_branch(self, version):
+        # TODO: remove the _revid_of_upstream_version_from_branch alias below.
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if self._has_version(self.branch, tag_name):
@@ -1629,6 +1636,8 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
 
+    _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
+
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None):
         assert self.upstream_branch is None, \
@@ -1639,14 +1648,14 @@ class DistributionBranch(object):
             if previous_version is not None:
                 if self.has_upstream_version_in_packaging_branch(
                         previous_version.upstream_version):
-                    upstream_tip = self._revid_of_upstream_version_from_branch(
+                    upstream_tip = self.revid_of_upstream_version_from_branch(
                             previous_version.upstream_version)
-                    self._extract_upstream_tree(upstream_tip, tempdir)
+                    self.extract_upstream_tree(upstream_tip, tempdir)
                 elif (upstream_branch is not None and 
                       previous_upstream_revision is not None):
                     upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
                     assert isinstance(upstream_tip, str)
-                    self._extract_upstream_tree(upstream_tip, tempdir)
+                    self.extract_upstream_tree(upstream_tip, tempdir)
                 else:
                     raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: "

@@ -69,6 +69,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DscCache,
         DscComp,
         )
+from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
 from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
@@ -722,9 +723,9 @@ class cmd_import_dsc(Command):
                                 "the previous upstream version, %s, in the "
                                 "branch: %s" % (last_version,
                                     db.upstream_tag_name(last_version)))
-                    upstream_tip = db._revid_of_upstream_version_from_branch(
+                    upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version)
-                    db._extract_upstream_tree(upstream_tip, tempdir)
+                    db.extract_upstream_tree(upstream_tip, tempdir)
                 else:
                     db._create_empty_upstream_tree(tempdir)
                 self.import_many(db, files_list, orig_target)
@@ -873,6 +874,45 @@ class cmd_mark_uploaded(Command):
             t.unlock()
 
 
+class cmd_merge_package(Command):
+    """Merges source packaging branch into target packaging branch.
+
+    This will first check whether the upstream branches have diverged.
+
+    If that's the case an attempt will be made to fix the upstream ancestry
+    so that the user only needs to deal wth packaging branch merge issues.
+
+    In the opposite case a normal merge will be performed.
+    """
+    takes_args = ['source']
+
+    def run(self, source):
+        source_branch = target_branch = None
+        # Get the target branch.
+        try:
+            tree = WorkingTree.open_containing('.')[0]
+            target_branch = tree.branch
+        except NotBranchError:
+            raise BzrCommandError(
+                "There is no tree to merge the source branch in to")
+        # Get the source branch.
+        try:
+            source_branch = Branch.open(source)
+        except NotBranchError:
+            raise BzrCommandError("Invalid source branch URL?")
+
+        fix_ancestry_as_needed(tree, source_branch)
+
+        # Merge source packaging branch in to the target packaging branch.
+        conflicts = tree.merge_from_branch(source_branch)
+        if conflicts > 0:
+            info('The merge resulted in %s conflicts. Please resolve these '
+                 'and commit the changes with "bzr commit".' % conflicts)
+        else:
+            info('The merge resulted in no conflicts. You may commit the '
+            'changes by running "bzr commit".')
+
+
 class cmd_test_builddeb(Command):
     """Run the builddeb test suite"""
 
@@ -883,4 +923,3 @@ class cmd_test_builddeb(Command):
         passed = selftest(test_suite_factory=test_suite)
         # invert for shell exit code rules
         return not passed
-

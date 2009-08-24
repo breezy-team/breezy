@@ -79,7 +79,7 @@ class PristineTarSource(UpstreamSource):
         db = DistributionBranch(self.branch, None, tree=self.tree)
         if not db.has_upstream_version_in_packaging_branch(version):
             raise PackageVersionNotPresent(package, version, self)
-        revid = db._revid_of_upstream_version_from_branch(version)
+        revid = db.revid_of_upstream_version_from_branch(version)
         if not db.has_pristine_tar_delta(revid):
             raise PackageVersionNotPresent(package, version, self)
         info("Using pristine-tar to reconstruct the needed tarball.")
