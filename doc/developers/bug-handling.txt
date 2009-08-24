@@ -142,8 +142,12 @@ Confirmed
     it's not a good idea for a developer to spend time reproducing the bug
     until they're going to work on it.)
 Triaged
-    We don't use this status.  If it is set, it means the same as
-    Confirmed.
+    This is an odd state - one we consider a bug in launchpad, as it really
+    means "Importance has been set". We use this to mean the same thing
+    as confirmed, and set no preference on whether Confirmed or Triaged are
+    used. Please do not change a "Confirmed" bug to "Triaged" or vice verca -
+    any reports we create or use will always search for both "Confirmed" and
+    "Triaged" or neither "Confirmed" nor "Triaged".
 In Progress
     Someone has started working on this.
 Won't Fix
