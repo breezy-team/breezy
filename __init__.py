@@ -459,6 +459,10 @@ class cmd_fast_import_query(Command):
     of '-'. If the source name ends in '.gz', it is assumed to be
     compressed in gzip format.
 
+    To specify a commit to display, give its mark using the
+    --commit-mark option. The commit will be displayed with
+    file-commands included but with inline blobs hidden.
+
     To specify the commands to display, use the -C option one or
     more times. To specify just some fields for a command, use the
     syntax::
@@ -474,9 +478,12 @@ class cmd_fast_import_query(Command):
 
     :Examples:
 
+     Show the commit with mark 429::
+
+      bzr fast-import-query xxx.fi -m429
+
      Show all the fields of the reset and tag commands::
 
-      front-end > xxx.fi
       bzr fast-import-query xxx.fi -Creset -Ctag
 
      Show the mark and merge fields of the commit commands::
@@ -487,15 +494,20 @@ class cmd_fast_import_query(Command):
     _see_also = ['fast-import', 'fast-import-filter']
     takes_args = ['source']
     takes_options = ['verbose',
+                    Option('commit-mark', short_name='m', type=str,
+                        help="Mark of the commit to display."
+                        ),
                     ListOption('commands', short_name='C', type=str,
                         help="Display fields for these commands."
                         ),
                      ]
     aliases = []
-    def run(self, source, verbose=False, commands=None):
+    def run(self, source, verbose=False, commands=None, commit_mark=None):
         from bzrlib.plugins.fastimport.processors import query_processor
         from bzrlib.plugins.fastimport import helpers
-        params = helpers.defines_to_dict(commands)
+        params = helpers.defines_to_dict(commands) or {}
+        if commit_mark:
+            params['commit-mark'] = commit_mark
         return _run(source, query_processor.QueryProcessor, None, params,
             verbose)
 
