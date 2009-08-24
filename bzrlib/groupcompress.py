@@ -974,7 +974,12 @@ def cleanup_pack_group(versioned_files):
     versioned_files.stream.close()
 
 
-class _Batcher(object):
+class _BatchingBlockFetcher(object):
+    """Fetch group compress blocks in batches.
+    
+    :ivar total_bytes: int of expected number of bytes needed to fetch the
+        currently pending batch.
+    """
 
     def __init__(self, gcvf, locations):
         self.gcvf = gcvf
@@ -985,51 +990,58 @@ class _Batcher(object):
         self.manager = None
 
     def add_key(self, key):
+        """Add another to key to fetch."""
         self.keys.append(key)
         index_memo, _, _, _ = self.locations[key]
-        start, end = index_memo[3:5]
-        # XXX: if this key has already been fetched in another group, it
-        # shouldn't count towards this total.
-        self.total_bytes += end - start
+        read_memo = index_memo[0:3]
+        if read_memo not in self.gcvf._group_cache:
+            start, end = index_memo[3:5]
+            self.total_bytes += end - start
         
-    def _frob_batch(self, last_read_memo, manager, full_flush=False):
-        blocks_to_get = []
-        last_read_memo_tmp = last_read_memo
+    def empty_manager(self):
+        if self.manager is not None:
+            for factory in self.manager.get_record_stream():
+                yield factory
+            self.manager = None
+
+    def yield_factories(self, full_flush=False):
+        if self.manager is None and not self.keys:
+            return
+        memos_to_get = []
+        keys_to_get = []
+        last_read_memo = self.last_read_memo
         for key in self.keys:
-            index_memo, _, parents, (method, _) = self.locations[key]
-            read_memo = index_memo[0:3]
+            index_memo = self.locations[key][0]
+            read_memo = index_memo[:3]
             if last_read_memo != read_memo:
-                blocks_to_get.append((key, read_memo))
+                memos_to_get.append(read_memo)
+                keys_to_get.append(key)
                 last_read_memo = read_memo
-        last_read_memo = last_read_memo_tmp
-        blocks = self.gcvf._get_blocks(
-            [read_memo for _, read_memo in blocks_to_get])
+        blocks = self.gcvf._get_blocks(memos_to_get)
         block_map = {}
-        for block, (key, _) in zip(blocks, blocks_to_get):
+        for block, key in zip(blocks, keys_to_get):
             block_map[key] = block
+        last_read_memo = self.last_read_memo
         for key in self.keys:
-            index_memo, _, parents, (method, _) = self.locations[key]
-            read_memo = index_memo[0:3]
+            index_memo, _, parents, _ = self.locations[key]
+            read_memo = index_memo[:3]
             if last_read_memo != read_memo:
                 # We are starting a new block. If we have a
                 # manager, we have found everything that fits for
                 # now, so yield records
-                if manager is not None:
-                    for factory in manager.get_record_stream():
-                        yield factory
+                for factory in self.empty_manager():
+                    yield factory
                 # Now start a new manager
                 block = block_map[key]
-                manager = _LazyGroupContentManager(block)
+                self.manager = _LazyGroupContentManager(block)
                 last_read_memo = read_memo
             start, end = index_memo[3:5]
-            manager.add_factory(key, parents, start, end)
+            self.manager.add_factory(key, parents, start, end)
         if full_flush:
-            if manager is not None:
-                for factory in manager.get_record_stream():
-                    yield factory
-                last_read_memo = manager = None
+            for factory in self.empty_manager():
+                yield factory
+            last_read_memo = None
         self.last_read_memo = last_read_memo
-        self.manager = manager
         del self.keys[:]
         self.total_bytes = 0
 
@@ -1207,8 +1219,17 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 pass
             else:
                 cached[read_memo] = block
-        not_cached = [
-            read_memo for read_memo in read_memos if read_memo not in cached]
+        not_cached = []
+        not_cached_seen = set()
+        for read_memo in read_memos:
+            if read_memo in cached:
+                # Don't fetch what we already have
+                continue
+            if read_memo in not_cached_seen:
+                # Don't try to fetch the same data twice
+                continue
+            not_cached.append(read_memo)
+            not_cached_seen.add(read_memo)
         raw_records = self._access.get_raw_records(not_cached)
         for read_memo in read_memos:
             try:
@@ -1222,6 +1243,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 # texts are not penalised by big groups.
                 block = GroupCompressBlock.from_bytes(zdata)
                 self._group_cache[read_memo] = block
+                cached[read_memo] = block
                 yield block
 
     def _get_block(self, index_memo):
@@ -1415,34 +1437,19 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 unadded_keys, source_result)
         for key in missing:
             yield AbsentContentFactory(key)
-        manager = None
-        last_read_memo = None
-        # TODO: This works fairly well at batching up existing groups into a
-        #       streamable format, and possibly allowing for taking one big
-        #       group and splitting it when it isn't fully utilized.
-        #       However, it doesn't allow us to find under-utilized groups and
-        #       combine them into a bigger group on the fly.
-        #       (Consider the issue with how chk_map inserts texts
-        #       one-at-a-time.) This could be done at insert_record_stream()
-        #       time, but it probably would decrease the number of
-        #       bytes-on-the-wire for fetch.
+        # Batch up as many keys as we can until either:
+        #  - we encounter an unadded ref, or
+        #  - we run out of keys, or
+        #  - the total bytes to retrieve for this batch > 64k
+        batcher = _BatchingBlockFetcher(self, locations)
         for source, keys in source_keys:
             if source is self:
-                # Batch up as many keys as we can until either:
-                #  - we encounter an unadded ref, or
-                #  - we run out of keys, or
-                #  - the total bytes to retrieve for this batch > 64k
-                batch_bytes_total = 0
-                batcher = _Batcher(self, locations)
                 for key in keys:
                     if key in self._unadded_refs:
                         # flush batch, then yield unadded ref from
                         # self._compressor
-                        for _ in batcher._frob_batch(last_read_memo, manager,
-                                full_flush=True):
+                        for _ in batcher.yield_factories(full_flush=True):
                             yield _
-                        last_read_memo = batcher.last_read_memo
-                        manager = batcher.manager
                         bytes, sha1 = self._compressor.extract(key)
                         parents = self._unadded_refs[key]
                         yield FulltextContentFactory(key, parents, sha1, bytes)
@@ -1450,27 +1457,17 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     batcher.add_key(key)
                     if batcher.total_bytes > 2**16:
                         # Ok!  Our batch is full.  Let's do it.
-                        for _ in batcher._frob_batch(last_read_memo, manager):
+                        for _ in batcher.yield_factories():
                             yield _
-                        last_read_memo = batcher.last_read_memo
-                        manager = batcher.manager
-                if batcher.keys:
-                    for _ in batcher._frob_batch(last_read_memo, manager,
-                            full_flush=True):
-                        yield _
-                    last_read_memo = batcher.last_read_memo
-                    manager = batcher.manager
             else:
-                if manager is not None:
-                    for factory in manager.get_record_stream():
-                        yield factory
-                    last_read_memo = manager = None
+                for _ in batcher.yield_factories(full_flush=True):
+                    yield _
+                batcher.last_read_memo = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
-        if manager is not None:
-            for factory in manager.get_record_stream():
-                yield factory
+        for _ in batcher.yield_factories(full_flush=True):
+            yield _
 
     def get_sha1s(self, keys):
         """See VersionedFiles.get_sha1s()."""
