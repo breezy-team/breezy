@@ -37,6 +37,10 @@ Bug Fixes
 * Fix IndexError printing CannotBindAddress errors.
   (Martin Pool, #286871)
 
+* Fix "Revision ... not present" errors when upgrading stacked branches,
+  or when doing fetches from a stacked source to a stacked target.
+  (Andrew Bennetts, #399140)
+
 Improvements
 ************
 
