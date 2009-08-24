@@ -464,9 +464,9 @@ class CommitBuilder(object):
             if content_summary[2] is None:
                 raise ValueError("Files must not have executable = None")
             if not store:
-                if (# if the file length changed we have to store:
-                    parent_entry.text_size != content_summary[1] or
-                    # if the exec bit has changed we have to store:
+                # We can't trust a check of the file length because of content
+                # filtering...
+                if (# if the exec bit has changed we have to store:
                     parent_entry.executable != content_summary[2]):
                     store = True
                 elif parent_entry.text_sha1 == content_summary[3]:
