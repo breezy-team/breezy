@@ -67,6 +67,10 @@ API Changes
 Internals
 *********
 
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
 Testing
 *******
 
