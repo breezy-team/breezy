@@ -901,7 +901,13 @@ class cmd_merge_package(Command):
         fix_ancestry_as_needed(tree, source_branch)
 
         # Merge source packaging branch in to the target packaging branch.
-        tree.merge_from_branch(source_branch)
+        conflicts = tree.merge_from_branch(source_branch)
+        if conflicts > 0:
+            info('The merge resulted in %s conflicts. Please resolve these '
+                 'and commit the changes with "bzr commit".' % conflicts)
+        else:
+            info('The merge resulted in no conflicts. You may commit the '
+            'changes by running "bzr commit".')
 
 
 class cmd_test_builddeb(Command):

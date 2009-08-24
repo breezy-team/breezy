@@ -179,18 +179,5 @@ class PristineTarError(BzrError):
 
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
     _fmt = ('''\
-        The "merge-package" command has detected diverged upstream
-        branches for the merge source and target. A shared upstream
-        revision was constructed to remedy the problem.
-
-        However, merging the shared upstream revision into the merge
-        target resulted in conflicts.
-
-        Please proceed as follows:
-
-          1 - Resolve the current merge conflicts in the merge target
-              directory and commit the changes.
-          2 - Perform a plain "bzr merge <source-packaging-branch>"
-              command, resolve any ensuing packaging branch conflicts
-              and commit once satisfied with the changes.
-    ''')
+The upstream branches for the merge source and target have diverged. Unfortunately, the attempt to fix this problem resulted in conflicts. Please resolve these and re-run the "merge-package" command to finish.
+Alternatively, you can restore the original merge target branch using "bzr revert".''')
