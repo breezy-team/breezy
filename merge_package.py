@@ -110,7 +110,7 @@ def fix_ancestry_as_needed(tree, source):
 
     source.lock_read()
     try:
-        tree.lock_read()
+        tree.lock_write()
         try:
             # "Unpack" the upstream versions and revision ids for the merge
             # source and target branch respectively.
@@ -119,53 +119,50 @@ def fix_ancestry_as_needed(tree, source):
             # Did the upstream branches of the merge source/target diverge?
             graph = source.repository.get_graph(target.repository)
             upstreams_diverged = (len(graph.heads([us_revid, ut_revid])) > 1)
+
+            # No, we're done!
+            if not upstreams_diverged:
+                return (upstreams_diverged, t_upstream_reverted)
+
+            # Instantiate a `DistributionBranch` object for the merge target
+            # (packaging) branch.
+            db = DistributionBranch(tree.branch, tree.branch)
+            tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
+
+            # Extract the merge target's upstream tree into a temporary
+            # directory.
+            db.extract_upstream_tree(ut_revid, tempdir)
+            tmp_target_utree = db.upstream_tree
+
+            # Merge upstream branch tips to obtain a shared upstream parent.
+            # This will add revision K (see graph above) to a temporary merge
+            # target upstream tree.
+            tmp_target_utree.lock_write()
+            try:
+                if us_ver > ut_ver:
+                    # The source upstream tree is more recent and the
+                    # temporary target tree needs to be reshaped to match it.
+                    tmp_target_utree.revert(
+                        None, source.repository.revision_tree(us_revid))
+                    t_upstream_reverted = True
+
+                tmp_target_utree.set_parent_ids((ut_revid, us_revid))
+                tmp_target_utree.commit(
+                    'Prepared upstream tree for merging into target branch.')
+            finally:
+                tmp_target_utree.unlock()
+
+            # Merge shared upstream parent into the target merge branch. This
+            # creates revison L in the digram above.
+            conflicts = tree.merge_from_branch(tmp_target_utree.branch)
+            if conflicts > 0:
+                raise errors.SharedUpstreamConflictsWithTargetPackaging()
+            else:
+                tree.commit('Merging shared upstream rev into target branch.')
+
         finally:
             tree.unlock()
     finally:
         source.unlock()
-
-    if not upstreams_diverged:
-        return (upstreams_diverged, t_upstream_reverted)
-
-    # Instantiate a `DistributionBranch` object for the merge target
-    # (packaging) branch.
-    db = DistributionBranch(tree.branch, tree.branch)
-    tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
-
-    # Extract the merge target's upstream tree into a temporary directory.
-    db.extract_upstream_tree(ut_revid, tempdir)
-    tmp_target_upstream_tree = db.upstream_tree
-
-    # Merge upstream branch tips to obtain a shared upstream parent. This
-    # will add revision K (see graph above) to a temporary merge target
-    # upstream tree.
-    tmp_target_upstream_tree.lock_write()
-    try:
-        if us_ver > ut_ver:
-            # The source upstream tree is more recent and the temporary
-            # target tree needs to be reshaped to match it.
-            tmp_target_upstream_tree.revert(
-                None, source.repository.revision_tree(us_revid))
-            t_upstream_reverted = True
-
-        tmp_target_upstream_tree.set_parent_ids(
-            (ut_revid, us_revid))
-
-        tmp_target_upstream_tree.commit(
-            'Consolidated upstream tree for merging into target branch')
-    finally:
-        tmp_target_upstream_tree.unlock()
-
-    # Merge shared upstream parent into the target merge branch. This creates
-    # revison L in the digram above.
-    tree.lock_write()
-    try:
-        conflicts = tree.merge_from_branch(tmp_target_upstream_tree.branch)
-        if conflicts > 0:
-            raise errors.SharedUpstreamConflictsWithTargetPackaging()
-        else:
-            tree.commit('Merging shared upstream rev in to target branch.')
-    finally:
-        tree.unlock()
 
     return (upstreams_diverged, t_upstream_reverted)
