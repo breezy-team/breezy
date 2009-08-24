@@ -1003,6 +1003,7 @@ class _BatchingBlockFetcher(object):
             for factory in self.manager.get_record_stream():
                 yield factory
             self.manager = None
+            self.last_read_memo = None
 
     def yield_factories(self, full_flush=False):
         if self.manager is None and not self.keys:
@@ -1021,11 +1022,10 @@ class _BatchingBlockFetcher(object):
         block_map = {}
         for block, key in zip(blocks, keys_to_get):
             block_map[key] = block
-        last_read_memo = self.last_read_memo
         for key in self.keys:
             index_memo, _, parents, _ = self.locations[key]
             read_memo = index_memo[:3]
-            if last_read_memo != read_memo:
+            if self.last_read_memo != read_memo:
                 # We are starting a new block. If we have a
                 # manager, we have found everything that fits for
                 # now, so yield records
@@ -1034,14 +1034,12 @@ class _BatchingBlockFetcher(object):
                 # Now start a new manager
                 block = block_map[key]
                 self.manager = _LazyGroupContentManager(block)
-                last_read_memo = read_memo
+                self.last_read_memo = read_memo
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
         if full_flush:
             for factory in self.empty_manager():
                 yield factory
-            last_read_memo = None
-        self.last_read_memo = last_read_memo
         del self.keys[:]
         self.total_bytes = 0
 
@@ -1462,7 +1460,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             else:
                 for _ in batcher.yield_factories(full_flush=True):
                     yield _
-                batcher.last_read_memo = None
                 for record in source.get_record_stream(keys, ordering,
                                                        include_delta_closure):
                     yield record
