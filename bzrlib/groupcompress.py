@@ -1006,6 +1006,13 @@ class _BatchingBlockFetcher(object):
             self.last_read_memo = None
 
     def yield_factories(self, full_flush=False):
+        """Yield factories for keys added since the last yield.  They will be
+        returned in the order they were added via add_key.
+        
+        :param full_flush: by default, some results may not be returned in case
+            they can be part of the next batch.  If full_flush is True, then
+            all results are returned.
+        """
         if self.manager is None and not self.keys:
             return
         memos_to_get = []
