@@ -215,6 +215,19 @@ class Tree(object):
         """
         return self.kind(file_id)
 
+    def get_kind_and_executable_by_path(self, path):
+        """Get the kind and x-bit for a path.
+
+        :returns: (kind, execute)
+
+        Execute may be None if it can't be determined.
+        """
+        # this typically can be overridden to be more efficient
+        file_id = self.path2id(path)
+        kind = self.kind(file_id)
+        execute = self.is_executable(file_id)
+        return kind, execute
+
     def path_content_summary(self, path):
         """Get a summary of the information about path.
 
