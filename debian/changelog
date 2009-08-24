@@ -4,6 +4,11 @@ bzr-builddeb (2.2~ubuntu3) UNRELEASED; urgency=low
   * Automatically use merge mode if there's only a debian/ directory in
     the packaging branch. Closes: #529816.
 
+  [ James Westby ]
+  * Merge merge-package command from Muharem Hrnjadovic to allow merging
+    another branch of the same package in a way that will avoid spurious
+    conflicts from divergent upstream histories. Thanks Muharem.
+
  -- James Westby <james.westby@ubuntu.com>  Sun, 26 Jul 2009 18:38:47 +0200
 
 bzr-builddeb (2.2~ubuntu2) karmic; urgency=low
