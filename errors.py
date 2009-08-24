@@ -179,5 +179,5 @@ class PristineTarError(BzrError):
 
 class SharedUpstreamConflictsWithTargetPackaging(BzrError):
     _fmt = ('''\
-The upstream branches for the merge source and target have diverged. Unfortunately, the attempt to fix this problem resulted in conflicts. Please resolve these and re-run the "merge-package" command to finish.
-Alternatively, you can restore the original merge target state by running "bzr revert".''')
+The upstream branches for the merge source and target have diverged.  Unfortunately, the attempt to fix this problem resulted in conflicts. Please resolve these, commit and re-run the "merge-package" command to finish.
+Alternatively, until you commit you can use "bzr revert" to restore the state of the unmerged branch.''')
