@@ -687,6 +687,25 @@ class TestChrootedTest(tests.ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
+class TestProfileResult(tests.TestCase):
+
+    def test_profiles_tests(self):
+        terminal = unittest.TestResult()
+        result = tests.ProfileResult(terminal)
+        class Sample(tests.TestCase):
+            def a(self):
+                self.sample_function()
+            def sample_function(self):
+                pass
+        test = Sample("a")
+        test.attrs_to_keep = test.attrs_to_keep + ('_benchcalls',)
+        test.run(result)
+        self.assertLength(1, test._benchcalls)
+        # We must be able to unpack it as the test reporting code wants
+        (_, _, _), stats = test._benchcalls[0]
+        self.assertTrue(callable(stats.pprint))
+
+
 class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
@@ -1031,6 +1050,20 @@ class TestRunner(tests.TestCase):
             '\n'
             'OK \\(known_failures=1\\)\n')
 
+    def test_result_decorator(self):
+        # decorate results
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTest(self, test):
+                tests.ForwardingResult.startTest(self, test)
+                calls.append('start')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
+
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
         # succeeds.
@@ -1102,10 +1135,6 @@ class TestRunner(tests.TestCase):
                 r'(?m)not_applicable_test   * N/A')
         self.assertContainsRe(out.getvalue(),
                 r'(?m)^    this test never runs')
-
-    def test_not_applicable_demo(self):
-        # just so you can see it in the test output
-        raise tests.TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
@@ -1817,6 +1846,19 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             list_only=True, exclude_pattern="Test.b")
         self.assertNotContainsRe("Test.b", output.getvalue())
         self.assertLength(2, output.readlines())
+
+    def test_lsprof_tests(self):
+        calls = []
+        class Test(object):
+            def __call__(test, result):
+                test.run(result)
+            def run(test, result):
+                self.assertIsInstance(result, tests.ForwardingResult)
+                calls.append("called")
+            def countTestCases(self):
+                return 1
+        self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
+        self.assertLength(1, calls)
 
     def test_random(self):
         # test randomising by listing a number of tests.

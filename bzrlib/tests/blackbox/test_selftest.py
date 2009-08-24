@@ -172,3 +172,7 @@ class TestOptions(TestCase, SelfTestPatch):
             outputs_nothing(['selftest', '--list-only', '--exclude', 'selftest'])
         finally:
             tests.selftest = original_selftest
+
+    def test_lsprof_tests(self):
+        params = self.get_params_passed_to_core('selftest --lsprof-tests')
+        self.assertEqual(True, params[1]["lsprof_tests"])
