@@ -1550,7 +1550,11 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
 
 class DirStateRevisionTree(Tree):
-    """A revision tree pulling the inventory from a dirstate."""
+    """A revision tree pulling the inventory from a dirstate.
+    
+    Note that this is one of the historical (ie revision) trees cached in the
+    dirstate for easy access, not the workingtree.
+    """
 
     def __init__(self, dirstate, revision_id, repository):
         self._dirstate = dirstate
