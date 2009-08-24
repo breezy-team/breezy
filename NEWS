@@ -27,6 +27,12 @@ New Features
 Bug Fixes
 *********
 
+* Fetches were being requested in 'groupcompress' order, but weren't
+  recombining the groups. Thus they would 'fragment' to get the correct
+  order, but not 'recombine' to acutally benefit from it. Until we get
+  recombining to work, switching to 'unordered' fetches avoids the
+  fragmentation. (John Arbash Meinel, #402645)
+
 * Fix a pycurl related test failure on karmic by recognizing an error
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)

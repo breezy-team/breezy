@@ -464,8 +464,6 @@ class _LazyGroupCompressFactory(object):
                                                self.storage_kind)
 
 
-_recent_blocks = set()
-
 class _LazyGroupContentManager(object):
     """This manages a group of _LazyGroupCompressFactory objects."""
 
@@ -533,11 +531,8 @@ class _LazyGroupContentManager(object):
         #       expand, since we do full compression again. Perhaps based on a
         #       request that ends up poorly ordered?
         delta = time.time() - tstart
-        if old_length in _recent_blocks:
-            import pdb; pdb.set_trace()
-        _recent_blocks.add(old_length)
         self._block = new_block
-        trace.note('creating new compressed block on-the-fly in %.3fs'
+        trace.mutter('creating new compressed block on-the-fly in %.3fs'
                      ' %d bytes => %d bytes', delta, old_length,
                      self._block._content_length)
 
@@ -1312,8 +1307,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         missing.difference_update(unadded_keys)
         (fallback_parent_map, key_to_source_map,
          source_result) = self._find_from_fallback(missing)
-        trace.note('getting record stream for %s keys, in %r order, from %s'
-                   % (len(keys), ordering, self._index))
         if ordering in ('topological', 'groupcompress'):
             # would be better to not globally sort initially but instead
             # start with one key, recurse to its oldest parent, then grab
@@ -1346,7 +1339,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         #       one-at-a-time.) This could be done at insert_record_stream()
         #       time, but it probably would decrease the number of
         #       bytes-on-the-wire for fetch.
-        recent_read_memos = set()
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1365,9 +1357,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
                             # We are starting a new block. If we have a
                             # manager, we have found everything that fits for
                             # now, so yield records
-                            if read_memo in recent_read_memos:
-                                import pdb; pdb.set_trace()
-                            recent_read_memos.add(read_memo)
                             if manager is not None:
                                 for factory in manager.get_record_stream():
                                     yield factory
