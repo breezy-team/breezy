@@ -17,7 +17,7 @@
 """An abstraction of a repository providing just the bits importing needs."""
 
 
-from bzrlib import errors, inventory, knit, lru_cache, osutils
+from bzrlib import errors, inventory, knit, lru_cache, osutils, trace
 from bzrlib import revision as _mod_revision
 
 
@@ -305,9 +305,14 @@ class AbstractRevisionStore(object):
         """
         if len(parents):
             if self._supports_chks:
-                validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
-                    inv_delta, revision_id, parents, basis_inv=basis_inv,
-                    propagate_caches=False)
+                try:
+                    validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
+                        inv_delta, revision_id, parents, basis_inv=basis_inv,
+                        propagate_caches=False)
+                except errors.InconsistentDelta:
+                    #print "BASIS INV IS\n%s\n" % "\n".join([str(i) for i in basis_inv.iter_entries_by_dir()])
+                    trace.mutter("INCONSISTENT DELTA IS:\n%s\n" % "\n".join([str(i) for i in inv_delta]))
+                    raise
             else:
                 validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
                     inv_delta, revision_id, parents)

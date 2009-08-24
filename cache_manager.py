@@ -46,7 +46,6 @@ class CacheManager(object):
 
         # (path, branch_ref) -> file-ids - as generated.
         # (Use store_file_id/fetch_fileid methods rather than direct access.)
-        self._file_ids = {}
 
         # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
         self.last_ref = None
@@ -73,8 +72,6 @@ class CacheManager(object):
         note("Cache statistics:")
         self._show_stats_for(self._sticky_blobs, "sticky blobs", note=note)
         self._show_stats_for(self.revision_ids, "revision-ids", note=note)
-        self._show_stats_for(self._file_ids, "file-ids", note=note,
-            tuple_key=True)
         # These aren't interesting so omit from the output, at least for now
         #self._show_stats_for(self._blobs, "other blobs", note=note)
         #self._show_stats_for(self.last_ids, "last-ids", note=note)
@@ -107,7 +104,6 @@ class CacheManager(object):
         self._blobs.clear()
         self._sticky_blobs.clear()
         self.revision_ids.clear()
-        self._file_ids.clear()
         self.last_ids.clear()
         self.heads.clear()
         self.inventories.clear()
@@ -134,48 +130,6 @@ class CacheManager(object):
             return b
         except KeyError:
             return self._blobs.pop(id)
-
-    def store_file_id(self, branch_ref, path, id):
-        """Store the path to file-id mapping for a branch."""
-        key = self._fileid_key(path, branch_ref)
-        self._file_ids[key] = id
-
-    def fetch_file_id(self, branch_ref, path):
-        """Lookup the file-id for a path in a branch.
-        
-        Raises KeyError if unsuccessful.
-        """
-        key = self._fileid_key(path, branch_ref)
-        return self._file_ids[key]
-
-    def _fileid_key(self, path, branch_ref):
-        return (path, branch_ref)
-
-    def delete_path(self, branch_ref, path):
-        """Remove a path from caches."""
-        # We actually want to remember what file-id we gave a path,
-        # even when that file is deleted, so doing nothing is correct.
-        # It's quite possible for a path to be deleted twice where
-        # the first time is in a merge branch (but the same branch_ref)
-        # and the second time is when that branch is merged to mainline.
-        pass
-
-    def rename_path(self, branch_ref, old_path, new_path):
-        """Rename a path in the caches."""
-        # In this case, we need to forget the file-id we gave a path,
-        # otherwise, we'll get duplicate file-ids in the repository
-        # if a new file is created at the old path.
-        old_key = self._fileid_key(old_path, branch_ref)
-        new_key = self._fileid_key(new_path, branch_ref)
-        try:
-            old_file_id = self._file_ids[old_key]
-        except KeyError:
-            # The old_key has already been removed, most likely
-            # in a merge branch.
-            pass
-        else:
-            self._file_ids[new_key] = old_file_id
-            del self._file_ids[old_key]
 
     def track_heads(self, cmd):
         """Track the repository heads given a CommitCommand.
