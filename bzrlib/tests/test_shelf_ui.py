@@ -278,6 +278,8 @@ class TestShelver(tests.TestCaseWithTransport):
         inner_tree = self.make_branch_and_tree('outer/inner')
         rev2 = inner_tree.commit('Add root')
         outer_tree.subsume(inner_tree)
+        # This is essentially assertNotRaises(ValueError).
+        # The ValueError is 'None is not a valid file id'.
         self.expectFailure('Cannot shelve a join back to the inner tree.',
                            self.assertRaises, AssertionError,
                            self.assertRaises, ValueError, self.shelve_all,
