@@ -641,14 +641,14 @@ class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
 class TestImportToPackRename(TestCaseForGenericProcessor):
 
-    def get_command_iter(self, old_path, new_path):
+    def get_command_iter(self, old_path, new_path, kind='file'):
         # Revno 1: create a file or symlink
         # Revno 2: rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, 'file', False,
+                yield commands.FileModifyCommand(old_path, kind, False,
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -658,7 +658,7 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
                 committer, "commit 2", ":1", [], files_two)
         return command_list
 
-    def test_rename_in_root(self):
+    def test_rename_file_in_root(self):
         handler, branch = self.get_handler()
         old_path = 'a'
         new_path = 'b'
@@ -668,14 +668,31 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
         self.assertRevisionRoot(revtree1, old_path)
         self.assertRevisionRoot(revtree2, new_path)
 
-    def test_rename_in_subdir(self):
+    def test_rename_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)])
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree2, new_path)
+
+    def test_rename_file_in_subdir(self):
         handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'a/b'
         handler.process(self.get_command_iter(old_path, new_path))
         self.assertChanges(branch, 2, expected_renamed=[(old_path, new_path)])
 
-    def test_rename_to_new_dir(self):
+    def test_rename_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'a/a'
+        new_path = 'a/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        self.assertChanges(branch, 2, expected_renamed=[(old_path, new_path)])
+
+    def test_rename_file_to_new_dir(self):
         handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'b/a'
@@ -685,24 +702,34 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
             expected_added=[('b',)],
             expected_removed=[('a',)])
 
+    def test_rename_symlink_to_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'a/a'
+        new_path = 'b/a'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)],
+            expected_added=[('b',)],
+            expected_removed=[('a',)])
+
 
 class TestImportToPackRenameNew(TestCaseForGenericProcessor):
     """Test rename of a newly added file."""
 
-    def get_command_iter(self, old_path, new_path):
+    def get_command_iter(self, old_path, new_path, kind='file'):
         # Revno 1: create a file and rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, 'file', False,
+                yield commands.FileModifyCommand(old_path, kind, False,
                         None, "aaa")
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
         return command_list
 
-    def test_rename_new_in_root(self):
+    def test_rename_new_file_in_root(self):
         handler, branch = self.get_handler()
         old_path = 'a'
         new_path = 'b'
@@ -711,7 +738,16 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
             expected_added=[(new_path,)])
         self.assertRevisionRoot(revtree1, new_path)
 
-    def test_rename_new_in_subdir(self):
+    def test_rename_new_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(new_path,)])
+        self.assertRevisionRoot(revtree1, new_path)
+
+    def test_rename_new_file_in_subdir(self):
         handler, branch = self.get_handler()
         old_path = 'a/a'
         new_path = 'a/b'
@@ -719,20 +755,28 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
         revtree0, revtree1 = self.assertChanges(branch, 1,
             expected_added=[('a',), (new_path,)])
 
+    def test_rename_new_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'a/a'
+        new_path = 'a/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), (new_path,)])
+
 
 class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
     """Test rename to a destination path deleted in this commit."""
 
-    def get_command_iter(self, old_path, new_path):
+    def get_command_iter(self, old_path, new_path, kind='file'):
         # Revno 1: create two files
         # Revno 2: delete one, rename the other one to that path
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, 'file', False,
+                yield commands.FileModifyCommand(old_path, kind, False,
                         None, "aaa")
-                yield commands.FileModifyCommand(new_path, 'file', False,
+                yield commands.FileModifyCommand(new_path, kind, False,
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -743,7 +787,7 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
                 committer, "commit 2", ":1", [], files_two)
         return command_list
 
-    def test_rename_to_deleted_in_root(self):
+    def test_rename_to_deleted_file_in_root(self):
         handler, branch = self.get_handler()
         old_path = 'a'
         new_path = 'b'
@@ -759,7 +803,23 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         self.assertRevisionRoot(revtree1, old_path)
         self.assertRevisionRoot(revtree1, new_path)
 
-    def test_rename_to_deleted_in_subdir(self):
+    def test_rename_to_deleted_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "bbb")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "aaa")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree1, new_path)
+
+    def test_rename_to_deleted_file_in_subdir(self):
         handler, branch = self.get_handler()
         old_path = 'd/a'
         new_path = 'd/b'
@@ -773,7 +833,21 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         self.assertContent(branch, revtree1, new_path, "bbb")
         self.assertContent(branch, revtree2, new_path, "aaa")
 
-    def test_rename_to_deleted_new_dir(self):
+    def test_rename_to_deleted_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "bbb")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "aaa")
+
+    def test_rename_to_deleted_file_in_new_dir(self):
         handler, branch = self.get_handler()
         old_path = 'd1/a'
         new_path = 'd2/b'
@@ -786,6 +860,20 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         self.assertContent(branch, revtree1, old_path, "aaa")
         self.assertContent(branch, revtree1, new_path, "bbb")
         self.assertContent(branch, revtree2, new_path, "aaa")
+
+    def test_rename_to_deleted_symlink_in_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), (old_path,), ('d2',), (new_path,)])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('d1',), (new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "bbb")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "aaa")
 
 
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
