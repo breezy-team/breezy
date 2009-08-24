@@ -56,7 +56,12 @@ class GenericCommitHandler(processor.CommitHandler):
         # This tracks path->file-id for things we're creating this commit.
         # If the same path is created multiple times, we need to warn the
         # user and add it just once.
+        # If a path is added then renamed or copied, we need to handle that.
         self._new_file_ids = {}
+        # This tracks path->file-id for things we're modifying this commit.
+        # If a path is modified then renamed or copied, we need the make
+        # sure we grab the new content.
+        self._modified_file_ids = {}
         # This tracks the paths for things we're deleting this commit.
         # If the same path is added or the destination of a rename say,
         # then a fresh file-id is required.
@@ -374,11 +379,12 @@ class GenericCommitHandler(processor.CommitHandler):
                 kind, path)
 
     def _rename_item(self, old_path, new_path, inv):
-        existing = self._new_file_ids.get(old_path)
+        existing = self._new_file_ids.get(old_path) or \
+            self._modified_file_ids.get(old_path)
         if existing:
-            # We've only just added this path earlier in this commit.
-            # Change the add of old_path to an add of new_path
-            self._rename_pending_add(old_path, new_path, existing)
+            # We've only just added/modified this path earlier in this commit.
+            # Change the add/modify of old_path to an add of new_path
+            self._rename_pending_change(old_path, new_path, existing)
             return
 
         file_id = inv.path2id(old_path)
@@ -700,6 +706,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def record_changed(self, path, ie, parent_id=None):
         self._add_entry((path, path, ie.file_id, ie))
+        self._modified_file_ids[path] = ie.file_id
 
     def record_delete(self, path, ie):
         self._add_entry((path, None, ie.file_id, None))
@@ -720,8 +727,8 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         new_ie.revision = self.revision_id
         self._add_entry((old_path, new_path, file_id, new_ie))
 
-    def _rename_pending_add(self, old_path, new_path, file_id):
-        """Instead of adding old-path, add new-path instead."""
+    def _rename_pending_change(self, old_path, new_path, file_id):
+        """Instead of adding/modifying old-path, add new-path instead."""
         # note: delta entries look like (old, new, file-id, ie)
         old_ie = self._delta_entries_by_fileid[file_id][3]
 
@@ -729,8 +736,11 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         # deletion of newly created parents that could now become empty.
         self.record_delete(old_path, old_ie)
 
-        # Update the dictionary used for tracking new file-ids
-        del self._new_file_ids[old_path]
+        # Update the dictionaries used for tracking new file-ids
+        if old_path in self._new_file_ids:
+            del self._new_file_ids[old_path]
+        else:
+            del self._modified_file_ids[old_path]
         self._new_file_ids[new_path] = file_id
 
         # Create the new InventoryEntry

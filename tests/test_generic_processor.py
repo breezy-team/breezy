@@ -876,6 +876,121 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, new_path, "aaa")
 
 
+class TestImportToPackRenameModified(TestCaseForGenericProcessor):
+    """Test rename of a path previously modified in this commit."""
+
+    def get_command_iter(self, old_path, new_path, kind='file'):
+        # Revno 1: create a file or symlink
+        # Revno 2: modify then rename it
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(old_path, kind, False,
+                        None, "aaa")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileModifyCommand(old_path, kind, False,
+                        None, "bbb")
+                yield commands.FileRenameCommand(old_path, new_path)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_rename_of_modified_file_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree2, new_path)
+
+    def test_rename_of_modified_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree2, new_path)
+
+    def test_rename_of_modified_file_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+
+    def test_rename_of_modified_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+
+    def test_rename_of_modified_file_to_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), (old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)],
+            expected_added=[('d2',)],
+            expected_removed=[('d1',)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+
+    def test_rename_of_modified_symlink_to_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), (old_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_renamed=[(old_path, new_path)],
+            expected_added=[('d2',)],
+            expected_removed=[('d1',)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+
+
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
@@ -1364,6 +1479,9 @@ class TestImportToRichRootRenameNew(TestImportToPackRenameNew):
 class TestImportToRichRootRenameToDeleted(TestImportToPackRenameToDeleted):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootRenameModified(TestImportToPackRenameModified):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
     branch_format = "1.9-rich-root"
 
@@ -1410,6 +1528,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkRenameToDeleted(TestImportToPackRenameToDeleted):
+        branch_format = "2a"
+
+    class TestImportToChkRenameModified(TestImportToPackRenameModified):
         branch_format = "2a"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
