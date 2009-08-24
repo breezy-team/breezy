@@ -280,7 +280,6 @@ class TestCommands(ExternalBase):
 
     def test_push(self):
         # create a source branch
-        self.thisFailsStrictLockCheck()
         os.mkdir('my-branch')
         os.chdir('my-branch')
         self.example_branch()
@@ -613,7 +612,6 @@ class RemoteTests(object):
         self.run_bzr(['check', url])
 
     def test_push(self):
-        self.thisFailsStrictLockCheck()
         # create a source branch
         os.mkdir('my-branch')
         os.chdir('my-branch')

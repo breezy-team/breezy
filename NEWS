@@ -31,6 +31,12 @@ Bug Fixes
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
 
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
+* Fix IndexError printing CannotBindAddress errors.
+  (Martin Pool, #286871)
+
 * Fix "Revision ... not present" errors when upgrading stacked branches,
   or when doing fetches from a stacked source to a stacked target.
   (Andrew Bennetts, #399140)
@@ -48,6 +54,9 @@ Improvements
   putting ``no_apport`` into the ``debug_flags`` section of
   ``bazaar.conf``.
   (Martin Pool, Robert Collins, #389328)
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
 
 Documentation
 *************
