@@ -29,13 +29,19 @@ class QueryProcessor(processor.ImportProcessor):
     No changes to the current repository are made.
     """
 
-    known_params = commands.COMMAND_NAMES + commands.FILE_COMMAND_NAMES
+    known_params = commands.COMMAND_NAMES + commands.FILE_COMMAND_NAMES + \
+        ['commit-mark']
 
     def __init__(self, target=None, params=None, verbose=False):
         # Allow creation without a target
         processor.ImportProcessor.__init__(self, target, params, verbose)
         self.parsed_params = {}
+        self.interesting_commit = None
+        self._finished = False
         if params:
+            if 'commit-mark' in params:
+                self.interesting_commit = params['commit-mark']
+                del params['commit-mark']
             for name, value in params.iteritems():
                 if value == 1:
                     # All fields
@@ -46,6 +52,13 @@ class QueryProcessor(processor.ImportProcessor):
 
     def pre_handler(self, cmd):
         """Hook for logic before each handler starts."""
+        if self._finished:
+            return
+        if self.interesting_commit and cmd.name == 'commit':
+            if cmd.mark == self.interesting_commit:
+                print cmd.to_string()
+                self._finished = True
+            return
         if self.parsed_params.has_key(cmd.name):
             fields = self.parsed_params[cmd.name]
             str = cmd.dump_str(fields, self.parsed_params, self.verbose)

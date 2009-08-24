@@ -45,6 +45,9 @@ class ImportCommand(object):
         # List of field names not to display
         self._binary = []
 
+    def __str__(self):
+        return repr(self)
+
     def dump_str(self, names=None, child_lists=None, verbose=False):
         """Dump fields as a string.
 
@@ -125,6 +128,12 @@ class CommitCommand(ImportCommand):
             self.id = ':%s' % mark
 
     def __repr__(self):
+        return self.to_string(include_file_contents=True)
+
+    def __str__(self):
+        return self.to_string(include_file_contents=False)
+
+    def to_string(self, include_file_contents=False):
         if self.mark is None:
             mark_line = ""
         else:
@@ -151,14 +160,18 @@ class CommitCommand(ImportCommand):
         if self.file_iter is None:
             filecommands = ""
         else:
-            filecommands = "".join(["\n%r" % (c,)
-                for c in iter(self.file_iter)])
+            if include_file_contents:
+                format_str = "\n%r"
+            else:
+                format_str = "\n%s"
+            filecommands = "".join([format_str % (c,)
+                for c in self.iter_files()])
         return "commit %s%s%s\n%s%s%s%s%s" % (self.ref, mark_line, author_line,
             committer, msg_section, from_line, merge_lines, filecommands)
 
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
-        for f in iter(self.file_iter):
+        for f in self.iter_files():
             if child_lists is None:
                 continue
             try:
@@ -167,6 +180,14 @@ class CommitCommand(ImportCommand):
                 continue
             result.append("\t%s" % f.dump_str(child_names, verbose=verbose))
         return '\n'.join(result)
+
+    def iter_files(self):
+        """Iterate over files."""
+        # file_iter may be a callable or an iterator
+        if callable(self.file_iter):
+            return self.file_iter()
+        elif self.file_iter:
+            return iter(self.file_iter)
 
 
 class ProgressCommand(ImportCommand):
@@ -243,18 +264,25 @@ class FileModifyCommand(FileCommand):
         self._binary = ['data']
 
     def __repr__(self):
+        return self.to_string(include_file_contents=True)
+
+    def __str__(self):
+        return self.to_string(include_file_contents=False)
+
+    def to_string(self, include_file_contents=False):
         if self.kind == 'symlink':
             mode = "120000"
         elif self.is_executable:
             mode = "755"
         else:
             mode = "644"
+        datastr = ""
         if self.dataref is None:
             dataref = "inline"
-            datastr = "\ndata %d\n%s" % (len(self.data), self.data)
+            if include_file_contents:
+                datastr = "\ndata %d\n%s" % (len(self.data), self.data)
         else:
             dataref = "%s" % (self.dataref,)
-            datastr = ""
         path = format_path(self.path)
         return "M %s %s %s%s" % (mode, dataref, path, datastr)
 
