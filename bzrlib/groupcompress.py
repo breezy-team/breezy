@@ -994,6 +994,13 @@ class _BatchingBlockFetcher(object):
         self.keys.append(key)
         index_memo, _, _, _ = self.locations[key]
         read_memo = index_memo[0:3]
+        # This looks a bit dangerous, but it's ok: we're assuming that memos in
+        # _group_cache now will still be there when yield_factories is called
+        # (and that uncached memos don't become cached).  This ought to be
+        # true.  But if it isn't that's ok, yield_factories will still work.
+        # The only negative effect is that the estimated 'total_bytes' value
+        # here will be wrong, so we might fetch bigger/smaller batches than
+        # intended.
         if read_memo not in self.gcvf._group_cache:
             start, end = index_memo[3:5]
             self.total_bytes += end - start
@@ -1447,6 +1454,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         #  - we run out of keys, or
         #  - the total bytes to retrieve for this batch > 64k
         batcher = _BatchingBlockFetcher(self, locations)
+        BATCH_SIZE = 2**16
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1460,7 +1468,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         yield FulltextContentFactory(key, parents, sha1, bytes)
                         continue
                     batcher.add_key(key)
-                    if batcher.total_bytes > 2**16:
+                    if batcher.total_bytes > BATCH_SIZE:
                         # Ok!  Our batch is full.  Let's do it.
                         for _ in batcher.yield_factories():
                             yield _
