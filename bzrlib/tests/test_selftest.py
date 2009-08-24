@@ -1480,6 +1480,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
         self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+        del self._benchcalls[:]
 
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
