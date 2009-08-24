@@ -754,3 +754,48 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                 },
                 'E',
                 [])
+
+
+class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
+    """Test the sort order returned by gc_sort."""
+
+    def assertSorted(self, expected, parent_map):
+        graph = self.make_known_graph(parent_map)
+        value = graph.gc_sort()
+        if expected != value:
+            self.assertEqualDiff(pprint.pformat(expected),
+                                 pprint.pformat(value))
+
+    def test_empty(self):
+        self.assertSorted([], {})
+
+    def test_single(self):
+        self.assertSorted(['a'], {'a':()})
+        self.assertSorted([('a',)], {('a',):()})
+        self.assertSorted([('F', 'a')], {('F', 'a'):()})
+
+    def test_linear(self):
+        self.assertSorted(['c', 'b', 'a'], {'a':(), 'b':('a',), 'c':('b',)})
+        self.assertSorted([('c',), ('b',), ('a',)],
+                          {('a',):(), ('b',): (('a',),), ('c',): (('b',),)})
+        self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a')],
+                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                           ('F', 'c'): (('F', 'b'),)})
+
+    def test_mixed_ancestries(self):
+        # Each prefix should be sorted separately
+        self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a'),
+                           ('G', 'c'), ('G', 'b'), ('G', 'a'),
+                           ('Q', 'c'), ('Q', 'b'), ('Q', 'a'),
+                          ],
+                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                           ('F', 'c'): (('F', 'b'),),
+                           ('G', 'a'):(), ('G', 'b'): (('G', 'a'),),
+                           ('G', 'c'): (('G', 'b'),),
+                           ('Q', 'a'):(), ('Q', 'b'): (('Q', 'a'),),
+                           ('Q', 'c'): (('Q', 'b'),),
+                          })
+
+    def test_stable_sorting(self):
+        # the sort order should be stable even when extra nodes are added
+        pass

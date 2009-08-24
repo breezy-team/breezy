@@ -218,6 +218,18 @@ class KnownGraph(object):
         # We started from the parents, so we don't need to do anymore work
         return topo_order
 
+    def gc_sort(self):
+        """Return a reverse topological ordering which is 'stable'.
+
+        There are a few constraints:
+          1) Reverse topological (all children before all parents)
+          2) Grouped by prefix
+          3) 'stable' sorting, so that we get the same result, independent of
+             machine, or extra data.
+        To do this, we use the same basic algorithm as topo_sort, but when we
+        aren't sure what node to access next, we sort them lexicographically.
+        """
+
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
         from bzrlib import tsort
