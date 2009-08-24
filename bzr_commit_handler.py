@@ -352,10 +352,11 @@ class GenericCommitHandler(processor.CommitHandler):
         self.record_delete(path, ie)
 
     def _copy_item(self, src_path, dest_path, inv):
-        newly_added = self._new_file_ids.get(src_path)
-        if newly_added:
-            # We've only just added this path earlier in this commit.
-            file_id = newly_added
+        newly_changed = self._new_file_ids.get(src_path) or \
+            self._modified_file_ids.get(src_path)
+        if newly_changed:
+            # We've only just added/changed this path earlier in this commit.
+            file_id = newly_changed
             # note: delta entries look like (old, new, file-id, ie)
             ie = self._delta_entries_by_fileid[file_id][3]
         else:
@@ -367,7 +368,7 @@ class GenericCommitHandler(processor.CommitHandler):
             ie = inv[file_id]
         kind = ie.kind
         if kind == 'file':
-            if newly_added:
+            if newly_changed:
                 content = ''.join(self.lines_for_commit[file_id])
             else:
                 content = self.rev_store.get_file_text(self.parents[0], file_id)
