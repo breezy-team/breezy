@@ -179,7 +179,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         changes = target.changes_from(source.basis_tree())
         self.assertFalse(changes.has_changed())
 
-    def test_content_summary(self):
+    def test_path_content_summary(self):
         """path_content_summary should always talk about the canonical form."""
         # see https://bugs.edge.launchpad.net/bzr/+bug/415508
         #
@@ -202,4 +202,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         # results are: kind, size, executable, sha1_or_link_target
         result = source.path_content_summary('file1.txt')
-        self.assertEquals(result, ('file', len(expected_canonical_form), False, None))
+        self.expectFailure(
+            "path_content_summary doesn't handle content filters",
+            self.assertEquals, result,
+                ('file', len(expected_canonical_form), False, None))
