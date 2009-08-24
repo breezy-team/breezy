@@ -1258,27 +1258,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 cached[read_memo] = block
                 yield block
 
-    def _get_block(self, index_memo):
-        read_memo = index_memo[0:3]
-        # get the group:
-        try:
-            block = self._group_cache[read_memo]
-        except KeyError:
-            # read the group
-            zdata = self._access.get_raw_records([read_memo]).next()
-            # decompress - whole thing - this is not a bug, as it
-            # permits caching. We might want to store the partially
-            # decompresed group and decompress object, so that recent
-            # texts are not penalised by big groups.
-            block = GroupCompressBlock.from_bytes(zdata)
-            self._group_cache[read_memo] = block
-        # cheapo debugging:
-        # print len(zdata), len(plain)
-        # parse - requires split_lines, better to have byte offsets
-        # here (but not by much - we only split the region for the
-        # recipe, and we often want to end up with lines anyway.
-        return block
-
     def get_missing_compression_parent_keys(self):
         """Return the keys of missing compression parents.
 
