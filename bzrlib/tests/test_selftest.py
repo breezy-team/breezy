@@ -1747,7 +1747,7 @@ class TestSFTPMakeBranchAndTree(test_sftp_transport.TestCaseWithSFTPServer):
 
     def test_make_tree_for_sftp_branch(self):
         """Transports backed by local directories create local trees."""
-
+        # NB: This is arguably a bug in the definition of make_branch_and_tree.
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
         self.failIf(base.startswith('sftp'),
@@ -2364,8 +2364,8 @@ class TestSelftestFiltering(tests.TestCase):
         tests.TestCase.setUp(self)
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
-        self.suite.addTest(self.loader.loadTestsFromModuleNames([
-            'bzrlib.tests.test_selftest']))
+        self.suite.addTest(self.loader.loadTestsFromModule(
+            sys.modules['bzrlib.tests.test_selftest']))
         self.all_names = _test_ids(self.suite)
 
     def test_condition_id_re(self):
@@ -2682,8 +2682,8 @@ class TestTestIdList(tests.TestCase):
 class TestTestSuite(tests.TestCase):
 
     def test_test_suite(self):
-        # This test is slow, so we do a single test with one test in each
-        # category
+        # This test is slow - it loads the entire test suite to operate, so we
+        # do a single test with one test in each category
         test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
@@ -2699,6 +2699,9 @@ class TestTestSuite(tests.TestCase):
         self.assertEquals(test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
+        # We cannot test this at the same time as the main load, because we want
+        # to know that starting_with == None works. So a second full load is
+        # incurred.
         test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
         suite = tests.test_suite(test_list,
                                  ['bzrlib.tests.test_selftest.TestTestSuite'])
