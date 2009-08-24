@@ -42,37 +42,6 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import commands, helpers, marks_file
 
 
-# This is adapted from _linear_view_verisons in log.py in bzr 1.12.
-def _iter_linear_revisions(branch, start_rev_id, end_rev_id):
-    """Calculate a sequence of revisions, newest to oldest.
-
-    :param start_rev_id: the lower revision-id
-    :param end_rev_id: the upper revision-id
-    :return: An iterator of revision_ids
-    :raises ValueError: if a start_rev_id is specified but
-      is not found walking the left-hand history
-    """
-    br_revno, br_rev_id = branch.last_revision_info()
-    repo = branch.repository
-    if start_rev_id is None and end_rev_id is None:
-        for revision_id in repo.iter_reverse_revision_history(br_rev_id):
-            yield revision_id
-    else:
-        if end_rev_id is None:
-            end_rev_id = br_rev_id
-        found_start = start_rev_id is None
-        for revision_id in repo.iter_reverse_revision_history(end_rev_id):
-            if not found_start and revision_id == start_rev_id:
-                yield revision_id
-                found_start = True
-                break
-            else:
-                yield revision_id
-        else:
-            if not found_start:
-                raise ValueError()
-
-
 class BzrFastExporter(object):
 
     def __init__(self, source, destination, git_branch=None, checkpoint=-1,
@@ -123,18 +92,16 @@ class BzrFastExporter(object):
             start_rev_id = None
             end_rev_id = None
         self.note("Calculating the revisions to include ...")
-        view_revisions = reversed(list(_iter_linear_revisions(self.branch,
-            start_rev_id, end_rev_id)))
+        view_revisions = reversed([rev_id for rev_id, _, _, _ in
+            self.branch.iter_merge_sorted_revisions(end_rev_id, start_rev_id)])
         # If a starting point was given, we need to later check that we don't
         # start emitting revisions from before that point. Collect the
         # revisions to exclude now ...
         if start_rev_id is not None:
-            # The result is inclusive so skip the first (the oldest) one
             self.note("Calculating the revisions to exclude ...")
-            uninteresting = list(_iter_linear_revisions(self.branch, None,
-                start_rev_id))[1:]
-            self.excluded_revisions = set(uninteresting)
-        return list(view_revisions)
+            self.excluded_revisions = set([rev_id for rev_id, _, _, _ in
+                self.branch.iter_merge_sorted_revisions(start_rev_id)])
+        return view_revisions
 
     def run(self):
         # Open the source
@@ -143,7 +110,9 @@ class BzrFastExporter(object):
         # Export the data
         self.branch.repository.lock_read()
         try:
-            for revid in self.interesting_history():
+            interesting = self.interesting_history()
+            self.note("Starting export ...")
+            for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
                 self.emit_tags()
@@ -200,7 +169,7 @@ class BzrFastExporter(object):
  
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
-        if path_id == None:
+        if path_id is None:
             self.warning("Skipping empty_dir detection - no file_id for %s" %
                 (path,))
             return False
@@ -228,14 +197,13 @@ class BzrFastExporter(object):
             self.revid_to_mark[revid] = -1
             return
  
-        # Emit parents
-        nparents = len(revobj.parent_ids)
-        if nparents:
-            for parent in revobj.parent_ids:
-                self.emit_commit(parent, git_branch)
-
         # Get the primary parent
+        # TODO: Consider the excluded revisions when deciding the parents.
+        # Currently, a commit with parents that are excluded ought to be
+        # triggering the git_branch calculation below (and it is not).
+        # IGC 20090824
         ncommits = len(self.revid_to_mark)
+        nparents = len(revobj.parent_ids)
         if nparents == 0:
             if ncommits:
                 # This is a parentless commit but it's not the first one
