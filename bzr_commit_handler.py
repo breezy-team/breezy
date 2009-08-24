@@ -168,6 +168,11 @@ class GenericCommitHandler(processor.CommitHandler):
           is_new = True if the file_id is newly created
         """
         if path not in self._paths_deleted_this_commit:
+            # Try file-ids renamed in this commit
+            id = self._modified_file_ids.get(path)
+            if id is not None:
+                return id, False
+
             # Try the basis inventory
             id = self.basis_inventory.path2id(path)
             if id is not None:
@@ -727,6 +732,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         new_ie.parent_id = new_parent_id
         new_ie.revision = self.revision_id
         self._add_entry((old_path, new_path, file_id, new_ie))
+        self._modified_file_ids[new_path] = file_id
 
     def _rename_pending_change(self, old_path, new_path, file_id):
         """Instead of adding/modifying old-path, add new-path instead."""
