@@ -539,6 +539,9 @@ class CommitBuilder(object):
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
+            if ie.reference_revision is None:
+                raise AssertionError("invalid content_summary for nested tree: %r"
+                    % (content_summary,))
             self._add_text_to_weave(ie.file_id, '', heads, None)
         else:
             raise NotImplementedError('unknown kind')
