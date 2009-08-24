@@ -639,6 +639,56 @@ class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
                 ])
 
 
+class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
+    """Test deleting a directory then adding a file in the same commit."""
+
+    def file_command_iter(self, paths, dir, new_path, kind='file'):
+        # Revno 1: create files in a directory
+        # Revno 2: delete the directory then add a file into it
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                for i, path in enumerate(paths):
+                    yield commands.FileModifyCommand(path, kind, False,
+                            None, "aaa%d" % i)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(dir)
+                yield commands.FileModifyCommand(new_path, kind, False,
+                        None, "bbb")
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_dir_then_add_file(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d']
+        dir = 'a/b'
+        new_path = 'a/b/z'
+        handler.process(self.file_command_iter(paths, dir, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), ('a/b',), ('a/b/c',), ('a/b/d',),])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('a/b',), ('a/b/c',), ('a/b/d',)],
+            expected_added=[('a/b',), ('a/b/z',)])
+        self.assertContent(branch, revtree2, new_path, "bbb")
+
+    def test_delete_dir_then_add_symlink(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d']
+        dir = 'a/b'
+        new_path = 'a/b/z'
+        handler.process(self.file_command_iter(paths, dir, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('a',), ('a/b',), ('a/b/c',), ('a/b/d',),])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('a/b',), ('a/b/c',), ('a/b/d',)],
+            expected_added=[('a/b',), ('a/b/z',)])
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+
+
 class TestImportToPackRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path, kind='file'):
@@ -1590,6 +1640,9 @@ class TestImportToRichRootDeleteThenAdd(TestImportToPackDeleteThenAdd):
 class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootDeleteDirectoryThenAddFile(TestImportToPackDeleteDirectoryThenAddFile):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootRename(TestImportToPackRename):
     branch_format = "1.9-rich-root"
 
@@ -1645,6 +1698,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):
+        branch_format = "2a"
+
+    class TestImportToChkDeleteDirectoryThenAddFile(TestImportToPackDeleteDirectoryThenAddFile):
         branch_format = "2a"
 
     class TestImportToChkRename(TestImportToPackRename):

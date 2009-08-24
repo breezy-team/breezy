@@ -322,6 +322,8 @@ class GenericCommitHandler(processor.CommitHandler):
         """
         result = self.directory_entries.get(dirname)
         if result is None:
+            if dirname in self._paths_deleted_this_commit:
+                raise KeyError
             try:
                 file_id = inv.path2id(dirname)
             except errors.NoSuchId:
@@ -718,11 +720,20 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self._add_entry((path, None, ie.file_id, None))
         self._paths_deleted_this_commit.add(path)
         if ie.kind == 'directory':
+            try:
+                del self.directory_entries[path]
+            except KeyError:
+                pass
             for child_relpath, entry in \
                 self.basis_inventory.iter_entries_by_dir(from_dir=ie):
                 child_path = osutils.pathjoin(path, child_relpath)
                 self._add_entry((child_path, None, entry.file_id, None))
                 self._paths_deleted_this_commit.add(child_path)
+                if entry.kind == 'directory':
+                    try:
+                        del self.directory_entries[child_path]
+                    except KeyError:
+                        pass
 
     def record_rename(self, old_path, new_path, file_id, old_ie):
         new_ie = old_ie.copy()
