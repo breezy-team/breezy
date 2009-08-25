@@ -18,6 +18,11 @@ Compatibility Breaks
   into ``rich-root`` repositories from ``2a``. The Upgrade guide
   has more information about this change. (Robert Collins)
 
+* On Windows auto-detection of Putty's plink.exe is disabled.
+  Default SSH client for Windows is paramiko. User still can force
+  usage of plink if explicitly set environment variable BZR_SSH=plink.
+  (#414743, Alexander Belchenko)
+
 New Features
 ************
 
