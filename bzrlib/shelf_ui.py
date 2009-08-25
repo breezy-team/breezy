@@ -149,6 +149,9 @@ class Shelver(object):
                   message=None, directory='.', destroy=False):
         """Create a shelver from commandline arguments.
 
+        The returned shelver wil have a work_tree that is locked and should
+        be unlocked.
+
         :param revision: RevisionSpec of the revision to compare to.
         :param all: If True, shelve all changes without prompting.
         :param file_list: If supplied, only files in this list may be  shelved.
@@ -158,9 +161,16 @@ class Shelver(object):
             changes.
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
-        target_tree = builtins._get_one_revision_tree('shelf2', revision,
-            tree.branch, tree)
-        files = builtins.safe_relpath_files(tree, file_list)
+        # Ensure that tree is locked for the lifetime of target_tree, as
+        # target tree may be reading from the same dirstate.
+        tree.lock_tree_write()
+        try:
+            target_tree = builtins._get_one_revision_tree('shelf2', revision,
+                tree.branch, tree)
+            files = builtins.safe_relpath_files(tree, file_list)
+        except:
+            tree.unlock()
+            raise
         return klass(tree, target_tree, diff_writer, all, all, files, message,
                      destroy)
 
@@ -313,32 +323,40 @@ class Unshelver(object):
     def from_args(klass, shelf_id=None, action='apply', directory='.'):
         """Create an unshelver from commandline arguments.
 
+        The returned shelver wil have a tree that is locked and should
+        be unlocked.
+
         :param shelf_id: Integer id of the shelf, as a string.
         :param action: action to perform.  May be 'apply', 'dry-run',
             'delete'.
         :param directory: The directory to unshelve changes into.
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
-        manager = tree.get_shelf_manager()
-        if shelf_id is not None:
-            try:
-                shelf_id = int(shelf_id)
-            except ValueError:
-                raise errors.InvalidShelfId(shelf_id)
-        else:
-            shelf_id = manager.last_shelf()
-            if shelf_id is None:
-                raise errors.BzrCommandError('No changes are shelved.')
-            trace.note('Unshelving changes with id "%d".' % shelf_id)
-        apply_changes = True
-        delete_shelf = True
-        read_shelf = True
-        if action == 'dry-run':
-            apply_changes = False
-            delete_shelf = False
-        if action == 'delete-only':
-            apply_changes = False
-            read_shelf = False
+        tree.lock_tree_write()
+        try:
+            manager = tree.get_shelf_manager()
+            if shelf_id is not None:
+                try:
+                    shelf_id = int(shelf_id)
+                except ValueError:
+                    raise errors.InvalidShelfId(shelf_id)
+            else:
+                shelf_id = manager.last_shelf()
+                if shelf_id is None:
+                    raise errors.BzrCommandError('No changes are shelved.')
+                trace.note('Unshelving changes with id "%d".' % shelf_id)
+            apply_changes = True
+            delete_shelf = True
+            read_shelf = True
+            if action == 'dry-run':
+                apply_changes = False
+                delete_shelf = False
+            if action == 'delete-only':
+                apply_changes = False
+                read_shelf = False
+        except:
+            tree.unlock()
+            raise
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
                      read_shelf)
 
@@ -364,7 +382,7 @@ class Unshelver(object):
 
     def run(self):
         """Perform the unshelving operation."""
-        self.tree.lock_write()
+        self.tree.lock_tree_write()
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:

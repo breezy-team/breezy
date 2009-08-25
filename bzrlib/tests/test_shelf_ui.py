@@ -72,23 +72,26 @@ class TestShelver(tests.TestCaseWithTransport):
         return tree
 
     def test_unexpected_prompt_failure(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         e = self.assertRaises(AssertionError, shelver.run)
         self.assertEqual('Unexpected prompt: Shelve? [yNfq?]', str(e))
 
     def test_wrong_prompt_failure(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('foo', 'y')
         e = self.assertRaises(AssertionError, shelver.run)
         self.assertEqual('Wrong prompt: Shelve? [yNfq?]', str(e))
 
     def test_shelve_not_diff(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'n')
         shelver.expect('Shelve? [yNfq?]', 'n')
@@ -97,8 +100,9 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_diff_no(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
@@ -107,8 +111,9 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_diff(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
@@ -117,8 +122,9 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_one_diff(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'n')
@@ -127,9 +133,10 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AY, 'tree/foo')
 
     def test_shelve_binary_change(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         self.build_tree_contents([('tree/foo', '\x00')])
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve binary changes? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -137,9 +144,10 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_rename(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         tree.rename_one('foo', 'bar')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve renaming "foo" => "bar"? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
@@ -149,9 +157,10 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_deletion(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve removing file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -159,11 +168,12 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_creation(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.commit('add tree root')
         self.build_tree(['tree/foo'])
         tree.add('foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve adding file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -171,17 +181,17 @@ class TestShelver(tests.TestCaseWithTransport):
         self.failIfExists('tree/foo')
 
     def test_shelve_kind_change(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
         os.mkdir('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve changing "foo" from file to directory? [yNfq?]',
                        'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
-        self.thisFailsStrictLockCheck()
         self.requireFeature(tests.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
@@ -189,6 +199,8 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve changing target of "baz" from "bar" to '
                 '"vax"? [yNfq?]', 'y')
@@ -197,8 +209,9 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertEqual('bar', os.readlink('tree/baz'))
 
     def test_shelve_finish(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'f')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
@@ -206,32 +219,39 @@ class TestShelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_quit(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', 'q')
         self.assertRaises(errors.UserAbort, shelver.run)
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_all(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
-        ExpectShelver.from_args(sys.stdout, all=True, directory='tree').run()
+        shelver = ExpectShelver.from_args(sys.stdout, all=True,
+            directory='tree')
+        try:
+            shelver.run()
+        finally:
+            shelver.work_tree.unlock()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_filename(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         self.build_tree(['tree/bar'])
         tree.add('bar')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(), file_list=['bar'])
         shelver.expect('Shelve adding file "bar"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
 
     def test_shelve_help(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
         shelver.expect('Shelve? [yNfq?]', '?')
         shelver.expect('Shelve? [(y)es, (N)o, (f)inish, or (q)uit]', 'f')
@@ -239,11 +259,13 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.run()
 
     def test_shelve_distroy(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         shelver = shelf_ui.Shelver.from_args(sys.stdout, all=True,
                                              directory='tree', destroy=True)
-        shelver.run()
+        try:
+            shelver.run()
+        finally:
+            shelver.work_tree.unlock()
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
@@ -289,8 +311,9 @@ class TestShelver(tests.TestCaseWithTransport):
 class TestApplyReporter(TestShelver):
 
     def test_shelve_not_diff(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'n')
@@ -300,8 +323,9 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_diff_no(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'y')
@@ -311,8 +335,9 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_shelve_diff(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply change? [yNfq?]', 'y')
@@ -322,9 +347,10 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_binary_change(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         self.build_tree_contents([('tree/foo', '\x00')])
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Apply binary changes? [yNfq?]', 'y')
@@ -333,9 +359,10 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_rename(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         tree.rename_one('foo', 'bar')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Rename "bar" => "foo"? [yNfq?]', 'y')
@@ -346,9 +373,10 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_deletion(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Add file "foo"? [yNfq?]', 'y')
@@ -357,11 +385,12 @@ class TestApplyReporter(TestShelver):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_creation(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         tree.commit('add tree root')
         self.build_tree(['tree/foo'])
         tree.add('foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Delete file "foo"? [yNfq?]', 'y')
@@ -370,17 +399,17 @@ class TestApplyReporter(TestShelver):
         self.failIfExists('tree/foo')
 
     def test_shelve_kind_change(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_shelvable_tree()
         os.unlink('tree/foo')
         os.mkdir('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                reporter=shelf_ui.ApplyReporter())
         shelver.expect('Change "foo" from directory to a file? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
 
     def test_shelve_modify_target(self):
-        self.thisFailsStrictLockCheck()
         self.requireFeature(tests.SymlinkFeature)
         tree = self.create_shelvable_tree()
         os.symlink('bar', 'tree/baz')
@@ -388,6 +417,8 @@ class TestApplyReporter(TestShelver):
         tree.commit("Add symlink")
         os.unlink('tree/baz')
         os.symlink('vax', 'tree/baz')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         shelver.expect('Change target of "baz" from "vax" to "bar"? [yNfq?]',
@@ -401,16 +432,19 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
     def create_tree_with_shelf(self):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/foo', LINES_AJ)])
-        tree.add('foo', 'foo-id')
-        tree.commit('added foo')
-        self.build_tree_contents([('tree/foo', LINES_ZY)])
-        shelf_ui.Shelver(tree, tree.basis_tree(), auto_apply=True,
-                         auto=True).run()
+        tree.lock_write()
+        try:
+            self.build_tree_contents([('tree/foo', LINES_AJ)])
+            tree.add('foo', 'foo-id')
+            tree.commit('added foo')
+            self.build_tree_contents([('tree/foo', LINES_ZY)])
+            shelf_ui.Shelver(tree, tree.basis_tree(), auto_apply=True,
+                             auto=True).run()
+        finally:
+            tree.unlock()
         return tree
 
     def test_unshelve(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_tree_with_shelf()
         tree.lock_write()
         self.addCleanup(tree.unlock)
@@ -419,21 +453,27 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
 
     def test_unshelve_args(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_tree_with_shelf()
-        shelf_ui.Unshelver.from_args(directory='tree').run()
+        unshelver = shelf_ui.Unshelver.from_args(directory='tree')
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
         self.assertFileEqual(LINES_ZY, 'tree/foo')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
     def test_unshelve_args_dry_run(self):
-        self.thisFailsStrictLockCheck()
         tree = self.create_tree_with_shelf()
-        shelf_ui.Unshelver.from_args(directory='tree', action='dry-run').run()
+        unshelver = shelf_ui.Unshelver.from_args(directory='tree',
+            action='dry-run')
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
 
     def test_unshelve_args_delete_only(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
@@ -443,11 +483,13 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.close()
         unshelver = shelf_ui.Unshelver.from_args(directory='tree',
                                                  action='delete-only')
-        unshelver.run()
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
         self.assertIs(None, manager.last_shelf())
 
     def test_unshelve_args_invalid_shelf_id(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('tree')
         manager = tree.get_shelf_manager()
         shelf_file = manager.new_shelf()[1]
