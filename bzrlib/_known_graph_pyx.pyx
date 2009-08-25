@@ -27,11 +27,13 @@ cdef extern from "Python.h":
 
     int PyString_CheckExact(object)
 
+    int PyTuple_CheckExact(object)
     object PyTuple_New(Py_ssize_t n)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
     void PyTuple_SET_ITEM(object t, Py_ssize_t o, object v)
 
+    int PyList_CheckExact(object)
     Py_ssize_t PyList_GET_SIZE(object l)
     PyObject * PyList_GET_ITEM(object l, Py_ssize_t o)
     int PyList_SetItem(object l, Py_ssize_t o, object l) except -1
@@ -110,42 +112,61 @@ cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
     return <_KnownGraphNode>temp_node
 
 
-cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
+cdef _KnownGraphNode _get_tuple_node(tpl, Py_ssize_t pos):
     cdef PyObject *temp_node
-    cdef _KnownGraphNode node
 
-    temp_node = PyTuple_GET_ITEM(parents, pos)
+    temp_node = PyTuple_GET_ITEM(tpl, pos)
     return <_KnownGraphNode>temp_node
 
 
 def get_key(node):
     cdef _KnownGraphNode real_node
-    real_node = <_KnownGraphNode>node
+    real_node = node
     return real_node.key
 
 
-cdef object _sort_list_nodes(object lst, int reverse):
-    """Sort a list of _KnownGraphNode objects."""
+cdef object _sort_list_nodes(object lst_or_tpl, int reverse):
+    """Sort a list of _KnownGraphNode objects.
+
+    If lst_or_tpl is a list, it is allowed to mutate in place. It may also
+    just return the input list if everything is already sorted.
+    """
     cdef _KnownGraphNode node1, node2
     cdef int do_swap
+    cdef Py_ssize_t length
 
-    if PyList_GET_SIZE(lst) == 0 or PyList_GET_SIZE(lst) == 1:
-        return lst
-    if PyList_GET_SIZE(lst) == 2:
-        node1 = _get_list_node(lst, 0)
-        node2 = _get_list_node(lst, 1)
+    if not (PyTuple_CheckExact(lst_or_tpl) or PyList_CheckExact(lst_or_tpl)):
+        raise TypeError('lst_or_tpl must be a list or tuple.')
+    length = len(lst_or_tpl)
+    if length == 0 or length == 1:
+        return lst_or_tpl
+    if length == 2:
+        if PyTuple_CheckExact(lst_or_tpl):
+            node1 = _get_tuple_node(lst_or_tpl, 0)
+            node2 = _get_tuple_node(lst_or_tpl, 1)
+        else:
+            node1 = _get_list_node(lst_or_tpl, 0)
+            node2 = _get_list_node(lst_or_tpl, 1)
         if reverse:
             do_swap = (node1.key < node2.key)
         else:
             do_swap = (node2.key < node1.key)
-        if do_swap:
+        if not do_swap:
+            return lst_or_tpl
+        if PyTuple_CheckExact(lst_or_tpl):
+            return (node2, node1)
+        else:
             Py_INCREF(node1)
-            PyList_SetItem(lst, 0, node2)
+            PyList_SetItem(lst_or_tpl, 1, node1)
             Py_INCREF(node2)
-            PyList_SetItem(lst, 1, node1)
-        return lst
+            PyList_SetItem(lst_or_tpl, 0, node2)
+            return lst_or_tpl
     # For all other sizes, we just use 'sorted()'
-    return sorted(lst, key=get_key, reverse=reverse)
+    if PyTuple_CheckExact(lst_or_tpl):
+        # Note that sorted() is just list(iterable).sort()
+        lst_or_tpl = list(lst_or_tpl)
+    lst_or_tpl.sort(key=get_key, reverse=reverse)
+    return lst_or_tpl
 
 
 cdef class _MergeSorter
@@ -367,7 +388,7 @@ cdef class KnownGraph:
                 continue
             if node.parents is not None and PyTuple_GET_SIZE(node.parents) > 0:
                 for pos from 0 <= pos < PyTuple_GET_SIZE(node.parents):
-                    parent_node = _get_parent(node.parents, pos)
+                    parent_node = _get_tuple_node(node.parents, pos)
                     last_item = last_item + 1
                     if last_item < PyList_GET_SIZE(pending):
                         Py_INCREF(parent_node) # SetItem steals a ref
@@ -454,7 +475,7 @@ cdef class KnownGraph:
         aren't sure what node to access next, we sort them lexicographically.
         """
         cdef PyObject *temp
-        cdef Py_ssize_t pos
+        cdef Py_ssize_t pos, last_item
         cdef _KnownGraphNode node, node2, parent_node
 
         tips = self._find_tips()
@@ -466,26 +487,45 @@ cdef class KnownGraph:
                 prefix = ''
             else:
                 prefix = node.key[0]
-            prefix_tips.setdefault(prefix, []).append(node)
+            temp = PyDict_GetItem(prefix_tips, prefix)
+            if temp == NULL:
+                prefix_tips[prefix] = [node]
+            else:
+                tip_nodes = <object>temp
+                PyList_Append(tip_nodes, node)
 
         result = []
-        for prefix, nodes in sorted(prefix_tips.iteritems()):
-            pending = _sort_list_nodes(nodes, 1)
-            while pending:
-                node = pending.pop()
+        for prefix in sorted(prefix_tips):
+            temp = PyDict_GetItem(prefix_tips, prefix)
+            assert temp != NULL
+            tip_nodes = <object>temp
+            pending = _sort_list_nodes(tip_nodes, 1)
+            last_item = PyList_GET_SIZE(pending) - 1
+            while last_item >= 0:
+                node = _get_list_node(pending, last_item)
+                last_item = last_item - 1
                 if node.parents is None:
+                    # Ghost
                     continue
-                result.append(node.key)
-                parents = _sort_list_nodes(list(node.parents), 1)
-                for pos from 0 <= pos < PyList_GET_SIZE(parents):
-                    parent_node = _get_list_node(parents, pos)
+                PyList_Append(result, node.key)
+                parents = _sort_list_nodes(node.parents, 1)
+                for pos from 0 <= pos < len(parents):
+                    if PyTuple_CheckExact(parents):
+                        parent_node = _get_tuple_node(parents, pos)
+                    else:
+                        parent_node = _get_list_node(parents, pos)
                     # TODO: GraphCycle detection
                     parent_node.seen = parent_node.seen + 1
                     if (parent_node.seen
                         == PyList_GET_SIZE(parent_node.children)):
                         # All children have been processed, queue up this
                         # parent
-                        pending.append(parent_node)
+                        last_item = last_item + 1
+                        if last_item < PyList_GET_SIZE(pending):
+                            Py_INCREF(parent_node) # SetItem steals a ref
+                            PyList_SetItem(pending, last_item, parent_node)
+                        else:
+                            PyList_Append(pending, parent_node)
                         parent_node.seen = 0
         return result
 
@@ -610,13 +650,13 @@ cdef class _MergeSorter:
         ms_node = self._get_ms_node(node)
         ms_node.merge_depth = merge_depth
         if PyTuple_GET_SIZE(node.parents) > 0:
-            parent_node = _get_parent(node.parents, 0)
+            parent_node = _get_tuple_node(node.parents, 0)
             ms_node.left_parent = parent_node
             ms_node.left_pending_parent = parent_node
         if PyTuple_GET_SIZE(node.parents) > 1:
             ms_node.pending_parents = []
             for pos from 1 <= pos < PyTuple_GET_SIZE(node.parents):
-                parent_node = _get_parent(node.parents, pos)
+                parent_node = _get_tuple_node(node.parents, pos)
                 if parent_node.parents is None: # ghost
                     continue
                 PyList_Append(ms_node.pending_parents, parent_node)
