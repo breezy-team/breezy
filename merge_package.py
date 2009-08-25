@@ -24,8 +24,6 @@ import os
 import shutil
 import tempfile
 
-from bzrlib import errors
-
 from bzrlib.plugins.builddeb.errors import (
     SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
