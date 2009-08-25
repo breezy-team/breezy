@@ -1004,7 +1004,7 @@ class _BatchingBlockFetcher(object):
             byte_length = read_memo[2]
             self.total_bytes += byte_length
         
-    def empty_manager(self):
+    def _flush_manager(self):
         if self.manager is not None:
             for factory in self.manager.get_record_stream():
                 yield factory
@@ -1040,7 +1040,7 @@ class _BatchingBlockFetcher(object):
                 # We are starting a new block. If we have a
                 # manager, we have found everything that fits for
                 # now, so yield records
-                for factory in self.empty_manager():
+                for factory in self._flush_manager():
                     yield factory
                 # Now start a new manager.  The next block from _get_blocks
                 # will be the block we need.
@@ -1050,7 +1050,7 @@ class _BatchingBlockFetcher(object):
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
         if full_flush:
-            for factory in self.empty_manager():
+            for factory in self._flush_manager():
                 yield factory
         del self.keys[:]
         self.total_bytes = 0
