@@ -73,6 +73,12 @@ class ShelfCreator(object):
         """
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
+            # don't shelve add of tree root.  Working tree should never
+            # lack roots, and bzr misbehaves when they do.
+            # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
+            # when a tree root was deleted / renamed.
+            if kind[0] is None and names[1] == '':
+                continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)

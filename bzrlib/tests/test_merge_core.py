@@ -438,7 +438,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
         """Test that merges in a star shape Just Work."""
-        self.thisFailsStrictLockCheck() # clone?
         # John starts a branch
         self.build_tree(("original/", "original/file1", "original/file2"))
         tree = self.make_branch_and_tree('original')
@@ -468,7 +467,6 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
 
     def test_conflicts(self):
-        self.thisFailsStrictLockCheck() # clone?
         os.mkdir('a')
         wta = self.make_branch_and_tree('a')
         a = wta.branch
