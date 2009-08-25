@@ -1307,6 +1307,24 @@ class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
     and most methods must return that.
     """
 
+    def _file_content_summary(self, path, stat_result):
+        # This is to support the somewhat obsolete path_content_summary method
+        # with content filtering: see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/415508>.
+        #
+        # If the dirstate cache is up to date and knows the hash and size,
+        # return that.
+        # Otherwise if there are no content filters, return the on-disk size
+        # and leave the hash blank.
+        # Otherwise, read and filter the on-disk file and use its size and
+        # hash.
+        #
+        # The dirstate doesn't store the size of the canonical form so we
+        # can't trust it for content-filtered trees.  We just return None.
+        dirstate_sha1 = self._dirstate.sha1_from_stat(path, stat_result)
+        executable = self._is_executable_from_path_and_stat(path, stat_result)
+        return ('file', None, executable, dirstate_sha1)
+
 
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.

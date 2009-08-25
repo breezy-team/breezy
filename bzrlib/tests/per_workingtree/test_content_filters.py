@@ -202,7 +202,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
         # results are: kind, size, executable, sha1_or_link_target
         result = source.path_content_summary('file1.txt')
-        self.expectFailure(
-            "path_content_summary doesn't handle content filters",
-            self.assertEquals, result,
-                ('file', len(expected_canonical_form), False, None))
+
+        self.assertEquals(result,
+            ('file', None, False, None))
+
+        # we could give back the length of the canonical form, but in general
+        # that will be expensive to compute, so it's acceptable to just return
+        # None.
