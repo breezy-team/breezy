@@ -33,7 +33,6 @@ from bzrlib import (
     pack,
     trace,
     )
-from bzrlib.graph import Graph
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.tsort import topo_sort
