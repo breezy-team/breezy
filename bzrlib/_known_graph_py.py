@@ -256,7 +256,7 @@ class KnownGraph(object):
                 #     # Ghost node, skip it
                 #     continue
                 result.append(node.key)
-                for parent_key in sorted(node.parent_keys):
+                for parent_key in sorted(node.parent_keys, reverse=True):
                     parent_node = self._nodes[parent_key]
                     seen_children = num_seen_children[parent_key] + 1
                     if seen_children == len(parent_node.child_keys):
@@ -265,7 +265,7 @@ class KnownGraph(object):
                         # This has been queued up, stop tracking it
                         del num_seen_children[parent_key]
                     else:
-                        num_seen_parents[parent_key] = seen_children
+                        num_seen_children[parent_key] = seen_children
         return result
 
     def merge_sort(self, tip_key):

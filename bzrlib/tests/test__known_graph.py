@@ -798,4 +798,18 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
 
     def test_stable_sorting(self):
         # the sort order should be stable even when extra nodes are added
-        pass
+        self.assertSorted(['b', 'c', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',)})
+        self.assertSorted(['b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+        self.assertSorted(['b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+        self.assertSorted(['Z', 'b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
+                           'Z':('a',)})
+        self.assertSorted(['e', 'b', 'c', 'f', 'Z', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
+                           'Z':('a',),
+                           'e':('b', 'c', 'd'),
+                           'f':('d', 'Z'),
+                           })

@@ -25,6 +25,8 @@ cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
 
+    int PyString_CheckExact(object)
+
     object PyTuple_New(Py_ssize_t n)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject * PyTuple_GET_ITEM(object t, Py_ssize_t o)
@@ -114,6 +116,36 @@ cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
 
     temp_node = PyTuple_GET_ITEM(parents, pos)
     return <_KnownGraphNode>temp_node
+
+
+def get_key(node):
+    cdef _KnownGraphNode real_node
+    real_node = <_KnownGraphNode>node
+    return real_node.key
+
+
+cdef object _sort_list_nodes(object lst, int reverse):
+    """Sort a list of _KnownGraphNode objects."""
+    cdef _KnownGraphNode node1, node2
+    cdef int do_swap
+
+    if PyList_GET_SIZE(lst) == 0 or PyList_GET_SIZE(lst) == 1:
+        return lst
+    if PyList_GET_SIZE(lst) == 2:
+        node1 = _get_list_node(lst, 0)
+        node2 = _get_list_node(lst, 1)
+        if reverse:
+            do_swap = (node1.key < node2.key)
+        else:
+            do_swap = (node2.key < node1.key)
+        if do_swap:
+            Py_INCREF(node1)
+            PyList_SetItem(lst, 0, node2)
+            Py_INCREF(node2)
+            PyList_SetItem(lst, 1, node1)
+        return lst
+    # For all other sizes, we just use 'sorted()'
+    return sorted(lst, key=get_key, reverse=reverse)
 
 
 cdef class _MergeSorter
@@ -215,6 +247,19 @@ cdef class KnownGraph:
                 node.gdfo = 1
                 PyList_Append(tails, node)
         return tails
+
+    def _find_tips(self):
+        cdef PyObject *temp_node
+        cdef _KnownGraphNode node
+        cdef Py_ssize_t pos
+
+        tips = []
+        pos = 0
+        while PyDict_Next(self._nodes, &pos, NULL, &temp_node):
+            node = <_KnownGraphNode>temp_node
+            if PyList_GET_SIZE(node.children) == 0:
+                PyList_Append(tips, node)
+        return tips
 
     def _find_gdfo(self):
         cdef _KnownGraphNode node
@@ -397,6 +442,54 @@ cdef class KnownGraph:
         # We started from the parents, so we don't need to do anymore work
         return topo_order
 
+    def gc_sort(self):
+        """Return a reverse topological ordering which is 'stable'.
+
+        There are a few constraints:
+          1) Reverse topological (all children before all parents)
+          2) Grouped by prefix
+          3) 'stable' sorting, so that we get the same result, independent of
+             machine, or extra data.
+        To do this, we use the same basic algorithm as topo_sort, but when we
+        aren't sure what node to access next, we sort them lexicographically.
+        """
+        cdef PyObject *temp
+        cdef Py_ssize_t pos
+        cdef _KnownGraphNode node, node2, parent_node
+
+        tips = self._find_tips()
+        # Split the tips based on prefix
+        prefix_tips = {}
+        for pos from 0 <= pos < PyList_GET_SIZE(tips):
+            node = _get_list_node(tips, pos)
+            if PyString_CheckExact(node.key) or len(node.key) == 1:
+                prefix = ''
+            else:
+                prefix = node.key[0]
+            prefix_tips.setdefault(prefix, []).append(node)
+
+        result = []
+        for prefix, nodes in sorted(prefix_tips.iteritems()):
+            pending = _sort_list_nodes(nodes, 1)
+            while pending:
+                node = pending.pop()
+                # TODO: test ghosts
+                # if node.parent_keys is None:
+                #     # Ghost node, skip it
+                #     continue
+                result.append(node.key)
+                parents = _sort_list_nodes(list(node.parents), 1)
+                for pos from 0 <= pos < PyList_GET_SIZE(parents):
+                    parent_node = _get_list_node(parents, pos)
+                    # TODO: GraphCycle detection
+                    parent_node.seen = parent_node.seen + 1
+                    if (parent_node.seen
+                        == PyList_GET_SIZE(parent_node.children)):
+                        # All children have been processed, queue up this
+                        # parent
+                        pending.append(parent_node)
+                        parent_node.seen = 0
+        return result
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
