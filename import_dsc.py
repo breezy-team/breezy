@@ -1081,20 +1081,15 @@ class DistributionBranch(object):
     def _fetch_upstream_to_branch(self, revid):
         """Fetch the revision from the upstream branch in to the pacakging one.
 
-        This will unlock self.tree, then re-lock it and fetch. This is
-        necessary as if the two branches share a repository the branch
-        won't see any revisions added by the upstream branch since self.tree
-        was locked.
-
-        It will check that the last revision is the same before and after,
+        This will check that the last revision is the same before and after,
         and that there are no working tree changes, to prevent unexpected
         things happening if say a commit was done in this time.
         """
         if self.tree.is_locked():
             last_revision = self.branch.last_revision()
-            # Unlock the tree and lock it again
-            self.tree.unlock()
-            self.tree.lock_write()
+            # Make sure we see any revisions added by the upstream branch
+            # since self.tree was locked.
+            self.branch.repository.refresh_data()
             assert self.branch.last_revision() == last_revision, \
                     "Branch committed to while refreshing it. Not proceeding."
             assert not self.tree.changes_from(
