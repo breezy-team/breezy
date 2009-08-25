@@ -78,7 +78,9 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
         return self.branch
 
     def make_branch(self, relpath, format=None):
-        repo = self.make_repository(relpath, format=format)
+        if format is not None:
+            return TestCaseWithBzrDir.make_branch(self, relpath, format)
+        repo = self.make_repository(relpath)
         # fixme RBC 20060210 this isnt necessarily a fixable thing,
         # Skipped is the wrong exception to raise.
         try:

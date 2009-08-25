@@ -64,8 +64,12 @@ from bzrlib import ui
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids, this_tree=from_tree)
+    from_tree.lock_tree_write()
+    try:
+        merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
+                    interesting_ids=interesting_ids, this_tree=from_tree)
+    finally:
+        from_tree.unlock()
 
 
 class Merger(object):

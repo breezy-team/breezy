@@ -426,9 +426,14 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
+        self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
         self._rich_root_data = None
+
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
 
     @property
     def fast_deltas(self):
@@ -441,6 +446,13 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             self._ensure_real()
             self._rich_root_data = self._custom_format.rich_root_data
         return self._rich_root_data
+
+    @property
+    def supports_chks(self):
+        if self._supports_chks is None:
+            self._ensure_real()
+            self._supports_chks = self._custom_format.supports_chks
+        return self._supports_chks
 
     @property
     def supports_external_lookups(self):
@@ -553,15 +565,6 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     def __eq__(self, other):
         return self.__class__ is other.__class__
-
-    def check_conversion_target(self, target_format):
-        if self.rich_root_data and not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if (self.supports_tree_reference and
-            not getattr(target_format, 'supports_tree_reference', False)):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
 
     def network_name(self):
         if self._network_name:
@@ -1178,9 +1181,9 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.get_inventory(revision_id)
 
-    def iter_inventories(self, revision_ids):
+    def iter_inventories(self, revision_ids, ordering=None):
         self._ensure_real()
-        return self._real_repository.iter_inventories(revision_ids)
+        return self._real_repository.iter_inventories(revision_ids, ordering)
 
     @needs_read_lock
     def get_revision(self, revision_id):
@@ -1470,9 +1473,10 @@ class RemoteRepository(_RpcHelper):
         return self._real_repository.get_revision_reconcile(revision_id)
 
     @needs_read_lock
-    def check(self, revision_ids=None):
+    def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         self._ensure_real()
-        return self._real_repository.check(revision_ids=revision_ids)
+        return self._real_repository.check(revision_ids=revision_ids,
+            callback_refs=callback_refs, check_repo=check_repo)
 
     def copy_content_into(self, destination, revision_id=None):
         self._ensure_real()
@@ -1618,9 +1622,10 @@ class RemoteRepository(_RpcHelper):
         self._ensure_real()
         return self._real_repository.revision_graph_can_have_wrong_parents()
 
-    def _find_inconsistent_revision_parents(self):
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         self._ensure_real()
-        return self._real_repository._find_inconsistent_revision_parents()
+        return self._real_repository._find_inconsistent_revision_parents(
+            revisions_iterator)
 
     def _check_for_inconsistent_revision_parents(self):
         self._ensure_real()
@@ -1680,43 +1685,61 @@ class RemoteStreamSink(repository.StreamSink):
     def insert_stream(self, stream, src_format, resume_tokens):
         target = self.target_repo
         target._unstacked_provider.missing_keys.clear()
+        candidate_calls = [('Repository.insert_stream_1.19', (1, 19))]
         if target._lock_token:
-            verb = 'Repository.insert_stream_locked'
-            extra_args = (target._lock_token or '',)
-            required_version = (1, 14)
+            candidate_calls.append(('Repository.insert_stream_locked', (1, 14)))
+            lock_args = (target._lock_token or '',)
         else:
-            verb = 'Repository.insert_stream'
-            extra_args = ()
-            required_version = (1, 13)
+            candidate_calls.append(('Repository.insert_stream', (1, 13)))
+            lock_args = ()
         client = target._client
         medium = client._medium
-        if medium._is_remote_before(required_version):
-            # No possible way this can work.
-            return self._insert_real(stream, src_format, resume_tokens)
         path = target.bzrdir._path_for_remote_call(client)
-        if not resume_tokens:
-            # XXX: Ugly but important for correctness, *will* be fixed during
-            # 1.13 cycle. Pushing a stream that is interrupted results in a
-            # fallback to the _real_repositories sink *with a partial stream*.
-            # Thats bad because we insert less data than bzr expected. To avoid
-            # this we do a trial push to make sure the verb is accessible, and
-            # do not fallback when actually pushing the stream. A cleanup patch
-            # is going to look at rewinding/restarting the stream/partial
-            # buffering etc.
+        # Probe for the verb to use with an empty stream before sending the
+        # real stream to it.  We do this both to avoid the risk of sending a
+        # large request that is then rejected, and because we don't want to
+        # implement a way to buffer, rewind, or restart the stream.
+        found_verb = False
+        for verb, required_version in candidate_calls:
+            if medium._is_remote_before(required_version):
+                continue
+            if resume_tokens:
+                # We've already done the probing (and set _is_remote_before) on
+                # a previous insert.
+                found_verb = True
+                break
             byte_stream = smart_repo._stream_to_byte_stream([], src_format)
             try:
                 response = client.call_with_body_stream(
-                    (verb, path, '') + extra_args, byte_stream)
+                    (verb, path, '') + lock_args, byte_stream)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(required_version)
-                return self._insert_real(stream, src_format, resume_tokens)
+            else:
+                found_verb = True
+                break
+        if not found_verb:
+            # Have to use VFS.
+            return self._insert_real(stream, src_format, resume_tokens)
+        self._last_inv_record = None
+        self._last_substream = None
+        if required_version < (1, 19):
+            # Remote side doesn't support inventory deltas.  Wrap the stream to
+            # make sure we don't send any.  If the stream contains inventory
+            # deltas we'll interrupt the smart insert_stream request and
+            # fallback to VFS.
+            stream = self._stop_stream_if_inventory_delta(stream)
         byte_stream = smart_repo._stream_to_byte_stream(
             stream, src_format)
         resume_tokens = ' '.join(resume_tokens)
         response = client.call_with_body_stream(
-            (verb, path, resume_tokens) + extra_args, byte_stream)
+            (verb, path, resume_tokens) + lock_args, byte_stream)
         if response[0][0] not in ('ok', 'missing-basis'):
             raise errors.UnexpectedSmartServerResponse(response)
+        if self._last_substream is not None:
+            # The stream included an inventory-delta record, but the remote
+            # side isn't new enough to support them.  So we need to send the
+            # rest of the stream via VFS.
+            return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
             resume_tokens = tokens
@@ -1725,6 +1748,46 @@ class RemoteStreamSink(repository.StreamSink):
             self.target_repo.refresh_data()
             return [], set()
 
+    def _resume_stream_with_vfs(self, response, src_format):
+        """Resume sending a stream via VFS, first resending the record and
+        substream that couldn't be sent via an insert_stream verb.
+        """
+        if response[0][0] == 'missing-basis':
+            tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
+            # Ignore missing_keys, we haven't finished inserting yet
+        else:
+            tokens = []
+        def resume_substream():
+            # Yield the substream that was interrupted.
+            for record in self._last_substream:
+                yield record
+            self._last_substream = None
+        def resume_stream():
+            # Finish sending the interrupted substream
+            yield ('inventory-deltas', resume_substream())
+            # Then simply continue sending the rest of the stream.
+            for substream_kind, substream in self._last_stream:
+                yield substream_kind, substream
+        return self._insert_real(resume_stream(), src_format, tokens)
+
+    def _stop_stream_if_inventory_delta(self, stream):
+        """Normally this just lets the original stream pass-through unchanged.
+
+        However if any 'inventory-deltas' substream occurs it will stop
+        streaming, and store the interrupted substream and stream in
+        self._last_substream and self._last_stream so that the stream can be
+        resumed by _resume_stream_with_vfs.
+        """
+                    
+        stream_iter = iter(stream)
+        for substream_kind, substream in stream_iter:
+            if substream_kind == 'inventory-deltas':
+                self._last_substream = substream
+                self._last_stream = stream_iter
+                return
+            else:
+                yield substream_kind, substream
+            
 
 class RemoteStreamSource(repository.StreamSource):
     """Stream data from a remote server."""
@@ -1745,6 +1808,12 @@ class RemoteStreamSource(repository.StreamSource):
             sources.append(repo)
         return self.missing_parents_chain(search, sources)
 
+    def get_stream_for_missing_keys(self, missing_keys):
+        self.from_repository._ensure_real()
+        real_repo = self.from_repository._real_repository
+        real_source = real_repo._get_source(self.to_format)
+        return real_source.get_stream_for_missing_keys(missing_keys)
+
     def _real_stream(self, repo, search):
         """Get a stream for search from repo.
         
@@ -1756,7 +1825,8 @@ class RemoteStreamSource(repository.StreamSource):
         """
         source = repo._get_source(self.to_format)
         if isinstance(source, RemoteStreamSource):
-            return repository.StreamSource.get_stream(source, search)
+            repo._ensure_real()
+            source = repo._real_repository._get_source(self.to_format)
         return source.get_stream(search)
 
     def _get_stream(self, repo, search):
@@ -1779,18 +1849,26 @@ class RemoteStreamSource(repository.StreamSource):
             return self._real_stream(repo, search)
         client = repo._client
         medium = client._medium
-        if medium._is_remote_before((1, 13)):
-            # streaming was added in 1.13
-            return self._real_stream(repo, search)
         path = repo.bzrdir._path_for_remote_call(client)
-        try:
-            search_bytes = repo._serialise_search_result(search)
-            response = repo._call_with_body_bytes_expecting_body(
-                'Repository.get_stream',
-                (path, self.to_format.network_name()), search_bytes)
-            response_tuple, response_handler = response
-        except errors.UnknownSmartMethod:
-            medium._remember_remote_is_before((1,13))
+        search_bytes = repo._serialise_search_result(search)
+        args = (path, self.to_format.network_name())
+        candidate_verbs = [
+            ('Repository.get_stream_1.19', (1, 19)),
+            ('Repository.get_stream', (1, 13))]
+        found_verb = False
+        for verb, version in candidate_verbs:
+            if medium._is_remote_before(version):
+                continue
+            try:
+                response = repo._call_with_body_bytes_expecting_body(
+                    verb, args, search_bytes)
+            except errors.UnknownSmartMethod:
+                medium._remember_remote_is_before(version)
+            else:
+                response_tuple, response_handler = response
+                found_verb = True
+                break
+        if not found_verb:
             return self._real_stream(repo, search)
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
@@ -2025,6 +2103,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                     self._real_branch._format.network_name()
         else:
             self._format = format
+        # when we do _ensure_real we may need to pass ignore_fallbacks to the
+        # branch.open_branch method.
+        self._real_ignore_fallbacks = not setup_stacking
         if not self._format._network_name:
             # Did not get from open_branchV2 - old server.
             self._ensure_real()
@@ -2075,7 +2156,8 @@ class RemoteBranch(branch.Branch, _RpcHelper):
                 raise AssertionError('smart server vfs must be enabled '
                     'to use vfs implementation')
             self.bzrdir._ensure_real()
-            self._real_branch = self.bzrdir._real_bzrdir.open_branch()
+            self._real_branch = self.bzrdir._real_bzrdir.open_branch(
+                ignore_fallbacks=self._real_ignore_fallbacks)
             if self.repository._real_repository is None:
                 # Give the remote repository the matching real repo.
                 real_repo = self._real_branch.repository

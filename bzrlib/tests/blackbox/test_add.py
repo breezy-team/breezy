@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,20 +55,14 @@ class TestAdd(ExternalBase):
         out = self.run_bzr('add')[0]
         # the ordering is not defined at the moment
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add ignored files, '
-                           'please add them explicitly by name. '
-                           '("bzr ignored" gives a list)',
-                           'adding .bzrignore',
+        self.assertEquals(['adding .bzrignore',
                            'adding dir',
                            'adding dir/sub.txt',
-                           'adding top.txt',
-                           'ignored 1 file(s).'],
+                           'adding top.txt'],
                           results)
         out = self.run_bzr('add -v')[0]
         results = sorted(out.rstrip('\n').split('\n'))
-        self.assertEquals(['If you wish to add ignored files, '\
-                           'please add them explicitly by name. ("bzr ignored" gives a list)',
-                           'ignored CVS matching "CVS"'],
+        self.assertEquals(['ignored CVS matching "CVS"'],
                           results)
 
     def test_add_quiet_is(self):

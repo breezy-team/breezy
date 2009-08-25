@@ -73,6 +73,12 @@ class ShelfCreator(object):
         """
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
+            # don't shelve add of tree root.  Working tree should never
+            # lack roots, and bzr misbehaves when they do.
+            # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
+            # when a tree root was deleted / renamed.
+            if kind[0] is None and names[1] == '':
+                continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)
@@ -104,12 +110,17 @@ class ShelfCreator(object):
             self.shelve_deletion(change[1])
         elif change[0] == 'add file':
             self.shelve_creation(change[1])
-        elif change[0] == 'change kind':
+        elif change[0] in ('change kind', 'modify text'):
             self.shelve_content_change(change[1])
         elif change[0] == 'modify target':
             self.shelve_modify_target(change[1])
         else:
             raise ValueError('Unknown change kind: "%s"' % change[0])
+
+    def shelve_all(self):
+        """Shelve all changes."""
+        for change in self.iter_shelvable():
+            self.shelve_change(change)
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.

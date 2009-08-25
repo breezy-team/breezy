@@ -156,11 +156,11 @@ def show_tree_status(wt, show_unchanged=None,
                 to_file.write("%s %s\n" % (prefix, nonexistent))
             if (new_is_working_tree and show_pending):
                 show_pending_merges(new, to_file, short, verbose=verbose)
+            if nonexistents:
+                raise errors.PathsDoNotExist(nonexistents)
         finally:
             old.unlock()
             new.unlock()
-            if nonexistents:
-              raise errors.PathsDoNotExist(nonexistents)
     finally:
         wt.unlock()
 
