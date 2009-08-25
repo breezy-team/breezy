@@ -76,7 +76,11 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         manager.set_ssh_version_string("plink")
-        self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
+        # Auto-detect of plink vendor disabled, on Windows recommended
+        # default ssh-client is paramiko
+        # see https://bugs.launchpad.net/bugs/414743
+        #~self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
