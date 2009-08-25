@@ -1021,20 +1021,18 @@ class _BatchingBlockFetcher(object):
         """
         if self.manager is None and not self.keys:
             return
+        # First, determine the list of memos to get.
         memos_to_get = []
-        keys_to_get = []
         last_read_memo = self.last_read_memo
         for key in self.keys:
             index_memo = self.locations[key][0]
             read_memo = index_memo[:3]
             if last_read_memo != read_memo:
                 memos_to_get.append(read_memo)
-                keys_to_get.append(key)
                 last_read_memo = read_memo
+        # Second, we fetch all those memos in one batch.
         blocks = self.gcvf._get_blocks(memos_to_get)
-        block_map = {}
-        for block, key in zip(blocks, keys_to_get):
-            block_map[key] = block
+        # Finally, we turn blocks into factories and yield them.
         for key in self.keys:
             index_memo, _, parents, _ = self.locations[key]
             read_memo = index_memo[:3]
@@ -1044,8 +1042,9 @@ class _BatchingBlockFetcher(object):
                 # now, so yield records
                 for factory in self.empty_manager():
                     yield factory
-                # Now start a new manager
-                block = block_map[key]
+                # Now start a new manager.  The next block from _get_blocks
+                # will be the block we need.
+                block = blocks.next()
                 self.manager = _LazyGroupContentManager(block)
                 self.last_read_memo = read_memo
             start, end = index_memo[3:5]
@@ -1220,8 +1219,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
             missing.difference_update(set(new_result))
         return result, source_results
 
-    def _get_blocks(self, index_memos):
-        read_memos = [index_memo[0:3] for index_memo in index_memos]
+    def _get_blocks(self, read_memos):
+        """Get GroupCompressBlocks for the given read_memos.
+
+        Blocks are returned in the order specified in read_memos.
+        """
         cached = {}
         for read_memo in read_memos:
             try:
