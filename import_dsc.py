@@ -1085,16 +1085,9 @@ class DistributionBranch(object):
         and that there are no working tree changes, to prevent unexpected
         things happening if say a commit was done in this time.
         """
-        if self.tree.is_locked():
-            last_revision = self.branch.last_revision()
-            # Make sure we see any revisions added by the upstream branch
-            # since self.tree was locked.
-            self.branch.repository.refresh_data()
-            assert self.branch.last_revision() == last_revision, \
-                    "Branch committed to while refreshing it. Not proceeding."
-            assert not self.tree.changes_from(
-                    self.tree.basis_tree()).has_changed(), \
-                    "Treee altered while refreshing it. Not proceeding."
+        # Make sure we see any revisions added by the upstream branch
+        # since self.tree was locked.
+        self.branch.repository.refresh_data()
         self.branch.fetch(self.upstream_branch, last_revision=revid)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
