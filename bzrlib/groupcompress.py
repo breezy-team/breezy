@@ -1001,8 +1001,8 @@ class _BatchingBlockFetcher(object):
         # here will be wrong, so we might fetch bigger/smaller batches than
         # intended.
         if read_memo not in self.gcvf._group_cache:
-            start, end = index_memo[3:5]
-            self.total_bytes += end - start
+            byte_length = read_memo[2]
+            self.total_bytes += byte_length
         
     def empty_manager(self):
         if self.manager is not None:
@@ -1432,9 +1432,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # Batch up as many keys as we can until either:
         #  - we encounter an unadded ref, or
         #  - we run out of keys, or
-        #  - the total bytes to retrieve for this batch > 64k
+        #  - the total bytes to retrieve for this batch > 256k
         batcher = _BatchingBlockFetcher(self, locations)
-        BATCH_SIZE = 2**16
+        BATCH_SIZE = 2**18
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
