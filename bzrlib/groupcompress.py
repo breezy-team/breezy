@@ -62,16 +62,15 @@ def sort_gc_optimal(parent_map):
     # groupcompress ordering is approximately reverse topological,
     # properly grouped by file-id.
     per_prefix_map = {}
-    for item in parent_map.iteritems():
-        key = item[0]
+    for key, value in parent_map.iteritems():
         if isinstance(key, str) or len(key) == 1:
             prefix = ''
         else:
             prefix = key[0]
         try:
-            per_prefix_map[prefix].append(item)
+            per_prefix_map[prefix][key] = value
         except KeyError:
-            per_prefix_map[prefix] = [item]
+            per_prefix_map[prefix] = {key: value}
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
@@ -1075,11 +1074,14 @@ class GroupCompressVersionedFiles(VersionedFiles):
     def get_annotator(self):
         return annotate.Annotator(self)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
-        keys = self.keys()
-        for record in self.get_record_stream(keys, 'unordered', True):
-            record.get_bytes_as('fulltext')
+        if keys is None:
+            keys = self.keys()
+            for record in self.get_record_stream(keys, 'unordered', True):
+                record.get_bytes_as('fulltext')
+        else:
+            return self.get_record_stream(keys, 'unordered', True)
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -1095,6 +1097,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index._graph_index.find_ancestry(keys,
+                                                                          0)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.

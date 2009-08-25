@@ -77,6 +77,9 @@ def send(submit_branch, revision, public_branch, remember, format,
                        submit_branch)
 
         if mail_to is None or format is None:
+            # TODO: jam 20090716 we open the submit_branch here, but we *don't*
+            #       pass it down into the format creation, so it will have to
+            #       open it again
             submit_br = Branch.open(submit_branch)
             submit_config = submit_br.get_config()
             if mail_to is None:
@@ -126,7 +129,6 @@ def send(submit_branch, revision, public_branch, remember, format,
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')
         if format is None:
-            # TODO: Query submit branch for its preferred format
             format = format_registry.get()
         directive = format(branch, revision_id, submit_branch,
             public_branch, no_patch, no_bundle, message, base_revision_id)

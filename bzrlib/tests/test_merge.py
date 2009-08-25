@@ -213,6 +213,7 @@ class TestMerge(TestCaseWithTransport):
         self.assertFileEqual('text2', 'tree/sub-tree/file')
 
     def test_merge_with_missing(self):
+        self.thisFailsStrictLockCheck()
         tree_a = self.make_branch_and_tree('tree_a')
         self.build_tree_contents([('tree_a/file', 'content_1')])
         tree_a.add('file')

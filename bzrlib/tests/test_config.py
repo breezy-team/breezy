@@ -320,6 +320,7 @@ class TestConfigPath(tests.TestCase):
     def setUp(self):
         super(TestConfigPath, self).setUp()
         os.environ['HOME'] = '/home/bogus'
+        os.environ['XDG_CACHE_DIR'] = ''
         if sys.platform == 'win32':
             os.environ['BZR_HOME'] = \
                 r'C:\Documents and Settings\bogus\Application Data'
@@ -346,6 +347,10 @@ class TestConfigPath(tests.TestCase):
     def test_authentication_config_filename(self):
         self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
+
+    def test_xdg_cache_dir(self):
+        self.assertEqual(config.xdg_cache_dir(),
+            '/home/bogus/.cache')
 
 
 class TestIniConfig(tests.TestCase):

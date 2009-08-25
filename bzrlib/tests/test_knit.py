@@ -73,13 +73,13 @@ class _CompiledKnitFeature(Feature):
 
     def _probe(self):
         try:
-            import bzrlib._knit_load_data_c
+            import bzrlib._knit_load_data_pyx
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._knit_load_data_c'
+        return 'bzrlib._knit_load_data_pyx'
 
 CompiledKnitFeature = _CompiledKnitFeature()
 
@@ -366,7 +366,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         :return: (versioned_file, reload_counter)
             versioned_file  a KnitVersionedFiles using the packs for access
         """
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('rev-1', None, [
             ('add', ('', 'root-id', 'directory', None)),
@@ -1316,7 +1316,7 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        from bzrlib._knit_load_data_c import _load_data_c
+        from bzrlib._knit_load_data_pyx import _load_data_c
         knit._load_data = _load_data_c
         allow_writes = lambda: mode == 'w'
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)

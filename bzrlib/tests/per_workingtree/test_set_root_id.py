@@ -23,6 +23,9 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 class TestSetRootId(TestCaseWithWorkingTree):
 
     def test_set_and_read_unicode(self):
+        # This test tests that setting the root doesn't flush, so it
+        # deliberately tests concurrent access that isn't possible on windows.
+        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('a-tree')
         # setting the root id allows it to be read via get_root_id.
         root_id = u'\xe5n-id'.encode('utf8')

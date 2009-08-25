@@ -1209,10 +1209,10 @@ class InterTree(InterObject):
                         old_entry, new_entry)
                 else:
                     changes = True
+                # Get this parents parent to examine.
+                new_parent_id = result[4][1]
+                precise_file_ids.add(new_parent_id)
                 if changes:
-                    # Get this parents parent.
-                    new_parent_id = result[4][1]
-                    precise_file_ids.add(new_parent_id)
                     if (result[6][0] == 'directory' and
                         result[6][1] != 'directory'):
                         # This stopped being a directory, the old children have

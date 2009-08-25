@@ -513,6 +513,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_merge_revert(self):
         from bzrlib.merge import merge_inner
+        self.thisFailsStrictLockCheck()
         this = self.make_branch_and_tree('b1')
         open('b1/a', 'wb').write('a test\n')
         this.add('a')

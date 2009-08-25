@@ -603,6 +603,9 @@ class cmd_add(Command):
     branches that will be merged later (without showing the two different
     adds as a conflict). It is also useful when merging another project
     into a subdirectory of this one.
+    
+    Any files matching patterns in the ignore list will not be added
+    unless they are explicitly mentioned.
     """
     takes_args = ['file*']
     takes_options = [
@@ -616,7 +619,7 @@ class cmd_add(Command):
                help='Lookup file ids from this tree.'),
         ]
     encoding_type = 'replace'
-    _see_also = ['remove']
+    _see_also = ['remove', 'ignore']
 
     def run(self, file_list, no_recurse=False, dry_run=False, verbose=False,
             file_ids_from=None):
@@ -654,14 +657,6 @@ class cmd_add(Command):
                     for path in ignored[glob]:
                         self.outf.write("ignored %s matching \"%s\"\n"
                                         % (path, glob))
-            else:
-                match_len = 0
-                for glob, paths in ignored.items():
-                    match_len += len(paths)
-                self.outf.write("ignored %d file(s).\n" % match_len)
-            self.outf.write("If you wish to add ignored files, "
-                            "please add them explicitly by name. "
-                            "(\"bzr ignored\" gives a list)\n")
 
 
 class cmd_mkdir(Command):
@@ -1172,6 +1167,9 @@ class cmd_branch(Command):
         help='Hard-link working tree files where possible.'),
         Option('no-tree',
             help="Create a branch without a working-tree."),
+        Option('switch',
+            help="Switch the checkout in the current directory "
+                 "to the new branch."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1188,9 +1186,9 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False):
+            use_existing_dir=False, switch=False):
+        from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
-
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if (accelerator_tree is not None and
@@ -1250,6 +1248,12 @@ class cmd_branch(Command):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())
+            if switch:
+                # Switch to the new branch
+                wt, _ = WorkingTree.open_containing('.')
+                _mod_switch.switch(wt.bzrdir, branch)
+                note('Switched to branch: %s',
+                    urlutils.unescape_for_display(branch.base, 'utf-8'))
         finally:
             br_from.unlock()
 
@@ -3365,6 +3369,8 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('lsprof-tests',
+                            help='Generate lsprof output for each test.'),
                      Option('cache-dir', type=str,
                             help='Cache intermediate benchmark output in this '
                                  'directory.'),
@@ -3411,7 +3417,7 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None):
+            parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3451,6 +3457,7 @@ class cmd_selftest(Command):
                               "transport": transport,
                               "test_suite_factory": test_suite_factory,
                               "lsprof_timed": lsprof_timed,
+                              "lsprof_tests": lsprof_tests,
                               "bench_history": benchfile,
                               "matching_tests_first": first,
                               "list_only": list_only,

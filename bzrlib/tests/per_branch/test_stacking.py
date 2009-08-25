@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -149,8 +150,8 @@ class TestStacking(TestCaseWithBranch):
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -172,8 +173,8 @@ class TestStacking(TestCaseWithBranch):
         new_dir = remote_bzrdir.sprout('newbranch', stacked=True)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
-        new_tree = new_dir.open_workingtree()
-        new_branch_revid = new_tree.commit('something local')
+        tree = new_dir.open_branch().create_checkout('local')
+        new_branch_revid = tree.commit('something local')
         self.assertRevisionNotInRepository('mainline', new_branch_revid)
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
@@ -273,14 +274,28 @@ class TestStacking(TestCaseWithBranch):
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
                           cloned_bzrdir.open_branch().get_stacked_on_url)
 
+    def make_stacked_on_matching(self, source):
+        if source.repository.supports_rich_root():
+            if source.repository._format.supports_chks:
+                format = "2a"
+            else:
+                format = "1.9-rich-root"
+        else:
+            format = "1.9"
+        return self.make_branch('stack-on', format)
+
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        stack_on = self.make_branch('stack-on')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.sprout('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -288,12 +303,16 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        stack_on = self.make_branch('stack-on')
+        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+            raise TestNotApplicable('Branch format 4 does not autoupgrade.')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         target = source.bzrdir.clone('target').open_branch()
-        if self.branch_format.supports_stacking():
+        # When we clone we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -303,13 +322,15 @@ class TestStacking(TestCaseWithBranch):
         """Obey policy where possible, ignore otherwise."""
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
-        stack_on = self.make_branch('stack-on')
+        source = self.make_branch('source')
+        stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
         parent_bzrdir.get_config().set_default_stack_on('stack-on')
-        source = self.make_branch('source')
         url = self.make_smart_server('target').base
         target = source.bzrdir.sprout(url).open_branch()
-        if self.branch_format.supports_stacking():
+        # When we sprout we upgrade the branch when there is a default stack_on
+        # set by a config *and* the targeted branch supports stacking.
+        if stack_on._format.supports_stacking():
             self.assertEqual('../stack-on', target.get_stacked_on_url())
         else:
             self.assertRaises(
@@ -332,7 +353,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_fetch_copies_from_stacked_on_and_stacked(self):
         stacked, unstacked = self.prepare_stacked_on_fetch()
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         unstacked.fetch(stacked.branch.repository, 'rev2')
         unstacked.get_revision('rev1')
         unstacked.get_revision('rev2')
@@ -345,22 +367,24 @@ class TestStacking(TestCaseWithBranch):
         # repository boundaries.  however, i didn't actually get this test to
         # fail on that code. -- mbp
         # see https://bugs.launchpad.net/bzr/+bug/252821
-        if not self.branch_format.supports_stacking():
+        stack_on = self.make_branch_and_tree('stack-on')
+        if not stack_on.branch._format.supports_stacking():
             raise TestNotApplicable("%r does not support stacking"
                 % self.branch_format)
-        stack_on = self.make_branch_and_tree('stack-on')
         text_lines = ['line %d blah blah blah\n' % i for i in range(20)]
         self.build_tree_contents([('stack-on/a', ''.join(text_lines))])
         stack_on.add('a')
         stack_on.commit('base commit')
         stacked_dir = stack_on.bzrdir.sprout('stacked', stacked=True)
-        stacked_tree = stacked_dir.open_workingtree()
+        stacked_branch = stacked_dir.open_branch()
+        local_tree = stack_on.bzrdir.sprout('local').open_workingtree()
         for i in range(20):
             text_lines[0] = 'changed in %d\n' % i
-            self.build_tree_contents([('stacked/a', ''.join(text_lines))])
-            stacked_tree.commit('commit %d' % i)
-        stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+            self.build_tree_contents([('local/a', ''.join(text_lines))])
+            local_tree.commit('commit %d' % i)
+            local_tree.branch.push(stacked_branch)
+        stacked_branch.repository.pack()
+        check.check_dwim(stacked_branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -384,7 +408,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):
@@ -469,7 +493,8 @@ class TestStacking(TestCaseWithBranch):
         except errors.NoWorkingTree:
             stacked = stacked_dir.open_branch().create_checkout(
                 'stacked-checkout', lightweight=True)
-        stacked.commit('second commit', rev_id='rev2')
+        tree = stacked.branch.create_checkout('local')
+        tree.commit('second commit', rev_id='rev2')
         # Sanity check: stacked's repo should not contain rev1, otherwise this
         # test isn't testing what it's supposed to.
         repo = stacked.branch.repository.bzrdir.open_repository()

@@ -963,7 +963,7 @@ cdef int _versioned_minikind(char minikind):
 
 cdef class ProcessEntryC:
 
-    cdef int doing_exact_expansion
+    cdef int doing_consistency_expansion
     cdef object old_dirname_to_file_id # dict
     cdef object new_dirname_to_file_id # dict
     cdef object last_source_parent
@@ -995,7 +995,7 @@ cdef class ProcessEntryC:
     cdef object current_block_list
     cdef object current_dir_info
     cdef object current_dir_list
-    cdef object next_exact_files # list
+    cdef object _pending_consistent_entries # list
     cdef int path_index
     cdef object root_dir_info
     cdef object bisect_left
@@ -1008,7 +1008,7 @@ cdef class ProcessEntryC:
     def __init__(self, include_unchanged, use_filesystem_for_exec,
         search_specific_files, state, source_index, target_index,
         want_unversioned, tree):
-        self.doing_exact_expansion = 0
+        self.doing_consistency_expansion = 0
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
         # Are we doing a partial iter_changes?
@@ -1020,7 +1020,7 @@ cdef class ProcessEntryC:
         if include_unchanged is None:
             self.include_unchanged = False
         else:
-            self.include_unchanged = include_unchanged
+            self.include_unchanged = int(include_unchanged)
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
         # for all search_indexs in each path at or under each element of
@@ -1058,7 +1058,7 @@ cdef class ProcessEntryC:
         self.current_block_pos = -1
         self.current_dir_info = None
         self.current_dir_list = None
-        self.next_exact_files = []
+        self._pending_consistent_entries = []
         self.path_index = 0
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
@@ -1126,12 +1126,12 @@ cdef class ProcessEntryC:
             else:
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if (not self.doing_exact_expansion and 
+                if (not self.doing_consistency_expansion and 
                     not osutils.is_inside_any(self.searched_specific_files,
                                              source_details[1])):
                     self.search_specific_files.add(source_details[1])
-                    # We don't expand the specific path parents here as we
-                    # only require valid deltas to the target.
+                    # expanding from a user requested path, parent expansion
+                    # for delta consistency happens later.
                 # generate the old path; this is needed for stating later
                 # as well.
                 old_path = source_details[1]
@@ -1211,6 +1211,7 @@ cdef class ProcessEntryC:
                 self.old_dirname_to_file_id[old_path] = file_id
             # parent id is the entry for the path in the target tree
             if old_basename and old_dirname == self.last_source_parent[0]:
+                # use a cached hit for non-root source entries.
                 source_parent_id = self.last_source_parent[1]
             else:
                 try:
@@ -1227,6 +1228,7 @@ cdef class ProcessEntryC:
                     self.last_source_parent[1] = source_parent_id
             new_dirname = entry[0][0]
             if entry[0][1] and new_dirname == self.last_target_parent[0]:
+                # use a cached hit for non-root target entries.
                 target_parent_id = self.last_target_parent[1]
             else:
                 try:
@@ -1343,7 +1345,7 @@ cdef class ProcessEntryC:
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if (not self.doing_exact_expansion and 
+            if (not self.doing_consistency_expansion and 
                 not osutils.is_inside_any(self.searched_specific_files,
                     target_details[1])):
                 self.search_specific_files.add(target_details[1])
@@ -1536,7 +1538,7 @@ cdef class ProcessEntryC:
             # If we reach here, the outer flow continues, which enters into the
             # per-root setup logic.
         if (self.current_dir_info is None and self.current_block is None and not
-            self.doing_exact_expansion):
+            self.doing_consistency_expansion):
             # setup iteration of this root:
             self.current_dir_list = None
             if self.root_dir_info and self.root_dir_info[2] == 'tree-reference':
@@ -1682,11 +1684,11 @@ cdef class ProcessEntryC:
             return self._iter_next()
         # Start expanding more conservatively, adding paths the user may not
         # have intended but required for consistent deltas.
-        self.doing_exact_expansion = 1
-        if not self.next_exact_files:
-            self.next_exact_files = self._next_exact_files()
-        while self.next_exact_files:
-            result, changed = self.next_exact_files.pop()
+        self.doing_consistency_expansion = 1
+        if not self._pending_consistent_entries:
+            self._pending_consistent_entries = self._next_consistent_entries()
+        while self._pending_consistent_entries:
+            result, changed = self._pending_consistent_entries.pop()
             if changed is not None:
                 return result
         raise StopIteration()
@@ -1847,7 +1849,7 @@ cdef class ProcessEntryC:
                 except StopIteration:
                     self.current_dir_info = None
 
-    cdef object _next_exact_files(self):
+    cdef object _next_consistent_entries(self):
         """Grabs the next specific file parent case to consider.
         
         :return: A list of the results, each of which is as for _process_entry.
@@ -1858,10 +1860,10 @@ cdef class ProcessEntryC:
             # Even in extremely large trees this should be modest, so currently
             # no attempt is made to optimise.
             path_utf8 = self.search_specific_file_parents.pop()
-            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
+            if path_utf8 in self.searched_exact_paths:
                 # We've examined this path.
                 continue
-            if path_utf8 in self.searched_exact_paths:
+            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
                 # We've examined this path.
                 continue
             path_entries = self.state._entries_for_path(path_utf8)
@@ -1936,7 +1938,7 @@ cdef class ProcessEntryC:
                                     continue
                                 # Path of the entry itself.
                                 self.search_specific_file_parents.add(
-                                    '/'.join(entry[0][:2]))
+                                    self.pathjoin(*entry[0][:2]))
                 if changed or self.include_unchanged:
                     results.append((result, changed))
             self.searched_exact_paths.add(path_utf8)

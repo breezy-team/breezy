@@ -37,8 +37,6 @@ from bzrlib.tests.per_intertree import TestCaseWithTwoTrees
 #        -> that is, when the renamed parent is not processed by the function.
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
-# TODO: test specific_files when the target tree has a file and the source a
-#       dir with children, same id and same path.
 # TODO: test comparisons between trees with different root ids. mbp 20070301
 #
 # TODO: More comparisons between trees with subtrees in different states.
@@ -737,6 +735,57 @@ class TestIterChanges(TestCaseWithTwoTrees):
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
                            (False, False))],
                          self.do_iter_changes(tree1, tree2))
+
+    def test_specific_content_modification_grabs_parents(self):
+        # WHen the only direct change to a specified file is a content change,
+        # and its in a reparented subtree, the parents are grabbed.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('changing', 'parent-id')
+        tree1.mkdir('changing/unchanging', 'mid-id')
+        tree1.add(['changing/unchanging/file'], ['file-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('file-id', 'a file')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('changed', 'parent-id')
+        tree2.mkdir('changed/unchanging', 'mid-id')
+        tree2.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('file-id', 'changed content')
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        # parent-id has changed, as has file-id
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'parent-id', False),
+             self.renamed(tree1, tree2, 'file-id', True)],
+             self.do_iter_changes(tree1, tree2,
+             specific_files=['changed/unchanging/file']))
+
+    def test_specific_content_modification_grabs_parents_root_changes(self):
+        # WHen the only direct change to a specified file is a content change,
+        # and its in a reparented subtree, the parents are grabbed, even if
+        # that includes the root.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.set_root_id('old')
+        tree1.mkdir('changed', 'parent-id')
+        tree1.mkdir('changed/unchanging', 'mid-id')
+        tree1.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('file-id', 'a file')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id('new')
+        tree2.mkdir('changed', 'parent-id')
+        tree2.mkdir('changed/unchanging', 'mid-id')
+        tree2.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('file-id', 'changed content')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # old is gone, new is added, parent-id has changed(reparented), as has
+        # file-id(content)
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'parent-id', False),
+             self.added(tree2, 'new'),
+             self.deleted(tree1, 'old'),
+             self.renamed(tree1, tree2, 'file-id', True)],
+             self.do_iter_changes(tree1, tree2,
+             specific_files=['changed/unchanging/file']))
 
     def test_specific_with_rename_under_new_dir_reports_new_dir(self):
         tree1 = self.make_branch_and_tree('1')
