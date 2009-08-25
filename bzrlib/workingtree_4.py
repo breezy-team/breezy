@@ -1300,6 +1300,14 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         return statvalue, sha1
 
 
+class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
+    """Dirstate working tree that supports content filtering.
+
+    The dirstate holds the hash and size of the canonical form of the file, 
+    and most methods must return that.
+    """
+
+
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.
 
@@ -1313,7 +1321,7 @@ class WorkingTree4(DirStateWorkingTree):
     """
 
 
-class WorkingTree5(DirStateWorkingTree):
+class WorkingTree5(ContentFilteringDirStateWorkingTree):
     """This is the Format 5 working tree.
 
     This differs from WorkingTree4 by:
@@ -1323,7 +1331,7 @@ class WorkingTree5(DirStateWorkingTree):
     """
 
 
-class WorkingTree6(DirStateWorkingTree):
+class WorkingTree6(ContentFilteringDirStateWorkingTree):
     """This is the Format 6 working tree.
 
     This differs from WorkingTree5 by:
