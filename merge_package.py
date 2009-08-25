@@ -21,11 +21,8 @@
 #
 
 import os
-import re
-import sys
+import shutil
 import tempfile
-
-from debian_bundle.changelog import Version
 
 from bzrlib import errors
 
@@ -129,37 +126,40 @@ def fix_ancestry_as_needed(tree, source):
             db = DistributionBranch(tree.branch, tree.branch)
             tempdir = tempfile.mkdtemp(dir=os.path.join(tree.basedir, '..'))
 
-            # Extract the merge target's upstream tree into a temporary
-            # directory.
-            db.extract_upstream_tree(ut_revid, tempdir)
-            tmp_target_utree = db.upstream_tree
-
-            # Merge upstream branch tips to obtain a shared upstream parent.
-            # This will add revision K (see graph above) to a temporary merge
-            # target upstream tree.
-            tmp_target_utree.lock_write()
             try:
-                if us_ver > ut_ver:
-                    # The source upstream tree is more recent and the
-                    # temporary target tree needs to be reshaped to match it.
-                    tmp_target_utree.revert(
-                        None, source.repository.revision_tree(us_revid))
-                    t_upstream_reverted = True
+                # Extract the merge target's upstream tree into a temporary
+                # directory.
+                db.extract_upstream_tree(ut_revid, tempdir)
+                tmp_target_utree = db.upstream_tree
 
-                tmp_target_utree.set_parent_ids((ut_revid, us_revid))
-                tmp_target_utree.commit(
-                    'Prepared upstream tree for merging into target branch.')
+                # Merge upstream branch tips to obtain a shared upstream parent.
+                # This will add revision K (see graph above) to a temporary merge
+                # target upstream tree.
+                tmp_target_utree.lock_write()
+                try:
+                    if us_ver > ut_ver:
+                        # The source upstream tree is more recent and the
+                        # temporary target tree needs to be reshaped to match it.
+                        tmp_target_utree.revert(
+                            None, source.repository.revision_tree(us_revid))
+                        t_upstream_reverted = True
+
+                    tmp_target_utree.set_parent_ids((ut_revid, us_revid))
+                    tmp_target_utree.commit(
+                        'Prepared upstream tree for merging into target branch.')
+
+                    # Merge shared upstream parent into the target merge branch. This
+                    # creates revison L in the digram above.
+                    conflicts = tree.merge_from_branch(tmp_target_utree.branch)
+                    if conflicts > 0:
+                        raise errors.SharedUpstreamConflictsWithTargetPackaging()
+                    else:
+                        tree.commit('Merging shared upstream rev into target branch.')
+
+                finally:
+                    tmp_target_utree.unlock()
             finally:
-                tmp_target_utree.unlock()
-
-            # Merge shared upstream parent into the target merge branch. This
-            # creates revison L in the digram above.
-            conflicts = tree.merge_from_branch(tmp_target_utree.branch)
-            if conflicts > 0:
-                raise errors.SharedUpstreamConflictsWithTargetPackaging()
-            else:
-                tree.commit('Merging shared upstream rev into target branch.')
-
+                shutil.rmtree(tempdir)
         finally:
             tree.unlock()
     finally:
