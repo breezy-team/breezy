@@ -81,6 +81,18 @@ cdef class _KnownGraphNode:
                 PyList_Append(keys, child.key)
             return keys
 
+    property parent_keys:
+        def __get__(self):
+            if self.parents is None:
+                return None
+            
+            cdef _KnownGraphNode parent
+
+            keys = []
+            for parent in self.parents:
+                PyList_Append(keys, parent.key)
+            return keys
+    
     cdef clear_references(self):
         self.parents = None
         self.children = None
@@ -407,6 +419,29 @@ cdef class KnownGraph:
         #       shown a specific impact, yet.
         sorter = _MergeSorter(self, tip_key)
         return sorter.topo_order()
+    
+    def get_parent_keys(self, key):
+        """Get the parents for a key
+        
+        Returns a list containg the parents keys. If the key is a ghost,
+        None is returned. A KeyError will be raised if the key is not in
+        the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of parents
+        """
+        return self._nodes[key].parent_keys 
+
+    def get_child_keys(self, key):
+        """Get the children for a key
+        
+        Returns a list containg the children keys. A KeyError will be raised
+        if the key is not in the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of children
+        """
+        return self._nodes[key].child_keys    
 
 
 cdef class _MergeSortNode:
