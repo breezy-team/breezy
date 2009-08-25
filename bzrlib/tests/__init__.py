@@ -3230,6 +3230,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
             keep_only = None
         else:
             keep_only = load_test_id_list(load_list)
+        if starting_with:
+            starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                             for start in starting_with]
         if test_suite_factory is None:
             # Reduce loading time by loading modules based on the starting_with
             # patterns.
@@ -3608,8 +3611,6 @@ def test_suite(keep_only=None, starting_with=None):
     if keep_only is not None:
         id_filter = TestIdList(keep_only)
     if starting_with:
-        starting_with = [test_prefix_alias_registry.resolve_alias(start)
-                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
