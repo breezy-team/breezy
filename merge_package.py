@@ -26,6 +26,8 @@ import tempfile
 
 from bzrlib import errors
 
+from bzrlib.plugins.builddeb.errors import (
+    SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
@@ -155,7 +157,7 @@ def fix_ancestry_as_needed(tree, source):
                     # creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
                     if conflicts > 0:
-                        raise errors.SharedUpstreamConflictsWithTargetPackaging()
+                        raise SharedUpstreamConflictsWithTargetPackaging()
                     else:
                         tree.commit('Merging shared upstream rev into target branch.')
 
