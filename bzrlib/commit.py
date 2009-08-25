@@ -817,15 +817,9 @@ class Commit(object):
                     self._next_progress_entry()
                     deleted_ids.append(file_id)
                     continue
-            # We don't want to use a contents_summary anymore, but it's still
-            # part of the contract of record_entry_contents, so we fake one
-            # with the right form: (kind, length, exec,
-            # sha_or_link_target_or_tree_revid)
-            if kind == 'symlink':
-                content_summary = (kind, None, None,
-                    self.work_tree.get_symlink_target(file_id))
+            content_summary = self.work_tree.path_content_summary(path)
             # TODO: specific_files filtering before nested tree processing
-            elif kind == 'tree-reference':
+            if kind == 'tree-reference':
                 # TODO: have the builder do the nested commit just-in-time IF and
                 # only if needed.
                 # enforce repository nested tree policy.
@@ -841,10 +835,6 @@ class Commit(object):
                 else:
                     nested_revision_id = self.work_tree.get_reference_revision(file_id)
                     content_summary = (kind, None, None, nested_revision_id)
-            elif kind == 'file':
-                content_summary = (kind, None, executable, None)
-            else:
-                content_summary = (kind, None, None, None)
 
             # Record an entry for this item
             # Note: I don't particularly want to have the existing_ie
