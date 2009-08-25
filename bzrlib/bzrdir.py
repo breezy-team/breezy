@@ -129,8 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        self.open_repository()._format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,

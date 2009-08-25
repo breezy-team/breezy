@@ -19,7 +19,12 @@ from cStringIO import StringIO
 import os
 import sys
 
-from bzrlib import errors, shelf_ui, tests
+from bzrlib import (
+    errors,
+    shelf_ui,
+    revision,
+    tests,
+)
 
 
 class ExpectShelver(shelf_ui.Shelver):
@@ -241,6 +246,44 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.run()
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
         self.assertFileEqual(LINES_AJ, 'tree/foo')
+
+    @staticmethod
+    def shelve_all(tree, target_revision_id):
+        tree.lock_write()
+        try:
+            target = tree.branch.repository.revision_tree(target_revision_id)
+            shelver = shelf_ui.Shelver(tree, target, auto=True,
+                                       auto_apply=True)
+            shelver.run()
+        finally:
+            tree.unlock()
+
+    def test_shelve_old_root_deleted(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree1.commit('add root')
+        tree2 = self.make_branch_and_tree('tree2')
+        rev2 = tree2.commit('add root')
+        tree1.merge_from_branch(tree2.branch,
+                                from_revision=revision.NULL_REVISION)
+        tree1.commit('Replaced root entry')
+        # This is essentially assertNotRaises(InconsistentDelta)
+        self.expectFailure('Cannot shelve replacing a root entry',
+                           self.assertRaises, AssertionError,
+                           self.assertRaises, errors.InconsistentDelta,
+                           self.shelve_all, tree1, rev2)
+
+    def test_shelve_split(self):
+        outer_tree = self.make_branch_and_tree('outer')
+        outer_tree.commit('Add root')
+        inner_tree = self.make_branch_and_tree('outer/inner')
+        rev2 = inner_tree.commit('Add root')
+        outer_tree.subsume(inner_tree)
+        # This is essentially assertNotRaises(ValueError).
+        # The ValueError is 'None is not a valid file id'.
+        self.expectFailure('Cannot shelve a join back to the inner tree.',
+                           self.assertRaises, AssertionError,
+                           self.assertRaises, ValueError, self.shelve_all,
+                           outer_tree, rev2)
 
 
 class TestApplyReporter(TestShelver):
