@@ -3214,7 +3214,7 @@ class ProfileResult(ForwardingResult):
     While it might be cleaner do accumulate this in stopTest, addSuccess is
     where our existing output support for lsprof is, and this class aims to
     fit in with that: while it could be moved it's not necessary to accomplish
-    test profiling, nor would be be dramatically cleaner.
+    test profiling, nor would it be dramatically cleaner.
     """
 
     def startTest(self, test):
