@@ -690,6 +690,7 @@ class TestChrootedTest(tests.ChrootedTestCase):
 class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
         terminal = unittest.TestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
@@ -1848,6 +1849,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertLength(2, output.readlines())
 
     def test_lsprof_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
         calls = []
         class Test(object):
             def __call__(test, result):
