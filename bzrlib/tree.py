@@ -215,19 +215,6 @@ class Tree(object):
         """
         return self.kind(file_id)
 
-    def get_kind_and_executable_by_path(self, path):
-        """Get the kind and x-bit for a path.
-
-        :returns: (kind, execute)
-
-        Execute may be None if it can't be determined.
-        """
-        # this typically can be overridden to be more efficient
-        file_id = self.path2id(path)
-        kind = self.kind(file_id)
-        execute = self.is_executable(file_id)
-        return kind, execute
-
     def path_content_summary(self, path):
         """Get a summary of the information about path.
 
@@ -237,7 +224,8 @@ class Tree(object):
         :param path: A relative path within the tree.
         :return: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
-            size is present if kind is file, None otherwise.
+            size is present if kind is file and the size of the 
+                canonical form can be cheaply determined, None otherwise.
             exec is None unless kind is file and the platform supports the 'x'
                 bit.
             sha1-or-link is the link target if kind is symlink, or the sha1 if

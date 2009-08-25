@@ -1684,7 +1684,7 @@ class _PreviewTree(tree.Tree):
         return self.__by_parent
 
     def _comparison_data(self, entry, path):
-        kind, executable = self.get_kind_and_executable_by_path(path)
+        kind, size, executable, link_or_sha1 = self.path_content_summary(path)
         if kind == 'missing':
             kind = None
             executable = False
@@ -1954,31 +1954,6 @@ class _PreviewTree(tree.Tree):
         if supports_executable():
             executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
-
-    def get_kind_and_executable_by_path(self, path):
-        trans_id = self._path2trans_id(path)
-        tt = self._transform
-        tree_path = tt._tree_id_paths.get(trans_id)
-        kind = tt._new_contents.get(trans_id)
-        if kind is None:
-            if tree_path is None or trans_id in tt._removed_contents:
-                return 'missing', None, None, None
-            kind, executable = tt._tree.get_kind_and_executable_by_path(tree_path)
-        else:
-            limbo_name = tt._limbo_name(trans_id)
-            if trans_id in tt._new_reference_revision:
-                kind = 'tree-reference'
-            if kind == 'file':
-                statval = os.lstat(limbo_name)
-                if not supports_executable():
-                    executable = None
-                else:
-                    executable = statval.st_mode & S_IEXEC
-            else:
-                executable = None
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
-        return kind, executable
 
     def iter_changes(self, from_tree, include_unchanged=False,
                       specific_files=None, pb=None, extra_trees=None,

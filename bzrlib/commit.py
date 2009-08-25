@@ -801,8 +801,8 @@ class Commit(object):
                 # Skip excluded paths. Excluded paths are processed by
                 # _update_builder_with_changes.
                 continue
-            kind, executable = self.work_tree.get_kind_and_executable_by_path(
-                path)
+            content_summary = self.work_tree.path_content_summary(path)
+            kind = content_summary[0]
             # Note that when a filter of specific files is given, we must only
             # skip/record deleted files matching that filter.
             if not specific_files or is_inside_any(specific_files, path):
@@ -817,7 +817,6 @@ class Commit(object):
                     self._next_progress_entry()
                     deleted_ids.append(file_id)
                     continue
-            content_summary = self.work_tree.path_content_summary(path)
             # TODO: specific_files filtering before nested tree processing
             if kind == 'tree-reference':
                 # TODO: have the builder do the nested commit just-in-time IF and

@@ -737,28 +737,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if updated:
             self.set_parent_ids(parents, allow_leftmost_as_ghost=True)
 
-    def get_kind_and_executable_by_path(self, path, _lstat=os.lstat,
-        _mapper=osutils.file_kind_from_stat_mode):
-        abspath = self.abspath(path)
-        try:
-            stat_result = _lstat(abspath)
-        except OSError, e:
-            if getattr(e, 'errno', None) == errno.ENOENT:
-                # no file.
-                return 'missing', None
-            # propagate other errors
-            raise
-        kind = _mapper(stat_result.st_mode)
-        if kind == 'file':
-            executable = self._is_executable_from_path_and_stat(path, stat_result)
-            return kind, executable
-        elif kind == 'directory':
-            # perhaps it looks like a plain directory, but it's really a
-            # reference.
-            if self._directory_is_tree_reference(path):
-                kind = 'tree-reference'
-        return kind, None
-
     def path_content_summary(self, path, _lstat=os.lstat,
         _mapper=osutils.file_kind_from_stat_mode):
         """See Tree.path_content_summary."""
