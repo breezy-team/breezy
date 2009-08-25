@@ -817,16 +817,15 @@ class Commit(object):
                     self._next_progress_entry()
                     deleted_ids.append(file_id)
                     continue
-            # TODO: specific_files filtering before nested tree processing
+            # TODO: have the builder do the nested commit just-in-time IF and
+            # only if needed.
             if kind == 'tree-reference':
-                # TODO: have the builder do the nested commit just-in-time IF and
-                # only if needed.
                 # enforce repository nested tree policy.
                 if (not self.work_tree.supports_tree_reference() or
                     # repository does not support it either.
                     not self.branch.repository._format.supports_tree_reference):
                     kind = 'directory'
-                    content_summary = ('directory', None, None, None)
+                    content_summary = (kind, None, None, None)
                 elif self.recursive == 'down':
                     nested_revision_id = self._commit_nested_tree(
                         file_id, path)
