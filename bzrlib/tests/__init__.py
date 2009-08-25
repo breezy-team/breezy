@@ -579,13 +579,22 @@ class TextTestRunner(object):
                  bench_history=None,
                  list_only=False,
                  strict=False,
+                 result_decorators=None,
                  ):
+        """Create a TextTestRunner.
+
+        :param result_decorators: An optional list of decorators to apply
+            to the result object being used by the runner. Decorators are
+            applied left to right - the first element in the list is the 
+            innermost decorator.
+        """
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
         self.list_only = list_only
         self._strict = strict
+        self._result_decorators = result_decorators or []
 
     def run(self, test):
         "Run the given test case or test suite."
@@ -600,6 +609,9 @@ class TextTestRunner(object):
                               bench_history=self._bench_history,
                               strict=self._strict,
                               )
+        run_result = result
+        for decorator in self._result_decorators:
+            run_result = decorator(run_result)
         result.stop_early = self.stop_on_failure
         result.report_starting()
         if self.list_only:
@@ -614,13 +626,13 @@ class TextTestRunner(object):
             try:
                 import testtools
             except ImportError:
-                test.run(result)
+                test.run(run_result)
             else:
                 if isinstance(test, testtools.ConcurrentTestSuite):
                     # We need to catch bzr specific behaviors
-                    test.run(BZRTransformingResult(result))
+                    test.run(BZRTransformingResult(run_result))
                 else:
-                    test.run(result)
+                    test.run(run_result)
             run = result.testsRun
             actionTaken = "Ran"
         stopTime = time.time()
@@ -2762,7 +2774,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               strict=False,
               runner_class=None,
               suite_decorators=None,
-              stream=None):
+              stream=None,
+              result_decorators=None,
+              ):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2785,6 +2799,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             bench_history=bench_history,
                             list_only=list_only,
                             strict=strict,
+                            result_decorators=result_decorators,
                             )
     runner.stop_on_failure=stop_on_failure
     # built in decorator factories:
@@ -3131,7 +3146,7 @@ def reinvoke_for_tests(suite):
     return result
 
 
-class BZRTransformingResult(unittest.TestResult):
+class ForwardingResult(unittest.TestResult):
 
     def __init__(self, target):
         unittest.TestResult.__init__(self)
@@ -3142,6 +3157,21 @@ class BZRTransformingResult(unittest.TestResult):
 
     def stopTest(self, test):
         self.result.stopTest(test)
+
+    def addSkip(self, test, reason):
+        self.result.addSkip(test, reason)
+
+    def addSuccess(self, test):
+        self.result.addSuccess(test)
+
+    def addError(self, test, err):
+        self.result.addError(test, err)
+
+    def addFailure(self, test, err):
+        self.result.addFailure(test, err)
+
+
+class BZRTransformingResult(ForwardingResult):
 
     def addError(self, test, err):
         feature = self._error_looks_like('UnavailableFeature: ', err)
@@ -3158,12 +3188,6 @@ class BZRTransformingResult(unittest.TestResult):
         else:
             self.result.addFailure(test, err)
 
-    def addSkip(self, test, reason):
-        self.result.addSkip(test, reason)
-
-    def addSuccess(self, test):
-        self.result.addSuccess(test)
-
     def _error_looks_like(self, prefix, err):
         """Deserialize exception and returns the stringify value."""
         import subunit
@@ -3179,6 +3203,38 @@ class BZRTransformingResult(unittest.TestResult):
                 if lines[-1].startswith(prefix):
                     value = lines[-1][len(prefix):]
         return value
+
+
+class ProfileResult(ForwardingResult):
+    """Generate profiling data for all activity between start and success.
+    
+    The profile data is appended to the test's _benchcalls attribute and can
+    be accessed by the forwarded-to TestResult.
+
+    While it might be cleaner do accumulate this in stopTest, addSuccess is
+    where our existing output support for lsprof is, and this class aims to
+    fit in with that: while it could be moved it's not necessary to accomplish
+    test profiling, nor would it be dramatically cleaner.
+    """
+
+    def startTest(self, test):
+        self.profiler = bzrlib.lsprof.BzrProfiler()
+        self.profiler.start()
+        ForwardingResult.startTest(self, test)
+
+    def addSuccess(self, test):
+        stats = self.profiler.stop()
+        try:
+            calls = test._benchcalls
+        except AttributeError:
+            test._benchcalls = []
+            calls = test._benchcalls
+        calls.append(((test.id(), "", ""), stats))
+        ForwardingResult.addSuccess(self, test)
+
+    def stopTest(self, test):
+        ForwardingResult.stopTest(self, test)
+        self.profiler = None
 
 
 # Controlled by "bzr selftest -E=..." option
@@ -3208,6 +3264,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              runner_class=None,
              suite_decorators=None,
              stream=None,
+             lsprof_tests=False,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -3242,6 +3299,9 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         if starting_with:
             # But always filter as requested.
             suite = filter_suite_by_id_startswith(suite, starting_with)
+        result_decorators = []
+        if lsprof_tests:
+            result_decorators.append(ProfileResult)
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure,
                      transport=transport,
@@ -3255,6 +3315,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      runner_class=runner_class,
                      suite_decorators=suite_decorators,
                      stream=stream,
+                     result_decorators=result_decorators,
                      )
     finally:
         default_transport = old_transport

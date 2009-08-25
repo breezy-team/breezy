@@ -67,8 +67,15 @@ API Changes
 Internals
 *********
 
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
 Testing
 *******
+
+* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
+  be output for every test. Note that this is very verbose! (Robert Collins)
 
 bzr 1.18
 ########
