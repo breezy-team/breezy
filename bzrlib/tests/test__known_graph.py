@@ -813,3 +813,7 @@ class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
                            'e':('b', 'c', 'd'),
                            'f':('d', 'Z'),
                            })
+
+    def test_skip_ghost(self):
+        self.assertSorted(['b', 'c', 'a'],
+                          {'a':(), 'b':('a', 'ghost'), 'c':('a',)})

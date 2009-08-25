@@ -251,10 +251,9 @@ class KnownGraph(object):
                              reverse=True)
             while pending:
                 node = pending.pop()
-                # TODO: test ghosts
-                # if node.parent_keys is None:
-                #     # Ghost node, skip it
-                #     continue
+                if node.parent_keys is None:
+                    # Ghost node, skip it
+                    continue
                 result.append(node.key)
                 for parent_key in sorted(node.parent_keys, reverse=True):
                     parent_node = self._nodes[parent_key]

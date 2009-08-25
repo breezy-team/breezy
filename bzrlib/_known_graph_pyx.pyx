@@ -473,10 +473,8 @@ cdef class KnownGraph:
             pending = _sort_list_nodes(nodes, 1)
             while pending:
                 node = pending.pop()
-                # TODO: test ghosts
-                # if node.parent_keys is None:
-                #     # Ghost node, skip it
-                #     continue
+                if node.parents is None:
+                    continue
                 result.append(node.key)
                 parents = _sort_list_nodes(list(node.parents), 1)
                 for pos from 0 <= pos < PyList_GET_SIZE(parents):
