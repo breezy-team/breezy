@@ -153,6 +153,13 @@ Improvements
   example, ``bzr log -r -10..-1 -n0 bzr.dev`` is 2.5s down to 1.0s.
   (John Arbash Meinel)
 
+* The internal core code that handles specific file operations like
+  ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
+  include the parent directories if they have altered, and when a
+  directory stops being a directory its children are always included. This
+  fixes a number of causes for ``InconsistentDelta`` errors, and permits
+  faster commit of specific paths. (Robert Collins, #347649)
+
 Documentation
 *************
 

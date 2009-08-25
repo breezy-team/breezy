@@ -3166,15 +3166,18 @@ class ProcessEntryPython(object):
 
     __slots__ = ["old_dirname_to_file_id", "new_dirname_to_file_id",
         "last_source_parent", "last_target_parent", "include_unchanged",
-        "use_filesystem_for_exec", "utf8_decode", "searched_specific_files",
-        "search_specific_files", "state", "source_index", "target_index",
-        "want_unversioned", "tree"]
+        "partial", "use_filesystem_for_exec", "utf8_decode",
+        "searched_specific_files", "search_specific_files",
+        "searched_exact_paths", "search_specific_file_parents", "seen_ids",
+        "state", "source_index", "target_index", "want_unversioned", "tree"]
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
         search_specific_files, state, source_index, target_index,
         want_unversioned, tree):
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
+        # Are we doing a partial iter_changes?
+        self.partial = search_specific_files != set([''])
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
@@ -3183,14 +3186,25 @@ class ProcessEntryPython(object):
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
         # for all search_indexs in each path at or under each element of
-        # search_specific_files, if the detail is relocated: add the id, and add the
-        # relocated path as one to search if its not searched already. If the
-        # detail is not relocated, add the id.
+        # search_specific_files, if the detail is relocated: add the id, and
+        # add the relocated path as one to search if its not searched already.
+        # If the detail is not relocated, add the id.
         self.searched_specific_files = set()
+        # When we search exact paths without expanding downwards, we record
+        # that here.
+        self.searched_exact_paths = set()
         self.search_specific_files = search_specific_files
+        # The parents up to the root of the paths we are searching.
+        # After all normal paths are returned, these specific items are returned.
+        self.search_specific_file_parents = set()
+        # The ids we've sent out in the delta.
+        self.seen_ids = set()
         self.state = state
         self.source_index = source_index
         self.target_index = target_index
+        if target_index != 0:
+            # A lot of code in here depends on target_index == 0
+            raise errors.BzrError('unsupported target index')
         self.want_unversioned = want_unversioned
         self.tree = tree
 
@@ -3198,15 +3212,15 @@ class ProcessEntryPython(object):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
-            the path of entry. If None, then the path is considered absent.
-            (Perhaps we should pass in a concrete entry for this ?)
+            the path of entry. If None, then the path is considered absent in 
+            the target (Perhaps we should pass in a concrete entry for this ?)
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
             decode.
         :return: (iter_changes_result, changed). If the entry has not been
             handled then changed is None. Otherwise it is False if no content
-            or metadata changes have occured, and None if any content or
-            metadata change has occured. If self.include_unchanged is True then
+            or metadata changes have occurred, and True if any content or
+            metadata change has occurred. If self.include_unchanged is True then
             if changed is not None, iter_changes_result will always be a result
             tuple. Otherwise, iter_changes_result is None unless changed is
             True.
@@ -3463,6 +3477,25 @@ class ProcessEntryPython(object):
     def __iter__(self):
         return self
 
+    def _gather_result_for_consistency(self, result):
+        """Check a result we will yield to make sure we are consistent later.
+        
+        This gathers result's parents into a set to output later.
+
+        :param result: A result tuple.
+        """
+        if not self.partial or not result[0]:
+            return
+        self.seen_ids.add(result[0])
+        new_path = result[1][1]
+        if new_path:
+            # Not the root and not a delete: queue up the parents of the path.
+            self.search_specific_file_parents.update(
+                osutils.parent_directories(new_path.encode('utf8')))
+            # Add the root directory which parent_directories does not
+            # provide.
+            self.search_specific_file_parents.add('')
+
     def iter_changes(self):
         """Iterate over the changes."""
         utf8_decode = cache_utf8._utf8_decode
@@ -3546,6 +3579,8 @@ class ProcessEntryPython(object):
                 result, changed = _process_entry(entry, root_dir_info)
                 if changed is not None:
                     path_handled = True
+                    if changed:
+                        self._gather_result_for_consistency(result)
                     if changed or self.include_unchanged:
                         yield result
             if self.want_unversioned and not path_handled and root_dir_info:
@@ -3664,6 +3699,8 @@ class ProcessEntryPython(object):
                             # advance the entry only, after processing.
                             result, changed = _process_entry(current_entry, None)
                             if changed is not None:
+                                if changed:
+                                    self._gather_result_for_consistency(result)
                                 if changed or self.include_unchanged:
                                     yield result
                         block_index +=1
@@ -3702,6 +3739,8 @@ class ProcessEntryPython(object):
                         # no path is fine: the per entry code will handle it.
                         result, changed = _process_entry(current_entry, current_path_info)
                         if changed is not None:
+                            if changed:
+                                self._gather_result_for_consistency(result)
                             if changed or self.include_unchanged:
                                 yield result
                     elif (current_entry[0][1] != current_path_info[1]
@@ -3723,6 +3762,8 @@ class ProcessEntryPython(object):
                             # advance the entry only, after processing.
                             result, changed = _process_entry(current_entry, None)
                             if changed is not None:
+                                if changed:
+                                    self._gather_result_for_consistency(result)
                                 if changed or self.include_unchanged:
                                     yield result
                             advance_path = False
@@ -3730,6 +3771,8 @@ class ProcessEntryPython(object):
                         result, changed = _process_entry(current_entry, current_path_info)
                         if changed is not None:
                             path_handled = True
+                            if changed:
+                                self._gather_result_for_consistency(result)
                             if changed or self.include_unchanged:
                                 yield result
                     if advance_entry and current_entry is not None:
@@ -3795,6 +3838,124 @@ class ProcessEntryPython(object):
                         current_dir_info = dir_iterator.next()
                     except StopIteration:
                         current_dir_info = None
+        for result in self._iter_specific_file_parents():
+            yield result
+
+    def _iter_specific_file_parents(self):
+        """Iter over the specific file parents."""
+        while self.search_specific_file_parents:
+            # Process the parent directories for the paths we were iterating.
+            # Even in extremely large trees this should be modest, so currently
+            # no attempt is made to optimise.
+            path_utf8 = self.search_specific_file_parents.pop()
+            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
+                # We've examined this path.
+                continue
+            if path_utf8 in self.searched_exact_paths:
+                # We've examined this path.
+                continue
+            path_entries = self.state._entries_for_path(path_utf8)
+            # We need either one or two entries. If the path in
+            # self.target_index has moved (so the entry in source_index is in
+            # 'ar') then we need to also look for the entry for this path in
+            # self.source_index, to output the appropriate delete-or-rename.
+            selected_entries = []
+            found_item = False
+            for candidate_entry in path_entries:
+                # Find entries present in target at this path:
+                if candidate_entry[1][self.target_index][0] not in 'ar':
+                    found_item = True
+                    selected_entries.append(candidate_entry)
+                # Find entries present in source at this path:
+                elif (self.source_index is not None and
+                    candidate_entry[1][self.source_index][0] not in 'ar'):
+                    found_item = True
+                    if candidate_entry[1][self.target_index][0] == 'a':
+                        # Deleted, emit it here.
+                        selected_entries.append(candidate_entry)
+                    else:
+                        # renamed, emit it when we process the directory it
+                        # ended up at.
+                        self.search_specific_file_parents.add(
+                            candidate_entry[1][self.target_index][1])
+            if not found_item:
+                raise AssertionError(
+                    "Missing entry for specific path parent %r, %r" % (
+                    path_utf8, path_entries))
+            path_info = self._path_info(path_utf8, path_utf8.decode('utf8'))
+            for entry in selected_entries:
+                if entry[0][2] in self.seen_ids:
+                    continue
+                result, changed = self._process_entry(entry, path_info)
+                if changed is None:
+                    raise AssertionError(
+                        "Got entry<->path mismatch for specific path "
+                        "%r entry %r path_info %r " % (
+                        path_utf8, entry, path_info))
+                # Only include changes - we're outside the users requested
+                # expansion.
+                if changed:
+                    self._gather_result_for_consistency(result)
+                    if (result[6][0] == 'directory' and
+                        result[6][1] != 'directory'):
+                        # This stopped being a directory, the old children have
+                        # to be included.
+                        if entry[1][self.source_index][0] == 'r':
+                            # renamed, take the source path
+                            entry_path_utf8 = entry[1][self.source_index][1]
+                        else:
+                            entry_path_utf8 = path_utf8
+                        initial_key = (entry_path_utf8, '', '')
+                        block_index, _ = self.state._find_block_index_from_key(
+                            initial_key)
+                        if block_index == 0:
+                            # The children of the root are in block index 1.
+                            block_index +=1
+                        current_block = None
+                        if block_index < len(self.state._dirblocks):
+                            current_block = self.state._dirblocks[block_index]
+                            if not osutils.is_inside(
+                                entry_path_utf8, current_block[0]):
+                                # No entries for this directory at all.
+                                current_block = None
+                        if current_block is not None:
+                            for entry in current_block[1]:
+                                if entry[1][self.source_index][0] in 'ar':
+                                    # Not in the source tree, so doesn't have to be
+                                    # included.
+                                    continue
+                                # Path of the entry itself.
+
+                                self.search_specific_file_parents.add(
+                                    osutils.pathjoin(*entry[0][:2]))
+                if changed or self.include_unchanged:
+                    yield result
+            self.searched_exact_paths.add(path_utf8)
+
+    def _path_info(self, utf8_path, unicode_path):
+        """Generate path_info for unicode_path.
+
+        :return: None if unicode_path does not exist, or a path_info tuple.
+        """
+        abspath = self.tree.abspath(unicode_path)
+        try:
+            stat = os.lstat(abspath)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                # the path does not exist.
+                return None
+            else:
+                raise
+        utf8_basename = utf8_path.rsplit('/', 1)[-1]
+        dir_info = (utf8_path, utf8_basename,
+            osutils.file_kind_from_stat_mode(stat.st_mode), stat,
+            abspath)
+        if dir_info[2] == 'directory':
+            if self.tree._directory_is_tree_reference(
+                unicode_path):
+                self.root_dir_info = self.root_dir_info[:2] + \
+                    ('tree-reference',) + self.root_dir_info[3:]
+        return dir_info
 
 
 # Try to load the compiled form if possible
