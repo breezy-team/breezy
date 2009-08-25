@@ -1923,7 +1923,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         try:
             import bzrlib.transport.sftp
         except errors.ParamikoNotPresent:
-            raise TestSkipped("Paramiko not present")
+            raise tests.TestSkipped("Paramiko not present")
         self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
