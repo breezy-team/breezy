@@ -54,10 +54,12 @@ SHA1 hash of a file, it's the hash of the canonical form.
 Dirstate interactions
 *********************
 
-The dirstate file stores, in the column for the working copy, the cached
+The dirstate file should store, in the column for the working copy, the cached
 hash and size of the canonical form, and the packed stat fingerprint for
 which that cache is valid.  This implies that the stored size will
-in general be different to the size in the packed stat.
+in general be different to the size in the packed stat.  (However, it
+may not always do this correctly - see
+<https://bugs.edge.launchpad.net/bzr/+bug/418439>.)
 
 The dirstate is given a SHA1Provider instance by its tree.  This class
 can calculate the (canonical) hash and size given a filename.  This
@@ -69,8 +71,8 @@ account.
 User interface
 **************
 
-Most commands that deal with the text of files should present the
-convenient form, but also have an option to get the canonical form.
+Most commands that deal with the text of files present the
+canonical form.  Some have options to choose.
 
 
 Performance considerations
@@ -114,7 +116,8 @@ Future ideas and open issues
   becomes inconsistent.
 
   This would be useful in allowing you to get a filtered view of a
-  historical tree, eg to export it or diff it.
+  historical tree, eg to export it or diff it.  At the moment export
+  needs to have its own code to do the filtering.
 
   The convenient-form tree would talk to disk, and the convenient-form
   tree would sit on top of that and be used by most other bzr code.
@@ -125,8 +128,9 @@ Future ideas and open issues
   store in the dirstate.  This can perhaps be handled by the
   SHA1Provider or a similar hook.
 
-* Content filtering at the moment is a bit specific to on-disk trees (eg
-  in the definition of ``SHA1Provider``) but that seems unnecessary.
+* Content filtering at the moment is a bit specific to on-disk trees:
+  for instance ``SHA1Provider`` goes directly to disk, but it seems like
+  this is not necessary.
 
 
 See also
