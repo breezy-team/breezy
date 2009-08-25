@@ -63,6 +63,9 @@ Improvements
 * ``bzr push`` locally on windows will no longer give a locking error with
   dirstate based formats. (Robert Collins)
 
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
 * Commit of specific files no longer prevents using the the iter_changes
   codepath. On 2a repositories, commit of specific files should now be as
   fast, or slightly faster, than a full commit. (Robert Collins)
@@ -82,6 +85,10 @@ Documentation
 
 API Changes
 ***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
 
 Internals
 *********
