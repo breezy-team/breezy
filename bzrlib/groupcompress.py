@@ -1084,7 +1084,6 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
 
 
-
 class GroupCompressVersionedFiles(VersionedFiles):
     """A group-compress based VersionedFiles implementation."""
 
