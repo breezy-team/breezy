@@ -2498,6 +2498,15 @@ class TestCaseWithTransport(TestCaseInTempDir):
         repository will also be accessed locally. Otherwise a lightweight
         checkout is created and returned.
 
+        We do this because we can't physically create a tree in the local
+        path, with a branch reference to the transport_factory url, and
+        a branch + repository in the vfs_transport, unless the vfs_transport
+        namespace is distinct from the local disk - the two branch objects
+        would collide. While we could construct a tree with its branch object
+        pointing at the transport_factory transport in memory, reopening it
+        would behaving unexpectedly, and has in the past caused testing bugs
+        when we tried to do it that way.
+
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
         """

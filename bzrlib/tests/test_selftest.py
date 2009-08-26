@@ -1773,16 +1773,16 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('a')
         self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
 
-
-class TestSFTPMakeBranchAndTree(test_sftp_transport.TestCaseWithSFTPServer):
-
-    def test_make_tree_for_sftp_branch(self):
-        """Transports backed by local directories create local trees."""
-        # NB: This is arguably a bug in the definition of make_branch_and_tree.
+    def test_make_tree_for_local_vfs_backed_transport(self):
+        # make_branch_and_tree has to use local branch and repositories
+        # when the vfs transport and local disk are colocated, even if
+        # a different transport is in use for url generation.
+        from bzrlib.transport.fakevfat import FakeVFATServer
+        self.transport_server = FakeVFATServer
+        self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
-        self.failIf(base.startswith('sftp'),
-                'base %r is on sftp but should be local' % base)
+        self.assertStartsWith(base, 'file://')
         self.assertEquals(tree.bzrdir.root_transport,
                 tree.branch.bzrdir.root_transport)
         self.assertEquals(tree.bzrdir.root_transport,
