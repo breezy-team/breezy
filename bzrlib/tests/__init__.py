@@ -608,7 +608,6 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False,
                  strict=False,
                  result_decorators=None,
                  ):
@@ -623,20 +622,11 @@ class TextTestRunner(object):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
-        self.list_only = list_only
         self._strict = strict
         self._result_decorators = result_decorators or []
 
     def run(self, test):
         "Run the given test case or test suite."
-        if self.list_only:
-            if self.verbosity >= 2:
-                self.stream.writeln("Listing tests only ...\n")
-            run = 0
-            for t in iter_suite_tests(test):
-                self.stream.writeln("%s" % (t.id()))
-                run += 1
-            return None
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
@@ -2804,7 +2794,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
-                            list_only=list_only,
                             strict=strict,
                             result_decorators=result_decorators,
                             )
@@ -2827,9 +2816,15 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
-    result = runner.run(suite)
     if list_only:
+        # Done after test suite decoration to allow randomisation etc
+        # to take effect, though that is of marginal benefit.
+        if verbosity >= 2:
+            stream.write("Listing tests only ...\n")
+        for t in iter_suite_tests(suite):
+            stream.write("%s\n" % (t.id()))
         return True
+    result = runner.run(suite)
     if strict:
         return result.wasStrictlySuccessful()
     else:
