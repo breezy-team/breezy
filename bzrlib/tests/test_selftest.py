@@ -2117,7 +2117,8 @@ class StubProcess(object):
         return self.out, self.err
 
 
-class TestRunBzrSubprocess(tests.TestCaseWithTransport):
+class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Base class for tests testing how we might run bzr."""
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
@@ -2133,6 +2134,9 @@ class TestRunBzrSubprocess(tests.TestCaseWithTransport):
             'skip_if_plan_to_signal':skip_if_plan_to_signal,
             'working_dir':working_dir, 'allow_plugins':allow_plugins})
         return self.next_subprocess
+
+
+class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
     def assertRunBzrSubprocess(self, expected_args, process, *args, **kwargs):
         """Run run_bzr_subprocess with args and kwargs using a stubbed process.
@@ -2200,6 +2204,32 @@ class TestRunBzrSubprocess(tests.TestCaseWithTransport):
     def test_allow_plugins(self):
         self.assertRunBzrSubprocess({'allow_plugins': True},
             StubProcess(), '', allow_plugins=True)
+
+
+class TestFinishBzrSubprocess(TestWithFakedStartBzrSubprocess):
+
+    def test_finish_bzr_subprocess_with_error(self):
+        """finish_bzr_subprocess allows specification of the desired exit code.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=3)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_bzr_subprocess_ignoring_retcode(self):
+        """finish_bzr_subprocess allows the exit code to be ignored."""
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=None)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_subprocess_with_unexpected_retcode(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+                          process)
 
 
 class _DontSpawnProcess(Exception):
@@ -2285,39 +2315,8 @@ class TestStartBzrSubProcess(tests.TestCase):
         self.assertEqual(['foo', 'current'], chdirs)
 
 
-class TestBzrSubprocess(tests.TestCaseWithTransport):
-
-    def test_start_and_stop_bzr_subprocess(self):
-        """We can start and perform other test actions while that process is
-        still alive.
-        """
-        process = self.start_bzr_subprocess(['--version'])
-        result = self.finish_bzr_subprocess(process)
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertEqual('', result[1])
-
-    def test_start_and_stop_bzr_subprocess_with_error(self):
-        """finish_bzr_subprocess allows specification of the desired exit code.
-        """
-        process = self.start_bzr_subprocess(['--versionn'])
-        result = self.finish_bzr_subprocess(process, retcode=3)
-        self.assertEqual('', result[0])
-        self.assertContainsRe(result[1], 'unknown command')
-
-    def test_start_and_stop_bzr_subprocess_ignoring_retcode(self):
-        """finish_bzr_subprocess allows the exit code to be ignored."""
-        process = self.start_bzr_subprocess(['--versionn'])
-        result = self.finish_bzr_subprocess(process, retcode=None)
-        self.assertEqual('', result[0])
-        self.assertContainsRe(result[1], 'unknown command')
-
-    def test_start_and_stop_bzr_subprocess_with_unexpected_retcode(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
-        not the expected one.
-        """
-        process = self.start_bzr_subprocess(['--versionn'])
-        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
-                          process)
+class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Tests that really need to do things with an external bzr."""
 
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
