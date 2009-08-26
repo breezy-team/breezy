@@ -1210,8 +1210,18 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
     def get_known_graph_ancestry(self, keys):
         """Get a KnownGraph instance with the ancestry of keys."""
+        # Note that this is identical to
+        # KnitVersionedFiles.get_known_graph_ancestry, but they don't share
+        # ancestry.
         parent_map, missing_keys = self._index._graph_index.find_ancestry(keys,
-                                                                          0)
+        0)
+        for fallback in self._fallback_vfs:
+            if not missing_keys:
+                break
+            (f_parent_map, f_missing_keys) = fallback._index._graph_index.find_ancestry(
+                                                missing_keys, 0)
+            parent_map.update(f_parent_map)
+            missing_keys = f_missing_keys
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
 
