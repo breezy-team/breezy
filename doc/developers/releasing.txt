@@ -10,6 +10,13 @@ go.
 .. contents::
 
 
+Preconditions
+-------------
+
+#. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
+
+     bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
+
 Starting the release phase
 --------------------------
 
@@ -33,10 +40,6 @@ Preparing the tree for release
    release in a series, otherwise you should already have a branch.) ::
 
      bzr branch trunk prepare-1.14
-
-#. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
-
-     bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
 #. Configure pqm-submit for this branch, with a section like this in
    ``~/.bazaar/locations.conf``::
@@ -63,9 +66,8 @@ Preparing the tree for release
      ./tools/check-newsbugs.py NEWS
 
    (But note there can be some false positives, and this script may be
-   flaky 
-   <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let this
-   slow you down too much.)
+   flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
+   this slow you down too much.)
 
 #. Summarize into one or two paragraphs what's new in this release.
 

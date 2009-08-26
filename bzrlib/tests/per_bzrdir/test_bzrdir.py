@@ -528,7 +528,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual('1', target.open_branch().last_revision())
 
     def test_clone_bzrdir_tree_branch_repo(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -569,7 +568,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(target_repo._format, source_branch.repository._format)
 
     def test_revert_inventory(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         self.build_tree(['source/foo'])
         tree.add('foo')
@@ -624,7 +622,6 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      ])
 
     def test_clone_bzrdir_tree_revision(self):
-        self.thisFailsStrictLockCheck()
         # test for revision limiting, [smoke test, not corner case checks].
         # make a tree with a revision with a last-revision
         # and clone it with a revision limit.
