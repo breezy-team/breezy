@@ -32,6 +32,12 @@ New Features
 Bug Fixes
 *********
 
+* Fetches were being requested in 'groupcompress' order, but weren't
+  recombining the groups. Thus they would 'fragment' to get the correct
+  order, but not 'recombine' to acutally benefit from it. Until we get
+  recombining to work, switching to 'unordered' fetches avoids the
+  fragmentation. (John Arbash Meinel, #402645)
+
 * Fix a pycurl related test failure on karmic by recognizing an error
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
@@ -100,6 +106,24 @@ Internals
 
 Testing
 *******
+
+bzr 1.18.1 NOT RELEASED YET
+###########################
+
+Bug Fixes
+*********
+
+* Fixed a problem where using content filtering and especially end-of-line
+  conversion will commit too many copies a file.
+  (Martin Pool, #415508)
+
+API Changes
+***********
+
+* ``Tree.path_content_summary`` may return a size of None, when called on
+  a tree with content filtering where the size of the canonical form
+  cannot be cheaply determined.  (Martin Pool)
+
 
 bzr 1.18
 ########
@@ -216,6 +240,7 @@ bzr 1.18rc1
 ###########
 
 :Codename: little traveller
+:1.18:    2009-08-20
 :1.18rc1: 2009-08-10
 
 This release of Bazaar marches on towards the 2.0 release in which the 2a
@@ -229,6 +254,7 @@ The Bazaar team decided that 2.0 will be a long-term supported release,
 with bugfix-only releases based on it continuing for at least six months
 or until the following stable release.
 
+There are no changes from 1.18rc1 to 1.18.
 
 New Features
 ************
