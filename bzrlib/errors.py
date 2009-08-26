@@ -793,6 +793,12 @@ class IncompatibleFormat(BzrError):
 
 
 class IncompatibleRepositories(BzrError):
+    """Report an error that two repositories are not compatible.
+
+    Note that the source and target repositories are permitted to be strings:
+    this exception is thrown from the smart server and may refer to a
+    repository the client hasn't opened.
+    """
 
     _fmt = "%(target)s\n" \
             "is not compatible with\n" \
