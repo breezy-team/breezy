@@ -14,7 +14,7 @@ bzr 2.0rc1
 :2.0rc1: 2009-08-26
 
 This release of Bazaar makes 2a 'brisbane-core' format the
-default.  Most of the work in this release now focusses on bug
+default.  Most of the work in this release now focuses on bug
 fixes and stabilization, covering both 2a and previous formats.
 
 The Bazaar team decided that 2.0 will be a long-term supported
@@ -47,7 +47,7 @@ Bug Fixes
 
 * Fetches were being requested in 'groupcompress' order, but weren't
   recombining the groups. Thus they would 'fragment' to get the correct
-  order, but not 'recombine' to acutally benefit from it. Until we get
+  order, but not 'recombine' to actually benefit from it. Until we get
   recombining to work, switching to 'unordered' fetches avoids the
   fragmentation. (John Arbash Meinel, #402645)
 
