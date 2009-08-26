@@ -217,6 +217,11 @@ class TestFileModifyDisplay(tests.TestCase):
         c = commands.FileModifyCommand("foo/bar", "symlink", False, None, "baz")
         self.assertEqual("M 120000 inline foo/bar\ndata 3\nbaz", repr(c))
 
+    def test_filemodify_treeref(self):
+        c = commands.FileModifyCommand("tree-info", "tree-reference", False,
+            "revision-id-info", None)
+        self.assertEqual("M 160000 revision-id-info tree-info", repr(c))
+
 
 class TestFileDeleteDisplay(tests.TestCase):
 

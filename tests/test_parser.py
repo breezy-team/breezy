@@ -109,6 +109,14 @@ committer <bugs@bunny.org> now
 data <<EOF
 Commit with heredoc-style message
 EOF
+# Test a "submodule"/tree-reference
+commit refs/heads/master
+mark :5
+author <bugs@bunny.org> now
+committer <bugs@bunny.org> now
+data 15
+submodule test
+M 160000 rev-id tree-id
 """
 
 
@@ -123,7 +131,7 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
-        self.assertEqual(len(result), 11)
+        self.assertEqual(len(result), 13)
         cmd1 = result.pop(0)
         self.assertEqual('progress', cmd1.name)
         self.assertEqual('completed', cmd1.message)
@@ -190,6 +198,16 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('commit', cmd.name)
         self.assertEqual('4', cmd.mark)
         self.assertEqual('Commit with heredoc-style message\n', cmd.message)
+        cmd = result.pop(0)
+        self.assertEqual('commit', cmd.name)
+        self.assertEqual('5', cmd.mark)
+        self.assertEqual('submodule test\n', cmd.message)
+        file_cmd1 = result.pop(0)
+        self.assertEqual('filemodify', file_cmd1.name)
+        self.assertEqual('tree-id', file_cmd1.path)
+        self.assertEqual('tree-reference', file_cmd1.kind)
+        self.assertEqual(False, file_cmd1.is_executable)
+        self.assertEqual("rev-id", file_cmd1.dataref)
 
 
 class TestStringParsing(tests.TestCase):

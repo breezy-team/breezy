@@ -35,6 +35,7 @@ FILE_COMMAND_NAMES = ['filemodify', 'filedelete', 'filecopy', 'filerename',
 # Bazaar file kinds
 FILE_KIND = 'file'
 SYMLINK_KIND = 'symlink'
+TREE_REFERENCE_KIND = 'tree-reference'
 
 
 class ImportCommand(object):
@@ -270,12 +271,16 @@ class FileModifyCommand(FileCommand):
         return self.to_string(include_file_contents=False)
 
     def to_string(self, include_file_contents=False):
-        if self.kind == 'symlink':
-            mode = "120000"
-        elif self.is_executable:
+        if self.is_executable:
             mode = "755"
-        else:
+        elif self.kind == 'file':
             mode = "644"
+        elif self.kind == 'symlink':
+            mode = "120000"
+        elif self.kind == 'tree-reference':
+            mode = "160000"
+        else:
+            raise AssertionError("unknown kind %s" % (self.kind,))
         datastr = ""
         if self.dataref is None:
             dataref = "inline"
