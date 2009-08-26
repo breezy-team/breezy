@@ -92,6 +92,10 @@ Testing
 * Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
   be output for every test. Note that this is very verbose! (Robert Collins)
 
+* Test parameterisation now does a shallow copy, not a deep copy of the test
+  to be parameterised. This is not expected to break external use of test
+  parameterisation, and is substantially faster. (Robert Collins)
+
 bzr 1.18
 ########
 

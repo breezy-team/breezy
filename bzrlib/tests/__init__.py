@@ -28,6 +28,7 @@
 
 import atexit
 import codecs
+from copy import copy
 from cStringIO import StringIO
 import difflib
 import doctest
@@ -3880,8 +3881,7 @@ def clone_test(test, new_id):
     :param new_id: The id to assign to it.
     :return: The new test.
     """
-    from copy import deepcopy
-    new_test = deepcopy(test)
+    new_test = copy(test)
     new_test.id = lambda: new_id
     return new_test
 
