@@ -36,6 +36,16 @@ Bug Fixes
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
 
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
+* Fix IndexError printing CannotBindAddress errors.
+  (Martin Pool, #286871)
+
+* Fix "Revision ... not present" errors when upgrading stacked branches,
+  or when doing fetches from a stacked source to a stacked target.
+  (Andrew Bennetts, #399140)
+
 Improvements
 ************
 
@@ -50,11 +60,35 @@ Improvements
   ``bazaar.conf``.
   (Martin Pool, Robert Collins, #389328)
 
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
+* Commit of specific files no longer prevents using the the iter_changes
+  codepath. On 2a repositories, commit of specific files should now be as
+  fast, or slightly faster, than a full commit. (Robert Collins)
+
+* The internal core code that handles specific file operations like
+  ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
+  include the parent directories if they have altered, and when a
+  directory stops being a directory its children are always included. This
+  fixes a number of causes for ``InconsistentDelta`` errors, and permits
+  faster commit of specific paths. (Robert Collins, #347649)
+
 Documentation
 *************
 
+* New developer documentation for content filtering.
+  (Martin Pool)
+
 API Changes
 ***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
 
 Internals
 *********
@@ -282,7 +316,9 @@ Bug Fixes
 * Requests for unknown methods no longer cause the smart server to log
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
-  
+
+* Shelve will not shelve the initial add of the tree root.  (Aaron Bentley)
+
 * Streaming from bzr servers where there is a chain of stacked branches
   (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
 

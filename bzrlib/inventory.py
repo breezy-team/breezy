@@ -754,6 +754,8 @@ class CommonInventory(object):
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
         >>> print i.id2path('foo-id')
         src/foo.c
+
+        :raises NoSuchId: If file_id is not present in the inventory.
         """
         # get all names, skipping root
         return '/'.join(reversed(
