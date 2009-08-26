@@ -820,7 +820,7 @@ class TestTestResult(tests.TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
@@ -874,7 +874,7 @@ class TestTestResult(tests.TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
@@ -918,7 +918,7 @@ class TestTestResult(tests.TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
@@ -2935,15 +2935,15 @@ class TestRunSuite(tests.TestCase):
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
 
-    def test_done(self):
-        """run_suite should call result.done()"""
+    def test_stopTestRun(self):
+        """run_suite should call result.stopTestRun()"""
         self.calls = 0
         def one_more_call(): self.calls += 1
         def test_function():
             pass
         test = unittest.FunctionTestCase(test_function)
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): one_more_call()
+            def stopTestRun(self): one_more_call()
         class MyRunner(tests.TextTestRunner):
             def run(self, test):
                 return InstrumentedTestResult(self.stream, self.descriptions,

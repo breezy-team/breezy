@@ -175,9 +175,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._overall_start_time = time.time()
         self._strict = strict
 
-    def done(self):
-        # nb: called stopTestRun in the version of this that Python merged
-        # upstream, according to lifeless 20090803
+    def stopTestRun(self):
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
@@ -421,10 +419,10 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update_latency = 0
         self.pb.show_transport_activity = False
 
-    def done(self):
+    def stopTestRun(self):
         # called when the tests that are going to run have run
         self.pb.clear()
-        super(TextTestResult, self).done()
+        super(TextTestResult, self).stopTestRun()
 
     def finished(self):
         self.pb.finished()
@@ -2833,7 +2831,7 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     result = runner.run(suite)
     if list_only:
         return True
-    result.done()
+    result.stopTestRun()
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3167,6 +3165,12 @@ class ForwardingResult(unittest.TestResult):
 
     def stopTest(self, test):
         self.result.stopTest(test)
+
+    def startTestRun(self):
+        self.result.startTestRun()
+
+    def stopTestRun(self):
+        self.result.stopTest()
 
     def addSkip(self, test, reason):
         self.result.addSkip(test, reason)
