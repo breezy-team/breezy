@@ -2331,14 +2331,6 @@ class TestBzrSubprocess(tests.TestCaseWithTransport):
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
 
-    def test_start_and_stop_working_dir(self):
-        cwd = osutils.getcwd()
-        self.make_branch_and_tree('one')
-        process = self.start_bzr_subprocess(['root'], working_dir='one')
-        result = self.finish_bzr_subprocess(process, universal_newlines=True)
-        self.assertEndsWith(result[0], 'one\n')
-        self.assertEqual('', result[1])
-
 
 class TestKnownFailure(tests.TestCase):
 
