@@ -2726,10 +2726,52 @@ class TestTestIdList(tests.TestCase):
 
 class TestTestSuite(tests.TestCase):
 
+    def test__test_suite_testmod_names(self):
+        # Test that a plausible list of test module names are returned
+        # by _test_suite_testmod_names.
+        test_list = tests._test_suite_testmod_names()
+        self.assertSubset([
+            'bzrlib.tests.blackbox',
+            'bzrlib.tests.per_transport',
+            'bzrlib.tests.test_selftest',
+            ],
+            test_list)
+
+    def test__test_suite_modules_to_doctest(self):
+        # Test that a plausible list of modules to doctest is returned
+        # by _test_suite_modules_to_doctest.
+        test_list = tests._test_suite_modules_to_doctest()
+        self.assertSubset([
+            'bzrlib.timestamp',
+            ],
+            test_list)
+
     def test_test_suite(self):
-        # This test is slow - it loads the entire test suite to operate, so we
-        # do a single test with one test in each category
-        test_list = [
+        # test_suite() loads the entire test suite to operate. To avoid this
+        # overhead, and yet still be confident that things are happening,
+        # we temporarily replace two functions used by test_suite with 
+        # test doubles that supply a few sample tests to load, and check they
+        # are loaded.
+        calls = []
+        def _test_suite_testmod_names():
+            calls.append("testmod_names")
+            return [
+                'bzrlib.tests.blackbox.test_branch',
+                'bzrlib.tests.per_transport',
+                'bzrlib.tests.test_selftest',
+                ]
+        original_testmod_names = tests._test_suite_testmod_names
+        def _test_suite_modules_to_doctest():
+            calls.append("modules_to_doctest")
+            return ['bzrlib.timestamp']
+        orig_modules_to_doctest = tests._test_suite_modules_to_doctest
+        def restore_names():
+            tests._test_suite_testmod_names = original_testmod_names
+            tests._test_suite_modules_to_doctest = orig_modules_to_doctest
+        self.addCleanup(restore_names)
+        tests._test_suite_testmod_names = _test_suite_testmod_names
+        tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
+        expected_test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
@@ -2740,13 +2782,16 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, _test_ids(suite))
+        suite = tests.test_suite()
+        self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
+            set(calls))
+        self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
         # We cannot test this at the same time as the main load, because we want
-        # to know that starting_with == None works. So a second full load is
-        # incurred.
+        # to know that starting_with == None works. So a second load is
+        # incurred - note that the starting_with parameter causes a partial load
+        # rather than a full load so this test should be pretty quick.
         test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
         suite = tests.test_suite(test_list,
                                  ['bzrlib.tests.test_selftest.TestTestSuite'])
