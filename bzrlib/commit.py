@@ -802,10 +802,11 @@ class Commit(object):
                 # _update_builder_with_changes.
                 continue
             content_summary = self.work_tree.path_content_summary(path)
+            kind = content_summary[0]
             # Note that when a filter of specific files is given, we must only
             # skip/record deleted files matching that filter.
             if not specific_files or is_inside_any(specific_files, path):
-                if content_summary[0] == 'missing':
+                if kind == 'missing':
                     if not deleted_paths:
                         # path won't have been split yet.
                         path_segments = splitpath(path)
@@ -818,23 +819,20 @@ class Commit(object):
                     continue
             # TODO: have the builder do the nested commit just-in-time IF and
             # only if needed.
-            if content_summary[0] == 'tree-reference':
+            if kind == 'tree-reference':
                 # enforce repository nested tree policy.
                 if (not self.work_tree.supports_tree_reference() or
                     # repository does not support it either.
                     not self.branch.repository._format.supports_tree_reference):
-                    content_summary = ('directory',) + content_summary[1:]
-            kind = content_summary[0]
-            # TODO: specific_files filtering before nested tree processing
-            if kind == 'tree-reference':
-                if self.recursive == 'down':
+                    kind = 'directory'
+                    content_summary = (kind, None, None, None)
+                elif self.recursive == 'down':
                     nested_revision_id = self._commit_nested_tree(
                         file_id, path)
-                    content_summary = content_summary[:3] + (
-                        nested_revision_id,)
+                    content_summary = (kind, None, None, nested_revision_id)
                 else:
-                    content_summary = content_summary[:3] + (
-                        self.work_tree.get_reference_revision(file_id),)
+                    nested_revision_id = self.work_tree.get_reference_revision(file_id)
+                    content_summary = (kind, None, None, nested_revision_id)
 
             # Record an entry for this item
             # Note: I don't particularly want to have the existing_ie

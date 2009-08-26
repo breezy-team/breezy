@@ -7,6 +7,24 @@ Bazaar Release Notes
    :depth: 1
 
 
+bzr 1.18.1 NOT RELEASED YET
+###########################
+
+Bug Fixes
+*********
+
+* Fixed a problem where using content filtering and especially end-of-line
+  conversion will commit too many copies a file.
+  (Martin Pool, #415508)
+
+API Changes
+***********
+
+* ``Tree.path_content_summary`` may return a size of None, when called on
+  a tree with content filtering where the size of the canonical form
+  cannot be cheaply determined.  (Martin Pool)
+
+
 bzr 1.18
 ########
 
