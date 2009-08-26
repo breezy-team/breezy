@@ -416,7 +416,7 @@ class ExtendedTestResult(unittest._TextTestResult):
     def report_cleaning_up(self):
         pass
 
-    def report_starting(self):
+    def startTestRun(self):
         self.startTime = time.time()
 
     def report_success(self, test):
@@ -457,8 +457,8 @@ class TextTestResult(ExtendedTestResult):
         self.pb.finished()
         super(TextTestResult, self).stopTestRun()
 
-    def report_starting(self):
-        super(TextTestResult, self).report_starting()
+    def startTestRun(self):
+        super(TextTestResult, self).startTestRun()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def printErrors(self):
@@ -543,8 +543,8 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def report_starting(self):
-        super(VerboseTestResult, self).report_starting()
+    def startTestRun(self):
+        super(VerboseTestResult, self).startTestRun()
         self.stream.write('running %d tests...\n' % self.num_tests)
 
     def report_test_start(self, test):
@@ -641,29 +641,34 @@ class TextTestRunner(object):
             result_class = TextTestResult
         elif self.verbosity >= 2:
             result_class = VerboseTestResult
-        result = result_class(self.stream,
+        original_result = result_class(self.stream,
                               self.descriptions,
                               self.verbosity,
                               bench_history=self._bench_history,
                               strict=self._strict,
                               )
-        run_result = result
+        # Signal to result objects that look at stop early policy to stop,
+        original_result.stop_early = self.stop_on_failure
+        result = original_result
         for decorator in self._result_decorators:
-            run_result = decorator(run_result)
-        result.stop_early = self.stop_on_failure
-        result.report_starting()
+            result = decorator(result)
+            result.stop_early = self.stop_on_failure
         try:
             import testtools
         except ImportError:
-            test.run(run_result)
+            pass
         else:
             if isinstance(test, testtools.ConcurrentTestSuite):
                 # We need to catch bzr specific behaviors
-                test.run(BZRTransformingResult(run_result))
-            else:
-                test.run(run_result)
-        run_result.stopTestRun()
-        return result
+                result = BZRTransformingResult(result)
+        result.startTestRun()
+        try:
+            test.run(result)
+        finally:
+            result.stopTestRun()
+        # higher level code uses our extended protocol to determine
+        # what exit code to give.
+        return original_result
 
 
 def iter_suite_tests(suite):

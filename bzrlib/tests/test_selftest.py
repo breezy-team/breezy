@@ -1294,6 +1294,20 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
 
+    def test_startTestRun(self):
+        """run should call result.startTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTestRun(self):
+                tests.ForwardingResult.startTestRun(self)
+                calls.append('startTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
+
     def test_stopTestRun(self):
         """run should call result.stopTestRun()"""
         calls = []
