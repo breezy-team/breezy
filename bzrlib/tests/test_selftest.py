@@ -1001,11 +1001,14 @@ class TestRunner(tests.TestCase):
         because of our use of global state.
         """
         old_root = tests.TestCaseInTempDir.TEST_ROOT
+        old_leak = tests.TestCase._first_thread_leaker_id
         try:
             tests.TestCaseInTempDir.TEST_ROOT = None
+            tests.TestCase._first_thread_leaker_id = None
             return testrunner.run(test)
         finally:
             tests.TestCaseInTempDir.TEST_ROOT = old_root
+            tests.TestCase._first_thread_leaker_id = old_leak
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
@@ -1290,6 +1293,20 @@ class TestRunner(tests.TestCase):
         log = test._get_log()
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
+
+    def test_stopTestRun(self):
+        """run should call result.stopTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def stopTestRun(self):
+                tests.ForwardingResult.stopTestRun(self)
+                calls.append('stopTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
 
 
 class SampleTestCase(tests.TestCase):
@@ -2934,19 +2951,3 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
-
-    def test_stopTestRun(self):
-        """run_suite should call result.stopTestRun()"""
-        self.calls = 0
-        def one_more_call(): self.calls += 1
-        def test_function():
-            pass
-        test = unittest.FunctionTestCase(test_function)
-        class InstrumentedTestResult(tests.ExtendedTestResult):
-            def stopTestRun(self): one_more_call()
-        class MyRunner(tests.TextTestRunner):
-            def run(self, test):
-                return InstrumentedTestResult(self.stream, self.descriptions,
-                                              self.verbosity)
-        tests.run_suite(test, runner_class=MyRunner, stream=StringIO())
-        self.assertEquals(1, self.calls)
