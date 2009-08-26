@@ -1005,7 +1005,7 @@ class _BatchingBlockFetcher(object):
         #  - it's not yet part of this batch and will need to be fetched.
         if read_memo in self.batch_memos:
             # This read memo is already in this batch.
-            return
+            return self.total_bytes
         try:
             cached_block = self.gcvf._group_cache[read_memo]
         except KeyError:
@@ -1062,7 +1062,8 @@ class _BatchingBlockFetcher(object):
                     block_read_memo, block = blocks.next()
                     if block_read_memo != read_memo:
                         raise AssertionError(
-                            "block_read_memo out of sync with read_memo")
+                            "block_read_memo out of sync with read_memo"
+                            "(%r != %r)" % (block_read_memo, read_memo))
                     self.batch_memos[read_memo] = block
                     memos_to_get_stack.pop()
                 else:
@@ -1272,7 +1273,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         raw_records = self._access.get_raw_records(not_cached)
         for read_memo in read_memos:
             try:
-                yield read_memos, cached[read_memo]
+                yield read_memo, cached[read_memo]
             except KeyError:
                 # Read the block, and cache it.
                 zdata = raw_records.next()
