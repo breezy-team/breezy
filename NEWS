@@ -46,6 +46,11 @@ Bug Fixes
   or when doing fetches from a stacked source to a stacked target.
   (Andrew Bennetts, #399140)
 
+* ``bzr branch`` of 2a repositories over HTTP is much faster.  bzr now
+  batches together small fetches from 2a repositories, rather than
+  fetching only a few hundred bytes at a time.
+  (Andrew Bennetts, #402657)
+
 Improvements
 ************
 
