@@ -222,7 +222,10 @@ class GitExporter(_Exporter):
 
     def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
-        args = ["git", "fast-export", "--all", "--signed-tags=warn"]
+        cmd_name = "git"
+        if sys.platform == 'win32':
+            cmd_name = "git.cmd"
+        args = [cmd_name, "fast-export", "--all", "--signed-tags=warn"]
         outf, base, marks = self.get_output_info(destination)
         if marks:
             marks = os.path.abspath(marks)
