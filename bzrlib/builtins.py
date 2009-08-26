@@ -3038,6 +3038,10 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
+        # The API permits a commit with a filter of [] to mean 'select nothing'
+        # but the command line should not do that.
+        if not selected_list:
+            selected_list = None
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
