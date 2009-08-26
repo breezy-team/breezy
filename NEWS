@@ -6,8 +6,21 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+bzr 2.0rc1
+##########
+
+
+:Codename: no worries
+:2.0rc1: 2009-08-26
+
+This release of Bazaar makes 2a 'brisbane-core' format the
+default.  Most of the work in this release now focusses on bug
+fixes and stabilization, covering both 2a and previous formats.
+
+The Bazaar team decided that 2.0 will be a long-term supported
+release, with bugfix-only releases based on it continuing for at
+least six months or until the following stable release (we said
+that previously, but that's worth repeating).
 
 Compatibility Breaks
 ********************
