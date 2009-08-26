@@ -218,14 +218,14 @@ class MercurialExporter(_Exporter):
 class GitExporter(_Exporter):
 
     def __init__(self):
-        self.check_install('Git', '1.6', ['git'])
+        self.cmd_name = "git"
+        if sys.platform == 'win32':
+            self.cmd_name = "git.cmd"
+        self.check_install('Git', '1.6', [self.cmd_name])
 
     def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
-        cmd_name = "git"
-        if sys.platform == 'win32':
-            cmd_name = "git.cmd"
-        args = [cmd_name, "fast-export", "--all", "--signed-tags=warn"]
+        args = [self.cmd_name, "fast-export", "--all", "--signed-tags=warn"]
         outf, base, marks = self.get_output_info(destination)
         if marks:
             marks = os.path.abspath(marks)
