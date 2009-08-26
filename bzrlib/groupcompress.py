@@ -44,11 +44,14 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 
+# Minimum number of uncompressed bytes to try fetch at once when retrieving
+# groupcompress blocks.
+BATCH_SIZE = 2**16
+
 _USE_LZMA = False and (pylzma is not None)
 
 # osutils.sha_string('')
 _null_sha1 = 'da39a3ee5e6b4b0d3255bfef95601890afd80709'
-
 
 def sort_gc_optimal(parent_map):
     """Sort and group the keys in parent_map into groupcompress order.
@@ -1455,9 +1458,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # Batch up as many keys as we can until either:
         #  - we encounter an unadded ref, or
         #  - we run out of keys, or
-        #  - the total bytes to retrieve for this batch > 256k
+        #  - the total bytes to retrieve for this batch > BATCH_SIZE
         batcher = _BatchingBlockFetcher(self, locations)
-        BATCH_SIZE = 2**18
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
