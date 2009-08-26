@@ -1274,12 +1274,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
             try:
                 yield read_memos, cached[read_memo]
             except KeyError:
-                # read the group
+                # Read the block, and cache it.
                 zdata = raw_records.next()
-                # decompress - whole thing - this is not a bug, as it
-                # permits caching. We might want to store the partially
-                # decompresed group and decompress object, so that recent
-                # texts are not penalised by big groups.
                 block = GroupCompressBlock.from_bytes(zdata)
                 self._group_cache[read_memo] = block
                 cached[read_memo] = block
