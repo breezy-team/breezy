@@ -33,6 +33,10 @@ from bzrlib.workingtree import WorkingTree
 
 class TestInit(ExternalBase):
 
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self._default_label = '2a'
+
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
         t = self.get_transport()
@@ -66,10 +70,10 @@ class TestInit(ExternalBase):
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(False)
         out, err = self.run_bzr('init repo')
-        self.assertEqual("""Created a repository tree (format: pack-0.92)
+        self.assertEqual("""Created a repository tree (format: %s)
 Using shared repository: %s
-""" % urlutils.local_path_from_url(
-            repo.bzrdir.root_transport.external_url()), out)
+""" % (self._default_label, urlutils.local_path_from_url(
+            repo.bzrdir.root_transport.external_url())), out)
         self.assertEndsWith(out, "bzrlib.tests.blackbox.test_init.TestInit."
             "test_init_at_repository_root/work/repo/\n")
         self.assertEqual('', err)
@@ -78,14 +82,14 @@ Using shared repository: %s
 
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual("""Created a standalone tree (format: pack-0.92)\n""",
-            out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual("""Created a standalone tree (format: pack-0.92)\n""",
-            out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
 
@@ -96,8 +100,8 @@ Using shared repository: %s
 
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
-        self.assertEqual("""Created a standalone tree (format: pack-0.92)\n""",
-            out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
@@ -163,7 +167,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
         # init on a remote url should succeed.
-        out, err = self.run_bzr(['init', self.get_url()])
+        out, err = self.run_bzr(['init', '--pack-0.92', self.get_url()])
         self.assertEqual(out,
             """Created a standalone branch (format: pack-0.92)\n""")
         self.assertEqual('', err)

@@ -209,7 +209,8 @@ class Commit(object):
         :param timestamp: if not None, seconds-since-epoch for a
             postdated/predated commit.
 
-        :param specific_files: If true, commit only those files.
+        :param specific_files: If not None, commit only those files. An empty
+            list means 'commit no files'.
 
         :param rev_id: If set, use this as the new revision id.
             Useful for test or import commands that need to tightly
@@ -264,6 +265,8 @@ class Commit(object):
         self.master_locked = False
         self.recursive = recursive
         self.rev_id = None
+        # self.specific_files is None to indicate no filter, or any iterable to
+        # indicate a filter - [] means no files at all, as per iter_changes.
         if specific_files is not None:
             self.specific_files = sorted(
                 minimum_path_selection(specific_files))
@@ -285,7 +288,6 @@ class Commit(object):
         # the command line parameters, and the repository has fast delta
         # generation. See bug 347649.
         self.use_record_iter_changes = (
-            not self.specific_files and
             not self.exclude and 
             not self.branch.repository._format.supports_tree_reference and
             (self.branch.repository._format.fast_deltas or
@@ -333,7 +335,7 @@ class Commit(object):
             self._gather_parents()
             # After a merge, a selected file commit is not supported.
             # See 'bzr help merge' for an explanation as to why.
-            if len(self.parents) > 1 and self.specific_files:
+            if len(self.parents) > 1 and self.specific_files is not None:
                 raise errors.CannotCommitSelectedFileMerge(self.specific_files)
             # Excludes are a form of selected file commit.
             if len(self.parents) > 1 and self.exclude:
@@ -619,12 +621,13 @@ class Commit(object):
         """Update the commit builder with the data about what has changed.
         """
         exclude = self.exclude
-        specific_files = self.specific_files or []
+        specific_files = self.specific_files
         mutter("Selecting files for commit with filter %s", specific_files)
 
         self._check_strict()
         if self.use_record_iter_changes:
-            iter_changes = self.work_tree.iter_changes(self.basis_tree)
+            iter_changes = self.work_tree.iter_changes(self.basis_tree,
+                specific_files=specific_files)
             iter_changes = self._filter_iter_changes(iter_changes)
             for file_id, path, fs_hash in self.builder.record_iter_changes(
                 self.work_tree, self.basis_revid, iter_changes):

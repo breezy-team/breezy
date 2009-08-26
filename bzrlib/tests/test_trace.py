@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,6 +48,10 @@ def _format_exception():
 class TestTrace(TestCase):
 
     def test_format_sys_exception(self):
+        # Test handling of an internal/unexpected error that probably
+        # indicates a bug in bzr.  The details of the message may vary
+        # depending on whether apport is available or not.  See test_crash for
+        # more.
         try:
             raise NotImplementedError, "time travel"
         except NotImplementedError:
@@ -56,7 +60,7 @@ class TestTrace(TestCase):
         self.assertEqualDiff(err.splitlines()[0],
                 'bzr: ERROR: exceptions.NotImplementedError: time travel')
         self.assertContainsRe(err,
-                r'File.*test_trace.py')
+            'Bazaar has encountered an internal error.')
 
     def test_format_interrupt_exception(self):
         try:
@@ -122,7 +126,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertContainsRe(msg,
-            r"Traceback \(most recent call last\)")
+            r'Bazaar has encountered an internal error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""

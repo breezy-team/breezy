@@ -44,8 +44,9 @@ cdef extern from "Python.h":
 
     void Py_INCREF(object)
 
+import gc
 
-from bzrlib import revision
+from bzrlib import errors, revision
 
 cdef object NULL_REVISION
 NULL_REVISION = revision.NULL_REVISION
@@ -59,10 +60,9 @@ cdef class _KnownGraphNode:
     cdef object children
     cdef public long gdfo
     cdef int seen
+    cdef object extra
 
     def __init__(self, key):
-        cdef int i
-
         self.key = key
         self.parents = None
 
@@ -70,6 +70,7 @@ cdef class _KnownGraphNode:
         # Greatest distance from origin
         self.gdfo = -1
         self.seen = 0
+        self.extra = None
 
     property child_keys:
         def __get__(self):
@@ -115,9 +116,7 @@ cdef _KnownGraphNode _get_parent(parents, Py_ssize_t pos):
     return <_KnownGraphNode>temp_node
 
 
-# TODO: slab allocate all _KnownGraphNode objects.
-#       We already know how many we are going to need, except for a couple of
-#       ghosts that could be allocated on demand.
+cdef class _MergeSorter
 
 cdef class KnownGraph:
     """This is a class which assumes we already know the full graph."""
@@ -136,6 +135,9 @@ cdef class KnownGraph:
         # Maps {sorted(revision_id, revision_id): heads}
         self._known_heads = {}
         self.do_cache = int(do_cache)
+        # TODO: consider disabling gc since we are allocating a lot of nodes
+        #       that won't be collectable anyway. real world testing has not
+        #       shown a specific impact, yet.
         self._initialize_nodes(parent_map)
         self._find_gdfo()
 
@@ -183,11 +185,16 @@ cdef class KnownGraph:
             parent_keys = <object>temp_parent_keys
             num_parent_keys = len(parent_keys)
             node = self._get_or_create_node(key)
-            # We know how many parents, so we could pre allocate an exact sized
-            # tuple here
+            # We know how many parents, so we pre allocate the tuple
             parent_nodes = PyTuple_New(num_parent_keys)
-            # We use iter here, because parent_keys maybe be a list or tuple
             for pos2 from 0 <= pos2 < num_parent_keys:
+                # Note: it costs us 10ms out of 40ms to lookup all of these
+                #       parents, it doesn't seem to be an allocation overhead,
+                #       but rather a lookup overhead. There doesn't seem to be
+                #       a way around it, and that is one reason why
+                #       KnownGraphNode maintains a direct pointer to the parent
+                #       node.
+                # We use [] because parent_keys may be a tuple or list
                 parent_node = self._get_or_create_node(parent_keys[pos2])
                 # PyTuple_SET_ITEM will steal a reference, so INCREF first
                 Py_INCREF(parent_node)
@@ -335,3 +342,353 @@ cdef class KnownGraph:
         if self.do_cache:
             PyDict_SetItem(self._known_heads, heads_key, heads)
         return heads
+
+    def topo_sort(self):
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        # This is, for the most part, the same iteration order that we used for
+        # _find_gdfo, consider finding a way to remove the duplication
+        # In general, we find the 'tails' (nodes with no parents), and then
+        # walk to the children. For children that have all of their parents
+        # yielded, we queue up the child to be yielded as well.
+        cdef _KnownGraphNode node
+        cdef _KnownGraphNode child
+        cdef PyObject *temp
+        cdef Py_ssize_t pos
+        cdef int replace
+        cdef Py_ssize_t last_item
+
+        pending = self._find_tails()
+        if PyList_GET_SIZE(pending) == 0 and len(self._nodes) > 0:
+            raise errors.GraphCycleError(self._nodes)
+
+        topo_order = []
+
+        last_item = PyList_GET_SIZE(pending) - 1
+        while last_item >= 0:
+            # Avoid pop followed by push, instead, peek, and replace
+            # timing shows this is 930ms => 770ms for OOo
+            node = _get_list_node(pending, last_item)
+            last_item = last_item - 1
+            if node.parents is not None:
+                # We don't include ghost parents
+                PyList_Append(topo_order, node.key)
+            for pos from 0 <= pos < PyList_GET_SIZE(node.children):
+                child = _get_list_node(node.children, pos)
+                if child.gdfo == -1:
+                    # We know we have a graph cycle because a node has a parent
+                    # which we couldn't find
+                    raise errors.GraphCycleError(self._nodes)
+                child.seen = child.seen + 1
+                if child.seen == PyTuple_GET_SIZE(child.parents):
+                    # All parents of this child have been yielded, queue this
+                    # one to be yielded as well
+                    last_item = last_item + 1
+                    if last_item < PyList_GET_SIZE(pending):
+                        Py_INCREF(child) # SetItem steals a ref
+                        PyList_SetItem(pending, last_item, child)
+                    else:
+                        PyList_Append(pending, child)
+                    # We have queued this node, we don't need to track it
+                    # anymore
+                    child.seen = 0
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
+
+
+    def merge_sort(self, tip_key):
+        """Compute the merge sorted graph output."""
+        cdef _MergeSorter sorter
+
+        # TODO: consider disabling gc since we are allocating a lot of nodes
+        #       that won't be collectable anyway. real world testing has not
+        #       shown a specific impact, yet.
+        sorter = _MergeSorter(self, tip_key)
+        return sorter.topo_order()
+
+
+cdef class _MergeSortNode:
+    """Tracks information about a node during the merge_sort operation."""
+
+    # Public api
+    cdef public object key
+    cdef public long merge_depth
+    cdef public object end_of_merge # True/False Is this the end of the current merge
+
+    # Private api, used while computing the information
+    cdef _KnownGraphNode left_parent
+    cdef _KnownGraphNode left_pending_parent
+    cdef object pending_parents # list of _KnownGraphNode for non-left parents
+    cdef long _revno_first
+    cdef long _revno_second
+    cdef long _revno_last
+    # TODO: turn these into flag/bit fields rather than individual members
+    cdef int is_first_child # Is this the first child?
+    cdef int seen_by_child # A child node has seen this parent
+    cdef int completed # Fully Processed
+
+    def __init__(self, key):
+        self.key = key
+        self.merge_depth = -1
+        self.left_parent = None
+        self.left_pending_parent = None
+        self.pending_parents = None
+        self._revno_first = -1
+        self._revno_second = -1
+        self._revno_last = -1
+        self.is_first_child = 0
+        self.seen_by_child = 0
+        self.completed = 0
+
+    def __repr__(self):
+        return '%s(depth:%s rev:%s,%s,%s first:%s seen:%s)' % (self.__class__.__name__,
+            self.merge_depth,
+            self._revno_first, self._revno_second, self._revno_last,
+            self.is_first_child, self.seen_by_child)
+
+    cdef int has_pending_parents(self):
+        if self.left_pending_parent is not None or self.pending_parents:
+            return 1
+        return 0
+
+    cdef object _revno(self):
+        if self._revno_first == -1:
+            if self._revno_second != -1:
+                raise RuntimeError('Something wrong with: %s' % (self,))
+            return (self._revno_last,)
+        else:
+            return (self._revno_first, self._revno_second, self._revno_last)
+
+    property revno:
+        def __get__(self):
+            return self._revno()
+
+
+cdef class _MergeSorter:
+    """This class does the work of computing the merge_sort ordering.
+
+    We have some small advantages, in that we get all the extra information
+    that KnownGraph knows, like knowing the child lists, etc.
+    """
+
+    # Current performance numbers for merge_sort(bzr_dev_parent_map):
+    #  302ms tsort.merge_sort()
+    #   91ms graph.KnownGraph().merge_sort()
+    #   40ms kg.merge_sort()
+
+    cdef KnownGraph graph
+    cdef object _depth_first_stack  # list
+    cdef Py_ssize_t _last_stack_item # offset to last item on stack
+    # cdef object _ms_nodes # dict of key => _MergeSortNode
+    cdef object _revno_to_branch_count # {revno => num child branches}
+    cdef object _scheduled_nodes # List of nodes ready to be yielded
+
+    def __init__(self, known_graph, tip_key):
+        cdef _KnownGraphNode node
+
+        self.graph = known_graph
+        # self._ms_nodes = {}
+        self._revno_to_branch_count = {}
+        self._depth_first_stack = []
+        self._last_stack_item = -1
+        self._scheduled_nodes = []
+        if (tip_key is not None and tip_key != NULL_REVISION
+            and tip_key != (NULL_REVISION,)):
+            node = self.graph._nodes[tip_key]
+            self._get_ms_node(node)
+            self._push_node(node, 0)
+
+    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
+        cdef PyObject *temp_node
+        cdef _MergeSortNode ms_node
+
+        if node.extra is None:
+            ms_node = _MergeSortNode(node.key)
+            node.extra = ms_node
+        else:
+            ms_node = <_MergeSortNode>node.extra
+        return ms_node
+
+    cdef _push_node(self, _KnownGraphNode node, long merge_depth):
+        cdef _KnownGraphNode parent_node
+        cdef _MergeSortNode ms_node, ms_parent_node
+        cdef Py_ssize_t pos
+
+        ms_node = self._get_ms_node(node)
+        ms_node.merge_depth = merge_depth
+        if PyTuple_GET_SIZE(node.parents) > 0:
+            parent_node = _get_parent(node.parents, 0)
+            ms_node.left_parent = parent_node
+            ms_node.left_pending_parent = parent_node
+        if PyTuple_GET_SIZE(node.parents) > 1:
+            ms_node.pending_parents = []
+            for pos from 1 <= pos < PyTuple_GET_SIZE(node.parents):
+                parent_node = _get_parent(node.parents, pos)
+                if parent_node.parents is None: # ghost
+                    continue
+                PyList_Append(ms_node.pending_parents, parent_node)
+
+        ms_node.is_first_child = 1
+        if ms_node.left_parent is not None:
+            ms_parent_node = self._get_ms_node(ms_node.left_parent)
+            if ms_parent_node.seen_by_child:
+                ms_node.is_first_child = 0
+            ms_parent_node.seen_by_child = 1
+        self._last_stack_item = self._last_stack_item + 1
+        if self._last_stack_item < PyList_GET_SIZE(self._depth_first_stack):
+            Py_INCREF(node) # SetItem steals a ref
+            PyList_SetItem(self._depth_first_stack, self._last_stack_item,
+                           node)
+        else:
+            PyList_Append(self._depth_first_stack, node)
+
+    cdef _pop_node(self):
+        cdef PyObject *temp
+        cdef _MergeSortNode ms_node, ms_parent_node, ms_prev_node
+        cdef _KnownGraphNode node, parent_node, prev_node
+
+        node = _get_list_node(self._depth_first_stack, self._last_stack_item)
+        ms_node = <_MergeSortNode>node.extra
+        self._last_stack_item = self._last_stack_item - 1
+        if ms_node.left_parent is not None:
+            # Assign the revision number from the left-hand parent
+            ms_parent_node = <_MergeSortNode>ms_node.left_parent.extra
+            if ms_node.is_first_child:
+                # First child just increments the final digit
+                ms_node._revno_first = ms_parent_node._revno_first
+                ms_node._revno_second = ms_parent_node._revno_second
+                ms_node._revno_last = ms_parent_node._revno_last + 1
+            else:
+                # Not the first child, make a new branch
+                #  (mainline_revno, branch_count, 1)
+                if ms_parent_node._revno_first == -1:
+                    # Mainline ancestor, the increment is on the last digit
+                    base_revno = ms_parent_node._revno_last
+                else:
+                    base_revno = ms_parent_node._revno_first
+                temp = PyDict_GetItem(self._revno_to_branch_count,
+                                      base_revno)
+                if temp == NULL:
+                    branch_count = 1
+                else:
+                    branch_count = (<object>temp) + 1
+                PyDict_SetItem(self._revno_to_branch_count, base_revno,
+                               branch_count)
+                ms_node._revno_first = base_revno
+                ms_node._revno_second = branch_count
+                ms_node._revno_last = 1
+        else:
+            temp = PyDict_GetItem(self._revno_to_branch_count, 0)
+            if temp == NULL:
+                # The first root node doesn't have a 3-digit revno
+                root_count = 0
+                ms_node._revno_first = -1
+                ms_node._revno_second = -1
+                ms_node._revno_last = 1
+            else:
+                root_count = (<object>temp) + 1
+                ms_node._revno_first = 0
+                ms_node._revno_second = root_count
+                ms_node._revno_last = 1
+            PyDict_SetItem(self._revno_to_branch_count, 0, root_count)
+        ms_node.completed = 1
+        if PyList_GET_SIZE(self._scheduled_nodes) == 0:
+            # The first scheduled node is always the end of merge
+            ms_node.end_of_merge = True
+        else:
+            prev_node = _get_list_node(self._scheduled_nodes,
+                                    PyList_GET_SIZE(self._scheduled_nodes) - 1)
+            ms_prev_node = <_MergeSortNode>prev_node.extra
+            if ms_prev_node.merge_depth < ms_node.merge_depth:
+                # The previously pushed node is to our left, so this is the end
+                # of this right-hand chain
+                ms_node.end_of_merge = True
+            elif (ms_prev_node.merge_depth == ms_node.merge_depth
+                  and prev_node not in node.parents):
+                # The next node is not a direct parent of this node
+                ms_node.end_of_merge = True
+            else:
+                ms_node.end_of_merge = False
+        PyList_Append(self._scheduled_nodes, node)
+
+    cdef _schedule_stack(self):
+        cdef _KnownGraphNode last_node, next_node
+        cdef _MergeSortNode ms_node, ms_last_node, ms_next_node
+        cdef long next_merge_depth
+        ordered = []
+        while self._last_stack_item >= 0:
+            # Peek at the last item on the stack
+            last_node = _get_list_node(self._depth_first_stack,
+                                       self._last_stack_item)
+            if last_node.gdfo == -1:
+                # if _find_gdfo skipped a node, that means there is a graph
+                # cycle, error out now
+                raise errors.GraphCycleError(self.graph._nodes)
+            ms_last_node = <_MergeSortNode>last_node.extra
+            if not ms_last_node.has_pending_parents():
+                # Processed all parents, pop this node
+                self._pop_node()
+                continue
+            while ms_last_node.has_pending_parents():
+                if ms_last_node.left_pending_parent is not None:
+                    # recurse depth first into the primary parent
+                    next_node = ms_last_node.left_pending_parent
+                    ms_last_node.left_pending_parent = None
+                else:
+                    # place any merges in right-to-left order for scheduling
+                    # which gives us left-to-right order after we reverse
+                    # the scheduled queue.
+                    # Note: This has the effect of allocating common-new
+                    #       revisions to the right-most subtree rather than the
+                    #       left most, which will display nicely (you get
+                    #       smaller trees at the top of the combined merge).
+                    next_node = ms_last_node.pending_parents.pop()
+                ms_next_node = self._get_ms_node(next_node)
+                if ms_next_node.completed:
+                    # this parent was completed by a child on the
+                    # call stack. skip it.
+                    continue
+                # otherwise transfer it from the source graph into the
+                # top of the current depth first search stack.
+
+                if next_node is ms_last_node.left_parent:
+                    next_merge_depth = ms_last_node.merge_depth
+                else:
+                    next_merge_depth = ms_last_node.merge_depth + 1
+                self._push_node(next_node, next_merge_depth)
+                # and do not continue processing parents until this 'call'
+                # has recursed.
+                break
+
+    cdef topo_order(self):
+        cdef _MergeSortNode ms_node
+        cdef _KnownGraphNode node
+        cdef Py_ssize_t pos
+        cdef PyObject *temp_key, *temp_node
+
+        # Note: allocating a _MergeSortNode and deallocating it for all nodes
+        #       costs approx 8.52ms (21%) of the total runtime
+        #       We might consider moving the attributes into the base
+        #       KnownGraph object.
+        self._schedule_stack()
+
+        # We've set up the basic schedule, now we can continue processing the
+        # output.
+        # Note: This final loop costs us 40.0ms => 28.8ms (11ms, 25%) on
+        #       bzr.dev, to convert the internal Object representation into a
+        #       Tuple representation...
+        #       2ms is walking the data and computing revno tuples
+        #       7ms is computing the return tuple
+        #       4ms is PyList_Append()
+        ordered = []
+        # output the result in reverse order, and separate the generated info
+        for pos from PyList_GET_SIZE(self._scheduled_nodes) > pos >= 0:
+            node = _get_list_node(self._scheduled_nodes, pos)
+            ms_node = <_MergeSortNode>node.extra
+            PyList_Append(ordered, ms_node)
+            node.extra = None
+        # Clear out the scheduled nodes now that we're done
+        self._scheduled_nodes = []
+        return ordered
