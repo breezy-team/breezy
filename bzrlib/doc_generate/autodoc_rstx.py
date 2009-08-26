@@ -163,7 +163,7 @@ Bazaar User Reference
 :Version:   %(version)s
 :Generated: %(datestamp)s
 
-.. contents:: :depth: 2
+.. contents:: :depth: 3
 
 -----
 

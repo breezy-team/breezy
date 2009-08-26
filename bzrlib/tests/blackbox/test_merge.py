@@ -374,13 +374,18 @@ class TestMerge(ExternalBase):
 
     def test_directive_cherrypick(self):
         source = self.make_branch_and_tree('source')
+        source.commit("nothing")
+        # see https://bugs.edge.launchpad.net/bzr/+bug/409688 - trying to
+        # cherrypick from one branch into another unrelated branch with a
+        # different root id will give shape conflicts.  as a workaround we
+        # make sure they share the same root id.
+        target = source.bzrdir.sprout('target').open_workingtree()
         self.build_tree(['source/a'])
         source.add('a')
         source.commit('Added a', rev_id='rev1')
         self.build_tree(['source/b'])
         source.add('b')
         source.commit('Added b', rev_id='rev2')
-        target = self.make_branch_and_tree('target')
         target.commit('empty commit')
         self.write_directive('directive', source.branch, 'target', 'rev2',
                              'rev1')
@@ -582,3 +587,14 @@ class TestMerge(ExternalBase):
         self.addCleanup(this_tree.unlock)
         self.assertEqual([],
                          list(this_tree.iter_changes(this_tree.basis_tree())))
+
+    def test_merge_missing_second_revision_spec(self):
+        """Merge uses branch basis when the second revision is unspecified."""
+        this = self.make_branch_and_tree('this')
+        this.commit('rev1')
+        other = self.make_branch_and_tree('other')
+        self.build_tree(['other/other_file'])
+        other.add('other_file')
+        other.commit('rev1b')
+        self.run_bzr('merge -d this other -r0..')
+        self.failUnlessExists('this/other_file')

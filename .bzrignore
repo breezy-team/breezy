@@ -7,10 +7,12 @@
 CHANGELOG
 bzr.1
 ./doc/*.html
+./doc/_build/
 ./tutorial.html
 BRANCH-INFO
 # setup.py working directory
-build
+./build
+./build-win32
 # Editor temporary/working/backup files
 *$
 .*.sw[nop]

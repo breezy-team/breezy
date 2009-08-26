@@ -757,6 +757,29 @@ class TestIterChanges(TestCaseWithTwoTrees):
             (None, root_id), (None, 'file'), (None, None), (None, False))]
         self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
 
+    def test_only_in_target_missing_subtree_specific_bug_367632(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        tree2 = self.make_to_branch_and_tree('tree2')
+        tree2.set_root_id(tree1.get_root_id())
+        self.build_tree(['tree2/a-dir/', 'tree2/a-dir/a-file'])
+        tree2.add(['a-dir', 'a-dir/a-file'], ['dir-id', 'file-id'])
+        os.unlink('tree2/a-dir/a-file')
+        os.rmdir('tree2/a-dir')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.not_applicable_if_missing_in('a-dir', tree2)
+        root_id = tree1.path2id('')
+        expected = [
+            ('dir-id', (None, 'a-dir'), False, (False, True),
+            (None, root_id), (None, 'a-dir'), (None, None), (None, False)),
+            ('file-id', (None, 'a-dir/a-file'), False, (False, True),
+            (None, 'dir-id'), (None, 'a-file'), (None, None), (None, False))
+            ]
+        # bug 367632 showed that specifying the root broke some code paths,
+        # so we check this contract with and without it.
+        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+        self.assertEqual(expected,
+            self.do_iter_changes(tree1, tree2, specific_files=['']))
+
     def test_unchanged_with_renames_and_modifications(self):
         """want_unchanged should generate a list of unchanged entries."""
         tree1 = self.make_branch_and_tree('1')
@@ -765,7 +788,6 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content_5(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         root_id = tree1.path2id('')
-
         self.assertEqual(sorted([self.unchanged(tree1, root_id),
             self.unchanged(tree1, 'b-id'),
             ('a-id', ('a', 'd'), True, (True, True),

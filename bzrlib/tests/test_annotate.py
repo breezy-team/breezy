@@ -182,16 +182,16 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder.build_snapshot('rev-1', None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('a', 'a-id', 'file', 'first\n')),
-            ], timestamp=1166046000.00, committer="joe@foo.com")
+            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com")
         builder.build_snapshot('rev-2', ['rev-1'], [
             ('modify', ('a-id', 'first\nsecond\n')),
-            ], timestamp=1166046001.00, committer="joe@foo.com")
+            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com")
         builder.build_snapshot('rev-1_1_1', ['rev-1'], [
             ('modify', ('a-id', 'first\nthird\n')),
-            ], timestamp=1166046002.00, committer="barry@foo.com")
+            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com")
         builder.build_snapshot('rev-3', ['rev-2', 'rev-1_1_1'], [
             ('modify', ('a-id', 'first\nsecond\nthird\n')),
-            ], timestamp=1166046003.00, committer="sal@foo.com")
+            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com")
         return builder
 
     def create_deeply_merged_trees(self):
@@ -222,15 +222,15 @@ class TestAnnotate(tests.TestCaseWithTransport):
         builder.build_snapshot('rev-4', ['rev-3', 'rev-1_1_2'], [])
         builder.build_snapshot('rev-1_2_1', ['rev-1_1_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\n')),
-            ], timestamp=1166046003.00, committer="jerry@foo.com")
+            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com")
         builder.build_snapshot('rev-1_2_2', ['rev-1_2_1'], [],
-            timestamp=1166046004.00, committer="jerry@foo.com")
+            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
         builder.build_snapshot('rev-5', ['rev-4', 'rev-1_2_2'], [
             ('modify', ('a-id', 'first\nsecond\nthird\nfourth\n')),
-            ], timestamp=1166046004.00, committer="jerry@foo.com")
+            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
         builder.build_snapshot('rev-1_3_1', ['rev-1_2_1'], [
             ('modify', ('a-id', 'first\nthird\nfourth\nfifth\nsixth\n')),
-            ], timestamp=1166046005.00, committer="george@foo.com")
+            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com")
         builder.build_snapshot('rev-6', ['rev-5', 'rev-1_3_1'], [
             ('modify', ('a-id',
                         'first\nsecond\nthird\nfourth\nfifth\nsixth\n')),

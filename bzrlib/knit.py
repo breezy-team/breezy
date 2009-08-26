@@ -1045,8 +1045,15 @@ class KnitVersionedFiles(VersionedFiles):
     def get_annotator(self):
         return _KnitAnnotator(self)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        if keys is None:
+            return self._logical_check()
+        else:
+            # At the moment, check does not extra work over get_record_stream
+            return self.get_record_stream(keys, 'unordered', True)
+
+    def _logical_check(self):
         # This doesn't actually test extraction of everything, but that will
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
@@ -1489,7 +1496,8 @@ class KnitVersionedFiles(VersionedFiles):
                                                                 non_local_keys,
                                                                 positions):
                 generator = _VFContentMapGenerator(self, keys, non_local_keys,
-                                                   global_map)
+                                                   global_map,
+                                                   ordering=ordering)
                 for record in generator.get_record_stream():
                     yield record
         else:
@@ -1993,6 +2001,9 @@ class KnitVersionedFiles(VersionedFiles):
 class _ContentMapGenerator(object):
     """Generate texts or expose raw deltas for a set of texts."""
 
+    def __init__(self, ordering='unordered'):
+        self._ordering = ordering
+
     def _get_content(self, key):
         """Get the content object for key."""
         # Note that _get_content is only called when the _ContentMapGenerator
@@ -2032,7 +2043,7 @@ class _ContentMapGenerator(object):
             # Loop over fallback repositories asking them for texts - ignore
             # any missing from a particular fallback.
             for record in source.get_record_stream(missing_keys,
-                'unordered', True):
+                self._ordering, True):
                 if record.storage_kind == 'absent':
                     # Not in thie particular stream, may be in one of the
                     # other fallback vfs objects.
@@ -2170,7 +2181,7 @@ class _VFContentMapGenerator(_ContentMapGenerator):
     """Content map generator reading from a VersionedFiles object."""
 
     def __init__(self, versioned_files, keys, nonlocal_keys=None,
-        global_map=None, raw_record_map=None):
+        global_map=None, raw_record_map=None, ordering='unordered'):
         """Create a _ContentMapGenerator.
 
         :param versioned_files: The versioned files that the texts are being
@@ -2184,6 +2195,7 @@ class _VFContentMapGenerator(_ContentMapGenerator):
         :param raw_record_map: A unparsed raw record map to use for answering
             contents.
         """
+        _ContentMapGenerator.__init__(self, ordering=ordering)
         # The vf to source data from
         self.vf = versioned_files
         # The keys desired
@@ -3616,6 +3628,6 @@ class _KnitAnnotator(annotate.Annotator):
                     to_process.extend(self._process_pending(key))
 
 try:
-    from bzrlib._knit_load_data_c import _load_data_c as _load_data
+    from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
 except ImportError:
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

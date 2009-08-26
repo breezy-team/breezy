@@ -133,8 +133,6 @@ class Tree(object):
         return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        if file_id == self.inventory.root.file_id:
-            return True
         return self.inventory.has_id(file_id)
 
     def is_ignored(self, filename):
@@ -220,10 +218,14 @@ class Tree(object):
     def path_content_summary(self, path):
         """Get a summary of the information about path.
 
+        All the attributes returned are for the canonical form, not the
+        convenient form (if content filters are in use.)
+
         :param path: A relative path within the tree.
         :return: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
-            size is present if kind is file, None otherwise.
+            size is present if kind is file and the size of the 
+                canonical form can be cheaply determined, None otherwise.
             exec is None unless kind is file and the platform supports the 'x'
                 bit.
             sha1-or-link is the link target if kind is symlink, or the sha1 if
@@ -825,7 +827,7 @@ def _find_children_across_trees(specified_ids, trees):
         new_pending = set()
         for file_id in pending:
             for tree in trees:
-                if not tree.has_id(file_id):
+                if not tree.has_or_had_id(file_id):
                     continue
                 for child_id in tree.iter_children(file_id):
                     if child_id not in interesting_ids:

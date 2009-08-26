@@ -37,6 +37,20 @@ class TestUnversion(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.NoSuchId, tree.unversion, ['missing-id'])
 
+    def test_unversion_parent_and_child_renamed_bug_187207(self):
+        # When unversioning dirstate trees show a bug in dealing with
+        # unversioning children of reparented children of unversioned
+        # paths when relocation entries are present and the relocation
+        # points later into the dirstate.
+        tree = self.make_branch_and_tree(['.'])
+        self.build_tree(['del/', 'del/sub/', 'del/sub/b'])
+        tree.add(['del', 'del/sub', 'del/sub/b'], ['del', 'sub', 'b'])
+        tree.commit('setup')
+        tree.rename_one('del/sub', 'sub')
+        self.assertEqual('sub/b', tree.id2path('b'))
+        tree.unversion(['del', 'b'])
+        self.assertRaises(errors.NoSuchId, tree.id2path, 'b')
+
     def test_unversion_several_files(self):
         """After unversioning several files, they should not be versioned."""
         tree = self.make_branch_and_tree('.')

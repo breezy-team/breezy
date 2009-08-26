@@ -21,6 +21,11 @@
 ### Core Stuff ###
 
 PYTHON=python
+PYTHON24=python24
+PYTHON25=python25
+PYTHON26=python26
+BZR_TARGET=release
+PLUGIN_TARGET=plugin-release
 PYTHON_BUILDFLAGS=
 
 .PHONY: all clean extensions pyflakes api-docs check-nodocs check
@@ -85,18 +90,25 @@ endif
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := $(wildcard doc/*/tutorials/*.txt) \
+txt_files := \
+	doc/en/tutorials/tutorial.txt \
+	doc/en/tutorials/using_bazaar_with_launchpad.txt \
+	doc/en/tutorials/centralized_workflow.txt \
+        $(wildcard doc/ru/tutorials/*.txt) \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index.txt) \
 	$(derived_txt_files) \
 	doc/en/developer-guide/HACKING.txt \
+	doc/en/upgrade-guide/index.txt \
+	$(wildcard doc/es/guia-usario/*.txt) \
+	doc/es/mini-tutorial/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
 non_txt_files := \
        doc/default.css \
-       $(wildcard doc/*/quick-reference/quick-start-summary.svg) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.png) \
-       $(wildcard doc/*/quick-reference/quick-start-summary.pdf) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.svg) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.png) \
+       $(wildcard doc/*/quick-reference/bzr-quick-reference.pdf) \
        $(wildcard doc/*/user-guide/images/*.png)
 htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -178,6 +190,11 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
+upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
+
+doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+
 # build a png of our performance task list
 # 
 # this is no longer built by default; you can build it if you want to look at it
@@ -210,6 +227,34 @@ clean-docs:
 
 ### Windows Support ###
 
+# make all the installers completely from scratch, using zc.buildout
+# to fetch the dependencies
+# These are files that need to be copied into the build location to boostrap
+# the build process.
+# Note that the path is relative to tools/win32
+BUILDOUT_FILES := buildout.cfg \
+	buildout-templates/bin/build-installer.bat.in \
+	ostools.py bootstrap.py
+
+installer-all:
+	@echo Make all the installers from scratch
+	@# Build everything in a separate directory, to avoid cluttering the WT
+	$(PYTHON) tools/win32/ostools.py makedir build-win32
+	@# cd to tools/win32 so that the relative paths are copied correctly
+	cd tools/win32 && $(PYTHON) ostools.py copytree $(BUILDOUT_FILES) ../../build-win32
+	@# There seems to be a bug in gf.release.bzr, It doesn't correctly update
+	@# existing release directories, so delete them manually before building
+	@# It means things may be rebuilt that don't need to be, but at least
+	@# it will be correct when they do.
+	cd build-win32 && $(PYTHON) ostools.py remove release */release
+	cd build-win32 && $(PYTHON) bootstrap.py
+	cd build-win32 && bin/buildout
+	cd build-win32 && bin/build-installer.bat $(BZR_TARGET) $(PLUGIN_TARGET)
+
+
+clean-installer-all:
+	$(PYTHON) tools/win32/ostools.py remove build-win32
+
 # make bzr.exe for win32 with py2exe
 exe:
 	@echo *** Make bzr.exe
@@ -221,20 +266,20 @@ exe:
 
 # win32 installer for bzr.exe
 installer: exe copy-docs
-	@echo *** Make windows installer
+	@echo *** Make Windows installer
 	$(PYTHON) tools/win32/run_script.py cog.py -d -o tools/win32/bzr.iss tools/win32/bzr.iss.cog
 	iscc /Q tools/win32/bzr.iss
 
 # win32 Python's distutils-based installer
 # require to have Python interpreter installed on win32
 py-inst-24: docs
-	python24 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON24) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-25: docs
-	python25 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON25) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 py-inst-26: docs
-	python26 setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+	$(PYTHON26) setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
 
 python-installer: py-inst-24 py-inst-25 py-inst-26
 

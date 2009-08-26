@@ -30,12 +30,8 @@ class TestBreakLock(TestCaseWithWorkingTree):
         super(TestBreakLock, self).setUp()
         self.unused_workingtree = self.make_branch_and_tree('.')
         self.workingtree = self.unused_workingtree.bzrdir.open_workingtree()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
 
     def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory
@@ -52,16 +48,14 @@ class TestBreakLock(TestCaseWithWorkingTree):
         # if the workingtree isn't locked - and the easiest way
         # to see if that happened is to lock the repo.
         self.workingtree.branch.repository.lock_write()
-        stdin = StringIO("y\n")
-        bzrlib.ui.ui_factory.stdin = stdin
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             self.unused_workingtree.break_lock()
         except NotImplementedError:
             # workingtree does not support break_lock
             self.workingtree.branch.repository.unlock()
             return
-        remaining = stdin.read()
-        if remaining == 'y\n':
+        if bzrlib.ui.ui_factory.responses == [True]:
             raise TestNotApplicable("repository does not physically lock.")
         self.assertRaises(errors.LockBroken,
             self.workingtree.branch.repository.unlock)
@@ -69,7 +63,7 @@ class TestBreakLock(TestCaseWithWorkingTree):
     def test_locked(self):
         # break_lock when locked should
         self.workingtree.lock_write()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\ny\ny\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True, True, True])
         try:
             self.unused_workingtree.break_lock()
         except (NotImplementedError, errors.LockActive):

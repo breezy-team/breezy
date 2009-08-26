@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    check,
     errors,
     )
 from bzrlib.revision import NULL_REVISION
@@ -184,11 +185,17 @@ class TestStacking(TestCaseWithBranch):
         trunk_revid = trunk_tree.commit('revision on mainline')
         # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+            new_dir = trunk_tree.bzrdir.sprout(self.get_url('newbranch'),
+                stacked=True)
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         # stacked repository
         self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        # TODO: we'd like to commit in the stacked repository; that requires
+        # some care (maybe a BranchBuilder) if it's remote and has no
+        # workingtree
+        ##newbranch_revid = new_dir.open_workingtree().commit('revision in '
+            ##'newbranch')
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()
@@ -354,7 +361,7 @@ class TestStacking(TestCaseWithBranch):
             self.build_tree_contents([('stacked/a', ''.join(text_lines))])
             stacked_tree.commit('commit %d' % i)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
 
     def test_pull_delta_when_stacked(self):
         if not self.branch_format.supports_stacking():
@@ -378,7 +385,7 @@ class TestStacking(TestCaseWithBranch):
         # bug 252821 caused a RevisionNotPresent here...
         stacked_tree.pull(other_tree.branch)
         stacked_tree.branch.repository.pack()
-        stacked_tree.branch.check()
+        check.check_dwim(stacked_tree.branch.base, False, True, True)
         self.check_lines_added_or_present(stacked_tree.branch, stacked_revid)
 
     def test_fetch_revisions_with_file_changes(self):

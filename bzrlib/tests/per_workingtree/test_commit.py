@@ -49,17 +49,17 @@ class CapturingUIFactory(ui.UIFactory):
         self.depth = 0
 
     def clear(self):
-        """See progress.ProgressBar.clear()."""
+        """See progress.ProgressTask.clear()."""
 
     def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
+        """See progress.ProgressTask.clear_term()."""
 
     def finished(self):
-        """See progress.ProgressBar.finished()."""
+        """See progress.ProgressTask.finished()."""
         self.depth -= 1
 
     def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
+        """See progress.ProgressTask.note()."""
 
     def progress_bar(self):
         return self
@@ -69,7 +69,7 @@ class CapturingUIFactory(ui.UIFactory):
         return self
 
     def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
+        """See progress.ProgressTask.update()."""
         if self.depth == 1:
             self._calls.append(("update", count, total, message))
 
@@ -279,6 +279,15 @@ class TestCommit(TestCaseWithWorkingTree):
         wt.commit('changed kind')
         wt2.merge_from_branch(wt.branch)
         wt2.commit('merged kind change')
+
+    def test_commit_aborted_does_not_apply_automatic_changes_bug_282402(self):
+        wt = self.make_branch_and_tree('.')
+        wt.add(['a'], ['a-id'], ['file'])
+        def fail_message(obj):
+            raise errors.BzrCommandError("empty commit message")
+        self.assertRaises(errors.BzrCommandError, wt.commit,
+            message_callback=fail_message)
+        self.assertEqual('a', wt.id2path('a-id'))
 
     def test_local_commit_ignores_master(self):
         # a --local commit does not require access to the master branch
@@ -602,29 +611,3 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
-
-    def test_commit_and_mv_dance_a(self):
-        # should fail because of
-        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
-        # not, while the blackbox.test_commit equivalent does - maybe because
-        # of different format combinations
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["a"])
-        tree.add("a")
-        tree.rename_one("a", "b")
-        tree.commit("Actually no, b")
-        tree.rename_one("b", "a")
-        tree.commit("No, really, a")
-
-    def test_commit_and_mv_dance_b(self):
-        # should fail because of
-        # <https://bugs.launchpad.net/bzr/+bug/395556> but apparently does
-        # not, while the blackbox.test_commit equivalent does - maybe because
-        # of different format combinations
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["b"])
-        tree.add("b")
-        tree.rename_one("b", "a")
-        tree.commit("Actually no, a")
-        tree.rename_one("a", "b")
-        tree.commit("No, really, b")
