@@ -32,6 +32,7 @@ from bzrlib.plugins.fastimport import (
     branch_updater,
     bzr_commit_handler,
     cache_manager,
+    commands,
     errors as plugin_errors,
     helpers,
     idmapfile,
