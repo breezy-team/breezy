@@ -110,6 +110,10 @@ Testing
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
 
+* When manually creating transport servers in test cases, a new helper
+  ``TestCase.start_server`` that registers a cleanup and starts the server
+  should be used. (Robert Collins)
+
 bzr 1.18
 ########
 

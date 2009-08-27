@@ -928,6 +928,25 @@ class TestCase(unittest.TestCase):
     def _lock_broken(self, result):
         self._lock_actions.append(('broken', result))
 
+    def start_server(self, transport_server, backing_server=None):
+        """Start transport_server for this test.
+
+        This starts the server, registers a cleanup for it and permits the
+        server's urls to be used.
+        """
+        if backing_server is None:
+            transport_server.setUp()
+        else:
+            try:
+                transport_server.setUp(backing_server)
+            except TypeError, e:
+                # This should never happen; the try:Except here is to assist
+                # developers having to update code rather than seeing an
+                # uninformative TypeError.
+                raise Exception, "Old server API in use: %s, %s" % (
+                    transport_server, e)
+        self.addCleanup(transport_server.tearDown)
+
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
 
@@ -2067,13 +2086,12 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                # bring up the server
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.get_vfs_only_server())
             else:
+                # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp(self.get_vfs_only_server())
-            self.addCleanup(self.__readonly_server.tearDown)
+            self.start_server(self.__readonly_server,
+                self.get_vfs_only_server())
         return self.__readonly_server
 
     def get_readonly_url(self, relpath=None):
@@ -2098,8 +2116,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         if self.__vfs_server is None:
             self.__vfs_server = MemoryServer()
-            self.__vfs_server.setUp()
-            self.addCleanup(self.__vfs_server.tearDown)
+            self.start_server(self.__vfs_server)
         return self.__vfs_server
 
     def get_server(self):
@@ -2112,19 +2129,13 @@ class TestCaseWithMemoryTransport(TestCase):
         then the self.get_vfs_server is returned.
         """
         if self.__server is None:
-            if self.transport_server is None or self.transport_server is self.vfs_transport_factory:
-                return self.get_vfs_only_server()
+            if (self.transport_server is None or self.transport_server is
+                self.vfs_transport_factory):
+                self.__server = self.get_vfs_only_server()
             else:
                 # bring up a decorated means of access to the vfs only server.
                 self.__server = self.transport_server()
-                try:
-                    self.__server.setUp(self.get_vfs_only_server())
-                except TypeError, e:
-                    # This should never happen; the try:Except here is to assist
-                    # developers having to update code rather than seeing an
-                    # uninformative TypeError.
-                    raise Exception, "Old server API in use: %s, %s" % (self.__server, e)
-            self.addCleanup(self.__server.tearDown)
+                self.start_server(self.__server, self.get_vfs_only_server())
         return self.__server
 
     def _adjust_url(self, base, relpath):
@@ -2263,9 +2274,8 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def make_smart_server(self, path):
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
+        self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
         return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
@@ -2472,8 +2482,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         if self.__vfs_server is None:
             self.__vfs_server = self.vfs_transport_factory()
-            self.__vfs_server.setUp()
-            self.addCleanup(self.__vfs_server.tearDown)
+            self.start_server(self.__vfs_server)
         return self.__vfs_server
 
     def make_branch_and_tree(self, relpath, format=None):
