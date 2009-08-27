@@ -155,6 +155,17 @@ class TestCommitDisplay(tests.TestCase):
             repr(c))
 
 
+class TestFeatureDisplay(tests.TestCase):
+
+    def test_feature(self):
+        c = commands.FeatureCommand("dwim")
+        self.assertEqual("feature dwim", repr(c))
+
+    def test_feature_with_value(self):
+        c = commands.FeatureCommand("dwim", "please")
+        self.assertEqual("feature dwim=please", repr(c))
+
+
 class TestProgressDisplay(tests.TestCase):
 
     def test_progress(self):

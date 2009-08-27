@@ -28,7 +28,8 @@ GIT_FAST_IMPORT_NEEDS_EXTRA_SPACE_AFTER_QUOTE = False
 
 
 # Lists of command names
-COMMAND_NAMES = ['blob', 'checkpoint', 'commit', 'progress', 'reset', 'tag']
+COMMAND_NAMES = ['blob', 'checkpoint', 'commit', 'feature', 'progress',
+    'reset', 'tag']
 FILE_COMMAND_NAMES = ['filemodify', 'filedelete', 'filecopy', 'filerename',
     'filedeleteall']
 
@@ -189,6 +190,22 @@ class CommitCommand(ImportCommand):
             return self.file_iter()
         elif self.file_iter:
             return iter(self.file_iter)
+
+
+class FeatureCommand(ImportCommand):
+
+    def __init__(self, feature_name, value=None, lineno=0):
+        ImportCommand.__init__(self, 'feature')
+        self.feature_name = feature_name
+        self.value = value
+        self.lineno = lineno
+
+    def __repr__(self):
+        if self.value is None:
+            value_text = ""
+        else:
+            value_text = "=%s" % self.value
+        return "feature %s%s" % (self.feature_name, value_text)
 
 
 class ProgressCommand(ImportCommand):
