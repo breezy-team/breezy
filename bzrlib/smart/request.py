@@ -364,6 +364,9 @@ def _translate_error(err):
         return ('FileExists', err.path)
     elif isinstance(err, errors.DirectoryNotEmpty):
         return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.IncompatibleRepositories):
+        return ('IncompatibleRepositories', str(err.source), str(err.target),
+            str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
