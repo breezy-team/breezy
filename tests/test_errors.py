@@ -71,3 +71,8 @@ class TestErrors(tests.TestCase):
     def test_MissingHandler(self):
         e = errors.MissingHandler('foo')
         self.assertEqual("Missing handler for command foo", str(e))
+
+    def test_UnknownFeature(self):
+        e = errors.UnknownFeature('aaa')
+        self.assertEqual("Unknown feature 'aaa' - try a later importer or "
+            "an earlier data format", str(e))

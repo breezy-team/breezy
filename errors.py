@@ -163,3 +163,14 @@ class BadRestart(ImportError):
     def __init__(self, commit_id):
         ImportError.__init__(self)
         self.commit_id = commit_id
+
+
+class UnknownFeature(ImportError):
+    """Raised when an unknown feature is given in the input stream."""
+
+    _fmt = ("Unknown feature '%(feature)s' - try a later importer or "
+        "an earlier data format")
+
+    def __init__(self, feature):
+        ImportError.__init__(self)
+        self.feature = feature
