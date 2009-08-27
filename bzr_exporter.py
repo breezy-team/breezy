@@ -251,17 +251,21 @@ class BzrFastExporter(object):
             self._save_marks()
             self.print_cmd(commands.CheckpointCommand())
 
-    def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
-        # Get the committer and author info
-        committer = revobj.committer
-        if committer.find('<') == -1:
+    def _get_name_email(self, user):
+        if user.find('<') == -1:
             # If the email isn't inside <>, we need to use it as the name
             # in order for things to round-trip correctly.
             # (note: parseaddr('a@b.com') => name:'', email: 'a@b.com')
-            name = committer
+            name = user
             email = ''
         else:
-            name, email = parseaddr(committer)
+            name, email = parseaddr(user)
+        return name, email
+
+    def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
+        # Get the committer and author info
+        committer = revobj.committer
+        name, email = self._get_name_email(committer)
         committer_info = (name, email, revobj.timestamp, revobj.timezone)
         if self._multi_author_api_available:
             more_authors = revobj.get_apparent_authors()
@@ -270,15 +274,15 @@ class BzrFastExporter(object):
             more_authors = []
             author = revobj.get_apparent_author()
         if more_authors:
-            name, email = parseaddr(author)
+            name, email = self._get_name_email(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
             more_author_info = []
             for a in more_authors:
-                name, email = parseaddr(a)
+                name, email = self._get_name_email(a)
                 more_author_info.append(
                     (name, email, revobj.timestamp, revobj.timezone))
         elif author != committer:
-            name, email = parseaddr(author)
+            name, email = self._get_name_email(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
             more_author_info = None
         else:
