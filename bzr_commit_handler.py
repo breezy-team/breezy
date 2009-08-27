@@ -25,7 +25,7 @@ from bzrlib import (
     revision,
     serializer,
     )
-from bzrlib.plugins.fastimport import helpers, processor
+from bzrlib.plugins.fastimport import commands, helpers, processor
 
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
@@ -265,8 +265,9 @@ class GenericCommitHandler(processor.CommitHandler):
             # make sure the cache used by get_lines knows that
             self.lines_for_commit[file_id] = []
         else:
-            raise errors.BzrError("Cannot import items of kind '%s' yet" %
-                (kind,))
+            self.warning("Cannot import items of kind '%s' yet - ignoring '%s'"
+                % (kind, path))
+            return
         # Record it
         if file_id in inv:
             old_ie = inv[file_id]
@@ -770,7 +771,10 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            data = self.cache_mgr.fetch_blob(filecmd.dataref)
+            if filecmd.kind == commands.TREE_REFERENCE_KIND:
+                data = filecmd.dataref
+            else:
+                data = self.cache_mgr.fetch_blob(filecmd.dataref)
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)

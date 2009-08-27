@@ -370,11 +370,7 @@ class ImportParser(LineBasedParser):
         """
         params = info.split(' ', 2)
         path = self._path(params[2])
-        is_executable, is_symlink = self._mode(params[0])
-        if is_symlink:
-            kind = commands.SYMLINK_KIND
-        else:
-            kind = commands.FILE_KIND
+        is_executable, kind = self._mode(params[0])
         if params[1] == 'inline':
             dataref = None
             data = self._get_data('filemodify')
@@ -536,17 +532,19 @@ class ImportParser(LineBasedParser):
         return map(_unquote_c_string, parts)
 
     def _mode(self, s):
-        """Parse a file mode into executable and symlink flags.
+        """Parse a file mode into executable and kind.
         
-        :return (is_executable, is_symlink)
+        :return (is_executable, kind)
         """
         # Note: Output from git-fast-export slightly different to spec
         if s in ['644', '100644', '0100644']:
-            return False, False
+            return False, commands.FILE_KIND
         elif s in ['755', '100755', '0100755']:
-            return True, False
+            return True, commands.FILE_KIND
         elif s in ['120000', '0120000']:
-            return False, True
+            return False, commands.SYMLINK_KIND
+        elif s in ['160000', '0160000']:
+            return False, commands.TREE_REFERENCE_KIND
         else:
             self.abort(errors.BadFormat, 'filemodify', 'mode', s)
 

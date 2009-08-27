@@ -79,6 +79,9 @@ Bug Fixes
 
 * Gracefully handle an empty input stream. (Gonéri Le Bouder)
 
+* Gracefully handle git submodules by ignoring them.
+  (Ian Clatworthy)
+
 * Get git-bzr working again. (Gonéri Le Bouder)
 
 Documentation
