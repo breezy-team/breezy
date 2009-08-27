@@ -154,6 +154,51 @@ class TestCommitDisplay(tests.TestCase):
             "blah blah blah",
             repr(c))
 
+    def test_commit_with_more_authors(self):
+        # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
+        author = ('Sue Wong', 'sue@example.com', 1234565432, -6 * 3600)
+        committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
+        more_authors = [
+            ('Al Smith', 'al@example.com', 1234565432, -6 * 3600),
+            ('Bill Jones', 'bill@example.com', 1234565432, -6 * 3600),
+            ]
+        c = commands.CommitCommand("refs/heads/master", "bbb", author,
+            committer, "release v1.0", ":aaa", None, None, more_authors)
+        self.assertEqualDiff(
+            "commit refs/heads/master\n"
+            "mark :bbb\n"
+            "author Sue Wong <sue@example.com> 1234565432 -0600\n"
+            "author Al Smith <al@example.com> 1234565432 -0600\n"
+            "author Bill Jones <bill@example.com> 1234565432 -0600\n"
+            "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
+            "data 12\n"
+            "release v1.0\n"
+            "from :aaa",
+            repr(c))
+
+    def test_commit_with_properties(self):
+        # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
+        committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
+        properties = {
+            u'greeting':  u'hello',
+            u'planet':    u'world',
+            }
+        c = commands.CommitCommand("refs/heads/master", "bbb", None,
+            committer, "release v1.0", ":aaa", None, None, None, properties)
+        self.assertEqualDiff(
+            "commit refs/heads/master\n"
+            "mark :bbb\n"
+            "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
+            "data 12\n"
+            "release v1.0\n"
+            "from :aaa\n"
+            "properties 2\n"
+            "name 8 greeting\n"
+            "value 5 hello\n"
+            "name 6 planet\n"
+            "value 5 world",
+            repr(c))
+
 
 class TestFeatureDisplay(tests.TestCase):
 

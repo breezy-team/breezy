@@ -111,7 +111,7 @@ class CheckpointCommand(ImportCommand):
 class CommitCommand(ImportCommand):
 
     def __init__(self, ref, mark, author, committer, message, from_,
-        merges, file_iter, lineno=0):
+        merges, file_iter, more_authors=None, properties=None, lineno=0):
         ImportCommand.__init__(self, 'commit')
         self.ref = ref
         self.mark = mark
@@ -121,6 +121,8 @@ class CommitCommand(ImportCommand):
         self.from_ = from_
         self.merges = merges
         self.file_iter = file_iter
+        self.more_authors = more_authors
+        self.properties = properties
         self.lineno = lineno
         self._binary = ['file_iter']
         # Provide a unique id in case the mark is missing
@@ -135,15 +137,18 @@ class CommitCommand(ImportCommand):
     def __str__(self):
         return self.to_string(include_file_contents=False)
 
-    def to_string(self, include_file_contents=False):
+    def to_string(self, use_features=True, include_file_contents=False):
         if self.mark is None:
             mark_line = ""
         else:
             mark_line = "\nmark :%s" % self.mark
         if self.author is None:
-            author_line = ""
+            author_section = ""
         else:
-            author_line = "\nauthor %s" % format_who_when(self.author)
+            author_section = "\nauthor %s" % format_who_when(self.author)
+            if use_features and self.more_authors:
+                for author in self.more_authors:
+                    author_section += "\nauthor %s" % format_who_when(author)
         committer = "committer %s" % format_who_when(self.committer)
         if self.message is None:
             msg_section = ""
@@ -159,6 +164,14 @@ class CommitCommand(ImportCommand):
         else:
             merge_lines = "".join(["\nmerge %s" % (m,)
                 for m in self.merges])
+        if use_features and self.properties:
+            property_lines = ["\nproperties %d" % len(self.properties)]
+            for name in sorted(self.properties):
+                value = self.properties[name]
+                property_lines.append(format_property(name, value))
+            properties_section = "\n".join(property_lines)
+        else:
+            properties_section = ""
         if self.file_iter is None:
             filecommands = ""
         else:
@@ -168,8 +181,9 @@ class CommitCommand(ImportCommand):
                 format_str = "\n%s"
             filecommands = "".join([format_str % (c,)
                 for c in self.iter_files()])
-        return "commit %s%s%s\n%s%s%s%s%s" % (self.ref, mark_line, author_line,
-            committer, msg_section, from_line, merge_lines, filecommands)
+        return "commit %s%s%s\n%s%s%s%s%s%s" % (self.ref, mark_line,
+            author_section, committer, msg_section, from_line, merge_lines,
+            properties_section, filecommands)
 
     def dump_str(self, names=None, child_lists=None, verbose=False):
         result = [ImportCommand.dump_str(self, names, verbose=verbose)]
@@ -397,3 +411,15 @@ def format_who_when(fields):
         sep = ' '
     result = "%s%s<%s> %d %s" % (name, sep, fields[1], fields[2], offset_str)
     return result.encode('utf8')
+
+
+def format_property(name, value):
+    """Format the name and value (both unicode) of a property as a string."""
+    utf8_name = name.encode('utf8')
+    if value:
+        utf8_value = value.encode('utf8')
+        result = "name %d %s\nvalue %d %s" % (len(utf8_name), utf8_name,
+            len(utf8_value), utf8_value)
+    else:
+        result = "name %d %s" % (len(utf8_name), utf8_name)
+    return result
