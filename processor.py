@@ -181,6 +181,10 @@ class ImportProcessor(object):
         """Process a TagCommand."""
         raise NotImplementedError(self.tag_handler)
 
+    def feature_handler(self, cmd):
+        """Process a FeatureCommand."""
+        raise NotImplementedError(self.feature_handler)
+
 
 class CommitHandler(object):
     """Base class for commit handling.

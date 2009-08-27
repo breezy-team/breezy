@@ -341,6 +341,13 @@ class ImportParser(LineBasedParser):
         lineno  = self.lineno
         mark = self._get_mark_if_any()
         author = self._get_user_info('commit', 'author', False)
+        more_authors = []
+        while True:
+            another_author = self._get_user_info('commit', 'author', False)
+            if another_author is not None:
+                more_authors.append(another_author)
+            else:
+                break
         committer = self._get_user_info('commit', 'committer')
         message = self._get_data('commit', 'message')
         try:
@@ -361,8 +368,17 @@ class ImportParser(LineBasedParser):
                 merges.extend(these_merges)
             else:
                 break
+        properties = {}
+        while True:
+            name_value = self._get_property()
+            if name_value is not None:
+                name, value = name_value
+                properties[name] = value
+            else:
+                break
         return commands.CommitCommand(ref, mark, author, committer, message,
-            from_, merges, self.iter_file_commands, lineno=lineno)
+            from_, merges, self.iter_file_commands, lineno=lineno,
+            more_authors=more_authors, properties=properties)
 
     def _parse_feature(self, info):
         """Parse a feature command."""
@@ -433,6 +449,17 @@ class ImportParser(LineBasedParser):
             return None
         elif line.startswith('merge '):
             return line[len('merge '):]
+        else:
+            self.push_line(line)
+            return None
+
+    def _get_property(self):
+        """Parse a property section."""
+        line = self.next_line()
+        if line is None:
+            return None
+        elif line.startswith('property '):
+            return self._name_value(line[len('property '):])
         else:
             self.push_line(line)
             return None
@@ -514,6 +541,24 @@ class ImportParser(LineBasedParser):
         except UnicodeDecodeError:
             email = "%s" % (email.decode('utf_8'),)
         return (name, email, when[0], when[1])
+
+    def _name_value(self, s):
+        """Parse a (name,value) tuple from 'name value-length value'."""
+        parts = s.split(' ', 2)
+        name = parts[0].decode('utf8')
+        if len(parts) == 1:
+            value = None
+        else:
+            size = int(parts[1])
+            value = parts[2]
+            still_to_read = size - len(value)
+            if still_to_read == 1:
+                value += "\n"
+            elif still_to_read > 0:
+                read_bytes = self.read_bytes(still_to_read - 1)
+                value += "\n" + read_bytes
+            value = value.decode('utf8')
+        return (name, value)
 
     def _path(self, s):
         """Parse a path."""

@@ -120,6 +120,26 @@ M 160000 rev-id tree-id
 # Test features
 feature whatever
 feature foo=bar
+# Test commit with properties
+commit refs/heads/master
+mark :6
+committer <bugs@bunny.org> now
+data 18
+test of properties
+property p1
+property p2 5 hohum
+property p3 16 alpha
+beta
+gamma
+# Test a commit with multiple authors
+commit refs/heads/master
+mark :7
+author Fluffy <fluffy@bunny.org> now
+author Daffy <daffy@duck.org> now
+author Donald <donald@duck.org> now
+committer <bugs@bunny.org> now
+data 17
+multi-author test
 """
 
 
@@ -134,7 +154,7 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
-        self.assertEqual(len(result), 15)
+        self.assertEqual(len(result), 17)
         cmd1 = result.pop(0)
         self.assertEqual('progress', cmd1.name)
         self.assertEqual('completed', cmd1.message)
@@ -219,6 +239,27 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('feature', cmd.name)
         self.assertEqual('foo', cmd.feature_name)
         self.assertEqual('bar', cmd.value)
+        cmd = result.pop(0)
+        self.assertEqual('commit', cmd.name)
+        self.assertEqual('6', cmd.mark)
+        self.assertEqual('test of properties', cmd.message)
+        self.assertEqual({
+            u'p1': None,
+            u'p2': u'hohum',
+            u'p3': u'alpha\nbeta\ngamma',
+            }, cmd.properties)
+        cmd = result.pop(0)
+        self.assertEqual('commit', cmd.name)
+        self.assertEqual('7', cmd.mark)
+        self.assertEqual('multi-author test', cmd.message)
+        self.assertEqual('', cmd.committer[0])
+        self.assertEqual('bugs@bunny.org', cmd.committer[1])
+        self.assertEqual('Fluffy', cmd.author[0])
+        self.assertEqual('fluffy@bunny.org', cmd.author[1])
+        self.assertEqual('Daffy', cmd.more_authors[0][0])
+        self.assertEqual('daffy@duck.org', cmd.more_authors[0][1])
+        self.assertEqual('Donald', cmd.more_authors[1][0])
+        self.assertEqual('donald@duck.org', cmd.more_authors[1][1])
 
 
 class TestStringParsing(tests.TestCase):

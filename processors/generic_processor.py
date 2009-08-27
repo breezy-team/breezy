@@ -543,3 +543,7 @@ class GenericProcessor(processor.ImportProcessor):
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
+
+    def feature_handler(self, cmd):
+        """Process a FeatureCommand."""
+        self.warning("assuming feature %s is supported" % cmd.feature_name)
