@@ -545,7 +545,7 @@ class ImportParser(LineBasedParser):
     def _name_value(self, s):
         """Parse a (name,value) tuple from 'name value-length value'."""
         parts = s.split(' ', 2)
-        name = parts[0].decode('utf8')
+        name = parts[0]
         if len(parts) == 1:
             value = None
         else:

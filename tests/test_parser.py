@@ -244,9 +244,9 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('6', cmd.mark)
         self.assertEqual('test of properties', cmd.message)
         self.assertEqual({
-            u'p1': None,
-            u'p2': u'hohum',
-            u'p3': u'alpha\nbeta\ngamma',
+            'p1': None,
+            'p2': u'hohum',
+            'p3': u'alpha\nbeta\ngamma',
             }, cmd.properties)
         cmd = result.pop(0)
         self.assertEqual('commit', cmd.name)
