@@ -17,6 +17,12 @@ Bug Fixes
   conversion will commit too many copies a file.
   (Martin Pool, #415508)
 
+Improvements
+************
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
 API Changes
 ***********
 
