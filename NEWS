@@ -90,6 +90,9 @@ API Changes
   classes changed to manage lock lifetime of the trees they open in a way
   consistent with reader-exclusive locks. (Robert Collins, #305006)
 
+* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
+  subclasses - the same as python's unittest module. (Robert Collins)
+
 Internals
 *********
 

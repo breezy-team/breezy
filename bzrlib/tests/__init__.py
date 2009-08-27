@@ -175,17 +175,47 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._overall_start_time = time.time()
         self._strict = strict
 
-    def done(self):
-        # nb: called stopTestRun in the version of this that Python merged
-        # upstream, according to lifeless 20090803
+    def stopTestRun(self):
+        run = self.testsRun
+        actionTaken = "Ran"
+        stopTime = time.time()
+        timeTaken = stopTime - self.startTime
+        self.printErrors()
+        self.stream.writeln(self.separator2)
+        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+                            run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln()
+        if not self.wasSuccessful():
+            self.stream.write("FAILED (")
+            failed, errored = map(len, (self.failures, self.errors))
+            if failed:
+                self.stream.write("failures=%d" % failed)
+            if errored:
+                if failed: self.stream.write(", ")
+                self.stream.write("errors=%d" % errored)
+            if self.known_failure_count:
+                if failed or errored: self.stream.write(", ")
+                self.stream.write("known_failure_count=%d" %
+                    self.known_failure_count)
+            self.stream.writeln(")")
+        else:
+            if self.known_failure_count:
+                self.stream.writeln("OK (known_failures=%d)" %
+                    self.known_failure_count)
+            else:
+                self.stream.writeln("OK")
+        if self.skip_count > 0:
+            skipped = self.skip_count
+            self.stream.writeln('%d test%s skipped' %
+                                (skipped, skipped != 1 and "s" or ""))
+        if self.unsupported:
+            for feature, count in sorted(self.unsupported.items()):
+                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                    (feature, count))
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
             ok = self.wasSuccessful()
-        if ok:
-            self.stream.write('tests passed\n')
-        else:
-            self.stream.write('tests failed\n')
         if TestCase._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
@@ -383,11 +413,11 @@ class ExtendedTestResult(unittest._TextTestResult):
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
 
-    def finished(self):
-        pass
-
     def report_cleaning_up(self):
         pass
+
+    def startTestRun(self):
+        self.startTime = time.time()
 
     def report_success(self, test):
         pass
@@ -421,15 +451,14 @@ class TextTestResult(ExtendedTestResult):
         self.pb.update_latency = 0
         self.pb.show_transport_activity = False
 
-    def done(self):
+    def stopTestRun(self):
         # called when the tests that are going to run have run
         self.pb.clear()
-        super(TextTestResult, self).done()
-
-    def finished(self):
         self.pb.finished()
+        super(TextTestResult, self).stopTestRun()
 
-    def report_starting(self):
+    def startTestRun(self):
+        super(TextTestResult, self).startTestRun()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def printErrors(self):
@@ -514,7 +543,8 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def report_starting(self):
+    def startTestRun(self):
+        super(VerboseTestResult, self).startTestRun()
         self.stream.write('running %d tests...\n' % self.num_tests)
 
     def report_test_start(self, test):
@@ -578,7 +608,6 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False,
                  strict=False,
                  result_decorators=None,
                  ):
@@ -593,85 +622,43 @@ class TextTestRunner(object):
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
-        self.list_only = list_only
         self._strict = strict
         self._result_decorators = result_decorators or []
 
     def run(self, test):
         "Run the given test case or test suite."
-        startTime = time.time()
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
             result_class = VerboseTestResult
-        result = result_class(self.stream,
+        original_result = result_class(self.stream,
                               self.descriptions,
                               self.verbosity,
                               bench_history=self._bench_history,
                               strict=self._strict,
                               )
-        run_result = result
+        # Signal to result objects that look at stop early policy to stop,
+        original_result.stop_early = self.stop_on_failure
+        result = original_result
         for decorator in self._result_decorators:
-            run_result = decorator(run_result)
-        result.stop_early = self.stop_on_failure
-        result.report_starting()
-        if self.list_only:
-            if self.verbosity >= 2:
-                self.stream.writeln("Listing tests only ...\n")
-            run = 0
-            for t in iter_suite_tests(test):
-                self.stream.writeln("%s" % (t.id()))
-                run += 1
-            return None
+            result = decorator(result)
+            result.stop_early = self.stop_on_failure
+        try:
+            import testtools
+        except ImportError:
+            pass
         else:
-            try:
-                import testtools
-            except ImportError:
-                test.run(run_result)
-            else:
-                if isinstance(test, testtools.ConcurrentTestSuite):
-                    # We need to catch bzr specific behaviors
-                    test.run(BZRTransformingResult(run_result))
-                else:
-                    test.run(run_result)
-            run = result.testsRun
-            actionTaken = "Ran"
-        stopTime = time.time()
-        timeTaken = stopTime - startTime
-        result.printErrors()
-        self.stream.writeln(result.separator2)
-        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
-                            run, run != 1 and "s" or "", timeTaken))
-        self.stream.writeln()
-        if not result.wasSuccessful():
-            self.stream.write("FAILED (")
-            failed, errored = map(len, (result.failures, result.errors))
-            if failed:
-                self.stream.write("failures=%d" % failed)
-            if errored:
-                if failed: self.stream.write(", ")
-                self.stream.write("errors=%d" % errored)
-            if result.known_failure_count:
-                if failed or errored: self.stream.write(", ")
-                self.stream.write("known_failure_count=%d" %
-                    result.known_failure_count)
-            self.stream.writeln(")")
-        else:
-            if result.known_failure_count:
-                self.stream.writeln("OK (known_failures=%d)" %
-                    result.known_failure_count)
-            else:
-                self.stream.writeln("OK")
-        if result.skip_count > 0:
-            skipped = result.skip_count
-            self.stream.writeln('%d test%s skipped' %
-                                (skipped, skipped != 1 and "s" or ""))
-        if result.unsupported:
-            for feature, count in sorted(result.unsupported.items()):
-                self.stream.writeln("Missing feature '%s' skipped %d tests." %
-                    (feature, count))
-        result.finished()
-        return result
+            if isinstance(test, testtools.ConcurrentTestSuite):
+                # We need to catch bzr specific behaviors
+                result = BZRTransformingResult(result)
+        result.startTestRun()
+        try:
+            test.run(result)
+        finally:
+            result.stopTestRun()
+        # higher level code uses our extended protocol to determine
+        # what exit code to give.
+        return original_result
 
 
 def iter_suite_tests(suite):
@@ -2807,7 +2794,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
-                            list_only=list_only,
                             strict=strict,
                             result_decorators=result_decorators,
                             )
@@ -2830,10 +2816,15 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
-    result = runner.run(suite)
     if list_only:
+        # Done after test suite decoration to allow randomisation etc
+        # to take effect, though that is of marginal benefit.
+        if verbosity >= 2:
+            stream.write("Listing tests only ...\n")
+        for t in iter_suite_tests(suite):
+            stream.write("%s\n" % (t.id()))
         return True
-    result.done()
+    result = runner.run(suite)
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -3167,6 +3158,12 @@ class ForwardingResult(unittest.TestResult):
 
     def stopTest(self, test):
         self.result.stopTest(test)
+
+    def startTestRun(self):
+        self.result.startTestRun()
+
+    def stopTestRun(self):
+        self.result.stopTestRun()
 
     def addSkip(self, test, reason):
         self.result.addSkip(test, reason)
