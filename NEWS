@@ -939,6 +939,9 @@ Internals
 Testing
 *******
 
+* ``make check`` no longer repeats the test run in ``LANG=C``.
+  (Martin Pool, #386180)
+
 * The number of cores is now correctly detected on OSX. (John Szakmeister)
 
 * The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
