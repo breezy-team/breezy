@@ -50,7 +50,7 @@ Improvements
 * Directories that become empty following a delete or rename of
   one of their children are now implicitly pruned. If required,
   this will be made optional at a later date.
-  (Ian Clatworthy)
+  (Tom Widmer, Ian Clatworthy)
 
 * Blob tracking is now more intelligently done by an implicit
   first pass to collect blob usage statistics. This eliminates

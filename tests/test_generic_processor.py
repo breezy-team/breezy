@@ -521,6 +521,79 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
         revtree0, revtree1 = self.assertChanges(branch, 1,)
 
 
+class TestImportToPackDeleteMultiLevel(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, paths, paths_to_delete):
+        # Revno 1: create multiple files
+        # Revno 2: delete multiple files
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                for i, path in enumerate(paths):
+                    yield commands.FileModifyCommand(path, 'file', False,
+                            None, "aaa%d" % i)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                for path in paths_to_delete:
+                    yield commands.FileDeleteCommand(path)
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_files_in_multiple_levels(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d/e']
+        paths_to_delete = ['a/b/c', 'a/b/d/e']
+        handler.process(self.file_command_iter(paths, paths_to_delete))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[
+                ('a',), ('a/b',), ('a/b/c',),
+                ('a/b/d',), ('a/b/d/e',),
+                ])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[
+                ('a',), ('a/b',), ('a/b/c',),
+                ('a/b/d',), ('a/b/d/e',),
+                ])
+
+    def test_delete_file_single_level(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d/e']
+        paths_to_delete = ['a/b/d/e']
+        handler.process(self.file_command_iter(paths, paths_to_delete))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[
+                ('a',), ('a/b',), ('a/b/c',),
+                ('a/b/d',), ('a/b/d/e',),
+                ])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[
+                ('a/b/d',), ('a/b/d/e',),
+                ])
+
+    def test_delete_file_complex_level(self):
+        handler, branch = self.get_handler()
+        paths = ['a/b/c', 'a/b/d/e', 'a/f/g', 'a/h', 'a/b/d/i/j']
+        paths_to_delete = ['a/b/c', 'a/b/d/e', 'a/f/g', 'a/b/d/i/j']
+        handler.process(self.file_command_iter(paths, paths_to_delete))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[
+                ('a',), ('a/b',), ('a/b/c',),
+                ('a/b/d',), ('a/b/d/e',),
+                ('a/f',), ('a/f/g',),
+                ('a/h',),
+                ('a/b/d/i',), ('a/b/d/i/j',),
+                ])
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[
+                ('a/b',), ('a/b/c',),
+                ('a/b/d',), ('a/b/d/e',),
+                ('a/f',), ('a/f/g',),
+                ('a/b/d/i',), ('a/b/d/i/j',),
+                ])
+
 class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
     """Test delete followed by an add. Merges can cause this."""
 
@@ -1633,6 +1706,9 @@ class TestImportToRichRootDelete(TestImportToPackDelete):
 
 class TestImportToRichRootDeleteNew(TestImportToPackDeleteNew):
     branch_format = "1.9-rich-root"
+    
+class TestImportToRichRootDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
+    branch_format = "1.9-rich-root"
 
 class TestImportToRichRootDeleteThenAdd(TestImportToPackDeleteThenAdd):
     branch_format = "1.9-rich-root"
@@ -1692,6 +1768,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
+        branch_format = "2a"
+
+    class TestImportToChkDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
         branch_format = "2a"
 
     class TestImportToChkDeleteThenAdd(TestImportToPackDeleteThenAdd):

@@ -574,18 +574,23 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         """
         delta = list(self._delta_entries_by_fileid.values())
         if self.prune_empty_dirs and self._dirs_that_might_become_empty:
-            candidates = osutils.minimum_path_selection(
-                self._dirs_that_might_become_empty)
-            never_born = set()
-            for path, file_id in self._empty_after_delta(delta, candidates):
-                newly_added = self._new_file_ids.get(path)
-                if newly_added:
-                    never_born.add(newly_added)
-                else:
-                    delta.append((path, None, file_id, None))
-            # Clean up entries that got deleted before they were ever added
-            if never_born:
-                delta = [de for de in delta if de[2] not in never_born]
+            candidates = self._dirs_that_might_become_empty
+            while candidates:
+                never_born = set()
+                parent_dirs_that_might_become_empty = set()
+                for path, file_id in self._empty_after_delta(delta, candidates):
+                    newly_added = self._new_file_ids.get(path)
+                    if newly_added:
+                        never_born.add(newly_added)
+                    else:
+                        delta.append((path, None, file_id, None))
+                    parent_dir = osutils.dirname(path)
+                    if parent_dir:
+                        parent_dirs_that_might_become_empty.add(parent_dir)
+                candidates = parent_dirs_that_might_become_empty
+                # Clean up entries that got deleted before they were ever added
+                if never_born:
+                    delta = [de for de in delta if de[2] not in never_born]
         return delta
 
     def _empty_after_delta(self, delta, candidates):
@@ -598,26 +603,12 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             if file_id is None:
                 continue
             ie = new_inv[file_id]
+            if ie.kind != 'directory':
+                continue
             if len(ie.children) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
-                    self.note("pruning empty directory %s" % (dir,))
-                # Check parents in case deleting this dir makes *them* empty
-                while True:
-                    file_id = ie.parent_id
-                    if file_id == inventory.ROOT_ID:
-                        # We've reach the root
-                        break
-                    try:
-                        ie = new_inv[file_id]
-                    except errors.NoSuchId:
-                        break
-                    if len(ie.children) > 1:
-                        break
-                    dir = new_inv.id2path(file_id)
-                    result.append((dir, file_id))
-                    if self.verbose:
-                        self.note("pruning empty directory parent %s" % (dir,))
+                    self.note("pruning empty directory %s" % (dir,))                
         return result
 
     def _get_proposed_inventory(self, delta):
