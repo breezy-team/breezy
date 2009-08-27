@@ -1706,6 +1706,9 @@ class TestImportToRichRootDelete(TestImportToPackDelete):
 
 class TestImportToRichRootDeleteNew(TestImportToPackDeleteNew):
     branch_format = "1.9-rich-root"
+    
+class TestImportToRichRootDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
+    branch_format = "1.9-rich-root"
 
 class TestImportToRichRootDeleteThenAdd(TestImportToPackDeleteThenAdd):
     branch_format = "1.9-rich-root"
@@ -1765,6 +1768,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
+        branch_format = "2a"
+
+    class TestImportToChkDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
         branch_format = "2a"
 
     class TestImportToChkDeleteThenAdd(TestImportToPackDeleteThenAdd):
