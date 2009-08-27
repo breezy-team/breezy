@@ -588,9 +588,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
                     if parent_dir:
                         parent_dirs_that_might_become_empty.add(parent_dir)
                 candidates = parent_dirs_that_might_become_empty
-            # Clean up entries that got deleted before they were ever added
-            if never_born:
-                delta = [de for de in delta if de[2] not in never_born]
+                # Clean up entries that got deleted before they were ever added
+                if never_born:
+                    delta = [de for de in delta if de[2] not in never_born]
         return delta
 
     def _empty_after_delta(self, delta, candidates):
