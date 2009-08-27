@@ -117,6 +117,9 @@ committer <bugs@bunny.org> now
 data 15
 submodule test
 M 160000 rev-id tree-id
+# Test features
+feature whatever
+feature foo=bar
 """
 
 
@@ -131,7 +134,7 @@ class TestImportParser(tests.TestCase):
             if cmd.name == 'commit':
                 for fc in cmd.file_iter():
                     result.append(fc)
-        self.assertEqual(len(result), 13)
+        self.assertEqual(len(result), 15)
         cmd1 = result.pop(0)
         self.assertEqual('progress', cmd1.name)
         self.assertEqual('completed', cmd1.message)
@@ -208,6 +211,14 @@ class TestImportParser(tests.TestCase):
         self.assertEqual('tree-reference', file_cmd1.kind)
         self.assertEqual(False, file_cmd1.is_executable)
         self.assertEqual("rev-id", file_cmd1.dataref)
+        cmd = result.pop(0)
+        self.assertEqual('feature', cmd.name)
+        self.assertEqual('whatever', cmd.feature_name)
+        self.assertEqual(None, cmd.value)
+        cmd = result.pop(0)
+        self.assertEqual('feature', cmd.name)
+        self.assertEqual('foo', cmd.feature_name)
+        self.assertEqual('bar', cmd.value)
 
 
 class TestStringParsing(tests.TestCase):

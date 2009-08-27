@@ -294,6 +294,8 @@ class ImportParser(LineBasedParser):
                 yield self._parse_tag(line[len('tag '):])
             elif line.startswith('checkpoint'):
                 yield commands.CheckpointCommand()
+            elif line.startswith('feature'):
+                yield self._parse_feature(line[len('feature '):])
             else:
                 self.abort(errors.InvalidCommand, line)
 
@@ -360,7 +362,17 @@ class ImportParser(LineBasedParser):
             else:
                 break
         return commands.CommitCommand(ref, mark, author, committer, message,
-            from_, merges, self.iter_file_commands, lineno)
+            from_, merges, self.iter_file_commands, lineno=lineno)
+
+    def _parse_feature(self, info):
+        """Parse a feature command."""
+        parts = info.split("=", 1)
+        name = parts[0]
+        if len(parts) > 1:
+            value = self._path(parts[1])
+        else:
+            value = None
+        return commands.FeatureCommand(name, value, lineno=self.lineno)
 
     def _parse_file_modify(self, info):
         """Parse a filemodify command within a commit.
