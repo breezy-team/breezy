@@ -807,6 +807,9 @@ class CommitBuilder(object):
                 seen_root = True
         self.new_inventory = None
         if len(inv_delta):
+            # This should perhaps be guarded by a check that the basis we
+            # commit against is the basis for the commit and if not do a delta
+            # against the basis.
             self._any_changes = True
         if not seen_root:
             # housekeeping root entry changes do not affect no-change commits.
