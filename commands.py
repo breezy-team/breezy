@@ -119,7 +119,7 @@ class CheckpointCommand(ImportCommand):
 class CommitCommand(ImportCommand):
 
     def __init__(self, ref, mark, author, committer, message, from_,
-        merges, file_iter, more_authors=None, properties=None, lineno=0):
+        merges, file_iter, lineno=0, more_authors=None, properties=None):
         ImportCommand.__init__(self, 'commit')
         self.ref = ref
         self.mark = mark

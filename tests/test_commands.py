@@ -163,7 +163,8 @@ class TestCommitDisplay(tests.TestCase):
             ('Bill Jones', 'bill@example.com', 1234565432, -6 * 3600),
             ]
         c = commands.CommitCommand("refs/heads/master", "bbb", author,
-            committer, "release v1.0", ":aaa", None, None, more_authors)
+            committer, "release v1.0", ":aaa", None, None,
+            more_authors=more_authors)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :bbb\n"
@@ -184,7 +185,8 @@ class TestCommitDisplay(tests.TestCase):
             u'planet':    u'world',
             }
         c = commands.CommitCommand("refs/heads/master", "bbb", None,
-            committer, "release v1.0", ":aaa", None, None, None, properties)
+            committer, "release v1.0", ":aaa", None, None,
+            properties=properties)
         self.assertEqualDiff(
             "commit refs/heads/master\n"
             "mark :bbb\n"
