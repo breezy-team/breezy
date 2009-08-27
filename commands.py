@@ -165,11 +165,11 @@ class CommitCommand(ImportCommand):
             merge_lines = "".join(["\nmerge %s" % (m,)
                 for m in self.merges])
         if use_features and self.properties:
-            property_lines = ["\nproperties %d" % len(self.properties)]
+            property_lines = []
             for name in sorted(self.properties):
                 value = self.properties[name]
-                property_lines.append(format_property(name, value))
-            properties_section = "\n".join(property_lines)
+                property_lines.append("\n" + format_property(name, value))
+            properties_section = "".join(property_lines)
         else:
             properties_section = ""
         if self.file_iter is None:
@@ -418,8 +418,7 @@ def format_property(name, value):
     utf8_name = name.encode('utf8')
     if value:
         utf8_value = value.encode('utf8')
-        result = "name %d %s\nvalue %d %s" % (len(utf8_name), utf8_name,
-            len(utf8_value), utf8_value)
+        result = "property %s %d %s" % (utf8_name, len(utf8_value), utf8_value)
     else:
-        result = "name %d %s" % (len(utf8_name), utf8_name)
+        result = "property %s" % (utf8_name,)
     return result

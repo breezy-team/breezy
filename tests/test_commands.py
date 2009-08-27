@@ -192,11 +192,8 @@ class TestCommitDisplay(tests.TestCase):
             "data 12\n"
             "release v1.0\n"
             "from :aaa\n"
-            "properties 2\n"
-            "name 8 greeting\n"
-            "value 5 hello\n"
-            "name 6 planet\n"
-            "value 5 world",
+            "property greeting 5 hello\n"
+            "property planet 5 world",
             repr(c))
 
 
