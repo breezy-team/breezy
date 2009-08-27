@@ -38,6 +38,14 @@ FILE_KIND = 'file'
 SYMLINK_KIND = 'symlink'
 TREE_REFERENCE_KIND = 'tree-reference'
 
+# Feature names
+MULTIPLE_AUTHORS_FEATURE = "multiple-authors"
+COMMIT_PROPERTIES_FEATURE = "commit-properties"
+FEATURE_NAMES = [
+    MULTIPLE_AUTHORS_FEATURE,
+    COMMIT_PROPERTIES_FEATURE,
+    ]
+
 
 class ImportCommand(object):
     """Base class for import commands."""

@@ -197,12 +197,8 @@ class BzrFastExporter(object):
             return False
 
     def emit_features(self):
-        supported_features = {
-            'multiple_authors': None,
-            'commit_properties': None,
-            }
-        for name, value in sorted(supported_features.items()):
-            self.print_cmd(commands.FeatureCommand(name, value))
+        for feature in sorted(commands.FEATURE_NAMES):
+            self.print_cmd(commands.FeatureCommand(feature))
 
     def emit_commit(self, revid, git_branch):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:
