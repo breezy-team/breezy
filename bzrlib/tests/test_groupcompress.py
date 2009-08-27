@@ -702,6 +702,66 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                               " 0 8', \(\(\('a',\),\),\)\)")
 
 
+class StubGCVF(object):
+    def __init__(self):
+        self._group_cache = {}
+    def _get_blocks(read_memos):
+        return []
+    
+
+class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
+    """Simple whitebox unit tests for _BatchingBlockFetcher."""
+    
+    def test_add_key_new_read_memo(self):
+        """Adding a key with an uncached read_memo new to this batch adds that
+        read_memo to the list of memos to fetch.
+        """
+        # locations are: index_memo, ignored, parents, ignored
+        # where index_memo is: (idx, offset, len, factory_start, factory_end)
+        # and (idx, offset, size) is known as the 'read_memo', identifying the
+        # raw bytes needed.
+        read_memo = ('fake index', 100, 50)
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_duplicate_read_memo(self):
+        """read_memos that occur multiple times in a batch will only be fetched
+        once.
+        """
+        read_memo = ('fake index', 100, 50)
+        # Two keys, both sharing the same read memo (but different overall
+        # index_memos).
+        locations = {
+            ('key1',): (read_memo + (0, 1), None, None, None),
+            ('key2',): (read_memo + (1, 2), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key1',))
+        total_size = batcher.add_key(('key2',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key1',), ('key2',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_cached_read_memo(self):
+        """Adding a key with a cached read_memo will not cause that read_memo
+        to be added to the list to fetch.
+        """
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = 'fake block'
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(0, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([], batcher.memos_to_get)
+
+
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     _texts = {
