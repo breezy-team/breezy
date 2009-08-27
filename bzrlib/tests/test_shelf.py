@@ -46,6 +46,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo'], ['foo-id'])
         tree.commit('foo')
         tree.rename_one('foo', 'bar')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('rename', 'foo-id', 'foo', 'bar')],
@@ -76,6 +78,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add(['foo', 'bar', 'foo/baz'], ['foo-id', 'bar-id', 'baz-id'])
         tree.commit('foo')
         tree.rename_one('foo/baz', 'bar/baz')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('rename', 'baz-id', 'foo/baz', 'bar/baz')],
@@ -310,6 +314,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         tree.commit('Added file and directory')
         os.unlink('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('delete file', 'foo-id', 'file', 'foo')],
@@ -325,6 +331,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.commit('Added file and directory')
         os.unlink('tree/foo')
         os.mkdir('tree/foo')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('change kind', 'foo-id', 'file', 'directory',
@@ -352,6 +360,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_change_unknown_change(self):
         tree = self.make_branch_and_tree('tree')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         e = self.assertRaises(ValueError, creator.shelve_change, ('unknown',))
@@ -363,6 +373,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree.add('foo', 'foo-id')
         tree.commit('Added file and directory')
         tree.unversion(['foo-id'])
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([('delete file', 'foo-id', 'file', 'foo')],
@@ -373,6 +385,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_serialization(self):
         tree = self.make_branch_and_tree('.')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         shelf_file = open('shelf', 'wb')
@@ -387,6 +401,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo'])
         tree.add('foo', 'foo-id')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         list(creator.iter_shelvable())
@@ -411,8 +427,12 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
 
     def test_shelve_unversioned(self):
         tree = self.make_branch_and_tree('tree')
-        self.assertRaises(errors.PathsNotVersionedError,
-                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        tree.lock_tree_write()
+        try:
+            self.assertRaises(errors.PathsNotVersionedError,
+                              shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        finally:
+            tree.unlock()
         # We should be able to lock/unlock the tree if ShelfCreator cleaned
         # after itself.
         wt = workingtree.WorkingTree.open('tree')
@@ -420,8 +440,15 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         wt.unlock()
         # And a second tentative should raise the same error (no
         # limbo/pending_deletion leftovers).
-        self.assertRaises(errors.PathsNotVersionedError,
-                          shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        tree.lock_tree_write()
+        try:
+            self.assertRaises(errors.PathsNotVersionedError,
+                              shelf.ShelfCreator, tree, tree.basis_tree(), ['foo'])
+        finally:
+            tree.unlock()
+
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
 
 
 class TestUnshelver(tests.TestCaseWithTransport):
@@ -525,6 +552,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         shelf_file = open('shelf', 'rb')
         self.addCleanup(shelf_file.close)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        unshelver.finalize()
 
     def test_corrupt_shelf(self):
         tree = self.make_branch_and_tree('.')
@@ -644,7 +672,10 @@ class TestShelfManager(tests.TestCaseWithTransport):
 
     def test_get_metadata(self):
         tree = self.make_branch_and_tree('.')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
         shelf_manager = tree.get_shelf_manager()
         shelf_id = shelf_manager.shelve_changes(creator, 'foo')
         metadata = shelf_manager.get_metadata(shelf_id)
