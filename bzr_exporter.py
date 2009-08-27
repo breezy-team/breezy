@@ -80,6 +80,7 @@ class BzrFastExporter(object):
         else:
             self.progress_every = 1000
         self._start_time = time.time()
+        self._commit_total = 0
 
         # Load the marks and initialise things accordingly
         self.revid_to_mark = {}
@@ -110,7 +111,7 @@ class BzrFastExporter(object):
             self.note("Calculating the revisions to exclude ...")
             self.excluded_revisions = set([rev_id for rev_id, _, _, _ in
                 self.branch.iter_merge_sorted_revisions(start_rev_id)])
-        return view_revisions
+        return list(view_revisions)
 
     def run(self):
         # Open the source
@@ -123,6 +124,7 @@ class BzrFastExporter(object):
             self.note("Starting export ...")
             if not self.plain_format:
                 self.emit_features()
+            self._commit_total = len(interesting)
             for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
@@ -150,10 +152,11 @@ class BzrFastExporter(object):
         return time.strftime("%H:%M:%S")
 
     def report_progress(self, commit_count, details=''):
-        # Note: we can't easily give a total count here because we
-        # don't know how many merged revisions will need to be output
         if commit_count and commit_count % self.progress_every == 0:
-            counts = "%d" % (commit_count,)
+            if self._commit_total:
+                counts = "%d/%d" % (commit_count, self._commit_total)
+            else:
+                counts = "%d" % (commit_count,)
             minutes = (time.time() - self._start_time) / 60
             rate = commit_count * 1.0 / minutes
             if rate > 10:
@@ -286,9 +289,12 @@ class BzrFastExporter(object):
         for p in revobj.parent_ids:
             if p in self.excluded_revisions:
                 continue
-            parent_mark = self.revid_to_mark[p]
-            if parent_mark != -1:
+            try:
+                parent_mark = self.revid_to_mark[p]
                 non_ghost_parents.append(":%s" % parent_mark)
+            except KeyError:
+                # ghost - ignore
+                continue
         if non_ghost_parents:
             from_ = non_ghost_parents[0]
             merges = non_ghost_parents[1:]
