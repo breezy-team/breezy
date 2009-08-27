@@ -371,10 +371,12 @@ class BzrFastExporter(object):
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path, 'symlink',
                     False, None, tree_new.get_symlink_target(id_)))
+            elif kind == 'directory':
+                file_cmds.append(commands.FileModifyCommand(path, 'directory',
+                    False, None, None))
             else:
-                # Should we do something here for importers that
-                # can handle directory and tree-reference changes?
-                continue
+                self.warning("cannot export '%s' of kind %s yet - ignoring" %
+                    (path, kind))
         return file_cmds
 
     def _process_renames_and_deletes(self, renames, deletes,

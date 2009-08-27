@@ -598,6 +598,8 @@ class ImportParser(LineBasedParser):
             return False, commands.FILE_KIND
         elif s in ['755', '100755', '0100755']:
             return True, commands.FILE_KIND
+        elif s in ['040000', '0040000']:
+            return False, commands.DIRECTORY_KIND
         elif s in ['120000', '0120000']:
             return False, commands.SYMLINK_KIND
         elif s in ['160000', '0160000']:

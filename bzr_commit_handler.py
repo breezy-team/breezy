@@ -269,6 +269,11 @@ class GenericCommitHandler(processor.CommitHandler):
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
+        elif kind == 'directory':
+            self.directory_entries[path] = ie
+            # There are no lines stored for a directory so
+            # make sure the cache used by get_lines knows that
+            self.lines_for_commit[file_id] = []
         elif kind == 'symlink':
             ie.symlink_target = data.encode('utf8')
             # There are no lines stored for a symlink so
@@ -790,7 +795,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            if filecmd.kind == commands.TREE_REFERENCE_KIND:
+            if filecmd.kind == commands.DIRECTORY_KIND:
+                data = None
+            elif filecmd.kind == commands.TREE_REFERENCE_KIND:
                 data = filecmd.dataref
             else:
                 data = self.cache_mgr.fetch_blob(filecmd.dataref)

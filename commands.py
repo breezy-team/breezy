@@ -35,15 +35,18 @@ FILE_COMMAND_NAMES = ['filemodify', 'filedelete', 'filecopy', 'filerename',
 
 # Bazaar file kinds
 FILE_KIND = 'file'
+DIRECTORY_KIND = 'directory'
 SYMLINK_KIND = 'symlink'
 TREE_REFERENCE_KIND = 'tree-reference'
 
 # Feature names
 MULTIPLE_AUTHORS_FEATURE = "multiple-authors"
 COMMIT_PROPERTIES_FEATURE = "commit-properties"
+EMPTY_DIRS_FEATURE = "empty-directories"
 FEATURE_NAMES = [
     MULTIPLE_AUTHORS_FEATURE,
     COMMIT_PROPERTIES_FEATURE,
+    EMPTY_DIRS_FEATURE,
     ]
 
 
@@ -314,6 +317,8 @@ class FileModifyCommand(FileCommand):
             mode = "755"
         elif self.kind == 'file':
             mode = "644"
+        elif self.kind == 'directory':
+            mode = "040000"
         elif self.kind == 'symlink':
             mode = "120000"
         elif self.kind == 'tree-reference':
@@ -321,7 +326,9 @@ class FileModifyCommand(FileCommand):
         else:
             raise AssertionError("unknown kind %s" % (self.kind,))
         datastr = ""
-        if self.dataref is None:
+        if self.kind == 'directory':
+            dataref = '-'
+        elif self.dataref is None:
             dataref = "inline"
             if include_file_contents:
                 datastr = "\ndata %d\n%s" % (len(self.data), self.data)

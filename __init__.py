@@ -555,6 +555,9 @@ class cmd_fast_export(Command):
        in revision properties (e.g. branch-nick and bugs fixed by this
        change) will be included in the output.
 
+     * *empty-directories* - directories, even the empty ones, will be
+       included in the output.
+
      To disable these features and produce output acceptable to git 1.6,
      use the --plain option.
 
