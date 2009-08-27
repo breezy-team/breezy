@@ -37,8 +37,10 @@ class ShelfCreator(object):
     def __init__(self, work_tree, target_tree, file_list=None):
         """Constructor.
 
-        :param work_tree: The working tree to apply changes to
+        :param work_tree: The working tree to apply changes to. This is not
+            required to be locked - a tree_write lock will be taken out.
         :param target_tree: The tree to make the working tree more similar to.
+            This is not required to be locked - a read_lock will be taken out.
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
