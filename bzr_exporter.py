@@ -121,10 +121,11 @@ class BzrFastExporter(object):
         self.branch.repository.lock_read()
         try:
             interesting = self.interesting_history()
-            self.note("Starting export ...")
+            self._commit_total = len(interesting)
+            self.note("Starting export of %d revisions ..." %
+                self._commit_total)
             if not self.plain_format:
                 self.emit_features()
-            self._commit_total = len(interesting)
             for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
