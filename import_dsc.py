@@ -1494,7 +1494,7 @@ class DistributionBranch(object):
                 break
         return versions
 
-    def import_package(self, dsc_filename, use_time_from_changelog=False):
+    def import_package(self, dsc_filename, use_time_from_changelog=True):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
