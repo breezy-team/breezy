@@ -16,6 +16,10 @@ Bug Fixes
   ghosts in its mainline. (evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
 
+* Fix assertion error about "_remember_remote_is_before" when pushing to
+  older smart servers.
+  (Andrew Bennetts, #418931)
+
 
 bzr 2.0rc1
 ##########
