@@ -23,7 +23,7 @@ from bzrlib import (
     tests,
     )
 
-from bzrlib.tests import feattures
+from bzrlib.tests import features
 
 
 class TestApportReporting(tests.TestCase):
@@ -36,18 +36,13 @@ class TestApportReporting(tests.TestCase):
         except AssertionError, e:
             pass
         outf = StringIO()
-        crash_write_apport_report_to_file(sys.exc_info(), outf)
+        crash._write_apport_report_to_file(sys.exc_info(), outf)
         report = outf.getvalue()
 
-        self.assertContainsRe(report,
-            '(?m)^BzrVersion:')
+        self.assertContainsRe(report, '(?m)^BzrVersion:')
         # should be in the traceback
-        self.assertContainsRe(report,
-            'my error')
-        self.assertContainsRe(report,
-            'AssertionError')
-        self.assertContainsRe(report,
-            'test_apport_report_contents')
+        self.assertContainsRe(report, 'my error')
+        self.assertContainsRe(report, 'AssertionError')
+        self.assertContainsRe(report, 'test_apport_report_contents')
         # should also be in there
-        self.assertContainsRe(report,
-            '(?m)^CommandLine:')
+        self.assertContainsRe(report, '(?m)^CommandLine:')
