@@ -2780,7 +2780,7 @@ class TestStacking(tests.TestCaseWithTransport):
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
         smart_server = server.SmartTCPServer_for_testing()
-        self.start_series(smart_server)
+        self.start_server(smart_server)
         remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
         # can get its branch and repository
         remote_branch = remote_bzrdir.open_branch()

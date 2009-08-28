@@ -937,14 +937,7 @@ class TestCase(unittest.TestCase):
         if backing_server is None:
             transport_server.setUp()
         else:
-            try:
-                transport_server.setUp(backing_server)
-            except TypeError, e:
-                # This should never happen; the try:Except here is to assist
-                # developers having to update code rather than seeing an
-                # uninformative TypeError.
-                raise Exception, "Old server API in use: %s, %s" % (
-                    transport_server, e)
+            transport_server.setUp(backing_server)
         self.addCleanup(transport_server.tearDown)
 
     def _ndiff_strings(self, a, b):
