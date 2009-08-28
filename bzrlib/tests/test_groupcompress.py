@@ -768,8 +768,7 @@ class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
         self.assertEqual([], list(batcher.yield_factories()))
 
     def test_yield_factories_calls_get_blocks(self):
-        """yi
-        """
+        """Uncached memos are retrieved via get_blocks."""
         read_memo1 = ('fake index', 100, 50)
         read_memo2 = ('fake index', 150, 40)
         gcvf = StubGCVF(
