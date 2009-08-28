@@ -703,10 +703,11 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
 
 
 class StubGCVF(object):
-    def __init__(self):
+    def __init__(self, canned_get_blocks=None):
         self._group_cache = {}
-    def _get_blocks(read_memos):
-        return []
+        self._canned_get_blocks = canned_get_blocks or []
+    def _get_blocks(self, read_memos):
+        return iter(self._canned_get_blocks)
     
 
 class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
@@ -760,6 +761,51 @@ class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
         self.assertEqual(0, total_size)
         self.assertEqual([('key',)], batcher.keys)
         self.assertEqual([], batcher.memos_to_get)
+
+    def test_yield_factories_empty(self):
+        """An empty batch yields no factories."""
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), {})
+        self.assertEqual([], list(batcher.yield_factories()))
+
+    def test_yield_factories_calls_get_blocks(self):
+        """yi
+        """
+        read_memo1 = ('fake index', 100, 50)
+        read_memo2 = ('fake index', 150, 40)
+        gcvf = StubGCVF(
+            canned_get_blocks=[
+                (read_memo1, groupcompress.GroupCompressBlock()),
+                (read_memo2, groupcompress.GroupCompressBlock())])
+        locations = {
+            ('key1',): (read_memo1 + (None, None), None, None, None),
+            ('key2',): (read_memo2 + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key1',))
+        batcher.add_key(('key2',))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(2, factories)
+        keys = [f.key for f in factories]
+        kinds = [f.storage_kind for f in factories]
+        self.assertEqual([('key1',), ('key2',)], keys)
+        self.assertEqual(['groupcompress-block', 'groupcompress-block'], kinds)
+
+    def test_yield_factories_flushing(self):
+        """yield_factories holds back on yielding results from the final block
+        unless passed full_flush=True.
+        """
+        fake_block = groupcompress.GroupCompressBlock()
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = fake_block
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key',))
+        self.assertEqual([], list(batcher.yield_factories()))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(1, factories)
+        self.assertEqual(('key',), factories[0].key)
+        self.assertEqual('groupcompress-block', factories[0].storage_kind)
 
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
