@@ -3382,6 +3382,8 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('lsprof-tests',
+                            help='Generate lsprof output for each test.'),
                      Option('cache-dir', type=str,
                             help='Cache intermediate benchmark output in this '
                                  'directory.'),
@@ -3428,7 +3430,7 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None):
+            parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3468,6 +3470,7 @@ class cmd_selftest(Command):
                               "transport": transport,
                               "test_suite_factory": test_suite_factory,
                               "lsprof_timed": lsprof_timed,
+                              "lsprof_tests": lsprof_tests,
                               "bench_history": benchfile,
                               "matching_tests_first": first,
                               "list_only": list_only,

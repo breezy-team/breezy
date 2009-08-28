@@ -9,6 +9,45 @@ Bazaar Release Notes
 In Development
 ##############
 
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
+  subclasses - the same as python's unittest module. (Robert Collins)
+
+Internals
+*********
+
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
+Testing
+*******
+
+* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
+  be output for every test. Note that this is very verbose! (Robert Collins)
+
+* Test parameterisation now does a shallow copy, not a deep copy of the test
+  to be parameterised. This is not expected to break external use of test
+  parameterisation, and is substantially faster. (Robert Collins)
+
+
 bzr 2.0rc2
 ##########
 
@@ -131,9 +170,6 @@ API Changes
   classes changed to manage lock lifetime of the trees they open in a way
   consistent with reader-exclusive locks. (Robert Collins, #305006)
 
-Internals
-*********
-
 Testing
 *******
 
@@ -166,7 +202,6 @@ API Changes
 * ``Tree.path_content_summary`` may return a size of None, when called on
   a tree with content filtering where the size of the canonical form
   cannot be cheaply determined.  (Martin Pool)
-
 
 bzr 1.18
 ########
@@ -1012,6 +1047,9 @@ Internals
 
 Testing
 *******
+
+* ``make check`` no longer repeats the test run in ``LANG=C``.
+  (Martin Pool, #386180)
 
 * The number of cores is now correctly detected on OSX. (John Szakmeister)
 
@@ -4993,7 +5031,7 @@ Bugfixes
   checkouts.  (Aaron Bentley, #182040)
 
 * Stop polluting /tmp when running selftest.
-  (Vincent Ladeuil, #123623)
+  (Vincent Ladeuil, #123363)
 
 * Switch from NFKC => NFC for normalization checks. NFC allows a few
   more characters which should be considered valid.

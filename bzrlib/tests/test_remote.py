@@ -2668,6 +2668,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.ReadError(path)
         self.assertEqual(expected_error, translated_error)
 
+    def test_IncompatibleRepositories(self):
+        translated_error = self.translateTuple(('IncompatibleRepositories',
+            "repo1", "repo2", "details here"))
+        expected_error = errors.IncompatibleRepositories("repo1", "repo2",
+            "details here")
+        self.assertEqual(expected_error, translated_error)
+
     def test_PermissionDenied_no_args(self):
         path = 'a path'
         translated_error = self.translateTuple(('PermissionDenied',), path=path)

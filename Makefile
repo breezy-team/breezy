@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,8 +40,6 @@ check: docs check-nodocs
 
 check-nodocs: extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
-	@echo "Running all tests with no locale."
-	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
 
 # Run Python style checker (apt-get install pyflakes)
 #
