@@ -206,6 +206,10 @@ API Changes
   a tree with content filtering where the size of the canonical form
   cannot be cheaply determined.  (Martin Pool)
 
+* When manually creating transport servers in test cases, a new helper
+  ``TestCase.start_server`` that registers a cleanup and starts the server
+  should be used. (Robert Collins)
+
 bzr 1.18
 ########
 
