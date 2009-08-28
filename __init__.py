@@ -530,7 +530,7 @@ class cmd_fast_export(Command):
      that allow effective round-tripping of many Bazaar branches. As
      such, fast-exporting a branch and fast-importing the data produced
      will create a new repository with equivalent history, i.e.
-     "bzr log -v -p --include-merges --reverse" on the old branch and
+     "bzr log -v -p --include-merges --forward" on the old branch and
      new branch should produce similar, if not identical, results.
 
      .. note::
