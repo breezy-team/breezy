@@ -27,6 +27,7 @@ def test_suite():
           'test_do',
           'test_import_dsc',
           'test_mark_uploaded',
+          'test_merge_package',
           'test_merge_upstream',
           ]
   loader = TestUtil.TestLoader()
