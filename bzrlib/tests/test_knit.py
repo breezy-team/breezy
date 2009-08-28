@@ -366,7 +366,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         :return: (versioned_file, reload_counter)
             versioned_file  a KnitVersionedFiles using the packs for access
         """
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('rev-1', None, [
             ('add', ('', 'root-id', 'directory', None)),
