@@ -1229,6 +1229,134 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
         self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
 
 
+class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
+    """Test rename of to a deleted path then modfy the new-path in the same commit."""
+
+    def get_command_iter(self, old_path, new_path, kind='file'):
+        # Revno 1: create two files or symlinks
+        # Revno 2: delete one, rename the other to it then modify the newly created path
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(old_path, kind, False,
+                        None, "aaa")
+                yield commands.FileModifyCommand(new_path, kind, False,
+                        None, "zzz")
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileDeleteCommand(new_path)
+                yield commands.FileRenameCommand(old_path, new_path)
+                yield commands.FileModifyCommand(new_path, kind, False,
+                        None, "bbb")
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", ":1", [], files_two)
+        return command_list
+
+    def test_delete_rename_then_modify_file_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "zzz")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree1, new_path)
+        self.assertRevisionRoot(revtree2, new_path)
+
+    def test_delete_rename_then_modify_file_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "zzz")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+
+    def test_delete_rename_then_modify_file_in_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), ('d2',), (old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('d1',), (new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertContent(branch, revtree1, old_path, "aaa")
+        self.assertContent(branch, revtree1, new_path, "zzz")
+        self.assertContent(branch, revtree2, new_path, "bbb")
+
+    def test_delete_rename_then_modify_symlink_in_root(self):
+        handler, branch = self.get_handler()
+        old_path = 'a'
+        new_path = 'b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[(old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "zzz")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+        self.assertRevisionRoot(revtree1, old_path)
+        self.assertRevisionRoot(revtree1, new_path)
+        self.assertRevisionRoot(revtree2, new_path)
+
+    def test_delete_rename_then_modify_symlink_in_subdir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd/a'
+        new_path = 'd/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d',), (old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[(new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "zzz")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+
+    def test_delete_rename_then_modify_symlink_in_new_dir(self):
+        handler, branch = self.get_handler()
+        old_path = 'd1/a'
+        new_path = 'd2/b'
+        handler.process(self.get_command_iter(old_path, new_path, 'symlink'))
+        revtree0, revtree1 = self.assertChanges(branch, 1,
+            expected_added=[('d1',), ('d2',), (old_path,), (new_path,)])
+        # Note: the delta doesn't show the modification?
+        # The actual new content is validated in the assertions following.
+        revtree1, revtree2 = self.assertChanges(branch, 2,
+            expected_removed=[('d1',), (new_path,)],
+            expected_renamed=[(old_path, new_path)])
+        self.assertSymlinkTarget(branch, revtree1, old_path, "aaa")
+        self.assertSymlinkTarget(branch, revtree1, new_path, "zzz")
+        self.assertSymlinkTarget(branch, revtree2, new_path, "bbb")
+
+
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
@@ -1734,6 +1862,9 @@ class TestImportToRichRootRenameModified(TestImportToPackRenameModified):
 class TestImportToRichRootRenameThenModify(TestImportToPackRenameThenModify):
     branch_format = "1.9-rich-root"
 
+class TestImportToRichRootDeleteRenameThenModify(TestImportToPackDeleteRenameThenModify):
+    branch_format = "1.9-rich-root"
+
 class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
     branch_format = "1.9-rich-root"
 
@@ -1795,6 +1926,9 @@ try:
         branch_format = "2a"
 
     class TestImportToChkRenameThenModify(TestImportToPackRenameThenModify):
+        branch_format = "2a"
+
+    class TestImportToChkDeleteRenameThenModify(TestImportToPackDeleteRenameThenModify):
         branch_format = "2a"
 
     class TestImportToChkRenameTricky(TestImportToPackRenameTricky):

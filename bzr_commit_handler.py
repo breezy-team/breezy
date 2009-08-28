@@ -755,6 +755,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         new_ie.revision = self.revision_id
         self._add_entry((old_path, new_path, file_id, new_ie))
         self._modified_file_ids[new_path] = file_id
+        self._paths_deleted_this_commit.discard(new_path)
 
     def _rename_pending_change(self, old_path, new_path, file_id):
         """Instead of adding/modifying old-path, add new-path instead."""
