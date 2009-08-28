@@ -18,6 +18,9 @@ New Features
 Bug Fixes
 *********
 
+* Don't restrict the command name used to run the test suite.
+  (Vincent Ladeuil, #419950)
+
 Improvements
 ************
 
