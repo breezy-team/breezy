@@ -531,15 +531,19 @@ class ImportParser(LineBasedParser):
                 except UnicodeDecodeError:
                     # The spec says names are *typically* utf8 encoded
                     # but that isn't enforced by git-fast-export (at least)
-                    name = name[:-1]
+                    self.warning("%s name not in utf8 - replacing unknown "
+                        "characters" % (section,))
+                    name = name[:-1].decode('utf_8', 'replace')
         email = match.group(2)
         # While it shouldn't happen, some datasets have email addresses
         # which contain unicode characters. See bug 338186. We sanitize
         # the data at this level just in case.
         try:
-            email = "%s" % (email,)
+            email = email.decode('utf_8')
         except UnicodeDecodeError:
-            email = "%s" % (email.decode('utf_8'),)
+            self.warning("%s email not in utf8 - replacing unknown characters"
+                % (section,))
+            email = email.decode('utf_8', 'replace')
         return (name, email, when[0], when[1])
 
     def _name_value(self, s):
