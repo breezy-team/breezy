@@ -123,9 +123,13 @@ class GenericProcessor(processor.ImportProcessor):
         self.prune_empty_dirs = prune_empty_dirs
 
     def pre_process(self):
-        self.note("Starting import ...")
         self._start_time = time.time()
         self._load_info_and_params()
+        if self.total_commits:
+            self.note("Starting import of %d commits ..." %
+                (self.total_commits,))
+        else:
+            self.note("Starting import ...")
         self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
             self.inventory_cache_size)
         

@@ -255,7 +255,11 @@ class GenericCommitHandler(processor.CommitHandler):
         # not to produce bad data streams in the first place ...
         existing = self._new_file_ids.get(path)
         if existing:
-            self.warning("%s already added in this commit - ignoring" % (path,))
+            # We don't warn about directories because it's fine for them
+            # to be created already by a previous rename
+            if kind != 'directory':
+                self.warning("%s already added in this commit - ignoring" %
+                    (path,))
             return
 
         # Create the new InventoryEntry
