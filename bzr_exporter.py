@@ -46,7 +46,14 @@ class BzrFastExporter(object):
 
     def __init__(self, source, destination, git_branch=None, checkpoint=-1,
         import_marks_file=None, export_marks_file=None, revision=None,
-        verbose=False):
+        verbose=False, plain_format=False):
+        """Export branch data in fast import format.
+
+        :param plain_format: if True, 'classic' fast-import format is
+          used without any extended features; if False, the generated
+          data is richer and includes information like multiple
+          authors, revision properties, etc.
+        """
         self.source = source
         if destination is None or destination == '-':
             self.outf = helpers.binary_stream(sys.stdout)
@@ -61,8 +68,10 @@ class BzrFastExporter(object):
         self.export_marks_file = export_marks_file
         self.revision = revision
         self.excluded_revisions = set()
+        self.plain_format = plain_format
         self._multi_author_api_available = hasattr(bzrlib.revision.Revision,
             'get_apparent_authors')
+        self.properties_to_exclude = ['authors', 'author']
 
         # Progress reporting stuff
         self.verbose = verbose
@@ -112,8 +121,11 @@ class BzrFastExporter(object):
         self.branch.repository.lock_read()
         try:
             interesting = self.interesting_history()
-            self.note("Starting export ...")
             self._commit_total = len(interesting)
+            self.note("Starting export of %d revisions ..." %
+                self._commit_total)
+            if not self.plain_format:
+                self.emit_features()
             for revid in interesting:
                 self.emit_commit(revid, self.git_branch)
             if self.branch.supports_tags():
@@ -188,6 +200,10 @@ class BzrFastExporter(object):
         else:
             return False
 
+    def emit_features(self):
+        for feature in sorted(commands.FEATURE_NAMES):
+            self.print_cmd(commands.FeatureCommand(feature))
+
     def emit_commit(self, revid, git_branch):
         if revid in self.revid_to_mark or revid in self.excluded_revisions:
             return
@@ -235,27 +251,43 @@ class BzrFastExporter(object):
             self._save_marks()
             self.print_cmd(commands.CheckpointCommand())
 
-    def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
-        # Get the committer and author info
-        committer = revobj.committer
-        if committer.find('<') == -1:
+    def _get_name_email(self, user):
+        if user.find('<') == -1:
             # If the email isn't inside <>, we need to use it as the name
             # in order for things to round-trip correctly.
             # (note: parseaddr('a@b.com') => name:'', email: 'a@b.com')
-            name = committer
+            name = user
             email = ''
         else:
-            name, email = parseaddr(committer)
+            name, email = parseaddr(user)
+        return name, email
+
+    def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
+        # Get the committer and author info
+        committer = revobj.committer
+        name, email = self._get_name_email(committer)
         committer_info = (name, email, revobj.timestamp, revobj.timezone)
         if self._multi_author_api_available:
-            author = revobj.get_apparent_authors()[0]
+            more_authors = revobj.get_apparent_authors()
+            author = more_authors.pop(0)
         else:
+            more_authors = []
             author = revobj.get_apparent_author()
-        if author != committer:
-            name, email = parseaddr(author)
+        if more_authors:
+            name, email = self._get_name_email(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
+            more_author_info = []
+            for a in more_authors:
+                name, email = self._get_name_email(a)
+                more_author_info.append(
+                    (name, email, revobj.timestamp, revobj.timezone))
+        elif author != committer:
+            name, email = self._get_name_email(author)
+            author_info = (name, email, revobj.timestamp, revobj.timezone)
+            more_author_info = None
         else:
             author_info = None
+            more_author_info = None
 
         # Get the parents in terms of marks
         non_ghost_parents = []
@@ -275,9 +307,23 @@ class BzrFastExporter(object):
             from_ = None
             merges = None
 
+        # Filter the revision properties. Some metadata (like the
+        # author information) is already exposed in other ways so
+        # don't repeat it here.
+        if self.plain_format:
+            properties = None
+        else:
+            properties = revobj.properties
+            for prop in self.properties_to_exclude:
+                try:
+                    del properties[prop]
+                except KeyError:
+                    pass
+
         # Build and return the result
         return commands.CommitCommand(git_ref, mark, author_info,
-            committer_info, revobj.message, from_, merges, iter(file_cmds))
+            committer_info, revobj.message, from_, merges, iter(file_cmds),
+            more_authors=more_author_info, properties=properties)
 
     def _get_revision_trees(self, parent, revision_id):
         try:
@@ -330,10 +376,12 @@ class BzrFastExporter(object):
             elif kind == 'symlink':
                 file_cmds.append(commands.FileModifyCommand(path, 'symlink',
                     False, None, tree_new.get_symlink_target(id_)))
+            elif kind == 'directory':
+                file_cmds.append(commands.FileModifyCommand(path, 'directory',
+                    False, None, None))
             else:
-                # Should we do something here for importers that
-                # can handle directory and tree-reference changes?
-                continue
+                self.warning("cannot export '%s' of kind %s yet - ignoring" %
+                    (path, kind))
         return file_cmds
 
     def _process_renames_and_deletes(self, renames, deletes,

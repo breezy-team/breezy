@@ -515,25 +515,73 @@ class cmd_fast_import_query(Command):
 class cmd_fast_export(Command):
     """Generate a fast-import stream from a Bazaar branch.
 
-    This program generates a stream from a bzr branch in the format
-    required by git-fast-import(1). It preserves merges correctly,
-    even merged branches with no common history (`bzr merge -r 0..-1`).
+    This program generates a stream from a Bazaar branch in fast-import
+    format used by tools such as bzr fast-import, git-fast-import and
+    hg-fast-import.
 
     If no destination is given or the destination is '-', standard output
     is used. Otherwise, the destination is the name of a file. If the
     destination ends in '.gz', the output will be compressed into gzip
     format.
+ 
+    :Round-tripping:
+
+     Recent versions of the fast-import specification support features
+     that allow effective round-tripping of many Bazaar branches. As
+     such, fast-exporting a branch and fast-importing the data produced
+     will create a new repository with equivalent history, i.e.
+     "bzr log -v -p --include-merges --reverse" on the old branch and
+     new branch should produce similar, if not identical, results.
+
+     .. note::
+    
+        Be aware that the new repository may appear to have similar history
+        but internally it is quite different with new revision-ids and
+        file-ids assigned. As a consequence, the ability to easily merge
+        with branches based on the old repository is lost. Depending on your
+        reasons for producing a new repository, this may or may not be an
+        issue.
+
+    :Interoperability:
+
+     fast-export can use the following "extended features" to
+     produce a richer data stream:
+
+     * *multiple-authors* - if a commit has multiple authors (as commonly
+       occurs in pair-programming), all authors will be included in the
+       output, not just the first author
+
+     * *commit-properties* - custom metadata per commit that Bazaar stores
+       in revision properties (e.g. branch-nick and bugs fixed by this
+       change) will be included in the output.
+
+     * *empty-directories* - directories, even the empty ones, will be
+       included in the output.
+
+     To disable these features and produce output acceptable to git 1.6,
+     use the --plain option. To enable these features, use --no-plain.
+     Currently, --plain is the default but that will change in the near
+     future once the feature names and definitions are formally agreed
+     to by the broader fast-import developer community.
 
     :Examples:
+
+     To produce data destined for import into Bazaar::
+
+       bzr fast-export --no-plain my-bzr-branch my.fi.gz
+
+     To produce data destined for Git 1.6::
+
+       bzr fast-export --plain my-bzr-branch my.fi
 
      To import several unmerged but related branches into the same repository,
      use the --{export,import}-marks options, and specify a name for the git
      branch like this::
     
-      bzr fast-export --export-marks=marks.bzr project.dev |
+       bzr fast-export --export-marks=marks.bzr project.dev |
               GIT_DIR=project/.git git-fast-import --export-marks=marks.git
 
-      bzr fast-export --import-marks=marks.bzr -b other project.other |
+       bzr fast-export --import-marks=marks.bzr -b other project.other |
               GIT_DIR=project/.git git-fast-import --import-marks=marks.git
 
      If you get a "Missing space after source" error from git-fast-import,
@@ -559,12 +607,16 @@ class cmd_fast_export(Command):
                     Option('export-marks', type=str, argname='FILE',
                         help="Export marks to file."
                         ),
+                    Option('plain',
+                        help="Exclude metadata to maximise interoperability."
+                        ),
                      ]
     aliases = []
     encoding_type = 'exact'
     def run(self, source, destination=None, verbose=False,
         git_branch="master", checkpoint=10000, marks=None,
-        import_marks=None, export_marks=None, revision=None):
+        import_marks=None, export_marks=None, revision=None,
+        plain=True):
         from bzrlib.plugins.fastimport import bzr_exporter
 
         if marks:                                              
@@ -573,7 +625,7 @@ class cmd_fast_export(Command):
             destination=destination,
             git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
-            revision=revision, verbose=verbose)
+            revision=revision, verbose=verbose, plain_format=plain)
         return exporter.run()
 
 

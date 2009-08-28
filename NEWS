@@ -35,6 +35,12 @@ New Features
   merged into this one for the purposes of ongoing bug fixing
   and development. (Miklos Vajna)
 
+* fast-export now supports a --no-plain parameter which causes
+  richer metadata to be included in the output using the
+  recently agreed 'feature' extension capability. The features
+  used are called multiple-authors, commit-properties and
+  empty-directories. (Ian Clatworthy)
+
 Improvements
 ------------
 

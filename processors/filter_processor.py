@@ -108,7 +108,8 @@ class FilterProcessor(processor.ImportProcessor):
                 # Record the referenced blobs
                 for fc in interesting_filecmds:
                     if isinstance(fc, commands.FileModifyCommand):
-                        if fc.dataref is not None:
+                        if (fc.dataref is not None and
+                            fc.kind != 'directory'):
                             self.referenced_blobs.append(fc.dataref)
 
                 # Update from and merges to refer to commits in the output
@@ -141,6 +142,15 @@ class FilterProcessor(processor.ImportProcessor):
         # Keep tags if they indirectly reference something we kept
         cmd.from_ = self._find_interesting_from(cmd.from_)
         self.keep = cmd.from_ is not None
+
+    def feature_handler(self, cmd):
+        """Process a FeatureCommand."""
+        feature = cmd.feature_name
+        if feature not in commands.FEATURE_NAMES:
+            self.warning("feature %s is not supported - parsing may fail"
+                % (feature,))
+        # These always pass through
+        self.keep = True
 
     def _print_command(self, cmd):
         """Wrapper to avoid adding unnecessary blank lines."""

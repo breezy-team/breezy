@@ -32,6 +32,7 @@ from bzrlib.plugins.fastimport import (
     branch_updater,
     bzr_commit_handler,
     cache_manager,
+    commands,
     errors as plugin_errors,
     helpers,
     idmapfile,
@@ -122,9 +123,13 @@ class GenericProcessor(processor.ImportProcessor):
         self.prune_empty_dirs = prune_empty_dirs
 
     def pre_process(self):
-        self.note("Starting import ...")
         self._start_time = time.time()
         self._load_info_and_params()
+        if self.total_commits:
+            self.note("Starting import of %d commits ..." %
+                (self.total_commits,))
+        else:
+            self.note("Starting import ...")
         self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
             self.inventory_cache_size)
         
@@ -543,3 +548,9 @@ class GenericProcessor(processor.ImportProcessor):
         bzr_tag_name = name.decode('utf-8', 'replace')
         bzr_rev_id = self.cache_mgr.revision_ids[from_]
         self.tags[bzr_tag_name] = bzr_rev_id
+
+    def feature_handler(self, cmd):
+        """Process a FeatureCommand."""
+        feature = cmd.feature_name
+        if feature not in commands.FEATURE_NAMES:
+            raise plugin_errors.UnknownFeature(feature)

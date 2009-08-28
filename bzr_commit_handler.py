@@ -216,14 +216,10 @@ class GenericCommitHandler(processor.CommitHandler):
         return generate_ids.gen_revision_id(who, timestamp)
 
     def build_revision(self):
-        rev_props = {}
+        rev_props = self.command.properties or {}
+        self._save_author_info(rev_props)
         committer = self.command.committer
         who = self._format_name_email(committer[0], committer[1])
-        author = self.command.author
-        if author is not None:
-            author_id = self._format_name_email(author[0], author[1])
-            if author_id != who:
-                rev_props['author'] = author_id
         message = self.command.message
         if not _serializer_handles_escaping:
             # We need to assume the bad ol' days
@@ -237,6 +233,20 @@ class GenericCommitHandler(processor.CommitHandler):
            properties=rev_props,
            parent_ids=self.parents)
 
+    def _save_author_info(self, rev_props):
+        author = self.command.author
+        if author is None:
+            return
+        if self.command.more_authors:
+            authors = [author] + self.command.more_authors
+            author_ids = [self._format_name_email(a[0], a[1]) for a in authors]
+        elif author != self.command.committer:
+            author_ids = [self._format_name_email(author[0], author[1])]
+        else:
+            return
+        # If we reach here, there are authors worth storing
+        rev_props['authors'] = "\n".join(author_ids)
+
     def _modify_item(self, path, kind, is_executable, data, inv):
         """Add to or change an item in the inventory."""
         # If we've already added this, warn the user that we're ignoring it.
@@ -245,7 +255,11 @@ class GenericCommitHandler(processor.CommitHandler):
         # not to produce bad data streams in the first place ...
         existing = self._new_file_ids.get(path)
         if existing:
-            self.warning("%s already added in this commit - ignoring" % (path,))
+            # We don't warn about directories because it's fine for them
+            # to be created already by a previous rename
+            if kind != 'directory':
+                self.warning("%s already added in this commit - ignoring" %
+                    (path,))
             return
 
         # Create the new InventoryEntry
@@ -259,6 +273,11 @@ class GenericCommitHandler(processor.CommitHandler):
             ie.text_sha1 = osutils.sha_strings(lines)
             ie.text_size = sum(map(len, lines))
             self.lines_for_commit[file_id] = lines
+        elif kind == 'directory':
+            self.directory_entries[path] = ie
+            # There are no lines stored for a directory so
+            # make sure the cache used by get_lines knows that
+            self.lines_for_commit[file_id] = []
         elif kind == 'symlink':
             ie.symlink_target = data.encode('utf8')
             # There are no lines stored for a symlink so
@@ -771,7 +790,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            if filecmd.kind == commands.TREE_REFERENCE_KIND:
+            if filecmd.kind == commands.DIRECTORY_KIND:
+                data = None
+            elif filecmd.kind == commands.TREE_REFERENCE_KIND:
                 data = filecmd.dataref
             else:
                 data = self.cache_mgr.fetch_blob(filecmd.dataref)

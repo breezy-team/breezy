@@ -252,6 +252,14 @@ class InfoProcessor(processor.ImportProcessor):
         """Process a TagCommand."""
         self.cmd_counts[cmd.name] += 1
 
+    def feature_handler(self, cmd):
+        """Process a FeatureCommand."""
+        self.cmd_counts[cmd.name] += 1
+        feature = cmd.feature_name
+        if feature not in commands.FEATURE_NAMES:
+            self.warning("feature %s is not supported - parsing may fail"
+                % (feature,))
+
     def _track_blob(self, mark):
         if mark in self.blob_ref_counts:
             self.blob_ref_counts[mark] += 1
