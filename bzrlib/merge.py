@@ -64,8 +64,12 @@ from bzrlib import ui
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids, this_tree=from_tree)
+    from_tree.lock_tree_write()
+    try:
+        merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
+                    interesting_ids=interesting_ids, this_tree=from_tree)
+    finally:
+        from_tree.unlock()
 
 
 class Merger(object):
@@ -101,6 +105,17 @@ class Merger(object):
         self._base_is_other_ancestor = None
         self._is_criss_cross = None
         self._lca_trees = None
+
+    def cache_trees_with_revision_ids(self, trees):
+        """Cache any tree in trees if it has a revision_id."""
+        for maybe_tree in trees:
+            if maybe_tree is None:
+                continue
+            try:
+                rev_id = maybe_tree.get_revision_id()
+            except AttributeError:
+                continue
+            self._cached_trees[rev_id] = maybe_tree
 
     @property
     def revision_graph(self):
@@ -1516,6 +1531,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     get_revision_id = getattr(base_tree, 'get_revision_id', None)
     if get_revision_id is None:
         get_revision_id = base_tree.last_revision
+    merger.cache_trees_with_revision_ids([other_tree, base_tree, this_tree])
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 

@@ -37,10 +37,42 @@ Testing
 *******
 
 
+bzr 1.18.1 NOT RELEASED YET
+###########################
+
+Bug Fixes
+*********
+
+* Fixed a problem where using content filtering and especially end-of-line
+  conversion will commit too many copies a file.
+  (Martin Pool, #415508)
+
+Improvements
+************
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
+API Changes
+***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
+
+* ``Tree.path_content_summary`` may return a size of None, when called on
+  a tree with content filtering where the size of the canonical form
+  cannot be cheaply determined.  (Martin Pool)
+
+
 bzr 1.18
 ########
 
 :Codename: little traveller
+:1.18:    2009-08-20
 :1.18rc1: 2009-08-10
 
 This release of Bazaar marches on towards the 2.0 release in which the 2a
@@ -54,6 +86,7 @@ The Bazaar team decided that 2.0 will be a long-term supported release,
 with bugfix-only releases based on it continuing for at least six months
 or until the following stable release.
 
+There are no changes from 1.18rc1 to 1.18.
 
 New Features
 ************
