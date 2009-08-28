@@ -216,7 +216,7 @@ class GenericCommitHandler(processor.CommitHandler):
         return generate_ids.gen_revision_id(who, timestamp)
 
     def build_revision(self):
-        rev_props = self.command.properties or {}
+        rev_props = self._legal_revision_properties(self.command.properties)
         self._save_author_info(rev_props)
         committer = self.command.committer
         who = self._format_name_email(committer[0], committer[1])
@@ -232,6 +232,21 @@ class GenericCommitHandler(processor.CommitHandler):
            revision_id=self.revision_id,
            properties=rev_props,
            parent_ids=self.parents)
+
+    def _legal_revision_properties(self, props):
+        """Clean-up any revision properties we can't handle."""
+        # For now, we just check for None because that's not allowed in 2.0rc1
+        result = {}
+        if props is not None:
+            for name, value in props.items():
+                if value is None:
+                    self.warning(
+                        "converting None to empty string for property %s"
+                        % (name,))
+                    result[name] = ''
+                else:
+                    result[name] = value
+        return result
 
     def _save_author_info(self, rev_props):
         author = self.command.author
