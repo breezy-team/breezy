@@ -431,7 +431,7 @@ def format_who_when(fields):
 def format_property(name, value):
     """Format the name and value (both unicode) of a property as a string."""
     utf8_name = name.encode('utf8')
-    if value:
+    if value is not None:
         utf8_value = value.encode('utf8')
         result = "property %s %d %s" % (utf8_name, len(utf8_value), utf8_value)
     else:
