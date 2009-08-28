@@ -26,15 +26,22 @@ To start a new release cycle:
 #. Create a new series at <https://launchpad.net/bzr/+addseries>. There is one
    series for every *x.y* release.
 
-#. Enter that series at <https://launchpad.net/bzr/2.0>
+#. Go to the series web page at <https://launchpad.net/bzr/2.0>
 
 #. Create a new release at
    <https://launchpad.net/bzr/2.0/+addrelease> and add
    information about this release. We will not use it yet, but it
    will be available for targeting or nominating bugs.
 
-#. Add milestones to that series for the beta release, release candidate and
-   the final release, and their expected dates.
+#. We create a new pqm-controlled branch for this release series, by
+   asking a Canonical sysadmin.  
+   This branch means that from the first release beta or candidate onwards,
+   general development continues on the trunk, and only
+   specifically-targeted fixes go into the release branch.
+
+#. Add milestones at <https://edge.launchpad.net/bzr/2.0/+addmilestone> to
+   that series for the beta release, release candidate and the final release,
+   and their expected dates.
 
 #. Update the version number in the ``bzr`` script, and the
  ``bzrlib/__init__.py`` file.
@@ -42,7 +49,8 @@ To start a new release cycle:
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,
-   or that interact with other changes.
+   or that interact with other changes. This is called the metronome mail
+   and as RM you're supposed to send other metronome mails at your rythm.
 
 
 Starting the release phase
@@ -53,12 +61,6 @@ When it's time to make the first beta release or release candidate:
 #. Create a new milestone at
  <https://launchpad.net/bzr/2.0/+addmilestone> for the beta
  release or release candidate.
-
-#. We create a new pqm-controlled branch for this release series, by
-   asking a Canonical sysadmin.  
-   This branch means that from the first release beat or candidate onwards,
-   general development continues on the trunk, and only
-   specifically-targetted fixes go into the release.
 
 #. Make a beta release or release candidate.
 
@@ -76,9 +78,9 @@ Preparing the tree for release
 	[/home/mbp/bzr/prepare-1.14]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
 	submit_branch = lp:bzr/2.0
-	public_branch = lp:bzr/2.0
+	public_branch = http://bazaar.example.com/prepare-2.0
 	submit_to = bazaar@lists.canonical.com
-	smtp_server = mail.your-domain.com:25
+	smtp_server = mail.example.com:25
 
     Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
@@ -181,7 +183,7 @@ Making the source tarball
      make check-dist-tarball
 
    You may encounter failures while running the test suite caused
-   by your locally installed plugins. Use your own judgement to
+   by your locally installed plugins. Use your own judgment to
    decide if you can release with these failures. When in doubt,
    disable the faulty plugins one by one until you get no more
    failures.
@@ -206,8 +208,8 @@ go to the release
 #. Check that the documentation for this release is available in
    <http://doc.bazaar-vcs.org>.  It should be automatically build when the
    branch is created, by a cron script ``update-bzr-docs`` on
-   ``escudero``. As of today (2009-08-27, the cron script can be contacted
-   on IRC under the ``igc`` nick.
+   ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
+   pretty version of it.
 
 
 Announcing the release
