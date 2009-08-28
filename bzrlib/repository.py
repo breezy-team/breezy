@@ -1219,7 +1219,7 @@ class Repository(object):
                     for record in getattr(self, kind).check(keys=keys[kind]):
                         if record.storage_kind == 'absent':
                             checker._report_items.append(
-                                'Missing inventory {%s}' % (record.key,))
+                                'Missing %s {%s}' % (kind, record.key,))
                         else:
                             last_object = self._check_record(kind, record,
                                 checker, last_object, current_keys[(kind,) + record.key])

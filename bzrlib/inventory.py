@@ -437,7 +437,13 @@ class InventoryDirectory(InventoryEntry):
             self.text_id is not None):
             checker._report_items.append('directory {%s} has text in revision {%s}'
                                 % (self.file_id, rev_id))
-        # Directories are stored as ''.
+        # In non rich root repositories we do not expect a file graph for the
+        # root.
+        if self.name == '' and not checker.rich_roots:
+            return
+        # Directories are stored as an empty file, but the file should exist
+        # to provide a per-fileid log. The hash of every directory content is
+        # da... below (sha1sum('')).
         checker.add_pending_item(rev_id,
             ('texts', self.file_id, self.revision), 'text',
              'da39a3ee5e6b4b0d3255bfef95601890afd80709')

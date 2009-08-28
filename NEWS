@@ -32,6 +32,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
 * Fix a pycurl related test failure on karmic by recognizing an error
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
