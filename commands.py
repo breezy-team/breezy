@@ -424,8 +424,13 @@ def format_who_when(fields):
         sep = ''
     else:
         sep = ' '
-    result = "%s%s<%s> %d %s" % (name, sep, fields[1], fields[2], offset_str)
-    return result.encode('utf8')
+    if isinstance(name, unicode):
+        name = name.encode('utf8')
+    email = fields[1]
+    if isinstance(email, unicode):
+        email = email.encode('utf8')
+    result = "%s%s<%s> %d %s" % (name, sep, email, fields[2], offset_str)
+    return result
 
 
 def format_property(name, value):
