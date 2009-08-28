@@ -296,7 +296,9 @@ back into pqm for bzr.dev.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
-targeting or nominating.
+targeting or nominating. Depending on the change, you may even have to
+create a new series (if your change the major or minor release number), in
+that case go to `Starting a cycle` and follow the instructions from there.
 
 You should also merge (not pull) the release branch into
 ``lp:~bzr/bzr/current``, so that branch contains the current released code
@@ -312,7 +314,7 @@ You have made your first release, that's great. If it was a beta, or
 candidate, you're not finished, another beta or candidate or hopefully a
 final release is still to come.
 
-The process is the same as for the first release, goto `Starting the
+The process is the same as for the first release, go to `Starting the
 release phase`_ and follow the instructions again. Some details changed
 between beta, candidate and final releases, but they should be
 documented. If they aren't clear enough to your taste, fix them.
