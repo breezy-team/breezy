@@ -44,7 +44,7 @@ To start a new release cycle:
    and their expected dates.
 
 #. Update the version number in the ``bzr`` script, and the
- ``bzrlib/__init__.py`` file.
+   ``bzrlib/__init__.py`` file.
 
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
@@ -58,9 +58,8 @@ Starting the release phase
 
 When it's time to make the first beta release or release candidate:
 
-#. Create a new milestone at
- <https://launchpad.net/bzr/2.0/+addmilestone> for the beta
- release or release candidate.
+#. Create a new milestone at <https://launchpad.net/bzr/2.0/+addmilestone>
+   for the beta release or release candidate.
 
 #. Make a beta release or release candidate.
 
@@ -152,7 +151,7 @@ Preparing the tree for release
      
       # API compatibility version: bzrlib is currently API compatible with 1.7.
       
-#. Tag the new release (only for final releases)::
+#. Tag the new release::
 
      bzr tag bzr-1.14
 
