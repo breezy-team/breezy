@@ -1079,7 +1079,7 @@ class DistributionBranch(object):
         return real_parents
 
     def _fetch_upstream_to_branch(self, revid):
-        """Fetch the revision from the upstream branch in to the pacakging one.
+        """Fetch the revision from the upstream branch in to the packaging one.
         """
         # Make sure we see any revisions added by the upstream branch
         # since self.tree was locked.

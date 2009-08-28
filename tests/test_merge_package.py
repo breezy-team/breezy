@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-15 -*-
 #    test_merge_package.py -- Merge packaging branches, fix ancestry as needed.
-#    Copyright (C) 2008 Canonical Ltd.
+#    Copyright (C) 2009 Canonical Ltd.
 #
 #    This file is part of bzr-builddeb.
 #
@@ -28,6 +28,8 @@ from bzrlib.errors import ConflictsInTree
 from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb import merge_package as MP
+from bzrlib.plugins.builddeb.errors import (
+    SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 
 _Debian_changelog = '''\
@@ -161,6 +163,25 @@ class MergePackageTests(TestCaseWithTransport):
         conflict_paths = sorted([c.path for c in ubup.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
+    def test_deb_upstream_coflicts_with_ubu_packaging(self):
+        """Source upstream conflicts with target packaging -> exception.
+
+        The debian upstream and the ubuntu packaging branches will differ
+        with respect to the content of the file 'c'.
+
+        The conflict cannot be resolved by fix_ancestry_as_needed().
+        The `SharedUpstreamConflictsWithTargetPackaging` exception is
+        thrown instead.
+        """
+        ubup, debp, ubuu, debu = self._setup_debian_upstream_conflicts()
+
+        e = self.assertRaises(
+            SharedUpstreamConflictsWithTargetPackaging,
+            MP.fix_ancestry_as_needed, ubup, debp.branch)
+
+        conflict_paths = sorted([c.path for c in ubup.conflicts()])
+        self.assertEquals(conflict_paths, [u'c.moved'])
+
     def test_debian_upstream_older(self):
         """Diverging upstreams (debian older) don't cause merge conflicts.
 
@@ -274,8 +295,8 @@ class MergePackageTests(TestCaseWithTransport):
              - E = 1.0-1ubuntu1
              - I = 1.1.2-0ubuntu1
 
-        Please note that the debian and ubuntu branches will have a conflict
-        with respect to the file 'c'.
+        Please note that the debian and ubuntu *upstream* branches will
+        have a conflict with respect to the file 'c'.
         """
         # Set up the debian upstream branch.
         name = 'debu-n'
@@ -316,6 +337,80 @@ class MergePackageTests(TestCaseWithTransport):
         vdata = [
             ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
             ('1.1.2-0ubuntu1', (), ubuu_o, self.revid_ubuu_o_A),
+            ]
+        self._setup_branch(name, vdata, ubup_o, 'u')
+
+        # Return the ubuntu and the debian packaging branches.
+        return (ubup_o, debp_n, ubuu_o, debu_n)
+
+    def _setup_debian_upstream_conflicts(self):
+        """
+        Set up the following test configuration (debian upstream newer).
+
+        debian-upstream                 ,------------------H
+                           A-----------B                    \
+        ubuntu-upstream     \           \`-------G           \
+                             \           \        \           \
+        debian-packaging      \ ,---------D--------\-----------J
+                               C                    \
+        ubuntu-packaging        `----E---------------I
+
+        where:
+             - A = 1.0
+             - B = 1.1
+             - H = 2.0
+
+             - G = 1.1.2
+
+             - C = 1.0-1
+             - D = 1.1-1
+             - J = 2.0-1
+
+             - E = 1.0-1ubuntu1
+             - I = 1.1.2-0ubuntu1
+
+        Please note that the debian upstream and the ubuntu packaging
+        branches will have a conflict with respect to the file 'c'.
+        """
+        # Set up the debian upstream branch.
+        name = 'debu-n'
+        vdata = [
+            ('upstream-1.0', ('a',), None, None),
+            ('upstream-1.1', ('b',), None, None),
+            ('upstream-2.0', ('c',), None, None),
+            ]
+        debu_n = self._setup_branch(name, vdata)
+
+        # Set up the debian packaging branch.
+        name = 'debp-n'
+        debp_n = self.make_branch_and_tree(name)
+        debp_n.pull(debu_n.branch, stop_revision=self.revid_debu_n_A)
+
+        vdata = [
+            ('1.0-1', ('debian/', 'debian/changelog'), None, None),
+            ('1.1-1', ('o',), debu_n, self.revid_debu_n_B),
+            ('2.0-1', ('p',), debu_n, self.revid_debu_n_C),
+            ]
+        self._setup_branch(name, vdata, debp_n, 'd')
+
+        # Set up the ubuntu upstream branch.
+        name = 'ubuu-o'
+        ubuu_o = debu_n.bzrdir.sprout(
+            name, revision_id=self.revid_debu_n_B).open_workingtree()
+
+        vdata = [
+            ('upstream-1.1.2', (), None, None),
+            ]
+        self._setup_branch(name, vdata, ubuu_o)
+
+        # Set up the ubuntu packaging branch.
+        name = 'ubup-o'
+        ubup_o = debu_n.bzrdir.sprout(
+            name, revision_id=self.revid_debu_n_A).open_workingtree()
+
+        vdata = [
+            ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
+            ('1.1.2-0ubuntu1', ('c',), ubuu_o, self.revid_ubuu_o_A),
             ]
         self._setup_branch(name, vdata, ubup_o, 'u')
 
