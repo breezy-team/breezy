@@ -24,8 +24,8 @@ import os
 import shutil
 import tempfile
 
-from bzrlib import errors
-
+from bzrlib.plugins.builddeb.errors import (
+    SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.util import find_changelog
 
@@ -147,12 +147,15 @@ def fix_ancestry_as_needed(tree, source):
                     tmp_target_utree.set_parent_ids((ut_revid, us_revid))
                     tmp_target_utree.commit(
                         'Prepared upstream tree for merging into target branch.')
+                    # Repository updates during a held lock are not visible,
+                    # hence the call to refresh the data in the /target/ repo.
+                    tree.branch.repository.refresh_data()
 
                     # Merge shared upstream parent into the target merge branch. This
                     # creates revison L in the digram above.
                     conflicts = tree.merge_from_branch(tmp_target_utree.branch)
                     if conflicts > 0:
-                        raise errors.SharedUpstreamConflictsWithTargetPackaging()
+                        raise SharedUpstreamConflictsWithTargetPackaging()
                     else:
                         tree.commit('Merging shared upstream rev into target branch.')
 
