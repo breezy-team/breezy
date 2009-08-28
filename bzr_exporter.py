@@ -35,6 +35,7 @@ import bzrlib.revision
 from bzrlib import (
     builtins,
     errors as bazErrors,
+    osutils,
     progress,
     trace,
     )
@@ -410,6 +411,8 @@ class BzrFastExporter(object):
         # Instead, we need to make multiple passes over the various lists to
         # get the ordering right.
 
+        must_be_renamed = {}
+        old_to_new = {}
         deleted_paths = set([p for p, _, _ in deletes])
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in renames:
@@ -423,9 +426,30 @@ class BzrFastExporter(object):
             #oldpath = self._adjust_path_for_renames(oldpath, renamed,
             #    revision_id)
             renamed.append([oldpath, newpath])
+            old_to_new[oldpath] = newpath
             file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
             if text_modified or meta_modified:
                 modifies.append((newpath, id_, kind))
+
+            # Renaming a directory implies all children must be renamed.
+            # Note: changes_from() doesn't handle this
+            if kind == 'directory':
+                for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
+                    old_child_path = osutils.pathjoin(oldpath, p)
+                    new_child_path = osutils.pathjoin(newpath, p)
+                    must_be_renamed[old_child_path] = new_child_path
+
+        # Add children not already renamed
+        if must_be_renamed:
+            renamed_already = set(old_to_new.keys())
+            still_to_be_renamed = set(must_be_renamed.keys()) - renamed_already
+            for old_child_path in sorted(still_to_be_renamed):
+                new_child_path = must_be_renamed[old_child_path]
+                if self.verbose:
+                    self.note("implicitly renaming %s => %s" % (old_child_path,
+                        new_child_path))
+                file_cmds.append(commands.FileRenameCommand(old_child_path,
+                    new_child_path))
 
         # Record remaining deletes
         for path, id_, kind in deletes:
