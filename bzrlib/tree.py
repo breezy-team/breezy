@@ -222,10 +222,14 @@ class Tree(object):
     def path_content_summary(self, path):
         """Get a summary of the information about path.
 
+        All the attributes returned are for the canonical form, not the
+        convenient form (if content filters are in use.)
+
         :param path: A relative path within the tree.
         :return: A tuple containing kind, size, exec, sha1-or-link.
             Kind is always present (see tree.kind()).
-            size is present if kind is file, None otherwise.
+            size is present if kind is file and the size of the 
+                canonical form can be cheaply determined, None otherwise.
             exec is None unless kind is file and the platform supports the 'x'
                 bit.
             sha1-or-link is the link target if kind is symlink, or the sha1 if

@@ -465,9 +465,9 @@ class CommitBuilder(object):
             if content_summary[2] is None:
                 raise ValueError("Files must not have executable = None")
             if not store:
-                if (# if the file length changed we have to store:
-                    parent_entry.text_size != content_summary[1] or
-                    # if the exec bit has changed we have to store:
+                # We can't trust a check of the file length because of content
+                # filtering...
+                if (# if the exec bit has changed we have to store:
                     parent_entry.executable != content_summary[2]):
                     store = True
                 elif parent_entry.text_sha1 == content_summary[3]:
@@ -540,6 +540,9 @@ class CommitBuilder(object):
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
+            if ie.reference_revision is None:
+                raise AssertionError("invalid content_summary for nested tree: %r"
+                    % (content_summary,))
             self._add_text_to_weave(ie.file_id, '', heads, None)
         else:
             raise NotImplementedError('unknown kind')

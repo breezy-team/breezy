@@ -613,6 +613,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
+        # XXX: this returns the on-disk size; it should probably return the
+        # canonical size
         try:
             return os.path.getsize(self.id2abspath(file_id))
         except OSError, e:
@@ -749,11 +751,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise
         kind = _mapper(stat_result.st_mode)
         if kind == 'file':
-            size = stat_result.st_size
-            # try for a stat cache lookup
-            executable = self._is_executable_from_path_and_stat(path, stat_result)
-            return (kind, size, executable, self._sha_from_stat(
-                path, stat_result))
+            return self._file_content_summary(path, stat_result)
         elif kind == 'directory':
             # perhaps it looks like a plain directory, but it's really a
             # reference.
@@ -765,6 +763,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
+
+    def _file_content_summary(self, path, stat_result):
+        size = stat_result.st_size
+        executable = self._is_executable_from_path_and_stat(path, stat_result)
+        # try for a stat cache lookup
+        return ('file', size, executable, self._sha_from_stat(
+            path, stat_result))
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.

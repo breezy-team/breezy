@@ -932,7 +932,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
-        self._text_fetch_order = 'groupcompress'
+        # self._text_fetch_order = 'unordered'
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
@@ -949,7 +949,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             p_id_roots_set = set()
             source_vf = self.from_repository.inventories
             stream = source_vf.get_record_stream(inventory_keys,
-                                                 'groupcompress', True)
+                                                 'unordered', True)
             for record in stream:
                 if record.storage_kind == 'absent':
                     if allow_absent:

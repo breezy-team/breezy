@@ -12,6 +12,72 @@ In Development
 Compatibility Breaks
 ********************
 
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
+  subclasses - the same as python's unittest module. (Robert Collins)
+
+Internals
+*********
+
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
+Testing
+*******
+
+* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
+  be output for every test. Note that this is very verbose! (Robert Collins)
+
+* Test parameterisation now does a shallow copy, not a deep copy of the test
+  to be parameterised. This is not expected to break external use of test
+  parameterisation, and is substantially faster. (Robert Collins)
+
+
+bzr 2.0rc2
+##########
+
+Bug Fixes
+*********
+
+* Fix a potential segmentation fault when doing 'log' of a branch that had
+  ghosts in its mainline. (evaluating None as a tuple is bad.)
+  (John Arbash Meinel, #419241)
+
+
+bzr 2.0rc1
+##########
+
+
+:Codename: no worries
+:2.0rc1: 2009-08-26
+
+This release of Bazaar makes 2a 'brisbane-core' format the
+default.  Most of the work in this release now focuses on bug
+fixes and stabilization, covering both 2a and previous formats.
+
+The Bazaar team decided that 2.0 will be a long-term supported
+release, with bugfix-only releases based on it continuing for at
+least six months or until the following stable release (we said
+that previously, but that's worth repeating).
+
+Compatibility Breaks
+********************
+
 * The default format for bzr is now ``2a``. This format brings many
   significant performance and size improvements. bzr can pull from
   any existing repository into a ``2a`` one, but can only transfer
@@ -32,6 +98,15 @@ New Features
 Bug Fixes
 *********
 
+* Further tweaks to handling of ``bzr add`` messages about ignored files.
+  (Jason Spashett, #76616)
+
+* Fetches were being requested in 'groupcompress' order, but weren't
+  recombining the groups. Thus they would 'fragment' to get the correct
+  order, but not 'recombine' to actually benefit from it. Until we get
+  recombining to work, switching to 'unordered' fetches avoids the
+  fragmentation. (John Arbash Meinel, #402645)
+
 * Fix a pycurl related test failure on karmic by recognizing an error
   raised by newer versions of pycurl.
   (Vincent Ladeuil, #306264)
@@ -45,6 +120,11 @@ Bug Fixes
 * Fix "Revision ... not present" errors when upgrading stacked branches,
   or when doing fetches from a stacked source to a stacked target.
   (Andrew Bennetts, #399140)
+
+* ``bzr branch`` of 2a repositories over HTTP is much faster.  bzr now
+  batches together small fetches from 2a repositories, rather than
+  fetching only a few hundred bytes at a time.
+  (Andrew Bennetts, #402657)
 
 Improvements
 ************
@@ -90,25 +170,38 @@ API Changes
   classes changed to manage lock lifetime of the trees they open in a way
   consistent with reader-exclusive locks. (Robert Collins, #305006)
 
-* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
-  subclasses - the same as python's unittest module. (Robert Collins)
-
-Internals
-*********
-
-* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
-  profiling in some situations like callbacks and generators easier.
-  (Robert Collins)
-
 Testing
 *******
 
-* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
-  be output for every test. Note that this is very verbose! (Robert Collins)
+bzr 1.18.1 NOT RELEASED YET
+###########################
 
-* Test parameterisation now does a shallow copy, not a deep copy of the test
-  to be parameterised. This is not expected to break external use of test
-  parameterisation, and is substantially faster. (Robert Collins)
+Bug Fixes
+*********
+
+* Fixed a problem where using content filtering and especially end-of-line
+  conversion will commit too many copies a file.
+  (Martin Pool, #415508)
+
+Improvements
+************
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
+API Changes
+***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
+
+* ``Tree.path_content_summary`` may return a size of None, when called on
+  a tree with content filtering where the size of the canonical form
+  cannot be cheaply determined.  (Martin Pool)
 
 bzr 1.18
 ########
@@ -225,6 +318,7 @@ bzr 1.18rc1
 ###########
 
 :Codename: little traveller
+:1.18:    2009-08-20
 :1.18rc1: 2009-08-10
 
 This release of Bazaar marches on towards the 2.0 release in which the 2a
@@ -238,6 +332,7 @@ The Bazaar team decided that 2.0 will be a long-term supported release,
 with bugfix-only releases based on it continuing for at least six months
 or until the following stable release.
 
+There are no changes from 1.18rc1 to 1.18.
 
 New Features
 ************
@@ -443,6 +538,17 @@ Testing
   ``TextTestRunner`` with test suites that don't support
   ``countTestsCases``. (Robert Collins)
 
+
+bzr 1.17.1 (unreleased)
+#######################
+
+Bug Fixes
+*********
+
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  knit format repositories.  (Andrew Bennetts, #405653)
+  
 
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
