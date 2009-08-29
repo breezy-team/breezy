@@ -270,7 +270,7 @@ class ImportParser(LineBasedParser):
         # We auto-detect the date format when a date is first encountered
         self.date_parser = None
 
-    def _warning(self, msg):
+    def warning(self, msg):
         sys.stderr.write("warning line %d: %s\n" % (self.lineno, msg))
 
     def iter_commands(self):
@@ -353,7 +353,7 @@ class ImportParser(LineBasedParser):
         try:
             message = message.decode('utf_8')
         except UnicodeDecodeError:
-            self._warning(
+            self.warning(
                 "commit message not in utf8 - replacing unknown characters")
             message = message.decode('utf_8', 'replace')
         from_ = self._get_from()
