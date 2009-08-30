@@ -361,6 +361,36 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         sink.insert_stream((), repo._format, tokens)
         self.assertEqual([True], call_log)
 
+    def test_missing_chk_root_for_inventory(self):
+        builder = self.make_branch_builder('simple-branch')
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        b = builder.get_branch()
+        if getattr(b.repository, 'chk_bytes', None) is None:
+            raise TestNotApplicable('requires repository with chk_bytes')
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo = self.make_repository('damaged-repo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Now, add the objects manually
+        text_keys = [('file-id', 'A-id'), ('root-id', 'A-id')]
+        # Directly add the texts, inventory, and revision object for 'A-id' --
+        # but don't add the chk_bytes.
+        src_repo = b.repository
+        repo.texts.insert_record_stream(src_repo.texts.get_record_stream(
+            text_keys, 'unordered', True))
+        repo.inventories.insert_record_stream(
+            src_repo.inventories.get_record_stream(
+                [('A-id',)], 'unordered', True))
+        repo.revisions.insert_record_stream(
+            src_repo.revisions.get_record_stream(
+                [('A-id',)], 'unordered', True))
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
 

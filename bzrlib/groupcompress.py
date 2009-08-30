@@ -1705,7 +1705,7 @@ class _GCGraphIndex(object):
 
     def __init__(self, graph_index, is_locked, parents=True,
         add_callback=None, track_external_parent_refs=False,
-        inconsistency_fatal=True):
+        inconsistency_fatal=True, track_new_keys=False):
         """Construct a _GCGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -1734,6 +1734,10 @@ class _GCGraphIndex(object):
             self._key_dependencies = knit._KeyRefs()
         else:
             self._key_dependencies = None
+        if track_new_keys:
+            self._new_keys = set()
+        else:
+            self._new_keys = None
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -1795,6 +1799,10 @@ class _GCGraphIndex(object):
             for key, value, refs in records:
                 parents = refs[0]
                 key_dependencies.add_references(key, parents)
+        new_keys = self._new_keys
+        if new_keys is not None:
+            for key, value, refs in records:
+                new_keys.add(key)
         self._add_callback(records)
 
     def _check_read(self):
@@ -1917,13 +1925,15 @@ class _GCGraphIndex(object):
 
         :param graph_index: A GraphIndex
         """
-        if self._key_dependencies is not None:
-            # Add parent refs from graph_index (and discard parent refs that
-            # the graph_index has).
-            add_refs = self._key_dependencies.add_references
-            for node in graph_index.iter_all_entries():
-                add_refs(node[1], node[3][0])
-
+        if self._key_dependencies is None and self._new_keys is None:
+            return
+        for node in graph_index.iter_all_entries():
+            if self._key_dependencies is not None:
+                # Add parent refs from graph_index (and discard parent refs
+                # that the graph_index has).
+                self._key_dependencies.add_references(node[1], node[3][0])
+            if self._new_keys is not None:
+                self._new_keys.add(node[1])
 
 
 from bzrlib._groupcompress_py import (

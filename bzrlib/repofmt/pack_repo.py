@@ -2073,6 +2073,22 @@ class RepositoryPackCollection(object):
                 ):
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
+        if getattr(self.repo, 'chk_bytes', None) is not None:
+            # - find new inventories
+            new_inventories_keys = self.repo.inventories._index._new_keys
+            # - ensure chk root keys are present for each inventory
+            rev_ids = [key[-1] for key in new_inventories_keys]
+            for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
+                root_keys = [new_inv.id_to_entry.key()]
+                if getattr(new_inv, 'parent_id_basename_to_file_id', None) is not None:
+                    root_keys.append(
+                        new_inv.parent_id_basename_to_file_id.key())
+                chk_stream = self.repo.chk_bytes.get_record_stream(
+                    root_keys, 'unordered', True)
+                for chk_bytes in chk_stream:
+                    if chk_bytes.storage_kind == 'absent':
+                        all_missing.add(('chk_bytes',) + chk_bytes.key)
+            # - (ensure all chk children for those roots are present?)
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
