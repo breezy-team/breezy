@@ -61,8 +61,12 @@ bzr 2.0rc2
 Bug Fixes
 *********
 
-* Fix a potential segmentation fault when doing 'log' of a branch that had
-  ghosts in its mainline. (evaluating None as a tuple is bad.)
+* ``bzr log stacked-branch`` shows the full log including
+  revisions that are in the fallback repository. (Regressed in 2.0rc1).
+  (John Arbash Meinel, #419241)
+
+* Fix a segmentation fault when computing the ``merge_sort`` of a graph
+  that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
 
 
