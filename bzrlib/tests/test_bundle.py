@@ -1830,9 +1830,8 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         """
         from bzrlib.tests.blackbox.test_push import RedirectingMemoryServer
         server = RedirectingMemoryServer()
-        server.setUp()
+        self.start_server(server)
         url = server.get_url() + 'infinite-loop'
-        self.addCleanup(server.tearDown)
         self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
 
     def test_smart_server_connection_reset(self):
@@ -1841,8 +1840,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         """
         # Instantiate a server that will provoke a ConnectionReset
         sock_server = _DisconnectingTCPServer()
-        sock_server.setUp()
-        self.addCleanup(sock_server.tearDown)
+        self.start_server(sock_server)
         # We don't really care what the url is since the server will close the
         # connection without interpreting it
         url = sock_server.get_url()
