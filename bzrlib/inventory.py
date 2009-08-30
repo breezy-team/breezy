@@ -443,7 +443,7 @@ class InventoryDirectory(InventoryEntry):
             return
         # Directories are stored as an empty file, but the file should exist
         # to provide a per-fileid log. The hash of every directory content is
-        # da... below (sha1sum('')).
+        # "da..." below (the sha1sum of '').
         checker.add_pending_item(rev_id,
             ('texts', self.file_id, self.revision), 'text',
              'da39a3ee5e6b4b0d3255bfef95601890afd80709')
