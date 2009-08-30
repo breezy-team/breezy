@@ -12,6 +12,10 @@ bzr 2.0rc2
 Bug Fixes
 *********
 
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
 * ``bzr log stacked-branch`` shows the full log including
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
