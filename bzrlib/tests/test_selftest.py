@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 import os
+import signal
 import sys
 import time
 import unittest
@@ -50,6 +51,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.tests import (
+    SubUnitFeature,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -685,6 +687,26 @@ class TestChrootedTest(tests.ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
+class TestProfileResult(tests.TestCase):
+
+    def test_profiles_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
+        terminal = unittest.TestResult()
+        result = tests.ProfileResult(terminal)
+        class Sample(tests.TestCase):
+            def a(self):
+                self.sample_function()
+            def sample_function(self):
+                pass
+        test = Sample("a")
+        test.attrs_to_keep = test.attrs_to_keep + ('_benchcalls',)
+        test.run(result)
+        self.assertLength(1, test._benchcalls)
+        # We must be able to unpack it as the test reporting code wants
+        (_, _, _), stats = test._benchcalls[0]
+        self.assertTrue(callable(stats.pprint))
+
+
 class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
@@ -798,7 +820,7 @@ class TestTestResult(tests.TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
@@ -852,7 +874,7 @@ class TestTestResult(tests.TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
@@ -896,7 +918,7 @@ class TestTestResult(tests.TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
@@ -979,11 +1001,14 @@ class TestRunner(tests.TestCase):
         because of our use of global state.
         """
         old_root = tests.TestCaseInTempDir.TEST_ROOT
+        old_leak = tests.TestCase._first_thread_leaker_id
         try:
             tests.TestCaseInTempDir.TEST_ROOT = None
+            tests.TestCase._first_thread_leaker_id = None
             return testrunner.run(test)
         finally:
             tests.TestCaseInTempDir.TEST_ROOT = old_root
+            tests.TestCase._first_thread_leaker_id = old_leak
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
@@ -1028,6 +1053,20 @@ class TestRunner(tests.TestCase):
             'Ran 1 test in .*\n'
             '\n'
             'OK \\(known_failures=1\\)\n')
+
+    def test_result_decorator(self):
+        # decorate results
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTest(self, test):
+                tests.ForwardingResult.startTest(self, test)
+                calls.append('start')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -1100,10 +1139,6 @@ class TestRunner(tests.TestCase):
                 r'(?m)not_applicable_test   * N/A')
         self.assertContainsRe(out.getvalue(),
                 r'(?m)^    this test never runs')
-
-    def test_not_applicable_demo(self):
-        # just so you can see it in the test output
-        raise tests.TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
@@ -1258,6 +1293,34 @@ class TestRunner(tests.TestCase):
         log = test._get_log()
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
+
+    def test_startTestRun(self):
+        """run should call result.startTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTestRun(self):
+                tests.ForwardingResult.startTestRun(self)
+                calls.append('startTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
+
+    def test_stopTestRun(self):
+        """run should call result.stopTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def stopTestRun(self):
+                tests.ForwardingResult.stopTestRun(self)
+                calls.append('stopTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
 
 
 class SampleTestCase(tests.TestCase):
@@ -1478,6 +1541,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
         self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+        del self._benchcalls[:]
 
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
@@ -1740,23 +1804,40 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('a')
         self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
 
-
-class TestSFTPMakeBranchAndTree(test_sftp_transport.TestCaseWithSFTPServer):
-
-    def test_make_tree_for_sftp_branch(self):
-        """Transports backed by local directories create local trees."""
-
+    def test_make_tree_for_local_vfs_backed_transport(self):
+        # make_branch_and_tree has to use local branch and repositories
+        # when the vfs transport and local disk are colocated, even if
+        # a different transport is in use for url generation.
+        from bzrlib.transport.fakevfat import FakeVFATServer
+        self.transport_server = FakeVFATServer
+        self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
-        self.failIf(base.startswith('sftp'),
-                'base %r is on sftp but should be local' % base)
+        self.assertStartsWith(base, 'file://')
         self.assertEquals(tree.bzrdir.root_transport,
                 tree.branch.bzrdir.root_transport)
         self.assertEquals(tree.bzrdir.root_transport,
                 tree.branch.repository.bzrdir.root_transport)
 
 
-class TestSelftest(tests.TestCase):
+class SelfTestHelper:
+
+    def run_selftest(self, **kwargs):
+        """Run selftest returning its output."""
+        output = StringIO()
+        old_transport = bzrlib.tests.default_transport
+        old_root = tests.TestCaseWithMemoryTransport.TEST_ROOT
+        tests.TestCaseWithMemoryTransport.TEST_ROOT = None
+        try:
+            self.assertEqual(True, tests.selftest(stream=output, **kwargs))
+        finally:
+            bzrlib.tests.default_transport = old_transport
+            tests.TestCaseWithMemoryTransport.TEST_ROOT = old_root
+        output.seek(0)
+        return output
+
+
+class TestSelftest(tests.TestCase, SelfTestHelper):
     """Tests of bzrlib.tests.selftest."""
 
     def test_selftest_benchmark_parameter_invokes_test_suite__benchmark__(self):
@@ -1769,6 +1850,516 @@ class TestSelftest(tests.TestCase):
         self.apply_redirected(out, err, None, bzrlib.tests.selftest,
             test_suite_factory=factory)
         self.assertEqual([True], factory_called)
+
+    def factory(self):
+        """A test suite factory."""
+        class Test(tests.TestCase):
+            def a(self):
+                pass
+            def b(self):
+                pass
+            def c(self):
+                pass
+        return TestUtil.TestSuite([Test("a"), Test("b"), Test("c")])
+
+    def test_list_only(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True)
+        self.assertEqual(3, len(output.readlines()))
+
+    def test_list_only_filtered(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, pattern="Test.b")
+        self.assertEndsWith(output.getvalue(), "Test.b\n")
+        self.assertLength(1, output.readlines())
+
+    def test_list_only_excludes(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, exclude_pattern="Test.b")
+        self.assertNotContainsRe("Test.b", output.getvalue())
+        self.assertLength(2, output.readlines())
+
+    def test_lsprof_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
+        calls = []
+        class Test(object):
+            def __call__(test, result):
+                test.run(result)
+            def run(test, result):
+                self.assertIsInstance(result, tests.ForwardingResult)
+                calls.append("called")
+            def countTestCases(self):
+                return 1
+        self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
+        self.assertLength(1, calls)
+
+    def test_random(self):
+        # test randomising by listing a number of tests.
+        output_123 = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        output_234 = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="234")
+        self.assertNotEqual(output_123, output_234)
+        # "Randominzing test order..\n\n
+        self.assertLength(5, output_123.readlines())
+        self.assertLength(5, output_234.readlines())
+
+    def test_random_reuse_is_same_order(self):
+        # test randomising by listing a number of tests.
+        expected = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        repeated = self.run_selftest(test_suite_factory=self.factory,
+            list_only=True, random_seed="123")
+        self.assertEqual(expected.getvalue(), repeated.getvalue())
+
+    def test_runner_class(self):
+        self.requireFeature(SubUnitFeature)
+        from subunit import ProtocolTestCase
+        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+            test_suite_factory=self.factory)
+        test = ProtocolTestCase(stream)
+        result = unittest.TestResult()
+        test.run(result)
+        self.assertEqual(3, result.testsRun)
+
+    def test_starting_with_single_argument(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            starting_with=['bzrlib.tests.test_selftest.Test.a'],
+            list_only=True)
+        self.assertEqual('bzrlib.tests.test_selftest.Test.a\n',
+            output.getvalue())
+
+    def test_starting_with_multiple_argument(self):
+        output = self.run_selftest(test_suite_factory=self.factory,
+            starting_with=['bzrlib.tests.test_selftest.Test.a',
+                'bzrlib.tests.test_selftest.Test.b'],
+            list_only=True)
+        self.assertEqual('bzrlib.tests.test_selftest.Test.a\n'
+            'bzrlib.tests.test_selftest.Test.b\n',
+            output.getvalue())
+
+    def check_transport_set(self, transport_server):
+        captured_transport = []
+        def seen_transport(a_transport):
+            captured_transport.append(a_transport)
+        class Capture(tests.TestCase):
+            def a(self):
+                seen_transport(bzrlib.tests.default_transport)
+        def factory():
+            return TestUtil.TestSuite([Capture("a")])
+        self.run_selftest(transport=transport_server, test_suite_factory=factory)
+        self.assertEqual(transport_server, captured_transport[0])
+
+    def test_transport_sftp(self):
+        try:
+            import bzrlib.transport.sftp
+        except errors.ParamikoNotPresent:
+            raise tests.TestSkipped("Paramiko not present")
+        self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
+
+    def test_transport_memory(self):
+        self.check_transport_set(bzrlib.transport.memory.MemoryServer)
+
+
+class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
+    # Does IO: reads test.list
+
+    def test_load_list(self):
+        # Provide a list with one test - this test.
+        test_id_line = '%s\n' % self.id()
+        self.build_tree_contents([('test.list', test_id_line)])
+        # And generate a list of the tests in  the suite.
+        stream = self.run_selftest(load_list='test.list', list_only=True)
+        self.assertEqual(test_id_line, stream.getvalue())
+
+    def test_load_unknown(self):
+        # Provide a list with one test - this test.
+        # And generate a list of the tests in  the suite.
+        err = self.assertRaises(errors.NoSuchFile, self.run_selftest,
+            load_list='missing file name', list_only=True)
+
+
+class TestRunBzr(tests.TestCase):
+
+    out = ''
+    err = ''
+
+    def _run_bzr_core(self, argv, retcode=0, encoding=None, stdin=None,
+                         working_dir=None):
+        """Override _run_bzr_core to test how it is invoked by run_bzr.
+
+        Attempts to run bzr from inside this class don't actually run it.
+
+        We test how run_bzr actually invokes bzr in another location.
+        Here we only need to test that it is run_bzr passes the right
+        parameters to run_bzr.
+        """
+        self.argv = list(argv)
+        self.retcode = retcode
+        self.encoding = encoding
+        self.stdin = stdin
+        self.working_dir = working_dir
+        return self.out, self.err
+
+    def test_run_bzr_error(self):
+        self.out = "It sure does!\n"
+        out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
+        self.assertEqual(['rocks'], self.argv)
+        self.assertEqual(34, self.retcode)
+        self.assertEqual(out, 'It sure does!\n')
+
+    def test_run_bzr_error_regexes(self):
+        self.out = ''
+        self.err = "bzr: ERROR: foobarbaz is not versioned"
+        out, err = self.run_bzr_error(
+                ["bzr: ERROR: foobarbaz is not versioned"],
+                ['file-id', 'foobarbaz'])
+
+    def test_encoding(self):
+        """Test that run_bzr passes encoding to _run_bzr_core"""
+        self.run_bzr('foo bar')
+        self.assertEqual(None, self.encoding)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr('foo bar', encoding='baz')
+        self.assertEqual('baz', self.encoding)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+    def test_retcode(self):
+        """Test that run_bzr passes retcode to _run_bzr_core"""
+        # Default is retcode == 0
+        self.run_bzr('foo bar')
+        self.assertEqual(0, self.retcode)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr('foo bar', retcode=1)
+        self.assertEqual(1, self.retcode)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr('foo bar', retcode=None)
+        self.assertEqual(None, self.retcode)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr(['foo', 'bar'], retcode=3)
+        self.assertEqual(3, self.retcode)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+    def test_stdin(self):
+        # test that the stdin keyword to run_bzr is passed through to
+        # _run_bzr_core as-is. We do this by overriding
+        # _run_bzr_core in this class, and then calling run_bzr,
+        # which is a convenience function for _run_bzr_core, so
+        # should invoke it.
+        self.run_bzr('foo bar', stdin='gam')
+        self.assertEqual('gam', self.stdin)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr('foo bar', stdin='zippy')
+        self.assertEqual('zippy', self.stdin)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+    def test_working_dir(self):
+        """Test that run_bzr passes working_dir to _run_bzr_core"""
+        self.run_bzr('foo bar')
+        self.assertEqual(None, self.working_dir)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+        self.run_bzr('foo bar', working_dir='baz')
+        self.assertEqual('baz', self.working_dir)
+        self.assertEqual(['foo', 'bar'], self.argv)
+
+    def test_reject_extra_keyword_arguments(self):
+        self.assertRaises(TypeError, self.run_bzr, "foo bar",
+                          error_regex=['error message'])
+
+
+class TestRunBzrCaptured(tests.TestCaseWithTransport):
+    # Does IO when testing the working_dir parameter.
+
+    def apply_redirected(self, stdin=None, stdout=None, stderr=None,
+                         a_callable=None, *args, **kwargs):
+        self.stdin = stdin
+        self.factory_stdin = getattr(bzrlib.ui.ui_factory, "stdin", None)
+        self.factory = bzrlib.ui.ui_factory
+        self.working_dir = osutils.getcwd()
+        stdout.write('foo\n')
+        stderr.write('bar\n')
+        return 0
+
+    def test_stdin(self):
+        # test that the stdin keyword to _run_bzr_core is passed through to
+        # apply_redirected as a StringIO. We do this by overriding
+        # apply_redirected in this class, and then calling _run_bzr_core,
+        # which calls apply_redirected.
+        self.run_bzr(['foo', 'bar'], stdin='gam')
+        self.assertEqual('gam', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
+        self.run_bzr(['foo', 'bar'], stdin='zippy')
+        self.assertEqual('zippy', self.stdin.read())
+        self.assertTrue(self.stdin is self.factory_stdin)
+
+    def test_ui_factory(self):
+        # each invocation of self.run_bzr should get its
+        # own UI factory, which is an instance of TestUIFactory,
+        # with stdin, stdout and stderr attached to the stdin,
+        # stdout and stderr of the invoked run_bzr
+        current_factory = bzrlib.ui.ui_factory
+        self.run_bzr(['foo'])
+        self.failIf(current_factory is self.factory)
+        self.assertNotEqual(sys.stdout, self.factory.stdout)
+        self.assertNotEqual(sys.stderr, self.factory.stderr)
+        self.assertEqual('foo\n', self.factory.stdout.getvalue())
+        self.assertEqual('bar\n', self.factory.stderr.getvalue())
+        self.assertIsInstance(self.factory, tests.TestUIFactory)
+
+    def test_working_dir(self):
+        self.build_tree(['one/', 'two/'])
+        cwd = osutils.getcwd()
+
+        # Default is to work in the current directory
+        self.run_bzr(['foo', 'bar'])
+        self.assertEqual(cwd, self.working_dir)
+
+        self.run_bzr(['foo', 'bar'], working_dir=None)
+        self.assertEqual(cwd, self.working_dir)
+
+        # The function should be run in the alternative directory
+        # but afterwards the current working dir shouldn't be changed
+        self.run_bzr(['foo', 'bar'], working_dir='one')
+        self.assertNotEqual(cwd, self.working_dir)
+        self.assertEndsWith(self.working_dir, 'one')
+        self.assertEqual(cwd, osutils.getcwd())
+
+        self.run_bzr(['foo', 'bar'], working_dir='two')
+        self.assertNotEqual(cwd, self.working_dir)
+        self.assertEndsWith(self.working_dir, 'two')
+        self.assertEqual(cwd, osutils.getcwd())
+
+
+class StubProcess(object):
+    """A stub process for testing run_bzr_subprocess."""
+    
+    def __init__(self, out="", err="", retcode=0):
+        self.out = out
+        self.err = err
+        self.returncode = retcode
+
+    def communicate(self):
+        return self.out, self.err
+
+
+class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Base class for tests testing how we might run bzr."""
+
+    def setUp(self):
+        tests.TestCaseWithTransport.setUp(self)
+        self.subprocess_calls = []
+
+    def start_bzr_subprocess(self, process_args, env_changes=None,
+                             skip_if_plan_to_signal=False,
+                             working_dir=None,
+                             allow_plugins=False):
+        """capture what run_bzr_subprocess tries to do."""
+        self.subprocess_calls.append({'process_args':process_args,
+            'env_changes':env_changes,
+            'skip_if_plan_to_signal':skip_if_plan_to_signal,
+            'working_dir':working_dir, 'allow_plugins':allow_plugins})
+        return self.next_subprocess
+
+
+class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
+
+    def assertRunBzrSubprocess(self, expected_args, process, *args, **kwargs):
+        """Run run_bzr_subprocess with args and kwargs using a stubbed process.
+
+        Inside TestRunBzrSubprocessCommands we use a stub start_bzr_subprocess
+        that will return static results. This assertion method populates those
+        results and also checks the arguments run_bzr_subprocess generates.
+        """
+        self.next_subprocess = process
+        try:
+            result = self.run_bzr_subprocess(*args, **kwargs)
+        except:
+            self.next_subprocess = None
+            for key, expected in expected_args.iteritems():
+                self.assertEqual(expected, self.subprocess_calls[-1][key])
+            raise
+        else:
+            self.next_subprocess = None
+            for key, expected in expected_args.iteritems():
+                self.assertEqual(expected, self.subprocess_calls[-1][key])
+            return result
+
+    def test_run_bzr_subprocess(self):
+        """The run_bzr_helper_external command behaves nicely."""
+        self.assertRunBzrSubprocess({'process_args':['--version']},
+            StubProcess(), '--version')
+        self.assertRunBzrSubprocess({'process_args':['--version']},
+            StubProcess(), ['--version'])
+        # retcode=None disables retcode checking
+        result = self.assertRunBzrSubprocess({},
+            StubProcess(retcode=3), '--version', retcode=None)
+        result = self.assertRunBzrSubprocess({},
+            StubProcess(out="is free software"), '--version')
+        self.assertContainsRe(result[0], 'is free software')
+        # Running a subcommand that is missing errors
+        self.assertRaises(AssertionError, self.assertRunBzrSubprocess,
+            {'process_args':['--versionn']}, StubProcess(retcode=3),
+            '--versionn')
+        # Unless it is told to expect the error from the subprocess
+        result = self.assertRunBzrSubprocess({},
+            StubProcess(retcode=3), '--versionn', retcode=3)
+        # Or to ignore retcode checking
+        result = self.assertRunBzrSubprocess({},
+            StubProcess(err="unknown command", retcode=3), '--versionn',
+            retcode=None)
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_env_change_passes_through(self):
+        self.assertRunBzrSubprocess(
+            {'env_changes':{'new':'value', 'changed':'newvalue', 'deleted':None}},
+            StubProcess(), '',
+            env_changes={'new':'value', 'changed':'newvalue', 'deleted':None})
+
+    def test_no_working_dir_passed_as_None(self):
+        self.assertRunBzrSubprocess({'working_dir': None}, StubProcess(), '')
+
+    def test_no_working_dir_passed_through(self):
+        self.assertRunBzrSubprocess({'working_dir': 'dir'}, StubProcess(), '',
+            working_dir='dir')
+
+    def test_run_bzr_subprocess_no_plugins(self):
+        self.assertRunBzrSubprocess({'allow_plugins': False},
+            StubProcess(), '')
+
+    def test_allow_plugins(self):
+        self.assertRunBzrSubprocess({'allow_plugins': True},
+            StubProcess(), '', allow_plugins=True)
+
+
+class TestFinishBzrSubprocess(TestWithFakedStartBzrSubprocess):
+
+    def test_finish_bzr_subprocess_with_error(self):
+        """finish_bzr_subprocess allows specification of the desired exit code.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=3)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_bzr_subprocess_ignoring_retcode(self):
+        """finish_bzr_subprocess allows the exit code to be ignored."""
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=None)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_subprocess_with_unexpected_retcode(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+                          process)
+
+
+class _DontSpawnProcess(Exception):
+    """A simple exception which just allows us to skip unnecessary steps"""
+
+
+class TestStartBzrSubProcess(tests.TestCase):
+
+    def check_popen_state(self):
+        """Replace to make assertions when popen is called."""
+
+    def _popen(self, *args, **kwargs):
+        """Record the command that is run, so that we can ensure it is correct"""
+        self.check_popen_state()
+        self._popen_args = args
+        self._popen_kwargs = kwargs
+        raise _DontSpawnProcess()
+
+    def test_run_bzr_subprocess_no_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [])
+        command = self._popen_args[0]
+        self.assertEqual(sys.executable, command[0])
+        self.assertEqual(self.get_bzr_path(), command[1])
+        self.assertEqual(['--no-plugins'], command[2:])
+
+    def test_allow_plugins(self):
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+            allow_plugins=True)
+        command = self._popen_args[0]
+        self.assertEqual([], command[2:])
+
+    def test_set_env(self):
+        self.failIf('EXISTANT_ENV_VAR' in os.environ)
+        # set in the child
+        def check_environment():
+            self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
+        self.check_popen_state = check_environment
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+            env_changes={'EXISTANT_ENV_VAR':'set variable'})
+        # not set in theparent
+        self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+
+    def test_run_bzr_subprocess_env_del(self):
+        """run_bzr_subprocess can remove environment variables too."""
+        self.failIf('EXISTANT_ENV_VAR' in os.environ)
+        def check_environment():
+            self.assertFalse('EXISTANT_ENV_VAR' in os.environ)
+        os.environ['EXISTANT_ENV_VAR'] = 'set variable'
+        self.check_popen_state = check_environment
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+            env_changes={'EXISTANT_ENV_VAR':None})
+        # Still set in parent
+        self.assertEqual('set variable', os.environ['EXISTANT_ENV_VAR'])
+        del os.environ['EXISTANT_ENV_VAR']
+
+    def test_env_del_missing(self):
+        self.failIf('NON_EXISTANT_ENV_VAR' in os.environ)
+        def check_environment():
+            self.assertFalse('NON_EXISTANT_ENV_VAR' in os.environ)
+        self.check_popen_state = check_environment
+        self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+            env_changes={'NON_EXISTANT_ENV_VAR':None})
+
+    def test_working_dir(self):
+        """Test that we can specify the working dir for the child"""
+        orig_getcwd = osutils.getcwd
+        orig_chdir = os.chdir
+        chdirs = []
+        def chdir(path):
+            chdirs.append(path)
+        os.chdir = chdir
+        try:
+            def getcwd():
+                return 'current'
+            osutils.getcwd = getcwd
+            try:
+                self.assertRaises(_DontSpawnProcess, self.start_bzr_subprocess, [],
+                    working_dir='foo')
+            finally:
+                osutils.getcwd = orig_getcwd
+        finally:
+            os.chdir = orig_chdir
+        self.assertEqual(['foo', 'current'], chdirs)
+
+
+class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Tests that really need to do things with an external bzr."""
+
+    def test_start_and_stop_bzr_subprocess_send_signal(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = self.start_bzr_subprocess(['wait-until-signalled'],
+                                            skip_if_plan_to_signal=True)
+        self.assertEqual('running\n', process.stdout.readline())
+        result = self.finish_bzr_subprocess(process, send_signal=signal.SIGINT,
+                                            retcode=3)
+        self.assertEqual('', result[0])
+        self.assertEqual('bzr: interrupted\n', result[1])
 
 
 class TestKnownFailure(tests.TestCase):
@@ -1840,8 +2431,8 @@ class TestSelftestFiltering(tests.TestCase):
         tests.TestCase.setUp(self)
         self.suite = TestUtil.TestSuite()
         self.loader = TestUtil.TestLoader()
-        self.suite.addTest(self.loader.loadTestsFromModuleNames([
-            'bzrlib.tests.test_selftest']))
+        self.suite.addTest(self.loader.loadTestsFromModule(
+            sys.modules['bzrlib.tests.test_selftest']))
         self.all_names = _test_ids(self.suite)
 
     def test_condition_id_re(self):
@@ -2157,10 +2748,52 @@ class TestTestIdList(tests.TestCase):
 
 class TestTestSuite(tests.TestCase):
 
+    def test__test_suite_testmod_names(self):
+        # Test that a plausible list of test module names are returned
+        # by _test_suite_testmod_names.
+        test_list = tests._test_suite_testmod_names()
+        self.assertSubset([
+            'bzrlib.tests.blackbox',
+            'bzrlib.tests.per_transport',
+            'bzrlib.tests.test_selftest',
+            ],
+            test_list)
+
+    def test__test_suite_modules_to_doctest(self):
+        # Test that a plausible list of modules to doctest is returned
+        # by _test_suite_modules_to_doctest.
+        test_list = tests._test_suite_modules_to_doctest()
+        self.assertSubset([
+            'bzrlib.timestamp',
+            ],
+            test_list)
+
     def test_test_suite(self):
-        # This test is slow, so we do a single test with one test in each
-        # category
-        test_list = [
+        # test_suite() loads the entire test suite to operate. To avoid this
+        # overhead, and yet still be confident that things are happening,
+        # we temporarily replace two functions used by test_suite with 
+        # test doubles that supply a few sample tests to load, and check they
+        # are loaded.
+        calls = []
+        def _test_suite_testmod_names():
+            calls.append("testmod_names")
+            return [
+                'bzrlib.tests.blackbox.test_branch',
+                'bzrlib.tests.per_transport',
+                'bzrlib.tests.test_selftest',
+                ]
+        original_testmod_names = tests._test_suite_testmod_names
+        def _test_suite_modules_to_doctest():
+            calls.append("modules_to_doctest")
+            return ['bzrlib.timestamp']
+        orig_modules_to_doctest = tests._test_suite_modules_to_doctest
+        def restore_names():
+            tests._test_suite_testmod_names = original_testmod_names
+            tests._test_suite_modules_to_doctest = orig_modules_to_doctest
+        self.addCleanup(restore_names)
+        tests._test_suite_testmod_names = _test_suite_testmod_names
+        tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
+        expected_test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
@@ -2171,10 +2804,16 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, _test_ids(suite))
+        suite = tests.test_suite()
+        self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
+            set(calls))
+        self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
+        # We cannot test this at the same time as the main load, because we want
+        # to know that starting_with == None works. So a second load is
+        # incurred - note that the starting_with parameter causes a partial load
+        # rather than a full load so this test should be pretty quick.
         test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
         suite = tests.test_suite(test_list,
                                  ['bzrlib.tests.test_selftest.TestTestSuite'])
@@ -2326,19 +2965,3 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
-
-    def test_done(self):
-        """run_suite should call result.done()"""
-        self.calls = 0
-        def one_more_call(): self.calls += 1
-        def test_function():
-            pass
-        test = unittest.FunctionTestCase(test_function)
-        class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): one_more_call()
-        class MyRunner(tests.TextTestRunner):
-            def run(self, test):
-                return InstrumentedTestResult(self.stream, self.descriptions,
-                                              self.verbosity)
-        tests.run_suite(test, runner_class=MyRunner, stream=StringIO())
-        self.assertEquals(1, self.calls)

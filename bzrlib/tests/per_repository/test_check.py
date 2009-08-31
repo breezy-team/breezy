@@ -17,9 +17,13 @@
 
 """Test operations that check the repository for corruption"""
 
+import os
 
 from bzrlib import (
+    check,
+    config as _mod_config,
     errors,
+    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable
@@ -125,3 +129,23 @@ class TestCallbacks(TestCaseWithRepository):
     def branch_callback(self, refs):
         self.callbacks.append(('branch', refs))
         return self.branch_check(refs)
+
+
+class TestCleanRepository(TestCaseWithRepository):
+
+    def test_new_repo(self):
+        repo = self.make_repository('foo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        config = _mod_config.Config()
+        os.environ['BZR_EMAIL'] = 'foo@sample.com'
+        builder = repo.get_commit_builder(None, [], config)
+        list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
+            ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
+            (None, ''), (None, 'directory'), (None, False))]))
+        builder.finish_inventory()
+        rev_id = builder.commit('first post')
+        result = repo.check(None, check_repo=True)
+        result.report_results(True)
+        log = self._get_log(keep_log_file=True)
+        self.assertFalse('Missing' in log, "Something was missing in %r" % log)

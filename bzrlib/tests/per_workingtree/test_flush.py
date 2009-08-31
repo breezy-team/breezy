@@ -16,7 +16,9 @@
 
 """Tests for WorkingTree.flush."""
 
+import sys
 from bzrlib import errors, inventory
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -31,8 +33,14 @@ class TestFlush(TestCaseWithWorkingTree):
             tree.unlock()
 
     def test_flush_when_inventory_is_modified(self):
+        if sys.platform == "win32":
+            raise TestSkipped("don't use oslocks on win32 in unix manner")
         # This takes a write lock on the source tree, then opens a second copy
-        # and tries to grab a read lock, which is a bit bogus
+        # and tries to grab a read lock. This works on Unix and is a reasonable
+        # way to detect when the file is actually written to, but it won't work
+        # (as a test) on Windows. It might be nice to instead stub out the
+        # functions used to write and that way do both less work and also be
+        # able to execute on Windows.
         self.thisFailsStrictLockCheck()
         # when doing a flush the inventory should be written if needed.
         # we test that by changing the inventory (using

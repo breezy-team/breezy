@@ -123,7 +123,7 @@ class TestTree(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         delta = wt.changes_from(wt.basis_tree())
         self.assertEqual(len(delta.added), 0)
-        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        delta = wt.changes_from(wt.basis_tree(), include_root=True)
         self.assertEqual(len(delta.added), 1)
         self.assertEqual(delta.added[0][0], '')
 
@@ -139,7 +139,7 @@ class TestTree(TestCaseWithTransport):
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
-        delta = wt.changes_from(wt.basis_tree(), wt,
+        delta = wt.changes_from(wt.basis_tree(),
             specific_files=['known_file', 'unknown_file'] ,
             require_versioned=False)
         self.assertEqual(len(delta.added), 1)
