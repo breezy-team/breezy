@@ -367,7 +367,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))])
         b = builder.get_branch()
-        if getattr(b.repository, 'chk_bytes', None) is None:
+        if not b.repository._format.supports_chks:
             raise TestNotApplicable('requires repository with chk_bytes')
         b.lock_read()
         self.addCleanup(b.unlock)

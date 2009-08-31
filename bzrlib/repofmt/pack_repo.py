@@ -2074,21 +2074,18 @@ class RepositoryPackCollection(object):
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
         if getattr(self.repo, 'chk_bytes', None) is not None:
-            # - find new inventories
+            # Ensure that all inventories added in this write group have their
+            # corresponding chk_bytes present.
             new_inventories_keys = self.repo.inventories._index._new_keys
-            # - ensure chk root keys are present for each inventory
             rev_ids = [key[-1] for key in new_inventories_keys]
             for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
-                root_keys = [new_inv.id_to_entry.key()]
+                root_keys = set([new_inv.id_to_entry.key()])
                 if getattr(new_inv, 'parent_id_basename_to_file_id', None) is not None:
-                    root_keys.append(
+                    root_keys.add(
                         new_inv.parent_id_basename_to_file_id.key())
-                chk_stream = self.repo.chk_bytes.get_record_stream(
-                    root_keys, 'unordered', True)
-                for chk_bytes in chk_stream:
-                    if chk_bytes.storage_kind == 'absent':
-                        all_missing.add(('chk_bytes',) + chk_bytes.key)
-            # - (ensure all chk children for those roots are present?)
+                present = self.repo.chk_bytes.get_parent_map(root_keys)
+                missing = root_keys.difference(present)
+                all_missing.update([('chk_bytes',) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
