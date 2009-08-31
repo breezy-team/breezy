@@ -2810,8 +2810,7 @@ class _KnitGraphIndex(object):
     """A KnitVersionedFiles index layered on GraphIndex."""
 
     def __init__(self, graph_index, is_locked, deltas=False, parents=True,
-        add_callback=None, track_external_parent_refs=False,
-        track_new_keys=False):
+        add_callback=None, track_external_parent_refs=False):
         """Construct a KnitGraphIndex on a graph_index.
 
         :param graph_index: An implementation of bzrlib.index.GraphIndex.
@@ -2845,10 +2844,6 @@ class _KnitGraphIndex(object):
             self._key_dependencies = _KeyRefs()
         else:
             self._key_dependencies = None
-        if track_new_keys:
-            self._new_keys = set()
-        else:
-            self._new_keys = None
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._graph_index)
@@ -2879,14 +2874,11 @@ class _KnitGraphIndex(object):
         keys = {}
         compression_parents = set()
         key_dependencies = self._key_dependencies
-        new_keys = self._new_keys
         for (key, options, access_memo, parents) in records:
             if self._parents:
                 parents = tuple(parents)
                 if key_dependencies is not None:
                     key_dependencies.add_references(key, parents)
-            if new_keys is not None:
-                new_keys.add(key)
             index, pos, size = access_memo
             if 'no-eol' in options:
                 value = 'N'
@@ -2954,15 +2946,11 @@ class _KnitGraphIndex(object):
             new_missing = graph_index.external_references(ref_list_num=1)
             new_missing.difference_update(self.get_parent_map(new_missing))
             self._missing_compression_parents.update(new_missing)
-        if self._key_dependencies is None and self._new_keys is None:
-            return
-        for node in graph_index.iter_all_entries():
-            if self._key_dependencies is not None:
-                # Add parent refs from graph_index (and discard parent refs
-                # that the graph_index has).
+        if self._key_dependencies is not None:
+            # Add parent refs from graph_index (and discard parent refs that
+            # the graph_index has).
+            for node in graph_index.iter_all_entries():
                 self._key_dependencies.add_references(node[1], node[3][0])
-            if self._new_keys is not None:
-                self._new_keys.add(node[1])
 
     def get_missing_compression_parents(self):
         """Return the keys of missing compression parents.

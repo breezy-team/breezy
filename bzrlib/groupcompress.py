@@ -1921,19 +1921,21 @@ class _GCGraphIndex(object):
 
         This allows this _GCGraphIndex to keep track of any missing
         compression parents we may want to have filled in to make those
-        indices valid.
+        indices valid.  It also allows _GCGraphIndex to track any new keys.
 
         :param graph_index: A GraphIndex
         """
-        if self._key_dependencies is None and self._new_keys is None:
+        key_dependencies = self._key_dependencies
+        new_keys = self._new_keys
+        if key_dependencies is None and new_keys is None:
             return
         for node in graph_index.iter_all_entries():
-            if self._key_dependencies is not None:
+            if key_dependencies is not None:
                 # Add parent refs from graph_index (and discard parent refs
                 # that the graph_index has).
-                self._key_dependencies.add_references(node[1], node[3][0])
-            if self._new_keys is not None:
-                self._new_keys.add(node[1])
+                key_dependencies.add_references(node[1], node[3][0])
+            if new_keys is not None:
+                new_keys.add(node[1])
 
 
 from bzrlib._groupcompress_py import (

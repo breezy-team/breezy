@@ -2080,7 +2080,7 @@ class RepositoryPackCollection(object):
             rev_ids = [key[-1] for key in new_inventories_keys]
             for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
                 root_keys = set([new_inv.id_to_entry.key()])
-                if getattr(new_inv, 'parent_id_basename_to_file_id', None) is not None:
+                if new_inv.parent_id_basename_to_file_id is not None:
                     root_keys.add(
                         new_inv.parent_id_basename_to_file_id.key())
                 present = self.repo.chk_bytes.get_parent_map(root_keys)
