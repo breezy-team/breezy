@@ -2236,6 +2236,8 @@ class KnitPackRepository(KnitRepository):
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.refs.clear()
+        if getattr(self.inventories._index, '_new_keys', None) is not None:
+            self.inventories._index._new_keys.clear()
         self._pack_collection._abort_write_group()
 
     def _get_source(self, to_format):
@@ -2256,12 +2258,17 @@ class KnitPackRepository(KnitRepository):
 
     def _commit_write_group(self):
         self.revisions._index._key_dependencies.refs.clear()
-        return self._pack_collection._commit_write_group()
+        tokens = self._pack_collection._commit_write_group()
+        if getattr(self.inventories._index, '_new_keys', None) is not None:
+            self.inventories._index._new_keys.clear()
+        return tokens
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
         self.revisions._index._key_dependencies.refs.clear()
+        if getattr(self.inventories._index, '_new_keys', None) is not None:
+            self.inventories._index._new_keys.clear()
         self._write_group = None
         return tokens
 
@@ -2274,6 +2281,7 @@ class KnitPackRepository(KnitRepository):
             raise
         for pack in self._pack_collection._resumed_packs:
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
+            self.inventories._index.scan_unvalidated_index(pack.inventory_index)
 
     def get_transaction(self):
         if self._write_lock_count:

@@ -373,9 +373,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         repo = self.make_repository('damaged-repo')
         repo.lock_write()
-        self.addCleanup(repo.unlock)
         repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
         # Now, add the objects manually
         text_keys = [('file-id', 'A-id'), ('root-id', 'A-id')]
         # Directly add the texts, inventory, and revision object for 'A-id' --
@@ -390,6 +388,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
             src_repo.revisions.get_record_stream(
                 [('A-id',)], 'unordered', True))
         self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
+        self.assertRaises(
+            errors.BzrCheckError, reopened_repo.commit_write_group)
+        reopened_repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):
