@@ -271,8 +271,7 @@ class TestPackRepository(TestCaseWithTransport):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
         server = fakenfs.FakeNFSServer()
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         transport = get_transport(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(transport)
         repo = bzrdir.create_repository()
@@ -1020,8 +1019,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         client._SmartClient.hooks.install_named_hook(
             'call', self.capture_hpss_call, None)

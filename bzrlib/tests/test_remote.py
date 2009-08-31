@@ -1945,8 +1945,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
     def test_allows_new_revisions(self):
         """get_parent_map's results can be updated by commit."""
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
+        self.start_server(smart_server)
         self.make_branch('branch')
         branch = Branch.open(smart_server.get_url() + '/branch')
         tree = branch.create_checkout('tree', lightweight=True)
@@ -2668,6 +2667,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.ReadError(path)
         self.assertEqual(expected_error, translated_error)
 
+    def test_IncompatibleRepositories(self):
+        translated_error = self.translateTuple(('IncompatibleRepositories',
+            "repo1", "repo2", "details here"))
+        expected_error = errors.IncompatibleRepositories("repo1", "repo2",
+            "details here")
+        self.assertEqual(expected_error, translated_error)
+
     def test_PermissionDenied_no_args(self):
         path = 'a path'
         translated_error = self.translateTuple(('PermissionDenied',), path=path)
@@ -2774,8 +2780,7 @@ class TestStacking(tests.TestCaseWithTransport):
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
+        self.start_server(smart_server)
         remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
         # can get its branch and repository
         remote_branch = remote_bzrdir.open_branch()
@@ -2936,8 +2941,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         _SmartClient.hooks.install_named_hook(
             'call', self.capture_hpss_call, None)

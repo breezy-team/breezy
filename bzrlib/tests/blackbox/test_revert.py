@@ -96,7 +96,9 @@ class TestRevert(ExternalBase):
         self.failUnlessExists('a/b')
         self.failUnlessExists('a/d')
         self.failIfExists('a/g')
-        self.failUnlessExists('j')
+        self.expectFailure(
+            "j is in the delta revert applies because j was renamed too",
+            self.failUnlessExists, 'j')
         self.failUnlessExists('h')
         self.run_bzr('revert f')
         self.failIfExists('j')

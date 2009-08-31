@@ -209,8 +209,7 @@ class TestBzrServe(TestCaseWithTransport):
         ssh_server = SFTPServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
-        ssh_server.setUp()
-        self.addCleanup(ssh_server.tearDown)
+        self.start_server(ssh_server)
         port = ssh_server._listener.port
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
