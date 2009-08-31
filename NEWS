@@ -24,6 +24,12 @@ Bug Fixes
   that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
 
+Documentation
+*************
+
+* The main table of contents now provides links to the new Migration Docs
+  and Plugins Guide. (Ian Clatworthy)
+
 
 bzr 2.0rc1
 ##########
