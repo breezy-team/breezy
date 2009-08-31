@@ -2075,7 +2075,7 @@ class RepositoryPackCollection(object):
             all_missing.update([(prefix,) + key for key in missing])
         if getattr(self.repo, 'chk_bytes', None) is not None:
             # Ensure that all inventories added in this write group have their
-            # corresponding chk_bytes present.
+            # corresponding chk_bytes root keys present.
             new_inventories_keys = self.repo.inventories._index._new_keys
             rev_ids = [key[-1] for key in new_inventories_keys]
             for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
