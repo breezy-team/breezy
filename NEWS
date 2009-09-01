@@ -24,6 +24,9 @@ Bug Fixes
   that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
 
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
 Documentation
 *************
 
