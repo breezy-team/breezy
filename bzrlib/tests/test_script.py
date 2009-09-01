@@ -29,21 +29,23 @@ class TestScriptSyntax(tests.TestCase):
         self.assertEquals([], script._script_to_commands('\n'))
 
     def test_simple_command(self):
-        self.assertEquals([(['cd', 'trunk'], None, None)],
+        self.assertEquals([(['cd', 'trunk'], None, None, None)],
                            script._script_to_commands('cd trunk'))
 
     def test_command_with_single_quoted_param(self):
         story = """bzr commit -m 'two words'"""
-        self.assertEquals([(['bzr', 'commit', '-m', 'two words'], None, None)],
+        self.assertEquals([(['bzr', 'commit', '-m', 'two words'],
+                            None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_double_quoted_param(self):
         story = """bzr commit -m "two words" """
-        self.assertEquals([(['bzr', 'commit', '-m', 'two words'], None, None)],
+        self.assertEquals([(['bzr', 'commit', '-m', 'two words'],
+                            None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_input(self):
-        self.assertEquals([(['cat', '>file'], ['content\n'], None)],
+        self.assertEquals([(['cat', '>file'], ['content\n'], None, None)],
                            script._script_to_commands('cat >file\n<content\n'))
 
     def test_command_with_output(self):
@@ -51,9 +53,17 @@ class TestScriptSyntax(tests.TestCase):
 bzr add
 >adding file
 """
-        self.assertEquals([(['bzr', 'add'], None, ['adding file\n'])],
+        self.assertEquals([(['bzr', 'add'], None, ['adding file\n'], None)],
                           script._script_to_commands(story))
 
+    def test_command_with_error(self):
+        story = """
+bzr branch foo
+2>bzr: ERROR: Not a branch: "foo"
+"""
+        self.assertEquals([(['bzr', 'branch', 'foo'],
+                            None, None, ['bzr: ERROR: Not a branch: "foo"\n'])],
+                          script._script_to_commands(story))
     def test_input_without_command(self):
         self.assertRaises(SyntaxError, script._script_to_commands, '<input')
 
@@ -64,7 +74,8 @@ bzr add
         story = """
 foo = `bzr file-id toto`
 """
-        self.assertEquals([(['foo', '=', '`bzr file-id toto`'], None, None)],
+        self.assertEquals([(['foo', '=', '`bzr file-id toto`'],
+                            None, None, None)],
                           script._script_to_commands(story))
 
 

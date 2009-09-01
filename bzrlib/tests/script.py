@@ -41,14 +41,14 @@ def _script_to_commands(text, file_name=None):
     Empty lines are ignored.
     Input and output are full lines terminated by a '\n'.
     Input lines start with '<'.
-    Output lines start with '>' 
+    Output lines start with '>'.
+    Error lines start with '2>'.
     """
     commands = []
     cmd_cur = None
     cmd_line = 1
     lineno = 0
-    input = None
-    output = None
+    input, output, error = None, None, None
     for line in text.split('\n'):
         lineno += 1
         # Keep a copy for error reporting
@@ -77,19 +77,23 @@ def _script_to_commands(text, file_name=None):
                 output = []
             output.append(line[1:] + '\n')
             continue
+        elif line.startswith('2>'):
+            if error is None:
+                if cmd_cur is None:
+                    raise SyntaxError('No command for that error',
+                                      (file_name, lineno, 1, orig))
+                error = []
+            error.append(line[2:] + '\n')
+            continue
         else:
             # Time to output the current command
             if cmd_cur is not None:
-                commands.append((cmd_cur, input, output))
+                commands.append((cmd_cur, input, output, error))
             # And start a new one
             cmd_cur = list(split(line))
             cmd_line = lineno
-            input = None
-            output = None
+            input, output, error = None, None, None
     # Add the last seen command
     if cmd_cur is not None:
-        commands.append((cmd_cur, input, output))
+        commands.append((cmd_cur, input, output, error))
     return commands
-
-
-
