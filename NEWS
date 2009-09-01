@@ -69,6 +69,13 @@ Bug Fixes
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
 
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order,
+  and all texts are recombined appropriately. This doesn't reuse existing
+  groups, which will be measurable in some specific circumstances - an
+  approximately 25% overhead. However, doing this ensures high performance
+  reads subsequent to the fetch operation, which is the most common
+  operation: write once read many. (Robert Collins, #402652)
+
 * Fix a segmentation fault when computing the ``merge_sort`` of a graph
   that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
