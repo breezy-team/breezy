@@ -556,12 +556,12 @@ class _LazyGroupContentManager(object):
         # If we are using more than half of the bytes from the block, we have
         # nothing else to check
         if total_bytes_used * 2 >= self._block._content_length:
-            return None, last_byte_used
+            return None, last_byte_used, total_bytes_used
         # We are using less than 50% of the content. Is the content we are
         # using at the beginning of the block? If so, we can just trim the
         # tail, rather than rebuilding from scratch.
         if total_bytes_used * 2 > last_byte_used:
-            return 'trim', last_byte_used
+            return 'trim', last_byte_used, total_bytes_used
 
         # We are using a small amount of the data, and it isn't just packed
         # nicely at the front, so rebuild the content.
@@ -574,10 +574,51 @@ class _LazyGroupContentManager(object):
         #       expanding many deltas into fulltexts, as well.
         #       If we build a cheap enough 'strip', then we could try a strip,
         #       if that expands the content, we then rebuild.
-        return 'rebuild', last_byte_used
+        return 'rebuild', last_byte_used, total_bytes_used
+
+    def check_is_well_utilized(self):
+        """Is the current block considered 'well utilized'?
+
+        This is a bit of a heuristic, but it basically asks if the current
+        block considers itself to be a fully developed group, rather than just
+        a loose collection of data.
+        """
+        if len(self._factories) == 1:
+            # A block of length 1 is never considered 'well utilized' :)
+            return False
+        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
+        if action is not None or total_bytes_used < self._block._content_length:
+            # This block wants to trim itself somehow, which inherently means
+            # that it is under-utilized, since it holds data that isn't being
+            # referenced
+            return False
+        # TODO: This code is meant to be the twin of _insert_record_stream's
+        #       'start_new_block' logic. It would probably be better to factor
+        #       out that logic into a shared location, so that it stays
+        #       together better
+        if self._block._content_length >= 4*1024*1024:
+            # This only violates the 'large content grows to 2x single content
+            # size' rule. However most of that is probably caught by the
+            # 'len(self._factories) == 1' check.
+            return True
+        # TODO: We can get the raw content's real size from the stored data. We
+        #       have to zlib.decompress it, but we don't have to apply the deltas.
+        common_prefix = None
+        for factory in self._factories:
+            prefix = factory.key[:-1]
+            if common_prefix is None:
+                common_prefix = prefix
+            elif prefix != common_prefix:
+                # No common prefix
+                common_prefix = None
+                break
+        if common_prefix is None and self._block._content_length >= 2*1024*1024:
+            # Mixed content blocks are capped at 2MB
+            return True
+        return False
 
     def _check_rebuild_block(self):
-        action, last_byte_used = self._check_rebuild_action()
+        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
         if action is None:
             return
         if action == 'trim':
