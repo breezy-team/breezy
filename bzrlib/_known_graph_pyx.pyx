@@ -26,8 +26,9 @@ cdef extern from "Python.h":
         pass
 
     int PyString_CheckExact(object)
-    int Py_LT
+
     int PyObject_RichCompareBool(object, object, int)
+    int Py_LT
 
     int PyTuple_CheckExact(object)
     object PyTuple_New(Py_ssize_t n)
@@ -517,7 +518,6 @@ cdef class KnownGraph:
                 # differences between graphs
                 # For bzr.dev ancestry:
                 #   4.73ms  no sort
-                #   8.78ms  < sort
                 #   7.73ms  RichCompareBool sort
                 parents = _sort_list_nodes(node.parents, 1)
                 for pos from 0 <= pos < len(parents):
