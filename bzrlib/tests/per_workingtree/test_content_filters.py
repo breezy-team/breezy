@@ -16,7 +16,9 @@
 
 """Tests for content filtering conformance"""
 
+from bzrlib.bzrdir import BzrDir
 from bzrlib.filters import ContentFilter
+from bzrlib.switch import switch
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -265,3 +267,23 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Commit the merge and check the right content is stored
         target.commit("merge file1.txt changes from source")
         self.assert_basis_content("Foo ROCKS!", target, txt_fileid)
+
+    def test_content_filtering_applied_on_switch(self):
+        # Create a source branch with two revisions
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=None, txt_writer=None, dir='branch-a', two_revisions=True)
+        if not source.supports_content_filtering():
+            return
+
+        # Now patch in content filtering and branch from revision 1
+        self.patch_in_content_filter()
+        self.run_bzr('branch -r1 branch-a branch-b')
+
+        # Now create a lightweight checkout referring to branch-b
+        self.run_bzr('checkout --lightweight branch-b checkout')
+        self.assertFileEqual("fOO tXT", 'checkout/file1.txt')
+
+        # Switch it to branch-b and check the tree is updated
+        checkout_control_dir = BzrDir.open_containing('checkout')[0]
+        switch(checkout_control_dir, source.branch)
+        self.assertFileEqual("fOO rocks!", 'checkout/file1.txt')
