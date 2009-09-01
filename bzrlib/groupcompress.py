@@ -1516,8 +1516,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # test_insert_record_stream_existing_keys fail for groupcompress and
         # groupcompress-nograph, this needs to be revisited while addressing
         # 'bzr branch' performance issues.
-        for _ in self._insert_record_stream(stream, random_id=False,
-            reuse_blocks=False):
+        for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
@@ -1581,13 +1580,22 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                ' but then inserted %r two times', record.key)
                     continue
                 inserted_keys.add(record.key)
-            if not inserted_keys and reuse_blocks:
+            reuse_this_block = reuse_blocks
+            if reuse_this_block:
                 # If the reuse_blocks flag is set, check to see if we can just
                 # copy a groupcompress block as-is.
                 if record.storage_kind == 'groupcompress-block':
+                    # Check to see if we really want to re-use this block
+                    insert_manager = record._manager
+                    if len(insert_manager._factories) == 1:
+                        # This block only has a single record in it
+                        # Mark this block to be rebuilt
+                        reuse_this_block = False
+            if reuse_this_block:
+                # We still want to reuse this block
+                if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
-                    insert_manager._check_rebuild_block()
                     bytes = record._manager._block.to_bytes()
                     _, start, length = self._access.add_raw_records(
                         [(None, len(bytes))], bytes)[0]

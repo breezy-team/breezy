@@ -696,6 +696,7 @@ class Test2a(TestCaseWithTransport):
         target = self.make_repository('target', format='2a')
         target.fetch(source.repository)
         target.lock_read()
+        self.addCleanup(target.unlock)
         details = target.texts._index.get_build_details(
             [('file-id', '1',), ('file-id', '2',)])
         file_1_details = details[('file-id', '1')]
