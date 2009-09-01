@@ -79,3 +79,29 @@ foo = `bzr file-id toto`
                           script._script_to_commands(story))
 
 
+class TestScriptExecution(script.TestCaseWithScript):
+
+    def test_unknown_command(self):
+        self.assertRaises(SyntaxError, self.run_script, 'foo')
+
+
+class TestCat(script.TestCaseWithScript):
+
+    def test_cat_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, 'cat foo bar baz')
+
+    def test_cat_input_to_output(self):
+        out, err = self.run_command(['cat'], ['content\n'], ['content\n'], None)
+
+    def test_cat_file_to_output(self):
+        self.build_tree_contents([('file', 'content\n')])
+        out, err = self.run_command(['cat', 'file'], None, ['content\n'], None)
+
+    def test_cat_input_to_file(self):
+        out, err = self.run_command(['cat', '>file'], ['content\n'], None, None)
+        self.assertFileEqual('content\n', 'file')
+
+    def test_cat_file_to_file(self):
+        self.build_tree_contents([('file', 'content\n')])
+        out, err = self.run_command(['cat', 'file', '>file2'], None, None, None)
+        self.assertFileEqual('content\n', 'file2')

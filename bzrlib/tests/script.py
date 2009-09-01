@@ -14,7 +14,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from cStringIO import StringIO
 import shlex
+
+from bzrlib import tests
 
 
 def split(s):
@@ -97,3 +100,73 @@ def _script_to_commands(text, file_name=None):
     if cmd_cur is not None:
         commands.append((cmd_cur, input, output, error))
     return commands
+
+
+class TestCaseWithScript(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithScript, self).setUp()
+        self._vars = {}
+
+    def run_script(self, text):
+        for cmd, input, output, error in _script_to_commands(text):
+            self.run_command(cmd, input, output, error)
+
+    def run_command(self, cmd, input, output, error):
+        mname = 'do_' + cmd[0]
+        method = getattr(self, mname, None)
+        if method is None:
+            raise SyntaxError('Command not found "%s"' % (cmd[0],),
+                              None, 1, ' '.join(cmd))
+        if input is None:
+            str_input = ''
+        else:
+            str_input = ''.join(input)
+        actual_output, actual_error = method(str_input, cmd[1:])
+        if output is None:
+            output = ''
+        self.assertEquals(''.join(output), actual_output)
+        if error is None:
+            error = ''
+        self.assertEquals(''.join(error), actual_error)
+        return actual_output, actual_error
+
+    def do_cat(self, input, args):
+        in_name = None
+        out_name = None
+        syntax_ok = False
+        if not args:
+            in_name = None
+            out_name = None
+            syntax_ok = True
+        elif len(args) == 1:
+            in_name = args[0]
+            if in_name.startswith('>'):
+                out_name = in_name[1:]
+                in_name = None
+            else:
+                out_name = None
+            syntax_ok = True
+        elif len(args) == 2:
+            in_name, out_name = args[0], args[1][1:]
+            syntax_ok = args[1].startswith('>')
+        if not syntax_ok:
+            raise SyntaxError('Usage: cat [file1] [>file2]')
+        if in_name is not None:
+            infile = open(in_name, 'rb')
+            try:
+                input = infile.read()
+            finally:
+                infile.close()
+        out = StringIO(input)
+        output = out.getvalue()
+        if out_name is not None:
+            outfile = open(out_name, 'wb')
+            try:
+                outfile.write(output)
+            finally:
+                outfile.close()
+            output = ''
+        return output, ''
+
+
