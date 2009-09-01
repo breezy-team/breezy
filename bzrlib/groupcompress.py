@@ -554,7 +554,7 @@ class _LazyGroupContentManager(object):
             total_bytes_used += factory._end - factory._start
             last_byte_used = max(last_byte_used, factory._end)
         # If we are using most of the bytes from the block, we have nothing
-        # else to check (currently more that 1/2)
+        # else to check (currently more than 1/2)
         if total_bytes_used * 2 >= self._block._content_length:
             return
         # Can we just strip off the trailing bytes? If we are going to be
