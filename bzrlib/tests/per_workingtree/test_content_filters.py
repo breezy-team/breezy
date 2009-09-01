@@ -81,6 +81,25 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         bin_fileid = tree.path2id('file2.bin')
         return tree, txt_fileid, bin_fileid
 
+    def patch_in_content_filter(self):
+        # Patch in a custom, symmetric content filter stack
+        self.real_content_filter_stack = WorkingTree._content_filter_stack
+        def restore_real_content_filter_stack():
+            WorkingTree._content_filter_stack = self.real_content_filter_stack
+        self.addCleanup(restore_real_content_filter_stack)
+        def _content_filter_stack(tree, path=None, file_id=None):
+            if path.endswith('.txt'):
+                return [ContentFilter(_swapcase, _swapcase)]
+            else:
+                return []
+        WorkingTree._content_filter_stack = _content_filter_stack
+
+    def assert_basis_content(self, expected_content, branch, file_id):
+        basis = branch.basis_tree()
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertEqual(expected_content, basis.get_file_text(file_id))
+
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
         tree, txt_fileid, bin_fileid = self.create_cf_tree(
@@ -132,10 +151,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        basis = source.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-        self.assertEqual("FOO TXT", basis.get_file_text(txt_fileid))
+        self.assert_basis_content("FOO TXT", source, txt_fileid)
 
         # Now branch it
         self.run_bzr('branch source target')
@@ -153,24 +169,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        basis = source.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-        self.assertEqual("Foo Txt", basis.get_file_text(txt_fileid))
+        self.assert_basis_content("Foo Txt", source, txt_fileid)
 
-        # Patch in a custom, symmetric content filter stack
-        self.real_content_filter_stack = WorkingTree._content_filter_stack
-        def restore_real_content_filter_stack():
-            WorkingTree._content_filter_stack = self.real_content_filter_stack
-        self.addCleanup(restore_real_content_filter_stack)
-        def _content_filter_stack(tree, path=None, file_id=None):
-            if path.endswith('.txt'):
-                return [ContentFilter(_swapcase, _swapcase)]
-            else:
-                return []
-        WorkingTree._content_filter_stack = _content_filter_stack
-
-        # Now branch it
+        # Now patch in content filtering and branch the source
+        self.patch_in_content_filter()
         self.run_bzr('branch source target')
         target = WorkingTree.open('target')
         # Even though the content in source and target are different
