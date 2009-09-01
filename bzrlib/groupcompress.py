@@ -457,7 +457,6 @@ class _LazyGroupCompressFactory(object):
                 # There are code paths that first extract as fulltext, and then
                 # extract as storage_kind (smart fetch). So we don't break the
                 # refcycle here, but instead in manager.get_record_stream()
-                # self._manager = None
             if storage_kind == 'fulltext':
                 return self._bytes
             else:
@@ -546,22 +545,23 @@ class _LazyGroupContentManager(object):
         # time (self._block._content) is a little expensive.
         self._block._ensure_content(self._last_byte)
 
-    def _check_rebuild_block(self):
+    def _check_rebuild_action(self):
         """Check to see if our block should be repacked."""
         total_bytes_used = 0
         last_byte_used = 0
         for factory in self._factories:
             total_bytes_used += factory._end - factory._start
-            last_byte_used = max(last_byte_used, factory._end)
-        # If we are using most of the bytes from the block, we have nothing
-        # else to check (currently more than 1/2)
+            if last_byte_used < factory._end:
+                last_byte_used = factory._end
+        # If we are using more than half of the bytes from the block, we have
+        # nothing else to check
         if total_bytes_used * 2 >= self._block._content_length:
-            return
-        # Can we just strip off the trailing bytes? If we are going to be
-        # transmitting more than 50% of the front of the content, go ahead
+            return None, last_byte_used
+        # We are using less than 50% of the content. Is the content we are
+        # using at the beginning of the block? If so, we can just trim the
+        # tail, rather than rebuilding from scratch.
         if total_bytes_used * 2 > last_byte_used:
-            self._trim_block(last_byte_used)
-            return
+            return 'trim', last_byte_used
 
         # We are using a small amount of the data, and it isn't just packed
         # nicely at the front, so rebuild the content.
@@ -574,7 +574,18 @@ class _LazyGroupContentManager(object):
         #       expanding many deltas into fulltexts, as well.
         #       If we build a cheap enough 'strip', then we could try a strip,
         #       if that expands the content, we then rebuild.
-        self._rebuild_block()
+        return 'rebuild', last_byte_used
+
+    def _check_rebuild_block(self):
+        action, last_byte_used = self._check_rebuild_action()
+        if action is None:
+            return
+        if action == 'trim':
+            self._trim_block(last_byte_used)
+        elif action == 'rebuild':
+            self._rebuild_block()
+        else:
+            raise ValueError('unknown rebuild action: %r' % (action,))
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -1587,6 +1598,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'groupcompress-block':
                     # Check to see if we really want to re-use this block
                     insert_manager = record._manager
+                    insert_manager._check_rebuild_block()
                     if len(insert_manager._factories) == 1:
                         # This block only has a single record in it
                         # Mark this block to be rebuilt
@@ -1606,6 +1618,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                            'groupcompress-block-ref'):
                     if insert_manager is None:
                         raise AssertionError('No insert_manager set')
+                    if insert_manager is not record._manager:
+                        raise AssertionError('insert_manager does not match'
+                            ' the current record, we cannot be positive'
+                            ' that the appropriate content was inserted.'
+                            )
                     value = "%d %d %d %d" % (block_start, block_length,
                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]
