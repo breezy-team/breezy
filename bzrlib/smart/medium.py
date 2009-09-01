@@ -337,7 +337,7 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             protocol.accept_bytes(bytes)
 
     def _read_bytes(self, desired_count):
-        return self._in.read(desired_count)
+        return osutils.until_no_eintr(self._in.read, desired_count)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -721,7 +721,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        bytes = self._readable_pipe.read(count)
+        bytes = osutils.until_no_eintr(self._readable_pipe.read, count)
         self._report_activity(len(bytes), 'read')
         return bytes
 
@@ -802,7 +802,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if not self._connected:
             raise errors.MediumNotConnected(self)
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = self._read_from.read(bytes_to_read)
+        bytes = osutils.until_no_eintr(self._read_from.read, bytes_to_read)
         self._report_activity(len(bytes), 'read')
         return bytes
 

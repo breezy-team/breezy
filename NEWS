@@ -6,15 +6,19 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0rc2
-##########
+bzr 2.0rc2 (not released yet)
+#############################
 
 Bug Fixes
 *********
 
 * Fix a potential segmentation fault when doing 'log' of a branch that had
-  ghosts in its mainline. (evaluating None as a tuple is bad.)
+  ghosts in its mainline.  (Evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
+
+* SmartMedium now correctly handles EINTR, which most noticeably occurs
+  if a smart server operation is interrupted by the debugger.
+  (Martin Pool, #341535)
 
 
 bzr 2.0rc1
