@@ -150,9 +150,9 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False):
 
 
 def restore(filename):
-    """\
-    Restore a conflicted file to the state it was in before merging.
-    Only text restoration supported at present.
+    """Restore a conflicted file to the state it was in before merging.
+
+    Only text restoration is supported at present.
     """
     conflicted = False
     try:
