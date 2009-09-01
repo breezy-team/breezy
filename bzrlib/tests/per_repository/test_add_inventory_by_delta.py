@@ -47,8 +47,17 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
 
     def make_inv_delta(self, old, new):
         """Make an inventory delta from two inventories."""
-        old_ids = set(old._byid.iterkeys())
-        new_ids = set(new._byid.iterkeys())
+        by_id = getattr(old, '_byid', None)
+        if by_id is None:
+            old_ids = set(entry.file_id for entry in old.iter_just_entries())
+        else:
+            old_ids = set(by_id)
+        by_id = getattr(new, '_byid', None)
+        if by_id is None:
+            new_ids = set(entry.file_id for entry in new.iter_just_entries())
+        else:
+            new_ids = set(by_id)
+
         adds = new_ids - old_ids
         deletes = old_ids - new_ids
         common = old_ids.intersection(new_ids)
@@ -68,7 +77,11 @@ class TestAddInventoryByDelta(TestCaseWithRepository):
         # validator.
         tree = self.make_branch_and_tree('tree')
         revid = tree.commit("empty post")
-        revtree = tree.basis_tree()
+        # tree.basis_tree() always uses a plain Inventory from the dirstate, we
+        # want the same format inventory as we have in the repository
+        revtree = tree.branch.repository.revision_tree(
+                    tree.branch.last_revision())
+        tree.basis_tree()
         revtree.lock_read()
         self.addCleanup(revtree.unlock)
         new_inv = revtree.inventory

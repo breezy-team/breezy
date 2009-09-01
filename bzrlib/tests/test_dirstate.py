@@ -419,7 +419,7 @@ class TestTreeToDirState(TestCaseWithDirState):
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
-              ('d', '', 0, False, rev_id2), # second parent details
+              ('d', '', 0, False, rev_id), # second parent details
              ])])
         state = dirstate.DirState.from_tree(tree, 'dirstate')
         self.check_state_with_reopen(expected_result, state)
@@ -500,7 +500,7 @@ class TestTreeToDirState(TestCaseWithDirState):
             (('', '', tree.get_root_id()), # common details
              [('d', '', 0, False, dirstate.DirState.NULLSTAT), # current tree
               ('d', '', 0, False, rev_id), # first parent details
-              ('d', '', 0, False, rev_id2), # second parent details
+              ('d', '', 0, False, rev_id), # second parent details
              ]),
             (('', 'a file', 'a-file-id'), # common
              [('f', '', 0, False, dirstate.DirState.NULLSTAT), # current
@@ -827,7 +827,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             tree.unlock()
 
-
     def test_set_state_from_inventory_mixed_paths(self):
         tree1 = self.make_branch_and_tree('tree1')
         self.build_tree(['tree1/a/', 'tree1/a/b/', 'tree1/a-b/',
@@ -942,7 +941,6 @@ class TestDirStateManipulations(TestCaseWithDirState):
         finally:
             state.unlock()
 
-
     def test_set_parent_trees_no_content(self):
         # set_parent_trees is a slow but important api to support.
         tree1 = self.make_branch_and_memory_tree('tree1')
@@ -1002,7 +1000,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
                 [(('', '', root_id), [
                   ('d', '', 0, False, dirstate.DirState.NULLSTAT),
                   ('d', '', 0, False, revid1),
-                  ('d', '', 0, False, revid2)
+                  ('d', '', 0, False, revid1)
                   ])],
                 list(state._iter_entries()))
         finally:
@@ -1036,7 +1034,7 @@ class TestDirStateManipulations(TestCaseWithDirState):
             (('', '', root_id), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT),
              ('d', '', 0, False, revid1.encode('utf8')),
-             ('d', '', 0, False, revid2.encode('utf8'))
+             ('d', '', 0, False, revid1.encode('utf8'))
              ]),
             (('', 'a file', 'file-id'), [
              ('a', '', 0, False, ''),
@@ -1237,6 +1235,38 @@ class TestDirStateManipulations(TestCaseWithDirState):
             state.add, '.', 'ass-id', 'directory', None, None)
         self.assertRaises(errors.BzrError,
             state.add, '..', 'ass-id', 'directory', None, None)
+
+    def test_set_state_with_rename_b_a_bug_395556(self):
+        # bug 395556 uncovered a bug where the dirstate ends up with a false
+        # relocation record - in a tree with no parents there should be no
+        # absent or relocated records. This then leads to further corruption
+        # when a commit occurs, as the incorrect relocation gathers an
+        # incorrect absent in tree 1, and future changes go to pot.
+        tree1 = self.make_branch_and_tree('tree1')
+        self.build_tree(['tree1/b'])
+        tree1.lock_write()
+        try:
+            tree1.add(['b'], ['b-id'])
+            root_id = tree1.get_root_id()
+            inv = tree1.inventory
+            state = dirstate.DirState.initialize('dirstate')
+            try:
+                # Set the initial state with 'b'
+                state.set_state_from_inventory(inv)
+                inv.rename('b-id', root_id, 'a')
+                # Set the new state with 'a', which currently corrupts.
+                state.set_state_from_inventory(inv)
+                expected_result1 = [('', '', root_id, 'd'),
+                                    ('', 'a', 'b-id', 'f'),
+                                   ]
+                values = []
+                for entry in state._iter_entries():
+                    values.append(entry[0] + entry[1][0][:1])
+                self.assertEqual(expected_result1, values)
+            finally:
+                state.unlock()
+        finally:
+            tree1.unlock()
 
 
 class TestGetLines(TestCaseWithDirState):

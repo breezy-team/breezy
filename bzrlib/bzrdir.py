@@ -70,7 +70,6 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
-    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -78,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -129,9 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -1234,7 +1241,7 @@ class BzrDir(object):
         return result
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False):
+        remember=False, create_prefix=False):
         """Push the source branch into this BzrDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -1385,6 +1392,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -1631,6 +1641,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
+        # XXX: this shouldn't implicitly create the directory if it's just
+        # promising to get a transport -- mbp 20090727
         if branch_format is None:
             return self.transport.clone('branch')
         try:
@@ -2358,7 +2370,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
-    def require_stacking(self, stack_on=None, possible_transports=None):
+    def require_stacking(self, stack_on=None, possible_transports=None,
+            _skip_repo=False):
         """We have a request to stack, try to ensure the formats support it.
 
         :param stack_on: If supplied, it is the URL to a branch that we want to
@@ -2402,7 +2415,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             target[:] = [target_branch, True, False]
             return target
 
-        if not (self.repository_format.supports_external_lookups):
+        if (not _skip_repo and
+                 not self.repository_format.supports_external_lookups):
             # We need to upgrade the Repository.
             target_branch, _, do_upgrade = get_target_branch()
             if target_branch is None:
@@ -3032,7 +3046,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
@@ -3268,6 +3283,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             remote_repo = None
             policy = None
+        bzrdir._format.set_branch_format(self.get_branch_format())
+        if require_stacking:
+            # The repo has already been created, but we need to make sure that
+            # we'll make a stackable branch.
+            bzrdir._format.require_stacking(_skip_repo=True)
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
@@ -3449,8 +3469,9 @@ class BzrDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                    textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    '))
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
@@ -3534,6 +3555,10 @@ class RepositoryAcquisitionPolicy(object):
                 errors.UnstackableRepositoryFormat):
             if self._require_stacking:
                 raise
+
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
 
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
@@ -3847,11 +3872,11 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
-    )
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')

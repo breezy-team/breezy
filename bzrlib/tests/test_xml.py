@@ -19,6 +19,7 @@ from cStringIO import StringIO
 from bzrlib import (
     errors,
     inventory,
+    xml6,
     xml7,
     xml8,
     serializer,
@@ -136,6 +137,14 @@ _expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mo
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" parent_id="f&lt;" revision="mbp@foo-00" />
 <file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
 <symlink file_id="link-1" name="link" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" symlink_target="a" />
+</inventory>
+"""
+
+_expected_inv_v6 = """<inventory format="6" revision_id="rev_outer">
+<directory file_id="tree-root-321" name="" revision="rev_outer" />
+<directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
+<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
+<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" symlink_target="a" />
 </inventory>
 """
 
@@ -374,6 +383,17 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v7, txt)
         inv2 = xml7.serializer_v7.read_inventory_from_string(txt)
         self.assertEqual(5, len(inv2))
+        for path, ie in inv.iter_entries():
+            self.assertEqual(ie, inv2[ie.file_id])
+
+    def test_roundtrip_inventory_v6(self):
+        inv = self.get_sample_inventory()
+        txt = xml6.serializer_v6.write_inventory_to_string(inv)
+        lines = xml6.serializer_v6.write_inventory_to_lines(inv)
+        self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
+        self.assertEqualDiff(_expected_inv_v6, txt)
+        inv2 = xml6.serializer_v6.read_inventory_from_string(txt)
+        self.assertEqual(4, len(inv2))
         for path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2[ie.file_id])
 

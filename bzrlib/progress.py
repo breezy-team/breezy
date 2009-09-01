@@ -25,35 +25,35 @@ will manage a conceptual stack of nested activities.
 import sys
 import time
 import os
-import warnings
 
 
 from bzrlib import (
     errors,
-    osutils,
-    trace,
-    ui,
     )
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
-    deprecated_method,
     )
 
 
-# XXX: deprecated; can be removed when the ProgressBar factory is removed
 def _supports_progress(f):
-    """Detect if we can use pretty progress bars on the output stream f.
+    """Detect if we can use pretty progress bars on file F.
 
     If this returns true we expect that a human may be looking at that
     output, and that we can repaint a line to update it.
+
+    This doesn't check the policy for whether we *should* use them.
     """
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
         return False
     if not isatty():
         return False
+    # The following case also handles Win32 - on that platform $TERM is
+    # typically never set, so the case None is treated as a smart terminal,
+    # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
+    # isatty methods that return true.
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
         return False
@@ -69,10 +69,26 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
+    
+    :ivar update_latency: The interval (in seconds) at which the PB should be
+        updated.  Setting this to zero suggests every update should be shown
+        synchronously.
+
+    :ivar show_transport_activity: If true (default), transport activity
+        will be shown when this task is drawn.  Disable it if you're sure 
+        that only irrelevant or uninteresting transport activity can occur
+        during this task.
     """
 
-    def __init__(self, parent_task=None, ui_factory=None):
+    def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
         """Construct a new progress task.
+
+        :param parent_task: Enclosing ProgressTask or None.
+
+        :param progress_view: ProgressView to display this ProgressTask.
+
+        :param ui_factory: The UI factory that will display updates; 
+            deprecated in favor of passing progress_view directly.
 
         Normally you should not call this directly but rather through
         `ui_factory.nested_progress_bar`.
@@ -82,12 +98,16 @@ class ProgressTask(object):
         self.total_cnt = None
         self.current_cnt = None
         self.msg = ''
+        # TODO: deprecate passing ui_factory
         self.ui_factory = ui_factory
+        self.progress_view = progress_view
         self.show_pct = False
         self.show_spinner = True
         self.show_eta = False,
         self.show_count = True
         self.show_bar = True
+        self.update_latency = 0.1
+        self.show_transport_activity = True
 
     def __repr__(self):
         return '%s(%r/%r, msg=%r)' % (
@@ -101,16 +121,23 @@ class ProgressTask(object):
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        self.ui_factory._progress_updated(self)
+        if self.progress_view:
+            self.progress_view.show_progress(self)
+        else:
+            self.ui_factory._progress_updated(self)
 
     def tick(self):
         self.update(self.msg)
 
     def finished(self):
-        self.ui_factory._progress_finished(self)
+        if self.progress_view:
+            self.progress_view.task_finished(self)
+        else:
+            self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(self, self.ui_factory)
+        return ProgressTask(self, ui_factory=self.ui_factory,
+            progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -139,12 +166,18 @@ class ProgressTask(object):
 
     def clear(self):
         # XXX: shouldn't be here; put it in mutter or the ui instead
-        self.ui_factory.clear_term()
+        if self.progress_view:
+            self.progress_view.clear()
+        else:
+            self.ui_factory.clear_term()
 
 
 @deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
-    """Abstract factory"""
+    """Construct a progress bar.
+
+    Deprecated; ask the ui_factory for a progress task instead.
+    """
     if to_file is None:
         to_file = sys.stderr
     requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')
@@ -166,6 +199,7 @@ def ProgressBar(to_file=None, **kwargs):
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
 
 
+# NOTE: This is also deprecated; you should provide a ProgressView instead.
 class _BaseProgressBar(object):
 
     def __init__(self,
@@ -453,6 +487,8 @@ class TTYProgressBar(_BaseProgressBar):
         #self.to_file.flush()
 
 
+
+# DEPRECATED
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
 

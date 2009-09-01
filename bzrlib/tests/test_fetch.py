@@ -38,7 +38,7 @@ from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 
 # These tests are a bit old; please instead add new tests into
-# interrepository_implementations/ so they'll run on all relevant
+# per_interrepository/ so they'll run on all relevant
 # combinations.
 
 

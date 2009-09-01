@@ -23,6 +23,9 @@ import bzrlib.errors as errors
 from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 
 
 class TestBreakLock(TestCaseWithRepository):
@@ -36,8 +39,7 @@ class TestBreakLock(TestCaseWithRepository):
         # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
 
     def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory

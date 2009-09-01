@@ -20,9 +20,10 @@
 
 import os
 import sys
+import warnings
 
 # update this on each release
-_script_version = (1, 17, 0)
+_script_version = (2, 0, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -34,7 +35,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4', 'python2.5')
+KNOWN_PYTHONS = ('python2.4', 'python2.5', 'python2.6')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
@@ -78,6 +79,17 @@ if sys.platform == 'darwin':
 else:
     import locale
 
+
+# The python2.6 release includes some libraries that have deprecation warnings
+# against the interpreter - see https://bugs.launchpad.net/bzr/+bug/387139
+warnings.filterwarnings('ignore',
+    r"(struct integer overflow masking is deprecated|"
+    r"'L' format requires 0 <= number <= 4294967295)",
+    DeprecationWarning,
+    'gzip',
+    )
+
+
 try:
     locale.setlocale(locale.LC_ALL, '')
 except locale.Error, e:
@@ -110,7 +122,7 @@ import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 
 import bzrlib.breakin
-bzrlib.breakin.hook_sigquit()
+bzrlib.breakin.hook_debugger_to_signal()
 
 import bzrlib.decorators
 if ('--lsprof' in sys.argv

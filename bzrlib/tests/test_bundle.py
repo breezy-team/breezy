@@ -50,6 +50,22 @@ from bzrlib.tests import (
 from bzrlib.transform import TreeTransform
 
 
+def get_text(vf, key):
+    """Get the fulltext for a given revision id that is present in the vf"""
+    stream = vf.get_record_stream([key], 'unordered', True)
+    record = stream.next()
+    return record.get_bytes_as('fulltext')
+
+
+def get_inventory_text(repo, revision_id):
+    """Get the fulltext for the inventory at revision id"""
+    repo.lock_read()
+    try:
+        return get_text(repo.inventories, (revision_id,))
+    finally:
+        repo.unlock()
+
+
 class MockTree(object):
     def __init__(self):
         from bzrlib.inventory import InventoryDirectory, ROOT_ID
@@ -558,8 +574,9 @@ class BundleTester(object):
         self.tree1 = self.make_branch_and_tree('b1')
         self.b1 = self.tree1.branch
 
-        open('b1/one', 'wb').write('one\n')
-        self.tree1.add('one')
+        self.build_tree_contents([('b1/one', 'one\n')])
+        self.tree1.add('one', 'one-id')
+        self.tree1.set_root_id('root-id')
         self.tree1.commit('add one', rev_id='a@cset-0-1')
 
         bundle = self.get_valid_bundle('null:', 'a@cset-0-1')
@@ -576,8 +593,8 @@ class BundleTester(object):
                 , 'b1/sub/sub/'
                 , 'b1/sub/sub/nonempty.txt'
                 ])
-        open('b1/sub/sub/emptyfile.txt', 'wb').close()
-        open('b1/dir/nolastnewline.txt', 'wb').write('bloop')
+        self.build_tree_contents([('b1/sub/sub/emptyfile.txt', ''),
+                                  ('b1/dir/nolastnewline.txt', 'bloop')])
         tt = TreeTransform(self.tree1)
         tt.new_file('executable', tt.root, '#!/bin/sh\n', 'exe-1', True)
         tt.apply()
@@ -616,7 +633,8 @@ class BundleTester(object):
 
         bundle = self.get_valid_bundle('a@cset-0-2', 'a@cset-0-3')
         self.assertRaises((errors.TestamentMismatch,
-            errors.VersionedFileInvalidChecksum), self.get_invalid_bundle,
+            errors.VersionedFileInvalidChecksum,
+            errors.BadBundle), self.get_invalid_bundle,
             'a@cset-0-2', 'a@cset-0-3')
         # Check a rollup bundle
         bundle = self.get_valid_bundle('null:', 'a@cset-0-3')
@@ -646,9 +664,10 @@ class BundleTester(object):
                           verbose=False)
         bundle = self.get_valid_bundle('a@cset-0-5', 'a@cset-0-6')
         other = self.get_checkout('a@cset-0-5')
-        tree1_inv = self.tree1.branch.repository.get_inventory_xml(
-            'a@cset-0-5')
-        tree2_inv = other.branch.repository.get_inventory_xml('a@cset-0-5')
+        tree1_inv = get_inventory_text(self.tree1.branch.repository,
+                                       'a@cset-0-5')
+        tree2_inv = get_inventory_text(other.branch.repository,
+                                       'a@cset-0-5')
         self.assertEqualDiff(tree1_inv, tree2_inv)
         other.rename_one('sub/dir/nolastnewline.txt', 'sub/nolastnewline.txt')
         other.commit('rename file', rev_id='a@cset-0-6b')
@@ -1317,7 +1336,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         new_text = self.get_raw(StringIO(''.join(bundle_txt)))
         new_text = new_text.replace('<file file_id="exe-1"',
                                     '<file executable="y" file_id="exe-1"')
-        new_text = new_text.replace('B222', 'B237')
+        new_text = new_text.replace('B260', 'B275')
         bundle_txt = StringIO()
         bundle_txt.write(serializer._get_bundle_header('4'))
         bundle_txt.write('\n')
@@ -1427,6 +1446,200 @@ class V4WeaveBundleTester(V4BundleTester):
 
     def bzrdir_format(self):
         return 'metaweave'
+
+
+class V4_2aBundleTester(V4BundleTester):
+
+    def bzrdir_format(self):
+        return '2a'
+
+    def get_invalid_bundle(self, base_rev_id, rev_id):
+        """Create a bundle from base_rev_id -> rev_id in built-in branch.
+        Munge the text so that it's invalid.
+
+        :return: The in-memory bundle
+        """
+        from bzrlib.bundle import serializer
+        bundle_txt, rev_ids = self.create_bundle_text(base_rev_id, rev_id)
+        new_text = self.get_raw(StringIO(''.join(bundle_txt)))
+        # We are going to be replacing some text to set the executable bit on a
+        # file. Make sure the text replacement actually works correctly.
+        self.assertContainsRe(new_text, '(?m)B244\n\ni 1\n<inventory')
+        new_text = new_text.replace('<file file_id="exe-1"',
+                                    '<file executable="y" file_id="exe-1"')
+        new_text = new_text.replace('B244', 'B259')
+        bundle_txt = StringIO()
+        bundle_txt.write(serializer._get_bundle_header('4'))
+        bundle_txt.write('\n')
+        bundle_txt.write(new_text.encode('bz2'))
+        bundle_txt.seek(0)
+        bundle = read_bundle(bundle_txt)
+        self.valid_apply_bundle(base_rev_id, bundle)
+        return bundle
+
+    def make_merged_branch(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('a@cset-0-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'original content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-2a', ['a@cset-0-1'], [
+            ('modify', ('file-id', 'new-content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-2b', ['a@cset-0-1'], [
+            ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
+            ])
+        builder.build_snapshot('a@cset-0-3', ['a@cset-0-2a', 'a@cset-0-2b'], [
+            ('add', ('other-file', 'file2-id', 'file', 'file2-content\n')),
+            ])
+        builder.finish_series()
+        self.b1 = builder.get_branch()
+        self.b1.lock_read()
+        self.addCleanup(self.b1.unlock)
+
+    def make_bundle_just_inventories(self, base_revision_id,
+                                     target_revision_id,
+                                     revision_ids):
+        sio = StringIO()
+        writer = v4.BundleWriteOperation(base_revision_id, target_revision_id,
+                                         self.b1.repository, sio)
+        writer.bundle.begin()
+        writer._add_inventory_mpdiffs_from_serializer(revision_ids)
+        writer.bundle.end()
+        sio.seek(0)
+        return sio
+
+    def test_single_inventory_multiple_parents_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('a@cset-0-1', 'a@cset-0-3',
+                                                ['a@cset-0-3'])
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(1, len(records))
+        (bytes, metadata, repo_kind, revision_id,
+         file_id) = records[0]
+        self.assertIs(None, file_id)
+        self.assertEqual('a@cset-0-3', revision_id)
+        self.assertEqual('inventory', repo_kind)
+        self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
+                          'sha1': '09c53b0c4de0895e11a2aacc34fef60a6e70865c',
+                          'storage_kind': 'mpdiff',
+                         }, metadata)
+        # We should have an mpdiff that takes some lines from both parents.
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory format="10" revision_id="a@cset-0-3">\n'
+            '\n'
+            'c 0 1 1 2\n'
+            'c 1 3 3 2\n', bytes)
+
+    def test_single_inv_no_parents_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('null:', 'a@cset-0-1',
+                                                ['a@cset-0-1'])
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(1, len(records))
+        (bytes, metadata, repo_kind, revision_id,
+         file_id) = records[0]
+        self.assertIs(None, file_id)
+        self.assertEqual('a@cset-0-1', revision_id)
+        self.assertEqual('inventory', repo_kind)
+        self.assertEqual({'parents': [],
+                          'sha1': 'a13f42b142d544aac9b085c42595d304150e31a2',
+                          'storage_kind': 'mpdiff',
+                         }, metadata)
+        # We should have an mpdiff that takes some lines from both parents.
+        self.assertEqualDiff(
+            'i 4\n'
+            '<inventory format="10" revision_id="a@cset-0-1">\n'
+            '<directory file_id="root-id" name=""'
+                ' revision="a@cset-0-1" />\n'
+            '<file file_id="file-id" name="file" parent_id="root-id"'
+                ' revision="a@cset-0-1"'
+                ' text_sha1="09c2f8647e14e49e922b955c194102070597c2d1"'
+                ' text_size="17" />\n'
+            '</inventory>\n'
+            '\n', bytes)
+
+    def test_multiple_inventories_as_xml(self):
+        self.make_merged_branch()
+        sio = self.make_bundle_just_inventories('a@cset-0-1', 'a@cset-0-3',
+            ['a@cset-0-2a', 'a@cset-0-2b', 'a@cset-0-3'])
+        reader = v4.BundleReader(sio, stream_input=False)
+        records = list(reader.iter_records())
+        self.assertEqual(3, len(records))
+        revision_ids = [rev_id for b, m, k, rev_id, f in records]
+        self.assertEqual(['a@cset-0-2a', 'a@cset-0-2b', 'a@cset-0-3'],
+                         revision_ids)
+        metadata_2a = records[0][1]
+        self.assertEqual({'parents': ['a@cset-0-1'],
+                          'sha1': '1e105886d62d510763e22885eec733b66f5f09bf',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_2a)
+        metadata_2b = records[1][1]
+        self.assertEqual({'parents': ['a@cset-0-1'],
+                          'sha1': 'f03f12574bdb5ed2204c28636c98a8547544ccd8',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_2b)
+        metadata_3 = records[2][1]
+        self.assertEqual({'parents': ['a@cset-0-2a', 'a@cset-0-2b'],
+                          'sha1': '09c53b0c4de0895e11a2aacc34fef60a6e70865c',
+                          'storage_kind': 'mpdiff',
+                         }, metadata_3)
+        bytes_2a = records[0][0]
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory format="10" revision_id="a@cset-0-2a">\n'
+            '\n'
+            'c 0 1 1 1\n'
+            'i 1\n'
+            '<file file_id="file-id" name="file" parent_id="root-id"'
+                ' revision="a@cset-0-2a"'
+                ' text_sha1="50f545ff40e57b6924b1f3174b267ffc4576e9a9"'
+                ' text_size="12" />\n'
+            '\n'
+            'c 0 3 3 1\n', bytes_2a)
+        bytes_2b = records[1][0]
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory format="10" revision_id="a@cset-0-2b">\n'
+            '\n'
+            'c 0 1 1 2\n'
+            'i 1\n'
+            '<file file_id="file2-id" name="other-file" parent_id="root-id"'
+                ' revision="a@cset-0-2b"'
+                ' text_sha1="b46c0c8ea1e5ef8e46fc8894bfd4752a88ec939e"'
+                ' text_size="14" />\n'
+            '\n'
+            'c 0 3 4 1\n', bytes_2b)
+        bytes_3 = records[2][0]
+        self.assertEqualDiff(
+            'i 1\n'
+            '<inventory format="10" revision_id="a@cset-0-3">\n'
+            '\n'
+            'c 0 1 1 2\n'
+            'c 1 3 3 2\n', bytes_3)
+
+    def test_creating_bundle_preserves_chk_pages(self):
+        self.make_merged_branch()
+        target = self.b1.bzrdir.sprout('target',
+                                       revision_id='a@cset-0-2a').open_branch()
+        bundle_txt, rev_ids = self.create_bundle_text('a@cset-0-2a',
+                                                      'a@cset-0-3')
+        self.assertEqual(['a@cset-0-2b', 'a@cset-0-3'], rev_ids)
+        bundle = read_bundle(bundle_txt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        install_bundle(target.repository, bundle)
+        inv1 = self.b1.repository.inventories.get_record_stream([
+            ('a@cset-0-3',)], 'unordered',
+            True).next().get_bytes_as('fulltext')
+        inv2 = target.repository.inventories.get_record_stream([
+            ('a@cset-0-3',)], 'unordered',
+            True).next().get_bytes_as('fulltext')
+        self.assertEqualDiff(inv1, inv2)
 
 
 class MungedBundleTester(object):
@@ -1611,6 +1824,16 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
         self.build_tree_contents([('./foo:bar', out.getvalue())])
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
                           'foo:bar')
+
+    def test_infinite_redirects_are_not_a_bundle(self):
+        """If a URL causes TooManyRedirections then NotABundle is raised.
+        """
+        from bzrlib.tests.blackbox.test_push import RedirectingMemoryServer
+        server = RedirectingMemoryServer()
+        server.setUp()
+        url = server.get_url() + 'infinite-loop'
+        self.addCleanup(server.tearDown)
+        self.assertRaises(errors.NotABundle, read_mergeable_from_url, url)
 
     def test_smart_server_connection_reset(self):
         """If a smart server connection fails during the attempt to read a

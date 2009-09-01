@@ -490,7 +490,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
         self.assertEqual('directory', tree.kind('dir-id'))
-        # a diff against the basis should give us a directory
+        # a diff against the basis should give us a directory and the root (as
+        # the root is new too).
         tree.lock_read()
         expected = [('dir-id',
             (None, u'dir'),
@@ -499,7 +500,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             (None, 'root'),
             (None, u'dir'),
             (None, 'directory'),
-            (None, False))]
+            (None, False)),
+            ('root', (None, u''), True, (False, True), (None, None),
+            (None, u''), (None, 'directory'), (None, 0))]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
         tree.unlock()
@@ -578,6 +581,23 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         changes = [c[1] for c in tree.iter_changes(basis)]
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
+
+    def test_iter_changes_unversioned_error(self):
+        """ Check if a PathsNotVersionedError is correctly raised and the
+            paths list contains all unversioned entries only.
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/bar', '')])
+        tree.add(['bar'], ['bar-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        tree_iter_changes = lambda files: [
+            c for c in tree.iter_changes(tree.basis_tree(), specific_files=files,
+                                         require_versioned=True)
+        ]
+        e = self.assertRaises(errors.PathsNotVersionedError,
+                              tree_iter_changes, ['bar', 'foo'])
+        self.assertEqual(e.paths, ['foo'])
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')

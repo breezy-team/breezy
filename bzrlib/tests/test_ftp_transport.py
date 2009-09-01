@@ -90,27 +90,24 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         configuration.""",
         self.get_server().add_user(getpass.getuser(), self.password)
         t = self.get_transport()
-        ui.ui_factory = tests.TestUIFactory(stdin=self.password + '\n',
-                                            stdout=tests.StringIOWrapper())
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
         # Issue a request to the server to connect
         t.put_bytes('foo', 'test bytes\n')
         self.assertEqual('test bytes\n', t.get_bytes('foo'))
         # Only the password should've been read
-        self.assertEqual('', ui.ui_factory.stdin.readline())
+        ui.ui_factory.assert_all_input_consumed()
 
     def test_prompt_for_password(self):
         t = self.get_transport()
-        ui.ui_factory = tests.TestUIFactory(stdin=self.password+'\n',
-                                            stdout=tests.StringIOWrapper())
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed)
-        self.assertEqual('', ui.ui_factory.stdin.readline())
+        ui.ui_factory.assert_all_input_consumed()
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         t = self.get_transport()
-        ui.ui_factory = tests.TestUIFactory(stdin='precious\n',
-                                            stdout=tests.StringIOWrapper())
+        ui.ui_factory = ui.CannedInputUIFactory([])
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update({'ftptest': {'scheme': 'ftp',
@@ -120,8 +117,6 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         # Issue a request to the server to connect
         t.put_bytes('foo', 'test bytes\n')
         self.assertEqual('test bytes\n', t.get_bytes('foo'))
-        # stdin should have  been left untouched
-        self.assertEqual('precious\n', ui.ui_factory.stdin.readline())
 
     def test_empty_password(self):
         # Override the default user/password from setUp
@@ -129,11 +124,9 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         self.password = ''
         self.get_server().add_user(self.user, self.password)
         t = self.get_transport()
-        ui.ui_factory = tests.TestUIFactory(stdin=self.password+'\n',
-                                            stdout=tests.StringIOWrapper())
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed),
         # even if the password is empty, it's followed by a newline.
-        self.assertEqual('', ui.ui_factory.stdin.readline())
-
+        ui.ui_factory.assert_all_input_consumed()

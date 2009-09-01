@@ -64,8 +64,12 @@ from bzrlib import ui
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids, this_tree=from_tree)
+    from_tree.lock_tree_write()
+    try:
+        merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
+                    interesting_ids=interesting_ids, this_tree=from_tree)
+    finally:
+        from_tree.unlock()
 
 
 class Merger(object):
@@ -101,6 +105,17 @@ class Merger(object):
         self._base_is_other_ancestor = None
         self._is_criss_cross = None
         self._lca_trees = None
+
+    def cache_trees_with_revision_ids(self, trees):
+        """Cache any tree in trees if it has a revision_id."""
+        for maybe_tree in trees:
+            if maybe_tree is None:
+                continue
+            try:
+                rev_id = maybe_tree.get_revision_id()
+            except AttributeError:
+                continue
+            self._cached_trees[rev_id] = maybe_tree
 
     @property
     def revision_graph(self):
@@ -243,8 +258,7 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = other_basis_tree.changes_from(self.other_tree)
-            if changes.has_changed():
+            if other_basis_tree.has_changes(self.other_tree):
                 raise WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
@@ -276,8 +290,7 @@ class Merger(object):
             basis_tree = self.revision_tree(self.this_tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = self.this_tree.basis_tree()
-        changes = self.this_tree.changes_from(basis_tree)
-        if not changes.has_changed():
+        if not self.this_tree.has_changes(basis_tree):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
@@ -1540,6 +1553,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     get_revision_id = getattr(base_tree, 'get_revision_id', None)
     if get_revision_id is None:
         get_revision_id = base_tree.last_revision
+    merger.cache_trees_with_revision_ids([other_tree, base_tree, this_tree])
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 

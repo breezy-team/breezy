@@ -27,11 +27,10 @@
 # created, but it's not for now.
 ROOT_ID = "TREE_ROOT"
 
-from copy import deepcopy
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
+import copy
 import os
 import re
 import tarfile
@@ -43,7 +42,6 @@ from bzrlib import (
     generate_ids,
     osutils,
     symbol_versioning,
-    workingtree,
     )
 """)
 
@@ -262,7 +260,7 @@ class InventoryEntry(object):
     def versionable_kind(kind):
         return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
-    def check(self, checker, rev_id, inv, tree):
+    def check(self, checker, rev_id, inv):
         """Check this inventory entry is intact.
 
         This is a template method, override _check for kind specific
@@ -274,18 +272,18 @@ class InventoryEntry(object):
         :param rev_id: Revision id from which this InventoryEntry was loaded.
              Not necessarily the last-changed revision for this file.
         :param inv: Inventory from which the entry was loaded.
-        :param tree: RevisionTree for this entry.
         """
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
                 raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
                         % (self.parent_id, rev_id))
-        self._check(checker, rev_id, tree)
+        checker._add_entry_to_text_key_references(inv, self)
+        self._check(checker, rev_id)
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """Check this inventory entry for kind specific errors."""
-        raise BzrCheckError('unknown entry kind %r in revision {%s}' %
-                            (self.kind, rev_id))
+        checker._report_items.append(
+            'unknown entry kind %r in revision {%s}' % (self.kind, rev_id))
 
     def copy(self):
         """Clone this inventory entry."""
@@ -404,7 +402,7 @@ class RootEntry(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """See InventoryEntry._check"""
 
     def __init__(self, file_id):
@@ -433,11 +431,22 @@ class InventoryDirectory(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """See InventoryEntry._check"""
-        if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
-            raise BzrCheckError('directory {%s} has text in revision {%s}'
+        if (self.text_sha1 is not None or self.text_size is not None or
+            self.text_id is not None):
+            checker._report_items.append('directory {%s} has text in revision {%s}'
                                 % (self.file_id, rev_id))
+        # In non rich root repositories we do not expect a file graph for the
+        # root.
+        if self.name == '' and not checker.rich_roots:
+            return
+        # Directories are stored as an empty file, but the file should exist
+        # to provide a per-fileid log. The hash of every directory content is
+        # "da..." below (the sha1sum of '').
+        checker.add_pending_item(rev_id,
+            ('texts', self.file_id, self.revision), 'text',
+             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryDirectory(self.file_id, self.name, self.parent_id)
@@ -476,27 +485,16 @@ class InventoryFile(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, tree_revision_id, tree):
+    def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
-        key = (self.file_id, self.revision)
-        if key in checker.checked_texts:
-            prev_sha = checker.checked_texts[key]
-            if prev_sha != self.text_sha1:
-                raise BzrCheckError(
-                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
-                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
-                     t))
-            else:
-                checker.repeated_text_cnt += 1
-                return
-
-        checker.checked_text_cnt += 1
-        # We can't check the length, because Weave doesn't store that
-        # information, and the whole point of looking at the weave's
-        # sha1sum is that we don't have to extract the text.
-        if (self.text_sha1 != tree._repository.texts.get_sha1s([key])[key]):
-            raise BzrCheckError('text {%s} version {%s} wrong sha1' % key)
-        checker.checked_texts[key] = self.text_sha1
+        # TODO: check size too.
+        checker.add_pending_item(tree_revision_id,
+            ('texts', self.file_id, self.revision), 'text',
+             self.text_sha1)
+        if self.text_size is None:
+            checker._report_items.append(
+                'fileid {%s} in {%s} has None for text_size' % (self.file_id,
+                tree_revision_id))
 
     def copy(self):
         other = InventoryFile(self.file_id, self.name, self.parent_id)
@@ -600,14 +598,20 @@ class InventoryLink(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
         if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
-            raise BzrCheckError('symlink {%s} has text in revision {%s}'
-                    % (self.file_id, rev_id))
+            checker._report_items.append(
+               'symlink {%s} has text in revision {%s}'
+                    % (self.file_id, tree_revision_id))
         if self.symlink_target is None:
-            raise BzrCheckError('symlink {%s} has no target in revision {%s}'
-                    % (self.file_id, rev_id))
+            checker._report_items.append(
+                'symlink {%s} has no target in revision {%s}'
+                    % (self.file_id, tree_revision_id))
+        # Symlinks are stored as ''
+        checker.add_pending_item(tree_revision_id,
+            ('texts', self.file_id, self.revision), 'text',
+             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryLink(self.file_id, self.name, self.parent_id)
@@ -714,7 +718,19 @@ class TreeReference(InventoryEntry):
 
 
 class CommonInventory(object):
-    """Basic inventory logic, defined in terms of primitives like has_id."""
+    """Basic inventory logic, defined in terms of primitives like has_id.
+
+    An inventory is the metadata about the contents of a tree.
+
+    This is broadly a map from file_id to entries such as directories, files,
+    symlinks and tree references. Each entry maintains its own metadata like
+    SHA1 and length for files, or children for a directory.
+
+    Entries can be looked up either by path or by file_id.
+
+    InventoryEntry objects must not be modified after they are
+    inserted, other than through the Inventory API.
+    """
 
     def __contains__(self, file_id):
         """True if this entry contains a file with given id.
@@ -733,6 +749,9 @@ class CommonInventory(object):
         """
         return self.has_id(file_id)
 
+    def has_filename(self, filename):
+        return bool(self.path2id(filename))
+
     def id2path(self, file_id):
         """Return as a string the path to file_id.
 
@@ -741,6 +760,8 @@ class CommonInventory(object):
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
         >>> print i.id2path('foo-id')
         src/foo.c
+
+        :raises NoSuchId: If file_id is not present in the inventory.
         """
         # get all names, skipping root
         return '/'.join(reversed(
@@ -1021,21 +1042,12 @@ class CommonInventory(object):
 
 
 class Inventory(CommonInventory):
-    """Inventory of versioned files in a tree.
+    """Mutable dict based in-memory inventory.
 
-    This describes which file_id is present at each point in the tree,
-    and possibly the SHA-1 or other information about the file.
-    Entries can be looked up either by path or by file_id.
-
-    The inventory represents a typical unix file tree, with
-    directories containing files and subdirectories.  We never store
-    the full path to a file, because renaming a directory implicitly
-    moves all of its contents.  This class internally maintains a
+    We never store the full path to a file, because renaming a directory
+    implicitly moves all of its contents.  This class internally maintains a
     lookup tree that allows the children under a directory to be
     returned quickly.
-
-    InventoryEntry objects must not be modified after they are
-    inserted, other than through the Inventory API.
 
     >>> inv = Inventory()
     >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
@@ -1043,24 +1055,19 @@ class Inventory(CommonInventory):
     >>> inv['123-123'].name
     'hello.c'
 
-    May be treated as an iterator or set to look up file ids:
+    Id's may be looked up from paths:
 
-    >>> bool(inv.path2id('hello.c'))
-    True
+    >>> inv.path2id('hello.c')
+    '123-123'
     >>> '123-123' in inv
     True
 
-    May also look up by name:
+    There are iterators over the contents:
 
-    >>> [x[0] for x in inv.iter_entries()]
+    >>> [entry[0] for entry in inv.iter_entries()]
     ['', u'hello.c']
-    >>> inv = Inventory('TREE_ROOT-12345678-12345678')
-    >>> inv.add(InventoryFile('123-123', 'hello.c', ROOT_ID))
-    Traceback (most recent call last):
-    BzrError: parent_id {TREE_ROOT} not in inventory
-    >>> inv.add(InventoryFile('123-123', 'hello.c', 'TREE_ROOT-12345678-12345678'))
-    InventoryFile('123-123', 'hello.c', parent_id='TREE_ROOT-12345678-12345678', sha1=None, len=None, revision=None)
     """
+
     def __init__(self, root_id=ROOT_ID, revision_id=None):
         """Create or read an inventory.
 
@@ -1089,6 +1096,12 @@ class Inventory(CommonInventory):
 
     def apply_delta(self, delta):
         """Apply a delta to this inventory.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
+        If delta application fails the inventory is left in an indeterminate
+        state and must not be used.
 
         :param delta: A list of changes to apply. After all the changes are
             applied the final inventory must be internally consistent, but it
@@ -1126,12 +1139,13 @@ class Inventory(CommonInventory):
         """
         # Check that the delta is legal. It would be nice if this could be
         # done within the loops below but it's safer to validate the delta
-        # before starting to mutate the inventory.
-        unique_file_ids = set([f for _, _, f, _ in delta])
-        if len(unique_file_ids) != len(delta):
-            raise AssertionError("a file-id appears multiple times in %r"
-                    % (delta,))
-        del unique_file_ids
+        # before starting to mutate the inventory, as there isn't a rollback
+        # facility.
+        list(_check_delta_unique_ids(_check_delta_unique_new_paths(
+            _check_delta_unique_old_paths(_check_delta_ids_match_entry(
+            _check_delta_ids_are_valid(
+            _check_delta_new_path_entry_both_or_None(
+            delta)))))))
 
         children = {}
         # Remove all affected items which were in the original inventory,
@@ -1140,13 +1154,13 @@ class Inventory(CommonInventory):
         # modified children remaining by the time we examine it.
         for old_path, file_id in sorted(((op, f) for op, np, f, e in delta
                                         if op is not None), reverse=True):
-            if file_id not in self:
-                # adds come later
-                continue
             # Preserve unaltered children of file_id for later reinsertion.
             file_id_children = getattr(self[file_id], 'children', {})
             if len(file_id_children):
                 children[file_id] = file_id_children
+            if self.id2path(file_id) != old_path:
+                raise errors.InconsistentDelta(old_path, file_id,
+                    "Entry was at wrong other path %r." % self.id2path(file_id))
             # Remove file_id and the unaltered children. If file_id is not
             # being deleted it will be reinserted back later.
             self.remove_recursive_id(file_id)
@@ -1155,7 +1169,7 @@ class Inventory(CommonInventory):
         # longest, ensuring that items which were modified and whose parents in
         # the resulting inventory were also modified, are inserted after their
         # parents.
-        for new_path, new_entry in sorted((np, e) for op, np, f, e in
+        for new_path, f, new_entry in sorted((np, f, e) for op, np, f, e in
                                           delta if np is not None):
             if new_entry.kind == 'directory':
                 # Pop the child which to allow detection of children whose
@@ -1166,7 +1180,17 @@ class Inventory(CommonInventory):
                 replacement.revision = new_entry.revision
                 replacement.children = children.pop(replacement.file_id, {})
                 new_entry = replacement
-            self.add(new_entry)
+            try:
+                self.add(new_entry)
+            except errors.DuplicateFileId:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "New id is already present in target.")
+            except AttributeError:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "Parent is not a directory.")
+            if self.id2path(new_entry.file_id) != new_path:
+                raise errors.InconsistentDelta(new_path, new_entry.file_id,
+                    "New path is not consistent with parent path.")
         if len(children):
             # Get the parent id that was deleted
             parent_id, children = children.popitem()
@@ -1192,7 +1216,7 @@ class Inventory(CommonInventory):
 
     def _get_mutable_inventory(self):
         """See CommonInventory._get_mutable_inventory."""
-        return deepcopy(self)
+        return copy.deepcopy(self)
 
     def __iter__(self):
         """Iterate over all file-ids."""
@@ -1252,25 +1276,24 @@ class Inventory(CommonInventory):
         To add  a file to a branch ready to be committed, use Branch.add,
         which calls this.
 
-        Returns the new entry object.
+        :return: entry
         """
         if entry.file_id in self._byid:
             raise errors.DuplicateFileId(entry.file_id,
                                          self._byid[entry.file_id])
-
         if entry.parent_id is None:
             self.root = entry
         else:
             try:
                 parent = self._byid[entry.parent_id]
             except KeyError:
-                raise BzrError("parent_id {%s} not in inventory" %
-                               entry.parent_id)
-
+                raise errors.InconsistentDelta("<unknown>", entry.parent_id,
+                    "Parent not in inventory.")
             if entry.name in parent.children:
-                raise BzrError("%s is already versioned" %
-                        osutils.pathjoin(self.id2path(parent.file_id),
-                        entry.name).encode('utf-8'))
+                raise errors.InconsistentDelta(
+                    self.id2path(parent.children[entry.name].file_id),
+                    entry.file_id,
+                    "Path already versioned")
             parent.children[entry.name] = entry
         return self._add_child(entry)
 
@@ -1350,9 +1373,6 @@ class Inventory(CommonInventory):
                 raise errors.NoSuchId(tree=None, file_id=file_id)
             yield ie
             file_id = ie.parent_id
-
-    def has_filename(self, filename):
-        return bool(self.path2id(filename))
 
     def has_id(self, file_id):
         return (file_id in self._byid)
@@ -1469,6 +1489,20 @@ class CHKInventory(CommonInventory):
         self._fileid_to_entry_cache = {}
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
+        self.root_id = None
+
+    def __eq__(self, other):
+        """Compare two sets by comparing their contents."""
+        if not isinstance(other, CHKInventory):
+            return NotImplemented
+
+        this_key = self.id_to_entry.key()
+        other_key = other.id_to_entry.key()
+        this_pid_key = self.parent_id_basename_to_file_id.key()
+        other_pid_key = other.parent_id_basename_to_file_id.key()
+        if None in (this_key, this_pid_key, other_key, other_pid_key):
+            return False
+        return this_key == other_key and this_pid_key == other_pid_key
 
     def _entry_to_bytes(self, entry):
         """Serialise entry as a single bytestring.
@@ -1565,6 +1599,9 @@ class CHKInventory(CommonInventory):
         propagate_caches=False):
         """Create a new CHKInventory by applying inventory_delta to this one.
 
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
         :param inventory_delta: The inventory delta to apply. See
             Inventory.apply_delta for details.
         :param new_revision_id: The revision id of the resulting CHKInventory.
@@ -1572,6 +1609,7 @@ class CHKInventory(CommonInventory):
           copied to and updated for the result.
         :return: The new CHKInventory.
         """
+        split = osutils.split
         result = CHKInventory(self._search_key_name)
         if propagate_caches:
             # Just propagate the path-to-fileid cache for now
@@ -1586,7 +1624,12 @@ class CHKInventory(CommonInventory):
             search_key_func=search_key_func)
         result.id_to_entry._ensure_root()
         result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        parent_id_basename_delta = []
+        # Change to apply to the parent_id_basename delta. The dict maps
+        # (parent_id, basename) -> (old_key, new_value). We use a dict because
+        # when a path has its id replaced (e.g. the root is changed, or someone
+        # does bzr mv a b, bzr mv c a, we should output a single change to this
+        # map rather than two.
+        parent_id_basename_delta = {}
         if self.parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
                 self.parent_id_basename_to_file_id._store,
@@ -1602,6 +1645,30 @@ class CHKInventory(CommonInventory):
             result.parent_id_basename_to_file_id = None
         result.root_id = self.root_id
         id_to_entry_delta = []
+        # inventory_delta is only traversed once, so we just update the
+        # variable.
+        # Check for repeated file ids
+        inventory_delta = _check_delta_unique_ids(inventory_delta)
+        # Repeated old paths
+        inventory_delta = _check_delta_unique_old_paths(inventory_delta)
+        # Check for repeated new paths
+        inventory_delta = _check_delta_unique_new_paths(inventory_delta)
+        # Check for entries that don't match the fileid
+        inventory_delta = _check_delta_ids_match_entry(inventory_delta)
+        # Check for nonsense fileids
+        inventory_delta = _check_delta_ids_are_valid(inventory_delta)
+        # Check for new_path <-> entry consistency
+        inventory_delta = _check_delta_new_path_entry_both_or_None(
+            inventory_delta)
+        # All changed entries need to have their parents be directories and be
+        # at the right path. This set contains (path, id) tuples.
+        parents = set()
+        # When we delete an item, all the children of it must be either deleted
+        # or altered in their own right. As we batch process the change via
+        # CHKMap.apply_delta, we build a set of things to use to validate the
+        # delta.
+        deletes = set()
+        altered = set()
         for old_path, new_path, file_id, entry in inventory_delta:
             # file id changes
             if new_path == '':
@@ -1616,16 +1683,23 @@ class CHKInventory(CommonInventory):
                         del result._path_to_fileid_cache[old_path]
                     except KeyError:
                         pass
+                deletes.add(file_id)
             else:
                 new_key = (file_id,)
                 new_value = result._entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
+                parents.add((split(new_path)[0], entry.parent_id))
             if old_path is None:
                 old_key = None
             else:
                 old_key = (file_id,)
+                if self.id2path(file_id) != old_path:
+                    raise errors.InconsistentDelta(old_path, file_id,
+                        "Entry was at wrong other path %r." %
+                        self.id2path(file_id))
+                altered.add(file_id)
             id_to_entry_delta.append((old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
@@ -1640,13 +1714,54 @@ class CHKInventory(CommonInventory):
                 else:
                     new_key = self._parent_id_basename_key(entry)
                     new_value = file_id
+                # If the two keys are the same, the value will be unchanged
+                # as its always the file id for this entry.
                 if old_key != new_key:
-                    # If the two keys are the same, the value will be unchanged
-                    # as its always the file id.
-                    parent_id_basename_delta.append((old_key, new_key, new_value))
+                    # Transform a change into explicit delete/add preserving
+                    # a possible match on the key from a different file id.
+                    if old_key is not None:
+                        parent_id_basename_delta.setdefault(
+                            old_key, [None, None])[0] = old_key
+                    if new_key is not None:
+                        parent_id_basename_delta.setdefault(
+                            new_key, [None, None])[1] = new_value
+        # validate that deletes are complete.
+        for file_id in deletes:
+            entry = self[file_id]
+            if entry.kind != 'directory':
+                continue
+            # This loop could potentially be better by using the id_basename
+            # map to just get the child file ids.
+            for child in entry.children.values():
+                if child.file_id not in altered:
+                    raise errors.InconsistentDelta(self.id2path(child.file_id),
+                        child.file_id, "Child not deleted or reparented when "
+                        "parent deleted.")
         result.id_to_entry.apply_delta(id_to_entry_delta)
         if parent_id_basename_delta:
-            result.parent_id_basename_to_file_id.apply_delta(parent_id_basename_delta)
+            # Transform the parent_id_basename delta data into a linear delta
+            # with only one record for a given key. Optimally this would allow
+            # re-keying, but its simpler to just output that as a delete+add
+            # to spend less time calculating the delta.
+            delta_list = []
+            for key, (old_key, value) in parent_id_basename_delta.iteritems():
+                if value is not None:
+                    delta_list.append((old_key, key, value))
+                else:
+                    delta_list.append((old_key, None, None))
+            result.parent_id_basename_to_file_id.apply_delta(delta_list)
+        parents.discard(('', None))
+        for parent_path, parent in parents:
+            try:
+                if result[parent].kind != 'directory':
+                    raise errors.InconsistentDelta(result.id2path(parent), parent,
+                        'Not a directory, but given children')
+            except errors.NoSuchId:
+                raise errors.InconsistentDelta("<unknown>", parent,
+                    "Parent is not present in resulting inventory.")
+            if result.path2id(parent_path) != parent:
+                raise errors.InconsistentDelta(parent_path, parent,
+                    "Parent has wrong path %r." % result.path2id(parent_path))
         return result
 
     @classmethod
@@ -1716,28 +1831,37 @@ class CHKInventory(CommonInventory):
         :param maximum_size: The CHKMap node size limit.
         :param search_key_name: The identifier for the search key function
         """
-        result = CHKInventory(search_key_name)
+        result = klass(search_key_name)
         result.revision_id = inventory.revision_id
         result.root_id = inventory.root.file_id
-        search_key_func = chk_map.search_key_registry.get(search_key_name)
-        result.id_to_entry = chk_map.CHKMap(chk_store, None, search_key_func)
-        result.id_to_entry._root_node.set_maximum_size(maximum_size)
-        file_id_delta = []
-        result.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
-            None, search_key_func)
-        result.parent_id_basename_to_file_id._root_node.set_maximum_size(
-            maximum_size)
-        result.parent_id_basename_to_file_id._root_node._key_width = 2
-        parent_id_delta = []
+
+        entry_to_bytes = result._entry_to_bytes
+        parent_id_basename_key = result._parent_id_basename_key
+        id_to_entry_dict = {}
+        parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            file_id_delta.append((None, (entry.file_id,),
-                result._entry_to_bytes(entry)))
-            parent_id_delta.append(
-                (None, result._parent_id_basename_key(entry),
-                 entry.file_id))
-        result.id_to_entry.apply_delta(file_id_delta)
-        result.parent_id_basename_to_file_id.apply_delta(parent_id_delta)
+            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            p_id_key = parent_id_basename_key(entry)
+            parent_id_basename_dict[p_id_key] = entry.file_id
+
+        result._populate_from_dicts(chk_store, id_to_entry_dict,
+            parent_id_basename_dict, maximum_size=maximum_size)
         return result
+
+    def _populate_from_dicts(self, chk_store, id_to_entry_dict,
+                             parent_id_basename_dict, maximum_size):
+        search_key_func = chk_map.search_key_registry.get(self._search_key_name)
+        root_key = chk_map.CHKMap.from_dict(chk_store, id_to_entry_dict,
+                   maximum_size=maximum_size, key_width=1,
+                   search_key_func=search_key_func)
+        self.id_to_entry = chk_map.CHKMap(chk_store, root_key,
+                                          search_key_func)
+        root_key = chk_map.CHKMap.from_dict(chk_store,
+                   parent_id_basename_dict,
+                   maximum_size=maximum_size, key_width=2,
+                   search_key_func=search_key_func)
+        self.parent_id_basename_to_file_id = chk_map.CHKMap(chk_store,
+                                                    root_key, search_key_func)
 
     def _parent_id_basename_key(self, entry):
         """Create a key for a entry in a parent_id_basename_to_file_id index."""
@@ -1902,11 +2026,34 @@ class CHKInventory(CommonInventory):
 
     def path2id(self, name):
         """See CommonInventory.path2id()."""
+        # TODO: perhaps support negative hits?
         result = self._path_to_fileid_cache.get(name, None)
-        if result is None:
-            result = CommonInventory.path2id(self, name)
-            self._path_to_fileid_cache[name] = result
-        return result
+        if result is not None:
+            return result
+        if isinstance(name, basestring):
+            names = osutils.splitpath(name)
+        else:
+            names = name
+        current_id = self.root_id
+        if current_id is None:
+            return None
+        parent_id_index = self.parent_id_basename_to_file_id
+        for basename in names:
+            # TODO: Cache each path we figure out in this function.
+            basename_utf8 = basename.encode('utf8')
+            key_filter = [(current_id, basename_utf8)]
+            file_id = None
+            for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
+                key_filter=key_filter):
+                if parent_id != current_id or name_utf8 != basename_utf8:
+                    raise errors.BzrError("corrupt inventory lookup! "
+                        "%r %r %r %r" % (parent_id, current_id, name_utf8,
+                        basename_utf8))
+            if file_id is None:
+                return None
+            current_id = file_id
+        self._path_to_fileid_cache[name] = current_id
+        return current_id
 
     def to_lines(self):
         """Serialise the inventory to lines."""
@@ -2046,3 +2193,97 @@ def is_valid_name(name):
         _NAME_RE = re.compile(r'^[^/\\]+$')
 
     return bool(_NAME_RE.match(name))
+
+
+def _check_delta_unique_ids(delta):
+    """Decorate a delta and check that the file ids in it are unique.
+
+    :return: A generator over delta.
+    """
+    ids = set()
+    for item in delta:
+        length = len(ids) + 1
+        ids.add(item[2])
+        if len(ids) != length:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "repeated file_id")
+        yield item
+
+
+def _check_delta_unique_new_paths(delta):
+    """Decorate a delta and check that the new paths in it are unique.
+
+    :return: A generator over delta.
+    """
+    paths = set()
+    for item in delta:
+        length = len(paths) + 1
+        path = item[1]
+        if path is not None:
+            paths.add(path)
+            if len(paths) != length:
+                raise errors.InconsistentDelta(path, item[2], "repeated path")
+        yield item
+
+
+def _check_delta_unique_old_paths(delta):
+    """Decorate a delta and check that the old paths in it are unique.
+
+    :return: A generator over delta.
+    """
+    paths = set()
+    for item in delta:
+        length = len(paths) + 1
+        path = item[0]
+        if path is not None:
+            paths.add(path)
+            if len(paths) != length:
+                raise errors.InconsistentDelta(path, item[2], "repeated path")
+        yield item
+
+
+def _check_delta_ids_are_valid(delta):
+    """Decorate a delta and check that the ids in it are valid.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        entry = item[3]
+        if item[2] is None:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "entry with file_id None %r" % entry)
+        if type(item[2]) != str:
+            raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                "entry with non bytes file_id %r" % entry)
+        yield item
+
+
+def _check_delta_ids_match_entry(delta):
+    """Decorate a delta and check that the ids in it match the entry.file_id.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        entry = item[3]
+        if entry is not None:
+            if entry.file_id != item[2]:
+                raise errors.InconsistentDelta(item[0] or item[1], item[2],
+                    "mismatched id with %r" % entry)
+        yield item
+
+
+def _check_delta_new_path_entry_both_or_None(delta):
+    """Decorate a delta and check that the new_path and entry are paired.
+
+    :return: A generator over delta.
+    """
+    for item in delta:
+        new_path = item[1]
+        entry = item[3]
+        if new_path is None and entry is not None:
+            raise errors.InconsistentDelta(item[0], item[1],
+                "Entry with no new_path")
+        if new_path is not None and entry is None:
+            raise errors.InconsistentDelta(new_path, item[1],
+                "new_path with no entry")
+        yield item

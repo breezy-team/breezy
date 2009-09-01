@@ -636,6 +636,16 @@ class UnstackableBranchFormat(BzrError):
         self.url = url
 
 
+class UnstackableLocationError(BzrError):
+
+    _fmt = "The branch '%(branch_url)s' cannot be stacked on '%(target_url)s'."
+
+    def __init__(self, branch_url, target_url):
+        BzrError.__init__(self)
+        self.branch_url = branch_url
+        self.target_url = target_url
+
+
 class UnstackableRepositoryFormat(BzrError):
 
     _fmt = ("The repository '%(url)s'(%(format)s) is not a stackable format. "
@@ -783,6 +793,12 @@ class IncompatibleFormat(BzrError):
 
 
 class IncompatibleRepositories(BzrError):
+    """Report an error that two repositories are not compatible.
+
+    Note that the source and target repositories are permitted to be strings:
+    this exception is thrown from the smart server and may refer to a
+    repository the client hasn't opened.
+    """
 
     _fmt = "%(target)s\n" \
             "is not compatible with\n" \
@@ -1996,12 +2012,14 @@ class UninitializableFormat(BzrError):
 
 class BadConversionTarget(BzrError):
 
-    _fmt = "Cannot convert to format %(format)s.  %(problem)s"
+    _fmt = "Cannot convert from format %(from_format)s to format %(format)s." \
+            "    %(problem)s"
 
-    def __init__(self, problem, format):
+    def __init__(self, problem, format, from_format=None):
         BzrError.__init__(self)
         self.problem = problem
         self.format = format
+        self.from_format = from_format or '(unspecified)'
 
 
 class NoDiffFound(BzrError):
@@ -2083,11 +2101,16 @@ class ImmortalPendingDeletion(BzrError):
 
 class OutOfDateTree(BzrError):
 
-    _fmt = "Working tree is out of date, please run 'bzr update'."
+    _fmt = "Working tree is out of date, please run 'bzr update'.%(more)s"
 
-    def __init__(self, tree):
+    def __init__(self, tree, more=None):
+        if more is None:
+            more = ''
+        else:
+            more = ' ' + more
         BzrError.__init__(self)
         self.tree = tree
+        self.more = more
 
 
 class PublicBranchOutOfDate(BzrError):
@@ -2147,6 +2170,18 @@ class InconsistentDelta(BzrError):
         self.reason = reason
 
 
+class InconsistentDeltaDelta(InconsistentDelta):
+    """Used when we get a delta that is not valid."""
+
+    _fmt = ("An inconsistent delta was supplied: %(delta)r"
+            "\nreason: %(reason)s")
+
+    def __init__(self, delta, reason):
+        BzrError.__init__(self)
+        self.delta = delta
+        self.reason = reason
+
+
 class UpgradeRequired(BzrError):
 
     _fmt = "To use this feature you must upgrade your branch at %(path)s."
@@ -2161,18 +2196,15 @@ class RepositoryUpgradeRequired(UpgradeRequired):
     _fmt = "To use this feature you must upgrade your repository at %(path)s."
 
 
+class RichRootUpgradeRequired(UpgradeRequired):
+
+    _fmt = ("To use this feature you must upgrade your branch at %(path)s to"
+           " a format which supports rich roots.")
+
+
 class LocalRequiresBoundBranch(BzrError):
 
     _fmt = "Cannot perform local-only commits on unbound branches."
-
-
-class InvalidProgressBarType(BzrError):
-
-    _fmt = ("Environment variable BZR_PROGRESS_BAR='%(bar_type)s"
-            " is not a supported type Select one of: %(valid_types)s")
-
-    def __init__(self, bar_type, valid_types):
-        BzrError.__init__(self, bar_type=bar_type, valid_types=valid_types)
 
 
 class UnsupportedOperation(BzrError):
@@ -2771,13 +2803,18 @@ class NoBindLocation(BzrDirError):
 
 class UncommittedChanges(BzrError):
 
-    _fmt = 'Working tree "%(display_url)s" has uncommitted changes.'
+    _fmt = ('Working tree "%(display_url)s" has uncommitted changes'
+            ' (See bzr status).%(more)s')
 
-    def __init__(self, tree):
+    def __init__(self, tree, more=None):
+        if more is None:
+            more = ''
+        else:
+            more = ' ' + more
         import bzrlib.urlutils as urlutils
         display_url = urlutils.unescape_for_display(
             tree.bzrdir.root_transport.base, 'ascii')
-        BzrError.__init__(self, tree=tree, display_url=display_url)
+        BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
 class MissingTemplateVariable(BzrError):
@@ -2889,8 +2926,9 @@ class CannotBindAddress(BzrError):
     _fmt = 'Cannot bind address "%(host)s:%(port)i": %(orig_error)s.'
 
     def __init__(self, host, port, orig_error):
+        # nb: in python2.4 socket.error doesn't have a useful repr
         BzrError.__init__(self, host=host, port=port,
-            orig_error=orig_error[1])
+            orig_error=repr(orig_error.args))
 
 
 class UnknownRules(BzrError):

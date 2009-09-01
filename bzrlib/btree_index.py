@@ -17,12 +17,8 @@
 
 """B+Tree indices"""
 
-import array
-import bisect
 from bisect import bisect_right
-from copy import deepcopy
 import math
-import struct
 import tempfile
 import zlib
 
@@ -590,13 +586,19 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(object):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ('keys',)
+    __slots__ = ('keys', 'min_key', 'max_key')
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        self.keys = dict(_btree_serializer._parse_leaf_lines(bytes,
-            key_length, ref_list_length))
+        key_list = _btree_serializer._parse_leaf_lines(bytes,
+            key_length, ref_list_length)
+        if key_list:
+            self.min_key = key_list[0][0]
+            self.max_key = key_list[-1][0]
+        else:
+            self.min_key = self.max_key = None
+        self.keys = dict(key_list)
 
 
 class _InternalNode(object):
@@ -1043,6 +1045,39 @@ class BTreeGraphIndex(object):
             output.append(cur_out)
         return output
 
+    def _walk_through_internal_nodes(self, keys):
+        """Take the given set of keys, and find the corresponding LeafNodes.
+
+        :param keys: An unsorted iterable of keys to search for
+        :return: (nodes, index_and_keys)
+            nodes is a dict mapping {index: LeafNode}
+            keys_at_index is a list of tuples of [(index, [keys for Leaf])]
+        """
+        # 6 seconds spent in miss_torture using the sorted() line.
+        # Even with out of order disk IO it seems faster not to sort it when
+        # large queries are being made.
+        keys_at_index = [(0, sorted(keys))]
+
+        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+            node_indexes = [idx for idx, s_keys in keys_at_index]
+            nodes = self._get_internal_nodes(node_indexes)
+
+            next_nodes_and_keys = []
+            for node_index, sub_keys in keys_at_index:
+                node = nodes[node_index]
+                positions = self._multi_bisect_right(sub_keys, node.keys)
+                node_offset = next_row_start + node.offset
+                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
+                                           for pos, s_keys in positions])
+            keys_at_index = next_nodes_and_keys
+        # We should now be at the _LeafNodes
+        node_indexes = [idx for idx, s_keys in keys_at_index]
+
+        # TODO: We may *not* want to always read all the nodes in one
+        #       big go. Consider setting a max size on this.
+        nodes = self._get_leaf_nodes(node_indexes)
+        return nodes, keys_at_index
+
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
@@ -1086,32 +1121,7 @@ class BTreeGraphIndex(object):
         needed_keys = keys
         if not needed_keys:
             return
-        # 6 seconds spent in miss_torture using the sorted() line.
-        # Even with out of order disk IO it seems faster not to sort it when
-        # large queries are being made.
-        needed_keys = sorted(needed_keys)
-
-        nodes_and_keys = [(0, needed_keys)]
-
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
-            node_indexes = [idx for idx, s_keys in nodes_and_keys]
-            nodes = self._get_internal_nodes(node_indexes)
-
-            next_nodes_and_keys = []
-            for node_index, sub_keys in nodes_and_keys:
-                node = nodes[node_index]
-                positions = self._multi_bisect_right(sub_keys, node.keys)
-                node_offset = next_row_start + node.offset
-                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
-                                           for pos, s_keys in positions])
-            nodes_and_keys = next_nodes_and_keys
-        # We should now be at the _LeafNodes
-        node_indexes = [idx for idx, s_keys in nodes_and_keys]
-
-        # TODO: We may *not* want to always read all the nodes in one
-        #       big go. Consider setting a max size on this.
-
-        nodes = self._get_leaf_nodes(node_indexes)
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(needed_keys)
         for node_index, sub_keys in nodes_and_keys:
             if not sub_keys:
                 continue
@@ -1123,6 +1133,133 @@ class BTreeGraphIndex(object):
                         yield (self, next_sub_key, value, refs)
                     else:
                         yield (self, next_sub_key, value)
+
+    def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
+        """Find the parent_map information for the set of keys.
+
+        This populates the parent_map dict and missing_keys set based on the
+        queried keys. It also can fill out an arbitrary number of parents that
+        it finds while searching for the supplied keys.
+
+        It is unlikely that you want to call this directly. See
+        "CombinedGraphIndex.find_ancestry()" for a more appropriate API.
+
+        :param keys: A keys whose ancestry we want to return
+            Every key will either end up in 'parent_map' or 'missing_keys'.
+        :param ref_list_num: This index in the ref_lists is the parents we
+            care about.
+        :param parent_map: {key: parent_keys} for keys that are present in this
+            index. This may contain more entries than were in 'keys', that are
+            reachable ancestors of the keys requested.
+        :param missing_keys: keys which are known to be missing in this index.
+            This may include parents that were not directly requested, but we
+            were able to determine that they are not present in this index.
+        :return: search_keys    parents that were found but not queried to know
+            if they are missing or present. Callers can re-query this index for
+            those keys, and they will be placed into parent_map or missing_keys
+        """
+        if not self.key_count():
+            # We use key_count() to trigger reading the root node and
+            # determining info about this BTreeGraphIndex
+            # If we don't have any keys, then everything is missing
+            missing_keys.update(keys)
+            return set()
+        if ref_list_num >= self.node_ref_lists:
+            raise ValueError('No ref list %d, index has %d ref lists'
+                % (ref_list_num, self.node_ref_lists))
+
+        # The main trick we are trying to accomplish is that when we find a
+        # key listing its parents, we expect that the parent key is also likely
+        # to sit on the same page. Allowing us to expand parents quickly
+        # without suffering the full stack of bisecting, etc.
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(keys)
+
+        # These are parent keys which could not be immediately resolved on the
+        # page where the child was present. Note that we may already be
+        # searching for that key, and it may actually be present [or known
+        # missing] on one of the other pages we are reading.
+        # TODO:
+        #   We could try searching for them in the immediate previous or next
+        #   page. If they occur "later" we could put them in a pending lookup
+        #   set, and then for each node we read thereafter we could check to
+        #   see if they are present.
+        #   However, we don't know the impact of keeping this list of things
+        #   that I'm going to search for every node I come across from here on
+        #   out.
+        #   It doesn't handle the case when the parent key is missing on a
+        #   page that we *don't* read. So we already have to handle being
+        #   re-entrant for that.
+        #   Since most keys contain a date string, they are more likely to be
+        #   found earlier in the file than later, but we would know that right
+        #   away (key < min_key), and wouldn't keep searching it on every other
+        #   page that we read.
+        #   Mostly, it is an idea, one which should be benchmarked.
+        parents_not_on_page = set()
+
+        for node_index, sub_keys in nodes_and_keys:
+            if not sub_keys:
+                continue
+            # sub_keys is all of the keys we are looking for that should exist
+            # on this page, if they aren't here, then they won't be found
+            node = nodes[node_index]
+            node_keys = node.keys
+            parents_to_check = set()
+            for next_sub_key in sub_keys:
+                if next_sub_key not in node_keys:
+                    # This one is just not present in the index at all
+                    missing_keys.add(next_sub_key)
+                else:
+                    value, refs = node_keys[next_sub_key]
+                    parent_keys = refs[ref_list_num]
+                    parent_map[next_sub_key] = parent_keys
+                    parents_to_check.update(parent_keys)
+            # Don't look for things we've already found
+            parents_to_check = parents_to_check.difference(parent_map)
+            # this can be used to test the benefit of having the check loop
+            # inlined.
+            # parents_not_on_page.update(parents_to_check)
+            # continue
+            while parents_to_check:
+                next_parents_to_check = set()
+                for key in parents_to_check:
+                    if key in node_keys:
+                        value, refs = node_keys[key]
+                        parent_keys = refs[ref_list_num]
+                        parent_map[key] = parent_keys
+                        next_parents_to_check.update(parent_keys)
+                    else:
+                        # This parent either is genuinely missing, or should be
+                        # found on another page. Perf test whether it is better
+                        # to check if this node should fit on this page or not.
+                        # in the 'everything-in-one-pack' scenario, this *not*
+                        # doing the check is 237ms vs 243ms.
+                        # So slightly better, but I assume the standard 'lots
+                        # of packs' is going to show a reasonable improvement
+                        # from the check, because it avoids 'going around
+                        # again' for everything that is in another index
+                        # parents_not_on_page.add(key)
+                        # Missing for some reason
+                        if key < node.min_key:
+                            # in the case of bzr.dev, 3.4k/5.3k misses are
+                            # 'earlier' misses (65%)
+                            parents_not_on_page.add(key)
+                        elif key > node.max_key:
+                            # This parent key would be present on a different
+                            # LeafNode
+                            parents_not_on_page.add(key)
+                        else:
+                            # assert key != node.min_key and key != node.max_key
+                            # If it was going to be present, it would be on
+                            # *this* page, so mark it missing.
+                            missing_keys.add(key)
+                parents_to_check = next_parents_to_check.difference(parent_map)
+                # Might want to do another .difference() from missing_keys
+        # parents_not_on_page could have been found on a different page, or be
+        # known to be missing. So cull out everything that has already been
+        # found.
+        search_keys = parents_not_on_page.difference(
+            parent_map).difference(missing_keys)
+        return search_keys
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1388,6 +1525,6 @@ class BTreeGraphIndex(object):
 
 
 try:
-    from bzrlib import _btree_serializer_c as _btree_serializer
+    from bzrlib import _btree_serializer_pyx as _btree_serializer
 except ImportError:
     from bzrlib import _btree_serializer_py as _btree_serializer

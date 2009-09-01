@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -255,6 +255,10 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
+        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
+        #       guess is that the change to use Unicode command lines means
+        #       that we no longer pay any attention to LANG=C when decoding the
+        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -269,13 +273,15 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([
             ('branch/foo.c', 'int main() {}'),
             ('branch/bar.c', 'int main() {}')])
-        inner_tree.add('foo.c')
-        inner_tree.add('bar.c')
+        inner_tree.add(['foo.c', 'bar.c'])
         # can't commit files in different trees; sane error
         self.run_bzr('commit -m newstuff branch/foo.c .', retcode=3)
+        # can commit to branch - records foo.c only
         self.run_bzr('commit -m newstuff branch/foo.c')
+        # can commit to branch - records bar.c
         self.run_bzr('commit -m newstuff branch')
-        self.run_bzr('commit -m newstuff branch', retcode=3)
+        # No changes left
+        self.run_bzr_error(["No changes to commit"], 'commit -m newstuff branch')
 
     def test_out_of_date_tree_commit(self):
         # check we get an error code and a clear message committing with an out

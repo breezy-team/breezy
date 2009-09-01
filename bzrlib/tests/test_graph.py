@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
-from bzrlib.symbol_versioning import deprecated_in 
+from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -525,6 +525,19 @@ class TestGraph(TestCaseWithMemoryTransport):
         """Test least-common ancestor on this history shortcut"""
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
+
+    def test_lefthand_distance_smoke(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        graph = self.make_graph(history_shortcut)
+        distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
+        self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
+
+    def test_lefthand_distance_ghosts(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        nodes = {'nonghost':[NULL_REVISION], 'toghost':['ghost']}
+        graph = self.make_graph(nodes)
+        distance_graph = graph.find_lefthand_distances(['nonghost', 'toghost'])
+        self.assertEqual({'nonghost': 1, 'toghost': -1}, distance_graph)
 
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
