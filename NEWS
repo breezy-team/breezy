@@ -20,6 +20,9 @@ Bug Fixes
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
 
+* Content filters are now applied correctly after pull, merge, switch
+  and revert. (Ian Clatworthy, #385879)
+
 * Fix a segmentation fault when computing the ``merge_sort`` of a graph
   that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
