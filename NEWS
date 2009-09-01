@@ -58,6 +58,10 @@ Improvements
 * ``bzr push`` locally on windows will no longer give a locking error with
   dirstate based formats. (Robert Collins)
 
+* ``groupcompress`` sort order is now more stable, rather than relying on
+  ``topo_sort`` ordering. The implementation is now
+  ``KnownGraph.gc_sort``. (John Arbash Meinel)
+
 Documentation
 *************
 
