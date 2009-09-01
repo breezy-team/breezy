@@ -116,6 +116,34 @@ def _script_to_commands(text, file_name=None):
     return commands
 
 
+def _scan_redirection_options(args):
+    """Recognize and process input and output redirections.
+
+    :param args: The command line arguments
+
+    :return: A tuple containing: 
+        - The file name redirected from or None
+        - The file name redirected to or None
+        - The mode to open the output file or None
+        - The reamining arguments
+    """
+    remaining = []
+    in_name = None
+    out_name, out_mode = None, None
+    for arg in  args:
+        if arg.startswith('<'):
+            in_name = arg[1:]
+        elif arg.startswith('>>'):
+            out_name = arg[2:]
+            out_mode = 'ab+'
+        elif arg.startswith('>'):
+            out_name = arg[1:]
+            out_mode = 'wb+'
+        else:
+            remaining.append(arg)
+    return in_name, out_name, out_mode, remaining
+
+
 class TestCaseWithScript(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -148,47 +176,59 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         self._check_output(error, actual_error)
         return actual_output, actual_error
 
+    def _read_input(self, input, in_name):
+        if in_name is not None:
+            infile = open(in_name, 'rb')
+            try:
+                # Command redirection takes precedence over provided input
+                input = infile.read()
+            finally:
+                infile.close()
+        return input
+
+    def _write_output(self, output, out_name, out_mode):
+        if out_name is not None:
+            outfile = open(out_name, out_mode)
+            try:
+                outfile.write(output)
+            finally:
+                outfile.close()
+            output = None
+        return output
+
     def do_bzr(self, input, args):
         out, err = self._run_bzr_core(args, retcode=None, encoding=None,
                                       stdin=input, working_dir=None)
         return out, err
 
     def do_cat(self, input, args):
-        in_name = None
-        out_name = None
-        syntax_ok = False
-        if not args:
-            in_name = None
-            out_name = None
-            syntax_ok = True
-        elif len(args) == 1:
+        (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
+        if len(args) > 1:
+            raise SyntaxError('Usage: cat [file1]')
+        if args:
+            if in_name is not None:
+                raise SyntaxError('Specify a file OR use redirection')
             in_name = args[0]
-            if in_name.startswith('>'):
-                out_name = in_name[1:]
-                in_name = None
-            else:
-                out_name = None
-            syntax_ok = True
-        elif len(args) == 2:
-            in_name, out_name = args[0], args[1][1:]
-            syntax_ok = args[1].startswith('>')
-        if not syntax_ok:
-            raise SyntaxError('Usage: cat [file1] [>file2]')
-        if in_name is not None:
-            infile = open(in_name, 'rb')
-            try:
-                input = infile.read()
-            finally:
-                infile.close()
-        out = StringIO(input)
-        output = out.getvalue()
-        if out_name is not None:
-            outfile = open(out_name, 'wb')
-            try:
-                outfile.write(output)
-            finally:
-                outfile.close()
-            output = None
+        input = self._read_input(input, in_name)
+        # Basically cat copy input to output
+        output = input
+        # Handle output redirections
+        output = self._write_output(output, out_name, out_mode)
+        return output, None
+
+    def do_echo(self, input, args):
+        (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
+        if input and args:
+                raise SyntaxError('Specify parameters OR use redirection')
+        if args:
+            input = ''.join(args)
+        input = self._read_input(input, in_name)
+        # Always append a \n'
+        input += '\n'
+        # Process output
+        output = input
+        # Handle output redirections
+        output = self._write_output(output, out_name, out_mode)
         return output, None
 
     def _ensure_in_jail(self, path):

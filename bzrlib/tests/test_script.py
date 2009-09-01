@@ -101,17 +101,28 @@ class TestCat(script.TestCaseWithScript):
 
     def test_cat_usage(self):
         self.assertRaises(SyntaxError, self.run_script, 'cat foo bar baz')
+        self.assertRaises(SyntaxError, self.run_script, 'cat foo <bar')
 
     def test_cat_input_to_output(self):
         out, err = self.run_command(['cat'], 'content\n', 'content\n', None)
+        self.assertEquals('content\n', out)
+        self.assertEquals(None, err)
 
     def test_cat_file_to_output(self):
         self.build_tree_contents([('file', 'content\n')])
         out, err = self.run_command(['cat', 'file'], None, 'content\n', None)
+        self.assertEquals('content\n', out)
+        self.assertEquals(None, err)
 
     def test_cat_input_to_file(self):
         out, err = self.run_command(['cat', '>file'], 'content\n', None, None)
         self.assertFileEqual('content\n', 'file')
+        self.assertEquals(None, out)
+        self.assertEquals(None, err)
+        out, err = self.run_command(['cat', '>>file'], 'more\n', None, None)
+        self.assertFileEqual('content\nmore\n', 'file')
+        self.assertEquals(None, out)
+        self.assertEquals(None, err)
 
     def test_cat_file_to_file(self):
         self.build_tree_contents([('file', 'content\n')])
@@ -167,3 +178,41 @@ class TestBzr(script.TestCaseWithScript):
     def test_bzr_smoke(self):
         self.run_script('bzr init branch')
         self.failUnlessExists('branch')
+
+
+class TestEcho(script.TestCaseWithScript):
+
+    def test_echo_usage(self):
+        story = """
+echo foo
+<bar
+"""
+        self.assertRaises(SyntaxError, self.run_script, story)
+
+    def test_echo_to_output(self):
+        out, err = self.run_command(['echo'], None, '\n', None)
+        self.assertEquals('\n', out)
+        self.assertEquals(None, err)
+
+    def test_echo_some_to_output(self):
+        out, err = self.run_command(['echo', 'hello'], None, 'hello\n', None)
+        self.assertEquals('hello\n', out)
+        self.assertEquals(None, err)
+
+    def test_echo_more_output(self):
+        out, err = self.run_command(['echo', 'hello', 'happy', 'world'],
+                                    None, 'hellohappyworld\n', None)
+        self.assertEquals('hellohappyworld\n', out)
+        self.assertEquals(None, err)
+
+    def test_echo_appended(self):
+        out, err = self.run_command(['echo', 'hello', '>file'],
+                                    None, None, None)
+        self.assertEquals(None, out)
+        self.assertEquals(None, err)
+        self.assertFileEqual('hello\n', 'file')
+        out, err = self.run_command(['echo', 'happy', '>>file'],
+                                    None, None, None)
+        self.assertEquals(None, out)
+        self.assertEquals(None, err)
+        self.assertFileEqual('hello\nhappy\n', 'file')
