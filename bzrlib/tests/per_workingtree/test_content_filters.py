@@ -64,7 +64,8 @@ def _remove_appended_text(chunks, context=None):
 
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
-    def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
+    def create_cf_tree(self, txt_reader, txt_writer, dir='.',
+        two_revisions=False):
         tree = self.make_branch_and_tree(dir)
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
@@ -77,6 +78,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             (dir + '/file2.bin', 'Foo Bin')])
         tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
+        # Commit another revision with changed text, if requested
+        if two_revisions:
+            self.build_tree_contents([(dir + '/file1.txt', 'Foo ROCKS!')])
+            tree.commit("changed file1.txt")
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
         return tree, txt_fileid, bin_fileid
@@ -95,10 +100,14 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         WorkingTree._content_filter_stack = _content_filter_stack
 
     def assert_basis_content(self, expected_content, branch, file_id):
+        # Note: We need to use try/finally here instead of addCleanup()
+        # as the latter leaves the read lock in place too long
         basis = branch.basis_tree()
         basis.lock_read()
-        self.addCleanup(basis.unlock)
-        self.assertEqual(expected_content, basis.get_file_text(file_id))
+        try:
+            self.assertEqual(expected_content, basis.get_file_text(file_id))
+        finally:
+            basis.unlock()
 
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
@@ -211,3 +220,24 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # we could give back the length of the canonical form, but in general
         # that will be expensive to compute, so it's acceptable to just return
         # None.
+
+    def test_content_filtering_applied_on_pull(self):
+        # Create a source branch with two revisions
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=None, txt_writer=None, dir='source', two_revisions=True)
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
+        self.assert_basis_content("Foo ROCKS!", source, txt_fileid)
+
+        # Now patch in content filtering and branch from revision 1
+        self.patch_in_content_filter()
+        self.run_bzr('branch -r1 source target')
+        target = WorkingTree.open('target')
+        self.assertFileEqual("fOO tXT", 'target/file1.txt')
+        self.assert_basis_content("Foo Txt", target, txt_fileid)
+
+        # Pull the latter change and check the target tree is updated
+        self.run_bzr('pull -d target')
+        self.assertFileEqual("fOO rocks!", 'target/file1.txt')
+        self.assert_basis_content("Foo ROCKS!", target, txt_fileid)
