@@ -132,16 +132,17 @@ cdef object _sort_list_nodes(object lst_or_tpl, int reverse):
     just return the input list if everything is already sorted.
     """
     cdef _KnownGraphNode node1, node2
-    cdef int do_swap
+    cdef int do_swap, is_tuple
     cdef Py_ssize_t length
 
-    if not (PyTuple_CheckExact(lst_or_tpl) or PyList_CheckExact(lst_or_tpl)):
+    is_tuple = PyTuple_CheckExact(lst_or_tpl)
+    if not (is_tuple or PyList_CheckExact(lst_or_tpl)):
         raise TypeError('lst_or_tpl must be a list or tuple.')
     length = len(lst_or_tpl)
     if length == 0 or length == 1:
         return lst_or_tpl
     if length == 2:
-        if PyTuple_CheckExact(lst_or_tpl):
+        if is_tuple:
             node1 = _get_tuple_node(lst_or_tpl, 0)
             node2 = _get_tuple_node(lst_or_tpl, 1)
         else:
@@ -153,16 +154,17 @@ cdef object _sort_list_nodes(object lst_or_tpl, int reverse):
             do_swap = (node2.key < node1.key)
         if not do_swap:
             return lst_or_tpl
-        if PyTuple_CheckExact(lst_or_tpl):
+        if is_tuple:
             return (node2, node1)
         else:
+            # Swap 'in-place', since lists are mutable
             Py_INCREF(node1)
             PyList_SetItem(lst_or_tpl, 1, node1)
             Py_INCREF(node2)
             PyList_SetItem(lst_or_tpl, 0, node2)
             return lst_or_tpl
     # For all other sizes, we just use 'sorted()'
-    if PyTuple_CheckExact(lst_or_tpl):
+    if is_tuple:
         # Note that sorted() is just list(iterable).sort()
         lst_or_tpl = list(lst_or_tpl)
     lst_or_tpl.sort(key=get_key, reverse=reverse)
@@ -508,8 +510,17 @@ cdef class KnownGraph:
                     # Ghost
                     continue
                 PyList_Append(result, node.key)
-                parents = _sort_list_nodes(node.parents, 1)
-                for pos from 0 <= pos < len(parents):
+                # Do we need to sort the parent keys? They are always in a
+                # 'stable' order because it is something we track and preserve.
+                # Sorting here costs us 10.9ms down from 5.9ms if we just
+                # walk them directly.
+                # 45.2ms => 34.8ms for all file graphs
+                ## parents = _sort_list_nodes(node.parents, 0)
+                ## for pos from len(parents) > pos >= 0:
+                ## parents = _sort_list_nodes(node.parents, 1)
+                ## for pos from 0 <= pos < len(parents):
+                parents = node.parents
+                for pos from len(parents) > pos >= 0:
                     if PyTuple_CheckExact(parents):
                         parent_node = _get_tuple_node(parents, pos)
                     else:
