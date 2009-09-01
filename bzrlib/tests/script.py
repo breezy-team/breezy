@@ -51,7 +51,19 @@ def _script_to_commands(text, file_name=None):
     Output lines start with '>'.
     Error lines start with '2>'.
     """
+
     commands = []
+
+    def add_command(cmd, input, output, error):
+        if cmd is not None:
+            if input is not None:
+                input = ''.join(input)
+            if output is not None:
+                output = ''.join(output)
+            if error is not None:
+                error = ''.join(error)
+            commands.append((cmd, input, output, error))
+
     cmd_cur = None
     cmd_line = 1
     lineno = 0
@@ -94,15 +106,13 @@ def _script_to_commands(text, file_name=None):
             continue
         else:
             # Time to output the current command
-            if cmd_cur is not None:
-                commands.append((cmd_cur, input, output, error))
+            add_command(cmd_cur, input, output, error)
             # And start a new one
             cmd_cur = list(split(line))
             cmd_line = lineno
             input, output, error = None, None, None
     # Add the last seen command
-    if cmd_cur is not None:
-        commands.append((cmd_cur, input, output, error))
+    add_command(cmd_cur, input, output, error)
     return commands
 
 
@@ -120,8 +130,7 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         if expected is None:
             # Specifying None means: any output is accepted
             return
-        str_expected = ''.join(expected)
-        self.assertEquals(str_expected, actual)
+        self.assertEquals(expected, actual)
 
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]

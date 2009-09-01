@@ -47,15 +47,17 @@ class TestScriptSyntax(tests.TestCase):
                            script._script_to_commands(story))
 
     def test_command_with_input(self):
-        self.assertEquals([(['cat', '>file'], ['content\n'], None, None)],
+        self.assertEquals([(['cat', '>file'], 'content\n', None, None)],
                            script._script_to_commands('cat >file\n<content\n'))
 
     def test_command_with_output(self):
         story = """
 bzr add
 >adding file
+>adding file2
 """
-        self.assertEquals([(['bzr', 'add'], None, ['adding file\n'], None)],
+        self.assertEquals([(['bzr', 'add'], None,
+                            'adding file\nadding file2\n', None)],
                           script._script_to_commands(story))
 
     def test_command_with_error(self):
@@ -64,7 +66,7 @@ bzr branch foo
 2>bzr: ERROR: Not a branch: "foo"
 """
         self.assertEquals([(['bzr', 'branch', 'foo'],
-                            None, None, ['bzr: ERROR: Not a branch: "foo"\n'])],
+                            None, None, 'bzr: ERROR: Not a branch: "foo"\n')],
                           script._script_to_commands(story))
     def test_input_without_command(self):
         self.assertRaises(SyntaxError, script._script_to_commands, '<input')
@@ -101,14 +103,14 @@ class TestCat(script.TestCaseWithScript):
         self.assertRaises(SyntaxError, self.run_script, 'cat foo bar baz')
 
     def test_cat_input_to_output(self):
-        out, err = self.run_command(['cat'], ['content\n'], ['content\n'], None)
+        out, err = self.run_command(['cat'], 'content\n', 'content\n', None)
 
     def test_cat_file_to_output(self):
         self.build_tree_contents([('file', 'content\n')])
-        out, err = self.run_command(['cat', 'file'], None, ['content\n'], None)
+        out, err = self.run_command(['cat', 'file'], None, 'content\n', None)
 
     def test_cat_input_to_file(self):
-        out, err = self.run_command(['cat', '>file'], ['content\n'], None, None)
+        out, err = self.run_command(['cat', '>file'], 'content\n', None, None)
         self.assertFileEqual('content\n', 'file')
 
     def test_cat_file_to_file(self):
