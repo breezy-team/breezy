@@ -86,6 +86,14 @@ class TestScriptExecution(script.TestCaseWithScript):
     def test_unknown_command(self):
         self.assertRaises(SyntaxError, self.run_script, 'foo')
 
+    def test_unexpected_output(self):
+        story = """
+mkdir dir
+cd dir
+>Hello, I have just cd into dir !
+"""
+        self.assertRaises(AssertionError, self.run_script, story)
+
 
 class TestCat(script.TestCaseWithScript):
 
@@ -150,3 +158,10 @@ cd dir
 
         self.run_script('cd')
         self.assertEquals(self.test_dir, osutils.getcwd())
+
+
+class TestBzr(script.TestCaseWithScript):
+
+    def test_bzr_smoke(self):
+        self.run_script('bzr init branch')
+        self.failUnlessExists('branch')

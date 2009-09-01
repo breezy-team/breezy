@@ -118,12 +118,10 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
 
     def _check_output(self, expected, actual):
         if expected is None:
-            str_expected = ''
-        else:
-            str_expected = ''.join(expected)
-        if actual is None:
-            actual = ''
-        self.assertEqualDiff(str_expected, actual)
+            # Specifying None means: any output is accepted
+            return
+        str_expected = ''.join(expected)
+        self.assertEquals(str_expected, actual)
 
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
@@ -140,6 +138,11 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
         return actual_output, actual_error
+
+    def do_bzr(self, input, args):
+        out, err = self._run_bzr_core(args, retcode=None, encoding=None,
+                                      stdin=input, working_dir=None)
+        return out, err
 
     def do_cat(self, input, args):
         in_name = None
@@ -201,3 +204,4 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         self._ensure_in_jail(d)
         os.mkdir(d)
         return None, None
+
