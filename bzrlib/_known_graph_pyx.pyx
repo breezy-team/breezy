@@ -517,10 +517,10 @@ cdef class KnownGraph:
                 # 45.2ms => 34.8ms for all file graphs
                 ## parents = _sort_list_nodes(node.parents, 0)
                 ## for pos from len(parents) > pos >= 0:
-                ## parents = _sort_list_nodes(node.parents, 1)
-                ## for pos from 0 <= pos < len(parents):
-                parents = node.parents
-                for pos from len(parents) > pos >= 0:
+                parents = _sort_list_nodes(node.parents, 1)
+                for pos from 0 <= pos < len(parents):
+                ## parents = node.parents
+                ## for pos from len(parents) > pos >= 0:
                     if PyTuple_CheckExact(parents):
                         parent_node = _get_tuple_node(parents, pos)
                     else:
