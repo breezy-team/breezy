@@ -16,6 +16,8 @@
 
 """Tests for content filtering conformance"""
 
+import os
+
 from bzrlib.bzrdir import BzrDir
 from bzrlib.filters import ContentFilter
 from bzrlib.switch import switch
@@ -287,3 +289,21 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         checkout_control_dir = BzrDir.open_containing('checkout')[0]
         switch(checkout_control_dir, source.branch)
         self.assertFileEqual("fOO rocks!", 'checkout/file1.txt')
+
+    def test_content_filtering_applied_on_revert(self):
+        # Create a source branch with content filtering
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo Txt", 'source/file1.txt')
+        self.assert_basis_content("FOO TXT", source, txt_fileid)
+
+        # Now delete the file, revert it and check the content
+        os.unlink('source/file1.txt')
+        self.assertFalse(os.path.exists('source/file1.txt'))
+        source.revert(['file1.txt'])
+        self.assertTrue(os.path.exists('source/file1.txt'))
+        # Note: we don't get back exactly what was in the tree
+        # previously because lower(upper(text)) is a lossy transformation
+        self.assertFileEqual("foo txt", 'source/file1.txt')
