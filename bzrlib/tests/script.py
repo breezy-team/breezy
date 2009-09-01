@@ -15,9 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import os
 import shlex
 
-from bzrlib import tests
+from bzrlib import (
+    osutils,
+    tests,
+    )
 
 
 def split(s):
@@ -112,6 +116,15 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         for cmd, input, output, error in _script_to_commands(text):
             self.run_command(cmd, input, output, error)
 
+    def _check_output(self, expected, actual):
+        if expected is None:
+            str_expected = ''
+        else:
+            str_expected = ''.join(expected)
+        if actual is None:
+            actual = ''
+        self.assertEqualDiff(str_expected, actual)
+
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
@@ -123,12 +136,9 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         else:
             str_input = ''.join(input)
         actual_output, actual_error = method(str_input, cmd[1:])
-        if output is None:
-            output = ''
-        self.assertEquals(''.join(output), actual_output)
-        if error is None:
-            error = ''
-        self.assertEquals(''.join(error), actual_error)
+
+        self._check_output(output, actual_output)
+        self._check_output(error, actual_error)
         return actual_output, actual_error
 
     def do_cat(self, input, args):
@@ -166,7 +176,28 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
                 outfile.write(output)
             finally:
                 outfile.close()
-            output = ''
-        return output, ''
+            output = None
+        return output, None
 
+    def _ensure_in_jail(self, path):
+        if not osutils.is_inside(self.test_dir, osutils.normalizepath(path)):
+                raise ValueError('%s is not inside %s' % (path, self.test_dir))
 
+    def do_cd(self, input, args):
+        if len(args) > 1:
+            raise SyntaxError('Usage: cd [dir]')
+        if len(args) == 1:
+            d = args[0]
+            self._ensure_in_jail(d)
+        else:
+            d = self.test_dir
+        os.chdir(d)
+        return None, None
+
+    def do_mkdir(self, input, args):
+        if not args or len(args) != 1:
+            raise SyntaxError('Usage: mkdir dir')
+        d = args[0]
+        self._ensure_in_jail(d)
+        os.mkdir(d)
+        return None, None

@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+
 from bzrlib import (
+    osutils,
     tests,
     )
 from bzrlib.tests import script
@@ -105,3 +107,46 @@ class TestCat(script.TestCaseWithScript):
         self.build_tree_contents([('file', 'content\n')])
         out, err = self.run_command(['cat', 'file', '>file2'], None, None, None)
         self.assertFileEqual('content\n', 'file2')
+
+
+class TestMkdir(script.TestCaseWithScript):
+
+    def test_mkdir_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, 'mkdir')
+        self.assertRaises(SyntaxError, self.run_script, 'mkdir foo bar')
+
+    def test_mkdir_jailed(self):
+        self.assertRaises(ValueError, self.run_script, 'mkdir /out-of-jail')
+        self.assertRaises(ValueError, self.run_script, 'mkdir ../out-of-jail')
+
+    def test_mkdir_in_jail(self):
+        self.run_script("""
+mkdir dir
+cd dir
+mkdir ../dir2
+cd ..
+""")
+        self.failUnlessExists('dir')
+        self.failUnlessExists('dir2')
+
+
+class TestCd(script.TestCaseWithScript):
+
+    def test_cd_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, 'cd foo bar')
+
+    def test_cd_out_of_jail(self):
+        self.assertRaises(ValueError, self.run_script, 'cd /out-of-jail')
+        self.assertRaises(ValueError, self.run_script, 'cd ..')
+
+    def test_cd_dir_and_back_home(self):
+        self.assertEquals(self.test_dir, osutils.getcwd())
+        self.run_script("""
+mkdir dir
+cd dir
+""")
+        self.assertEquals(osutils.pathjoin(self.test_dir, 'dir'),
+                          osutils.getcwd())
+
+        self.run_script('cd')
+        self.assertEquals(self.test_dir, osutils.getcwd())
