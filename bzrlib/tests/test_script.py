@@ -20,7 +20,7 @@ from bzrlib import (
 from bzrlib.tests import script
 
 
-class TestUserTest(tests.TestCase):
+class TestScriptSyntax(tests.TestCase):
 
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
@@ -31,6 +31,16 @@ class TestUserTest(tests.TestCase):
     def test_simple_command(self):
         self.assertEquals([(['cd', 'trunk'], None, None)],
                            script._script_to_commands('cd trunk'))
+
+    def test_command_with_single_quoted_param(self):
+        story = """bzr commit -m 'two words'"""
+        self.assertEquals([(['bzr', 'commit', '-m', 'two words'], None, None)],
+                           script._script_to_commands(story))
+
+    def test_command_with_double_quoted_param(self):
+        story = """bzr commit -m "two words" """
+        self.assertEquals([(['bzr', 'commit', '-m', 'two words'], None, None)],
+                           script._script_to_commands(story))
 
     def test_command_with_input(self):
         self.assertEquals([(['cat', '>file'], ['content\n'], None)],
@@ -50,8 +60,7 @@ bzr add
     def test_output_without_command(self):
         self.assertRaises(SyntaxError, script._script_to_commands, '>input')
 
-    # FIXME: not passing yet.
-    def xtest_command_with_backquotes(self):
+    def test_command_with_backquotes(self):
         story = """
 foo = `bzr file-id toto`
 """

@@ -17,7 +17,22 @@
 import shlex
 
 
-def _script_to_commands(script, file_name=None):
+def split(s):
+    """Split a command line respecting quotes."""
+    scanner = shlex.shlex(s)
+    scanner.quotes = '\'"`'
+    scanner.whitespace_split = True
+    for t in list(scanner):
+        # Strip the simple and double quotes since we don't care about them.
+        # We leave the backquotes in place though since they have a different
+        # semantic.
+        if t[0] in  ('"', "'") and t[0] == t[-1]:
+            yield t[1:-1]
+        else:
+            yield t
+
+
+def _script_to_commands(text, file_name=None):
     """Turn a script into a list of commands with their associated IOs.
 
     Each command appears on a line by itself. It can be associated with an
@@ -34,7 +49,7 @@ def _script_to_commands(script, file_name=None):
     lineno = 0
     input = None
     output = None
-    for line in script.split('\n'):
+    for line in text.split('\n'):
         lineno += 1
         # Keep a copy for error reporting
         orig = line
@@ -67,7 +82,7 @@ def _script_to_commands(script, file_name=None):
             if cmd_cur is not None:
                 commands.append((cmd_cur, input, output))
             # And start a new one
-            cmd_cur = shlex.split(line)
+            cmd_cur = list(split(line))
             cmd_line = lineno
             input = None
             output = None
