@@ -2076,8 +2076,8 @@ class RepositoryPackCollection(object):
         if getattr(self.repo, 'chk_bytes', None) is not None:
             # Ensure that all inventories added in this write group have their
             # corresponding chk_bytes root keys present.
-            new_inventories_keys = self.repo.inventories._index._new_keys
-            rev_ids = [key[-1] for key in new_inventories_keys]
+            new_revisions_keys = self.repo.revisions._index._key_dependencies.get_new_keys()
+            rev_ids = [key[-1] for key in new_revisions_keys]
             for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
                 root_keys = set([new_inv.id_to_entry.key()])
                 if new_inv.parent_id_basename_to_file_id is not None:
@@ -2235,9 +2235,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
-        if getattr(self.inventories._index, '_new_keys', None) is not None:
-            self.inventories._index._new_keys.clear()
+        self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
 
     def _get_source(self, to_format):
@@ -2257,18 +2255,14 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
-        tokens = self._pack_collection._commit_write_group()
-        if getattr(self.inventories._index, '_new_keys', None) is not None:
-            self.inventories._index._new_keys.clear()
-        return tokens
+        hint = self._pack_collection._commit_write_group()
+        self.revisions._index._key_dependencies.clear()
+        return hint
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
-        self.revisions._index._key_dependencies.refs.clear()
-        if getattr(self.inventories._index, '_new_keys', None) is not None:
-            self.inventories._index._new_keys.clear()
+        self.revisions._index._key_dependencies.clear()
         self._write_group = None
         return tokens
 
@@ -2281,7 +2275,6 @@ class KnitPackRepository(KnitRepository):
             raise
         for pack in self._pack_collection._resumed_packs:
             self.revisions._index.scan_unvalidated_index(pack.revision_index)
-            self.inventories._index.scan_unvalidated_index(pack.inventory_index)
 
     def get_transaction(self):
         if self._write_lock_count:

@@ -645,13 +645,13 @@ class CHKInventoryRepository(KnitPackRepository):
             _GCGraphIndex(self._pack_collection.inventory_index.combined_index,
                 add_callback=self._pack_collection.inventory_index.add_callback,
                 parents=True, is_locked=self.is_locked,
-                inconsistency_fatal=False, track_new_keys=True),
+                inconsistency_fatal=False),
             access=self._pack_collection.inventory_index.data_access)
         self.revisions = GroupCompressVersionedFiles(
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
                 add_callback=self._pack_collection.revision_index.add_callback,
                 parents=True, is_locked=self.is_locked,
-                track_external_parent_refs=True),
+                track_external_parent_refs=True, track_new_keys=True),
             access=self._pack_collection.revision_index.data_access,
             delta=False)
         self.signatures = GroupCompressVersionedFiles(

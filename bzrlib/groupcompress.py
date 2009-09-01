@@ -1731,13 +1731,10 @@ class _GCGraphIndex(object):
         self._is_locked = is_locked
         self._inconsistency_fatal = inconsistency_fatal
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs()
+            self._key_dependencies = knit._KeyRefs(
+                track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None
-        if track_new_keys:
-            self._new_keys = set()
-        else:
-            self._new_keys = None
 
     def add_records(self, records, random_id=False):
         """Add multiple records to the index.
@@ -1795,14 +1792,14 @@ class _GCGraphIndex(object):
                     result.append((key, value))
             records = result
         key_dependencies = self._key_dependencies
-        if key_dependencies is not None and self._parents:
-            for key, value, refs in records:
-                parents = refs[0]
-                key_dependencies.add_references(key, parents)
-        new_keys = self._new_keys
-        if new_keys is not None:
-            for key, value, refs in records:
-                new_keys.add(key)
+        if key_dependencies is not None:
+            if self._parents:
+                for key, value, refs in records:
+                    parents = refs[0]
+                    key_dependencies.add_references(key, parents)
+            else:
+                for key, value, refs in records:
+                    new_keys.add_key(key)
         self._add_callback(records)
 
     def _check_read(self):
@@ -1861,7 +1858,7 @@ class _GCGraphIndex(object):
         """Return the keys of missing parents."""
         # Copied from _KnitGraphIndex.get_missing_parents
         # We may have false positives, so filter those out.
-        self._key_dependencies.add_keys(
+        self._key_dependencies.satisfy_refs_for_keys(
             self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
@@ -1926,16 +1923,12 @@ class _GCGraphIndex(object):
         :param graph_index: A GraphIndex
         """
         key_dependencies = self._key_dependencies
-        new_keys = self._new_keys
-        if key_dependencies is None and new_keys is None:
+        if key_dependencies is None:
             return
         for node in graph_index.iter_all_entries():
-            if key_dependencies is not None:
-                # Add parent refs from graph_index (and discard parent refs
-                # that the graph_index has).
-                key_dependencies.add_references(node[1], node[3][0])
-            if new_keys is not None:
-                new_keys.add(node[1])
+            # Add parent refs from graph_index (and discard parent refs
+            # that the graph_index has).
+            key_dependencies.add_references(node[1], node[3][0])
 
 
 from bzrlib._groupcompress_py import (
