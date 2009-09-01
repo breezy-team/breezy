@@ -26,6 +26,8 @@ cdef extern from "Python.h":
         pass
 
     int PyString_CheckExact(object)
+    int Py_LT
+    int PyObject_RichCompareBool(object, object, int)
 
     int PyTuple_CheckExact(object)
     object PyTuple_New(Py_ssize_t n)
@@ -149,9 +151,9 @@ cdef object _sort_list_nodes(object lst_or_tpl, int reverse):
             node1 = _get_list_node(lst_or_tpl, 0)
             node2 = _get_list_node(lst_or_tpl, 1)
         if reverse:
-            do_swap = (node1.key < node2.key)
+            do_swap = PyObject_RichCompareBool(node1.key, node2.key, Py_LT)
         else:
-            do_swap = (node2.key < node1.key)
+            do_swap = PyObject_RichCompareBool(node2.key, node1.key, Py_LT)
         if not do_swap:
             return lst_or_tpl
         if is_tuple:
@@ -510,17 +512,15 @@ cdef class KnownGraph:
                     # Ghost
                     continue
                 PyList_Append(result, node.key)
-                # Do we need to sort the parent keys? They are always in a
-                # 'stable' order because it is something we track and preserve.
-                # Sorting here costs us 10.9ms down from 5.9ms if we just
-                # walk them directly.
-                # 45.2ms => 34.8ms for all file graphs
-                ## parents = _sort_list_nodes(node.parents, 0)
-                ## for pos from len(parents) > pos >= 0:
+                # Sorting the parent keys isn't strictly necessary for stable
+                # sorting of a given graph. But it does help minimize the
+                # differences between graphs
+                # For bzr.dev ancestry:
+                #   4.73ms  no sort
+                #   8.78ms  < sort
+                #   7.73ms  RichCompareBool sort
                 parents = _sort_list_nodes(node.parents, 1)
                 for pos from 0 <= pos < len(parents):
-                ## parents = node.parents
-                ## for pos from len(parents) > pos >= 0:
                     if PyTuple_CheckExact(parents):
                         parent_node = _get_tuple_node(parents, pos)
                     else:
