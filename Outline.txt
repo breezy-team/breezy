@@ -1,3 +1,17 @@
+Related Bugs:
+=============
+
+https://bugs.edge.launchpad.net/bzr/+bug/414589
+
+https://bugs.edge.launchpad.net/bzr/+bug/236724
+https://bugs.edge.launchpad.net/bzr/+bug/228506
+https://bugs.edge.launchpad.net/bzr/+bug/113809
+https://bugs.edge.launchpad.net/bzr/+bug/322767
+https://bugs.edge.launchpad.net/bzr/+bug/416903
+
+https://bugs.edge.launchpad.net/bzr/+bug/405264
+
+
 TODO:
 =====
 
@@ -88,10 +102,12 @@ In practice, the actions will always contain:
 Text conflicts:
 ---------------
 
-3 ways:
-- force THIS
-- force OTHER
+5 ways:
+- force THIS (for all conflicted regions)
+- force OTHER (for all conflicted regions)
 - manually solve each conflicted region
+- force THIS (overriding all cleanly merged modifications)
+- force OTHER (overriding all cleanly merged modifications)
 
 resolve:
 - delete .THIS, .OTHER, .BASE  if present
