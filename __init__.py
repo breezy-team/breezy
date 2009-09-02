@@ -257,15 +257,11 @@ if rio_hooks is not None:
     rio_hooks.install_named_hook('revision', update_stanza, None)
 
 
-try:
-    from bzrlib.transport import transport_server_registry
-except ImportError:
-    pass
-else:
-    transport_server_registry.register_lazy('git',
-        'bzrlib.plugins.git.server', 
-        'serve_git',
-        'Git Smart server protocol over TCP. (default port: 9418)')
+from bzrlib.transport import transport_server_registry
+transport_server_registry.register_lazy('git',
+    'bzrlib.plugins.git.server', 
+    'serve_git',
+    'Git Smart server protocol over TCP. (default port: 9418)')
 
 
 from bzrlib.repository import network_format_registry as repository_network_format_registry
