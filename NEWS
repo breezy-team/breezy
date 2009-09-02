@@ -32,6 +32,9 @@ Bug Fixes
   bugfix vs 2.0rc1, and all 2.0rc1 users should upgrade to 2.0rc2 before
   converting repositories. (Robert Collins, #422849)
 
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
 Documentation
 *************
 
