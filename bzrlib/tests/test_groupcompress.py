@@ -904,8 +904,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         header_len = int(header_len)
         block_len = int(block_len)
         self.assertEqual('groupcompress-block', storage_kind)
-        self.assertEqual(33, z_header_len)
-        self.assertEqual(25, header_len)
+        self.assertEqual(34, z_header_len)
+        self.assertEqual(26, header_len)
         self.assertEqual(len(block_bytes), block_len)
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)

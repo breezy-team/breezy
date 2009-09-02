@@ -1657,7 +1657,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'groupcompress-block':
                     # Check to see if we really want to re-use this block
                     insert_manager = record._manager
-                    insert_manager._check_rebuild_block()
+                    # if not insert_manager.check_is_well_utilized():
+                    #     reuse_this_block = False
                     if len(insert_manager._factories) == 1:
                         # This block only has a single record in it
                         # Mark this block to be rebuilt
@@ -1667,6 +1668,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
+                    insert_manager._check_rebuild_block()
                     bytes = record._manager._block.to_bytes()
                     _, start, length = self._access.add_raw_records(
                         [(None, len(bytes))], bytes)[0]
