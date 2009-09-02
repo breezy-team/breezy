@@ -19,7 +19,7 @@ As of June 2008, there are three PPAs:
     Final released versions.
 
 <https://launchpad.net/~bzr-beta-ppa/+archive>
-    Releases and release candidates.    
+    Releases and release candidates.
 
 <https://launchpad.net/~bzr-nightly-ppa/+archive>
     Automatic nightly builds from trunk.
@@ -107,14 +107,14 @@ For people who have already set up everything they need, building the
 release packages is as simple as::
 
   cd ~/dev/bzr/releases/packaging
-  export VERSION="1.6~beta3-1~bazaar1"
+  export VERSION="1.18~rc1-1~bazaar1"
   export PACKAGE="bzr"
   export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.5 1.6 1.7
   ~/dev/bzr/bzr.dev/tools/packaging/build-packages.sh
-  dput bzr-beta-ppa bzr_$VERSION*.changes
+  dput bzr-beta-ppa ${PACKAGE}_$VERSION*.changes
 
 Rinse and repeat for all the plugins by changing VERSION and PACKAGE.
 
@@ -173,12 +173,12 @@ Long Form
       Build-Depends-Indep: bzr (>= 1.6~), rsync
       Depends: ${python:Depends}, bzr (>= 1.6~), bzr (<< 1.7~), patch
 
-   There is a helper script which will update the contro file and commit it
+   There is a helper script which will update the control file and commit it
    for all of your ``$UBUNTU_RELEASES``. It is available as::
 
     tools/packaging/update-control.sh
 
-   The must supply the versions as arguments as follows
+   You must supply the versions as arguments as follows
    OLD_VERSION CURRENT_VERSION NEXT_VERSION, such as::
 
     tools/packaging/update-control.sh 1.5 1.6 1.7
@@ -196,7 +196,7 @@ Long Form
    export DEBEMAIL=`bzr whoami` if it isn't already set), version number, and
    distribution.  It should look something like this::
 
-       bzr (1.6~beta3-1~bazaar1~hardy1) hardy; urgency=low
+       bzr (1.18~rc1-1~bazaar1~hardy1) hardy; urgency=low
      
         * New upstream release.
      
@@ -259,7 +259,7 @@ To build bzr-svn:
 #. Get a checkout of ``lp:~bzr/bzr-svn/hardy-ppa/``
 
 #. Merge from ``http://bzr.debian.org/pkg-bazaar/bzr-svn/unstable/``
-  
+
    This should bring in both upstream and packaging changes for the new
    release, and it's updated as part of the bzr-svn release process.
 
