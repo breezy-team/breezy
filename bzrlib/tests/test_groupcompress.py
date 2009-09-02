@@ -811,15 +811,19 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     _texts = {
         ('key1',): "this is a text\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key2',): "another text\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key3',): "yet another text which won't be extracted\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key4',): "this will be extracted\n"
                    "but references most of its bytes from\n"
                    "yet another text which won't be extracted\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
     }
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
@@ -836,6 +840,13 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
     def add_key_to_manager(self, key, locations, block, manager):
         start, end = locations[key]
         manager.add_factory(key, (), start, end)
+
+    def make_block_and_full_manager(self, texts):
+        locations, block = self.make_block(texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        for key in sorted(texts):
+            self.add_key_to_manager(key, locations, block, manager)
+        return block, manager
 
     def test_get_fulltexts(self):
         locations, block = self.make_block(self._texts)
@@ -934,13 +945,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key1',), ('key4',)], result_order)
 
     def test__check_rebuild_no_changes(self):
-        locations, block = self.make_block(self._texts)
-        manager = groupcompress._LazyGroupContentManager(block)
-        # Request all the keys, which ensures that we won't rebuild
-        self.add_key_to_manager(('key1',), locations, block, manager)
-        self.add_key_to_manager(('key2',), locations, block, manager)
-        self.add_key_to_manager(('key3',), locations, block, manager)
-        self.add_key_to_manager(('key4',), locations, block, manager)
+        block, manager = self.make_block_and_full_manager(self._texts)
         manager._check_rebuild_block()
         self.assertIs(block, manager._block)
 
@@ -971,3 +976,50 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(('key4',), record.key)
             self.assertEqual(self._texts[record.key],
                              record.get_bytes_as('fulltext'))
+
+    def test_check_is_well_utilized_all_keys(self):
+        block, manager = self.make_block_and_full_manager(self._texts)
+        self.assertFalse(manager.check_is_well_utilized())
+        # Though we can fake it by changing the recommended minimum size
+        manager._full_enough_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+        # Setting it just above causes it to fail
+        manager._full_enough_block_size = block._content_length + 1
+        self.assertFalse(manager.check_is_well_utilized())
+        # Setting the mixed-block size doesn't do anything, because the content
+        # is considered to not be 'mixed'
+        manager._full_enough_mixed_block_size = block._content_length
+        self.assertFalse(manager.check_is_well_utilized())
+
+    def test_check_is_well_utilized_mixed_keys(self):
+        texts = {}
+        f1k1 = ('f1', 'k1')
+        f1k2 = ('f1', 'k2')
+        f2k1 = ('f2', 'k1')
+        f2k2 = ('f2', 'k2')
+        texts[f1k1] = self._texts[('key1',)]
+        texts[f1k2] = self._texts[('key2',)]
+        texts[f2k1] = self._texts[('key3',)]
+        texts[f2k2] = self._texts[('key4',)]
+        block, manager = self.make_block_and_full_manager(texts)
+        self.assertFalse(manager.check_is_well_utilized())
+        manager._full_enough_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+        manager._full_enough_block_size = block._content_length + 1
+        self.assertFalse(manager.check_is_well_utilized())
+        manager._full_enough_mixed_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+
+    def test_check_is_well_utilized_partial_use(self):
+        locations, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        manager._full_enough_block_size = block._content_length
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        # Just using the content from key1 and 2 is not enough to be considered
+        # 'complete'
+        self.assertFalse(manager.check_is_well_utilized())
+        # However if we add key3, then we have enough, as we only require 75%
+        # consumption
+        self.add_key_to_manager(('key4',), locations, block, manager)
+        self.assertTrue(manager.check_is_well_utilized())

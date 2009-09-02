@@ -468,6 +468,14 @@ class _LazyGroupCompressFactory(object):
 class _LazyGroupContentManager(object):
     """This manages a group of _LazyGroupCompressFactory objects."""
 
+    _max_cut_fraction = 0.75 # We allow a block to be trimmed to 75% of
+                             # current size, and still be considered
+                             # resuable
+    _full_block_size = 4*1024*1024
+    _full_mixed_block_size = 2*1024*1024
+    _full_enough_block_size = 3*1024*1024 # size at which we won't repack
+    _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
+
     def __init__(self, block):
         self._block = block
         # We need to preserve the ordering
@@ -587,10 +595,10 @@ class _LazyGroupContentManager(object):
             # A block of length 1 is never considered 'well utilized' :)
             return False
         action, last_byte_used, total_bytes_used = self._check_rebuild_action()
-        if action is not None or total_bytes_used < self._block._content_length:
-            # This block wants to trim itself somehow, which inherently means
-            # that it is under-utilized, since it holds data that isn't being
-            # referenced
+        block_size = self._block._content_length
+        if total_bytes_used < block_size * self._max_cut_fraction:
+            # This block wants to trim itself small enough that we want to
+            # consider it under-utilized.
             return False
         # TODO: This code is meant to be the twin of _insert_record_stream's
         #       'start_new_block' logic. It would probably be better to factor
@@ -607,7 +615,7 @@ class _LazyGroupContentManager(object):
         # object, it may actually be under-utilized. However, given that this
         # is 'pack-on-the-fly' it is probably reasonable to not repack large
         # contet blobs on-the-fly.
-        if self._block._content_length >= 3*1024*1024:
+        if block_size >= self._full_enough_block_size:
             return True
         # If a block is <3MB, it still may be considered 'full' if it contains
         # mixed content. The current rule is 2MB of mixed content is considered
@@ -620,7 +628,7 @@ class _LazyGroupContentManager(object):
                 common_prefix = prefix
             elif prefix != common_prefix:
                 # Mixed content, check the size appropriately
-                if self._block._content_length >= 2*768*1024: #1.5MB
+                if block_size >= self._full_enough_mixed_block_size:
                     return True
                 break
         # The content failed both the mixed check and the single-content check
