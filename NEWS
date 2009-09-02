@@ -17,7 +17,10 @@ Bug Fixes
   (John Arbash Meinel, #419241)
 
 * SmartMedium now correctly handles EINTR, which most noticeably occurs
-  if a smart server operation is interrupted by the debugger.
+  if a smart server operation is interrupted by the debugger, so you can
+  continue from the debugger and the process continues.  However, note
+  that pressing C-\ in the shell may still kill the SSH process, which is
+  <https://bugs.launchpad.net/bugs/162502>.
   (Martin Pool, #341535)
 
 
