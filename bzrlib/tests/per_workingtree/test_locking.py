@@ -16,11 +16,14 @@
 
 """Tests for the (un)lock interfaces on all working tree implemenations."""
 
+import sys
+
 from bzrlib import (
     branch,
     errors,
     lockdir,
     )
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -105,6 +108,15 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
 
         :param methodname: The lock method to use to establish locks.
         """
+        if sys.platform == "win32":
+            raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This helper takes a write lock on the source tree, then opens a
+        # second copy and tries to grab a read lock. This works on Unix and is
+        # a reasonable way to detect when the file is actually written to, but
+        # it won't work (as a test) on Windows. It might be nice to instead
+        # stub out the functions used to write and that way do both less work
+        # and also be able to execute on Windows.
+        self.thisFailsStrictLockCheck()
         # when unlocking the last lock count from tree_write_lock,
         # the tree should do a flush().
         # we test that by changing the inventory using set_root_id
@@ -128,6 +140,8 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         tree.set_root_id('new-root')
         # to detect that the inventory is written by unlock, we
         # first check that it was not written yet.
+        # TODO: This requires taking a read lock while we are holding the above
+        #       write lock, which shouldn't actually be possible
         reference_tree = tree.bzrdir.open_workingtree()
         self.assertEqual(old_root, reference_tree.get_root_id())
         # now unlock the second held lock, which should do nothing.

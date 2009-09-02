@@ -364,6 +364,9 @@ def _translate_error(err):
         return ('FileExists', err.path)
     elif isinstance(err, errors.DirectoryNotEmpty):
         return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.IncompatibleRepositories):
+        return ('IncompatibleRepositories', str(err.source), str(err.target),
+            str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
@@ -553,6 +556,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
 request_handlers.register_lazy(
+    'Repository.insert_stream_1.19', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_19')
+request_handlers.register_lazy(
     'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
@@ -569,6 +574,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')
+request_handlers.register_lazy(
+    'Repository.get_stream_1.19', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetStream_1_19')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')

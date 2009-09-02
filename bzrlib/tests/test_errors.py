@@ -1,6 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
-#            and others
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +16,9 @@
 
 """Tests for the formatting and construction of errors."""
 
+import socket
 import sys
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -669,3 +669,10 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat')
+
+    def test_cannot_bind_address(self):
+        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        e = errors.CannotBindAddress('example.com', 22,
+            socket.error(13, 'Permission denied'))
+        self.assertContainsRe(str(e),
+            r'Cannot bind address "example\.com:22":.*Permission denied')
