@@ -28,8 +28,9 @@ To get started, it's as simple as running::
     bzr upload sftp://user@host/location/on/webserver
 
 This will initially upload the whole working tree, and leave a file on the
-remote location indicating the last revision that was uploaded, in order to 
-avoid uploading unnecessary information the next time.
+remote location indicating the last revision that was uploaded
+(.bzr-upload.revid), in order to avoid uploading unnecessary information
+the next time.
 
 If you would like to upload a specific revision, you just do:
 
@@ -41,6 +42,25 @@ first time, so you don't need to specify it every time.
 If you need to re-upload the whole working tree for some reason, you can:
 
     bzr upload --full sftp://user@host/location/on/webserver
+
+
+If the layout of your remote server is such that you can't write in the
+root directory but only in the directories inside that root, you will need
+to use the 'upload_revid_location' configuration variable to specify the
+relative path to be used. That configuration variable can be specified in
+locations.conf or branch.conf.
+
+For example, given the following layout:
+
+  Project/
+    private/
+    public/
+
+you may have write access in 'private' and 'public' but in 'Project'
+itself. In that case, you can add the following in your locations.conf or
+branch.conf file:
+
+  upload_revid_location = private/.bzr-upload.revid
 
 
 Automatically Uploading

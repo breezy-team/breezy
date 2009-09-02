@@ -38,9 +38,9 @@ from bzrlib.tests import (
     )
 
 
+from bzrlib.plugins import upload
 from bzrlib.plugins.upload import (
     cmd_upload,
-    BzrUploader,
     get_upload_auto,
     CannotUploadToWorkingTreeError,
     )
@@ -426,6 +426,25 @@ class TestUploadMixin(UploadUtilsMixin):
         self.tree.commit("Add directory")
         self.do_full_upload(directory='branch/foo')
 
+    def test_upload_revid_path_in_dir(self):
+        self.make_branch_and_working_tree()
+        self.add_dir('dir')
+        self.add_file('dir/goodbye', 'baz')
+
+        revid_path = 'dir/revid-path'
+        upload.set_upload_revid_location(self.tree.branch, revid_path)
+        self.failIfUpFileExists(revid_path)
+
+        self.do_full_upload()
+
+        self.add_file('dir/hello', 'foo')
+
+        self.do_upload()
+
+        self.failUnlessUpFileExists(revid_path)
+        self.assertUpFileEqual('baz', 'dir/goodbye')
+        self.assertUpFileEqual('foo', 'dir/hello')
+
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
@@ -436,7 +455,8 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        self.failUnlessUpFileExists(BzrUploader.bzr_upload_revid_file_name)
+        revid_path = upload.get_upload_revid_location(self.tree.branch)
+        self.failUnlessUpFileExists(revid_path)
 
     def test_invalid_revspec(self):
         self.make_branch_and_working_tree()
@@ -532,7 +552,8 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.make_branch_and_working_tree()
         self.add_file('hello', 'bar')
 
-        self.failIfUpFileExists(BzrUploader.bzr_upload_revid_file_name)
+        revid_path = upload.get_upload_revid_location(self.tree.branch)
+        self.failIfUpFileExists(revid_path)
 
         self.do_upload()
 

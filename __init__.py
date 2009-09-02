@@ -79,6 +79,19 @@ def set_upload_location(branch, location):
     _set_branch_option(branch, 'upload_location', location)
 
 
+# FIXME: Add more tests around invalid paths used here or relative paths that
+# doesn't exist on remote (if only to get proper error messages)
+def get_upload_revid_location(branch):
+    loc =  _get_branch_option(branch, 'upload_revid_location')
+    if loc is None:
+        loc = '.bzr-upload.revid'
+    return loc
+
+
+def set_upload_revid_location(branch, location):
+    _set_branch_option(branch, 'upload_revid_location', location)
+
+
 def get_upload_auto(branch):
     auto = branch.get_config().get_user_option_as_bool('upload_auto')
     if auto is None:
@@ -110,7 +123,7 @@ def set_upload_auto_quiet(branch, quiet):
 class BzrUploader(object):
 
     def __init__(self, branch, to_transport, outf, tree, rev_id,
-            quiet=False):
+                 quiet=False):
         self.branch = branch
         self.to_transport = to_transport
         self.outf = outf
@@ -120,14 +133,14 @@ class BzrUploader(object):
         self._pending_deletions = []
         self._pending_renames = []
 
-    bzr_upload_revid_file_name = '.bzr-upload.revid'
-
     def set_uploaded_revid(self, rev_id):
         # XXX: Add tests for concurrent updates, etc.
-        self.to_transport.put_bytes(self.bzr_upload_revid_file_name, rev_id)
+        revid_path = get_upload_revid_location(self.branch)
+        self.to_transport.put_bytes(revid_path, rev_id)
 
     def get_uploaded_revid(self):
-        return self.to_transport.get_bytes(self.bzr_upload_revid_file_name)
+        revid_path = get_upload_revid_location(self.branch)
+        return self.to_transport.get_bytes(revid_path)
 
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
@@ -429,7 +442,7 @@ class cmd_upload(commands.Command):
         tree = branch.repository.revision_tree(rev_id)
 
         uploader = BzrUploader(branch, to_transport, self.outf, tree,
-                rev_id, quiet=quiet)
+                               rev_id, quiet=quiet)
 
         if full:
             uploader.upload_full_tree()
