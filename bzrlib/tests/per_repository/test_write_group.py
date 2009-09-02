@@ -451,6 +451,9 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         reopened_repo.abort_write_group()
 
     def test_missing_chk_root_for_parent_inventory(self):
+        """commit_write_group fails with BzrCheckError when the chk root record
+        for a parent inventory of a new revision is missing.
+        """
         builder = self.make_branch_builder('simple-branch')
         builder.build_snapshot('A-id', None, [
             ('add', ('', 'root-id', 'directory', None)),
