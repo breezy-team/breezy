@@ -1222,7 +1222,7 @@ class Repository(object):
                     for record in getattr(self, kind).check(keys=keys[kind]):
                         if record.storage_kind == 'absent':
                             checker._report_items.append(
-                                'Missing inventory {%s}' % (record.key,))
+                                'Missing %s {%s}' % (kind, record.key,))
                         else:
                             last_object = self._check_record(kind, record,
                                 checker, last_object, current_keys[(kind,) + record.key])
@@ -3844,6 +3844,9 @@ class InterDifferingSerializer(InterRepository):
                 possible_trees.append((basis_id, cache[basis_id]))
             basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
                                                            possible_trees)
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
@@ -3878,9 +3881,6 @@ class InterDifferingSerializer(InterRepository):
                     if entry.revision == file_revision:
                         texts_possibly_new_in_tree.remove(file_key)
             text_keys.update(texts_possibly_new_in_tree)
-            revision = self.source.get_revision(current_revision_id)
-            pending_deltas.append((basis_id, delta,
-                current_revision_id, revision.parent_ids))
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id

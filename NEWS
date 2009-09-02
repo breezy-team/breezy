@@ -12,17 +12,43 @@ bzr 2.0rc2 (not released yet)
 Bug Fixes
 *********
 
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
+
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
+* ``bzr log stacked-branch`` shows the full log including
+  revisions that are in the fallback repository. (Regressed in 2.0rc1).
+  (John Arbash Meinel, #419241)
+
 * Fix a potential segmentation fault when doing 'log' of a branch that had
   ghosts in its mainline.  (Evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
 
-* SmartMedium now correctly handles EINTR, which most noticeably occurs
-  if a smart server operation is interrupted by the debugger, so you can
-  continue from the debugger and the process continues.  However, note
-  that pressing C-\ in the shell may still kill the SSH process, which is
-  <https://bugs.launchpad.net/bugs/162502>.
-  (Martin Pool, #341535)
+* Fix a segmentation fault when computing the ``merge_sort`` of a graph
+  that has a ghost in the mainline ancestry.
+  (John Arbash Meinel, #419241)
 
+* ``groupcompress`` sort order is now more stable, rather than relying on
+  ``topo_sort`` ordering. The implementation is now
+  ``KnownGraph.gc_sort``. (John Arbash Meinel)
+
+* Local data conversion will generate correct deltas. This is a critical
+  bugfix vs 2.0rc1, and all 2.0rc1 users should upgrade to 2.0rc2 before
+  converting repositories. (Robert Collins, #422849)
+
+Documentation
+*************
+
+* The main table of contents now provides links to the new Migration Docs
+  and Plugins Guide. (Ian Clatworthy)
 
 bzr 2.0rc1
 ##########

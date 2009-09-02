@@ -97,6 +97,10 @@ class KnownGraph(object):
         return [node for node in self._nodes.itervalues()
                 if not node.parent_keys]
 
+    def _find_tips(self):
+        return [node for node in self._nodes.itervalues()
+                      if not node.child_keys]
+
     def _find_gdfo(self):
         nodes = self._nodes
         known_parent_gdfos = {}
@@ -217,6 +221,51 @@ class KnownGraph(object):
                     num_seen_parents[child_key] = seen_parents
         # We started from the parents, so we don't need to do anymore work
         return topo_order
+
+    def gc_sort(self):
+        """Return a reverse topological ordering which is 'stable'.
+
+        There are a few constraints:
+          1) Reverse topological (all children before all parents)
+          2) Grouped by prefix
+          3) 'stable' sorting, so that we get the same result, independent of
+             machine, or extra data.
+        To do this, we use the same basic algorithm as topo_sort, but when we
+        aren't sure what node to access next, we sort them lexicographically.
+        """
+        tips = self._find_tips()
+        # Split the tips based on prefix
+        prefix_tips = {}
+        for node in tips:
+            if node.key.__class__ is str or len(node.key) == 1:
+                prefix = ''
+            else:
+                prefix = node.key[0]
+            prefix_tips.setdefault(prefix, []).append(node)
+
+        num_seen_children = dict.fromkeys(self._nodes, 0)
+
+        result = []
+        for prefix in sorted(prefix_tips):
+            pending = sorted(prefix_tips[prefix], key=lambda n:n.key,
+                             reverse=True)
+            while pending:
+                node = pending.pop()
+                if node.parent_keys is None:
+                    # Ghost node, skip it
+                    continue
+                result.append(node.key)
+                for parent_key in sorted(node.parent_keys, reverse=True):
+                    parent_node = self._nodes[parent_key]
+                    seen_children = num_seen_children[parent_key] + 1
+                    if seen_children == len(parent_node.child_keys):
+                        # All children have been processed, enqueue this parent
+                        pending.append(parent_node)
+                        # This has been queued up, stop tracking it
+                        del num_seen_children[parent_key]
+                    else:
+                        num_seen_children[parent_key] = seen_children
+        return result
 
     def merge_sort(self, tip_key):
         """Compute the merge sorted graph output."""
