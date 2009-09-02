@@ -596,25 +596,35 @@ class _LazyGroupContentManager(object):
         #       'start_new_block' logic. It would probably be better to factor
         #       out that logic into a shared location, so that it stays
         #       together better
-        if self._block._content_length >= 4*1024*1024:
-            # This only violates the 'large content grows to 2x single content
-            # size' rule. However most of that is probably caught by the
-            # 'len(self._factories) == 1' check.
+        # We currently assume a block is properly utilized whenever it is >75%
+        # of the size of a 'full' block. In normal operation, a block is
+        # considered full when it hits 4MB of same-file content. So any block
+        # >3MB is 'full enough'.
+        # The only time this isn't true is when a given block has large-object
+        # content. (a single file >4MB, etc.)
+        # Under these circumstances, we allow a block to grow to
+        # 2 x largest_content.  Which means that if a given block had a large
+        # object, it may actually be under-utilized. However, given that this
+        # is 'pack-on-the-fly' it is probably reasonable to not repack large
+        # contet blobs on-the-fly.
+        if self._block._content_length >= 3*1024*1024:
             return True
-        # TODO: We can get the raw content's real size from the stored data. We
-        #       have to zlib.decompress it, but we don't have to apply the deltas.
+        # If a block is <3MB, it still may be considered 'full' if it contains
+        # mixed content. The current rule is 2MB of mixed content is considered
+        # full. So check to see if this block contains mixed content, and
+        # set the threshold appropriately.
         common_prefix = None
         for factory in self._factories:
             prefix = factory.key[:-1]
             if common_prefix is None:
                 common_prefix = prefix
             elif prefix != common_prefix:
-                # No common prefix
-                common_prefix = None
+                # Mixed content, check the size appropriately
+                if self._block._content_length >= 2*768*1024: #1.5MB
+                    return True
                 break
-        if common_prefix is None and self._block._content_length >= 2*1024*1024:
-            # Mixed content blocks are capped at 2MB
-            return True
+        # The content failed both the mixed check and the single-content check
+        # so obviously it is not fully utilized
         return False
 
     def _check_rebuild_block(self):
