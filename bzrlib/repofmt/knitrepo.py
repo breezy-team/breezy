@@ -54,7 +54,7 @@ class _KnitParentsProvider(object):
         return 'KnitParentsProvider(%r)' % self._knit
 
     def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         parent_map = {}
         for revision_id in keys:
             if revision_id is None:
@@ -85,7 +85,7 @@ class _KnitsParentsProvider(object):
         return 'KnitsParentsProvider(%r)' % self._knit
 
     def get_parent_map(self, keys):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         parent_map = self._knit.get_parent_map(
             [self._prefix + (key,) for key in keys])
         result = {}
@@ -229,24 +229,29 @@ class KnitRepository(MetaDirRepository):
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
 
-    def _find_inconsistent_revision_parents(self):
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         """Find revisions with different parent lists in the revision object
         and in the index graph.
 
+        :param revisions_iterator: None, or an iterator of (revid,
+            Revision-or-None). This iterator controls the revisions checked.
         :returns: an iterator yielding tuples of (revison-id, parents-in-index,
             parents-in-revision).
         """
         if not self.is_locked():
             raise AssertionError()
         vf = self.revisions
-        for index_version in vf.keys():
-            parent_map = vf.get_parent_map([index_version])
+        if revisions_iterator is None:
+            revisions_iterator = self._iter_revisions(None)
+        for revid, revision in revisions_iterator:
+            if revision is None:
+                pass
+            parent_map = vf.get_parent_map([(revid,)])
             parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[index_version])
-            revision = self.get_revision(index_version[-1])
+                parent_map[(revid,)])
             parents_according_to_revision = tuple(revision.parent_ids)
             if parents_according_to_index != parents_according_to_revision:
-                yield (index_version[-1], parents_according_to_index,
+                yield (revid, parents_according_to_index,
                     parents_according_to_revision)
 
     def _check_for_inconsistent_revision_parents(self):
@@ -419,9 +424,6 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 1"
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormatKnit3(RepositoryFormatKnit):
     """Bzr repository knit format 3.
@@ -454,14 +456,6 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
-        if not getattr(target_format, 'supports_tree_reference', False):
-            raise errors.BadConversionTarget(
-                'Does not support nested trees', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""
@@ -503,11 +497,6 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
         pass
 
     _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def check_conversion_target(self, target_format):
-        if not target_format.rich_root_data:
-            raise errors.BadConversionTarget(
-                'Does not support rich root data.', target_format)
 
     def get_format_string(self):
         """See RepositoryFormat.get_format_string()."""

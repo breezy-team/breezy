@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,10 +20,9 @@ from bzrlib import (
     debug,
     errors,
     revision,
-    symbol_versioning,
     trace,
-    tsort,
     )
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 
@@ -60,18 +59,25 @@ class DictParentsProvider(object):
         return 'DictParentsProvider(%r)' % self.ancestry
 
     def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
+        """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+@deprecated_function(deprecated_in((1, 16, 0)))
+def _StackedParentsProvider(*args, **kwargs):
+    return StackedParentsProvider(*args, **kwargs)
 
-class _StackedParentsProvider(object):
-
+class StackedParentsProvider(object):
+    """A parents provider which stacks (or unions) multiple providers.
+    
+    The providers are queries in the order of the provided parent_providers.
+    """
+    
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "_StackedParentsProvider(%r)" % self._parent_providers
+        return "%s(%r)" % (self.__class__.__name__, self._parent_providers)
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -148,7 +154,7 @@ class CachingParentsProvider(object):
         return dict(self._cache)
 
     def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map."""
+        """See StackedParentsProvider.get_parent_map."""
         cache = self._cache
         if cache is None:
             cache = self._get_parent_map(keys)
@@ -303,6 +309,27 @@ class Graph(object):
         # We reached a known revision, so just add in how many steps it took to
         # get there.
         return known_revnos[cur_tip] + num_steps
+
+    def find_lefthand_distances(self, keys):
+        """Find the distance to null for all the keys in keys.
+
+        :param keys: keys to lookup.
+        :return: A dict key->distance for all of keys.
+        """
+        # Optimisable by concurrent searching, but a random spread should get
+        # some sort of hit rate.
+        result = {}
+        known_revnos = []
+        ghosts = []
+        for key in keys:
+            try:
+                known_revnos.append(
+                    (key, self.find_distance_to_null(key, known_revnos)))
+            except errors.GhostRevisionsHaveNoRevno:
+                ghosts.append(key)
+        for key in ghosts:
+            known_revnos.append((key, -1))
+        return dict(known_revnos)
 
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
@@ -898,6 +925,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
+        from bzrlib import tsort
         sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
@@ -1648,3 +1676,10 @@ def collapse_linear_regions(parent_map):
             removed.add(node)
 
     return result
+
+
+_counters = [0,0,0,0,0,0,0]
+try:
+    from bzrlib._known_graph_pyx import KnownGraph
+except ImportError:
+    from bzrlib._known_graph_py import KnownGraph

@@ -70,7 +70,6 @@ from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     local,
-    remote as remote_transport,
     )
 from bzrlib.weave import Weave
 """)
@@ -78,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -129,9 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -1234,7 +1241,7 @@ class BzrDir(object):
         return result
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
-        remember=False):
+        remember=False, create_prefix=False):
         """Push the source branch into this BzrDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
@@ -1385,6 +1392,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -1631,6 +1641,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
+        # XXX: this shouldn't implicitly create the directory if it's just
+        # promising to get a transport -- mbp 20090727
         if branch_format is None:
             return self.transport.clone('branch')
         try:
@@ -2358,26 +2370,97 @@ class BzrDirMetaFormat1(BzrDirFormat):
     def set_branch_format(self, format):
         self._branch_format = format
 
-    def require_stacking(self):
-        if not self.get_branch_format().supports_stacking():
-            # We need to make a stacked branch, but the default format for the
-            # target doesn't support stacking.  So force a branch that *can*
-            # support stacking.
-            from bzrlib.branch import BzrBranchFormat7
-            branch_format = BzrBranchFormat7()
-            self.set_branch_format(branch_format)
-            mutter("using %r for stacking" % (branch_format,))
-            from bzrlib.repofmt import pack_repo
-            if self.repository_format.rich_root_data:
-                bzrdir_format_name = '1.6.1-rich-root'
-                repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+    def require_stacking(self, stack_on=None, possible_transports=None,
+            _skip_repo=False):
+        """We have a request to stack, try to ensure the formats support it.
+
+        :param stack_on: If supplied, it is the URL to a branch that we want to
+            stack on. Check to see if that format supports stacking before
+            forcing an upgrade.
+        """
+        # Stacking is desired. requested by the target, but does the place it
+        # points at support stacking? If it doesn't then we should
+        # not implicitly upgrade. We check this here.
+        new_repo_format = None
+        new_branch_format = None
+
+        # a bit of state for get_target_branch so that we don't try to open it
+        # 2 times, for both repo *and* branch
+        target = [None, False, None] # target_branch, checked, upgrade anyway
+        def get_target_branch():
+            if target[1]:
+                # We've checked, don't check again
+                return target
+            if stack_on is None:
+                # No target format, that means we want to force upgrading
+                target[:] = [None, True, True]
+                return target
+            try:
+                target_dir = BzrDir.open(stack_on,
+                    possible_transports=possible_transports)
+            except errors.NotBranchError:
+                # Nothing there, don't change formats
+                target[:] = [None, True, False]
+                return target
+            except errors.JailBreak:
+                # JailBreak, JFDI and upgrade anyway
+                target[:] = [None, True, True]
+                return target
+            try:
+                target_branch = target_dir.open_branch()
+            except errors.NotBranchError:
+                # No branch, don't upgrade formats
+                target[:] = [None, True, False]
+                return target
+            target[:] = [target_branch, True, False]
+            return target
+
+        if (not _skip_repo and
+                 not self.repository_format.supports_external_lookups):
+            # We need to upgrade the Repository.
+            target_branch, _, do_upgrade = get_target_branch()
+            if target_branch is None:
+                # We don't have a target branch, should we upgrade anyway?
+                if do_upgrade:
+                    # stack_on is inaccessible, JFDI.
+                    # TODO: bad monkey, hard-coded formats...
+                    if self.repository_format.rich_root_data:
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+                    else:
+                        new_repo_format = pack_repo.RepositoryFormatKnitPack5()
             else:
-                bzrdir_format_name = '1.6'
-                repo_format = pack_repo.RepositoryFormatKnitPack5()
-            note('Source format does not support stacking, using format:'
-                 ' \'%s\'\n  %s\n',
-                 bzrdir_format_name, repo_format.get_format_description())
-            self.repository_format = repo_format
+                # If the target already supports stacking, then we know the
+                # project is already able to use stacking, so auto-upgrade
+                # for them
+                new_repo_format = target_branch.repository._format
+                if not new_repo_format.supports_external_lookups:
+                    # target doesn't, source doesn't, so don't auto upgrade
+                    # repo
+                    new_repo_format = None
+            if new_repo_format is not None:
+                self.repository_format = new_repo_format
+                note('Source repository format does not support stacking,'
+                     ' using format:\n  %s',
+                     new_repo_format.get_format_description())
+
+        if not self.get_branch_format().supports_stacking():
+            # We just checked the repo, now lets check if we need to
+            # upgrade the branch format
+            target_branch, _, do_upgrade = get_target_branch()
+            if target_branch is None:
+                if do_upgrade:
+                    # TODO: bad monkey, hard-coded formats...
+                    new_branch_format = branch.BzrBranchFormat7()
+            else:
+                new_branch_format = target_branch._format
+                if not new_branch_format.supports_stacking():
+                    new_branch_format = None
+            if new_branch_format is not None:
+                # Does support stacking, use its format.
+                self.set_branch_format(new_branch_format)
+                note('Source branch format does not support stacking,'
+                     ' using format:\n  %s',
+                     new_branch_format.get_format_description())
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -2699,7 +2782,7 @@ class ConvertBzrDir4To5(Converter):
         del ie.text_id
 
     def get_parent_map(self, revision_ids):
-        """See graph._StackedParentsProvider.get_parent_map"""
+        """See graph.StackedParentsProvider.get_parent_map"""
         return dict((revision_id, self.revisions[revision_id])
                     for revision_id in revision_ids
                      if revision_id in self.revisions)
@@ -2963,7 +3046,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
@@ -3106,7 +3190,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         if not do_vfs:
             client = _SmartClient(client_medium)
             path = client.remote_path_from_transport(transport)
-            if client_medium._is_remote_before((1, 15)):
+            if client_medium._is_remote_before((1, 16)):
                 do_vfs = True
         if do_vfs:
             # TODO: lookup the local format from a server hint.
@@ -3146,9 +3230,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
             self._network_name = \
             BzrDirFormat.get_default_format().network_name()
         try:
-            response = client.call('BzrDirFormat.initialize_ex',
+            response = client.call('BzrDirFormat.initialize_ex_1.16',
                 self.network_name(), path, *args)
         except errors.UnknownSmartMethod:
+            client._medium._remember_remote_is_before((1,16))
             local_dir_format = BzrDirMetaFormat1()
             self._supply_sub_formats_to(local_dir_format)
             return local_dir_format.initialize_on_transport_ex(transport,
@@ -3180,6 +3265,9 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
                 repo_bzr = bzrdir
             final_stack = response[8] or None
             final_stack_pwd = response[9] or None
+            if final_stack_pwd:
+                final_stack_pwd = urlutils.join(
+                    transport.base, final_stack_pwd)
             remote_repo = remote.RemoteRepository(repo_bzr, repo_format)
             if len(response) > 10:
                 # Updated server verb that locks remotely.
@@ -3195,6 +3283,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             remote_repo = None
             policy = None
+        bzrdir._format.set_branch_format(self.get_branch_format())
+        if require_stacking:
+            # The repo has already been created, but we need to make sure that
+            # we'll make a stackable branch.
+            bzrdir._format.require_stacking(_skip_repo=True)
         return remote_repo, bzrdir, require_stacking, policy
 
     def _open(self, transport):
@@ -3376,8 +3469,9 @@ class BzrDirFormatRegistry(registry.Registry):
             if info.native:
                 help = '(native) ' + help
             return ':%s:\n%s\n\n' % (key,
-                    textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    '))
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
         if default_realkey is not None:
             output += wrapped(default_realkey, '(default) %s' % default_help,
                               self.get_info('default'))
@@ -3462,6 +3556,10 @@ class RepositoryAcquisitionPolicy(object):
             if self._require_stacking:
                 raise
 
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
+
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
         if self._stack_on is None:
@@ -3532,54 +3630,9 @@ class CreateRepository(RepositoryAcquisitionPolicy):
         """
         stack_on = self._get_full_stack_on()
         if stack_on:
-            # Stacking is desired. requested by the target, but does the place it
-            # points at support stacking? If it doesn't then we should
-            # not implicitly upgrade. We check this here.
             format = self._bzrdir._format
-            if not (format.repository_format.supports_external_lookups
-                and format.get_branch_format().supports_stacking()):
-                # May need to upgrade - but only do if the target also
-                # supports stacking. Note that this currently wastes
-                # network round trips to check - but we only do this
-                # when the source can't stack so it will fade away
-                # as people do upgrade.
-                branch_format = None
-                repo_format = None
-                try:
-                    target_dir = BzrDir.open(stack_on,
-                        possible_transports=[self._bzrdir.root_transport])
-                except errors.NotBranchError:
-                    # Nothing there, don't change formats
-                    pass
-                except errors.JailBreak:
-                    # stack_on is inaccessible, JFDI.
-                    if format.repository_format.rich_root_data:
-                        repo_format = pack_repo.RepositoryFormatKnitPack6RichRoot()
-                    else:
-                        repo_format = pack_repo.RepositoryFormatKnitPack6()
-                    branch_format = branch.BzrBranchFormat7()
-                else:
-                    try:
-                        target_branch = target_dir.open_branch()
-                    except errors.NotBranchError:
-                        # No branch, don't change formats
-                        pass
-                    else:
-                        branch_format = target_branch._format
-                        repo_format = target_branch.repository._format
-                        if not (branch_format.supports_stacking()
-                            and repo_format.supports_external_lookups):
-                            # Doesn't stack itself, don't force an upgrade
-                            branch_format = None
-                            repo_format = None
-                if branch_format and repo_format:
-                    # Does support stacking, use its format.
-                    format.repository_format = repo_format
-                    format.set_branch_format(branch_format)
-                    note('Source format does not support stacking, '
-                        'using format: \'%s\'\n  %s\n',
-                        branch_format.get_format_description(),
-                        repo_format.get_format_description())
+            format.require_stacking(stack_on=stack_on,
+                                    possible_transports=[self._bzrdir.root_transport])
             if not self._require_stacking:
                 # We have picked up automatic stacking somewhere.
                 note('Using default stacking branch %s at %s', self._stack_on,
@@ -3792,14 +3845,38 @@ format_registry.register_metadir('development6-rich-root',
     experimental=True,
     )
 
+format_registry.register_metadir('development7-rich-root',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
+    help='pack-1.9 with 255-way hashed CHK inv, bencode revision, group compress, '
+        'rich roots. Please read '
+        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    hidden=True,
+    experimental=True,
+    )
+
+format_registry.register_metadir('2a',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    help='First format for bzr 2.0 series.\n'
+        'Uses group-compress storage.\n'
+        'Provides rich roots which are a one-way transition.\n',
+        # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
+        # 'rich roots. Supported by bzr 1.16 and later.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    experimental=True,
+    )
+
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
-    )
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')

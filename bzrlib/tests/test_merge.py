@@ -218,13 +218,15 @@ class TestMerge(TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('commit base')
         # basis_tree() is only guaranteed to be valid as long as it is actually
-        # the basis tree. This mutates the tree after grabbing basis, so go to
-        # the repository.
+        # the basis tree. This test commits to the tree after grabbing basis,
+        # so we go to the repository.
         base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_a/file', 'content_2')])
         tree_a.commit('commit other')
         other_tree = tree_a.basis_tree()
+        # 'file' is now missing but isn't altered in any commit in b so no
+        # change should be applied.
         os.unlink('tree_b/file')
         merge_inner(tree_b.branch, other_tree, base_tree, this_tree=tree_b)
 
@@ -1231,6 +1233,27 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 
 
 class TestMergerInMemory(TestMergerBase):
+
+    def test_cache_trees_with_revision_ids_None(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        merger.cache_trees_with_revision_ids([None])
+        self.assertEqual(original_cache, merger._cached_trees)
+
+    def test_cache_trees_with_revision_ids_no_revision_id(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        tree = self.make_branch_and_memory_tree('tree')
+        merger.cache_trees_with_revision_ids([tree])
+        self.assertEqual(original_cache, merger._cached_trees)
+
+    def test_cache_trees_with_revision_ids_having_revision_id(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        tree = merger.this_branch.repository.revision_tree('B-id')
+        original_cache['B-id'] = tree
+        merger.cache_trees_with_revision_ids([tree])
+        self.assertEqual(original_cache, merger._cached_trees)
 
     def test_find_base(self):
         merger = self.make_Merger(self.setup_simple_graph(), 'C-id')

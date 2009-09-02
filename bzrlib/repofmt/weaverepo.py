@@ -28,6 +28,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     xml5,
+    graph as _mod_graph,
     )
 """)
 from bzrlib import (
@@ -319,9 +320,6 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.chk_bytes = None
         return result
 
-    def check_conversion_target(self, target_format):
-        pass
-
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -494,9 +492,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 7"
 
-    def check_conversion_target(self, target_format):
-        pass
-
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
@@ -668,6 +663,13 @@ class RevisionTextStore(TextVersionedFiles):
                 continue
             result[key] = parents
         return result
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        keys = self.keys()
+        parent_map = self.get_parent_map(keys)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:

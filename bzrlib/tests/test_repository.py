@@ -31,7 +31,10 @@ from bzrlib.errors import (NotBranchError,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
-from bzrlib import graph
+from bzrlib import (
+    graph,
+    tests,
+    )
 from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex, InMemoryGraphIndex
@@ -48,8 +51,8 @@ from bzrlib.transport import (
     get_transport,
     )
 from bzrlib.transport.memory import MemoryServer
-from bzrlib.util import bencode
 from bzrlib import (
+    bencode,
     bzrdir,
     errors,
     inventory,
@@ -483,6 +486,8 @@ class DummyRepository(object):
     _serializer = None
 
     def supports_rich_root(self):
+        if self._format is not None:
+            return self._format.rich_root_data
         return False
 
     def get_graph(self):
@@ -539,11 +544,17 @@ class TestInterRepository(TestCaseWithTransport):
         # pair that it returns true on for the is_compatible static method
         # check
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
+        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_b._serializer = repo._serializer
+        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.rich_root_data = repo._format.rich_root_data
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -670,10 +681,14 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class TestDevelopment6(TestCaseWithTransport):
+class Test2a(TestCaseWithTransport):
+
+    def test_format_pack_compresses_True(self):
+        repo = self.make_repository('repo', format='2a')
+        self.assertTrue(repo._format.pack_compresses)
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="development6-rich-root")
+        tree = self.make_branch_and_tree('repo', format="2a")
         revid = tree.commit("foo")
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -684,6 +699,182 @@ class TestDevelopment6(TestCaseWithTransport):
         self.assertEqual(65536, inv.id_to_entry._root_node.maximum_size)
         self.assertEqual(65536,
             inv.parent_id_basename_to_file_id._root_node.maximum_size)
+
+    def test_autopack_unchanged_chk_nodes(self):
+        # at 20 unchanged commits, chk pages are packed that are split into
+        # two groups such that the new pack being made doesn't have all its
+        # pages in the source packs (though they are in the repository).
+        tree = self.make_branch_and_tree('tree', format='2a')
+        for pos in range(20):
+            tree.commit(str(pos))
+
+    def test_pack_with_hint(self):
+        tree = self.make_branch_and_tree('tree', format='2a')
+        # 1 commit to leave untouched
+        tree.commit('1')
+        to_keep = tree.branch.repository._pack_collection.names()
+        # 2 to combine
+        tree.commit('2')
+        tree.commit('3')
+        all = tree.branch.repository._pack_collection.names()
+        combine = list(set(all) - set(to_keep))
+        self.assertLength(3, all)
+        self.assertLength(2, combine)
+        tree.branch.repository.pack(hint=combine)
+        final = tree.branch.repository._pack_collection.names()
+        self.assertLength(2, final)
+        self.assertFalse(combine[0] in final)
+        self.assertFalse(combine[1] in final)
+        self.assertSubset(to_keep, final)
+
+    def test_stream_source_to_gc(self):
+        source = self.make_repository('source', format='2a')
+        target = self.make_repository('target', format='2a')
+        stream = source._get_source(target._format)
+        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+
+    def test_stream_source_to_non_gc(self):
+        source = self.make_repository('source', format='2a')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream = source._get_source(target._format)
+        # We don't want the child GroupCHKStreamSource
+        self.assertIs(type(stream), repository.StreamSource)
+
+    def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
+        source_builder = self.make_branch_builder('source',
+                            format='2a')
+        # We have to build a fairly large tree, so that we are sure the chk
+        # pages will have split into multiple pages.
+        entries = [('add', ('', 'a-root-id', 'directory', None))]
+        for i in 'abcdefghijklmnopqrstuvwxyz123456789':
+            for j in 'abcdefghijklmnopqrstuvwxyz123456789':
+                fname = i + j
+                fid = fname + '-id'
+                content = 'content for %s\n' % (fname,)
+                entries.append(('add', (fname, fid, 'file', content)))
+        source_builder.start_series()
+        source_builder.build_snapshot('rev-1', None, entries)
+        # Now change a few of them, so we get a few new pages for the second
+        # revision
+        source_builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('aa-id', 'new content for aa-id\n')),
+            ('modify', ('cc-id', 'new content for cc-id\n')),
+            ('modify', ('zz-id', 'new content for zz-id\n')),
+            ])
+        source_builder.finish_series()
+        source_branch = source_builder.get_branch()
+        source_branch.lock_read()
+        self.addCleanup(source_branch.unlock)
+        target = self.make_repository('target', format='2a')
+        source = source_branch.repository._get_source(target._format)
+        self.assertIsInstance(source, groupcompress_repo.GroupCHKStreamSource)
+
+        # On a regular pass, getting the inventories and chk pages for rev-2
+        # would only get the newly created chk pages
+        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
+                                    set(['rev-2']))
+        simple_chk_records = []
+        for vf_name, substream in source.get_stream(search):
+            if vf_name == 'chk_bytes':
+                for record in substream:
+                    simple_chk_records.append(record.key)
+            else:
+                for _ in substream:
+                    continue
+        # 3 pages, the root (InternalNode), + 2 pages which actually changed
+        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
+                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
+                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
+                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
+                         simple_chk_records)
+        # Now, when we do a similar call using 'get_stream_for_missing_keys'
+        # we should get a much larger set of pages.
+        missing = [('inventories', 'rev-2')]
+        full_chk_records = []
+        for vf_name, substream in source.get_stream_for_missing_keys(missing):
+            if vf_name == 'inventories':
+                for record in substream:
+                    self.assertEqual(('rev-2',), record.key)
+            elif vf_name == 'chk_bytes':
+                for record in substream:
+                    full_chk_records.append(record.key)
+            else:
+                self.fail('Should not be getting a stream of %s' % (vf_name,))
+        # We have 257 records now. This is because we have 1 root page, and 256
+        # leaf pages in a complete listing.
+        self.assertEqual(257, len(full_chk_records))
+        self.assertSubset(simple_chk_records, full_chk_records)
+
+    def test_inconsistency_fatal(self):
+        repo = self.make_repository('repo', format='2a')
+        self.assertTrue(repo.revisions._index._inconsistency_fatal)
+        self.assertFalse(repo.texts._index._inconsistency_fatal)
+        self.assertFalse(repo.inventories._index._inconsistency_fatal)
+        self.assertFalse(repo.signatures._index._inconsistency_fatal)
+        self.assertFalse(repo.chk_bytes._index._inconsistency_fatal)
+
+
+class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
+
+    def test_source_to_exact_pack_092(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='pack-0.92')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_rich_root_pack(self):
+        source = self.make_repository('source', format='rich-root-pack')
+        target = self.make_repository('target', format='rich-root-pack')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_19(self):
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_exact_pack_19_rich_root(self):
+        source = self.make_repository('source', format='1.9-rich-root')
+        target = self.make_repository('target', format='1.9-rich-root')
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_source_to_remote_exact_pack_19(self):
+        trans = self.make_smart_server('target')
+        trans.ensure_base()
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9')
+        target = repository.Repository.open(trans.base)
+        stream_source = source._get_source(target._format)
+        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+
+    def test_stream_source_to_non_exact(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='1.9')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
+
+    def test_stream_source_to_non_exact_rich_root(self):
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.9-rich-root')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
+
+    def test_source_to_remote_non_exact_pack_19(self):
+        trans = self.make_smart_server('target')
+        trans.ensure_base()
+        source = self.make_repository('source', format='1.9')
+        target = self.make_repository('target', format='1.6')
+        target = repository.Repository.open(trans.base)
+        stream_source = source._get_source(target._format)
+        self.assertIs(type(stream_source), repository.StreamSource)
+
+    def test_stream_source_to_knit(self):
+        source = self.make_repository('source', format='pack-0.92')
+        target = self.make_repository('target', format='dirstate')
+        stream = source._get_source(target._format)
+        self.assertIs(type(stream), repository.StreamSource)
 
 
 class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
@@ -825,8 +1016,17 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
-                          empty_repo.fetch, broken_repo)
+        try:
+            empty_repo.fetch(broken_repo)
+        except (errors.RevisionNotPresent, errors.BzrCheckError):
+            # Test successful: compression parent not being copied leads to
+            # error.
+            return
+        empty_repo.lock_read()
+        self.addCleanup(empty_repo.unlock)
+        text = empty_repo.texts.get_record_stream(
+            [('file2-id', 'rev3')], 'topological', True).next()
+        self.assertEqual('line\n', text.get_bytes_as('fulltext'))
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -841,7 +1041,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def make_packs_and_alt_repo(self, write_lock=False):
         """Create a pack repo with 3 packs, and access it via a second repo."""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format=self.get_format())
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('one')
@@ -1157,7 +1357,7 @@ class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
     def test_pack_optimizes_pack_order(self):
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('A', None, [
             ('add', ('', 'root-id', 'directory', None)),
@@ -1206,82 +1406,81 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.signature_index._optimize_for_size)
 
 
-class TestGCCHKPackCollection(TestCaseWithTransport):
+class TestCrossFormatPacks(TestCaseWithTransport):
 
-    def test_stream_source_to_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
-        target = self.make_repository('target', format='development6-rich-root')
-        stream = source._get_source(target._format)
-        self.assertIsInstance(stream, groupcompress_repo.GroupCHKStreamSource)
+    def log_pack(self, hint=None):
+        self.calls.append(('pack', hint))
+        self.orig_pack(hint=hint)
+        if self.expect_hint:
+            self.assertTrue(hint)
 
-    def test_stream_source_to_non_gc(self):
-        source = self.make_repository('source', format='development6-rich-root')
-        target = self.make_repository('target', format='rich-root-pack')
-        stream = source._get_source(target._format)
-        # We don't want the child GroupCHKStreamSource
-        self.assertIs(type(stream), repository.StreamSource)
+    def run_stream(self, src_fmt, target_fmt, expect_pack_called):
+        self.expect_hint = expect_pack_called
+        self.calls = []
+        source_tree = self.make_branch_and_tree('src', format=src_fmt)
+        source_tree.lock_write()
+        self.addCleanup(source_tree.unlock)
+        tip = source_tree.commit('foo')
+        target = self.make_repository('target', format=target_fmt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        source = source_tree.branch.repository._get_source(target._format)
+        self.orig_pack = target.pack
+        target.pack = self.log_pack
+        search = target.search_missing_revision_ids(
+            source_tree.branch.repository, tip)
+        stream = source.get_stream(search)
+        from_format = source_tree.branch.repository._format
+        sink = target._get_sink()
+        sink.insert_stream(stream, from_format, [])
+        if expect_pack_called:
+            self.assertLength(1, self.calls)
+        else:
+            self.assertLength(0, self.calls)
 
-    def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
-        source_builder = self.make_branch_builder('source',
-                            format='development6-rich-root')
-        # We have to build a fairly large tree, so that we are sure the chk
-        # pages will have split into multiple pages.
-        entries = [('add', ('', 'a-root-id', 'directory', None))]
-        for i in 'abcdefghijklmnopqrstuvwxyz123456789':
-            for j in 'abcdefghijklmnopqrstuvwxyz123456789':
-                fname = i + j
-                fid = fname + '-id'
-                content = 'content for %s\n' % (fname,)
-                entries.append(('add', (fname, fid, 'file', content)))
-        source_builder.start_series()
-        source_builder.build_snapshot('rev-1', None, entries)
-        # Now change a few of them, so we get a few new pages for the second
-        # revision
-        source_builder.build_snapshot('rev-2', ['rev-1'], [
-            ('modify', ('aa-id', 'new content for aa-id\n')),
-            ('modify', ('cc-id', 'new content for cc-id\n')),
-            ('modify', ('zz-id', 'new content for zz-id\n')),
-            ])
-        source_builder.finish_series()
-        source_branch = source_builder.get_branch()
-        source_branch.lock_read()
-        self.addCleanup(source_branch.unlock)
-        target = self.make_repository('target', format='development6-rich-root')
-        source = source_branch.repository._get_source(target._format)
-        self.assertIsInstance(source, groupcompress_repo.GroupCHKStreamSource)
+    def run_fetch(self, src_fmt, target_fmt, expect_pack_called):
+        self.expect_hint = expect_pack_called
+        self.calls = []
+        source_tree = self.make_branch_and_tree('src', format=src_fmt)
+        source_tree.lock_write()
+        self.addCleanup(source_tree.unlock)
+        tip = source_tree.commit('foo')
+        target = self.make_repository('target', format=target_fmt)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        source = source_tree.branch.repository
+        self.orig_pack = target.pack
+        target.pack = self.log_pack
+        target.fetch(source)
+        if expect_pack_called:
+            self.assertLength(1, self.calls)
+        else:
+            self.assertLength(0, self.calls)
 
-        # On a regular pass, getting the inventories and chk pages for rev-2
-        # would only get the newly created chk pages
-        search = graph.SearchResult(set(['rev-2']), set(['rev-1']), 1,
-                                    set(['rev-2']))
-        simple_chk_records = []
-        for vf_name, substream in source.get_stream(search):
-            if vf_name == 'chk_bytes':
-                for record in substream:
-                    simple_chk_records.append(record.key)
-            else:
-                for _ in substream:
-                    continue
-        # 3 pages, the root (InternalNode), + 2 pages which actually changed
-        self.assertEqual([('sha1:91481f539e802c76542ea5e4c83ad416bf219f73',),
-                          ('sha1:4ff91971043668583985aec83f4f0ab10a907d3f',),
-                          ('sha1:81e7324507c5ca132eedaf2d8414ee4bb2226187',),
-                          ('sha1:b101b7da280596c71a4540e9a1eeba8045985ee0',)],
-                         simple_chk_records)
-        # Now, when we do a similar call using 'get_stream_for_missing_keys'
-        # we should get a much larger set of pages.
-        missing = [('inventories', 'rev-2')]
-        full_chk_records = []
-        for vf_name, substream in source.get_stream_for_missing_keys(missing):
-            if vf_name == 'inventories':
-                for record in substream:
-                    self.assertEqual(('rev-2',), record.key)
-            elif vf_name == 'chk_bytes':
-                for record in substream:
-                    full_chk_records.append(record.key)
-            else:
-                self.fail('Should not be getting a stream of %s' % (vf_name,))
-        # We have 257 records now. This is because we have 1 root page, and 256
-        # leaf pages in a complete listing.
-        self.assertEqual(257, len(full_chk_records))
-        self.assertSubset(simple_chk_records, full_chk_records)
+    def test_sink_format_hint_no(self):
+        # When the target format says packing makes no difference, pack is not
+        # called.
+        self.run_stream('1.9', 'rich-root-pack', False)
+
+    def test_sink_format_hint_yes(self):
+        # When the target format says packing makes a difference, pack is
+        # called.
+        self.run_stream('1.9', '2a', True)
+
+    def test_sink_format_same_no(self):
+        # When the formats are the same, pack is not called.
+        self.run_stream('2a', '2a', False)
+
+    def test_IDS_format_hint_no(self):
+        # When the target format says packing makes no difference, pack is not
+        # called.
+        self.run_fetch('1.9', 'rich-root-pack', False)
+
+    def test_IDS_format_hint_yes(self):
+        # When the target format says packing makes a difference, pack is
+        # called.
+        self.run_fetch('1.9', '2a', True)
+
+    def test_IDS_format_same_no(self):
+        # When the formats are the same, pack is not called.
+        self.run_fetch('2a', '2a', False)

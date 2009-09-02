@@ -21,18 +21,22 @@ import os
 import signal
 import subprocess
 import sys
+import thread
 import threading
 
 from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
-from bzrlib.smart import medium
+from bzrlib.smart import client, medium
+from bzrlib.smart.server import SmartTCPServer
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
 
@@ -205,8 +209,7 @@ class TestBzrServe(TestCaseWithTransport):
         ssh_server = SFTPServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
-        ssh_server.setUp()
-        self.addCleanup(ssh_server.tearDown)
+        self.start_server(ssh_server)
         port = ssh_server._listener.port
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
@@ -238,4 +241,78 @@ class TestBzrServe(TestCaseWithTransport):
             ['%s serve --inet --directory=/ --allow-writes'
              % bzr_remote_path],
             self.command_executed)
+
+
+class TestCmdServeChrooting(TestCaseWithTransport):
+
+    def test_serve_tcp(self):
+        """'bzr serve' wraps the given --directory in a ChrootServer.
+
+        So requests that search up through the parent directories (like
+        find_repositoryV3) will give "not found" responses, rather than
+        InvalidURLJoin or jail break errors.
+        """
+        t = self.get_transport()
+        t.mkdir('server-root')
+        self.run_bzr_serve_then_func(
+            ['--port', '0', '--directory', t.local_abspath('server-root'),
+             '--allow-writes'],
+            self.when_server_started)
+        # The when_server_started method issued a find_repositoryV3 that should
+        # fail with 'norepository' because there are no repositories inside the
+        # --directory.
+        self.assertEqual(('norepository',), self.client_resp)
+        
+    def run_bzr_serve_then_func(self, serve_args, func, *func_args,
+            **func_kwargs):
+        """Run 'bzr serve', and run the given func in a thread once the server
+        has started.
+        
+        When 'func' terminates, the server will be terminated too.
+        """
+        # install hook
+        def on_server_start(backing_urls, tcp_server):
+            t = threading.Thread(
+                target=on_server_start_thread, args=(tcp_server,))
+            t.start()
+        def on_server_start_thread(tcp_server):
+            try:
+                # Run func
+                self.tcp_server = tcp_server
+                try:
+                    func(*func_args, **func_kwargs)
+                except Exception, e:
+                    # Log errors to make some test failures a little less
+                    # mysterious.
+                    mutter('func broke: %r', e)
+            finally:
+                # Then stop the server
+                mutter('interrupting...')
+                thread.interrupt_main()
+        SmartTCPServer.hooks.install_named_hook(
+            'server_started_ex', on_server_start,
+            'run_bzr_serve_then_func hook')
+        # start a TCP server
+        try:
+            self.run_bzr(['serve'] + list(serve_args))
+        except KeyboardInterrupt:
+            pass
+
+    def when_server_started(self):
+        # Connect to the TCP server and issue some requests and see what comes
+        # back.
+        client_medium = medium.SmartTCPClientMedium(
+            '127.0.0.1', self.tcp_server.port,
+            'bzr://localhost:%d/' % (self.tcp_server.port,))
+        smart_client = client._SmartClient(client_medium)
+        resp = smart_client.call('mkdir', 'foo', '')
+        resp = smart_client.call('BzrDirFormat.initialize', 'foo/')
+        try:
+            resp = smart_client.call('BzrDir.find_repositoryV3', 'foo/')
+        except errors.ErrorFromSmartServer, e:
+            resp = e.error_tuple
+        self.client_resp = resp
+        client_medium.disconnect()
+
+
 

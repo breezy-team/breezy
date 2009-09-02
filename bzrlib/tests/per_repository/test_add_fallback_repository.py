@@ -29,14 +29,7 @@ from bzrlib.tests.per_repository import TestCaseWithRepository
 class TestAddFallbackRepository(TestCaseWithRepository):
 
     def test_add_fallback_repository(self):
-        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
-            # RemoteRepository by default builds a default format real
-            # repository, but the default format is unstackble.  So explicitly
-            # make a stackable real repository and use that.
-            repo = self.make_repository('repo', format='1.9')
-            repo = bzrdir.BzrDir.open(self.get_url('repo')).open_repository()
-        else:
-            repo = self.make_repository('repo')
+        repo = self.make_repository('repo')
         tree = self.make_branch_and_tree('branch')
         if not repo._format.supports_external_lookups:
             self.assertRaises(errors.UnstackableRepositoryFormat,

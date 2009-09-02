@@ -25,13 +25,18 @@ from bzrlib import (
     errors,
     gpg,
     graph,
+    info,
     osutils,
     remote,
     repository,
+    xml_serializer,
     )
 from bzrlib.branch import BzrBranchFormat6
 from bzrlib.delta import TreeDelta
 from bzrlib.inventory import CommonInventory, Inventory, InventoryDirectory
+from bzrlib.repofmt.pack_repo import (
+    RepositoryFormatKnitPack5RichRootBroken,
+    )
 from bzrlib.repofmt.weaverepo import (
     RepositoryFormat5,
     RepositoryFormat6,
@@ -65,29 +70,29 @@ class TestRepositoryMakeBranchAndTree(TestCaseWithRepository):
 
 class TestRepository(TestCaseWithRepository):
 
+    def assertFormatAttribute(self, attribute, allowed_values):
+        """Assert that the format has an attribute 'attribute'."""
+        repo = self.make_repository('repo')
+        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+
     def test_attribute__fetch_order(self):
         """Test the the _fetch_order attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_order in ('topological', 'unordered'))
+        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
         """Test the the _fetch_uses_deltas attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_uses_deltas in (True, False))
+        self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format.fast_deltas in (True, False))
+        self.assertFormatAttribute('fast_deltas', (True, False))
 
     def test_attribute__fetch_reconcile(self):
         """Test the the _fetch_reconcile attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertTrue(repo._format._fetch_reconcile in (True, False))
+        self.assertFormatAttribute('_fetch_reconcile', (True, False))
+
+    def test_attribute_format_pack_compresses(self):
+        self.assertFormatAttribute('pack_compresses', (True, False))
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
@@ -150,22 +155,27 @@ class TestRepository(TestCaseWithRepository):
         """Test the basic behaviour of the text store."""
         tree = self.make_branch_and_tree('tree')
         repo = tree.branch.repository
-        file_id = ("Foo:Bar",)
+        file_id = "Foo:Bar"
+        file_key = (file_id,)
         tree.lock_write()
         try:
             self.assertEqual(set(), set(repo.texts.keys()))
-            tree.add(['foo'], file_id, ['file'])
-            tree.put_file_bytes_non_atomic(file_id[0], 'content\n')
-            revid = (tree.commit("foo"),)
+            tree.add(['foo'], [file_id], ['file'])
+            tree.put_file_bytes_non_atomic(file_id, 'content\n')
+            try:
+                rev_key = (tree.commit("foo"),)
+            except errors.IllegalPath:
+                raise TestNotApplicable('file_id %r cannot be stored on this'
+                    ' platform for this repo format' % (file_id,))
             if repo._format.rich_root_data:
-                root_commit = (tree.get_root_id(),) + revid
+                root_commit = (tree.get_root_id(),) + rev_key
                 keys = set([root_commit])
                 parents = {root_commit:()}
             else:
                 keys = set()
                 parents = {}
-            keys.add(file_id + revid)
-            parents[file_id + revid] = ()
+            keys.add(file_key + rev_key)
+            parents[file_key + rev_key] = ()
             self.assertEqual(keys, set(repo.texts.keys()))
             self.assertEqual(parents,
                 repo.texts.get_parent_map(repo.texts.keys()))
@@ -174,22 +184,23 @@ class TestRepository(TestCaseWithRepository):
         tree2 = self.make_branch_and_tree('tree2')
         tree2.pull(tree.branch)
         tree2.put_file_bytes_non_atomic('Foo:Bar', 'right\n')
-        right_id = (tree2.commit('right'),)
-        keys.add(file_id + right_id)
-        parents[file_id + right_id] = (file_id + revid,)
+        right_key = (tree2.commit('right'),)
+        keys.add(file_key + right_key)
+        parents[file_key + right_key] = (file_key + rev_key,)
         tree.put_file_bytes_non_atomic('Foo:Bar', 'left\n')
-        left_id = (tree.commit('left'),)
-        keys.add(file_id + left_id)
-        parents[file_id + left_id] = (file_id + revid,)
+        left_key = (tree.commit('left'),)
+        keys.add(file_key + left_key)
+        parents[file_key + left_key] = (file_key + rev_key,)
         tree.merge_from_branch(tree2.branch)
         tree.put_file_bytes_non_atomic('Foo:Bar', 'merged\n')
         try:
             tree.auto_resolve()
         except errors.UnsupportedOperation:
             pass
-        merge_id = (tree.commit('merged'),)
-        keys.add(file_id + merge_id)
-        parents[file_id + merge_id] = (file_id + left_id, file_id + right_id)
+        merge_key = (tree.commit('merged'),)
+        keys.add(file_key + merge_key)
+        parents[file_key + merge_key] = (file_key + left_key,
+                                         file_key + right_key)
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertEqual(keys, set(repo.texts.keys()))
@@ -527,16 +538,16 @@ class TestRepository(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         tree.commit(message, rev_id='a', allow_pointless=True)
         rev = tree.branch.repository.get_revision('a')
-        # we have to manually escape this as we dont try to
-        # roundtrip xml invalid characters at this point.
-        # when escaping is moved to the serialiser, this test
-        # can check against the literal message rather than
-        # this escaped version.
-        escaped_message, escape_count = re.subn(
-            u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
-            lambda match: match.group(0).encode('unicode_escape'),
-            message)
-        self.assertEqual(rev.message, escaped_message)
+        if tree.branch.repository._serializer.squashes_xml_invalid_characters:
+            # we have to manually escape this as we dont try to
+            # roundtrip xml invalid characters in the xml-based serializers.
+            escaped_message, escape_count = re.subn(
+                u'[^\x09\x0A\x0D\u0020-\uD7FF\uE000-\uFFFD]+',
+                lambda match: match.group(0).encode('unicode_escape'),
+                message)
+            self.assertEqual(rev.message, escaped_message)
+        else:
+            self.assertEqual(rev.message, message)
         # insist the class is unicode no matter what came in for
         # consistency.
         self.assertIsInstance(rev.message, unicode)
@@ -812,9 +823,8 @@ class TestRepository(TestCaseWithRepository):
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
+        self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()
         return remote_repo
@@ -886,14 +896,6 @@ class TestRepository(TestCaseWithRepository):
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
-    # XXX: this helper probably belongs on TestCaseWithTransport
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        return remote_transport
-
     def test_clone_to_hpss(self):
         pre_metadir_formats = [RepositoryFormat5(), RepositoryFormat6()]
         if self.repository_format in pre_metadir_formats:
@@ -906,29 +908,49 @@ class TestRepository(TestCaseWithRepository):
             local_branch.repository._format.supports_external_lookups,
             remote_branch.repository._format.supports_external_lookups)
 
-    def test_clone_unstackable_branch_preserves_stackable_repo_format(self):
-        """Cloning an unstackable branch format to a somewhere with a default
-        stack-on branch preserves the repository format.  (i.e. if the source
-        repository is stackable, the branch format is upgraded but the
-        repository format is preserved.)
+    def test_clone_stacking_policy_upgrades(self):
+        """Cloning an unstackable branch format to somewhere with a default
+        stack-on branch upgrades branch and repo to match the target and honour
+        the policy.
         """
         try:
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise TestNotApplicable('Cannot make a shared repository')
+        if isinstance(repo.bzrdir, bzrdir.BzrDirPreSplitOut):
+            raise KnownFailure("pre metadir branches do not upgrade on push "
+                "with stacking policy")
+        if isinstance(repo._format, RepositoryFormatKnitPack5RichRootBroken):
+            raise TestNotApplicable("unsupported format")
         # Make a source branch in 'repo' in an unstackable branch format
         bzrdir_format = self.repository_format._matchingbzrdir
         transport = self.get_transport('repo/branch')
         transport.mkdir('.')
         target_bzrdir = bzrdir_format.initialize_on_transport(transport)
         branch = BzrBranchFormat6().initialize(target_bzrdir)
-        #branch = self.make_branch('repo/branch', format='pack-0.92')
-        self.make_branch('stack-on-me')
+        # Ensure that stack_on will be stackable and match the serializer of
+        # repo.
+        if isinstance(repo, remote.RemoteRepository):
+            repo._ensure_real()
+            info_repo = repo._real_repository
+        else:
+            info_repo = repo
+        format_description = info.describe_format(info_repo.bzrdir,
+            info_repo, None, None)
+        formats = format_description.split(' or ')
+        stack_on_format = formats[0]
+        if stack_on_format in ["pack-0.92", "dirstate", "metaweave"]:
+            stack_on_format = "1.9"
+        elif stack_on_format in ["dirstate-with-subtree", "rich-root",
+            "rich-root-pack", "pack-0.92-subtree"]:
+            stack_on_format = "1.9-rich-root"
+        # formats not tested for above are already stackable, so we can use the
+        # format as-is.
+        stack_on = self.make_branch('stack-on-me', format=stack_on_format)
         self.make_bzrdir('.').get_config().set_default_stack_on('stack-on-me')
         target = branch.bzrdir.clone(self.get_url('target'))
-        # The target branch supports stacking if the source repository does.
-        self.assertEqual(repo._format.supports_external_lookups,
-                         target.open_branch()._format.supports_stacking())
+        # The target branch supports stacking.
+        self.assertTrue(target.open_branch()._format.supports_stacking())
         if isinstance(repo, remote.RemoteRepository):
             repo._ensure_real()
             repo = repo._real_repository
@@ -936,8 +958,12 @@ class TestRepository(TestCaseWithRepository):
         if isinstance(target_repo, remote.RemoteRepository):
             target_repo._ensure_real()
             target_repo = target_repo._real_repository
-        # The repository format is preserved.
-        self.assertEqual(repo._format, target_repo._format)
+        # The repository format is unchanged if it could already stack, or the
+        # same as the stack on.
+        if repo._format.supports_external_lookups:
+            self.assertEqual(repo._format, target_repo._format)
+        else:
+            self.assertEqual(stack_on.repository._format, target_repo._format)
 
     def test__get_sink(self):
         repo = self.make_repository('repo')

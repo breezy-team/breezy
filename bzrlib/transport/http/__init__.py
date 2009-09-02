@@ -617,7 +617,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
-        except errors.InvalidHttpResponse, e:
+        except (errors.InvalidHttpResponse, errors.ConnectionReset), e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 

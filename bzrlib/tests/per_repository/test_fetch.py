@@ -355,7 +355,7 @@ class TestSource(TestCaseWithRepository):
     """Tests for/about the results of Repository._get_source."""
 
     def test_no_absent_records_in_stream_with_ghosts(self):
-        # XXX: Arguably should be in interrepository_implementations but
+        # XXX: Arguably should be in per_interrepository but
         # doesn't actually gain coverage there; need a specific set of
         # permutations to cover it.
         # bug lp:376255 was reported about this.

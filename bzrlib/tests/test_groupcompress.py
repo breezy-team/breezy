@@ -25,6 +25,7 @@ from bzrlib import (
     index as _mod_index,
     osutils,
     tests,
+    trace,
     versionedfile,
     )
 from bzrlib.osutils import sha_string
@@ -363,6 +364,15 @@ class TestGroupCompressBlock(tests.TestCase):
         raw_bytes = zlib.decompress(remaining_bytes)
         self.assertEqual(content, raw_bytes)
 
+        # we should get the same results if using the chunked version
+        gcb = groupcompress.GroupCompressBlock()
+        gcb.set_chunked_content(['this is some content\n'
+                                 'this content will be compressed\n'],
+                                 len(content))
+        old_bytes = bytes
+        bytes = gcb.to_bytes()
+        self.assertEqual(old_bytes, bytes)
+
     def test_partial_decomp(self):
         content_chunks = []
         # We need a sufficient amount of data so that zlib.decompress has
@@ -465,11 +475,12 @@ class TestGroupCompressBlock(tests.TestCase):
 class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
 
     def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
-                     dir='.'):
+                     dir='.', inconsistency_fatal=True):
         t = self.get_transport(dir)
         t.ensure_base()
         vf = groupcompress.make_pack_factory(graph=create_graph,
-            delta=False, keylength=keylength)(t)
+            delta=False, keylength=keylength,
+            inconsistency_fatal=inconsistency_fatal)(t)
         if do_cleanup:
             self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
@@ -648,6 +659,152 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         self.assertEqual(
             frozenset([('parent-1',), ('parent-2',)]),
             index.get_missing_parents())
+
+    def make_source_with_b(self, a_parent, path):
+        source = self.make_test_vf(True, dir=path)
+        source.add_lines(('a',), (), ['lines\n'])
+        if a_parent:
+            b_parents = (('a',),)
+        else:
+            b_parents = ()
+        source.add_lines(('b',), b_parents, ['lines\n'])
+        return source
+
+    def do_inconsistent_inserts(self, inconsistency_fatal):
+        target = self.make_test_vf(True, dir='target',
+                                   inconsistency_fatal=inconsistency_fatal)
+        for x in range(2):
+            source = self.make_source_with_b(x==1, 'source%s' % x)
+            target.insert_record_stream(source.get_record_stream(
+                [('b',)], 'unordered', False))
+
+    def test_inconsistent_redundant_inserts_warn(self):
+        """Should not insert a record that is already present."""
+        warnings = []
+        def warning(template, args):
+            warnings.append(template % args)
+        _trace_warning = trace.warning
+        trace.warning = warning
+        try:
+            self.do_inconsistent_inserts(inconsistency_fatal=False)
+        finally:
+            trace.warning = _trace_warning
+        self.assertEqual(["inconsistent details in skipped record: ('b',)"
+                          " ('42 32 0 8', ((),)) ('74 32 0 8', ((('a',),),))"],
+                         warnings)
+
+    def test_inconsistent_redundant_inserts_raises(self):
+        e = self.assertRaises(errors.KnitCorrupt, self.do_inconsistent_inserts,
+                              inconsistency_fatal=True)
+        self.assertContainsRe(str(e), "Knit.* corrupt: inconsistent details"
+                              " in add_records:"
+                              " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
+                              " 0 8', \(\(\('a',\),\),\)\)")
+
+
+class StubGCVF(object):
+    def __init__(self, canned_get_blocks=None):
+        self._group_cache = {}
+        self._canned_get_blocks = canned_get_blocks or []
+    def _get_blocks(self, read_memos):
+        return iter(self._canned_get_blocks)
+    
+
+class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
+    """Simple whitebox unit tests for _BatchingBlockFetcher."""
+    
+    def test_add_key_new_read_memo(self):
+        """Adding a key with an uncached read_memo new to this batch adds that
+        read_memo to the list of memos to fetch.
+        """
+        # locations are: index_memo, ignored, parents, ignored
+        # where index_memo is: (idx, offset, len, factory_start, factory_end)
+        # and (idx, offset, size) is known as the 'read_memo', identifying the
+        # raw bytes needed.
+        read_memo = ('fake index', 100, 50)
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_duplicate_read_memo(self):
+        """read_memos that occur multiple times in a batch will only be fetched
+        once.
+        """
+        read_memo = ('fake index', 100, 50)
+        # Two keys, both sharing the same read memo (but different overall
+        # index_memos).
+        locations = {
+            ('key1',): (read_memo + (0, 1), None, None, None),
+            ('key2',): (read_memo + (1, 2), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key1',))
+        total_size = batcher.add_key(('key2',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key1',), ('key2',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_cached_read_memo(self):
+        """Adding a key with a cached read_memo will not cause that read_memo
+        to be added to the list to fetch.
+        """
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = 'fake block'
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(0, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([], batcher.memos_to_get)
+
+    def test_yield_factories_empty(self):
+        """An empty batch yields no factories."""
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), {})
+        self.assertEqual([], list(batcher.yield_factories()))
+
+    def test_yield_factories_calls_get_blocks(self):
+        """Uncached memos are retrieved via get_blocks."""
+        read_memo1 = ('fake index', 100, 50)
+        read_memo2 = ('fake index', 150, 40)
+        gcvf = StubGCVF(
+            canned_get_blocks=[
+                (read_memo1, groupcompress.GroupCompressBlock()),
+                (read_memo2, groupcompress.GroupCompressBlock())])
+        locations = {
+            ('key1',): (read_memo1 + (None, None), None, None, None),
+            ('key2',): (read_memo2 + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key1',))
+        batcher.add_key(('key2',))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(2, factories)
+        keys = [f.key for f in factories]
+        kinds = [f.storage_kind for f in factories]
+        self.assertEqual([('key1',), ('key2',)], keys)
+        self.assertEqual(['groupcompress-block', 'groupcompress-block'], kinds)
+
+    def test_yield_factories_flushing(self):
+        """yield_factories holds back on yielding results from the final block
+        unless passed full_flush=True.
+        """
+        fake_block = groupcompress.GroupCompressBlock()
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = fake_block
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key',))
+        self.assertEqual([], list(batcher.yield_factories()))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(1, factories)
+        self.assertEqual(('key',), factories[0].key)
+        self.assertEqual('groupcompress-block', factories[0].storage_kind)
 
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):

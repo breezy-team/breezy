@@ -31,7 +31,7 @@ class TestSplit(tests.TestCaseWithTransport):
         wt.add(['b', 'b/c'])
         wt.commit('rev1')
         self.run_bzr('split a/b')
-        self.run_bzr_error(('.* is not versioned',), 'split q')
+        self.run_bzr_error(('.* is not versioned',), 'split q', working_dir='a')
 
     def test_split_repo_failure(self):
         repo = self.make_repository('branch', shared=True, format='knit')
@@ -47,7 +47,7 @@ class TestSplit(tests.TestCaseWithTransport):
         self.build_tree(['tree/subtree/'])
         tree.add('subtree')
         tree.commit('added subtree')
-        self.run_bzr_error(('must upgrade your branch at .*tree',),
+        self.run_bzr_error(('must upgrade your branch at .*tree','rich roots'),
                            'split tree/subtree')
 
     def split_formats(self, format, repo_format):

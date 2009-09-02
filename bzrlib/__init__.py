@@ -37,7 +37,7 @@ from bzrlib.osutils import get_user_encoding
 IGNORE_FILENAME = ".bzrignore"
 
 
-# XXX: Compatibility. This should probably be deprecated
+# XXX: Deprecated as of bzr-1.17 use osutils.get_user_encoding() directly
 user_encoding = get_user_encoding()
 
 
@@ -50,10 +50,10 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (1, 16, 0, 'dev', 0)
+version_info = (2, 1, 0, 'dev', 0)
 
-# API compatibility version: bzrlib is currently API compatible with 1.13.
-api_minimum_version = (1, 15, 0)
+# API compatibility version: bzrlib is currently API compatible with 1.15.
+api_minimum_version = (1, 17, 0)
 
 def _format_version_tuple(version_info):
     """Turn a version number 2, 3 or 5-tuple into a short string.
@@ -70,6 +70,8 @@ def _format_version_tuple(version_info):
     1.2dev
     >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
     1.1.1rc2
+    >>> print bzrlib._format_version_tuple((2, 1, 0, 'beta', 1))
+    2.1b1
     >>> print _format_version_tuple((1, 4, 0))
     1.4
     >>> print _format_version_tuple((1, 4))

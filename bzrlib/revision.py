@@ -68,7 +68,6 @@ class Revision(object):
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
-        # FIXME: rbc 20050930 parent_ids are not being compared
         return (
                 self.inventory_sha1 == other.inventory_sha1
                 and self.revision_id == other.revision_id
@@ -76,7 +75,8 @@ class Revision(object):
                 and self.message == other.message
                 and self.timezone == other.timezone
                 and self.committer == other.committer
-                and self.properties == other.properties)
+                and self.properties == other.properties
+                and self.parent_ids == other.parent_ids)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -111,8 +111,13 @@ class Revision(object):
 
     def get_summary(self):
         """Get the first line of the log message for this revision.
+
+        Return an empty string if message is None.
         """
-        return self.message.lstrip().split('\n', 1)[0]
+        if self.message:
+            return self.message.lstrip().split('\n', 1)[0]
+        else:
+            return ''
 
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
     def get_apparent_author(self):

@@ -146,6 +146,9 @@ def ConfigObj(*args, **kwargs):
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
 
+    def __init__(self):
+        super(Config, self).__init__()
+
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
@@ -174,6 +177,15 @@ class Config(object):
         """Get a generic option - no special process, no default."""
         return self._get_user_option(option_name)
 
+    def get_user_option_as_bool(self, option_name):
+        """Get a generic option as a boolean - no special process, no default.
+
+        :return None if the option doesn't exist or its value can't be
+            interpreted as a boolean. Returns True or False ortherwise.
+        """
+        s = self._get_user_option(option_name)
+        return ui.bool_from_string(s)
+
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
         result = self._gpg_signing_command()
@@ -195,9 +207,6 @@ class Config(object):
     def _log_format(self):
         """See log_format()."""
         return None
-
-    def __init__(self):
-        super(Config, self).__init__()
 
     def post_commit(self):
         """An ordered list of python functions to call.
@@ -299,6 +308,11 @@ class Config(object):
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
+    def __init__(self, get_filename):
+        super(IniBasedConfig, self).__init__()
+        self._get_filename = get_filename
+        self._parser = None
+
     def _get_parser(self, file=None):
         if self._parser is not None:
             return self._parser
@@ -380,11 +394,6 @@ class IniBasedConfig(Config):
     def _log_format(self):
         """See Config.log_format."""
         return self._get_user_option('log_format')
-
-    def __init__(self, get_filename):
-        super(IniBasedConfig, self).__init__()
-        self._get_filename = get_filename
-        self._parser = None
 
     def _post_commit(self):
         """See Config.post_commit."""
@@ -812,6 +821,29 @@ def user_ignore_config_filename():
     return osutils.pathjoin(config_dir(), 'ignore')
 
 
+def crash_dir():
+    """Return the directory name to store crash files.
+
+    This doesn't implicitly create it.
+
+    On Windows it's in the config directory; elsewhere in the XDG cache directory.
+    """
+    if sys.platform == 'win32':
+        return osutils.pathjoin(config_dir(), 'Crash')
+    else:
+        return osutils.pathjoin(xdg_cache_dir(), 'crash')
+
+
+def xdg_cache_dir():
+    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
+    # Possibly this should be different on Windows?
+    e = os.environ.get('XDG_CACHE_DIR', None)
+    if e:
+        return e
+    else:
+        return os.path.expanduser('~/.cache')
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -930,7 +962,6 @@ class TreeConfig(IniBasedConfig):
             return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
-        return result
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""

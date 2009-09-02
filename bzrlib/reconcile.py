@@ -33,7 +33,7 @@ from bzrlib import (
     repofmt,
     )
 from bzrlib.trace import mutter, note
-from bzrlib.tsort import TopoSorter
+from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
 
@@ -137,8 +137,13 @@ class BranchReconciler(object):
     def _reconcile_revision_history(self):
         repo = self.branch.repository
         last_revno, last_revision_id = self.branch.last_revision_info()
-        real_history = list(repo.iter_reverse_revision_history(
-                                last_revision_id))
+        real_history = []
+        try:
+            for revid in repo.iter_reverse_revision_history(
+                    last_revision_id):
+                real_history.append(revid)
+        except errors.RevisionNotPresent:
+            pass # Hit a ghost left hand parent
         real_history.reverse()
         if last_revno != len(real_history):
             self.fixed_history = True
@@ -242,8 +247,7 @@ class RepoReconciler(object):
 
         # we have topological order of revisions and non ghost parents ready.
         self._setup_steps(len(self._rev_graph))
-        revision_keys = [(rev_id,) for rev_id in
-            TopoSorter(self._rev_graph.items()).iter_topo_order()]
+        revision_keys = [(rev_id,) for rev_id in topo_sort(self._rev_graph)]
         stream = self._change_inv_parents(
             self.inventory.get_record_stream(revision_keys, 'unordered', True),
             self._new_inv_parents,
@@ -373,7 +377,7 @@ class KnitReconciler(RepoReconciler):
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
         graph = self.revisions.get_parent_map(self.revisions.keys())
-        revision_keys = list(TopoSorter(graph).iter_topo_order())
+        revision_keys = topo_sort(graph)
         revision_ids = [key[-1] for key in revision_keys]
         self._setup_steps(len(revision_keys))
         stream = self._change_inv_parents(

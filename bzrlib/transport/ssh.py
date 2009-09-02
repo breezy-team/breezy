@@ -19,6 +19,7 @@
 
 import errno
 import getpass
+import logging
 import os
 import socket
 import subprocess
@@ -122,12 +123,15 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
-        elif 'plink' in version and args[0] == 'plink':
-            # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
-            # version.  See https://bugs.launchpad.net/bzr/+bug/107155
-            trace.mutter("ssh implementation is Putty's plink.")
-            vendor = PLinkSubprocessVendor()
+        # Auto-detect of plink vendor disabled, on Windows recommended
+        # default ssh-client is paramiko
+        # see https://bugs.launchpad.net/bugs/414743
+        #~elif 'plink' in version and args[0] == 'plink':
+        #~    # Checking if "plink" was the executed argument as Windows
+        #~    # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+        #~    # version.  See https://bugs.launchpad.net/bzr/+bug/107155
+        #~    trace.mutter("ssh implementation is Putty's plink.")
+        #~    vendor = PLinkSubprocessVendor()
         return vendor
 
     def _get_vendor_by_inspection(self):
@@ -481,6 +485,30 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     if _try_pkey_auth(paramiko_transport, paramiko.DSSKey, username, 'id_dsa'):
         return
 
+    # If we have gotten this far, we are about to try for passwords, do an
+    # auth_none check to see if it is even supported.
+    supported_auth_types = []
+    try:
+        # Note that with paramiko <1.7.5 this logs an INFO message:
+        #    Authentication type (none) not permitted.
+        # So we explicitly disable the logging level for this action
+        old_level = paramiko_transport.logger.level
+        paramiko_transport.logger.setLevel(logging.WARNING)
+        try:
+            paramiko_transport.auth_none(username)
+        finally:
+            paramiko_transport.logger.setLevel(old_level)
+    except paramiko.BadAuthenticationType, e:
+        # Supported methods are in the exception
+        supported_auth_types = e.allowed_types
+    except paramiko.SSHException, e:
+        # Don't know what happened, but just ignore it
+        pass
+    if 'password' not in supported_auth_types:
+        raise errors.ConnectionError('Unable to authenticate to SSH host as'
+            '\n  %s@%s\nsupported auth types: %s'
+            % (username, host, supported_auth_types))
+
     if password:
         try:
             paramiko_transport.auth_password(username, password)
@@ -490,11 +518,17 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
 
     # give up and ask for a password
     password = auth.get_password('ssh', host, username, port=port)
-    try:
-        paramiko_transport.auth_password(username, password)
-    except paramiko.SSHException, e:
-        raise errors.ConnectionError(
-            'Unable to authenticate to SSH host as %s@%s' % (username, host), e)
+    # get_password can still return None, which means we should not prompt
+    if password is not None:
+        try:
+            paramiko_transport.auth_password(username, password)
+        except paramiko.SSHException, e:
+            raise errors.ConnectionError(
+                'Unable to authenticate to SSH host as'
+                '\n  %s@%s\n' % (username, host), e)
+    else:
+        raise errors.ConnectionError('Unable to authenticate to SSH host as'
+                                     '  %s@%s' % (username, host))
 
 
 def _try_pkey_auth(paramiko_transport, pkey_class, username, filename):

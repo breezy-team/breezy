@@ -28,6 +28,7 @@
 
 import atexit
 import codecs
+from copy import copy
 from cStringIO import StringIO
 import difflib
 import doctest
@@ -102,6 +103,8 @@ from bzrlib.tests.TestUtil import (
                           TestLoader,
                           )
 from bzrlib.tests.treeshape import build_tree_contents
+from bzrlib.ui import NullProgressView
+from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
 from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
@@ -111,6 +114,10 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 __unittest = 1
 
 default_transport = LocalURLServer
+
+# Subunit result codes, defined here to prevent a hard dependency on subunit.
+SUBUNIT_SEEK_SET = 0
+SUBUNIT_SEEK_CUR = 1
 
 
 class ExtendedTestResult(unittest._TextTestResult):
@@ -133,7 +140,6 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  strict=False,
                  ):
         """Construct new TestResult.
@@ -158,7 +164,7 @@ class ExtendedTestResult(unittest._TextTestResult):
             bench_history.write("--date %s %s\n" % (time.time(), revision_id))
         self._bench_history = bench_history
         self.ui = ui.ui_factory
-        self.num_tests = num_tests
+        self.num_tests = 0
         self.error_count = 0
         self.failure_count = 0
         self.known_failure_count = 0
@@ -169,15 +175,47 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._overall_start_time = time.time()
         self._strict = strict
 
-    def done(self):
+    def stopTestRun(self):
+        run = self.testsRun
+        actionTaken = "Ran"
+        stopTime = time.time()
+        timeTaken = stopTime - self.startTime
+        self.printErrors()
+        self.stream.writeln(self.separator2)
+        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+                            run, run != 1 and "s" or "", timeTaken))
+        self.stream.writeln()
+        if not self.wasSuccessful():
+            self.stream.write("FAILED (")
+            failed, errored = map(len, (self.failures, self.errors))
+            if failed:
+                self.stream.write("failures=%d" % failed)
+            if errored:
+                if failed: self.stream.write(", ")
+                self.stream.write("errors=%d" % errored)
+            if self.known_failure_count:
+                if failed or errored: self.stream.write(", ")
+                self.stream.write("known_failure_count=%d" %
+                    self.known_failure_count)
+            self.stream.writeln(")")
+        else:
+            if self.known_failure_count:
+                self.stream.writeln("OK (known_failures=%d)" %
+                    self.known_failure_count)
+            else:
+                self.stream.writeln("OK")
+        if self.skip_count > 0:
+            skipped = self.skip_count
+            self.stream.writeln('%d test%s skipped' %
+                                (skipped, skipped != 1 and "s" or ""))
+        if self.unsupported:
+            for feature, count in sorted(self.unsupported.items()):
+                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                    (feature, count))
         if self._strict:
             ok = self.wasStrictlySuccessful()
         else:
             ok = self.wasSuccessful()
-        if ok:
-            self.stream.write('tests passed\n')
-        else:
-            self.stream.write('tests failed\n')
         if TestCase._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
@@ -195,11 +233,9 @@ class ExtendedTestResult(unittest._TextTestResult):
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
         if benchmark_time is not None:
-            return "%s/%s" % (
-                self._formatTime(benchmark_time),
-                self._elapsedTestTimeString())
+            return self._formatTime(benchmark_time) + "*"
         else:
-            return "           %s" % self._elapsedTestTimeString()
+            return self._elapsedTestTimeString()
 
     def _formatTime(self, seconds):
         """Format seconds as milliseconds with leading spaces."""
@@ -221,13 +257,21 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._recordTestStartTime()
 
     def startTests(self):
+        import platform
+        if getattr(sys, 'frozen', None) is None:
+            bzr_path = osutils.realpath(sys.argv[0])
+        else:
+            bzr_path = sys.executable
         self.stream.write(
-            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+            'testing: %s\n' % (bzr_path,))
         self.stream.write(
-            '   %s (%s python%s)\n' % (
-                    bzrlib.__path__[0],
+            '   %s\n' % (
+                    bzrlib.__path__[0],))
+        self.stream.write(
+            '   bzr-%s python-%s %s\n' % (
                     bzrlib.version_string,
                     bzrlib._format_version_tuple(sys.version_info),
+                    platform.platform(aliased=1),
                     ))
         self.stream.write('\n')
 
@@ -346,23 +390,34 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write("%s: " % flavour)
             self.stream.writeln(self.getDescription(test))
             if getattr(test, '_get_log', None) is not None:
-                self.stream.write('\n')
-                self.stream.write(
-                        ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
-                self.stream.write(test._get_log())
-                self.stream.write('\n')
-                self.stream.write(
-                        ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
-                self.stream.write('\n')
+                log_contents = test._get_log()
+                if log_contents:
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
+                    self.stream.write(log_contents)
+                    self.stream.write('\n')
+                    self.stream.write(
+                            ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
+                    self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
-    def finished(self):
-        pass
+    def progress(self, offset, whence):
+        """The test is adjusting the count of tests to run."""
+        if whence == SUBUNIT_SEEK_SET:
+            self.num_tests = offset
+        elif whence == SUBUNIT_SEEK_CUR:
+            self.num_tests += offset
+        else:
+            raise errors.BzrError("Unknown whence %r" % whence)
 
     def report_cleaning_up(self):
         pass
+
+    def startTestRun(self):
+        self.startTime = time.time()
 
     def report_success(self, test):
         pass
@@ -378,26 +433,38 @@ class TextTestResult(ExtendedTestResult):
 
     def __init__(self, stream, descriptions, verbosity,
                  bench_history=None,
-                 num_tests=None,
                  pb=None,
                  strict=None,
                  ):
         ExtendedTestResult.__init__(self, stream, descriptions, verbosity,
-            bench_history, num_tests, strict)
-        if pb is None:
-            self.pb = self.ui.nested_progress_bar()
-            self._supplied_pb = False
-        else:
-            self.pb = pb
-            self._supplied_pb = True
+            bench_history, strict)
+        # We no longer pass them around, but just rely on the UIFactory stack
+        # for state
+        if pb is not None:
+            warnings.warn("Passing pb to TextTestResult is deprecated")
+        self.pb = self.ui.nested_progress_bar()
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False,
         self.pb.show_count = False
         self.pb.show_bar = False
+        self.pb.update_latency = 0
+        self.pb.show_transport_activity = False
 
-    def report_starting(self):
+    def stopTestRun(self):
+        # called when the tests that are going to run have run
+        self.pb.clear()
+        self.pb.finished()
+        super(TextTestResult, self).stopTestRun()
+
+    def startTestRun(self):
+        super(TextTestResult, self).startTestRun()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
+
+    def printErrors(self):
+        # clear the pb to make room for the error listing
+        self.pb.clear()
+        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -409,7 +476,7 @@ class TextTestResult(ExtendedTestResult):
         ##     a += ', %d skip' % self.skip_count
         ## if self.known_failure_count:
         ##     a += '+%dX' % self.known_failure_count
-        if self.num_tests is not None:
+        if self.num_tests:
             a +='/%d' % self.num_tests
         a += ' in '
         runtime = time.time() - self._overall_start_time
@@ -464,10 +531,6 @@ class TextTestResult(ExtendedTestResult):
     def report_cleaning_up(self):
         self.pb.update('Cleaning up')
 
-    def finished(self):
-        if not self._supplied_pb:
-            self.pb.finished()
-
 
 class VerboseTestResult(ExtendedTestResult):
     """Produce long output, with one line per test run plus times"""
@@ -480,17 +543,18 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def report_starting(self):
+    def startTestRun(self):
+        super(VerboseTestResult, self).startTestRun()
         self.stream.write('running %d tests...\n' % self.num_tests)
 
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus 2 10-char
-        # numbers, plus a trailing blank
+        # width needs space for 6 char status, plus 1 for slash, plus an
+        # 11-char time string, plus a trailing blank
         # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
         self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-30))
+                          osutils.terminal_width()-18))
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -544,89 +608,57 @@ class TextTestRunner(object):
                  descriptions=0,
                  verbosity=1,
                  bench_history=None,
-                 list_only=False,
                  strict=False,
+                 result_decorators=None,
                  ):
+        """Create a TextTestRunner.
+
+        :param result_decorators: An optional list of decorators to apply
+            to the result object being used by the runner. Decorators are
+            applied left to right - the first element in the list is the 
+            innermost decorator.
+        """
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
-        self.list_only = list_only
         self._strict = strict
+        self._result_decorators = result_decorators or []
 
     def run(self, test):
         "Run the given test case or test suite."
-        startTime = time.time()
         if self.verbosity == 1:
             result_class = TextTestResult
         elif self.verbosity >= 2:
             result_class = VerboseTestResult
-        result = result_class(self.stream,
+        original_result = result_class(self.stream,
                               self.descriptions,
                               self.verbosity,
                               bench_history=self._bench_history,
-                              num_tests=test.countTestCases(),
                               strict=self._strict,
                               )
-        result.stop_early = self.stop_on_failure
-        result.report_starting()
-        if self.list_only:
-            if self.verbosity >= 2:
-                self.stream.writeln("Listing tests only ...\n")
-            run = 0
-            for t in iter_suite_tests(test):
-                self.stream.writeln("%s" % (t.id()))
-                run += 1
-            return None
+        # Signal to result objects that look at stop early policy to stop,
+        original_result.stop_early = self.stop_on_failure
+        result = original_result
+        for decorator in self._result_decorators:
+            result = decorator(result)
+            result.stop_early = self.stop_on_failure
+        try:
+            import testtools
+        except ImportError:
+            pass
         else:
-            try:
-                import testtools
-            except ImportError:
-                test.run(result)
-            else:
-                if isinstance(test, testtools.ConcurrentTestSuite):
-                    # We need to catch bzr specific behaviors
-                    test.run(BZRTransformingResult(result))
-                else:
-                    test.run(result)
-            run = result.testsRun
-            actionTaken = "Ran"
-        stopTime = time.time()
-        timeTaken = stopTime - startTime
-        result.printErrors()
-        self.stream.writeln(result.separator2)
-        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
-                            run, run != 1 and "s" or "", timeTaken))
-        self.stream.writeln()
-        if not result.wasSuccessful():
-            self.stream.write("FAILED (")
-            failed, errored = map(len, (result.failures, result.errors))
-            if failed:
-                self.stream.write("failures=%d" % failed)
-            if errored:
-                if failed: self.stream.write(", ")
-                self.stream.write("errors=%d" % errored)
-            if result.known_failure_count:
-                if failed or errored: self.stream.write(", ")
-                self.stream.write("known_failure_count=%d" %
-                    result.known_failure_count)
-            self.stream.writeln(")")
-        else:
-            if result.known_failure_count:
-                self.stream.writeln("OK (known_failures=%d)" %
-                    result.known_failure_count)
-            else:
-                self.stream.writeln("OK")
-        if result.skip_count > 0:
-            skipped = result.skip_count
-            self.stream.writeln('%d test%s skipped' %
-                                (skipped, skipped != 1 and "s" or ""))
-        if result.unsupported:
-            for feature, count in sorted(result.unsupported.items()):
-                self.stream.writeln("Missing feature '%s' skipped %d tests." %
-                    (feature, count))
-        result.finished()
-        return result
+            if isinstance(test, testtools.ConcurrentTestSuite):
+                # We need to catch bzr specific behaviors
+                result = BZRTransformingResult(result)
+        result.startTestRun()
+        try:
+            test.run(result)
+        finally:
+            result.stopTestRun()
+        # higher level code uses our extended protocol to determine
+        # what exit code to give.
+        return original_result
 
 
 def iter_suite_tests(suite):
@@ -702,13 +734,23 @@ class StringIOWrapper(object):
             return setattr(self._cstring, name, val)
 
 
-class TestUIFactory(ui.CLIUIFactory):
+class TestUIFactory(TextUIFactory):
     """A UI Factory for testing.
 
     Hide the progress bar but emit note()s.
     Redirect stdin.
     Allows get_password to be tested without real tty attached.
+
+    See also CannedInputUIFactory which lets you provide programmatic input in
+    a structured way.
     """
+    # TODO: Capture progress events at the model level and allow them to be
+    # observed by tests that care.
+    #
+    # XXX: Should probably unify more with CannedInputUIFactory or a
+    # particular configuration of TextUIFactory, or otherwise have a clearer
+    # idea of how they're supposed to be different.
+    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -719,28 +761,6 @@ class TestUIFactory(ui.CLIUIFactory):
             stdin = StringIOWrapper(stdin)
         super(TestUIFactory, self).__init__(stdin, stdout, stderr)
 
-    def clear(self):
-        """See progress.ProgressBar.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressBar.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressBar.finished()."""
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressBar.note()."""
-        self.stdout.write((fmt_string + "\n") % args)
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        return self
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressBar.update()."""
-
     def get_non_echoed_password(self):
         """Get password from stdin without trying to handle the echo mode"""
         password = self.stdin.readline()
@@ -749,6 +769,9 @@ class TestUIFactory(ui.CLIUIFactory):
         if password[-1] == '\n':
             password = password[:-1]
         return password
+
+    def make_progress_view(self):
+        return NullProgressView()
 
 
 class TestCase(unittest.TestCase):
@@ -799,7 +822,6 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
-        # Track locks - needs to be called before _clear_debug_flags.
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
@@ -828,6 +850,8 @@ class TestCase(unittest.TestCase):
         self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
+        if 'disable_lock_checks' not in selftest_debug_flags:
+            debug.debug_flags.add('strict_locks')
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -855,11 +879,9 @@ class TestCase(unittest.TestCase):
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
-        # once we have fixed all the current lock problems, we can change the
-        # following code to always check for mismatched locks, but only do
-        # traceback showing with -Dlock (self._lock_check_thorough is True).
-        # For now, because the test suite will fail, we only assert that lock
-        # matching has occured with -Dlock.
+        # We always check for mismatched locks. If a mismatch is found, we
+        # fail unless -Edisable_lock_checks is supplied to selftest, in which
+        # case we just print a warning.
         # unhook:
         acquired_locks = [lock for action, lock in self._lock_actions
                           if action == 'acquired']
@@ -884,7 +906,11 @@ class TestCase(unittest.TestCase):
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        self._lock_check_thorough = 'lock' not in debug.debug_flags
+        if 'disable_lock_checks' in selftest_debug_flags:
+            self._lock_check_thorough = False
+        else:
+            self._lock_check_thorough = True
+            
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -901,6 +927,18 @@ class TestCase(unittest.TestCase):
 
     def _lock_broken(self, result):
         self._lock_actions.append(('broken', result))
+
+    def start_server(self, transport_server, backing_server=None):
+        """Start transport_server for this test.
+
+        This starts the server, registers a cleanup for it and permits the
+        server's urls to be used.
+        """
+        if backing_server is None:
+            transport_server.setUp()
+        else:
+            transport_server.setUp(backing_server)
+        self.addCleanup(transport_server.tearDown)
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1091,11 +1129,17 @@ class TestCase(unittest.TestCase):
                          osutils.realpath(path2),
                          "apparent paths:\na = %s\nb = %s\n," % (path1, path2))
 
-    def assertIsInstance(self, obj, kls):
-        """Fail if obj is not an instance of kls"""
+    def assertIsInstance(self, obj, kls, msg=None):
+        """Fail if obj is not an instance of kls
+        
+        :param msg: Supplementary message to show if the assertion fails.
+        """
         if not isinstance(obj, kls):
-            self.fail("%r is an instance of %s rather than %s" % (
-                obj, obj.__class__, kls))
+            m = "%r is an instance of %s rather than %s" % (
+                obj, obj.__class__, kls)
+            if msg:
+                m += ": " + msg
+            self.fail(m)
 
     def expectFailure(self, reason, assertion, *args, **kwargs):
         """Invoke a test, expecting it to fail for the given reason.
@@ -1300,6 +1344,19 @@ class TestCase(unittest.TestCase):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
 
+    def thisFailsStrictLockCheck(self):
+        """It is known that this test would fail with -Dstrict_locks.
+
+        By default, all tests are run with strict lock checking unless
+        -Edisable_lock_checks is supplied. However there are some tests which
+        we know fail strict locks at this point that have not been fixed.
+        They should call this function to disable the strict checking.
+
+        This should be used sparingly, it is much better to fix the locking
+        issues rather than papering over the problem by calling this function.
+        """
+        debug.debug_flags.discard('strict_locks')
+
     def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
 
@@ -1323,6 +1380,13 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            # Make sure that any text ui tests are consistent regardless of
+            # the environment the test case is run in; you may want tests that
+            # test other combinations.  'dumb' is a reasonable guess for tests
+            # going to a pipe or a StringIO.
+            'TERM': 'dumb',
+            'LINES': '25',
+            'COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -1910,6 +1974,16 @@ class TestCase(unittest.TestCase):
         sio.encoding = output_encoding
         return sio
 
+    def disable_verb(self, verb):
+        """Disable a smart server verb for one test."""
+        from bzrlib.smart import request
+        request_handlers = request.request_handlers
+        orig_method = request_handlers.get(verb)
+        request_handlers.remove(verb)
+        def restoreVerb():
+            request_handlers.register(verb, orig_method)
+        self.addCleanup(restoreVerb)
+
 
 class CapturedCall(object):
     """A helper for capturing smart server calls for easy debug analysis."""
@@ -2005,13 +2079,12 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                # bring up the server
                 self.__readonly_server = ReadonlyServer()
-                self.__readonly_server.setUp(self.get_vfs_only_server())
             else:
+                # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
-                self.__readonly_server.setUp(self.get_vfs_only_server())
-            self.addCleanup(self.__readonly_server.tearDown)
+            self.start_server(self.__readonly_server,
+                self.get_vfs_only_server())
         return self.__readonly_server
 
     def get_readonly_url(self, relpath=None):
@@ -2036,8 +2109,7 @@ class TestCaseWithMemoryTransport(TestCase):
         """
         if self.__vfs_server is None:
             self.__vfs_server = MemoryServer()
-            self.__vfs_server.setUp()
-            self.addCleanup(self.__vfs_server.tearDown)
+            self.start_server(self.__vfs_server)
         return self.__vfs_server
 
     def get_server(self):
@@ -2050,19 +2122,13 @@ class TestCaseWithMemoryTransport(TestCase):
         then the self.get_vfs_server is returned.
         """
         if self.__server is None:
-            if self.transport_server is None or self.transport_server is self.vfs_transport_factory:
-                return self.get_vfs_only_server()
+            if (self.transport_server is None or self.transport_server is
+                self.vfs_transport_factory):
+                self.__server = self.get_vfs_only_server()
             else:
                 # bring up a decorated means of access to the vfs only server.
                 self.__server = self.transport_server()
-                try:
-                    self.__server.setUp(self.get_vfs_only_server())
-                except TypeError, e:
-                    # This should never happen; the try:Except here is to assist
-                    # developers having to update code rather than seeing an
-                    # uninformative TypeError.
-                    raise Exception, "Old server API in use: %s, %s" % (self.__server, e)
-            self.addCleanup(self.__server.tearDown)
+                self.start_server(self.__server, self.get_vfs_only_server())
         return self.__server
 
     def _adjust_url(self, base, relpath):
@@ -2201,9 +2267,8 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def make_smart_server(self, path):
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
+        self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
         return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
@@ -2282,7 +2347,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
-        if sys.platform == 'win32':
+        if sys.platform in ('win32', 'cygwin'):
             name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
             # windows is likely to have path-length limits so use a short name
             name_prefix = name_prefix[-30:]
@@ -2410,8 +2475,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
         """
         if self.__vfs_server is None:
             self.__vfs_server = self.vfs_transport_factory()
-            self.__vfs_server.setUp()
-            self.addCleanup(self.__vfs_server.tearDown)
+            self.start_server(self.__vfs_server)
         return self.__vfs_server
 
     def make_branch_and_tree(self, relpath, format=None):
@@ -2423,6 +2487,15 @@ class TestCaseWithTransport(TestCaseInTempDir):
         directory backing the transport, and the returned tree's branch and
         repository will also be accessed locally. Otherwise a lightweight
         checkout is created and returned.
+
+        We do this because we can't physically create a tree in the local
+        path, with a branch reference to the transport_factory url, and
+        a branch + repository in the vfs_transport, unless the vfs_transport
+        namespace is distinct from the local disk - the two branch objects
+        would collide. While we could construct a tree with its branch object
+        pointing at the transport_factory transport in memory, reopening it
+        would behaving unexpectedly, and has in the past caused testing bugs
+        when we tried to do it that way.
 
         :param format: The BzrDirFormat.
         :returns: the WorkingTree.
@@ -2700,7 +2773,9 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
               strict=False,
               runner_class=None,
               suite_decorators=None,
-              stream=None):
+              stream=None,
+              result_decorators=None,
+              ):
     """Run a test suite for bzr selftest.
 
     :param runner_class: The class of runner to use. Must support the
@@ -2721,8 +2796,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             descriptions=0,
                             verbosity=verbosity,
                             bench_history=bench_history,
-                            list_only=list_only,
                             strict=strict,
+                            result_decorators=result_decorators,
                             )
     runner.stop_on_failure=stop_on_failure
     # built in decorator factories:
@@ -2736,12 +2811,22 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
+    # tell the result object how many tests will be running: (except if
+    # --parallel=fork is being used. Robert said he will provide a better
+    # progress design later -- vila 20090817)
+    if fork_decorator not in decorators:
+        decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
-    result = runner.run(suite)
     if list_only:
+        # Done after test suite decoration to allow randomisation etc
+        # to take effect, though that is of marginal benefit.
+        if verbosity >= 2:
+            stream.write("Listing tests only ...\n")
+        for t in iter_suite_tests(suite):
+            stream.write("%s\n" % (t.id()))
         return True
-    result.done()
+    result = runner.run(suite)
     if strict:
         return result.wasStrictlySuccessful()
     else:
@@ -2753,7 +2838,7 @@ parallel_registry = registry.Registry()
 
 
 def fork_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2762,7 +2847,7 @@ parallel_registry.register('fork', fork_decorator)
 
 
 def subprocess_decorator(suite):
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
     from testtools import ConcurrentTestSuite
@@ -2843,6 +2928,16 @@ class TestDecorator(TestSuite):
                 break
             test.run(result)
         return result
+
+
+class CountingDecorator(TestDecorator):
+    """A decorator which calls result.progress(self.countTestCases)."""
+
+    def run(self, result):
+        progress_method = getattr(result, 'progress', None)
+        if callable(progress_method):
+            progress_method(self.countTestCases(), SUBUNIT_SEEK_SET)
+        return super(CountingDecorator, self).run(result)
 
 
 class ExcludeDecorator(TestDecorator):
@@ -2954,9 +3049,13 @@ def fork_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -2985,7 +3084,8 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = TestProtocolClient(stream)
+                subunit_result = AutoTimingTestResultDecorator(
+                    TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
                 os._exit(0)
@@ -3003,9 +3103,9 @@ def reinvoke_for_tests(suite):
     :return: An iterable of TestCase-like objects which can each have
         run(result) called on them to feed tests to result.
     """
-    concurrency = local_concurrency()
+    concurrency = osutils.local_concurrency()
     result = []
-    from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit import ProtocolTestCase
     class TestInSubprocess(ProtocolTestCase):
         def __init__(self, process, name):
             ProtocolTestCase.__init__(self, process.stdout)
@@ -3049,25 +3149,7 @@ def reinvoke_for_tests(suite):
     return result
 
 
-def cpucount(content):
-    lines = content.splitlines()
-    prefix = 'processor'
-    for line in lines:
-        if line.startswith(prefix):
-            concurrency = int(line[line.find(':')+1:]) + 1
-    return concurrency
-
-
-def local_concurrency():
-    try:
-        content = file('/proc/cpuinfo', 'rb').read()
-        concurrency = cpucount(content)
-    except Exception, e:
-        concurrency = 1
-    return concurrency
-
-
-class BZRTransformingResult(unittest.TestResult):
+class ForwardingResult(unittest.TestResult):
 
     def __init__(self, target):
         unittest.TestResult.__init__(self)
@@ -3078,6 +3160,27 @@ class BZRTransformingResult(unittest.TestResult):
 
     def stopTest(self, test):
         self.result.stopTest(test)
+
+    def startTestRun(self):
+        self.result.startTestRun()
+
+    def stopTestRun(self):
+        self.result.stopTestRun()
+
+    def addSkip(self, test, reason):
+        self.result.addSkip(test, reason)
+
+    def addSuccess(self, test):
+        self.result.addSuccess(test)
+
+    def addError(self, test, err):
+        self.result.addError(test, err)
+
+    def addFailure(self, test, err):
+        self.result.addFailure(test, err)
+
+
+class BZRTransformingResult(ForwardingResult):
 
     def addError(self, test, err):
         feature = self._error_looks_like('UnavailableFeature: ', err)
@@ -3093,12 +3196,6 @@ class BZRTransformingResult(unittest.TestResult):
                                                 KnownFailure(known), None])
         else:
             self.result.addFailure(test, err)
-
-    def addSkip(self, test, reason):
-        self.result.addSkip(test, reason)
-
-    def addSuccess(self, test):
-        self.result.addSuccess(test)
 
     def _error_looks_like(self, prefix, err):
         """Deserialize exception and returns the stringify value."""
@@ -3117,7 +3214,46 @@ class BZRTransformingResult(unittest.TestResult):
         return value
 
 
+class ProfileResult(ForwardingResult):
+    """Generate profiling data for all activity between start and success.
+    
+    The profile data is appended to the test's _benchcalls attribute and can
+    be accessed by the forwarded-to TestResult.
+
+    While it might be cleaner do accumulate this in stopTest, addSuccess is
+    where our existing output support for lsprof is, and this class aims to
+    fit in with that: while it could be moved it's not necessary to accomplish
+    test profiling, nor would it be dramatically cleaner.
+    """
+
+    def startTest(self, test):
+        self.profiler = bzrlib.lsprof.BzrProfiler()
+        self.profiler.start()
+        ForwardingResult.startTest(self, test)
+
+    def addSuccess(self, test):
+        stats = self.profiler.stop()
+        try:
+            calls = test._benchcalls
+        except AttributeError:
+            test._benchcalls = []
+            calls = test._benchcalls
+        calls.append(((test.id(), "", ""), stats))
+        ForwardingResult.addSuccess(self, test)
+
+    def stopTest(self, test):
+        ForwardingResult.stopTest(self, test)
+        self.profiler = None
+
+
 # Controlled by "bzr selftest -E=..." option
+# Currently supported:
+#   -Eallow_debug           Will no longer clear debug.debug_flags() so it
+#                           preserves any flags supplied at the command line.
+#   -Edisable_lock_checks   Turns errors in mismatched locks into simple prints
+#                           rather than failing tests. And no longer raise
+#                           LockContention when fctnl locks are not being used
+#                           with proper exclusion rules.
 selftest_debug_flags = set()
 
 
@@ -3136,6 +3272,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              starting_with=None,
              runner_class=None,
              suite_decorators=None,
+             stream=None,
+             lsprof_tests=False,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -3158,10 +3296,21 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
             keep_only = None
         else:
             keep_only = load_test_id_list(load_list)
+        if starting_with:
+            starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                             for start in starting_with]
         if test_suite_factory is None:
+            # Reduce loading time by loading modules based on the starting_with
+            # patterns.
             suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
+        if starting_with:
+            # But always filter as requested.
+            suite = filter_suite_by_id_startswith(suite, starting_with)
+        result_decorators = []
+        if lsprof_tests:
+            result_decorators.append(ProfileResult)
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure,
                      transport=transport,
@@ -3174,6 +3323,8 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      strict=strict,
                      runner_class=runner_class,
                      suite_decorators=suite_decorators,
+                     stream=stream,
+                     result_decorators=result_decorators,
                      )
     finally:
         default_transport = old_transport
@@ -3335,6 +3486,206 @@ test_prefix_alias_registry.register('bb', 'bzrlib.tests.blackbox')
 test_prefix_alias_registry.register('bp', 'bzrlib.plugins')
 
 
+def _test_suite_testmod_names():
+    """Return the standard list of test module names to test."""
+    return [
+        'bzrlib.doc',
+        'bzrlib.tests.blackbox',
+        'bzrlib.tests.commands',
+        'bzrlib.tests.per_branch',
+        'bzrlib.tests.per_bzrdir',
+        'bzrlib.tests.per_interrepository',
+        'bzrlib.tests.per_intertree',
+        'bzrlib.tests.per_inventory',
+        'bzrlib.tests.per_interbranch',
+        'bzrlib.tests.per_lock',
+        'bzrlib.tests.per_transport',
+        'bzrlib.tests.per_tree',
+        'bzrlib.tests.per_pack_repository',
+        'bzrlib.tests.per_repository',
+        'bzrlib.tests.per_repository_chk',
+        'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_versionedfile',
+        'bzrlib.tests.per_workingtree',
+        'bzrlib.tests.test__annotator',
+        'bzrlib.tests.test__chk_map',
+        'bzrlib.tests.test__dirstate_helpers',
+        'bzrlib.tests.test__groupcompress',
+        'bzrlib.tests.test__known_graph',
+        'bzrlib.tests.test__rio',
+        'bzrlib.tests.test__walkdirs_win32',
+        'bzrlib.tests.test_ancestry',
+        'bzrlib.tests.test_annotate',
+        'bzrlib.tests.test_api',
+        'bzrlib.tests.test_atomicfile',
+        'bzrlib.tests.test_bad_files',
+        'bzrlib.tests.test_bencode',
+        'bzrlib.tests.test_bisect_multi',
+        'bzrlib.tests.test_branch',
+        'bzrlib.tests.test_branchbuilder',
+        'bzrlib.tests.test_btree_index',
+        'bzrlib.tests.test_bugtracker',
+        'bzrlib.tests.test_bundle',
+        'bzrlib.tests.test_bzrdir',
+        'bzrlib.tests.test__chunks_to_lines',
+        'bzrlib.tests.test_cache_utf8',
+        'bzrlib.tests.test_chk_map',
+        'bzrlib.tests.test_chk_serializer',
+        'bzrlib.tests.test_chunk_writer',
+        'bzrlib.tests.test_clean_tree',
+        'bzrlib.tests.test_commands',
+        'bzrlib.tests.test_commit',
+        'bzrlib.tests.test_commit_merge',
+        'bzrlib.tests.test_config',
+        'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_counted_lock',
+        'bzrlib.tests.test_crash',
+        'bzrlib.tests.test_decorators',
+        'bzrlib.tests.test_delta',
+        'bzrlib.tests.test_debug',
+        'bzrlib.tests.test_deprecated_graph',
+        'bzrlib.tests.test_diff',
+        'bzrlib.tests.test_directory_service',
+        'bzrlib.tests.test_dirstate',
+        'bzrlib.tests.test_email_message',
+        'bzrlib.tests.test_eol_filters',
+        'bzrlib.tests.test_errors',
+        'bzrlib.tests.test_export',
+        'bzrlib.tests.test_extract',
+        'bzrlib.tests.test_fetch',
+        'bzrlib.tests.test_fifo_cache',
+        'bzrlib.tests.test_filters',
+        'bzrlib.tests.test_ftp_transport',
+        'bzrlib.tests.test_foreign',
+        'bzrlib.tests.test_generate_docs',
+        'bzrlib.tests.test_generate_ids',
+        'bzrlib.tests.test_globbing',
+        'bzrlib.tests.test_gpg',
+        'bzrlib.tests.test_graph',
+        'bzrlib.tests.test_groupcompress',
+        'bzrlib.tests.test_hashcache',
+        'bzrlib.tests.test_help',
+        'bzrlib.tests.test_hooks',
+        'bzrlib.tests.test_http',
+        'bzrlib.tests.test_http_response',
+        'bzrlib.tests.test_https_ca_bundle',
+        'bzrlib.tests.test_identitymap',
+        'bzrlib.tests.test_ignores',
+        'bzrlib.tests.test_index',
+        'bzrlib.tests.test_info',
+        'bzrlib.tests.test_inv',
+        'bzrlib.tests.test_inventory_delta',
+        'bzrlib.tests.test_knit',
+        'bzrlib.tests.test_lazy_import',
+        'bzrlib.tests.test_lazy_regex',
+        'bzrlib.tests.test_lock',
+        'bzrlib.tests.test_lockable_files',
+        'bzrlib.tests.test_lockdir',
+        'bzrlib.tests.test_log',
+        'bzrlib.tests.test_lru_cache',
+        'bzrlib.tests.test_lsprof',
+        'bzrlib.tests.test_mail_client',
+        'bzrlib.tests.test_memorytree',
+        'bzrlib.tests.test_merge',
+        'bzrlib.tests.test_merge3',
+        'bzrlib.tests.test_merge_core',
+        'bzrlib.tests.test_merge_directive',
+        'bzrlib.tests.test_missing',
+        'bzrlib.tests.test_msgeditor',
+        'bzrlib.tests.test_multiparent',
+        'bzrlib.tests.test_mutabletree',
+        'bzrlib.tests.test_nonascii',
+        'bzrlib.tests.test_options',
+        'bzrlib.tests.test_osutils',
+        'bzrlib.tests.test_osutils_encodings',
+        'bzrlib.tests.test_pack',
+        'bzrlib.tests.test_patch',
+        'bzrlib.tests.test_patches',
+        'bzrlib.tests.test_permissions',
+        'bzrlib.tests.test_plugins',
+        'bzrlib.tests.test_progress',
+        'bzrlib.tests.test_read_bundle',
+        'bzrlib.tests.test_reconcile',
+        'bzrlib.tests.test_reconfigure',
+        'bzrlib.tests.test_registry',
+        'bzrlib.tests.test_remote',
+        'bzrlib.tests.test_rename_map',
+        'bzrlib.tests.test_repository',
+        'bzrlib.tests.test_revert',
+        'bzrlib.tests.test_revision',
+        'bzrlib.tests.test_revisionspec',
+        'bzrlib.tests.test_revisiontree',
+        'bzrlib.tests.test_rio',
+        'bzrlib.tests.test_rules',
+        'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_selftest',
+        'bzrlib.tests.test_serializer',
+        'bzrlib.tests.test_setup',
+        'bzrlib.tests.test_sftp_transport',
+        'bzrlib.tests.test_shelf',
+        'bzrlib.tests.test_shelf_ui',
+        'bzrlib.tests.test_smart',
+        'bzrlib.tests.test_smart_add',
+        'bzrlib.tests.test_smart_request',
+        'bzrlib.tests.test_smart_transport',
+        'bzrlib.tests.test_smtp_connection',
+        'bzrlib.tests.test_source',
+        'bzrlib.tests.test_ssh_transport',
+        'bzrlib.tests.test_status',
+        'bzrlib.tests.test_store',
+        'bzrlib.tests.test_strace',
+        'bzrlib.tests.test_subsume',
+        'bzrlib.tests.test_switch',
+        'bzrlib.tests.test_symbol_versioning',
+        'bzrlib.tests.test_tag',
+        'bzrlib.tests.test_testament',
+        'bzrlib.tests.test_textfile',
+        'bzrlib.tests.test_textmerge',
+        'bzrlib.tests.test_timestamp',
+        'bzrlib.tests.test_trace',
+        'bzrlib.tests.test_transactions',
+        'bzrlib.tests.test_transform',
+        'bzrlib.tests.test_transport',
+        'bzrlib.tests.test_transport_log',
+        'bzrlib.tests.test_tree',
+        'bzrlib.tests.test_treebuilder',
+        'bzrlib.tests.test_tsort',
+        'bzrlib.tests.test_tuned_gzip',
+        'bzrlib.tests.test_ui',
+        'bzrlib.tests.test_uncommit',
+        'bzrlib.tests.test_upgrade',
+        'bzrlib.tests.test_upgrade_stacked',
+        'bzrlib.tests.test_urlutils',
+        'bzrlib.tests.test_version',
+        'bzrlib.tests.test_version_info',
+        'bzrlib.tests.test_weave',
+        'bzrlib.tests.test_whitebox',
+        'bzrlib.tests.test_win32utils',
+        'bzrlib.tests.test_workingtree',
+        'bzrlib.tests.test_workingtree_4',
+        'bzrlib.tests.test_wsgi',
+        'bzrlib.tests.test_xml',
+        ]
+
+
+def _test_suite_modules_to_doctest():
+    """Return the list of modules to doctest."""   
+    return [
+        'bzrlib',
+        'bzrlib.branchbuilder',
+        'bzrlib.export',
+        'bzrlib.inventory',
+        'bzrlib.iterablefile',
+        'bzrlib.lockdir',
+        'bzrlib.merge3',
+        'bzrlib.option',
+        'bzrlib.symbol_versioning',
+        'bzrlib.tests',
+        'bzrlib.timestamp',
+        'bzrlib.version_info_formats.format_custom',
+        ]
+
+
 def test_suite(keep_only=None, starting_with=None):
     """Build and return TestSuite for the whole of bzrlib.
 
@@ -3346,185 +3697,12 @@ def test_suite(keep_only=None, starting_with=None):
     This function can be replaced if you need to change the default test
     suite on a global basis, but it is not encouraged.
     """
-    testmod_names = [
-                   'bzrlib.doc',
-                   'bzrlib.tests.blackbox',
-                   'bzrlib.tests.branch_implementations',
-                   'bzrlib.tests.bzrdir_implementations',
-                   'bzrlib.tests.commands',
-                   'bzrlib.tests.interrepository_implementations',
-                   'bzrlib.tests.intertree_implementations',
-                   'bzrlib.tests.inventory_implementations',
-                   'bzrlib.tests.per_interbranch',
-                   'bzrlib.tests.per_lock',
-                   'bzrlib.tests.per_repository',
-                   'bzrlib.tests.per_repository_chk',
-                   'bzrlib.tests.per_repository_reference',
-                   'bzrlib.tests.test__chk_map',
-                   'bzrlib.tests.test__dirstate_helpers',
-                   'bzrlib.tests.test__groupcompress',
-                   'bzrlib.tests.test__rio',
-                   'bzrlib.tests.test__walkdirs_win32',
-                   'bzrlib.tests.test_ancestry',
-                   'bzrlib.tests.test_annotate',
-                   'bzrlib.tests.test_api',
-                   'bzrlib.tests.test_atomicfile',
-                   'bzrlib.tests.test_bad_files',
-                   'bzrlib.tests.test_bisect_multi',
-                   'bzrlib.tests.test_branch',
-                   'bzrlib.tests.test_branchbuilder',
-                   'bzrlib.tests.test_btree_index',
-                   'bzrlib.tests.test_bugtracker',
-                   'bzrlib.tests.test_bundle',
-                   'bzrlib.tests.test_bzrdir',
-                   'bzrlib.tests.test__chunks_to_lines',
-                   'bzrlib.tests.test_cache_utf8',
-                   'bzrlib.tests.test_chk_map',
-                   'bzrlib.tests.test_chunk_writer',
-                   'bzrlib.tests.test_clean_tree',
-                   'bzrlib.tests.test_commands',
-                   'bzrlib.tests.test_commit',
-                   'bzrlib.tests.test_commit_merge',
-                   'bzrlib.tests.test_config',
-                   'bzrlib.tests.test_conflicts',
-                   'bzrlib.tests.test_counted_lock',
-                   'bzrlib.tests.test_decorators',
-                   'bzrlib.tests.test_delta',
-                   'bzrlib.tests.test_debug',
-                   'bzrlib.tests.test_deprecated_graph',
-                   'bzrlib.tests.test_diff',
-                   'bzrlib.tests.test_directory_service',
-                   'bzrlib.tests.test_dirstate',
-                   'bzrlib.tests.test_email_message',
-                   'bzrlib.tests.test_eol_filters',
-                   'bzrlib.tests.test_errors',
-                   'bzrlib.tests.test_export',
-                   'bzrlib.tests.test_extract',
-                   'bzrlib.tests.test_fetch',
-                   'bzrlib.tests.test_fifo_cache',
-                   'bzrlib.tests.test_filters',
-                   'bzrlib.tests.test_ftp_transport',
-                   'bzrlib.tests.test_foreign',
-                   'bzrlib.tests.test_generate_docs',
-                   'bzrlib.tests.test_generate_ids',
-                   'bzrlib.tests.test_globbing',
-                   'bzrlib.tests.test_gpg',
-                   'bzrlib.tests.test_graph',
-                   'bzrlib.tests.test_groupcompress',
-                   'bzrlib.tests.test_hashcache',
-                   'bzrlib.tests.test_help',
-                   'bzrlib.tests.test_hooks',
-                   'bzrlib.tests.test_http',
-                   'bzrlib.tests.test_http_response',
-                   'bzrlib.tests.test_https_ca_bundle',
-                   'bzrlib.tests.test_identitymap',
-                   'bzrlib.tests.test_ignores',
-                   'bzrlib.tests.test_index',
-                   'bzrlib.tests.test_info',
-                   'bzrlib.tests.test_inv',
-                   'bzrlib.tests.test_inventory_delta',
-                   'bzrlib.tests.test_knit',
-                   'bzrlib.tests.test_lazy_import',
-                   'bzrlib.tests.test_lazy_regex',
-                   'bzrlib.tests.test_lockable_files',
-                   'bzrlib.tests.test_lockdir',
-                   'bzrlib.tests.test_log',
-                   'bzrlib.tests.test_lru_cache',
-                   'bzrlib.tests.test_lsprof',
-                   'bzrlib.tests.test_mail_client',
-                   'bzrlib.tests.test_memorytree',
-                   'bzrlib.tests.test_merge',
-                   'bzrlib.tests.test_merge3',
-                   'bzrlib.tests.test_merge_core',
-                   'bzrlib.tests.test_merge_directive',
-                   'bzrlib.tests.test_missing',
-                   'bzrlib.tests.test_msgeditor',
-                   'bzrlib.tests.test_multiparent',
-                   'bzrlib.tests.test_mutabletree',
-                   'bzrlib.tests.test_nonascii',
-                   'bzrlib.tests.test_options',
-                   'bzrlib.tests.test_osutils',
-                   'bzrlib.tests.test_osutils_encodings',
-                   'bzrlib.tests.test_pack',
-                   'bzrlib.tests.test_pack_repository',
-                   'bzrlib.tests.test_patch',
-                   'bzrlib.tests.test_patches',
-                   'bzrlib.tests.test_permissions',
-                   'bzrlib.tests.test_plugins',
-                   'bzrlib.tests.test_progress',
-                   'bzrlib.tests.test_read_bundle',
-                   'bzrlib.tests.test_reconcile',
-                   'bzrlib.tests.test_reconfigure',
-                   'bzrlib.tests.test_registry',
-                   'bzrlib.tests.test_remote',
-                   'bzrlib.tests.test_rename_map',
-                   'bzrlib.tests.test_repository',
-                   'bzrlib.tests.test_revert',
-                   'bzrlib.tests.test_revision',
-                   'bzrlib.tests.test_revisionspec',
-                   'bzrlib.tests.test_revisiontree',
-                   'bzrlib.tests.test_rio',
-                   'bzrlib.tests.test_rules',
-                   'bzrlib.tests.test_sampler',
-                   'bzrlib.tests.test_selftest',
-                   'bzrlib.tests.test_serializer',
-                   'bzrlib.tests.test_setup',
-                   'bzrlib.tests.test_sftp_transport',
-                   'bzrlib.tests.test_shelf',
-                   'bzrlib.tests.test_shelf_ui',
-                   'bzrlib.tests.test_smart',
-                   'bzrlib.tests.test_smart_add',
-                   'bzrlib.tests.test_smart_request',
-                   'bzrlib.tests.test_smart_transport',
-                   'bzrlib.tests.test_smtp_connection',
-                   'bzrlib.tests.test_source',
-                   'bzrlib.tests.test_ssh_transport',
-                   'bzrlib.tests.test_status',
-                   'bzrlib.tests.test_store',
-                   'bzrlib.tests.test_strace',
-                   'bzrlib.tests.test_subsume',
-                   'bzrlib.tests.test_switch',
-                   'bzrlib.tests.test_symbol_versioning',
-                   'bzrlib.tests.test_tag',
-                   'bzrlib.tests.test_testament',
-                   'bzrlib.tests.test_textfile',
-                   'bzrlib.tests.test_textmerge',
-                   'bzrlib.tests.test_timestamp',
-                   'bzrlib.tests.test_trace',
-                   'bzrlib.tests.test_transactions',
-                   'bzrlib.tests.test_transform',
-                   'bzrlib.tests.test_transport',
-                   'bzrlib.tests.test_transport_implementations',
-                   'bzrlib.tests.test_transport_log',
-                   'bzrlib.tests.test_tree',
-                   'bzrlib.tests.test_treebuilder',
-                   'bzrlib.tests.test_tsort',
-                   'bzrlib.tests.test_tuned_gzip',
-                   'bzrlib.tests.test_ui',
-                   'bzrlib.tests.test_uncommit',
-                   'bzrlib.tests.test_upgrade',
-                   'bzrlib.tests.test_upgrade_stacked',
-                   'bzrlib.tests.test_urlutils',
-                   'bzrlib.tests.test_version',
-                   'bzrlib.tests.test_version_info',
-                   'bzrlib.tests.test_versionedfile',
-                   'bzrlib.tests.test_weave',
-                   'bzrlib.tests.test_whitebox',
-                   'bzrlib.tests.test_win32utils',
-                   'bzrlib.tests.test_workingtree',
-                   'bzrlib.tests.test_workingtree_4',
-                   'bzrlib.tests.test_wsgi',
-                   'bzrlib.tests.test_xml',
-                   'bzrlib.tests.tree_implementations',
-                   'bzrlib.tests.workingtree_implementations',
-                   'bzrlib.util.tests.test_bencode',
-                   ]
 
     loader = TestUtil.TestLoader()
 
+    if keep_only is not None:
+        id_filter = TestIdList(keep_only)
     if starting_with:
-        starting_with = [test_prefix_alias_registry.resolve_alias(start)
-                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
@@ -3540,7 +3718,6 @@ def test_suite(keep_only=None, starting_with=None):
         loader = TestUtil.FilteredByModuleTestLoader(interesting_module)
 
     elif keep_only is not None:
-        id_filter = TestIdList(keep_only)
         loader = TestUtil.FilteredByModuleTestLoader(id_filter.refers_to)
         def interesting_module(name):
             return id_filter.refers_to(name)
@@ -3554,24 +3731,9 @@ def test_suite(keep_only=None, starting_with=None):
     suite = loader.suiteClass()
 
     # modules building their suite with loadTestsFromModuleNames
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
+    suite.addTest(loader.loadTestsFromModuleNames(_test_suite_testmod_names()))
 
-    modules_to_doctest = [
-        'bzrlib',
-        'bzrlib.branchbuilder',
-        'bzrlib.export',
-        'bzrlib.inventory',
-        'bzrlib.iterablefile',
-        'bzrlib.lockdir',
-        'bzrlib.merge3',
-        'bzrlib.option',
-        'bzrlib.symbol_versioning',
-        'bzrlib.tests',
-        'bzrlib.timestamp',
-        'bzrlib.version_info_formats.format_custom',
-        ]
-
-    for mod in modules_to_doctest:
+    for mod in _test_suite_modules_to_doctest():
         if not interesting_module(mod):
             # No tests to keep here, move along
             continue
@@ -3605,9 +3767,6 @@ def test_suite(keep_only=None, starting_with=None):
                 sys.getdefaultencoding())
             reload(sys)
             sys.setdefaultencoding(default_encoding)
-
-    if starting_with:
-        suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
@@ -3721,8 +3880,7 @@ def clone_test(test, new_id):
     :param new_id: The id to assign to it.
     :return: The new test.
     """
-    from copy import deepcopy
-    new_test = deepcopy(test)
+    new_test = copy(test)
     new_test.id = lambda: new_id
     return new_test
 
@@ -3742,13 +3900,11 @@ def _rmtree_temp_dir(dirname):
     try:
         osutils.rmtree(dirname)
     except OSError, e:
-        if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write('Permission denied: '
-                             'unable to remove testing dir '
-                             '%s\n%s'
-                             % (os.path.basename(dirname), e))
-        else:
-            raise
+        # We don't want to fail here because some useful display will be lost
+        # otherwise. Polluting the tmp dir is bad, but not giving all the
+        # possible info to the test runner is even worse.
+        sys.stderr.write('Unable to remove testing dir %s\n%s'
+                         % (os.path.basename(dirname), e))
 
 
 class Feature(object):
@@ -3993,9 +4149,14 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
+    try:
+        from subunit.test_results import AutoTimingTestResultDecorator
+    except ImportError:
+        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = TestProtocolClient(self.stream)
+            result = AutoTimingTestResultDecorator(
+                TestProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:

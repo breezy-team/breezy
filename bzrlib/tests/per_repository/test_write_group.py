@@ -68,11 +68,14 @@ class TestWriteGroup(TestCaseWithRepository):
             repo.commit_write_group()
             repo.unlock()
 
-    def test_commit_write_group_gets_None(self):
+    def test_commit_write_group_does_not_error(self):
         repo = self.make_repository('.')
         repo.lock_write()
         repo.start_write_group()
-        self.assertEqual(None, repo.commit_write_group())
+        # commit_write_group can either return None (for repositories without
+        # isolated transactions) or a hint for pack(). So we only check it
+        # works in this interface test, because all repositories are exercised.
+        repo.commit_write_group()
         repo.unlock()
 
     def test_unlock_in_write_group(self):
@@ -127,6 +130,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # exception was not generated, or the exception was caught and
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+
 
 class TestGetMissingParentInventories(TestCaseWithRepository):
 
@@ -329,8 +333,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_insert_stream_passes_resume_info(self):
         repo = self.make_repository('test-repo')
-        if not repo._format.supports_external_lookups:
-            raise TestNotApplicable('only valid in resumable repos')
+        if (not repo._format.supports_external_lookups or
+            isinstance(repo, remote.RemoteRepository)):
+            raise TestNotApplicable(
+                'only valid for direct connections to resumable repos')
         # log calls to get_missing_parent_inventories, so that we can assert it
         # is called with the correct parameters
         call_log = []

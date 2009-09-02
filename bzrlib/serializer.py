@@ -24,11 +24,29 @@ from bzrlib import registry
 class Serializer(object):
     """Inventory and revision serialization/deserialization."""
 
+    squashes_xml_invalid_characters = False
+
     def write_inventory(self, inv, f):
-        """Write inventory to a file"""
+        """Write inventory to a file.
+
+        Note: this is a *whole inventory* operation, and should only be used
+        sparingly, as it does not scale well with large trees.
+        """
         raise NotImplementedError(self.write_inventory)
 
     def write_inventory_to_string(self, inv):
+        """Produce a simple string representation of an inventory.
+
+        Note: this is a *whole inventory* operation, and should only be used
+        sparingly, as it does not scale well with large trees.
+
+        The requirement for the contents of the string is that it can be passed
+        to read_inventory_from_string and the result is an identical inventory
+        in memory.
+
+        (All serializers as of 2009-07-29 produce XML, but this is not mandated
+        by the interface.)
+        """
         raise NotImplementedError(self.write_inventory_to_string)
 
     def read_inventory_from_string(self, string, revision_id=None,
@@ -50,6 +68,7 @@ class Serializer(object):
         raise NotImplementedError(self.read_inventory_from_string)
 
     def read_inventory(self, f, revision_id=None):
+        """See read_inventory_from_string."""
         raise NotImplementedError(self.read_inventory)
 
     def write_revision(self, rev, f):
@@ -75,3 +94,7 @@ format_registry.register_lazy('5', 'bzrlib.xml5', 'serializer_v5')
 format_registry.register_lazy('6', 'bzrlib.xml6', 'serializer_v6')
 format_registry.register_lazy('7', 'bzrlib.xml7', 'serializer_v7')
 format_registry.register_lazy('8', 'bzrlib.xml8', 'serializer_v8')
+format_registry.register_lazy('9', 'bzrlib.chk_serializer',
+    'chk_serializer_255_bigpage')
+format_registry.register_lazy('10', 'bzrlib.chk_serializer',
+    'chk_bencode_serializer')

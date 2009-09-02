@@ -19,17 +19,18 @@
 import bz2
 import os
 import Queue
-import struct
 import sys
 import tarfile
 import tempfile
 import threading
 
 from bzrlib import (
+    bencode,
     errors,
     graph,
     osutils,
     pack,
+    versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -39,8 +40,10 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.util import bencode
-from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
+from bzrlib.versionedfile import (
+    NetworkRecordStream,
+    record_to_fulltext_bytes,
+    )
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -284,6 +287,31 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
 
 
+class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+
+    def do_readlocked_repository_request(self, repository, revno,
+            known_pair):
+        """Find the revid for a given revno, given a known revno/revid pair.
+        
+        New in 1.17.
+        """
+        try:
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id != known_pair[1]:
+                raise AssertionError(
+                    'get_rev_id_for_revno raised RevisionNotPresent for '
+                    'non-initial revision: ' + err.revision_id)
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision_id))
+        if found_flag:
+            return SuccessfulSmartServerResponse(('ok', result))
+        else:
+            earliest_revno, earliest_revid = result
+            return SuccessfulSmartServerResponse(
+                ('history-incomplete', earliest_revno, earliest_revid))
+
+
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
 
     def do_repository_request(self, repository, revision_id):
@@ -390,7 +418,41 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.
         """
         self._to_format = network_format_registry.get(to_network_name)
+        if self._should_fake_unknown():
+            return FailedSmartServerResponse(
+                ('UnknownMethod', 'Repository.get_stream'))
         return None # Signal that we want a body.
+
+    def _should_fake_unknown(self):
+        """Return True if we should return UnknownMethod to the client.
+        
+        This is a workaround for bugs in pre-1.19 clients that claim to
+        support receiving streams of CHK repositories.  The pre-1.19 client
+        expects inventory records to be serialized in the format defined by
+        to_network_name, but in pre-1.19 (at least) that format definition
+        tries to use the xml5 serializer, which does not correctly handle
+        rich-roots.  After 1.19 the client can also accept inventory-deltas
+        (which avoids this issue), and those clients will use the
+        Repository.get_stream_1.19 verb instead of this one.
+        So: if this repository is CHK, and the to_format doesn't match,
+        we should just fake an UnknownSmartMethod error so that the client
+        will fallback to VFS, rather than sending it a stream we know it
+        cannot handle.
+        """
+        from_format = self._repository._format
+        to_format = self._to_format
+        if not from_format.supports_chks:
+            # Source not CHK: that's ok
+            return False
+        if (to_format.supports_chks and
+            from_format.repository_class is to_format.repository_class and
+            from_format._serializer == to_format._serializer):
+            # Source is CHK, but target matches: that's ok
+            # (e.g. 2a->2a, or CHK2->2a)
+            return False
+        # Source is CHK, and target is not CHK or incompatible CHK.  We can't
+        # generate a compatible stream.
+        return True
 
     def do_body(self, body_bytes):
         repository = self._repository
@@ -427,6 +489,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.unlock()
 
 
+class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
+
+    def _should_fake_unknown(self):
+        """Returns False; we don't need to workaround bugs in 1.19+ clients."""
+        return False
+
+
 def _stream_to_byte_stream(stream, src_format):
     """Convert a record stream to a self delimited byte stream."""
     pack_writer = pack.ContainerSerialiser()
@@ -436,6 +505,8 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'inventory-delta':
+                serialised = record_to_inventory_delta_bytes(record)
             elif record.storage_kind == 'absent':
                 raise ValueError("Absent factory for %s" % (record.key,))
             else:
@@ -624,6 +695,23 @@ class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream_1_19(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into a repository.
+
+    Same as SmartServerRepositoryInsertStreamLocked, except:
+     - the lock token argument is optional
+     - servers that implement this verb accept 'inventory-delta' records in the
+       stream.
+
+    New in 1.19.
+    """
+
+    def do_repository_request(self, repository, resume_tokens, lock_token=None):
+        """StreamSink.insert_stream for a remote repository."""
+        SmartServerRepositoryInsertStreamLocked.do_repository_request(
+            self, repository, resume_tokens, lock_token)
 
 
 class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):

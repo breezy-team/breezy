@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import subprocess
 import tempfile
 from tempfile import (
     mkdtemp,
@@ -721,7 +722,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                _format_date(t, offset, timezone, date_fmt, show_offset)
     date_str = time.strftime(date_fmt, tt)
     if not isinstance(date_str, unicode):
-        date_str = date_str.decode(bzrlib.user_encoding, 'replace')
+        date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
@@ -926,13 +927,31 @@ def link_or_copy(src, dest):
         shutil.copyfile(src, dest)
 
 
-# Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
-# Forgiveness than Permission (EAFP) because:
-# - root can damage a solaris file system by using unlink,
-# - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
-#   EACCES, OSX: EPERM) when invoked on a directory.
 def delete_any(path):
-    """Delete a file or directory."""
+    """Delete a file, symlink or directory.  
+    
+    Will delete even if readonly.
+    """
+    try:
+       _delete_file_or_dir(path)
+    except (OSError, IOError), e:
+        if e.errno in (errno.EPERM, errno.EACCES):
+            # make writable and try again
+            try:
+                make_writable(path)
+            except (OSError, IOError):
+                pass
+            _delete_file_or_dir(path)
+        else:
+            raise
+
+
+def _delete_file_or_dir(path):
+    # Look Before You Leap (LBYL) is appropriate here instead of Easier to Ask for
+    # Forgiveness than Permission (EAFP) because:
+    # - root can damage a solaris file system by using unlink,
+    # - unlink raises different exceptions on different OSes (linux: EISDIR, win32:
+    #   EACCES, OSX: EPERM) when invoked on a directory.
     if isdir(path): # Takes care of symlinks
         os.rmdir(path)
     else:
@@ -1021,17 +1040,17 @@ def relpath(base, path):
 
     s = []
     head = rp
-    while len(head) >= len(base):
+    while True:
+        if len(head) <= len(base) and head != base:
+            raise errors.PathNotChild(rp, base)
         if head == base:
             break
-        head, tail = os.path.split(head)
+        head, tail = split(head)
         if tail:
-            s.insert(0, tail)
-    else:
-        raise errors.PathNotChild(rp, base)
+            s.append(tail)
 
     if s:
-        return pathjoin(*s)
+        return pathjoin(*reversed(s))
     else:
         return ''
 
@@ -1826,3 +1845,58 @@ else:
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
+
+
+if sys.platform == 'linux2':
+    def _local_concurrency():
+        concurrency = None
+        prefix = 'processor'
+        for line in file('/proc/cpuinfo', 'rb'):
+            if line.startswith(prefix):
+                concurrency = int(line[line.find(':')+1:]) + 1
+        return concurrency
+elif sys.platform == 'darwin':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform[0:7] == 'freebsd':
+    def _local_concurrency():
+        return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == 'sunos5':
+    def _local_concurrency():
+        return subprocess.Popen(['psrinfo', '-p',],
+                                stdout=subprocess.PIPE).communicate()[0]
+elif sys.platform == "win32":
+    def _local_concurrency():
+        # This appears to return the number of cores.
+        return os.environ.get('NUMBER_OF_PROCESSORS')
+else:
+    def _local_concurrency():
+        # Who knows ?
+        return None
+
+
+_cached_local_concurrency = None
+
+def local_concurrency(use_cache=True):
+    """Return how many processes can be run concurrently.
+
+    Rely on platform specific implementations and default to 1 (one) if
+    anything goes wrong.
+    """
+    global _cached_local_concurrency
+    if _cached_local_concurrency is not None and use_cache:
+        return _cached_local_concurrency
+
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
+    try:
+        concurrency = int(concurrency)
+    except (TypeError, ValueError):
+        concurrency = 1
+    if use_cache:
+        _cached_concurrency = concurrency
+    return concurrency

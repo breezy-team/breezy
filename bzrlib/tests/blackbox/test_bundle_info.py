@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,9 @@ class TestBundleInfo(tests.TestCaseWithTransport):
         finally:
             bundle.close()
         info = self.run_bzr('bundle-info bundle')[0]
-        self.assertContainsRe(info, 'file: 1 .0 multiparent.')
+        # there might be either one file, or two, depending on whether the
+        # tree root counts...
+        self.assertContainsRe(info, 'file: [12] .0 multiparent.')
         self.assertContainsRe(info, 'nicks: source')
         self.assertNotContainsRe(info, 'foo')
         self.run_bzr_error(['--verbose requires a merge directive'],

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -525,6 +526,19 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
 
+    def test_lefthand_distance_smoke(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        graph = self.make_graph(history_shortcut)
+        distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
+        self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
+
+    def test_lefthand_distance_ghosts(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        nodes = {'nonghost':[NULL_REVISION], 'toghost':['ghost']}
+        graph = self.make_graph(nodes)
+        distance_graph = graph.find_lefthand_distances(['nonghost', 'toghost'])
+        self.assertEqual({'nonghost': 1, 'toghost': -1}, distance_graph)
+
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
 
@@ -661,10 +675,36 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
+
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
+    
+    def test_stacked_parents_provider_overlapping(self):
+        # rev2 is availible in both providers.
+        # 1
+        # |
+        # 2
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
+
+    def test__stacked_parents_provider_deprecated(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
+                    _mod_graph._StackedParentsProvider, [parents1, parents2])
         self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
                          stacked.get_parent_map(['rev1', 'rev2']))
         self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},

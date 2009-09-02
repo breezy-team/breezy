@@ -240,6 +240,18 @@ class TestRmTree(tests.TestCaseInTempDir):
         self.failIfExists('dir')
 
 
+class TestDeleteAny(tests.TestCaseInTempDir):
+
+    def test_delete_any_readonly(self):
+        # from <https://bugs.launchpad.net/bzr/+bug/218206>
+        self.build_tree(['d/', 'f'])
+        osutils.make_readonly('d')
+        osutils.make_readonly('f')
+
+        osutils.delete_any('f')
+        osutils.delete_any('d')
+
+
 class TestKind(tests.TestCaseInTempDir):
 
     def test_file_kind(self):
@@ -611,6 +623,25 @@ class TestPumpStringFile(tests.TestCase):
         output = StringIO()
         osutils.pump_string_file("1234", output, 2)
         self.assertEqual("1234", output.getvalue())
+
+
+class TestRelpath(tests.TestCase):
+
+    def test_simple_relpath(self):
+        cwd = osutils.getcwd()
+        subdir = cwd + '/subdir'
+        self.assertEqual('subdir', osutils.relpath(cwd, subdir))
+
+    def test_deep_relpath(self):
+        cwd = osutils.getcwd()
+        subdir = cwd + '/sub/subsubdir'
+        self.assertEqual('sub/subsubdir', osutils.relpath(cwd, subdir))
+
+    def test_not_relative(self):
+        self.assertRaises(errors.PathNotChild,
+                          osutils.relpath, 'C:/path', 'H:/path')
+        self.assertRaises(errors.PathNotChild,
+                          osutils.relpath, 'C:/', 'H:/path')
 
 
 class TestSafeUnicode(tests.TestCase):
@@ -1760,3 +1791,10 @@ class TestReadLink(tests.TestCaseInTempDir):
     def test_os_readlink_link_decoding(self):
         self.assertEquals(self.target.encode(osutils._fs_enc),
                           os.readlink(self.link.encode(osutils._fs_enc)))
+
+
+class TestConcurrency(tests.TestCase):
+
+    def test_local_concurrency(self):
+        concurrency = osutils.local_concurrency()
+        self.assertIsInstance(concurrency, int)
