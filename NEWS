@@ -1,31 +1,52 @@
---------------------
+########################
 bzr-upload Release Notes
---------------------
+########################
 
-.. contents::
+.. contents:: List of Releases
+   :depth: 1
 
-IN DEVELOPMENT
---------------
+In Development
+##############
 
-  COMPATIBILITY BREAKS:
 
-  NEW FEATURES:
+Compatibility Breaks
+********************
 
-    * Remote branches can be used to upload from.
-      (Gary van der Merwe, Vincent Ladeuil)
 
-  IMPROVEMENTS:
+New Features
+************
 
-  BUG FIXES:
+* Remote branches can be used to upload from.
+  (Gary van der Merwe, Vincent Ladeuil)
 
-  DOCUMENTATION:
+* The auto hook verbosity is now controlled by the 'upload_auto_quiet'
+  config variable. If defaults to False if not set.
 
-    * Clarify 'changes' definition in online help.
-      (Vincent Ladeuil, #275538)
+Bug Fixes
+*********
 
-  API CHANGES:
+* Fix auto hook trying to display an url without using the right encoding.
+  (Vincent Ladeuil, #312686)
 
-  TESTING:
+Improvements
+************
 
-  INTERNALS:
+
+Documentation
+*************
+
+* Clarify 'changes' definition in online help.
+  (Vincent Ladeuil, #275538)
+
+
+API Changes
+***********
+
+
+Internals
+*********
+
+
+Testing
+*******
 

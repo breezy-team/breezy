@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -66,28 +66,45 @@ plugin_name = 'upload'
 def _get_branch_option(branch, option):
     return branch.get_config().get_user_option(option)
 
+
 def _set_branch_option(branch, option, value):
     branch.get_config().set_user_option(option, value)
+
 
 def get_upload_location(branch):
     return _get_branch_option(branch, 'upload_location')
 
+
 def set_upload_location(branch, location):
     _set_branch_option(branch, 'upload_location', location)
 
+
 def get_upload_auto(branch):
-    result = _get_branch_option(branch, 'upload_auto')
-    # FIXME: is there a better way to do this with bzr's config API?
-    if result is not None and result.strip() == "True":
-        return True
-    return False
+    auto = branch.get_config().get_user_option_as_bool('upload_auto')
+    if auto is None:
+        auto = False # Default to False if not specified
+    return auto
+
 
 def set_upload_auto(branch, auto):
+    # FIXME: What's the point in allowing a boolean here instead of requiring
+    # the callers to use strings instead ?
     if auto:
         auto_str = "True"
     else:
         auto_str = "False"
     _set_branch_option(branch, 'upload_auto', auto_str)
+
+
+def get_upload_auto_quiet(branch):
+    quiet = branch.get_config().get_user_option_as_bool('upload_auto_quiet')
+    if quiet is None:
+        quiet = False # Default to False if not specified
+    return quiet
+
+
+def set_upload_auto_quiet(branch, quiet):
+    _set_branch_option(branch, 'upload_auto_quiet', quiet)
 
 
 class BzrUploader(object):
@@ -428,14 +445,15 @@ class cmd_upload(commands.Command):
 
 commands.register_command(cmd_upload)
 
-
-from bzrlib.plugins.upload.auto_upload_hook import auto_upload_hook
+def install_auto_upload_hook():
+    from bzrlib.plugins.upload import auto_upload_hook
+    branch.Branch.hooks.install_named_hook('post_change_branch_tip',
+            auto_upload_hook.auto_upload_hook,
+            'Auto upload code from a branch when it is changed.')
 
 
 if hasattr(branch.Branch.hooks, "install_named_hook"):
-    branch.Branch.hooks.install_named_hook('post_change_branch_tip',
-            auto_upload_hook,
-            'Auto upload code from a branch when it is changed.')
+    install_auto_upload_hook()
     auto_hook_available = True
 else:
     auto_hook_available = False
