@@ -2063,6 +2063,53 @@ class RepositoryPackCollection(object):
             self._remove_pack_indices(resumed_pack)
         del self._resumed_packs[:]
 
+    def _check_new_inventories(self):
+        """Detect missing inventories or chk root entries for the new revisions
+        in this write group.
+
+        :returns: set of missing keys.  Note that not every missing key is
+            guaranteed to be reported.
+        """
+        if getattr(self.repo, 'chk_bytes', None) is None:
+            return set()
+        # Ensure that all revisions added in this write group have:
+        #   - corresponding inventories,
+        #   - chk root entries for those inventories,
+        #   - and any present parent inventories have their chk root
+        #     entries too.
+        # And all this should be independent of any fallback repository.
+        key_deps = self.repo.revisions._index._key_dependencies
+        new_revisions_keys = key_deps.get_new_keys()
+        no_fallback_inv_index = self.repo.inventories._index
+        no_fallback_chk_bytes_index = self.repo.chk_bytes._index
+        inv_parent_map = no_fallback_inv_index.get_parent_map(
+            new_revisions_keys)
+        # Are any inventories for corresponding to the new revisions missing?
+        corresponding_invs = set(inv_parent_map)
+        missing_corresponding = set(new_revisions_keys)
+        missing_corresponding.difference_update(corresponding_invs)
+        if missing_corresponding:
+            return [('inventories', key) for key in missing_corresponding]
+        # Are any chk root entries missing for any inventories?  This includes
+        # any present parent inventories, which may be used when calculating
+        # deltas for streaming.
+        all_inv_keys = set(corresponding_invs)
+        for parent_inv_keys in inv_parent_map.itervalues():
+            all_inv_keys.update(parent_inv_keys)
+        # Filter out ghost parents.
+        all_inv_keys.intersection_update(
+            no_fallback_inv_index.get_parent_map(all_inv_keys))
+        all_missing = set()
+        inv_ids = [key[-1] for key in all_inv_keys]
+        for inv in self.repo.iter_inventories(inv_ids, 'unordered'):
+            root_keys = set([inv.id_to_entry.key()])
+            if inv.parent_id_basename_to_file_id is not None:
+                root_keys.add(inv.parent_id_basename_to_file_id.key())
+            present = no_fallback_chk_bytes_index.get_parent_map(root_keys)
+            missing = root_keys.difference(present)
+            all_missing.update([('chk_bytes',) + key for key in missing])
+        return all_missing
+        
     def _commit_write_group(self):
         all_missing = set()
         for prefix, versioned_file in (
@@ -2073,19 +2120,7 @@ class RepositoryPackCollection(object):
                 ):
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
-        if getattr(self.repo, 'chk_bytes', None) is not None:
-            # Ensure that all inventories added in this write group have their
-            # corresponding chk_bytes root keys present.
-            new_revisions_keys = self.repo.revisions._index._key_dependencies.get_new_keys()
-            rev_ids = [key[-1] for key in new_revisions_keys]
-            for new_inv in self.repo.iter_inventories(rev_ids, 'unordered'):
-                root_keys = set([new_inv.id_to_entry.key()])
-                if new_inv.parent_id_basename_to_file_id is not None:
-                    root_keys.add(
-                        new_inv.parent_id_basename_to_file_id.key())
-                present = self.repo.chk_bytes.get_parent_map(root_keys)
-                missing = root_keys.difference(present)
-                all_missing.update([('chk_bytes',) + key for key in missing])
+        all_missing.update(self._check_new_inventories())
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
