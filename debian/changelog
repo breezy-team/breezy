@@ -1,8 +1,12 @@
-bzr (1.18-1) UNRELEASED; urgency=low
+bzr (1.18-1) unstable; urgency=low
 
+  [ James Westby ]
   * New upstream release.
 
- -- James Westby <james.westby@ubuntu.com>  Wed, 26 Aug 2009 13:04:49 +0100
+  [ Jelmer Vernooij ]
+  * Bump standards version to 3.8.3.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 02 Sep 2009 14:50:14 +0200
 
 bzr (1.17-1) unstable; urgency=low
 
