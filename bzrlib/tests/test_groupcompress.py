@@ -538,7 +538,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
-    def test_insert_record_stream_re_uses_blocks(self):
+    def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
         def grouped_stream(revision_ids, first_parents=()):
             parents = first_parents
@@ -582,8 +582,14 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf2 = self.make_test_vf(True, dir='target')
         # ordering in 'groupcompress' order, should actually swap the groups in
         # the target vf, but the groups themselves should not be disturbed.
-        vf2.insert_record_stream(vf.get_record_stream(
-            [(r,) for r in 'abcdefgh'], 'groupcompress', False))
+        def small_size_stream():
+            for record in vf.get_record_stream([(r,) for r in 'abcdefgh'],
+                                               'groupcompress', False):
+                record._manager._full_enough_block_size = \
+                    record._manager._block._content_length
+                yield record
+                        
+        vf2.insert_record_stream(small_size_stream())
         stream = vf2.get_record_stream([(r,) for r in 'abcdefgh'],
                                        'groupcompress', False)
         vf2.writer.end()
@@ -592,6 +598,44 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             num_records += 1
             self.assertEqual(block_bytes[record.key],
                              record._manager._block._z_content)
+        self.assertEqual(8, num_records)
+
+    def test_insert_record_stream_packs_on_the_fly(self):
+        vf = self.make_test_vf(True, dir='source')
+        def grouped_stream(revision_ids, first_parents=()):
+            parents = first_parents
+            for revision_id in revision_ids:
+                key = (revision_id,)
+                record = versionedfile.FulltextContentFactory(
+                    key, parents, None,
+                    'some content that is\n'
+                    'identical except for\n'
+                    'revision_id:%s\n' % (revision_id,))
+                yield record
+                parents = (key,)
+        # One group, a-d
+        vf.insert_record_stream(grouped_stream(['a', 'b', 'c', 'd']))
+        # Second group, e-h
+        vf.insert_record_stream(grouped_stream(['e', 'f', 'g', 'h'],
+                                               first_parents=(('d',),)))
+        # Now copy the blocks into another vf, and see that the
+        # insert_record_stream rebuilt a new block on-the-fly because of
+        # under-utilization
+        vf2 = self.make_test_vf(True, dir='target')
+        vf2.insert_record_stream(vf.get_record_stream(
+            [(r,) for r in 'abcdefgh'], 'groupcompress', False))
+        stream = vf2.get_record_stream([(r,) for r in 'abcdefgh'],
+                                       'groupcompress', False)
+        vf2.writer.end()
+        num_records = 0
+        # All of the records should be recombined into a single block
+        block = None
+        for record in stream:
+            num_records += 1
+            if block is None:
+                block = record._manager._block
+            else:
+                self.assertIs(block, record._manager._block)
         self.assertEqual(8, num_records)
 
     def test__insert_record_stream_no_reuse_block(self):
@@ -635,6 +679,37 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                 block = record._manager._block
             else:
                 self.assertIs(block, record._manager._block)
+
+    def test_insert_record_stream_truncates_partial_blocks(self):
+        vf = self.make_test_vf(True, dir='source')
+        def grouped_stream(revision_ids, first_parents=()):
+            parents = first_parents
+            for revision_id in revision_ids:
+                key = (revision_id,)
+                record = versionedfile.FulltextContentFactory(
+                    key, parents, None,
+                    'some content that is\n'
+                    'identical except for\n'
+                    'revision_id:%s\n' % (revision_id,))
+                yield record
+                parents = (key,)
+        # One group, a-l
+        vf.insert_record_stream(grouped_stream('abcdefghijkl'))
+        vf.writer.end()
+        block = manager = None
+        record_order = []
+        # Everything should fit in a single block
+        for record in vf.get_record_stream([(r,) for r in 'abcdefghijkl'],
+                                           'unordered', False):
+            record_order.append(record.key)
+            if block is None:
+                block = record._manager._block
+                manager = record._manager
+            else:
+                self.assertIs(block, record._manager._block)
+                self.assertIs(manager, record._manager)
+        # 'unordered' fetching will put that in the same order it was inserted
+        self.assertEqual([(r,) for r in 'abcdefghijkl'], record_order)
 
     def test_add_missing_noncompression_parent_unvalidated_index(self):
         unvalidated = self.make_g_index_missing_parent()

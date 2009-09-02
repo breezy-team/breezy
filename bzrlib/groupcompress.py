@@ -633,6 +633,14 @@ class _LazyGroupContentManager(object):
                 break
         # The content failed both the mixed check and the single-content check
         # so obviously it is not fully utilized
+        # TODO: there is one other constraint that isn't being checked
+        #       namely, that the entries in the block are in the appropriate
+        #       order. For example, you could insert the entries in exactly
+        #       reverse groupcompress order, and we would think that is ok.
+        #       (all the right objects are in one group, and it is fully
+        #       utilized, etc.) For now, we assume that case is rare,
+        #       especially since we should always fetch in 'groupcompress'
+        #       order.
         return False
 
     def _check_rebuild_block(self):
@@ -1640,6 +1648,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         block_length = None
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
+        reuse_this_block = reuse_blocks
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -1650,19 +1659,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                ' but then inserted %r two times', record.key)
                     continue
                 inserted_keys.add(record.key)
-            reuse_this_block = reuse_blocks
-            if reuse_this_block:
+            if reuse_blocks:
                 # If the reuse_blocks flag is set, check to see if we can just
                 # copy a groupcompress block as-is.
                 if record.storage_kind == 'groupcompress-block':
                     # Check to see if we really want to re-use this block
                     insert_manager = record._manager
-                    # if not insert_manager.check_is_well_utilized():
-                    #     reuse_this_block = False
-                    if len(insert_manager._factories) == 1:
-                        # This block only has a single record in it
-                        # Mark this block to be rebuilt
-                        reuse_this_block = False
+                    reuse_this_block = insert_manager.check_is_well_utilized()
             if reuse_this_block:
                 # We still want to reuse this block
                 if record.storage_kind == 'groupcompress-block':
