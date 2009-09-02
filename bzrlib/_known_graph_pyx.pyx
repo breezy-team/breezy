@@ -585,7 +585,8 @@ cdef class _MergeSortNode:
         self.completed = 0
 
     def __repr__(self):
-        return '%s(depth:%s rev:%s,%s,%s first:%s seen:%s)' % (self.__class__.__name__,
+        return '%s(%s depth:%s rev:%s,%s,%s first:%s seen:%s)' % (
+            self.__class__.__name__, self.key,
             self.merge_depth,
             self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
@@ -639,7 +640,6 @@ cdef class _MergeSorter:
         if (tip_key is not None and tip_key != NULL_REVISION
             and tip_key != (NULL_REVISION,)):
             node = self.graph._nodes[tip_key]
-            self._get_ms_node(node)
             self._push_node(node, 0)
 
     cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
@@ -660,10 +660,17 @@ cdef class _MergeSorter:
 
         ms_node = self._get_ms_node(node)
         ms_node.merge_depth = merge_depth
+        if node.parents is None:
+            raise RuntimeError('ghost nodes should not be pushed'
+                               ' onto the stack: %s' % (node,))
         if PyTuple_GET_SIZE(node.parents) > 0:
             parent_node = _get_tuple_node(node.parents, 0)
             ms_node.left_parent = parent_node
-            ms_node.left_pending_parent = parent_node
+            if parent_node.parents is None: # left-hand ghost
+                ms_node.left_pending_parent = None
+                ms_node.left_parent = None
+            else:
+                ms_node.left_pending_parent = parent_node
         if PyTuple_GET_SIZE(node.parents) > 1:
             ms_node.pending_parents = []
             for pos from 1 <= pos < PyTuple_GET_SIZE(node.parents):

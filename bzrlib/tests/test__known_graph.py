@@ -731,6 +731,20 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
              ('A', 0, (1,), True),
             ])
 
+    def test_lefthand_ghost(self):
+        # ghost
+        #  |
+        #  A
+        #  |
+        #  B
+        self.assertSortAndIterate(
+            {'A': ['ghost'],
+             'B': ['A'],
+            }, 'B',
+            [('B', 0, (2,), False),
+             ('A', 0, (1,), True),
+            ])
+
     def test_graph_cycle(self):
         # merge_sort should fail with a simple error when a graph cycle is
         # encountered.

@@ -465,9 +465,9 @@ class CommitBuilder(object):
             if content_summary[2] is None:
                 raise ValueError("Files must not have executable = None")
             if not store:
-                if (# if the file length changed we have to store:
-                    parent_entry.text_size != content_summary[1] or
-                    # if the exec bit has changed we have to store:
+                # We can't trust a check of the file length because of content
+                # filtering...
+                if (# if the exec bit has changed we have to store:
                     parent_entry.executable != content_summary[2]):
                     store = True
                 elif parent_entry.text_sha1 == content_summary[3]:
@@ -540,6 +540,9 @@ class CommitBuilder(object):
                 ie.revision = parent_entry.revision
                 return self._get_delta(ie, basis_inv, path), False, None
             ie.reference_revision = content_summary[3]
+            if ie.reference_revision is None:
+                raise AssertionError("invalid content_summary for nested tree: %r"
+                    % (content_summary,))
             self._add_text_to_weave(ie.file_id, '', heads, None)
         else:
             raise NotImplementedError('unknown kind')
@@ -807,6 +810,9 @@ class CommitBuilder(object):
                 seen_root = True
         self.new_inventory = None
         if len(inv_delta):
+            # This should perhaps be guarded by a check that the basis we
+            # commit against is the basis for the commit and if not do a delta
+            # against the basis.
             self._any_changes = True
         if not seen_root:
             # housekeeping root entry changes do not affect no-change commits.
@@ -1216,7 +1222,7 @@ class Repository(object):
                     for record in getattr(self, kind).check(keys=keys[kind]):
                         if record.storage_kind == 'absent':
                             checker._report_items.append(
-                                'Missing inventory {%s}' % (record.key,))
+                                'Missing %s {%s}' % (kind, record.key,))
                         else:
                             last_object = self._check_record(kind, record,
                                 checker, last_object, current_keys[(kind,) + record.key])
@@ -3838,6 +3844,9 @@ class InterDifferingSerializer(InterRepository):
                 possible_trees.append((basis_id, cache[basis_id]))
             basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
                                                            possible_trees)
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
@@ -3872,9 +3881,6 @@ class InterDifferingSerializer(InterRepository):
                     if entry.revision == file_revision:
                         texts_possibly_new_in_tree.remove(file_key)
             text_keys.update(texts_possibly_new_in_tree)
-            revision = self.source.get_revision(current_revision_id)
-            pending_deltas.append((basis_id, delta,
-                current_revision_id, revision.parent_ids))
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
