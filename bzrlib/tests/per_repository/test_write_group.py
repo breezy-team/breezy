@@ -411,6 +411,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         (In principle the chk records are unnecessary in this case, but in
         practice bzr 2.0rc1 (at least) expects to find them.)
         """
+        # Make a branch where the last two revisions have identical
+        # inventories.
         builder = self.make_branch_builder('simple-branch')
         builder.build_snapshot('A-id', None, [
             ('add', ('', 'root-id', 'directory', None)),
