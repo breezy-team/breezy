@@ -1,0 +1,13 @@
+# Specify startup options for bzr --serve
+
+
+# Specify a user and group to run as
+#USER=bzr
+#GROUP=bzr
+
+# Specify the path to the repository
+#REPO=/srv/bzr
+
+# Other arguments
+# Add --allow-writes for RW access
+DAEMON_ARGS="--port=0.0.0.0:4155"
