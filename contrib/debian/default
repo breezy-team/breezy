@@ -1,5 +1,7 @@
 # Specify startup options for bzr --serve
 
+# You need to uncomment the line below to enable this service
+#ENABLED=1
 
 # Specify a user and group to run as
 #USER=bzr

@@ -23,6 +23,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 USER=bzr
 GROUP=bzr
 REPO=/srv/bzr
+ENABLED=0
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
@@ -32,6 +33,8 @@ REPO=/srv/bzr
 
 # Load the VERBOSE setting and other rcS variables
 [ -f /etc/default/rcS ] && . /etc/default/rcS
+
+test "$ENABLED" != "0" || exit 0
 
 # Define LSB log_* functions.
 # Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
