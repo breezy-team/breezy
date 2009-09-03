@@ -46,8 +46,8 @@ Bug Fixes
 
 * Prevent some kinds of incomplete data from being committed to a 2a
   repository, such as revisions without inventories or inventories without
-  chk_bytes root records.  Partially fixes #406687.
-  (Andrew Bennetts)
+  chk_bytes root records.
+  (Andrew Bennetts, #423506)
   
 Documentation
 *************
