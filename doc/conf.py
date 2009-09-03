@@ -34,7 +34,7 @@ source_suffix = '.txt'
 #source_encoding = 'utf-8'
 
 # The master toctree document.
-master_doc = 'contents'
+master_doc = 'index'
 
 # General information about the project.
 project = u'Bazaar'
@@ -123,7 +123,7 @@ html_theme_options = {
 #html_title = None
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "Bazaar 2.0 Table of Contents"
+html_short_title = release + " Table of Contents"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -152,13 +152,13 @@ html_static_path = ['_static']
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-html_additional_pages = {'contents': 'index.html'}
+html_additional_pages = {'index': 'index.html'}
 
 # If false, no module index is generated.
-#html_use_modindex = True
+html_use_modindex = False
 
 # If false, no index is generated.
-#html_use_index = True
+html_use_index = False
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -175,7 +175,7 @@ html_show_sourcelink = True
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Bazaar-Docs'
+htmlhelp_basename = 'bzr-en-user-docs'
 
 
 # -- Options for LaTeX output --------------------------------------------------

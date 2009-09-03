@@ -1,0 +1,15 @@
+Related links
+=============
+
+`FAQ <https://answers.launchpad.net/bzr>`_ - frequently asked questions
+
+`Glossary <http://bazaar-vcs.org/BzrGlossary/>`_ - help with terminology
+
+`Migration Docs <http://doc.bazaar-vcs.org/migration/en/>`_ - for
+refugees of other tools
+
+`Plugins Guide <http://doc.bazaar-vcs.org/plugins/en/>`_ - help on
+popular plugins
+
+`Developer Docs <http://doc.bazaar-vcs.org/latest/developers/>`_ - policies
+and tools on contributing code, tests and documentation
