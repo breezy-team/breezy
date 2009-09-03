@@ -708,7 +708,6 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # two groups such that the new pack being made doesn't have all its
         # pages in the source packs (though they are in the repository).
         # Use a memory backed repository, we don't need to hit disk for this
-        self.vfs_transport_factory = MemoryServer
         tree = self.make_branch_and_memory_tree('tree', format='2a')
         tree.lock_write()
         self.addCleanup(tree.unlock)
