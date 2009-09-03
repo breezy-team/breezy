@@ -34,10 +34,10 @@ by community members. Equally importantly, we can be surer that changes
 down the track do not break new features or bug fixes that you are
 contributing today.
 
-As of May 2008, Bazaar ships with a test suite containing over 12000 tests
-and growing. We are proud of it and want to remain so. As community
-members, we all benefit from it. Would you trust version control on
-your project to a product *without* a test suite like Bazaar has?
+As of September 2009, Bazaar ships with a test suite containing over
+23,000 tests and growing. We are proud of it and want to remain so. As
+community members, we all benefit from it. Would you trust version control
+on your project to a product *without* a test suite like Bazaar has?
 
 
 Running the Test Suite
