@@ -697,6 +697,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.insert_record_stream(grouped_stream('abcdefghijkl'))
         vf.writer.end()
         block = manager = None
+        raw_block_bytes = None
+        raw_block_z_bytes = None
         record_order = []
         # Everything should fit in a single block
         for record in vf.get_record_stream([(r,) for r in 'abcdefghijkl'],
@@ -705,11 +707,34 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             if block is None:
                 block = record._manager._block
                 manager = record._manager
+                raw_block_z_bytes = block._z_content
+                block._ensure_content(block._content_length)
+                raw_block_bytes = block._content
             else:
                 self.assertIs(block, record._manager._block)
                 self.assertIs(manager, record._manager)
         # 'unordered' fetching will put that in the same order it was inserted
         self.assertEqual([(r,) for r in 'abcdefghijkl'], record_order)
+        # If we fetch enough of the block, but not everything, then it
+        # should simply decompress, truncate, and recompress
+        vf2 = self.make_test_vf(True, dir='target')
+        def small_stream():
+            for record in vf.get_record_stream([(r,) for r in 'acf'],
+                                               'unordered', False):
+                record._manager._full_enough_block_size = 50
+                record._manager._max_cut_fraction = 0.3
+                yield record
+        vf2.insert_record_stream(small_stream())
+            
+        vf2.writer.end()
+        record = vf2.get_record_stream([('a',)], 'unordered', False).next()
+        new_block = record._manager._block
+        self.assertIsNot(None, new_block._z_content)
+        self.assertNotEqual(raw_block_z_bytes, new_block._z_content)
+        new_block._ensure_content(new_block._content_length)
+        # The new content is simply the truncation of the old content
+        self.assertStartsWith(raw_block_bytes, new_block._content)
+        self.assertTrue(len(new_block._content) < len(raw_block_bytes))
 
     def test_add_missing_noncompression_parent_unvalidated_index(self):
         unvalidated = self.make_g_index_missing_parent()

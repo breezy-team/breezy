@@ -1662,10 +1662,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if reuse_blocks:
                 # If the reuse_blocks flag is set, check to see if we can just
                 # copy a groupcompress block as-is.
+                # We only check on the first record (groupcompress-block) not
+                # on all of the (groupcompress-block-ref) entries.
+                # The reuse_this_block flag is then kept for as long as
                 if record.storage_kind == 'groupcompress-block':
                     # Check to see if we really want to re-use this block
                     insert_manager = record._manager
+                    import pdb; pdb.set_trace()
                     reuse_this_block = insert_manager.check_is_well_utilized()
+            else:
+                reuse_this_block = False
             if reuse_this_block:
                 # We still want to reuse this block
                 if record.storage_kind == 'groupcompress-block':
