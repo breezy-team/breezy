@@ -303,6 +303,26 @@ class ScriptRunner(object):
         return None, None
 
 
+class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        super(TestCaseWithMemoryTransportAndScript, self).setUp()
+        self.script_runner = ScriptRunner(self)
+        # Break the circular dependency
+        def break_dependency():
+            self.script_runner = None
+        self.addCleanup(break_dependency)
+
+    def get_jail_root(self):
+        raise NotImplementedError(self.get_jail_root)
+
+    def run_script(self, script):
+        return self.script_runner.run_script(script)
+
+    def run_command(self, cmd, input, output, error):
+        return self.script_runner.run_command(cmd, input, output, error)
+
+
 class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
     def setUp(self):

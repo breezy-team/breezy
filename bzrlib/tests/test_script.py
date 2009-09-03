@@ -83,12 +83,7 @@ foo = `bzr file-id toto`
                           script._script_to_commands(story))
 
 
-class TestScriptBase(script.TestCaseWithTransportAndScript):
-
-    pass
-
-
-class TestScriptExecution(TestScriptBase):
+class TestScriptExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
         self.assertRaises(SyntaxError, self.run_script, 'foo')
@@ -102,7 +97,7 @@ cd dir
         self.assertRaises(AssertionError, self.run_script, story)
 
 
-class TestCat(TestScriptBase):
+class TestCat(script.TestCaseWithTransportAndScript):
 
     def test_cat_usage(self):
         self.assertRaises(SyntaxError, self.run_script, 'cat foo bar baz')
@@ -135,7 +130,7 @@ class TestCat(TestScriptBase):
         self.assertFileEqual('content\n', 'file2')
 
 
-class TestMkdir(TestScriptBase):
+class TestMkdir(script.TestCaseWithTransportAndScript):
 
     def test_mkdir_usage(self):
         self.assertRaises(SyntaxError, self.run_script, 'mkdir')
@@ -156,7 +151,7 @@ cd ..
         self.failUnlessExists('dir2')
 
 
-class TestCd(TestScriptBase):
+class TestCd(script.TestCaseWithTransportAndScript):
 
     def test_cd_usage(self):
         self.assertRaises(SyntaxError, self.run_script, 'cd foo bar')
@@ -178,14 +173,14 @@ cd dir
         self.assertEquals(self.test_dir, osutils.getcwd())
 
 
-class TestBzr(TestScriptBase):
+class TestBzr(script.TestCaseWithTransportAndScript):
 
     def test_bzr_smoke(self):
         self.run_script('bzr init branch')
         self.failUnlessExists('branch')
 
 
-class TestEcho(TestScriptBase):
+class TestEcho(script.TestCaseWithMemoryTransportAndScript):
 
     def test_echo_usage(self):
         story = """
