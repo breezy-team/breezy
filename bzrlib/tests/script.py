@@ -13,6 +13,41 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+"""Shell-like test scripts.
+
+This allows users to write tests in a syntax very close to a shell session,
+using a restricted and limited set of commands that should be enough to mimic
+most of the behaviours.
+
+A script is a set of commands, each command is composed of:
+- one mandatory command line,
+- one optional set of input lines to feed the command,
+- one optional set of output expected lines,
+- one optional set of error expected lines.
+
+The optional lines starts with a special string (mnemonic: shell redirection):
+- '<' for input,
+- '>' for output,
+- '2>' for errors,
+
+The execution stops as soon as an expected output or an expected error is not
+matched. When no output is specified, any ouput from the command is accepted
+and let the execution continue.
+
+The matching is done on a full string comparison.
+
+Example:
+
+  bzr add file
+  >adding file
+
+The above will succeeds only if 'bzr add' outputs 'adding file'.
+
+If you want the command to succeed for any output, just use:
+
+  bzr add file
+
+"""
 
 from cStringIO import StringIO
 import os
