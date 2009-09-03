@@ -31,21 +31,34 @@ The optional lines starts with a special string (mnemonic: shell redirection):
 - '2>' for errors,
 
 The execution stops as soon as an expected output or an expected error is not
-matched. When no output is specified, any ouput from the command is accepted
-and let the execution continue.
+matched. 
 
-The matching is done on a full string comparison.
+When no output is specified, any ouput from the command is accepted
+and let the execution continue. 
 
-Example:
+If an error occurs and no expected error is specified, the execution stops.
+
+The matching is done on a full string comparison basis.
+
+Examples:
+
+The following will succeeds only if 'bzr add' outputs 'adding file'.
 
   bzr add file
   >adding file
 
-The above will succeeds only if 'bzr add' outputs 'adding file'.
-
 If you want the command to succeed for any output, just use:
 
   bzr add file
+
+The following will stop with an error:
+
+  bzr not-a-command
+
+If you want it to succeed, use:
+
+  bzr not-a-command
+  2> bzr: ERROR: unknown command "not-a-command"
 
 """
 
@@ -179,11 +192,10 @@ def _scan_redirection_options(args):
     return in_name, out_name, out_mode, remaining
 
 
-class TestCaseWithScript(tests.TestCaseWithTransport):
+class ScriptRunner(object):
 
-    def setUp(self):
-        super(TestCaseWithScript, self).setUp()
-        self._vars = {}
+    def __init__(self, test_case):
+        self.test_case = test_case
 
     def run_script(self, text):
         for cmd, input, output, error in _script_to_commands(text):
@@ -193,7 +205,7 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         if expected is None:
             # Specifying None means: any output is accepted
             return
-        self.assertEquals(expected, actual)
+        self.test_case.assertEquals(expected, actual)
 
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
@@ -232,8 +244,8 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         return output
 
     def do_bzr(self, input, args):
-        out, err = self._run_bzr_core(args, retcode=None, encoding=None,
-                                      stdin=input, working_dir=None)
+        out, err = self.test_case._run_bzr_core(
+            args, retcode=None, encoding=None, stdin=input, working_dir=None)
         return out, err
 
     def do_cat(self, input, args):
@@ -267,8 +279,9 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         return output, None
 
     def _ensure_in_jail(self, path):
-        if not osutils.is_inside(self.test_dir, osutils.normalizepath(path)):
-                raise ValueError('%s is not inside %s' % (path, self.test_dir))
+        jail_root = self.test_case.get_jail_root()
+        if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
+            raise ValueError('%s is not inside %s' % (path, jail_root))
 
     def do_cd(self, input, args):
         if len(args) > 1:
@@ -277,7 +290,7 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
             d = args[0]
             self._ensure_in_jail(d)
         else:
-            d = self.test_dir
+            d = self.test_case.get_jail_root()
         os.chdir(d)
         return None, None
 
@@ -289,3 +302,22 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         os.mkdir(d)
         return None, None
 
+
+class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithTransportAndScript, self).setUp()
+        self.script_runner = ScriptRunner(self)
+        # Break the circular dependency
+        def break_dependency():
+            self.script_runner = None
+        self.addCleanup(break_dependency)
+
+    def get_jail_root(self):
+        return self.test_dir
+
+    def run_script(self, script):
+        return self.script_runner.run_script(script)
+
+    def run_command(self, cmd, input, output, error):
+        return self.script_runner.run_command(cmd, input, output, error)
