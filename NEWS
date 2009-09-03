@@ -6,8 +6,8 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0rc2
-##########
+bzr 2.0rc2 (not released yet)
+#############################
 
 Bug Fixes
 *********
@@ -19,6 +19,10 @@ Bug Fixes
 * ``bzr log stacked-branch`` shows the full log including
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
+
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.
+  (Martin Pool, #109115)
 
 * Fix a segmentation fault when computing the ``merge_sort`` of a graph
   that has a ghost in the mainline ancestry.
