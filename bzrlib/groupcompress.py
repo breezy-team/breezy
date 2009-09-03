@@ -1101,6 +1101,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._group_cache = LRUSizeCache(max_size=50*1024*1024)
         self._fallback_vfs = []
 
+    def without_fallbacks(self):
+        gcvf = GroupCompressVersionedFiles(
+            self._index, self._access, self._delta)
+        gcvf._unadded_refs = dict(self._unadded_refs)
+        return gcvf
+
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
         check_content=True):

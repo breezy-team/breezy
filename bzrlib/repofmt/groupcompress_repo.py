@@ -620,15 +620,39 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         # Filter out ghost parents.
         all_inv_keys.intersection_update(
             no_fallback_inv_index.get_parent_map(all_inv_keys))
+        parent_invs_only_keys = all_inv_keys.symmetric_difference(
+            corresponding_invs)
         all_missing = set()
         inv_ids = [key[-1] for key in all_inv_keys]
+        def root_keys_for_inv(inv):
+            return [inv.id_to_entry.key(),
+                    inv.parent_id_basename_to_file_id.key()]
+        interesting = []
+        uninteresting = []
         for inv in self.repo.iter_inventories(inv_ids, 'unordered'):
-            root_keys = set([inv.id_to_entry.key()])
-            if inv.parent_id_basename_to_file_id is not None:
-                root_keys.add(inv.parent_id_basename_to_file_id.key())
+            root_keys = root_keys_for_inv(inv)
+            if (inv.revision_id,) in parent_invs_only_keys:
+                uninteresting.extend(root_keys)
+            else:
+                interesting.extend(root_keys)
             present = no_fallback_chk_bytes_index.get_parent_map(root_keys)
-            missing = root_keys.difference(present)
+            missing = set(root_keys).difference(present)
             all_missing.update([('chk_bytes',) + key for key in missing])
+        if all_missing:
+            # Don't bother checking any further.
+            return all_missing
+        chk_bytes_no_fallbacks = self.repo.chk_bytes.without_fallbacks()
+        chk_bytes_no_fallbacks._search_key_func = \
+            self.repo.chk_bytes._search_key_func
+        chk_diff = chk_map.iter_interesting_nodes(
+            chk_bytes_no_fallbacks, interesting, uninteresting)
+        try:
+            for interesting_rec, interesting_map in chk_diff:
+                pass
+        except errors.NoSuchRevision, e:
+            # XXX: missing chk record detected!
+            #print str(e)
+            return set([('something',)])
         return all_missing
         
     def _execute_pack_operations(self, pack_operations,
