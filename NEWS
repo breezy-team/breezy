@@ -16,6 +16,11 @@ Bug Fixes
   ghosts in its mainline. (evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
 
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories or inventories without
+  chk_bytes root records.  Partially fixes #406687.
+  (Andrew Bennetts)
+  
 
 bzr 2.0rc1
 ##########
