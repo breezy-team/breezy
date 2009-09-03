@@ -6,11 +6,19 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0rc2
-##########
+bzr 2.0rc2 (not released yet)
+#############################
 
 Bug Fixes
 *********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
 
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
@@ -18,6 +26,10 @@ Bug Fixes
 
 * ``bzr log stacked-branch`` shows the full log including
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
+  (John Arbash Meinel, #419241)
+
+* Fix a potential segmentation fault when doing 'log' of a branch that had
+  ghosts in its mainline.  (Evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
 
 * Fix a segmentation fault when computing the ``merge_sort`` of a graph
@@ -37,7 +49,6 @@ Documentation
 
 * The main table of contents now provides links to the new Migration Docs
   and Plugins Guide. (Ian Clatworthy)
-
 
 bzr 2.0rc1
 ##########
