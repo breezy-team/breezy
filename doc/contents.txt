@@ -20,7 +20,6 @@ Core documentation
 
    en/release-notes/index
    en/upgrade-guide/index
-   en/migration/index
    developers/index
 
 

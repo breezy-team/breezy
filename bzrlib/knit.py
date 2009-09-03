@@ -1193,6 +1193,13 @@ class KnitVersionedFiles(VersionedFiles):
     def get_known_graph_ancestry(self, keys):
         """Get a KnownGraph instance with the ancestry of keys."""
         parent_map, missing_keys = self._index.find_ancestry(keys)
+        for fallback in self._fallback_vfs:
+            if not missing_keys:
+                break
+            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
+                                                missing_keys)
+            parent_map.update(f_parent_map)
+            missing_keys = f_missing_keys
         kg = _mod_graph.KnownGraph(parent_map)
         return kg
 
