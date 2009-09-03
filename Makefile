@@ -223,10 +223,13 @@ clean-docs:
 	    $(HTMLDIR) $(derived_txt_files)
 	rm -f doc/*/user-guide/*.pdf
 	rm -rf doc/*/user-guide/latex_prepared
+	cd doc && make clean
 
 # The main target to build all the new-style docs. Requires Sphinx.
 docs: doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
 	cd doc && make html
+	cd doc && make latex
+	cd doc/_build/latex && make all-pdf
 
 
 ### Windows Support ###
