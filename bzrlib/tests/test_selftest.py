@@ -1493,8 +1493,8 @@ class TestTestCase(tests.TestCase):
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
-        self.assertEqual(original_trace, bzrlib.trace._trace_file)
         self.addCleanup(osutils.delete_any, outer_test._log_file_name)
+        self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
     def method_that_times_a_bit_twice(self):
         # call self.time twice to ensure it aggregates
