@@ -522,6 +522,11 @@ def _stream_to_byte_stream(stream, src_format):
 class _ByteStreamDecoder(object):
     """Helper for _byte_stream_to_stream.
 
+    The expected usage of this class is via the function _byte_stream_to_stream
+    which creates a _ByteStreamDecoder, pops off the stream format and then
+    yields the output of record_stream(), the main entry point to
+    _ByteStreamDecoder.
+
     Broadly this class has to unwrap two layers of iterators:
     (type, substream)
     (substream details)
