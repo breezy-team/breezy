@@ -433,7 +433,7 @@ _upgrade_dir_template = [
 
 class TestSmartUpgrade(TestCaseWithTransport):
 
-    from_format = "pack-0.92"
+    from_format = bzrdir.format_registry.make_bzrdir("pack-0.92")
     to_format = bzrdir.format_registry.make_bzrdir("2a")
 
     def make_standalone_branch(self):
@@ -462,8 +462,12 @@ class TestSmartUpgrade(TestCaseWithTransport):
     def make_repo_with_branches(self):
         repo = self.make_repository('repo', shared=True,
             format=self.from_format)
-        b1 = self.make_branch("repo/branch1", format=self.from_format)
-        b2 = self.make_branch("repo/branch2", format=self.from_format)
+        # Note: self.make_branch() always creates a new repo at the location
+        # so we need to avoid using that here ...
+        b1 = bzrdir.BzrDir.create_branch_convenience("repo/branch1",
+            format=self.from_format)
+        b2 = bzrdir.BzrDir.create_branch_convenience("repo/branch2",
+            format=self.from_format)
         return repo.bzrdir
 
     def test_upgrade_repo_with_branches(self):
