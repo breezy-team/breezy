@@ -15,6 +15,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
+  disable the user, site and core plugin directories.
+  (Vincent Ladeuil, #412930, #316192, #145612)
+
 Bug Fixes
 *********
 
@@ -279,11 +283,6 @@ Compatibility Breaks
 
 New Features
 ************
-
-* Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
-  disable the user, site and core plugin directories.
-  (Vincent Ladeuil, #412930, #316192, #145612)
-
 
 Bug Fixes
 *********
