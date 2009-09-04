@@ -28,6 +28,9 @@ Bug Fixes
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
 
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
 * Fetches from 2a to 2a are now again requested in 'groupcompress' order.
   Groups that are seen as 'underutilized' will be repacked on-the-fly.
   This means that when the source is fully packed, there is minimal
