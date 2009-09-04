@@ -3,9 +3,6 @@ Bazaar Release Notes
 ####################
 
 
-.. contents:: List of Releases
-   :depth: 1
-
 bzr 2.0rc2 (not released yet)
 #############################
 
@@ -521,8 +518,8 @@ Testing
   ``countTestsCases``. (Robert Collins)
 
 
-bzr 1.17 "So late it's brunch" 2009-07-20
-#########################################
+bzr 1.17
+########
 :Codename: so-late-its-brunch
 :1.17rc1: 2009-07-13
 :1.17: 2009-07-20
@@ -771,8 +768,10 @@ API Changes
   this class and the UI.  (Martin Pool)
 
 
-bzr 1.16.1 2009-06-26
-#####################
+bzr 1.16.1
+##########
+
+:Released: 2009-06-26
 
 End user testing of the 2a format revealed two serious bugs. The first,
 #365615, caused bzr to raise AbsentContentFactory errors when autopacking.
@@ -827,8 +826,8 @@ Bug Fixes
   (Robert Collins, #376748)
 
 
-bzr 1.16 "It's yesterday in California" 2009-06-18
-##################################################
+bzr 1.16
+########
 :Codename: yesterday-in-california
 :1.16rc1: 2009-06-11
 :1.16: 2009-06-18
@@ -2302,8 +2301,11 @@ Internals
   (Vincent Ladeuil)
 
 
-bzr 1.11 "Eyes up!" 2009-01-19
-##############################
+bzr 1.11
+########
+
+:Codename: "Eyes up!"
+:Released: 2009-01-19
 
 This first monthly release of Bazaar for 2009 improves Bazaar's operation
 in Windows, Mac OS X, and other situations where file names are matched
@@ -2329,8 +2331,11 @@ Bug Fixes
 
 
 
-bzr 1.11rc1 "Eyes up!" 2009-01-09
-#################################
+bzr 1.11rc1
+###########
+
+:Codename: "Eyes up!"
+:Released: 2009-01-09
 
 Changes
 *******
@@ -2566,8 +2571,10 @@ Internals
 
 
 
-bzr 1.10 2008-12-05
-###################
+bzr 1.10
+########
+
+:Released: 2008-12-05
 
 Bazaar 1.10 has several performance improvements for copying revisions
 (especially for small updates to large projects).  There has also been a
@@ -2592,8 +2599,10 @@ bug Fixes
   topologically. (John Arbash Meinel, #304841)
 
 
-bzr 1.10rc1 2008-11-28
-######################
+bzr 1.10rc1
+###########
+
+:Released: 2008-11-28
 
 This release of Bazaar focuses on performance improvements when pushing
 and pulling revisions, both locally and to remote networks.  The popular
@@ -2713,8 +2722,10 @@ Testing
 * Doctests now only report the first failure.  (Martin Pool)
 
 
-bzr 1.9 2008-11-07
-##################
+bzr 1.9
+#######
+
+:Released: 2008-11-07
 
 This release of Bazaar adds a new repository format, ``1.9``, with smaller
 and more efficient index files.  This format can be specified when
@@ -2736,8 +2747,10 @@ Bug Fixes
   (John Arbash Meinel, #293746)
 
 
-bzr 1.9rc1 2008-10-31
-#####################
+bzr 1.9rc1
+##########
+
+:Released: 2008-10-31
 
 New Features
 ************
@@ -2854,8 +2867,10 @@ Internals
   configuration of authetication credentials.
 
 
-bzr 1.8 2008-10-16
-##################
+bzr 1.8
+#######
+
+:Released: 2008-10-16
 
 Bazaar 1.8 includes several fixes that improve working tree performance,
 display of revision logs, and merges.  The bzr testsuite now passes on OS
@@ -2876,8 +2891,10 @@ Portability
   that platform.  (Alexander Belchenko, Martin Pool, #277481)
 
 
-bzr 1.8rc1 2008-10-07
-#####################
+bzr 1.8rc1
+##########
+
+:Released: 2008-10-07
 
 Changes
 *******
@@ -3075,14 +3092,18 @@ Internals
   (Vincent Ladeuil)
 
 
-bzr 1.7.1 2008-10-01
-####################
+bzr 1.7.1
+#########
+
+:Released:  2008-10-01
 
 No changes from 1.7.1rc1.
 
 
-bzr 1.7.1rc1 2008-09-24
-#######################
+bzr 1.7.1rc1
+############
+
+:Released: 2008-09-24
 
 This release just includes an update to how the merge algorithm handles
 file paths when we encounter complex history.
@@ -3097,8 +3118,10 @@ Features
   (John Arbash Meinel)
 
 
-bzr 1.7 2008-09-23
-##################
+bzr 1.7
+#######
+
+:Released: 2008-09-23
 
 This release includes many bug fixes and a few performance and feature
 improvements.  ``bzr rm`` will now scan for missing files and remove them,
@@ -3115,8 +3138,10 @@ Features
   packaging qbzr. (Mark Hammond)
 
 
-bzr 1.7rc2 2008-09-17
-#####################
+bzr 1.7rc2
+##########
+
+:Released: 2008-09-17
 
 A few bug fixes from 1.7rc1. The biggest change is a new
 ``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
@@ -3140,8 +3165,10 @@ Bug Fixes
   (Andrew Bennetts)
 
 
-bzr 1.7rc1 2008-09-09
-#####################
+bzr 1.7rc1
+##########
+
+:Released: 2008-09-09
 
 This release candidate for bzr 1.7 has several bug fixes and a few
 performance and feature improvements.  ``bzr rm`` will now scan for
@@ -3338,16 +3365,20 @@ Internals
   clients now use this mechanism.  (Neil Martinsen-Burrell)
 
 
-bzr 1.6.1 2008-09-05
-####################
+bzr 1.6.1
+#########
+
+:Released: 2008-09-05
 
 A couple regressions were found in the 1.6 release. There was a
 performance issue when using ``bzr+ssh`` to branch large repositories,
 and some problems with stacking and ``rich-root`` capable repositories.
 
 
-bzr 1.6.1rc2 2008-09-03
-#######################
+bzr 1.6.1rc2
+############
+
+:Released: 2008-09-03
 
 Bug Fixes
 *********
@@ -3358,8 +3389,10 @@ Bug Fixes
   (John Arbash Meinel, #264321)
 
 
-bzr 1.6.1rc1 2008-08-29
-#######################
+bzr 1.6.1rc1
+############
+
+:Released: 2008-08-29
 
 This release fixes a few regressions found in the 1.6 client. Fetching
 changes was using an O(N^2) buffering algorithm, so for large projects it
@@ -3399,8 +3432,10 @@ Bug Fixes
   (John Arbash Meinel, #262333)
 
 
-bzr 1.6 2008-08-25
-##################
+bzr 1.6
+#######
+
+:Released: 2008-08-25
 
 Finally, the long awaited bzr 1.6 has been released. This release includes
 new features like Stacked Branches, improved weave merge, and an updated
@@ -3413,8 +3448,10 @@ better at scaling. This will also be the first release to bundle
 TortoiseBzr in the standalone Windows installer.
 
 
-bzr 1.6rc5 2008-08-19
-#####################
+bzr 1.6rc5
+##########
+
+:Released: 2008-08-19
 
 Bug Fixes
 *********
@@ -3426,8 +3463,10 @@ Bug Fixes
   (This change was reverted when merged to bzr.dev)
 
 
-bzr 1.6rc4 2008-08-18
-#####################
+bzr 1.6rc4
+##########
+
+:Released: 2008-08-18
 
 Bug Fixes
 *********
@@ -3437,8 +3476,10 @@ Bug Fixes
   rather than preserving deltas.  (John Arbash Meinel, #256757)
 
 
-bzr 1.6rc3 2008-08-14
-#####################
+bzr 1.6rc3
+##########
+
+:Released: 2008-08-14
 
 Changes
 *******
@@ -3471,8 +3512,10 @@ Bug Fixes
   development which is substantially faster. (Robert Collins)
 
 
-bzr 1.6rc2 2008-08-13
-#####################
+bzr 1.6rc2
+##########
+
+:Released: 2008-08-13
 
 This release candidate has a few minor bug fixes, and some regression
 fixes for Windows.
@@ -3510,8 +3553,10 @@ Bug Fixes
   will get the same results.  (John Arbash Meinel, #232188)
 
 
-bzr 1.6rc1 2008-08-06
-#####################
+bzr 1.6rc1
+##########
+
+:Released: 2008-08-06
 
 This release candidate for bzr 1.6 solidifies the new branch stacking
 feature.  Bazaar now recommends that users upgrade all knit repositories,
@@ -3647,8 +3692,10 @@ Internals
   (Ian Clatworthy)
 
 
-bzr 1.6beta3 2008-07-17
-#######################
+bzr 1.6beta3
+############
+
+:Released: 2008-07-17
 
 This release adds a new 'stacked branches' feature allowing branches to
 share storage without being in the same repository or on the same machine.
@@ -3820,8 +3867,10 @@ Internals
   (Robert Collins)
 
 
-bzr 1.6beta2 2008-06-10
-#######################
+bzr 1.6beta2
+############
+
+:Released: 2008-06-10
 
 This release contains further progress towards our 1.6 goals of shallow
 repositories, and contains a fix for some user-affecting bugs in the
@@ -3904,9 +3953,10 @@ Internals
 * Knit record serialisation is now stricter on what it will accept, to
   guard against potential internal bugs, or broken input. (Robert Collins)
 
-bzr 1.6beta1 2008-06-02
-#######################
+bzr 1.6beta1
+############
 
+:Released: 2008-06-02
 
 Commands that work on the revision history such as push, pull, missing,
 uncommit and log are now substantially faster.  This release adds a
@@ -4124,8 +4174,10 @@ API Changes
   (Martin Pool)
 
 
-bzr 1.5 2008-05-16
-##################
+bzr 1.5
+#######
+
+:Released: 2008-05-16
 
 This release of Bazaar includes several updates to the documentation, and fixes
 to prepare for making rich root support the default format. Many bugs have been
@@ -4146,8 +4198,10 @@ Documentation
   (Ian Clatworthy)
 
 
-bzr 1.5rc1 2008-05-09
-#####################
+bzr 1.5rc1
+##########
+
+:Released: 2008-05-09
 
 Changes
 *******
@@ -4317,8 +4371,10 @@ API Changes
   (Martin Pool)
 
 
-bzr 1.4 2008-04-28
-##################
+bzr 1.4 
+#######
+
+:Released: 2008-04-28
 
 This release of Bazaar includes handy improvements to the speed of log and
 status, new options for several commands, improved documentation, and better
@@ -4337,8 +4393,10 @@ Bug Fixes
   (John Arbash Meinel, Andrew Bennetts, #214894)
 
 
-bzr 1.4rc2 2008-04-21
-#####################
+bzr 1.4rc2
+##########
+
+:Released: 2008-04-21
 
 Bug Fixes
 *********
@@ -4361,8 +4419,10 @@ Bug Fixes
   (Robert Collins, John Arbash Meinel)
 
 
-bzr 1.4rc1 2008-04-11
-#####################
+bzr 1.4rc1
+##########
+
+:Released: 2008-04-11
 
 Changes
 *******
@@ -4649,14 +4709,18 @@ Internals
   ``Graph.get_parent_map`` returns a dict of key:parents. (Robert Collins)
 
 
-bzr 1.3.1 2008-04-09
-####################
+bzr 1.3.1
+#########
+
+:Released: 2008-04-09
 
 No changes from 1.3.1rc1.
 
 
-bzr 1.3.1rc1 2008-04-04
-#######################
+bzr 1.3.1rc1
+############
+
+:Released: 2008-04-04
 
 Bug Fixes
 *********
@@ -4667,8 +4731,10 @@ Bug Fixes
   (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
 
 
-bzr 1.3 2008-03-20
-##################
+bzr 1.3
+#######
+
+:Released: 2008-03-20
 
 Bazaar has become part of the GNU project <http://www.gnu.org>
 
@@ -4684,8 +4750,10 @@ Testing
   (#202778, Martin Pool)
 
 
-bzr 1.3rc1 2008-03-16
-#####################
+bzr 1.3rc1
+##########
+
+:Released: 2008-03-16
 
 Notes When Upgrading
 ********************
@@ -4871,8 +4939,10 @@ Internals
   format. (Robert Collins)
 
 
-bzr 1.2 2008-02-15
-##################
+bzr 1.2
+#######
+
+:Released: 2008-02-15
 
 Bug Fixes
 *********
@@ -4880,8 +4950,10 @@ Bug Fixes
 * Fix failing test in Launchpad plugin. (Martin Pool)
 
 
-bzr 1.2rc1 2008-02-13
-#####################
+bzr 1.2rc1
+##########
+
+:Released: 2008-02-13
 
 Notes When Upgrading
 ********************
@@ -5082,13 +5154,17 @@ Internals
   revision names etc. (Robert Collins)
 
 
-bzr 1.1 2008-01-15
-##################
+bzr 1.1
+#######
+
+:Released: 2008-01-15
 
 (no changes from 1.1rc1)
 
-bzr 1.1rc1 2008-01-05
-#####################
+bzr 1.1rc1
+##########
+
+:Released: 2008-01-05
 
 Changes
 *******
@@ -5298,8 +5374,10 @@ Testing
   replaced by the new helper methods added in this release. (Robert Collins)
 
 
-bzr 1.0 2007-12-14
-##################
+bzr 1.0
+#######
+
+:Released: 2007-12-14
 
 Documentation
 *************
@@ -5316,8 +5394,10 @@ Documentation
   (Ian Clatworthy)
 
 
-bzr 1.0rc3 2007-12-11
-#####################
+bzr 1.0rc3
+##########
+
+:Released: 2007-12-11
 
 Changes
 *******
@@ -5358,8 +5438,10 @@ Internals
   (Vincent Ladeuil)
 
 
-bzr 1.0rc2 2007-12-07
-#####################
+bzr 1.0rc2
+##########
+
+:Released: 2007-12-07
 
 Improvements
 ************
@@ -5433,8 +5515,10 @@ API Breaks
   ``started`` methods. (Matt Nordhoff)
 
 
-bzr 1.0rc1 2007-11-30
-#####################
+bzr 1.0rc1
+##########
+
+:Released: 2007-11-30
 
 Notes When Upgrading
 ********************
@@ -5710,8 +5794,10 @@ Internals
 * InventoryEntry.diff is now deprecated.  Please use diff.DiffTree instead.
 
 
-bzr 0.92 2007-11-05
-###################
+bzr 0.92
+########
+
+:Released: 2007-11-05
 
 Changes
 *******
@@ -5719,8 +5805,10 @@ Changes
   * New uninstaller on Win32.  (Alexander Belchenko)
 
 
-bzr 0.92rc1 2007-10-29
-######################
+bzr 0.92rc1
+###########
+
+:Released: 2007-10-29
 
 Changes
 *******
@@ -6039,8 +6127,10 @@ Testing
   raises a Python warning.  (Martin Pool)
 
 
-bzr 0.91 2007-09-26
-###################
+bzr 0.91
+########
+
+:Released: 2007-09-26
 
 Bug Fixes
 *********
@@ -6061,16 +6151,18 @@ Bug Fixes
   (Andrew Bennetts)
 
 
-bzr 0.91rc2 2007-09-11
-######################
+bzr 0.91rc2
+###########
 
+:Released: 2007-09-11
 * Replaced incorrect tarball for previous release; a debug statement was left
   in bzrlib/remote.py.
 
 
-bzr 0.91rc1 2007-09-11
-######################
+bzr 0.91rc1
+###########
 
+:Released: 2007-09-11
 Changes
 *******
 
@@ -6396,8 +6488,10 @@ Internals
   [] to revert all files is deprecated.  (Aaron Bentley)
 
 
-bzr 0.90 2007-08-28
-###################
+bzr 0.90
+########
+
+:Released: 2007-08-28
 
 Improvements
 ************
@@ -6420,8 +6514,10 @@ API Changes
   and call ``create_repository`` on that.  (Martin Pool)
 
 
-bzr 0.90rc1 2007-08-14
-######################
+bzr 0.90rc1
+###########
+
+:Released: 2007-08-14
 
 Bugfixes
 ********
@@ -6693,8 +6789,10 @@ Testing
   parameter.  Varargs-style parameters are deprecated. (Aaron Bentley)
 
 
-bzr 0.18  2007-07-17
-####################
+bzr 0.18
+########
+
+:Released:  2007-07-17
 
 Bugfixes
 ********
@@ -6702,8 +6800,10 @@ Bugfixes
 * Fix 'bzr add' crash under Win32 (Kuno Meyer)
 
 
-bzr 0.18rc1  2007-07-10
-#######################
+bzr 0.18rc1
+###########
+
+:Released:  2007-07-10
 
 Bugfixes
 ********
@@ -6954,8 +7054,10 @@ Testing
   (Vincent Ladeuil, #110448)
 
 
-bzr 0.17  2007-06-18
-####################
+bzr 0.17
+########
+
+:Released:  2007-06-18
 
 Bugfixes
 ********
@@ -6967,8 +7069,10 @@ Bugfixes
   (Aaron Bentley, Ian Clatworthy, #120930)
 
 
-bzr 0.17rc1  2007-06-12
-#######################
+bzr 0.17rc1
+###########
+
+:Released:  2007-06-12
 
 Notes When Upgrading
 ********************
@@ -7069,8 +7173,10 @@ Bugfixes
   your repository. (Previously Branch6 only supported revisions in your
   mainline). (John Arbash Meinel, #115343)
 
-bzr 0.16  2007-05-07
-####################
+bzr 0.16
+########
+
+:Released:  2007-05-07
 
 Bugfixes
 ********
@@ -7100,8 +7206,10 @@ Improvements
   diff`` and ``bzr status`` significantly improving the speed of
   both. (John Arbash Meinel)
 
-bzr 0.16rc2  2007-04-30
-#######################
+bzr 0.16rc2
+###########
+
+:Released:  2007-04-30
 
 Bugfixes
 ********
@@ -7124,8 +7232,10 @@ Bugfixes
 * ``WorkingTree4._iter_changes`` should not descend into unversioned
   directories. (John Arbash Meinel, #110399)
 
-bzr 0.16rc1  2007-04-26
-#######################
+bzr 0.16rc1
+###########
+
+:Released:  2007-04-26
 
 Notes When Upgrading
 ********************
@@ -7432,8 +7542,10 @@ Testing
   implementation of new auth schemes for both http and proxy.
   (Vincent Ladeuil)
 
-bzr 0.15 2007-04-01
-###################
+bzr 0.15
+########
+
+:Released: 2007-04-01
 
 Bugfixes
 ********
@@ -7445,8 +7557,10 @@ Bugfixes
   checking out a branch that contains an old-format working tree.
   (Martin Pool)
 
-bzr 0.15rc3  2007-03-26
-#######################
+bzr 0.15rc3
+###########
+
+:Released:  2007-03-26
 
 Changes
 *******
@@ -7521,8 +7635,10 @@ Bugfixes
 * Correctly handles mutiple permanent http redirections.
   (vila, #88780)
 
-bzr 0.15rc2  2007-03-14
-#######################
+bzr 0.15rc2
+###########
+
+:Released:  2007-03-14
 
 Notes When Upgrading
 ********************
@@ -7575,8 +7691,10 @@ Bugfixes
   (Wouter van Heyst, #53483)
 
 
-bzr 0.15rc1  2007-03-07
-#######################
+bzr 0.15rc1
+###########
+
+:Released:  2007-03-07
 
 Surprises
 *********
@@ -7806,8 +7924,10 @@ Testing
   before the rest of the suite.  (Martin Pool)
 
 
-bzr 0.14  2007-01-23
-####################
+bzr 0.14
+########
+
+:Released:  2007-01-23
 
 Improvements
 ************
@@ -7826,8 +7946,10 @@ Bug Fixes
   it is in is below a repository. (James Westby, #77306)
 
 
-bzr 0.14rc1  2007-01-16
-#######################
+bzr 0.14rc1
+###########
+
+:Released:  2007-01-16
 
 Improvements
 ************
@@ -7961,14 +8083,18 @@ Bug Fixes
   (Alexander Belchenko, #68124)
 
 
-bzr 0.13  2006-12-05
-####################
+bzr 0.13
+########
+
+:Released:  2006-12-05
 
 No changes from 0.13rc
 
 
-bzr 0.13rc1  2006-11-27
-#######################
+bzr 0.13rc1
+###########
+
+:Released:  2006-11-27
 
 Improvements
 ************
@@ -8093,8 +8219,10 @@ Testing
 * TestingHTTPRequestHandler really handles the Range header
   (previously it was ignoring it and returning the whole file,).
 
-bzr 0.12  2006-10-30
-####################
+bzr 0.12
+########
+
+:Released:  2006-10-30
 
 Internals
 *********
@@ -8103,8 +8231,10 @@ Internals
   and remove benchmarks that take longer than 10min to run.
   (John Arbash Meinel)
 
-bzr 0.12rc1  2006-10-23
-#######################
+bzr 0.12rc1
+###########
+
+:Released:  2006-10-23
 
 Improvements
 ************
@@ -8225,13 +8355,17 @@ Testing
   option to set the BzrDir, Repository and Branch formats of the
   created objects. (Robert Collins, John Arbash Meinel)
 
-bzr 0.11  2006-10-02
-####################
+bzr 0.11
+########
+
+:Released:  2006-10-02
 
 * Smart server transport test failures on windows fixed. (Lukáš Lalinský).
 
-bzr 0.11rc2  2006-09-27
-#######################
+bzr 0.11rc2
+###########
+
+:Released:  2006-09-27
 
 Bug Fixes
 *********
@@ -8241,8 +8375,10 @@ Bug Fixes
 * Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
   Arbash Meinel).
 
-bzr 0.11rc1  2006-09-25
-#######################
+bzr 0.11rc1
+###########
+
+:Released:  2006-09-25
 
 Improvements
 ************
@@ -8435,8 +8571,10 @@ Testing
   allow upgrades to a richer interface than the VFS one provided by
   Transport. (Andrew Bennetts, Martin Pool)
 
-bzr 0.10  2006-08-29
-####################
+bzr 0.10
+########
+
+:Released:  2006-08-29
 
 Improvements
 ************
@@ -8513,8 +8651,10 @@ Internals
   need to be installed. This should help make the life of packagers
   easier. (John Arbash Meinel)
 
-bzr 0.9.0  2006-08-11
-#####################
+bzr 0.9.0
+#########
+
+:Released:  2006-08-11
 
 Surprises
 *********
@@ -8781,16 +8921,20 @@ Internals
 
 * "RevisionTree" is now in bzrlib/revisiontree.py. (Robert Collins)
 
-bzr 0.8.2  2006-05-17
-#####################
+bzr 0.8.2
+#########
+
+:Released:  2006-05-17
 
 Bug Fixes
 *********
 
 * setup.py failed to install launchpad plugin.  (Martin Pool)
 
-bzr 0.8.1  2006-05-16
-#####################
+bzr 0.8.1
+#########
+
+:Released:  2006-05-16
 
 Bug Fixes
 *********
@@ -8843,8 +8987,10 @@ Testing
 * Fix test case for bzr info in upgrading a standalone branch to metadir,
   uses bzrlib api now. (Olaf Conradi)
 
-bzr 0.8  2006-05-08
-###################
+bzr 0.8
+#######
+
+:Released:  2006-05-08
 
 Notes When Upgrading
 ********************
@@ -9105,8 +9251,10 @@ Testing
 * ``run_bzr`` and ``run_bzr_captured`` now accept a 'stdin="foo"'
   parameter which will provide String("foo") to the command as its stdin.
 
-bzr 0.7 2006-01-09
-##################
+bzr 0.7
+#######
+
+:Released: 2006-01-09
 
 Changes
 *******
@@ -9401,8 +9549,10 @@ Internals
 * ``bzrlib.osutils.safe_unicode`` now exists to provide parameter coercion
   for functions that need unicode strings. (Robert Collins)
 
-bzr 0.6 2005-10-28
-##################
+bzr 0.6
+#######
+
+:Released: 2005-10-28
 
 Improvements
 ************
@@ -9617,8 +9767,10 @@ Bug Fixes
   [-1] in the revision-history. (Andres Salomon)
 
 
-bzr 0.1.1 2005-10-12
-####################
+bzr 0.1.1
+#########
+
+:Released: 2005-10-12
 
 Bug Fixes
 *********
@@ -9635,8 +9787,10 @@ Performance
 * Avoid some unnecessary http operations in branch and pull.
 
 
-bzr 0.1 2005-10-11
-##################
+bzr 0.1
+#######
+
+:Released: 2005-10-11
 
 Notes
 *****
@@ -9765,8 +9919,10 @@ Testing
   of tests to run, e.g. ``bzr selftest test_weave``
 
 
-bzr 0.0.9 2005-09-23
-####################
+bzr 0.0.9
+#########
+
+:Released: 2005-09-23
 
 Bug Fixes
 *********
@@ -9807,8 +9963,11 @@ Internals
   another (used by pull, merged, etc.)
 
 
-bzr 0.0.8 2005-09-20
-####################
+bzr 0.0.8
+#########
+
+:Released: 2005-09-20
+
 
 Improvements
 ************
@@ -9858,8 +10017,10 @@ Portability
 * Quieten warnings about locking; patch from Matt Lavin.
 
 
-bzr-0.0.7 2005-09-02
-####################
+bzr-0.0.7
+#########
+
+:Released: 2005-09-02
 
 New Features
 ************
@@ -9913,8 +10074,10 @@ Library
 
 
 
-bzr-0.0.6 2005-08-18
-####################
+bzr-0.0.6
+#########
+
+:Released: 2005-08-18
 
 New Features
 ************
@@ -9999,8 +10162,10 @@ Bug Fixes
 * Fix bugs in committing only selected files or within a subdirectory.
 
 
-bzr-0.0.5  2005-06-15
-#####################
+bzr-0.0.5
+#########
+
+:Released:  2005-06-15
 
 Changes
 *******
@@ -10141,8 +10306,10 @@ Portability
   2.4 is now only recommended.
 
 
-bzr-0.0.4  2005-04-22
-#####################
+bzr-0.0.4
+#########
+
+:Released:  2005-04-22
 
 Enhancements
 ************
@@ -10210,8 +10377,10 @@ Portability
   from QuantumG.
 
 
-bzr-0.0.3  2005-04-06
-#####################
+bzr-0.0.3
+#########
+
+:Released:  2005-04-06
 
 Enhancements
 ************
@@ -10265,8 +10434,11 @@ Portability
 * Win32 fixes from Steve Brown.
 
 
-bzr-0.0.2  "black cube"  2005-03-31
-###################################
+bzr-0.0.2
+#########
+
+:Codename: "black cube"
+:Released: 2005-03-31
 
 Enhancements
 ************
@@ -10294,8 +10466,10 @@ Enhancements
   the root directory only.
 
 
-bzr-0.0.1  2005-03-26
-#####################
+bzr-0.0.1
+#########
+
+:Released:  2005-03-26
 
 Enhancements
 ************
@@ -10324,8 +10498,10 @@ Portability
   supported).
 
 
-bzr-0.0.0.69  2005-03-22
-########################
+bzr-0.0.0.69
+############
+
+:Released:  2005-03-22
 
 Enhancements
 ************

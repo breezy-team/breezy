@@ -183,8 +183,8 @@ MAN_DEPENDENCIES = bzrlib/builtins.py \
 doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
-doc/en/release-notes/NEWS.txt: NEWS
-	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
+doc/en/release-notes/NEWS.txt: NEWS tools/generate_release_notes.py
+	$(PYTHON) tools/generate_release_notes.py NEWS $@
 
 MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
@@ -206,8 +206,8 @@ derived_web_docs = $(htm_files) $(dev_htm_files)
 WEB_DOCS = $(derived_web_docs) $(non_txt_files)
 ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 
-# the main target to build all the docs
-docs: $(ALL_DOCS)
+# the target to build all the old-style docs
+old-docs: $(ALL_DOCS)
 
 # produce a tree containing just the final docs, ready for uploading to the web
 HTMLDIR := html_docs
@@ -223,6 +223,13 @@ clean-docs:
 	    $(HTMLDIR) $(derived_txt_files)
 	rm -f doc/*/user-guide/*.pdf
 	rm -rf doc/*/user-guide/latex_prepared
+	cd doc && make clean
+
+# The main target to build all the new-style docs. Requires Sphinx.
+docs: doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
+	cd doc && make html
+	cd doc && make latex
+	cd doc/_build/latex && make all-pdf
 
 
 ### Windows Support ###
