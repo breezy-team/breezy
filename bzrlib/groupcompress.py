@@ -457,7 +457,6 @@ class _LazyGroupCompressFactory(object):
                 # There are code paths that first extract as fulltext, and then
                 # extract as storage_kind (smart fetch). So we don't break the
                 # refcycle here, but instead in manager.get_record_stream()
-                # self._manager = None
             if storage_kind == 'fulltext':
                 return self._bytes
             else:
@@ -468,6 +467,14 @@ class _LazyGroupCompressFactory(object):
 
 class _LazyGroupContentManager(object):
     """This manages a group of _LazyGroupCompressFactory objects."""
+
+    _max_cut_fraction = 0.75 # We allow a block to be trimmed to 75% of
+                             # current size, and still be considered
+                             # resuable
+    _full_block_size = 4*1024*1024
+    _full_mixed_block_size = 2*1024*1024
+    _full_enough_block_size = 3*1024*1024 # size at which we won't repack
+    _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
 
     def __init__(self, block):
         self._block = block
@@ -546,22 +553,23 @@ class _LazyGroupContentManager(object):
         # time (self._block._content) is a little expensive.
         self._block._ensure_content(self._last_byte)
 
-    def _check_rebuild_block(self):
+    def _check_rebuild_action(self):
         """Check to see if our block should be repacked."""
         total_bytes_used = 0
         last_byte_used = 0
         for factory in self._factories:
             total_bytes_used += factory._end - factory._start
-            last_byte_used = max(last_byte_used, factory._end)
-        # If we are using most of the bytes from the block, we have nothing
-        # else to check (currently more that 1/2)
+            if last_byte_used < factory._end:
+                last_byte_used = factory._end
+        # If we are using more than half of the bytes from the block, we have
+        # nothing else to check
         if total_bytes_used * 2 >= self._block._content_length:
-            return
-        # Can we just strip off the trailing bytes? If we are going to be
-        # transmitting more than 50% of the front of the content, go ahead
+            return None, last_byte_used, total_bytes_used
+        # We are using less than 50% of the content. Is the content we are
+        # using at the beginning of the block? If so, we can just trim the
+        # tail, rather than rebuilding from scratch.
         if total_bytes_used * 2 > last_byte_used:
-            self._trim_block(last_byte_used)
-            return
+            return 'trim', last_byte_used, total_bytes_used
 
         # We are using a small amount of the data, and it isn't just packed
         # nicely at the front, so rebuild the content.
@@ -574,7 +582,80 @@ class _LazyGroupContentManager(object):
         #       expanding many deltas into fulltexts, as well.
         #       If we build a cheap enough 'strip', then we could try a strip,
         #       if that expands the content, we then rebuild.
-        self._rebuild_block()
+        return 'rebuild', last_byte_used, total_bytes_used
+
+    def check_is_well_utilized(self):
+        """Is the current block considered 'well utilized'?
+
+        This heuristic asks if the current block considers itself to be a fully
+        developed group, rather than just a loose collection of data.
+        """
+        if len(self._factories) == 1:
+            # A block of length 1 could be improved by combining with other
+            # groups - don't look deeper. Even larger than max size groups
+            # could compress well with adjacent versions of the same thing.
+            return False
+        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
+        block_size = self._block._content_length
+        if total_bytes_used < block_size * self._max_cut_fraction:
+            # This block wants to trim itself small enough that we want to
+            # consider it under-utilized.
+            return False
+        # TODO: This code is meant to be the twin of _insert_record_stream's
+        #       'start_new_block' logic. It would probably be better to factor
+        #       out that logic into a shared location, so that it stays
+        #       together better
+        # We currently assume a block is properly utilized whenever it is >75%
+        # of the size of a 'full' block. In normal operation, a block is
+        # considered full when it hits 4MB of same-file content. So any block
+        # >3MB is 'full enough'.
+        # The only time this isn't true is when a given block has large-object
+        # content. (a single file >4MB, etc.)
+        # Under these circumstances, we allow a block to grow to
+        # 2 x largest_content.  Which means that if a given block had a large
+        # object, it may actually be under-utilized. However, given that this
+        # is 'pack-on-the-fly' it is probably reasonable to not repack large
+        # content blobs on-the-fly. Note that because we return False for all
+        # 1-item blobs, we will repack them; we may wish to reevaluate our
+        # treatment of large object blobs in the future.
+        if block_size >= self._full_enough_block_size:
+            return True
+        # If a block is <3MB, it still may be considered 'full' if it contains
+        # mixed content. The current rule is 2MB of mixed content is considered
+        # full. So check to see if this block contains mixed content, and
+        # set the threshold appropriately.
+        common_prefix = None
+        for factory in self._factories:
+            prefix = factory.key[:-1]
+            if common_prefix is None:
+                common_prefix = prefix
+            elif prefix != common_prefix:
+                # Mixed content, check the size appropriately
+                if block_size >= self._full_enough_mixed_block_size:
+                    return True
+                break
+        # The content failed both the mixed check and the single-content check
+        # so obviously it is not fully utilized
+        # TODO: there is one other constraint that isn't being checked
+        #       namely, that the entries in the block are in the appropriate
+        #       order. For example, you could insert the entries in exactly
+        #       reverse groupcompress order, and we would think that is ok.
+        #       (all the right objects are in one group, and it is fully
+        #       utilized, etc.) For now, we assume that case is rare,
+        #       especially since we should always fetch in 'groupcompress'
+        #       order.
+        return False
+
+    def _check_rebuild_block(self):
+        action, last_byte_used, total_bytes_used = self._check_rebuild_action()
+        if action is None:
+            return
+        if action == 'trim':
+            self._trim_block(last_byte_used)
+        elif action == 'rebuild':
+            self._rebuild_block()
+        else:
+            raise ValueError('unknown rebuild action: %r' % (action,))
 
     def _wire_bytes(self):
         """Return a byte stream suitable for transmitting over the wire."""
@@ -1570,6 +1651,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         block_length = None
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
+        reuse_this_block = reuse_blocks
         for record in stream:
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -1583,10 +1665,20 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if reuse_blocks:
                 # If the reuse_blocks flag is set, check to see if we can just
                 # copy a groupcompress block as-is.
+                # We only check on the first record (groupcompress-block) not
+                # on all of the (groupcompress-block-ref) entries.
+                # The reuse_this_block flag is then kept for as long as
+                if record.storage_kind == 'groupcompress-block':
+                    # Check to see if we really want to re-use this block
+                    insert_manager = record._manager
+                    reuse_this_block = insert_manager.check_is_well_utilized()
+            else:
+                reuse_this_block = False
+            if reuse_this_block:
+                # We still want to reuse this block
                 if record.storage_kind == 'groupcompress-block':
                     # Insert the raw block into the target repo
                     insert_manager = record._manager
-                    insert_manager._check_rebuild_block()
                     bytes = record._manager._block.to_bytes()
                     _, start, length = self._access.add_raw_records(
                         [(None, len(bytes))], bytes)[0]
@@ -1597,6 +1689,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
                                            'groupcompress-block-ref'):
                     if insert_manager is None:
                         raise AssertionError('No insert_manager set')
+                    if insert_manager is not record._manager:
+                        raise AssertionError('insert_manager does not match'
+                            ' the current record, we cannot be positive'
+                            ' that the appropriate content was inserted.'
+                            )
                     value = "%d %d %d %d" % (block_start, block_length,
                                              record._start, record._end)
                     nodes = [(record.key, value, (record.parents,))]
