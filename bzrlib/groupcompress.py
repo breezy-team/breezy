@@ -587,12 +587,13 @@ class _LazyGroupContentManager(object):
     def check_is_well_utilized(self):
         """Is the current block considered 'well utilized'?
 
-        This is a bit of a heuristic, but it basically asks if the current
-        block considers itself to be a fully developed group, rather than just
-        a loose collection of data.
+        This heuristic asks if the current block considers itself to be a fully
+        developed group, rather than just a loose collection of data.
         """
         if len(self._factories) == 1:
-            # A block of length 1 is never considered 'well utilized' :)
+            # A block of length 1 could be improved by combining with other
+            # groups - don't look deeper. Even larger than max size groups
+            # could compress well with adjacent versions of the same thing.
             return False
         action, last_byte_used, total_bytes_used = self._check_rebuild_action()
         block_size = self._block._content_length
@@ -614,7 +615,9 @@ class _LazyGroupContentManager(object):
         # 2 x largest_content.  Which means that if a given block had a large
         # object, it may actually be under-utilized. However, given that this
         # is 'pack-on-the-fly' it is probably reasonable to not repack large
-        # contet blobs on-the-fly.
+        # content blobs on-the-fly. Note that because we return False for all
+        # 1-item blobs, we will repack them; we may wish to reevaluate our
+        # treatment of large object blobs in the future.
         if block_size >= self._full_enough_block_size:
             return True
         # If a block is <3MB, it still may be considered 'full' if it contains
