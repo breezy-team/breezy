@@ -36,7 +36,6 @@ matched.
 When no output is specified, any ouput from the command is accepted
 and let the execution continue. 
 
-FIXME: not yet true
 If an error occurs and no expected error is specified, the execution stops.
 
 The matching is done on a full string comparison basis unless '...' is used, in
@@ -63,11 +62,33 @@ If you want it to succeed, use:
   2> bzr: ERROR: unknown command "not-a-command"
 
 You can use ellipsis (...) to replace any piece of text you don't want to be
-matched exactly.
+matched exactly:
 
   bzr branch not-a-branch
   2>bzr: ERROR: Not a branch...not-a-branch/".
 
+
+This can be used to ignore entire lines too:
+
+cat
+<first line
+<second line
+<third line
+<fourth line
+<last line
+>first line
+>...
+>last line
+
+You can check the content of a file with cat:
+
+  cat <file
+  >expected content
+
+You can also check the existence of a file with cat, the following will fail if
+the file doesn't exist:
+
+  cat file
 
 """
 
@@ -227,7 +248,7 @@ class ScriptRunner(object):
             # object of whicha 'want' attribute will be our 'expected'
             # parameter. So we just fallbacl to our good old assertEqualDiff
             # since we know there are differences and the output should be
-            # decemtly readable.
+            # decently readable.
             self.test_case.assertEqualDiff(expected, actual)
 
     def run_command(self, cmd, input, output, error):
@@ -244,6 +265,8 @@ class ScriptRunner(object):
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
+        if not error and actual_error:
+            self.test_case.fail('Unexpected error: %s' % actual_error)
         return actual_output, actual_error
 
     def _read_input(self, input, in_name):

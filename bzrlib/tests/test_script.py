@@ -88,7 +88,7 @@ class TestScriptExecution(script.TestCaseWithTransportAndScript):
     def test_unknown_command(self):
         self.assertRaises(SyntaxError, self.run_script, 'foo')
 
-    def test_unexpected_output(self):
+    def test_stops_on_unexpected_output(self):
         story = """
 mkdir dir
 cd dir
@@ -96,6 +96,21 @@ cd dir
 """
         self.assertRaises(AssertionError, self.run_script, story)
 
+
+    def test_stops_on_unexpected_error(self):
+        story = """
+cat
+<Hello
+bzr not-a-command
+"""
+        self.assertRaises(AssertionError, self.run_script, story)
+
+    def test_continue_on_expected_error(self):
+        story = """
+bzr not-a-command
+2>..."not-a-command"
+"""
+        self.run_script(story)
 
     def test_ellipsis_output(self):
         story = """
