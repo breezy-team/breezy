@@ -294,7 +294,7 @@ On success ``merge-package`` will leave the branch in the same state as a
 normal merge allowing you to review and commit.
 
 In a small number of cases, however, the source `upstream` and target
-`packaging` branches will have conflicts triggering the following error
+`packaging` branches will have conflicts that cause the following error
 instead::
 
     The upstream branches for the merge source and target have diverged.
