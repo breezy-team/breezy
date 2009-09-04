@@ -41,8 +41,11 @@ cdef extern from "Python.h":
     int PyString_AsStringAndSize_ptr(PyObject *, char **buf, Py_ssize_t *len)
     void PyString_InternInPlace(PyObject **)
     int PyTuple_CheckExact(object t)
+    object PyTuple_New(Py_ssize_t n_entries)
+    void PyTuple_SET_ITEM(object, Py_ssize_t offset, object) # steals the ref
     Py_ssize_t PyTuple_GET_SIZE(object t)
     PyObject *PyTuple_GET_ITEM_ptr_object "PyTuple_GET_ITEM" (object tpl, int index)
+    void Py_INCREF(object)
     void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
 cdef extern from "string.h":
@@ -141,7 +144,7 @@ cdef class BTreeLeafParser:
         cdef int loop_counter
         # keys are tuples
         loop_counter = 0
-        key_segments = []
+        key = PyTuple_New(self.key_length)
         while loop_counter < self.key_length:
             loop_counter = loop_counter + 1
             # grab a key segment
@@ -164,8 +167,9 @@ cdef class BTreeLeafParser:
                                                          temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
-            PyList_Append(key_segments, key_element)
-        return tuple(key_segments)
+            Py_INCREF(key_element)
+            PyTuple_SET_ITEM(key, loop_counter - 1, key_element)
+        return key
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""
