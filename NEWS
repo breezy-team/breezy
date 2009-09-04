@@ -18,12 +18,30 @@ New Features
 Bug Fixes
 *********
 
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
+
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
 
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
+
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
 
 Improvements
 ************
@@ -55,11 +73,19 @@ Testing
   parameterisation, and is substantially faster. (Robert Collins)
 
 
-bzr 2.0rc2
-##########
+bzr 2.0rc2 (not released yet)
+#############################
 
 Bug Fixes
 *********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
 
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
@@ -69,15 +95,8 @@ Bug Fixes
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
 
-* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
-  Groups that are seen as 'underutilized' will be repacked on-the-fly.
-  This means that when the source is fully packed, there is minimal
-  overhead during the fetch, but if the source is poorly packed the result
-  is a fairly well packed repository (not as good as 'bzr pack' but
-  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
-
-* Fix a segmentation fault when computing the ``merge_sort`` of a graph
-  that has a ghost in the mainline ancestry.
+* Fix a potential segmentation fault when doing 'log' of a branch that had
+  ghosts in its mainline.  (Evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
 
 * ``groupcompress`` sort order is now more stable, rather than relying on
