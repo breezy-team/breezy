@@ -36,9 +36,11 @@ matched.
 When no output is specified, any ouput from the command is accepted
 and let the execution continue. 
 
+FIXME: not yet true
 If an error occurs and no expected error is specified, the execution stops.
 
-The matching is done on a full string comparison basis.
+The matching is done on a full string comparison basis unless '...' is used, in
+which case expected output/errors can be lees precise.
 
 Examples:
 
@@ -60,11 +62,19 @@ If you want it to succeed, use:
   bzr not-a-command
   2> bzr: ERROR: unknown command "not-a-command"
 
+You can use ellipsis (...) to replace any piece of text you don't want to be
+matched exactly.
+
+  bzr branch not-a-branch
+  2>bzr: ERROR: Not a branch...not-a-branch/".
+
+
 """
 
-from cStringIO import StringIO
+import doctest
 import os
 import shlex
+from cStringIO import StringIO
 
 from bzrlib import (
     osutils,
@@ -196,16 +206,29 @@ class ScriptRunner(object):
 
     def __init__(self, test_case):
         self.test_case = test_case
+        self.output_checker = doctest.OutputChecker()
+        self.check_options = doctest.ELLIPSIS
 
     def run_script(self, text):
         for cmd, input, output, error in _script_to_commands(text):
-            self.run_command(cmd, input, output, error)
+            out, err = self.run_command(cmd, input, output, error)
 
     def _check_output(self, expected, actual):
         if expected is None:
             # Specifying None means: any output is accepted
             return
-        self.test_case.assertEquals(expected, actual)
+        if actual is None:
+            self.test_case.fail('Unexpected: %s' % actual)
+        matching = self.output_checker.check_output(
+            expected, actual, self.check_options)
+        if not matching:
+            # Note that we can't use output_checker.output_difference() here
+            # because... the API is boken (expected must be a doctest specific
+            # object of whicha 'want' attribute will be our 'expected'
+            # parameter. So we just fallbacl to our good old assertEqualDiff
+            # since we know there are differences and the output should be
+            # decemtly readable.
+            self.test_case.assertEqualDiff(expected, actual)
 
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]

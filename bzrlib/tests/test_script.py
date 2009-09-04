@@ -97,6 +97,30 @@ cd dir
         self.assertRaises(AssertionError, self.run_script, story)
 
 
+    def test_ellipsis_output(self):
+        story = """
+cat
+<first line
+<second line
+<last line
+>first line
+>...
+>last line
+"""
+        self.run_script(story)
+        story = """
+bzr not-a-command
+2>..."not-a-command"
+"""
+        self.run_script(story)
+
+        story = """
+bzr branch not-a-branch
+2>bzr: ERROR: Not a branch...not-a-branch/".
+"""
+        self.run_script(story)
+
+
 class TestCat(script.TestCaseWithTransportAndScript):
 
     def test_cat_usage(self):
