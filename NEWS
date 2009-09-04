@@ -47,6 +47,9 @@ Bug Fixes
 Documentation
 *************
 
+* PDF and CHM (Windows HtmlHelp) formats are now supported for the
+  user documentation. (Ian Clatworthy)
+
 * The main table of contents now provides links to the new Migration Docs
   and Plugins Guide. (Ian Clatworthy)
 
@@ -6155,6 +6158,7 @@ bzr 0.91rc2
 ###########
 
 :Released: 2007-09-11
+
 * Replaced incorrect tarball for previous release; a debug statement was left
   in bzrlib/remote.py.
 
@@ -6163,6 +6167,7 @@ bzr 0.91rc1
 ###########
 
 :Released: 2007-09-11
+
 Changes
 *******
 
