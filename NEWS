@@ -47,15 +47,19 @@ Bug Fixes
 Documentation
 *************
 
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
 * PDF and CHM (Windows HtmlHelp) formats are now supported for the
-  user documentation. (Ian Clatworthy)
+  user documentation. The HTML documentation is better broken up into
+  topics. (Ian Clatworthy)
 
 * The main table of contents now provides links to the new Migration Docs
   and Plugins Guide. (Ian Clatworthy)
 
+
 bzr 2.0rc1
 ##########
-
 
 :Codename: no worries
 :2.0rc1: 2009-08-26
