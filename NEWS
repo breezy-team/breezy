@@ -50,6 +50,9 @@ Bug Fixes
 Documentation
 *************
 
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
 * The main table of contents now provides links to the new Migration Docs
   and Plugins Guide. (Ian Clatworthy)
 
