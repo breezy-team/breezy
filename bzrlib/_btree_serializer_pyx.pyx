@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -143,14 +143,12 @@ cdef class BTreeLeafParser:
         cdef char *temp_ptr
         cdef int loop_counter
         # keys are tuples
-        loop_counter = 0
         key = PyTuple_New(self.key_length)
-        while loop_counter < self.key_length:
-            loop_counter = loop_counter + 1
+        for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
             temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
             if temp_ptr == NULL:
-                if loop_counter == self.key_length:
+                if loop_counter + 1 == self.key_length:
                     # capture to last
                     temp_ptr = last
                 else:
@@ -168,7 +166,7 @@ cdef class BTreeLeafParser:
             # advance our pointer
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
-            PyTuple_SET_ITEM(key, loop_counter - 1, key_element)
+            PyTuple_SET_ITEM(key, loop_counter, key_element)
         return key
 
     cdef int process_line(self) except -1:
