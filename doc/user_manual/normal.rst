@@ -276,33 +276,26 @@ from the merge (usually ``debian/changelog`` will conflict). You should
 edit the files to resolve the conflicts as normal. Once you have finished
 you should commit, and then you can carry on with your work.
 
-Merging of other (packaging) branches
-#####################################
+Merging a source package
+########################
 
-An increasing number of packages is becoming available as bazaar branches
-(see e.g. https://code.edge.launchpad.net/debian) making it easy to merge
-them as required.
+When merging a source package the ensuing differences will ideally be
+germane to the target packaging branch. However, on occasion the source and
+target upstream ancestry may have diverged, resulting in spurious conflicts.
 
-The differences and conflicts stemming from the merge will ideally be
-germane to the target packaging branch.
+The 'merge-package' command can then be used to consolidate the ancestry in
+automated fashion. For example::
 
-In the case where the upstream ancestry of the merge source and target
-branches has diverged, however, the developer may be confronted with
-spurious conflicts.
-
-The 'merge-package' command -- devised for such cases -- attempts to
-consolidate the merge source and target upstream ancestry allowing the
-developer to focus on packaging changes of interest. For example::
-
-    $ bzr branch lp:~ubuntu-branches/ubuntu/karmic/ipsec-tools/karmic/
+    $ bzr branch ~/src/ubuntu/karmic/ipsec-tools/karmic/
     $ cd karmic/
-    $ bzr merge-package lp:~ubuntu-branches/debian/sid/ipsec-tools/sid/
+    $ bzr merge-package ~/src/debian/sid/ipsec-tools/sid/
 
-The number of branches with diverged upstream ancestry is likely to be
-fairly small. In an even smaller number of cases the source `upstream`
-and target `packaging` branches will have conflicts thus rendering an
-automated consolidation impossible. The following error is shown
-instead::
+On success ``merge-package`` will leave the branch in the same state as a
+normal merge allowing you to review and commit.
+
+In a small number of cases, however, the source `upstream` and target
+`packaging` branches will have conflicts thus rendering an automated
+consolidation impossible. The following error is shown instead::
 
     The upstream branches for the merge source and target have diverged.
     Unfortunately, the attempt to fix this problem resulted in conflicts.
@@ -311,11 +304,10 @@ instead::
     Alternatively, until you commit you can use "bzr revert" to restore the
     state of the unmerged branch.
 
-The choices then are
-
-  * either to resolve the conflicts at hand, commit the changes and re-run
-    ``merge-package`` to finish
-  * or to bail out by calling ``bzr revert``
+Resolving the conflicts at hand, committing the changes and re-running
+``merge-package`` to finish is probably the best course of action. Having
+said that, you can return to the state before starting with ``bzr revert``
+just like with a normal merge.
 
 .. vim: set ft=rst tw=76 :
 
