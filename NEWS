@@ -35,6 +35,10 @@ Bug Fixes
 * Fix auto hook trying to display an url without using the right encoding.
   (Vincent Ladeuil, #312686)
 
+* Fix compatibility with bzr versions that don't provide
+  get_user_option_as_bool().
+  (Vincent Ladeuil, #423791)
+
 Improvements
 ************
 

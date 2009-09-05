@@ -163,6 +163,20 @@ plugin_name = 'upload'
 def _get_branch_option(branch, option):
     return branch.get_config().get_user_option(option)
 
+# FIXME: Get rid of that as soon as we depend on a bzr API that includes
+# get_user_option_as_bool
+def _get_branch_bool_option(branch, option):
+    conf = branch.get_config()
+    if hasattr(conf, 'get_user_option_as_bool'):
+        value = conf.get_user_option_as_bool(option)
+    else:
+        value = conf.get_user_option(option)
+        if value is not None:
+            if value.lower().strip() == 'true':
+                value = True
+            else:
+                value = False
+    return value
 
 def _set_branch_option(branch, option, value):
     branch.get_config().set_user_option(option, value)
@@ -190,7 +204,7 @@ def set_upload_revid_location(branch, location):
 
 
 def get_upload_auto(branch):
-    auto = branch.get_config().get_user_option_as_bool('upload_auto')
+    auto = _get_branch_bool_option(branch, 'upload_auto')
     if auto is None:
         auto = False # Default to False if not specified
     return auto
@@ -207,7 +221,7 @@ def set_upload_auto(branch, auto):
 
 
 def get_upload_auto_quiet(branch):
-    quiet = branch.get_config().get_user_option_as_bool('upload_auto_quiet')
+    quiet = _get_branch_bool_option(branch, 'upload_auto_quiet')
     if quiet is None:
         quiet = False # Default to False if not specified
     return quiet
