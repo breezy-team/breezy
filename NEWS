@@ -62,6 +62,11 @@ API Changes
 Internals
 *********
 
+* ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
+  mallocs while parsing the index (approx 3=>1 mallocs per key read).
+  This results in a 10% speedup while reading an index.
+  (John Arbash Meinel)
+
 * The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
   profiling in some situations like callbacks and generators easier.
   (Robert Collins)
