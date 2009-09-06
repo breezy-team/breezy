@@ -1145,3 +1145,8 @@ class RepositoryFormat2a(RepositoryFormatCHK2):
 
     def get_format_string(self):
         return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Repository format 2a - rich roots, group compression"
+            " and chk inventories")
