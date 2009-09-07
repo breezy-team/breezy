@@ -664,10 +664,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
 
 class CHKInventoryRepository(KnitPackRepository):

@@ -34,6 +34,14 @@ Bug Fixes
 * Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
   traceback.  (Martin Pool, #109115)
 
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
 * Fetches from 2a to 2a are now again requested in 'groupcompress' order.
   Groups that are seen as 'underutilized' will be repacked on-the-fly.
   This means that when the source is fully packed, there is minimal

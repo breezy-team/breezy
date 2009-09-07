@@ -2093,13 +2093,13 @@ class RepositoryPackCollection(object):
                 "Repository %s missing keys for new revisions %r "
                  % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
-        should_autopack = False
+        any_new_content = False
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
             self._new_pack.finish()
             self.allocate(self._new_pack)
             self._new_pack = None
-            should_autopack = True
+            any_new_content = True
         else:
             self._new_pack.abort()
             self._new_pack = None
@@ -2110,13 +2110,15 @@ class RepositoryPackCollection(object):
             self._remove_pack_from_memory(resumed_pack)
             resumed_pack.finish()
             self.allocate(resumed_pack)
-            should_autopack = True
+            any_new_content = True
         del self._resumed_packs[:]
-        if should_autopack:
-            if not self.autopack():
+        if any_new_content:
+            result = self.autopack()
+            if not result:
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 return self._save_pack_names()
+            return result
         return []
 
     def _suspend_write_group(self):
