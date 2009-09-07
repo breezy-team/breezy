@@ -584,6 +584,53 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
 
+    def _check_new_inventories(self):
+        """Detect missing inventories or chk root entries for the new revisions
+        in this write group.
+
+        :returns: set of missing keys.  Note that not every missing key is
+            guaranteed to be reported.
+        """
+        if getattr(self.repo, 'chk_bytes', None) is None:
+            return set()
+        # Ensure that all revisions added in this write group have:
+        #   - corresponding inventories,
+        #   - chk root entries for those inventories,
+        #   - and any present parent inventories have their chk root
+        #     entries too.
+        # And all this should be independent of any fallback repository.
+        key_deps = self.repo.revisions._index._key_dependencies
+        new_revisions_keys = key_deps.get_new_keys()
+        no_fallback_inv_index = self.repo.inventories._index
+        no_fallback_chk_bytes_index = self.repo.chk_bytes._index
+        inv_parent_map = no_fallback_inv_index.get_parent_map(
+            new_revisions_keys)
+        # Are any inventories for corresponding to the new revisions missing?
+        corresponding_invs = set(inv_parent_map)
+        missing_corresponding = set(new_revisions_keys)
+        missing_corresponding.difference_update(corresponding_invs)
+        if missing_corresponding:
+            return [('inventories', key) for key in missing_corresponding]
+        # Are any chk root entries missing for any inventories?  This includes
+        # any present parent inventories, which may be used when calculating
+        # deltas for streaming.
+        all_inv_keys = set(corresponding_invs)
+        for parent_inv_keys in inv_parent_map.itervalues():
+            all_inv_keys.update(parent_inv_keys)
+        # Filter out ghost parents.
+        all_inv_keys.intersection_update(
+            no_fallback_inv_index.get_parent_map(all_inv_keys))
+        all_missing = set()
+        inv_ids = [key[-1] for key in all_inv_keys]
+        for inv in self.repo.iter_inventories(inv_ids, 'unordered'):
+            root_keys = set([inv.id_to_entry.key()])
+            if inv.parent_id_basename_to_file_id is not None:
+                root_keys.add(inv.parent_id_basename_to_file_id.key())
+            present = no_fallback_chk_bytes_index.get_parent_map(root_keys)
+            missing = root_keys.difference(present)
+            all_missing.update([('chk_bytes',) + key for key in missing])
+        return all_missing
+        
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
                                  reload_func=None):
@@ -617,10 +664,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
 
 class CHKInventoryRepository(KnitPackRepository):
@@ -651,7 +699,7 @@ class CHKInventoryRepository(KnitPackRepository):
             _GCGraphIndex(self._pack_collection.revision_index.combined_index,
                 add_callback=self._pack_collection.revision_index.add_callback,
                 parents=True, is_locked=self.is_locked,
-                track_external_parent_refs=True),
+                track_external_parent_refs=True, track_new_keys=True),
             access=self._pack_collection.revision_index.data_access,
             delta=False)
         self.signatures = GroupCompressVersionedFiles(
@@ -1145,3 +1193,8 @@ class RepositoryFormat2a(RepositoryFormatCHK2):
 
     def get_format_string(self):
         return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Repository format 2a - rich roots, group compression"
+            " and chk inventories")

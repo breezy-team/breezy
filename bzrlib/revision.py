@@ -88,7 +88,7 @@ class Revision(object):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, basestring):
                 raise ValueError("invalid property value %r for %r" %
-                                 (name, value))
+                                 (value, name))
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.
