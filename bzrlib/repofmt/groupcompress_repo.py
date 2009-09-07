@@ -688,10 +688,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        self._save_pack_names(clear_obsolete_packs=True)
+        result = self._save_pack_names(clear_obsolete_packs=True)
         # Move the old packs out of the way now they are no longer referenced.
         for revision_count, packs in pack_operations:
             self._obsolete_packs(packs)
+        return result
 
 
 class CHKInventoryRepository(KnitPackRepository):
@@ -1003,7 +1004,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         super(GroupCHKStreamSource, self).__init__(from_repository, to_format)
         self._revision_keys = None
         self._text_keys = None
-        # self._text_fetch_order = 'unordered'
+        self._text_fetch_order = 'groupcompress'
         self._chk_id_roots = None
         self._chk_p_id_roots = None
 
@@ -1020,7 +1021,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             p_id_roots_set = set()
             source_vf = self.from_repository.inventories
             stream = source_vf.get_record_stream(inventory_keys,
-                                                 'unordered', True)
+                                                 'groupcompress', True)
             for record in stream:
                 if record.storage_kind == 'absent':
                     if allow_absent:
@@ -1216,3 +1217,8 @@ class RepositoryFormat2a(RepositoryFormatCHK2):
 
     def get_format_string(self):
         return ('Bazaar repository format 2a (needs bzr 1.16 or later)\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Repository format 2a - rich roots, group compression"
+            " and chk inventories")

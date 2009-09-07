@@ -2781,6 +2781,7 @@ class _KeyRefs(object):
         # dict mapping 'key' to 'set of keys referring to that key'
         self.refs = {}
         if track_new_keys:
+            # set remembering all new keys
             self.new_keys = set()
         else:
             self.new_keys = None

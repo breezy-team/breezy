@@ -72,6 +72,15 @@ class TestTrace(TestCase):
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: interrupted\n')
 
+    def test_format_memory_error(self):
+        try:
+            raise MemoryError()
+        except MemoryError:
+            pass
+        msg = _format_exception()
+        self.assertEquals(msg,
+            "bzr: out of memory\n")
+
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
