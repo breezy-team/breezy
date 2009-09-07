@@ -2083,10 +2083,14 @@ class RepositoryPackCollection(object):
                 ):
             missing = versioned_file.get_missing_compression_parent_keys()
             all_missing.update([(prefix,) + key for key in missing])
-        all_missing.update(self._check_new_inventories())
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
+                 % (self.repo, sorted(all_missing)))
+        all_missing = self._check_new_inventories()
+        if all_missing:
+            raise errors.BzrCheckError(
+                "Repository %s missing keys for new revisions %r "
                  % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
         should_autopack = False
