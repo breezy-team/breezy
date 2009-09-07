@@ -197,7 +197,7 @@ with no feedback::
 
   from bzrlib import branch
 
-  b = branch.Branch.open('http://bazaar-vcs.org/bzr/bzr.dev')
+  b = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
   nb = b.bzrdir.sprout('/tmp/newBzrBranch').open_branch()
 
 
@@ -213,7 +213,7 @@ just call push with the other branch as a parameter::
   from bzrlib import branch
 
   b1 = branch.Branch.open('file:///home/user/mybranch')
-  b2 = branch.Branch.open('http://bazaar-vcs.org/bzr/bzr.dev')
+  b2 = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
   b1.push(b2)
 
 
