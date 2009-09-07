@@ -518,16 +518,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         """commit_write_group fails with BzrCheckError when the chk root record
         for a parent inventory of a new revision is missing.
         """
-        builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, [
-            ('modify', ('file-id', 'new-content'))])
-        b = builder.get_branch()
-        if not b.repository._format.supports_chks:
+        repo = self.make_repository('damaged-repo')
+        if not repo._format.supports_chks:
             raise TestNotApplicable('requires repository with chk_bytes')
+        b = self.make_branch_with_multiple_chk_nodes()
         b.lock_read()
         self.addCleanup(b.unlock)
         # Now, manually insert objects for a stacked repo with only revision
@@ -538,13 +532,71 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         inv_c = b.repository.get_inventory('C-id')
         chk_keys_for_c_only = [
             inv_c.id_to_entry.key(), inv_c.parent_id_basename_to_file_id.key()]
-        repo = self.make_repository('damaged-repo')
         repo.lock_write()
         repo.start_write_group()
         src_repo = b.repository
         repo.chk_bytes.insert_record_stream(
             src_repo.chk_bytes.get_record_stream(
                 chk_keys_for_c_only, 'unordered', True))
+        repo.inventories.insert_record_stream(
+            src_repo.inventories.get_record_stream(
+                [('B-id',), ('C-id',)], 'unordered', True))
+        repo.revisions.insert_record_stream(
+            src_repo.revisions.get_record_stream(
+                [('C-id',)], 'unordered', True))
+        # Make sure the presence of the missing data in a fallback does not
+        # avoid the error.
+        repo.add_fallback_repository(b.repository)
+        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
+        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
+        self.assertRaises(
+            errors.BzrCheckError, reopened_repo.commit_write_group)
+        reopened_repo.abort_write_group()
+
+    def make_branch_with_multiple_chk_nodes(self):
+        # add and modify files with very long file-ids, so that the chk map
+        # will need more than just a root node.
+        builder = self.make_branch_builder('simple-branch')
+        file_adds = []
+        file_modifies = []
+        for char in 'abc':
+            name = char * 10000
+            file_adds.append(
+                ('add', ('file-' + name, 'file-%s-id' % name, 'file',
+                         'content %s\n' % name)))
+            file_modifies.append(
+                ('modify', ('file-%s-id' % name, 'new content %s\n' % name)))
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None))] +
+            file_adds)
+        builder.build_snapshot('B-id', None, [])
+        builder.build_snapshot('C-id', None, file_modifies)
+        return builder.get_branch()
+        
+    def test_missing_text_record(self):
+        """commit_write_group fails with BzrCheckError when a text is missing.
+        """
+        repo = self.make_repository('damaged-repo')
+        if not repo._format.supports_chks:
+            raise TestNotApplicable('requires repository with chk_bytes')
+        b = self.make_branch_with_multiple_chk_nodes()
+        src_repo = b.repository
+        src_repo.lock_read()
+        self.addCleanup(src_repo.unlock)
+        # Now, manually insert objects for a stacked repo with only revision
+        # C-id, *except* drop one changed text (one that from a non-root chk
+        # page)
+        # Pick a non-root key to drop
+        all_texts = src_repo.texts.keys()
+        all_texts.remove(('file-%s-id' % ('c'*10000,), 'C-id'))
+        repo.lock_write()
+        repo.start_write_group()
+        repo.chk_bytes.insert_record_stream(
+            src_repo.chk_bytes.get_record_stream(
+                src_repo.chk_bytes.keys(), 'unordered', True))
+        repo.texts.insert_record_stream(
+            src_repo.texts.get_record_stream(
+                all_texts, 'unordered', True))
         repo.inventories.insert_record_stream(
             src_repo.inventories.get_record_stream(
                 [('B-id',), ('C-id',)], 'unordered', True))

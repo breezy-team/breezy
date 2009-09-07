@@ -601,6 +601,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         new_revisions_keys = key_deps.get_new_keys()
         no_fallback_inv_index = self.repo.inventories._index
         no_fallback_chk_bytes_index = self.repo.chk_bytes._index
+        no_fallback_texts_index = self.repo.texts._index
         inv_parent_map = no_fallback_inv_index.get_parent_map(
             new_revisions_keys)
         # Are any inventories for corresponding to the new revisions missing?
@@ -627,14 +628,16 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         def root_keys_for_inv(inv):
             return [inv.id_to_entry.key(),
                     inv.parent_id_basename_to_file_id.key()]
-        interesting = []
-        uninteresting = []
+        interesting_key_lists = ([], [])
+        uninteresting_key_lists = ([], [])
         for inv in self.repo.iter_inventories(inv_ids, 'unordered'):
             root_keys = root_keys_for_inv(inv)
             if (inv.revision_id,) in parent_invs_only_keys:
-                uninteresting.extend(root_keys)
+                key_lists = uninteresting_key_lists
             else:
-                interesting.extend(root_keys)
+                key_lists = interesting_key_lists
+            for key_list, key in zip(key_lists, root_keys):
+                key_list.append(key)
             present = no_fallback_chk_bytes_index.get_parent_map(root_keys)
             missing = set(root_keys).difference(present)
             all_missing.update([('chk_bytes',) + key for key in missing])
@@ -647,7 +650,24 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         chk_bytes_no_fallbacks._search_key_func = \
             self.repo.chk_bytes._search_key_func
         chk_diff = chk_map.iter_interesting_nodes(
-            chk_bytes_no_fallbacks, interesting, uninteresting)
+            chk_bytes_no_fallbacks, interesting_key_lists[0],
+            uninteresting_key_lists[0])
+        # XXX: this is basically the same as _filter_id_to_entry elsewhere in
+        # this file
+        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
+        text_keys = set()
+        try:
+            for interesting_rec, interesting_map in chk_diff:
+                for name, bytes in interesting_map:
+                    _, file_id, revision_id = bytes_to_info(bytes)
+                    text_keys.add((file_id, revision_id))
+        except errors.NoSuchRevision, e:
+            raise errors.BzrCheckError(
+                "Repository %s missing chk node(s) for new revisions."
+                % (self.repo,))
+        chk_diff = chk_map.iter_interesting_nodes(
+            chk_bytes_no_fallbacks, interesting_key_lists[1],
+            uninteresting_key_lists[1])
         try:
             for interesting_rec, interesting_map in chk_diff:
                 pass
@@ -655,7 +675,13 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             raise errors.BzrCheckError(
                 "Repository %s missing chk node(s) for new revisions."
                 % (self.repo,))
-        
+        present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
+        missing_text_keys = text_keys.difference(present_text_keys)
+        if missing_text_keys:
+            raise errors.BzrCheckError(
+                "Repository %s missing text keys %r for new revisions"
+                 % (self.repo, sorted(missing_text_keys)))
+
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
                                  reload_func=None):
@@ -1123,7 +1149,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             missing_inventory_keys.add(key[1:])
         if self._chk_id_roots or self._chk_p_id_roots:
             raise AssertionError('Cannot call get_stream_for_missing_keys'
-                ' untill all of get_stream() has been consumed.')
+                ' until all of get_stream() has been consumed.')
         # Yield the inventory stream, so we can find the chk stream
         # Some of the missing_keys will be missing because they are ghosts.
         # As such, we can ignore them. The Sink is required to verify there are
