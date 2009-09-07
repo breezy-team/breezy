@@ -194,6 +194,9 @@ class Handler:
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				path = items[3][:-1]
+				dir = os.path.split(path)[0]
+				if len(dir) and not os.path.exists(dir):
+					os.makedirs(dir)
 				sock = open(path, "w")
 				if items[2] != "inline":
 					idx = int(items[2][1:])

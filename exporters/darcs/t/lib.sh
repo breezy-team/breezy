@@ -172,6 +172,10 @@ third line" | hg commit -l /dev/stdin
 	hg commit -m "add empty file"
 	hg rm file3
 	hg commit -m "remove file"
+	mkdir subdir
+	echo test > subdir/file
+	hg add subdir/file
+	hg commit -m "add subdir file"
 	cd ..
 }
 create_git()
