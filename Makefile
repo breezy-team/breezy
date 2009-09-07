@@ -230,6 +230,8 @@ docs: doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
 	cd doc && make html
 	cd doc && make latex
 	cd doc/_build/latex && make all-pdf
+	cd doc/es && make html
+	cd doc/ru && make html
 
 
 ### Windows Support ###
