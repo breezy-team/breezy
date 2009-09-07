@@ -544,7 +544,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2007",
+                                     copyright = "(c) Canonical Ltd, 2005-2009",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
