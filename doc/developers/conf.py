@@ -73,7 +73,7 @@ release = version + ''.join(str(p) for p in bzr_version[3:])
 
 # List of directories, relative to source directory, that shouldn't be searched
 # for source files.
-exclude_trees = ['_build', 'ru', 'es', 'developers']
+exclude_trees = ['_build']
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 #default_role = None
@@ -161,7 +161,7 @@ html_static_path = ['_static']
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-html_additional_pages = {'index': 'index.html'}
+#html_additional_pages = {'index': 'index.html'}
 
 # If false, no module index is generated.
 html_use_modindex = False
@@ -184,7 +184,7 @@ html_show_sourcelink = True
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'bzr-en-user-docs'
+htmlhelp_basename = 'bzr-en-devel-docs'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -198,29 +198,11 @@ htmlhelp_basename = 'bzr-en-user-docs'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  # Manuals
-  ('en/user-guide/index', 'bzr-en-user-guide.tex', u'Bazaar User Guide',
-   u'Bazaar Developers', 'manual'),
-  ('en/user-reference/bzr_man', 'bzr-en-user-reference.tex', u'Bazaar User Reference',
-   u'Bazaar Developers', 'manual'),
-  ('en/release-notes/NEWS', 'bzr-en-release-notes.tex', u'Bazaar Release Notes',
-   u'Bazaar Developers', 'manual'),
-  ('en/upgrade-guide/index', 'bzr-en-upgrade-guide.tex', u'Bazaar Upgrade Guide',
-   u'Bazaar Developers', 'manual'),
-  # Tutorials
-  ('en/mini-tutorial/index', 'bzr-en-tutorial-mini.tex', u'Bazaar in five minutes',
-   u'Bazaar Developers', 'howto'),
-  ('en/tutorials/tutorial', 'bzr-en-tutorial.tex', u'Bazaar Tutorial',
-   u'Bazaar Developers', 'howto'),
-  ('en/tutorials/using_bazaar_with_launchpad', 'bzr-en-tutorial-with-launchpad.tex',
-   u'Using Bazaar With Launchpad', u'Bazaar Developers', 'howto'),
-  ('en/tutorials/centralized_workflow', 'bzr-en-tutorial-centralized.tex',
-   u'Centralized Workflow Tutorial', u'Bazaar Developers', 'howto'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'Bazaar-Logo-For-Manuals.png'
+latex_logo = '../Bazaar-Logo-For-Manuals.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
