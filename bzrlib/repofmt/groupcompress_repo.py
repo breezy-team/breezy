@@ -625,33 +625,26 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             corresponding_invs)
         all_missing = set()
         inv_ids = [key[-1] for key in all_inv_keys]
-        def root_keys_for_inv(inv):
-            return [inv.id_to_entry.key(),
-                    inv.parent_id_basename_to_file_id.key()]
-        interesting_key_lists = ([], [])
-        uninteresting_key_lists = ([], [])
-        for inv in self.repo.iter_inventories(inv_ids, 'unordered'):
-            root_keys = root_keys_for_inv(inv)
-            if (inv.revision_id,) in parent_invs_only_keys:
-                key_lists = uninteresting_key_lists
-            else:
-                key_lists = interesting_key_lists
-            for key_list, key in zip(key_lists, root_keys):
-                key_list.append(key)
-            present = no_fallback_chk_bytes_index.get_parent_map(root_keys)
-            missing = set(root_keys).difference(present)
-            all_missing.update([('chk_bytes',) + key for key in missing])
-        if all_missing:
+        parent_invs_only_ids = [key[-1] for key in parent_invs_only_keys]
+        root_key_info = _build_interesting_key_sets(
+            self.repo, inv_ids, parent_invs_only_ids)
+        expected_chk_roots = root_key_info.all_keys()
+        present_chk_roots = no_fallback_chk_bytes_index.get_parent_map(
+            expected_chk_roots)
+        missing_chk_roots = expected_chk_roots.difference(present_chk_roots)
+        if missing_chk_roots:
             # Don't bother checking any further.
             raise errors.BzrCheckError(
-                "Repository %s missing keys %r for new revisions"
-                 % (self.repo, sorted(all_missing)))
+                "Repository %s missing chk root keys %r for new revisions"
+                 % (self.repo, sorted(missing_chk_roots)))
+        # Find all interesting chk_bytes records, and make sure they are
+        # present, as well as the text keys they reference.
         chk_bytes_no_fallbacks = self.repo.chk_bytes.without_fallbacks()
         chk_bytes_no_fallbacks._search_key_func = \
             self.repo.chk_bytes._search_key_func
         chk_diff = chk_map.iter_interesting_nodes(
-            chk_bytes_no_fallbacks, interesting_key_lists[0],
-            uninteresting_key_lists[0])
+            chk_bytes_no_fallbacks, root_key_info.interesting_root_keys,
+            root_key_info.uninteresting_root_keys)
         bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         text_keys = set()
         try:
@@ -663,8 +656,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 "Repository %s missing chk node(s) for new revisions."
                 % (self.repo,))
         chk_diff = chk_map.iter_interesting_nodes(
-            chk_bytes_no_fallbacks, interesting_key_lists[1],
-            uninteresting_key_lists[1])
+            chk_bytes_no_fallbacks, root_key_info.interesting_pid_root_keys,
+            root_key_info.uninteresting_pid_root_keys)
         try:
             for interesting_rec, interesting_map in chk_diff:
                 pass
@@ -946,17 +939,12 @@ class CHKInventoryRepository(KnitPackRepository):
                                         parent_keys)
             present_parent_inv_ids = set(
                 [k[-1] for k in present_parent_inv_keys])
-            uninteresting_root_keys = set()
-            interesting_root_keys = set()
             inventories_to_read = set(revision_ids)
             inventories_to_read.update(present_parent_inv_ids)
-            for inv in self.iter_inventories(inventories_to_read):
-                entry_chk_root_key = inv.id_to_entry.key()
-                if inv.revision_id in present_parent_inv_ids:
-                    uninteresting_root_keys.add(entry_chk_root_key)
-                else:
-                    interesting_root_keys.add(entry_chk_root_key)
-
+            root_key_info = _build_interesting_key_sets(
+                self, inventories_to_read, present_parent_inv_ids)
+            interesting_root_keys = root_key_info.interesting_root_keys
+            uninteresting_root_keys = root_key_info.uninteresting_root_keys
             chk_bytes = self.chk_bytes
             for record, items in chk_map.iter_interesting_nodes(chk_bytes,
                         interesting_root_keys, uninteresting_root_keys,
@@ -1154,6 +1142,38 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         # that we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
             yield stream_info
+
+
+class _InterestingKeyInfo(object):
+    def __init__(self):
+        self.interesting_root_keys = set()
+        self.interesting_pid_root_keys = set()
+        self.uninteresting_root_keys = set()
+        self.uninteresting_pid_root_keys = set()
+
+    def all_interesting(self):
+        return self.interesting_root_keys.union(self.interesting_pid_root_keys)
+
+    def all_uninteresting(self):
+        return self.uninteresting_root_keys.union(
+            self.uninteresting_pid_root_keys)
+
+    def all_keys(self):
+        return self.all_interesting().union(self.all_uninteresting())
+
+
+def _build_interesting_key_sets(repo, inventory_ids, parent_only_inv_ids):
+    result = _InterestingKeyInfo()
+    for inv in repo.iter_inventories(inventory_ids, 'unordered'):
+        root_key = inv.id_to_entry.key()
+        pid_root_key = inv.parent_id_basename_to_file_id.key()
+        if inv.revision_id in parent_only_inv_ids:
+            result.uninteresting_root_keys.add(root_key)
+            result.uninteresting_pid_root_keys.add(pid_root_key)
+        else:
+            result.interesting_root_keys.add(root_key)
+            result.interesting_pid_root_keys.add(pid_root_key)
+    return result
 
 
 def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_info):
