@@ -965,7 +965,7 @@ class TestKeyDependencies(TestCaseWithTransport):
             ('add', ('', 'root-id', 'directory', None))])
         builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
         builder.finish_series()
-        repo = self.make_repository('target')
+        repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -1003,8 +1003,19 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
-                                                             'unordered', True)
+            # Copy all texts, inventories, and chks so that nothing is missing
+            # for revision B-id.
+            for vf_name in ['texts', 'chk_bytes', 'inventories']:
+                source_vf = getattr(source_repo, vf_name, None)
+                if source_vf is None:
+                    continue
+                target_vf = getattr(target_repo, vf_name)
+                stream = source_vf.get_record_stream(
+                    source_vf.keys(), 'unordered', True)
+                target_vf.insert_record_stream(stream)
+            # Copy just revision B-id
+            stream = source_repo.revisions.get_record_stream(
+                [('B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
             self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))

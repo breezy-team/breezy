@@ -2063,6 +2063,16 @@ class RepositoryPackCollection(object):
             self._remove_pack_indices(resumed_pack)
         del self._resumed_packs[:]
 
+    def _check_new_inventories(self):
+        """Detect missing inventories in this write group.
+
+        :returns: set of missing keys.  Note that not every missing key is
+            guaranteed to be reported.
+        """
+        # The base implementation does no checks.  GCRepositoryPackCollection
+        # overrides this.
+        return set()
+        
     def _commit_write_group(self):
         all_missing = set()
         for prefix, versioned_file in (
@@ -2076,6 +2086,11 @@ class RepositoryPackCollection(object):
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
+                 % (self.repo, sorted(all_missing)))
+        all_missing = self._check_new_inventories()
+        if all_missing:
+            raise errors.BzrCheckError(
+                "Repository %s missing keys for new revisions %r "
                  % (self.repo, sorted(all_missing)))
         self._remove_pack_indices(self._new_pack)
         should_autopack = False
@@ -2222,7 +2237,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
+        self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
 
     def _get_source(self, to_format):
@@ -2242,13 +2257,14 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
-        return self._pack_collection._commit_write_group()
+        hint = self._pack_collection._commit_write_group()
+        self.revisions._index._key_dependencies.clear()
+        return hint
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
-        self.revisions._index._key_dependencies.refs.clear()
+        self.revisions._index._key_dependencies.clear()
         self._write_group = None
         return tokens
 
