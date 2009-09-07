@@ -584,9 +584,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         src_repo.lock_read()
         self.addCleanup(src_repo.unlock)
         # Now, manually insert objects for a stacked repo with only revision
-        # C-id, *except* drop one changed text (one that from a non-root chk
-        # page)
-        # Pick a non-root key to drop
+        # C-id, *except* drop one changed text.
         all_texts = src_repo.texts.keys()
         all_texts.remove(('file-%s-id' % ('c'*10000,), 'C-id'))
         repo.lock_write()

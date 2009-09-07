@@ -652,16 +652,13 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, interesting_key_lists[0],
             uninteresting_key_lists[0])
-        # XXX: this is basically the same as _filter_id_to_entry elsewhere in
-        # this file
         bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         text_keys = set()
         try:
-            for interesting_rec, interesting_map in chk_diff:
-                for name, bytes in interesting_map:
-                    _, file_id, revision_id = bytes_to_info(bytes)
-                    text_keys.add((file_id, revision_id))
+            for record in _filter_text_keys(chk_diff, text_keys, bytes_to_info):
+                pass
         except errors.NoSuchRevision, e:
+            # XXX: It would be nice if we could give a more precise error here.
             raise errors.BzrCheckError(
                 "Repository %s missing chk node(s) for new revisions."
                 % (self.repo,))
@@ -1099,13 +1096,10 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         chk_bytes = self.from_repository.chk_bytes
         def _filter_id_to_entry():
-            for record, items in chk_map.iter_interesting_nodes(chk_bytes,
-                        self._chk_id_roots, uninteresting_root_keys):
-                for name, bytes in items:
-                    # Note: we don't care about name_utf8, because we are always
-                    # rich-root = True
-                    _, file_id, revision_id = bytes_to_info(bytes)
-                    self._text_keys.add((file_id, revision_id))
+            interesting_nodes = chk_map.iter_interesting_nodes(chk_bytes,
+                        self._chk_id_roots, uninteresting_root_keys)
+            for record in _filter_text_keys(interesting_nodes, self._text_keys,
+                    bytes_to_info):
                 if record is not None:
                     yield record
             # Consumed
@@ -1160,6 +1154,22 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         # that we want to transmit all referenced chk pages.
         for stream_info in self._get_filtered_chk_streams(set()):
             yield stream_info
+
+
+def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_info):
+    """Iterate the result of iter_interesting_nodes, yielding the records
+    and adding to text_keys.
+    """
+    for record, items in interesting_nodes_iterable:
+        for name, bytes in items:
+            # Note: we don't care about name_utf8, because groupcompress repos
+            # are always rich-root, so there are no synthesised root records to
+            # ignore.
+            _, file_id, revision_id = bytes_to_info(bytes)
+            text_keys.add((file_id, revision_id))
+        yield record
+
+
 
 
 class RepositoryFormatCHK1(RepositoryFormatPack):
