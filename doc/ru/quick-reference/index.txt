@@ -1,0 +1,6 @@
+Карточка быстрого старта
+========================
+
+* `SVG <../_static/ru/bzr-quick-reference.svg>`_
+* `PDF <../_static/ru/bzr-quick-reference.pdf>`_
+* `PNG <../_static/ru/bzr-quick-reference.png>`_

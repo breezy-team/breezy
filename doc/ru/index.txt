@@ -1,0 +1,56 @@
+=================================
+Главный каталог документов Bazaar
+=================================
+
+Последняя версия этих документов доступа со страницы документации 
+на сайте Bazaar, <http://doc.bazaar-vcs.org/ru/>.
+
+.. toctree::
+   :hidden:
+
+   user-guide/index
+   quick-reference/index
+   mini-tutorials/index
+   tutorials/tutorial
+   tutorials/using_bazaar_with_launchpad
+   tutorials/centralized_workflow
+
+
+Основная документация
+=====================
+
+* `Руководство пользователя <user-guide/index.html>`_
+
+* `Карточка быстрого старта <quick-reference/index.html>`_
+
+Учебники
+========
+
+* `Базар за пять минут <mini-tutorial/index.html>`_
+
+* `Большой учебник <tutorials/tutorial.html>`_
+
+* `Использование Bazaar с Launchpad 
+  <tutorials/using_bazaar_with_launchpad.html>`_
+
+* `Работа в централизованном стиле
+  <tutorials/centralized_workflow.html>`_
+
+Ссылки в сети
+=============
+
+* `Руководство по миграции <http://doc.bazaar-vcs.org/migration/en/>`_
+  |--| для команд переносящих историю с других систем контроля версий
+
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.), 
+  см. также `русскую версию`__ 
+  
+__  http://groups.google.com/group/ru_bzr/web/%D0%B3%D0%BB%D0%BE%D1%81%D1%81%D0%B0%D1%80%D0%B8%D0%B9
+
+* `Часто задаваемые вопросы <https://answers.launchpad.net/bzr>`_ (англ.)
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai
