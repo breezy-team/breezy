@@ -157,10 +157,17 @@ Fix Committed
     A fix for this bug exists in a branch somewhere.  Ideally the bug will
     be linked to the branch.
 Fix Released
-    The fix for this bug is now in the bzr trunk.  It's not necessarily
-    true that it's released yet, but it will be in the next release.  The
-    bug target milestone should be set to the release it went into, but
-    don't spend too much time updating this if you don't immediately know.
+    The fix for this bug is now in the bzr branch that this task is for.
+    The branch for the default task on a bug is bzr.dev.  We use this value
+    even though the fix may not have been been included in a release yet
+    because all the developer activity around it is complete and we want to
+    both avoid bug spam when releases happen, and keep the list of bugs that
+    developers see when they look at the bug tracker trimmed to those that
+    require action. When setting a bug task to fix released, the bug target
+    milestone should be set to the release the fix will be included in (or
+    was included in, if you are updating an old bug). Don't spend too much time
+    updating this if you don't immediately know : its not critical that it be
+    set.
 
 
 Bug Importance
@@ -204,16 +211,14 @@ Targetting Bugs
 ***************
 
 It's possible to target a bug to a milestone, eg
-<https://bugs.edge.launchpad.net/bzr/+milestone/1.16>.  We use this mostly
-to help the release manager know what **must** be merged to make the
-release.
+<https://bugs.edge.launchpad.net/bzr/+milestone/1.16>.  We use this to help the
+release manager know what **must** be merged to make the release.
 
 Therefore, we don't target bugs that we'd like to have fixed or that could
 be fixed in a particular release, we only target bugs that must be fixed
-and that will or might cause us to decide to slip the release if they're
-not fixed.  At any time, very few if any of the bugs targetted to a
-release should be still open.  By definition, these bugs should normally
-be Critical priority.
+and that will cause us to slip the release if they're not fixed.  At any time,
+very few if any of the bugs targetted to a release should be still open.  By
+definition, these bugs should normally be Critical priority.
 
 
 Backports
@@ -224,8 +229,10 @@ off an already-released branch including a fix for a particular bug.  To
 represent this, create a new bug task (ie link in the status table on the
 bug page) by clicking the `poorly-named
 <https://bugs.launchpad.net/bugs/132733>`_ "Target to Release" link.
-Target it to the appropriate series (ie 1.15) and then to the milestone
-within that release.  
+Target it to the appropriate series (ie 1.15). If the bug should also
+prevent any point releases of that series then you should also target the
+new task to the appropriate milestone within that release. (See Targeting Bugs
+above)
 
 This bug task then has a separate status and importance to indicate the
 separate work to get it into that release.

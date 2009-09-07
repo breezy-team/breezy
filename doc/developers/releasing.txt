@@ -26,10 +26,10 @@ To start a new release cycle:
 #. Create a new series at <https://launchpad.net/bzr/+addseries>. There is one
    series for every *x.y* release.
 
-#. Go to the series web page at <https://launchpad.net/bzr/2.0>
+#. Go to the series web page at <https://launchpad.net/bzr/x.y>
 
 #. Create a new release at
-   <https://launchpad.net/bzr/2.0/+addrelease> and add
+   <https://launchpad.net/bzr/x.y/+addrelease> and add
    information about this release. We will not use it yet, but it
    will be available for targeting or nominating bugs.
 
@@ -39,7 +39,7 @@ To start a new release cycle:
    general development continues on the trunk, and only
    specifically-targeted fixes go into the release branch.
 
-#. Add milestones at <https://edge.launchpad.net/bzr/2.0/+addmilestone> to
+#. Add milestones at <https://edge.launchpad.net/bzr/x.y/+addmilestone> to
    that series for the beta release, release candidate and the final release,
    and their expected dates.
 
@@ -58,10 +58,8 @@ Starting the release phase
 
 When it's time to make the first beta release or release candidate:
 
-#. Create a new milestone at <https://launchpad.net/bzr/2.0/+addmilestone>
-   for the beta release or release candidate.
-
-#. Make a beta release or release candidate.
+#. Make a beta release or release candidate. The milestone for this
+   candidate will already exist (see Starting a cycle above).
 
 Preparing the tree for release
 ------------------------------
