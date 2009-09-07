@@ -2071,7 +2071,7 @@ class RepositoryPackCollection(object):
         """
         # The base implementation does no checks.  GCRepositoryPackCollection
         # overrides this.
-        return set()
+        pass
         
     def _commit_write_group(self):
         all_missing = set()
@@ -2087,11 +2087,7 @@ class RepositoryPackCollection(object):
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
                  % (self.repo, sorted(all_missing)))
-        all_missing = self._check_new_inventories()
-        if all_missing:
-            raise errors.BzrCheckError(
-                "Repository %s missing keys for new revisions %r "
-                 % (self.repo, sorted(all_missing)))
+        self._check_new_inventories()
         self._remove_pack_indices(self._new_pack)
         any_new_content = False
         if self._new_pack.data_inserted():

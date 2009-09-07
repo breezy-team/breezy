@@ -591,8 +591,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         :returns: set of missing keys.  Note that not every missing key is
             guaranteed to be reported.
         """
-        if getattr(self.repo, 'chk_bytes', None) is None:
-            return set()
         # Ensure that all revisions added in this write group have:
         #   - corresponding inventories,
         #   - chk root entries for those inventories,
@@ -610,7 +608,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding = set(new_revisions_keys)
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
-            return [('inventories', key) for key in missing_corresponding]
+            raise errors.BzrCheckError(
+                "Repository %s missing inventories for new revisions %r "
+                 % (self.repo, sorted(missing_corresponding)))
         # Are any chk root entries missing for any inventories?  This includes
         # any present parent inventories, which may be used when calculating
         # deltas for streaming.
@@ -640,7 +640,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             all_missing.update([('chk_bytes',) + key for key in missing])
         if all_missing:
             # Don't bother checking any further.
-            return all_missing
+            raise errors.BzrCheckError(
+                "Repository %s missing keys %r for new revisions"
+                 % (self.repo, sorted(all_missing)))
         chk_bytes_no_fallbacks = self.repo.chk_bytes.without_fallbacks()
         chk_bytes_no_fallbacks._search_key_func = \
             self.repo.chk_bytes._search_key_func
@@ -650,10 +652,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             for interesting_rec, interesting_map in chk_diff:
                 pass
         except errors.NoSuchRevision, e:
-            # XXX: missing chk record detected!
-            #print str(e)
-            return set([('something',)])
-        return all_missing
+            raise errors.BzrCheckError(
+                "Repository %s missing chk node(s) for new revisions."
+                % (self.repo,))
         
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
