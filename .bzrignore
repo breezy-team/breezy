@@ -8,6 +8,7 @@ CHANGELOG
 bzr.1
 ./doc/*.html
 ./doc/_build/
+./doc/*/_build/
 ./tutorial.html
 BRANCH-INFO
 # setup.py working directory
