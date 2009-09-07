@@ -188,17 +188,32 @@ Making the source tarball
    failures.
 
 
-Publishing the release
-----------------------
+Publishing the source tarball
+-----------------------------
 
-Now you have the beta or releasable product.  The next step is making it
-available to the world.
-
-go to the release
+#. Go to the relevant milestone page in Launchpad.
 
 #. Within that release, upload the source tarball and zipfile and the GPG
    signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this.
+
+
+Announcing the source freeze
+----------------------------
+
+#. Post to the ``bazaar`` list, saying that the source has been frozen.
+   This is the cue for platform maintainers and plugin authors to update
+   their code.  This is done before the general public announcement of the
+   release.
+
+
+Publishing the release
+----------------------
+
+There is normally a delay of a few days after the source freeze to allow
+for binaries to be built on various platforms.  Once they have been built,
+we have a releasable product.  The next step is to make it generally
+available to the world.
 
 #. Link from http://bazaar-vcs.org/Download to the tarball and signature.
 
