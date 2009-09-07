@@ -54,6 +54,10 @@ Documentation
   user documentation. The HTML documentation is better broken up into
   topics. (Ian Clatworthy)
 
+* The developer and foreign language documents are now separated
+  out so that searching in the HTML and CHM files produces more
+  useful results. (Ian Clatworthy)
+
 * The main table of contents now provides links to the new Migration Docs
   and Plugins Guide. (Ian Clatworthy)
 
