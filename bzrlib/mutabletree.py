@@ -226,6 +226,8 @@ class MutableTree(tree.Tree):
             revprops=revprops,
             possible_master_transports=possible_master_transports,
             *args, **kwargs)
+        for hook in MutableTree.hooks['finish_commit']:
+            hook(self)
         return committed_id
 
     def _gather_kinds(self, files, kinds):
@@ -583,6 +585,10 @@ class MutableTreeHooks(hooks.Hooks):
             "hook is able to change the tree before the commit takes place. "
             "start_commit is called with the bzrlib.tree.MutableTree that the "
             "commit is being performed on.", (1, 4), None))
+        self.create_hook(hooks.HookPoint('finish_commit',
+            "Called after a commit is performed on a tree. The hook is "
+            "called with the bzrlib.tree.MutableTree that the commit "
+            "was performed on.", (2, 0), None))
 
 
 # install the default hooks into the MutableTree class.

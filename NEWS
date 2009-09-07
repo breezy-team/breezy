@@ -9,6 +9,13 @@ Bazaar Release Notes
 bzr 2.0rc2 (not released yet)
 #############################
 
+New Features
+************
+
+* Added finish_commit hook for mutable trees. This allows the keywords
+  plugin to expand keywords on files changed by the commit.
+  (Ian Clatworthy, #408841)
+
 Bug Fixes
 *********
 

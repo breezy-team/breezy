@@ -30,6 +30,8 @@ class TestHooks(TestCase):
         hooks = MutableTreeHooks()
         self.assertTrue("start_commit" in hooks,
                         "start_commit not in %s" % hooks)
+        self.assertTrue("finish_commit" in hooks,
+                        "finish_commit not in %s" % hooks)
 
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""

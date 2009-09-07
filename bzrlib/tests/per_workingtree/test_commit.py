@@ -611,3 +611,22 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
+
+    def test_finish_commit_hook(self):
+        """Make sure a finish commit hook is called after a commit."""
+        def finish_commit_hook_adds_file(tree):
+            open(tree.abspath("newfile"), 'w').write("data")
+            tree.add(["newfile"])
+        def restoreDefaults():
+            mutabletree.MutableTree.hooks['finish_commit'] = []
+        self.addCleanup(restoreDefaults)
+        tree = self.make_branch_and_tree('.')
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'finish_commit',
+            finish_commit_hook_adds_file,
+            None)
+        self.assertFalse(tree.has_filename("newfile"))
+        revid = tree.commit('first post')
+        self.assertTrue(tree.has_filename("newfile"))
+        committed_tree = tree.basis_tree()
+        self.assertFalse(committed_tree.has_filename("newfile"))
