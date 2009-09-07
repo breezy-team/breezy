@@ -226,9 +226,9 @@ class MutableTree(tree.Tree):
             revprops=revprops,
             possible_master_transports=possible_master_transports,
             *args, **kwargs)
-        finish_params = FinishCommitHookParams(self)
-        for hook in MutableTree.hooks['finish_commit']:
-            hook(finish_params)
+        post_hook_params = PostCommitHookParams(self)
+        for hook in MutableTree.hooks['post_commit']:
+            hook(post_hook_params)
         return committed_id
 
     def _gather_kinds(self, files, kinds):
@@ -586,9 +586,9 @@ class MutableTreeHooks(hooks.Hooks):
             "hook is able to change the tree before the commit takes place. "
             "start_commit is called with the bzrlib.mutabletree.MutableTree "
             "that the commit is being performed on.", (1, 4), None))
-        self.create_hook(hooks.HookPoint('finish_commit',
+        self.create_hook(hooks.HookPoint('post_commit',
             "Called after a commit is performed on a tree. The hook is "
-            "called with a bzrlib.mutabletree.FinishCommitHookParams object. "
+            "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
             "the mutable_tree attribute of that object.", (2, 0), None))
 
@@ -597,8 +597,8 @@ class MutableTreeHooks(hooks.Hooks):
 MutableTree.hooks = MutableTreeHooks()
 
 
-class FinishCommitHookParams(object):
-    """Parameters for the finish_commit hook.
+class PostCommitHookParams(object):
+    """Parameters for the post_commit hook.
 
     To access the parameters, use the following attributes:
 
@@ -606,7 +606,7 @@ class FinishCommitHookParams(object):
     """
 
     def __init__(self, mutable_tree):
-        """Create the parameters for the finish_commit hook."""
+        """Create the parameters for the post_commit hook."""
         self.mutable_tree = mutable_tree
 
 
