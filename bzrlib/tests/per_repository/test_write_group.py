@@ -365,16 +365,16 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         """commit_write_group fails with BzrCheckError when the chk root record
         for a new inventory is missing.
         """
+        repo = self.make_repository('damaged-repo')
+        if not repo._format.supports_chks:
+            raise TestNotApplicable('requires repository with chk_bytes')
         builder = self.make_branch_builder('simple-branch')
         builder.build_snapshot('A-id', None, [
             ('add', ('', 'root-id', 'directory', None)),
             ('add', ('file', 'file-id', 'file', 'content\n'))])
         b = builder.get_branch()
-        if not b.repository._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
         b.lock_read()
         self.addCleanup(b.unlock)
-        repo = self.make_repository('damaged-repo')
         repo.lock_write()
         repo.start_write_group()
         # Now, add the objects manually
@@ -411,6 +411,9 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         (In principle the chk records are unnecessary in this case, but in
         practice bzr 2.0rc1 (at least) expects to find them.)
         """
+        repo = self.make_repository('damaged-repo')
+        if not repo._format.supports_chks:
+            raise TestNotApplicable('requires repository with chk_bytes')
         # Make a branch where the last two revisions have identical
         # inventories.
         builder = self.make_branch_builder('simple-branch')
@@ -420,8 +423,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         builder.build_snapshot('B-id', None, [])
         builder.build_snapshot('C-id', None, [])
         b = builder.get_branch()
-        if not b.repository._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
         b.lock_read()
         self.addCleanup(b.unlock)
         # check our setup: B-id and C-id should have identical chk root keys.
@@ -433,7 +434,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
         # ('inventories', 'B-id'), and the corresponding chk roots for those
         # inventories.
-        repo = self.make_repository('damaged-repo')
         repo.lock_write()
         repo.start_write_group()
         src_repo = b.repository
@@ -456,6 +456,9 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         """commit_write_group fails with BzrCheckError when the chk root record
         for a parent inventory of a new revision is missing.
         """
+        repo = self.make_repository('damaged-repo')
+        if not repo._format.supports_chks:
+            raise TestNotApplicable('requires repository with chk_bytes')
         builder = self.make_branch_builder('simple-branch')
         # add and modify files with very long file-ids, so that the chk map
         # will need more than just a root node.
@@ -475,8 +478,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         builder.build_snapshot('C-id', None, file_modifies)
         b = builder.get_branch()
         src_repo = b.repository
-        if not src_repo._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
         src_repo.lock_read()
         self.addCleanup(src_repo.unlock)
         # Now, manually insert objects for a stacked repo with only revision
@@ -490,7 +491,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         # Pick a non-root key to drop
         key_to_drop = all_chks.difference(chk_root_keys_only).pop()
         all_chks.discard(key_to_drop)
-        repo = self.make_repository('damaged-repo')
         repo.lock_write()
         repo.start_write_group()
         repo.chk_bytes.insert_record_stream(
