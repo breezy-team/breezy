@@ -1739,6 +1739,7 @@ class RemoteStreamSink(repository.StreamSink):
             # The stream included an inventory-delta record, but the remote
             # side isn't new enough to support them.  So we need to send the
             # rest of the stream via VFS.
+            self.target_repo.refresh_data()
             return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
