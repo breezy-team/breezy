@@ -201,10 +201,12 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
+    // TODO: implement repr() and possibly str()
     0,                                           /* tp_repr */
     0,                                           /* tp_as_number */
-    &Keys_as_sequence,                            /* tp_as_sequence */
+    &Keys_as_sequence,                           /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
+    // TODO: implement hash() as something similar to tuple.hash()
     0,                                           /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
@@ -217,7 +219,8 @@ static PyTypeObject KeysType = {
     // confuse things
     0,                                           /* tp_traverse */
     0,                                           /* tp_clear */
-    // Probably worth implementing
+    // TODO: implement richcompare, we should probably be able to compare vs an
+    //       tuple, as well as versus another Keys object.
     0,                                           /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
     // We could implement this as returning tuples of keys...
