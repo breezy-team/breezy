@@ -19,6 +19,7 @@ import sys
 import time
 
 from bzrlib import (
+    errors,
     revision as _mod_revision,
     tests,
     )
@@ -342,7 +343,13 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         b.repository.start_write_group()
         b.repository.add_revision('B-id', new_rev, new_inv)
-        b.repository.commit_write_group()
+        try:
+            b.repository.commit_write_group()
+        except errors.BzrCheckError:
+            b.repository.abort_write_group()
+            raise TestSkipped(
+                "repository format does not support storing revisions with "
+                "missing texts.")
         return b
 
     def test_file_ids_include_ghosts(self):
