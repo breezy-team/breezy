@@ -5,8 +5,9 @@ bzr (1.18-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Bump standards version to 3.8.3.
+  * Remove unused patch system.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 02 Sep 2009 14:50:14 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 08 Sep 2009 14:14:23 +0200
 
 bzr (1.17-1) unstable; urgency=low
 
