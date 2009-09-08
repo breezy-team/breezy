@@ -461,8 +461,8 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            # XXX: What about pending merges ? -- vila 20090629
-            if working.has_changes(working.basis_tree()):
+            if (working.has_changes(working.basis_tree())
+                or len(working.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
