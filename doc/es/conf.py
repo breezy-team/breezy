@@ -223,8 +223,8 @@ htmlhelp_basename = 'bzr-%s-user-docs' % (bzr_locale,)
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   # Manuals
-  #('user-guide/index', 'bzr-%s-user-guide.tex' % (bzr_locale,),
-  #  bzr_title(u'Bazaar User Guide'), bzr_team, 'manual'),
+  ('user-guide/index', 'bzr-%s-user-guide.tex' % (bzr_locale,),
+    bzr_title(u'Bazaar User Guide'), bzr_team, 'manual'),
   #('user-reference/bzr_man', 'bzr-%s-user-reference.tex' % (bzr_locale,),
   #  bzr_title(u'Bazaar User Reference'), bzr_team, 'manual'),
   #('release-notes/NEWS', 'bzr-%s-release-notes.tex' % (bzr_locale,),
@@ -246,7 +246,7 @@ latex_documents = [
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'Bazaar-Logo-For-Manuals.png'
+latex_logo = '../Bazaar-Logo-For-Manuals.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.

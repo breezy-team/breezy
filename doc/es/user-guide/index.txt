@@ -10,9 +10,6 @@ Guia de Usuarios de Bazaar
 ..   level 3 ~~~~~~~~
 ..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
 
-.. contents:: :depth: 2
-.. sectnum::
-
 
 Introducción
 ############
