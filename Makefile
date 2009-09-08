@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,43 +77,49 @@ tags:
 # these are treated as phony so they'll always be rebuilt - it's pretty quick
 .PHONY: TAGS tags
 
+
 ### Documentation ###
 
-# Build the documentation in the default set of formats
-docs: html-docs pdf-docs
+# Build the documentation. To keep the dependencies down to a minimum
+# for distro packagers, we only build the html documentation by default.
+# Sphinx 0.6 or later is required. See http://sphinx.pocoo.org/index.html
+# for installation instructions.
+docs: html-docs
 
 # Clean out generated documentation
 clean-docs:
-	cd doc && make clean
+	cd doc/en && make clean
 	cd doc/es && make clean
 	cd doc/ru && make clean
 	cd doc/developers && make clean
 
 DOC_DEPENDENCIES = doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
 
-# Build the html docs. Requires Sphinx.
+# Build the html docs. Requires Sphinx 0.6 or later.
 html-docs: $(DOC_DEPENDENCIES)
-	cd doc && make html
+	cd doc/en && make html
 	cd doc/es && make html
 	cd doc/ru && make html
 	cd doc/developers && make html
 
-# Build the PDF docs. Requires Sphinx and numerous LateX packages.
-# See http://sphinx.pocoo.org/builders.html for details.
+# Build the PDF docs. Requires Sphinx 0.6 or later and numerous LaTeX
+# packages. See http://sphinx.pocoo.org/builders.html for details.
 # Note: We don't currently build PDFs for the Russian docs because
 # they require additional packages to be installed (to handle
 # Russian hyphenation rules, etc.)
 pdf-docs: $(DOC_DEPENDENCIES)
-	cd doc && make latex
+	cd doc/en && make latex
 	cd doc/es && make latex
 	cd doc/developers && make latex
-	cd doc/_build/latex && make all-pdf
+	cd doc/en/_build/latex && make all-pdf
 	cd doc/es/_build/latex && make all-pdf
 	cd doc/developers/_build/latex && make all-pdf
 
-# Build the CHM (Windows Help) docs. Requires Sphinx and HtmlHelp workshop.
+# Build the CHM (Windows Help) docs. Requires Sphinx 0.6 or later.
+# Note: HtmlHelp Workshop needs to be used on the generated hhp files
+# to generate the final chm files.
 chm-docs: $(DOC_DEPENDENCIES)
-	cd doc && make htmlhelp
+	cd doc/en && make htmlhelp
 	cd doc/es && make htmlhelp
 	cd doc/ru && make htmlhelp
 	cd doc/developers && make htmlhelp
