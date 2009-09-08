@@ -436,7 +436,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')
         # now we manually insert a revision with an inventory referencing
-        # 'id' at revision 'b', but we do not insert revision b.
+        # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
         # for during pull operations
         inv = source.get_inventory('a')
@@ -454,7 +454,12 @@ class TestInterRepository(TestCaseWithInterRepository):
                        revision_id='b')
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
-        source.commit_write_group()
+        try:
+            source.commit_write_group()
+        except errors.BzrCheckError:
+            source.abort_write_group()
+            raise TestSkipped(
+                "Cannot construct repo in source format with broken revision.")
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
 
