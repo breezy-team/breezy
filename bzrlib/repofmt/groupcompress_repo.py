@@ -588,8 +588,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         """Detect missing inventories or chk root entries for the new revisions
         in this write group.
 
-        :returns: set of missing keys.  Note that not every missing key is
-            guaranteed to be reported.
+        :returns: list of strs, summarising any problems found.  If the list is
+            empty no problems were found.
         """
         # Ensure that all revisions added in this write group have:
         #   - corresponding inventories,
@@ -597,6 +597,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #   - and any present parent inventories have their chk root
         #     entries too.
         # And all this should be independent of any fallback repository.
+        problems = []
         key_deps = self.repo.revisions._index._key_dependencies
         new_revisions_keys = key_deps.get_new_keys()
         no_fallback_inv_index = self.repo.inventories._index
@@ -609,9 +610,9 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         missing_corresponding = set(new_revisions_keys)
         missing_corresponding.difference_update(corresponding_invs)
         if missing_corresponding:
-            raise errors.BzrCheckError(
-                "Repository %s missing inventories for new revisions %r "
-                 % (self.repo, sorted(missing_corresponding)))
+            problems.append("inventories missing for revisions %s" %
+                (sorted(missing_corresponding),))
+            return problems
         # Are any chk root entries missing for any inventories?  This includes
         # any present parent inventories, which may be used when calculating
         # deltas for streaming.
@@ -633,10 +634,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             expected_chk_roots)
         missing_chk_roots = expected_chk_roots.difference(present_chk_roots)
         if missing_chk_roots:
+            problems.append("missing referenced chk root keys: %s"
+                % (sorted(missing_chk_roots),))
             # Don't bother checking any further.
-            raise errors.BzrCheckError(
-                "Repository %s missing chk root keys %r for new revisions"
-                 % (self.repo, sorted(missing_chk_roots)))
+            return problems
         # Find all interesting chk_bytes records, and make sure they are
         # present, as well as the text keys they reference.
         chk_bytes_no_fallbacks = self.repo.chk_bytes.without_fallbacks()
@@ -652,9 +653,7 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 pass
         except errors.NoSuchRevision, e:
             # XXX: It would be nice if we could give a more precise error here.
-            raise errors.BzrCheckError(
-                "Repository %s missing chk node(s) for new revisions."
-                % (self.repo,))
+            problems.append("missing chk node(s) for id_to_entry maps")
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, root_key_info.interesting_pid_root_keys,
             root_key_info.uninteresting_pid_root_keys)
@@ -662,15 +661,14 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             for interesting_rec, interesting_map in chk_diff:
                 pass
         except errors.NoSuchRevision, e:
-            raise errors.BzrCheckError(
-                "Repository %s missing chk node(s) for new revisions."
-                % (self.repo,))
+            problems.append(
+                "missing chk node(s) for parent_id_basename_to_file_id maps")
         present_text_keys = no_fallback_texts_index.get_parent_map(text_keys)
         missing_text_keys = text_keys.difference(present_text_keys)
         if missing_text_keys:
-            raise errors.BzrCheckError(
-                "Repository %s missing text keys %r for new revisions"
-                 % (self.repo, sorted(missing_text_keys)))
+            problems.append("missing text keys: %r"
+                % (sorted(missing_text_keys),))
+        return problems
 
     def _execute_pack_operations(self, pack_operations,
                                  _packer_class=GCCHKPacker,
