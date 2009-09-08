@@ -1168,25 +1168,27 @@ class _BatchingBlockFetcher(object):
 class GroupCompressVersionedFiles(VersionedFiles):
     """A group-compress based VersionedFiles implementation."""
 
-    def __init__(self, index, access, delta=True):
+    def __init__(self, index, access, delta=True, _unadded_refs=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
         :param access: The access object storing raw data.
         :param delta: Whether to delta compress or just entropy compress.
+        :param _unadded_refs: private parameter, don't use.
         """
         self._index = index
         self._access = access
         self._delta = delta
-        self._unadded_refs = {}
+        if _unadded_refs is None:
+            _unadded_refs = {}
+        self._unadded_refs = _unadded_refs
         self._group_cache = LRUSizeCache(max_size=50*1024*1024)
         self._fallback_vfs = []
 
     def without_fallbacks(self):
-        gcvf = GroupCompressVersionedFiles(
-            self._index, self._access, self._delta)
-        gcvf._unadded_refs = dict(self._unadded_refs)
-        return gcvf
+        """Return a clone of this object without any fallbacks configured."""
+        return GroupCompressVersionedFiles(self._index, self._access,
+            self._delta, _unadded_refs=dict(self._unadded_refs))
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
