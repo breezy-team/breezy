@@ -79,100 +79,44 @@ tags:
 
 ### Documentation ###
 
-# set PRETTY to get docs that look like the Bazaar web site
-ifdef PRETTY
-rst2html := $(PYTHON) tools/rst2prettyhtml.py doc/bazaar-vcs.org.kid 
-else
-rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
-endif
+# Build the documentation in the default set of formats
+docs: html-docs pdf-docs
 
-# translate txt docs to html
-derived_txt_files := \
-	doc/en/user-reference/bzr_man.txt \
-	doc/en/release-notes/NEWS.txt
-txt_files := \
-	doc/en/tutorials/tutorial.txt \
-	doc/en/tutorials/using_bazaar_with_launchpad.txt \
-	doc/en/tutorials/centralized_workflow.txt \
-        $(wildcard doc/ru/tutorials/*.txt) \
-	$(wildcard doc/*/mini-tutorial/index.txt) \
-	$(wildcard doc/*/user-guide/index.txt) \
-	$(derived_txt_files) \
-	doc/en/developer-guide/HACKING.txt \
-	doc/en/upgrade-guide/index.txt \
-	$(wildcard doc/es/guia-usario/*.txt) \
-	doc/es/mini-tutorial/index.txt \
-	doc/index.txt \
-	$(wildcard doc/index.*.txt)
-non_txt_files := \
-       doc/default.css \
-       $(wildcard doc/*/quick-reference/bzr-quick-reference.svg) \
-       $(wildcard doc/*/quick-reference/bzr-quick-reference.png) \
-       $(wildcard doc/*/quick-reference/bzr-quick-reference.pdf) \
-       $(wildcard doc/*/user-guide/images/*.png)
-htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
+# Clean out generated documentation
+clean-docs:
+	cd doc && make clean
+	cd doc/es && make clean
+	cd doc/ru && make clean
+	cd doc/developers && make clean
 
-# doc/developers/*.txt files that should *not* be individually
-# converted to HTML
-dev_txt_nohtml := \
-	doc/developers/add.txt \
-	doc/developers/annotate.txt \
-	doc/developers/bundle-creation.txt \
-	doc/developers/commit.txt \
-	doc/developers/diff.txt \
-	doc/developers/directory-fingerprints.txt \
-	doc/developers/gc.txt \
-	doc/developers/incremental-push-pull.txt \
-	doc/developers/initial-push-pull.txt \
-	doc/developers/merge-scaling.txt \
-	doc/developers/missing.txt \
-	doc/developers/performance-roadmap-rationale.txt \
-	doc/developers/performance-use-case-analysis.txt \
-	doc/developers/planned-change-integration.txt \
-	doc/developers/planned-performance-changes.txt \
-	doc/developers/revert.txt \
-	doc/developers/status.txt \
-	doc/developers/uncommit.txt
+DOC_DEPENDENCIES = doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
 
-dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
-dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
-dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
+# Build the html docs. Requires Sphinx.
+html-docs: $(DOC_DEPENDENCIES)
+	cd doc && make html
+	cd doc/es && make html
+	cd doc/ru && make html
+	cd doc/developers && make html
 
-doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+# Build the PDF docs. Requires Sphinx and numerous LateX packages.
+# See http://sphinx.pocoo.org/builders.html for details.
+# Note: We don't currently build PDFs for the Russian docs because
+# they require additional packages to be installed (to handle
+# Russian hyphenation rules, etc.)
+pdf-docs: $(DOC_DEPENDENCIES)
+	cd doc && make latex
+	cd doc/es && make latex
+	cd doc/developers && make latex
+	cd doc/_build/latex && make all-pdf
+	cd doc/es/_build/latex && make all-pdf
+	cd doc/developers/_build/latex && make all-pdf
 
-# Set the paper size for PDF files.
-# Options:  'a4' (ISO A4 size), 'letter' (US Letter size)
-PAPERSIZE = a4
-# TODO: Add generation for Russian PDF
-PDF_DOCS := doc/en/user-guide/user-guide.$(PAPERSIZE).pdf
-
-# Copy and modify the RST sources, and convert SVG images to PDF
-# files for use a images in the LaTeX-generated PDF.
-# Then generate the PDF output from the modified RST sources.
-doc/en/user-guide/user-guide.$(PAPERSIZE).pdf: $(wildcard $(addsuffix /*.txt, doc/en/user-guide))
-	mkdir -p doc/en/user-guide/latex_prepared
-	$(PYTHON) tools/prepare_for_latex.py \
-	    --out-dir=doc/en/user-guide/latex_prepared \
-	    --in-dir=doc/en/user-guide
-	cd doc/en/user-guide/latex_prepared && \
-	    $(PYTHON) ../../../../tools/rst2pdf.py \
-	        --documentoptions=10pt,$(PAPERSIZE)paper \
-	        --input-encoding=UTF-8:strict --output-encoding=UTF-8:strict \
-	        --strict --title="Bazaar User Guide" \
-	        index.txt ../user-guide.$(PAPERSIZE).pdf
-
-doc/developers/%.html: doc/developers/%.txt
-	$(rst2html) --stylesheet=../default.css $< $@
-
-doc/index.html: doc/index.txt
-	$(rst2html) --stylesheet=default.css $< $@
-
-doc/index.%.html: doc/index.%.txt
-	$(rst2html) --stylesheet=default.css $< $@
-
-%.html: %.txt
-	$(rst2html) --stylesheet=../../default.css $< $@
+# Build the CHM (Windows Help) docs. Requires Sphinx and HtmlHelp workshop.
+chm-docs: $(DOC_DEPENDENCIES)
+	cd doc && make htmlhelp
+	cd doc/es && make htmlhelp
+	cd doc/ru && make htmlhelp
+	cd doc/developers && make htmlhelp
 
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 	$(wildcard bzrlib/*.py) \
@@ -190,49 +134,12 @@ MAN_PAGES = man1/bzr.1
 man1/bzr.1: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
-upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
-
-doc/en/upgrade-guide/index.html: $(upgrade_guide_dependencies)
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
-
 # build a png of our performance task list
 # 
 # this is no longer built by default; you can build it if you want to look at it
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
-
-derived_web_docs = $(htm_files) $(dev_htm_files) 
-WEB_DOCS = $(derived_web_docs) $(non_txt_files)
-ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
-
-# the target to build all the old-style docs
-old-docs: $(ALL_DOCS)
-
-# produce a tree containing just the final docs, ready for uploading to the web
-HTMLDIR := html_docs
-html-docs: docs
-	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
-
-# Produce PDF documents.  Requires pdfLaTeX, rubber, and Inkscape.
-pdf-docs: $(PDF_DOCS)
-
-# clean produced docs
-clean-docs:
-	$(PYTHON) tools/win32/ostools.py remove $(ALL_DOCS) \
-	    $(HTMLDIR) $(derived_txt_files)
-	rm -f doc/*/user-guide/*.pdf
-	rm -rf doc/*/user-guide/latex_prepared
-	cd doc && make clean
-
-# The main target to build all the new-style docs. Requires Sphinx.
-docs: doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
-	cd doc && make html
-	cd doc && make latex
-	cd doc/_build/latex && make all-pdf
-	cd doc/developers && make html
-	cd doc/es && make html
-	cd doc/ru && make html
 
 
 ### Windows Support ###
