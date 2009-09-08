@@ -28,10 +28,13 @@
 #endif
 
 
+/* Because of object alignment, it seems that using unsigned char doesn't make
+ * things any smaller than using an 'int'... :(
+ * Perhaps we should use the high bits for extra flags?
+ */
 typedef struct {
-    PyObject_HEAD
-    unsigned char key_width;
-    unsigned char num_keys; /* Not a Py_ssize_t like most containers */
+    PyObject_VAR_HEAD
+    int key_width;
     PyStringObject *key_strings[1]; /* key_width * num_keys entries */
 } Keys;
 
@@ -42,12 +45,12 @@ static void
 Keys_dealloc(Keys *keys)
 {
     /* Do we want to use the Py_TRASHCAN_SAFE_BEGIN/END operations? */
-    if (keys->num_keys > 0) {
+    if (keys->ob_size > 0) {
         /* tuple deallocs from the end to the beginning. Not sure why, but
          * we'll do the same here.
          */
         int i;
-        for(i = keys->num_keys - 1; i >= 0; --i) {
+        for(i = keys->ob_size - 1; i >= 0; --i) {
             Py_XDECREF(keys->key_strings[i]);
         }
     }
@@ -111,7 +114,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     self = (Keys *)(type->tp_alloc(type, num_key_bits));
     self->key_width = (unsigned char)key_width;
-    self->num_keys = (unsigned char)num_keys;
+    self->ob_size = (unsigned char)num_keys;
     for (i = 0; i < num_key_bits; i++) {
         obj = PyTuple_GET_ITEM(args, i + 1);
         if (!PyString_CheckExact(obj)) {
@@ -141,7 +144,7 @@ static char Keys_doc[] =
 static Py_ssize_t
 Keys_length(Keys *k)
 {
-    return (Py_ssize_t)k->num_keys;
+    return (Py_ssize_t)k->ob_size;
 }
 
 
@@ -151,7 +154,7 @@ Keys_item(Keys *self, Py_ssize_t offset)
     long start, i;
     PyObject *tpl, *obj;
 
-    if (offset < 0 || offset >= self->num_keys) {
+    if (offset < 0 || offset >= self->ob_size) {
         PyErr_SetString(PyExc_IndexError, "Keys index out of range");
         return NULL;
     }
@@ -191,7 +194,7 @@ static PyTypeObject KeysType = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "Keys",                                      /* tp_name */
-    sizeof(Keys) - sizeof(PyStringObject *),           /* tp_basicsize */
+    sizeof(Keys) - sizeof(PyStringObject *),     /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)Keys_dealloc,                    /* tp_dealloc */
     0,                                           /* tp_print */
