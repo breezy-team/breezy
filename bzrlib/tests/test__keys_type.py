@@ -19,7 +19,7 @@
 import sys
 
 from bzrlib import (
-    # _keys_py,
+    _keys_type_py,
     errors,
     tests,
     )
@@ -28,7 +28,7 @@ from bzrlib import (
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
     scenarios = [
-    #    ('python', {'module': _keys_py}),
+        ('python', {'module': _keys_type_py}),
     ]
     suite = loader.suiteClass()
     if CompiledKeysType.available():
@@ -93,8 +93,12 @@ class TestKeysType(tests.TestCase):
         self.assertRaises(IndexError, k.__getitem__, 2)
         n_refs = sys.getrefcount(f)
         f_key = k[0]
-        self.assertEqual(n_refs + 1, sys.getrefcount(f))
+        # The pure-python version returns a tuple it already created, rather
+        # than creating a new one, so the refcount doesn't change
+        self.assertTrue(n_refs + 1 >= sys.getrefcount(f) >= n_refs)
         del f_key
+        # This is the important check, that the final refcount should be
+        # unchanged
         self.assertEqual(n_refs, sys.getrefcount(f))
         self.assertEqual(2, len(k))
 

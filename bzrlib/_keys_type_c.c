@@ -13,7 +13,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-*/
+ */
 
 #include <Python.h>
 
@@ -67,11 +67,12 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     Keys *self;
 
 	if (type != &KeysType) {
+        PyErr_SetString(PyExc_TypeError, "we only support creating Keys");
         PyErr_BadInternalCall();
         return NULL;
     }
     if (!PyTuple_CheckExact(args)) {
-        PyErr_BadInternalCall();
+        PyErr_SetString(PyExc_TypeError, "args must be a tuple");
         return NULL;
     }
     num_args = PyTuple_GET_SIZE(args);
