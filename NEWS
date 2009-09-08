@@ -30,6 +30,10 @@ Bug Fixes
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
 
+* ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
+  merges are present in the working tree.
+  (Vincent Ladeuil, #426344)
+
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
