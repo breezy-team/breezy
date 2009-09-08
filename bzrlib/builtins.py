@@ -3653,13 +3653,14 @@ class cmd_merge(Command):
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
 
-        # die as quickly as possible if there are uncommitted changes
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
+
+        # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree):
+            if tree.has_changes(basis_tree) or len(tree.get_parent_ids()) > 1:
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
