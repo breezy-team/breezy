@@ -11,14 +11,8 @@ missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
 the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
-The current version of this document is available in the file 
-``doc/en/developer-guide/HACKING.txt`` in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
-
-See also:
-`Bazaar Developer Documentation Catalog <../../developers/index.html>`_.
-
-.. contents::
+The latest developer documentation can be found online at
+http://doc.bazaar-vcs.org/developers/.
 
 
 Getting Started
@@ -266,7 +260,7 @@ doc/developers
 Automatically-generated API reference information is available at 
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
 
-See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
+See also the :doc:`Bazaar Architectural Overview  <overview>`.
 
 
 The Code Review Process
@@ -841,8 +835,8 @@ be better.
 Test coverage
 =============
 
-All code should be exercised by the test suite.  See `Guide to Testing
-Bazaar <../../developers/testing.html>`_ for detailed information about writing tests.
+All code should be exercised by the test suite.  See :doc:`Guide to Testing
+Bazaar <testing>` for detailed information about writing tests.
 
 
 Core Topics
@@ -1403,7 +1397,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see the `Releasing Bazaar <../../developers/releasing.html>`_)
+* managing releases (see :doc:`Releasing Bazaar <releasing>`)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting

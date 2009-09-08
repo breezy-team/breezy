@@ -198,6 +198,8 @@ htmlhelp_basename = 'bzr-en-devel-docs'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
+  ('HACKING', 'bzr-en-developer-guide.tex', u'Bazaar Developer Guide',
+   u'Bazaar Developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

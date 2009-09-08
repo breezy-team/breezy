@@ -3,7 +3,7 @@ Releasing Bazaar
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the 
-`overall development cycle <cycle.html>`_, but it's the most complex part.
+:doc:`overall development cycle <cycle>`, but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
 
@@ -81,7 +81,7 @@ Preparing the tree for release
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
