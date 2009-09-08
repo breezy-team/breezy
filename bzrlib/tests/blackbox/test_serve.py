@@ -255,20 +255,14 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
-            ['--port', '0', '--directory', t.local_abspath('server-root'),
+            ['--port', '127.0.0.1:0',
+             '--directory', t.local_abspath('server-root'),
              '--allow-writes'],
             self.when_server_started)
         # The when_server_started method issued a find_repositoryV3 that should
         # fail with 'norepository' because there are no repositories inside the
         # --directory.
-        if sys.platform.startswith('freebsd'):
-            # Something fishy is going on there, the server is able to publish
-            # the port it is listening too, yet the client can't connect...
-            # The assertion below should fail when the problem is fixed or the
-            # test rewritten.
-            self.assertRaises(AttributeError, getattr, self, 'client_resp')
-        else:
-            self.assertEqual(('norepository',), self.client_resp)
+        self.assertEqual(('norepository',), self.client_resp)
 
     def run_bzr_serve_then_func(self, serve_args, func, *func_args,
             **func_kwargs):
