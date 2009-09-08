@@ -32,6 +32,7 @@ class ForeignBranchTests(object):
     These tests mainly make sure that the implementation covers the required 
     bits of the API and returns reasonable values. 
     """
+    branch = None # Set to a ForeignBranch instance by adapter
 
     def test_set_parent(self):
         """Test that setting the parent works."""
@@ -103,6 +104,7 @@ class ForeignBranchTests(object):
 
 class ForeignBranchFormatTests(object):
     """Basic tests for foreign branch format objects."""
+    format = None # Set to a BranchFormat instance by adapter
 
     def test_initialize(self):
         """Test this format is not initializable.
