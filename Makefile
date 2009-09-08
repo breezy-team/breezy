@@ -93,7 +93,19 @@ clean-docs:
 	cd doc/ru && make clean
 	cd doc/developers && make clean
 
-DOC_DEPENDENCIES = doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt
+DOC_DEPENDENCIES = doc/en/release-notes/NEWS.txt doc/en/user-reference/bzr_man.txt \
+	doc/es/Makefile \
+	doc/es/make.bat \
+	doc/ru/Makefile \
+	doc/ru/make.bat \
+	doc/developers/Makefile \
+	doc/developers/make.bat
+
+doc/%/Makefile: doc/en/Makefile
+	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
+
+doc/%/make.bat: doc/en/make.bat
+	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
 
 # Build the html docs. Requires Sphinx 0.6 or later.
 html-docs: $(DOC_DEPENDENCIES)
@@ -124,7 +136,6 @@ chm-docs: $(DOC_DEPENDENCIES)
 	cd doc/ru && make htmlhelp
 	cd doc/developers && make htmlhelp
 
-
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 	$(wildcard bzrlib/*.py) \
 	$(wildcard bzrlib/*/*.py) \
@@ -142,7 +153,6 @@ man1/bzr.1: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ man
 
 # build a png of our performance task list
-# 
 # this is no longer built by default; you can build it if you want to look at it
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
