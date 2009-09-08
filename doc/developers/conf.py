@@ -22,7 +22,7 @@ from bzrlib.doc_generate.sphinx_conf import *
 bzr_locale = 'en'
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = u"Developer Document Catalog (%s)") % (release,)
+html_short_title = u"Developer Document Catalog (%s)" % (release,)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
