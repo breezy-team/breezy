@@ -96,9 +96,14 @@ class TestKeysType(tests.TestCase):
         self.assertEqual(n_refs + 1, sys.getrefcount(f))
         del f_key
         self.assertEqual(n_refs, sys.getrefcount(f))
+        self.assertEqual(2, len(k))
 
     def test_get_wide_key(self):
         k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
         self.assertEqual(('foo', 'bar'), k.get_key(0))
         self.assertEqual(('baz', 'bing'), k.get_key(1))
         self.assertRaises(IndexError, k.get_key, 2)
+        self.assertEqual(('foo', 'bar'), k[0])
+        self.assertEqual(('baz', 'bing'), k[1])
+        self.assertRaises(IndexError, k.__getitem__, 2)
+        self.assertEqual(2, len(k))

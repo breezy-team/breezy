@@ -129,18 +129,22 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static char Keys_doc[] =
     "C implementation of a Keys structure";
 
-static PyObject *
-Keys_get_key(Keys *self, PyObject *args) {
-    long offset;
-    long start;
-    long i;
-    PyObject *tpl = NULL, *obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "l", &offset)) {
-        return NULL;
-    }
-    if (offset >= self->num_keys) {
-        PyErr_SetString(PyExc_IndexError, "offset out of range");
+static Py_ssize_t
+Keys_length(Keys *k)
+{
+    return (Py_ssize_t)k->num_keys;
+}
+
+
+static PyObject *
+Keys_item(Keys *self, Py_ssize_t offset)
+{
+    long start, i;
+    PyObject *tpl, *obj;
+
+    if (offset < 0 || offset >= self->num_keys) {
+        PyErr_SetString(PyExc_IndexError, "Keys index out of range");
         return NULL;
     }
     tpl = PyTuple_New(self->key_width);
@@ -157,8 +161,22 @@ Keys_get_key(Keys *self, PyObject *args) {
     return tpl;
 }
 
-static char Keys_get_key_doc[] = "get_keys(offset)";
 
+static PyObject *
+Keys_get_key(Keys *self, PyObject *args) {
+    long offset;
+    PyObject *tpl = NULL, *obj = NULL;
+
+    /* We should use "n" to indicate Py_ssize_t, however 'l' is good enough,
+     * and 'n' doesn't exist in python 2.4.
+     */
+    if (!PyArg_ParseTuple(args, "l", &offset)) {
+        return NULL;
+    }
+    return Keys_item(self, offset);
+}
+
+static char Keys_get_key_doc[] = "get_keys(offset)";
 
 static PyMethodDef Keys_methods[] = {
     {"get_key",
@@ -166,6 +184,17 @@ static PyMethodDef Keys_methods[] = {
      METH_VARARGS,
      Keys_get_key_doc},
     {NULL, NULL} /* sentinel */
+};
+
+static PySequenceMethods Keys_as_sequence = {
+	(lenfunc)Keys_length,			/* sq_length */
+	0,		                        /* sq_concat */
+	0,		                        /* sq_repeat */
+	(ssizeargfunc)Keys_item,		/* sq_item */
+	0,		                        /* sq_slice */
+	0,					            /* sq_ass_item */
+	0,					            /* sq_ass_slice */
+	0,                              /* sq_contains */
 };
 
 static PyTypeObject KeysType = {
@@ -181,7 +210,7 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_compare */
     0,                                           /* tp_repr */
     0,                                           /* tp_as_number */
-    0,                                           /* tp_as_sequence */
+    &Keys_as_sequence,                            /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
     0,                                           /* tp_hash */
     0,                                           /* tp_call */
