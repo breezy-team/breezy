@@ -9,6 +9,8 @@ bzr.1
 ./doc/*.html
 ./doc/_build/
 ./doc/*/_build/
+./doc/*/Makefile
+./doc/*/make.bat
 ./tutorial.html
 BRANCH-INFO
 # setup.py working directory
