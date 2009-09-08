@@ -237,17 +237,17 @@ latex_documents = [
     bzr_title(u'Bazaar in five minutes'), bzr_team, 'howto'),
   ('tutorials/tutorial', 'bzr-%s-tutorial.tex' % (bzr_locale,),
     bzr_title(u'Bazaar Tutorial'), bzr_team, 'howto'),
-  ('tutorials/using_bazaar_with_launchpad',
-    'bzr-%s-tutorial-with-launchpad.tex' % (bzr_locale,),
-    bzr_title(u'Using Bazaar With Launchpad'), bzr_team, 'howto'),
-  ('tutorials/centralized_workflow',
-    'bzr-%s-tutorial-centralized.tex' % (bzr_locale,),
-    bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
+  #('tutorials/using_bazaar_with_launchpad',
+  #  'bzr-%s-tutorial-with-launchpad.tex' % (bzr_locale,),
+  #  bzr_title(u'Using Bazaar With Launchpad'), bzr_team, 'howto'),
+  #('tutorials/centralized_workflow',
+  #  'bzr-%s-tutorial-centralized.tex' % (bzr_locale,),
+  #  bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-latex_logo = 'Bazaar-Logo-For-Manuals.png'
+latex_logo = '../Bazaar-Logo-For-Manuals.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
