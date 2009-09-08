@@ -124,6 +124,7 @@ chm-docs: $(DOC_DEPENDENCIES)
 	cd doc/ru && make htmlhelp
 	cd doc/developers && make htmlhelp
 
+
 MAN_DEPENDENCIES = bzrlib/builtins.py \
 	$(wildcard bzrlib/*.py) \
 	$(wildcard bzrlib/*/*.py) \
@@ -146,6 +147,19 @@ man1/bzr.1: $(MAN_DEPENDENCIES)
 doc/developers/performance.png: doc/developers/performance.dot
 	@echo Generating $@
 	@dot -Tpng $< -o$@ || echo "Dot not installed; skipping generation of $@"
+
+
+### Documentation Website ###
+
+# Where to build the website
+DOC_WEBSITE_BUILD := html_docs
+
+# Build and package docs into a website, complete with downloads.
+doc-website: html-docs pdf-docs
+	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
 ### Windows Support ###
