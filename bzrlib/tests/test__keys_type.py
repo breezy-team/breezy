@@ -16,6 +16,8 @@
 
 """Tests for the Keys type."""
 
+import sys
+
 from bzrlib import (
     # _keys_py,
     errors,
@@ -60,7 +62,7 @@ CompiledKeysType = _CompiledKeysType()
 class TestKeysType(tests.TestCase):
 
     def test_create(self):
-        t = self.module.Keys(1, 'foo', 'bar')
+        k = self.module.Keys(1, 'foo', 'bar')
 
     def test_create_bad_args(self):
         self.assertRaises(TypeError, self.module.Keys)
@@ -74,3 +76,29 @@ class TestKeysType(tests.TestCase):
         # too many args
         self.assertRaises(ValueError, self.module.Keys, 1, *lots_of_args)
         self.assertRaises(TypeError, self.module.Keys, 1, 'foo', 10)
+
+    def test_create_and_del_correct_refcount(self):
+        s = 'my custom' + ' foo bar'
+        n_ref = sys.getrefcount(s)
+        k = self.module.Keys(1, s)
+        self.assertEqual(n_ref + 1, sys.getrefcount(s))
+        del k
+        self.assertEqual(n_ref, sys.getrefcount(s))
+
+    def test_get_key(self):
+        f = 'fo' + 'o'
+        k = self.module.Keys(1, f, 'bar')
+        self.assertEqual(('foo',), k.get_key(0))
+        self.assertEqual(('bar',), k.get_key(1))
+        self.assertRaises(IndexError, k.get_key, 2)
+        n_refs = sys.getrefcount(f)
+        f_key = k.get_key(0)
+        self.assertEqual(n_refs + 1, sys.getrefcount(f))
+        del f_key
+        self.assertEqual(n_refs, sys.getrefcount(f))
+
+    def test_get_wide_key(self):
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
+        self.assertEqual(('foo', 'bar'), k.get_key(0))
+        self.assertEqual(('baz', 'bing'), k.get_key(1))
+        self.assertRaises(IndexError, k.get_key, 2)

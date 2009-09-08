@@ -32,11 +32,28 @@ typedef struct {
     PyObject_HEAD
     unsigned char key_width;
     unsigned char num_keys; /* Not a Py_ssize_t like most containers */
-    PyStringObject *key_strings[1];
+    PyStringObject *key_strings[1]; /* key_width * num_keys entries */
 } Keys;
 
 /* Forward declaration */
 extern PyTypeObject KeysType;
+
+static void
+Keys_dealloc(Keys *keys)
+{
+    /* Do we want to use the Py_TRASHCAN_SAFE_BEGIN/END operations? */
+    if (keys->num_keys > 0) {
+        /* tuple deallocs from the end to the beginning. Not sure why, but
+         * we'll do the same here.
+         */
+        int i;
+        for(i = keys->num_keys - 1; i >= 0; --i) {
+            Py_XDECREF(keys->key_strings[i]);
+        }
+    }
+    Py_TYPE(keys)->tp_free((PyObject *)keys);
+}
+
 
 static PyObject *
 Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -104,7 +121,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             return NULL;
         }
         Py_INCREF(obj);
-        self->key_strings[i] = obj;
+        self->key_strings[i] = (PyStringObject *)obj;
     }
     return (PyObject *)self;
 }
@@ -112,7 +129,42 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static char Keys_doc[] =
     "C implementation of a Keys structure";
 
+static PyObject *
+Keys_get_key(Keys *self, PyObject *args) {
+    long offset;
+    long start;
+    long i;
+    PyObject *tpl = NULL, *obj = NULL;
+
+    if (!PyArg_ParseTuple(args, "l", &offset)) {
+        return NULL;
+    }
+    if (offset >= self->num_keys) {
+        PyErr_SetString(PyExc_IndexError, "offset out of range");
+        return NULL;
+    }
+    tpl = PyTuple_New(self->key_width);
+    if (!tpl) {
+        /* Malloc failure */
+        return NULL;
+    }
+    start = offset * self->key_width;
+    for (i = 0; i < self->key_width; ++i) {
+        obj = (PyObject *)self->key_strings[start + i];
+        Py_INCREF(obj);
+        PyTuple_SET_ITEM(tpl, i, obj);
+    }
+    return tpl;
+}
+
+static char Keys_get_key_doc[] = "get_keys(offset)";
+
+
 static PyMethodDef Keys_methods[] = {
+    {"get_key",
+     (PyCFunction)Keys_get_key,
+     METH_VARARGS,
+     Keys_get_key_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -122,9 +174,7 @@ static PyTypeObject KeysType = {
     "Keys",                                      /* tp_name */
     sizeof(Keys) - sizeof(PyStringObject *),           /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
-    // We probably need a custom dealloc so that it decrefs the referenced
-    // PyString objects
-    0, // (destructor)PatienceSequenceMatcher_dealloc, /* tp_dealloc */
+    (destructor)Keys_dealloc,                    /* tp_dealloc */
     0,                                           /* tp_print */
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
