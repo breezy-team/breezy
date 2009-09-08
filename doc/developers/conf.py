@@ -200,6 +200,12 @@ htmlhelp_basename = 'bzr-en-devel-docs'
 latex_documents = [
   ('HACKING', 'bzr-en-developer-guide.tex', u'Bazaar Developer Guide',
    u'Bazaar Developers', 'manual'),
+  ('testing', 'bzr-en-testing-guide.tex', u'Bazaar Testing Guide',
+   u'Bazaar Developers', 'manual'),
+  ('overview', 'bzr-en-architecture-overview.tex', u'Bazaar Architecture Overview',
+   u'Bazaar Developers', 'howto'),
+  ('integration', 'bzr-en-integration-guide.tex', u'Bazaar Integration Guide',
+   u'Bazaar Developers', 'howto'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
