@@ -3511,6 +3511,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test__chk_map',
         'bzrlib.tests.test__dirstate_helpers',
         'bzrlib.tests.test__groupcompress',
+        'bzrlib.tests.test__keys_type',
         'bzrlib.tests.test__known_graph',
         'bzrlib.tests.test__rio',
         'bzrlib.tests.test__walkdirs_win32',

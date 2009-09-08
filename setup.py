@@ -295,6 +295,8 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
+ext_modules.append(Extension('bzrlib._keys_type_c',
+                             ['bzrlib/_keys_type_c.c']))
 
 
 if unavailable_files:
