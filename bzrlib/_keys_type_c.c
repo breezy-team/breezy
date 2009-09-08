@@ -127,7 +127,14 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static char Keys_doc[] =
-    "C implementation of a Keys structure";
+    "C implementation of a Keys structure."
+    "\n This is used as Keys(width, key_bit_1, key_bit_2, key_bit_3, ...)"
+    "\n For example, to do a single entry, you would do:"
+    "\n  Keys(1, 'foo')"
+    "\n For a file-key style entry you would do:"
+    "\n  Keys(2, 'file-id', 'revision-id')"
+    "\n For a parents list of file keys you would do:"
+    "\n  Keys(2, 'file-id', 'rev-id1', 'file-id', 'rev-id2')";
 
 
 static Py_ssize_t
@@ -162,27 +169,9 @@ Keys_item(Keys *self, Py_ssize_t offset)
 }
 
 
-static PyObject *
-Keys_get_key(Keys *self, PyObject *args) {
-    long offset;
-    PyObject *tpl = NULL, *obj = NULL;
-
-    /* We should use "n" to indicate Py_ssize_t, however 'l' is good enough,
-     * and 'n' doesn't exist in python 2.4.
-     */
-    if (!PyArg_ParseTuple(args, "l", &offset)) {
-        return NULL;
-    }
-    return Keys_item(self, offset);
-}
-
 static char Keys_get_key_doc[] = "get_keys(offset)";
 
 static PyMethodDef Keys_methods[] = {
-    {"get_key",
-     (PyCFunction)Keys_get_key,
-     METH_VARARGS,
-     Keys_get_key_doc},
     {NULL, NULL} /* sentinel */
 };
 
