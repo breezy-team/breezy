@@ -459,24 +459,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo = self.make_repository('damaged-repo')
         if not repo._format.supports_chks:
             raise TestNotApplicable('requires repository with chk_bytes')
-        builder = self.make_branch_builder('simple-branch')
-        # add and modify files with very long file-ids, so that the chk map
-        # will need more than just a root node.
-        file_adds = []
-        file_modifies = []
-        for char in 'abc':
-            name = char * 10000
-            file_adds.append(
-                ('add', ('file-' + name, 'file-%s-id' % name, 'file',
-                         'content %s\n' % name)))
-            file_modifies.append(
-                ('modify', ('file-%s-id' % name, 'new content %s\n' % name)))
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None))] +
-            file_adds)
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, file_modifies)
-        b = builder.get_branch()
+        b = self.make_branch_with_multiple_chk_nodes()
         src_repo = b.repository
         src_repo.lock_read()
         self.addCleanup(src_repo.unlock)
