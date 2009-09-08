@@ -36,6 +36,7 @@ from bzrlib.revision import (
     )
 from bzrlib.tests import (
     TestNotApplicable,
+    TestSkipped,
     )
 from bzrlib.tests.per_interrepository import (
     TestCaseWithInterRepository,
@@ -365,11 +366,22 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo.lock_write()
         try:
             to_repo.start_write_group()
-            inv = tree.branch.repository.get_inventory('rev-one')
-            to_repo.add_inventory('rev-one', inv, [])
-            rev = tree.branch.repository.get_revision('rev-one')
-            to_repo.add_revision('rev-one', rev, inv=inv)
-            to_repo.commit_write_group()
+            try:
+                inv = tree.branch.repository.get_inventory('rev-one')
+                to_repo.add_inventory('rev-one', inv, [])
+                rev = tree.branch.repository.get_revision('rev-one')
+                to_repo.add_revision('rev-one', rev, inv=inv)
+                try:
+                    to_repo.commit_write_group()
+                except errors.BzrCheckError:
+                    # XXX: This format won't let us make a broken repository,
+                    # at least not this easily.  Give up.
+                    raise TestSkipped(
+                        "Cannot construct repo in target format with "
+                        "broken revision.")
+            except:
+                to_repo.abort_write_group(suppress_errors=True)
+                raise
         finally:
             to_repo.unlock()
 
