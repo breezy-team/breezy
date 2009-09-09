@@ -196,20 +196,26 @@ rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=
 derived_txt_files := \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_files := \
+txt_all := \
 	doc/en/tutorials/tutorial.txt \
 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
+        $(wildcard doc/es/tutorials/*.txt) \
         $(wildcard doc/ru/tutorials/*.txt) \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
-	$(wildcard doc/*/user-guide/index.txt) \
-	$(derived_txt_files) \
-	doc/en/developer-guide/HACKING.txt \
-	doc/en/upgrade-guide/index.txt \
+	$(wildcard doc/*/user-guide/index-plain.txt) \
 	$(wildcard doc/es/guia-usario/*.txt) \
-	doc/es/mini-tutorial/index.txt \
+	$(derived_txt_files) \
+	doc/en/upgrade-guide/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
+txt_nohtml := \
+	doc/en/user-guide/index.txt \
+	doc/es/user-guide/index.txt \
+	doc/ru/user-guide/index.txt
+txt_files := $(filter-out $(txt_nohtml), $(txt_all))
+htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
+
 non_txt_files := \
        doc/default.css \
        $(wildcard doc/*/bzr-en-quick-reference.svg) \
@@ -222,7 +228,6 @@ non_txt_files := \
        $(wildcard doc/*/bzr-ru-quick-reference.png) \
        $(wildcard doc/*/bzr-ru-quick-reference.pdf) \
        $(wildcard doc/*/user-guide/images/*.png)
-htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
 
 # doc/developers/*.txt files that should *not* be individually
 # converted to HTML
@@ -234,15 +239,21 @@ dev_txt_nohtml := \
 	doc/developers/diff.txt \
 	doc/developers/directory-fingerprints.txt \
 	doc/developers/gc.txt \
+	doc/developers/implementation-notes.txt \
 	doc/developers/incremental-push-pull.txt \
+	doc/developers/index.txt \
 	doc/developers/initial-push-pull.txt \
 	doc/developers/merge-scaling.txt \
+	doc/developers/miscellaneous-notes.txt \
 	doc/developers/missing.txt \
 	doc/developers/performance-roadmap-rationale.txt \
 	doc/developers/performance-use-case-analysis.txt \
 	doc/developers/planned-change-integration.txt \
 	doc/developers/planned-performance-changes.txt \
+	doc/developers/plans.txt \
+	doc/developers/process.txt \
 	doc/developers/revert.txt \
+	doc/developers/specifications.txt \
 	doc/developers/status.txt \
 	doc/developers/uncommit.txt
 
@@ -250,9 +261,15 @@ dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
 dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
 dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
-doc/%/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/%/user-guide)) 
-	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
 
+#doc/es/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/es/user-guide)) 
+#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+#
+#doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
+#	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
+#
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 

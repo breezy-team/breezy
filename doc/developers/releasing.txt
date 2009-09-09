@@ -3,7 +3,8 @@ Releasing Bazaar
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the 
-:doc:`overall development cycle <cycle>`, but it's the most complex part.
+`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
+but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
 

@@ -1,0 +1,63 @@
+=================================
+Главный каталог документов Bazaar
+=================================
+
+Последняя версия этих документов доступа со страницы документации 
+на сайте Bazaar, <http://doc.bazaar-vcs.org/>. Еще больше информации 
+можно получить по адресу <http://bazaar-vcs.org/Documentation>.
+
+Основная документация
+=====================
+
+* `Руководство пользователя <ru/user-guide/index-plain.html>`_
+
+* `Справочник пользователя <en/user-reference/bzr_man.html>`_ (англ.)
+
+* `Карточка быстрого старта <ru/_static/ru/bzr-ru-quick-reference.svg>`_
+  (`PDF <ru/_static/ru/bzr-ru-quick-reference.pdf>`_,
+  `PNG <ru/_static/ru/bzr-ru-quick-reference.png>`_)
+
+* `Список изменений <en/release-notes/NEWS.html>`_ (англ.)
+
+* `Каталог информации для разработчиков <developers/index-plain.html>`_ (англ.) |--| 
+  для разработчиков Bazaar и плагинов
+
+Учебники
+========
+
+* `Базар за пять минут <ru/mini-tutorial/index.html>`_
+
+* `Большой учебник <ru/tutorials/tutorial.html>`_
+
+* `Использование Bazaar с Launchpad 
+  <ru/tutorials/using_bazaar_with_launchpad.html>`_
+
+* `Работа в централизованном стиле
+  <ru/tutorials/centralized_workflow.html>`_
+
+Ссылки в сети
+=============
+
+* `Руководства по переходу <http://bazaar-vcs.org/BzrSwitching>`_
+  |--| для пользователей переходящих с других систем контроля версий
+
+* `Руководство по миграции <http://bazaar-vcs.org/BzrMigration>`_
+  |--| для команд переносящих историю с других систем контроля версий
+
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.), 
+  см. также `русскую версию`__ 
+  
+__  http://groups.google.com/group/ru_bzr/web/%D0%B3%D0%BB%D0%BE%D1%81%D1%81%D0%B0%D1%80%D0%B8%D0%B9
+
+* `Часто задаваемые вопросы <http://bazaar-vcs.org/FAQ>`_ (англ.)
+
+Другие языки
+============
+
+* `Документация на английском <index.html>`_ |--| English Documentation
+* `Документация на испанском <index.es.html>`_
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

@@ -260,7 +260,8 @@ doc/developers
 Automatically-generated API reference information is available at 
 <http://starship.python.net/crew/mwh/bzrlibapi/>.  
 
-See also the :doc:`Bazaar Architectural Overview  <overview>`.
+See also the `Bazaar Architectural Overview
+<http://doc.bazaar-vcs.org/developers/overview.html>`_.
 
 
 The Code Review Process
@@ -835,8 +836,9 @@ be better.
 Test coverage
 =============
 
-All code should be exercised by the test suite.  See :doc:`Guide to Testing
-Bazaar <testing>` for detailed information about writing tests.
+All code should be exercised by the test suite.  See the `Bazaar Testing
+Guide <http://doc.bazaar-vcs.org/developers/testing.html>`_ for detailed
+information about writing tests.
 
 
 Core Topics
@@ -1397,7 +1399,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see :doc:`Releasing Bazaar <releasing>`)
+* managing releases (see `Releasing Bazaar <http://doc.bazaar-vcs.org/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
