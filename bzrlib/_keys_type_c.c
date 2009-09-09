@@ -68,6 +68,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     Py_ssize_t i;
     long key_width;
     long num_keys;
+    long depth;
     long num_key_bits;
 	PyObject *obj= NULL;
     Keys *self;
@@ -82,9 +83,9 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     num_args = PyTuple_GET_SIZE(args);
-    if (num_args < 1) {
-        PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...) takes at"
-            " least one argument.");
+    if (num_args < 2) {
+        PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, depth, ...)"
+            " takes at least two arguments.");
         return NULL;
     }
     key_width = PyInt_AsLong(PyTuple_GET_ITEM(args, 0));
@@ -92,17 +93,36 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     if (key_width <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), width"
-            " should be a positive integer.");
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+            " width should be a positive integer.");
         return NULL;
     }
     if (key_width > 256) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), width"
-            " must be <= 256");
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+            " width must be <= 256");
+        return NULL;
+    }
+    depth = PyInt_AsLong(PyTuple_GET_ITEM(args, 1));
+    if (depth == -1 && PyErr_Occurred()) {
+        return NULL;
+    }
+    if (depth <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+            " depth must be > 0");
+        return NULL;
+    }
+    if (depth > 256) {
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+            " depth must be <= 256");
+        return NULL;
+    }
+    if (depth != 2) {
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+            " only depth == 2 currently supported");
         return NULL;
     }
     /* First arg is the key width, the rest are the actual key items */
-    num_key_bits = num_args - 1;
+    num_key_bits = num_args - 2;
     num_keys = num_key_bits / key_width;
     if (num_keys * key_width != num_key_bits) {
         PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), was"
@@ -119,7 +139,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->key_width = (unsigned char)key_width;
     self->ob_size = (unsigned char)num_keys;
     for (i = 0; i < num_key_bits; i++) {
-        obj = PyTuple_GET_ITEM(args, i + 1);
+        obj = PyTuple_GET_ITEM(args, i + 2);
         if (!PyString_CheckExact(obj)) {
             PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...)"
                 " requires that all key bits are strings.");
