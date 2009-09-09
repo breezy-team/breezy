@@ -83,6 +83,10 @@ Bug Fixes
 Documentation
 *************
 
+* Fix assertion error about "_remember_remote_is_before" when pushing to
+  older smart servers.
+  (Andrew Bennetts, #418931)
+
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
 

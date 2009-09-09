@@ -2268,6 +2268,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         medium = self._client._medium
         if medium._is_remote_before((1, 18)):
             self._vfs_set_tags_bytes(bytes)
+            return
         try:
             args = (
                 self._remote_path(), self._lock_token, self._repo_lock_token)
