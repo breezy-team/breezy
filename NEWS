@@ -17,6 +17,10 @@ Bug Fixes
   conversion will commit too many copies a file.
   (Martin Pool, #415508)
 
+* Fix assertion error about ``_remember_remote_is_before`` in
+  ``set_tags_bytes`` when pushing to older smart servers.  
+  (Andrew Bennetts, Alexander Belchenko, #418931)
+
 Improvements
 ************
 
