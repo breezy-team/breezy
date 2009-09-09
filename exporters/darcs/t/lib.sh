@@ -150,6 +150,7 @@ create_hg()
 	hg pull ../$1.tmp
 	hg merge
 	echo D > file
+	hg resolve -m file
 	echo "first line
 second line
 third line" | hg commit -l /dev/stdin
@@ -270,6 +271,7 @@ diff_bzr()
 
 diff_hg()
 {
+	hg -R $1.hg update
 	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' -Nur $1.hg $1
 	return $?
 }

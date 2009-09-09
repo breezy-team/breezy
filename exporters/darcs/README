@@ -23,13 +23,6 @@ Independent::
 	Ideally it should work with any fast importer, but actually it has been
 	tested with git fast-import, bzr fast-import and hg fastimport. (These
 	are the three fast-import implementations available ATM.)
-	+
-	hg fastimport needs three patches. While they are not in the upstream,
-	you can get it from my repository using
-+
-----
-$ hg clone static-http://frugalware.org/~vmiklos/hg/hg-fastimport
-----
 
 Formats::
 	It supports the 'darcs-2', 'hashed', and 'old-fashioned-inventory' darcs
@@ -127,16 +120,18 @@ supported by fastimport-0.6 is hg-1.0.x.
 Mercurial (Hg) version:
 ----
 $ hg version
-Mercurial Distributed SCM (version 1.2.1)
+Mercurial Distributed SCM (version 1.3)
 ----
 
-Strictly speaking this document is a wrong place to talk about enabling
-hg plugins. However...
+Strictly speaking this document is a wrong place to talk about
+configuring hg fastimport. However... you will need something like:
 
 ----
-$ cat ~/.hgrc
-[extensions]
-hgext.fastimport=
+$ hg clone http://vc.gerg.ca/hg/pyfastimport
+$ hg clone http://vc.gerg.ca/hg/hg-fastimport
+$ sudo ln -s /path/to/pyfastimport/fastimport /usr/lib/python2.6/site-packages/fastimport
+$ sudo ln -s /path/to/hg-fastimport/hgfastimport /usr/lib/python2.6/site-packages/hgfastimport
+echo -e "[extensions]\nfastimport = /usr/lib/python2.6/site-packages/hgfastimport" > ~/.hgrc
 ----
 
 and once you installed the plugin correctly, you should have something like:

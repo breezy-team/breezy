@@ -93,7 +93,7 @@ if [ ! -f $dmark ]; then
 		hg)
 			hg init
 			darcs-fast-export $* $origin | \
-				hg fastimport /dev/stdin
+				hg fastimport -
 	esac
 else
 	case $format in

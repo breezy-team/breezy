@@ -8,7 +8,7 @@ cd test.hg
 hg init
 cd ..
 if [ "$1" != "--stdout" ]; then
-	darcs-fast-export test |(cd test.hg; hg fastimport /dev/stdin)
+	darcs-fast-export test |(cd test.hg; hg fastimport -)
 	diff_hg test
 	exit $?
 else
