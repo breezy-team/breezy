@@ -1673,7 +1673,7 @@ class cmd_init(Command):
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
                 converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
-                title="Branch Format",
+                title="Branch format",
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
