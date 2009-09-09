@@ -23,6 +23,8 @@ import zlib
 from bzrlib import (
     btree_index,
     errors,
+    fifo_cache,
+    lru_cache,
     osutils,
     tests,
     )
@@ -1114,6 +1116,30 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(set(), search_keys)
         self.assertEqual({}, parent_map)
         self.assertEqual(set([('one',), ('two',)]), missing_keys)
+
+    def test_supports_unlimited_cache(self):
+        builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        stream = builder.finish()
+        trans = get_transport(self.get_url())
+        size = trans.put_file('index', stream)
+        index = btree_index.BTreeGraphIndex(trans, 'index', size)
+        self.assertIsInstance(index._leaf_node_cache, lru_cache.LRUCache)
+        self.assertEqual(btree_index._NODE_CACHE_SIZE,
+                         index._leaf_node_cache._max_cache)
+        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertEqual(100, index._internal_node_cache._max_cache)
+        # No change if unlimited_cache=False is passed
+        index = btree_index.BTreeGraphIndex(trans, 'index', size,
+                                            unlimited_cache=False)
+        self.assertIsInstance(index._leaf_node_cache, lru_cache.LRUCache)
+        self.assertEqual(btree_index._NODE_CACHE_SIZE,
+                         index._leaf_node_cache._max_cache)
+        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertEqual(100, index._internal_node_cache._max_cache)
+        index = btree_index.BTreeGraphIndex(trans, 'index', size,
+                                            unlimited_cache=True)
+        self.assertIsInstance(index._leaf_node_cache, dict)
+        self.assertIs(type(index._internal_node_cache), dict)
 
 
 class TestBTreeNodes(BTreeTestCase):

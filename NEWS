@@ -6,6 +6,18 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.0.1 (not released yet)
+############################
+
+Bug Fixes
+*********
+
+* The CHK index pages now use an unlimited cache size. With a limited
+  cache and a large project, the random access of chk pages could cause us
+  to download the entire cix file many times.
+  (John Arbash Meinel, #402623)
+
+
 bzr 2.0rc2 (not released yet)
 #############################
 
