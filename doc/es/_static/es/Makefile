@@ -1,5 +1,5 @@
-TARGETS=bzr-quick-reference.png bzr-quick-reference.pdf
-OBJECTS=bzr-quick-reference.svg Makefile
+TARGETS=bzr-es-quick-reference.png bzr-es-quick-reference.pdf
+OBJECTS=bzr-es-quick-reference.svg Makefile
 
 all: $(TARGETS)
 
@@ -11,9 +11,9 @@ all: $(TARGETS)
 .svg.png:
 	rsvg-convert -d 300 -p 300 -z 3.3346 -f png -o $@ $<
 
-bzr-quick-reference.png: $(OBJECTS)
+bzr-es-quick-reference.png: $(OBJECTS)
 
-bzr-quick-reference.pdf: $(OBJECTS)
+bzr-es-quick-reference.pdf: $(OBJECTS)
 
 clean:
 	rm -f $(TARGETS)
