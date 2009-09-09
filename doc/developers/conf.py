@@ -29,7 +29,7 @@ html_short_title = u"Developer Document Catalog (%s)" % (release,)
 #html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'bzr-%s-devel-docs' % (bzr_locale,)
+htmlhelp_basename = 'bzr-developers'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).

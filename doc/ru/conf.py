@@ -39,7 +39,7 @@ html_short_title = bzr_title(u"Table of Contents (%s)") % (release,)
 #html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'bzr-%s-user-docs' % (bzr_locale,)
+htmlhelp_basename = 'bzr-%s' % (bzr_locale,)
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
