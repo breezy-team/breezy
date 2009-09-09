@@ -106,4 +106,5 @@ Here is a sample of some of the more popular plugins.
   ================ ================= ==================================
 
 If you wish to write your own plugins, it is not difficult to do.
-See `Writing a plugin`_ in the appendices to get started.
+See `Writing a plugin <writing a plugin.html>`_ in the appendices to get
+started.
