@@ -108,3 +108,15 @@ class TestKeysType(tests.TestCase):
         self.assertEqual(('baz', 'bing'), k[1])
         self.assertRaises(IndexError, k.__getitem__, 2)
         self.assertEqual(2, len(k))
+
+    def test_as_tuple(self):
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
+        if getattr(k, 'as_tuples', None) is not None:
+            t = k.as_tuples()
+        else:
+            t = k # The pure-python form is in tuples already
+        self.assertEqual((('foo', 'bar'), ('baz', 'bing')), t)
+
+    def test_repr(self):
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
+        self.assertEqual("(('foo', 'bar'), ('baz', 'bing'))", repr(k))

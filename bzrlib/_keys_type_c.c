@@ -40,6 +40,7 @@ typedef struct {
 
 /* Forward declaration */
 extern PyTypeObject KeysType;
+static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
 static void
 Keys_dealloc(Keys *keys)
@@ -130,6 +131,46 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
+static PyObject *
+Keys_as_tuples(Keys *self)
+{
+    PyObject *as_tuple = NULL;
+    PyObject *a_key = NULL;
+    Py_ssize_t i;
+
+    as_tuple = PyTuple_New(self->ob_size);
+    if (as_tuple == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < self->ob_size; ++i) {
+        a_key = Keys_item(self, i);
+        if (a_key == NULL) {
+            goto Err;
+        }
+        PyTuple_SET_ITEM(as_tuple, i, a_key);
+    }
+    return as_tuple;
+Err:
+    Py_DECREF(as_tuple);
+    return NULL;
+}
+
+static PyObject *
+Keys_repr(Keys *self)
+{
+    PyObject *as_tpl;
+    PyObject *result;
+
+    as_tpl = Keys_as_tuples(self);
+    if (as_tpl == NULL) {
+        return NULL;
+    }
+    result = PyObject_Repr(as_tpl);
+Done:
+    Py_DECREF(as_tpl);
+    return result;
+}
+
 static char Keys_doc[] =
     "C implementation of a Keys structure."
     "\n This is used as Keys(width, key_bit_1, key_bit_2, key_bit_3, ...)"
@@ -176,6 +217,7 @@ Keys_item(Keys *self, Py_ssize_t offset)
 static char Keys_get_key_doc[] = "get_keys(offset)";
 
 static PyMethodDef Keys_methods[] = {
+    {"as_tuples", (PyCFunction)Keys_as_tuples, METH_VARARGS},
     {NULL, NULL} /* sentinel */
 };
 
@@ -202,7 +244,7 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
     // TODO: implement repr() and possibly str()
-    0,                                           /* tp_repr */
+    Keys_repr,                                           /* tp_repr */
     0,                                           /* tp_as_number */
     &Keys_as_sequence,                           /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
