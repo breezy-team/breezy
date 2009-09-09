@@ -94,6 +94,8 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     Py_DECREF_ptr(py_str)
     return result
 
+from bzrlib import _keys_type_c
+
 
 cdef class BTreeLeafParser:
     """Parse the leaf nodes of a BTree index.
@@ -250,8 +252,9 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
-                    PyList_Append(ref_list, self.extract_key(temp_ptr))
-                PyList_Append(ref_lists, tuple(ref_list))
+                    ref_list.extend(self.extract_key(temp_ptr))
+                ref_list = _keys_type_c.Keys(self.key_length, *ref_list)
+                PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
             ref_lists = tuple(ref_lists)
