@@ -5,36 +5,19 @@
 Последняя версия этих документов доступа со страницы документации 
 на сайте Bazaar, <http://doc.bazaar-vcs.org/ru/>.
 
+Основная документация
+=====================
+
 .. toctree::
-   :hidden:
+   :maxdepth: 1
 
    user-guide/index
    quick-reference/index
-   mini-tutorials/index
+   mini-tutorial/index
    tutorials/tutorial
    tutorials/using_bazaar_with_launchpad
    tutorials/centralized_workflow
 
-
-Основная документация
-=====================
-
-* `Руководство пользователя <user-guide/index.html>`_
-
-* `Карточка быстрого старта <quick-reference/index.html>`_
-
-Учебники
-========
-
-* `Базар за пять минут <mini-tutorial/index.html>`_
-
-* `Большой учебник <tutorials/tutorial.html>`_
-
-* `Использование Bazaar с Launchpad 
-  <tutorials/using_bazaar_with_launchpad.html>`_
-
-* `Работа в централизованном стиле
-  <tutorials/centralized_workflow.html>`_
 
 Ссылки в сети
 =============

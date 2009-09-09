@@ -5,22 +5,15 @@ Indice de Documentacion de Bazaar
 Las ultimas versiones de estos documentos se encuentran disponibles
 en la pagina de  Bazaar, http://doc.bazaar-vcs.org/en/.
 
-.. toctree::
-   :hidden:
-
-   mini-tutorials/index
-   quick-reference/index
-   user-guide/index
-
-
 Documentacion Principal
 =======================
 
-* `Bazaar en cinco minutos <mini-tutorial/index.html>`_ 
+.. toctree::
+   :maxdepth: 1
 
-* `Referencia Rapida <quick-reference/index.html>`_
-
-* `Guia de Usuario <user-guide/index.html>`_ 
+   mini-tutorial/index
+   quick-reference/index
+   user-guide/index
 
 
 Otra Documentacion

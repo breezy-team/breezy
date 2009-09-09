@@ -23,6 +23,15 @@ bzr_locale = 'ru'
 
 # Translations & supporting helper function
 bzr_titles = {
+        u'Table of Contents (%s)': u'Содержание (%s)',
+        u'Bazaar User Guide': None,
+        u'Bazaar User Reference': None,
+        u'Bazaar Release Notes': None,
+        u'Bazaar Upgrade Guide': None,
+        u'Bazaar in five minutes': u'Базар за пять минут',
+        u'Bazaar Tutorial': u'Большой учебник',
+        u'Using Bazaar With Launchpad': u'Использование Bazaar с Launchpad',
+        u'Centralized Workflow Tutorial': u'Работа в централизованном стиле',
     }
 def bzr_title(s):
     return bzr_titles.get(s) or s
