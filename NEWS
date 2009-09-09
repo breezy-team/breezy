@@ -37,6 +37,10 @@ Bug Fixes
 * ``bzr info -v`` on a 2a format still claimed that it was a "Development
   format" (John Arbash Meinel, #424392)
 
+* ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
+  merges are present in the working tree.
+  (Vincent Ladeuil, #426344)
+
 * Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
   traceback.  (Martin Pool, #109115)
 
