@@ -18,6 +18,7 @@
 
 import os
 import sys
+import tarfile
 from optparse import OptionParser
 from shutil import copy2, copytree, rmtree
 
@@ -39,9 +40,13 @@ def package_docs(section, src_build, dest_html, dest_downloads):
         rmtree(dest_html)
     copytree(src_html, dest_html)
 
-    # TODO: package the html as a downloadable archive
+    # Package the html as a downloadable archive
+    archive_root = "bzr-%s-html" % (section,)
+    archive_basename = "%s.tar.bz2" % (archive_root,)
+    archive_name = os.path.join(dest_downloads, archive_basename)
+    build_archive(src_html, archive_name, archive_root, 'bz2')
 
-    # TODO: copy across the PDF docs, if any, including the quick ref card
+    # Copy across the PDF docs, if any, including the quick ref card
     pdf_files = []
     quick_ref = os.path.join(src_html,
         '_static/%s/bzr-quick-reference.pdf' % (section,))
@@ -60,6 +65,16 @@ def package_docs(section, src_build, dest_html, dest_downloads):
             copy2(pdf, dest_pdf)
 
     # TODO: copy across the CHM files, if any
+
+
+def build_archive(src_dir, archive_name, archive_root, format):
+    print "creating %s ..." % (archive_name,)
+    tar = tarfile.open(archive_name, "w:%s" % (format,))
+    for relpath in os.listdir(src_dir):
+        src_path = os.path.join(src_dir, relpath)
+        archive_path = os.path.join(archive_root, relpath)
+        tar.add(src_path, arcname=archive_path)
+    tar.close()
 
 
 def main(argv):
