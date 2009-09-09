@@ -63,6 +63,60 @@ BZR_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
 The path to the plugins directory that Bazaar should use.
+If not set, Bazaar will search for plugins in:
+
+* the user specific plugin directory (containing the ``user`` plugins),
+
+* the bzrlib directory (containing the ``core`` plugins),
+
+* the site specific plugin directory if applicable (containing
+  the ``site`` plugins).
+
+If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the
+the way the plugin are searched. 
+
+As for the ``PATH`` variables, if multiple directories are
+specified in ``BZR_PLUGIN_PATH`` they should be separated by the
+platform specific appropriate character (':' on Unix/Linux/etc,
+';' on windows)
+
+By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
+in ``user``.  However it will continue to search in ``core`` and
+``site`` unless they are explicitly removed.
+
+If you need to change the order or remove one of these
+directories, you should use special values:
+
+* ``-user``, ``-core``, ``-site`` will remove the corresponding
+  path from the default values,
+
+* ``+user``, ``+core``, ``+site`` will add the corresponding path
+  before the remaining default values (and also remove it from
+  the default values).
+
+Note that the special values 'user', 'core' and 'site' should be
+used literally, they will be substituted by the corresponding,
+platform specific, values.
+
+Examples:
+^^^^^^^^^
+
+The examples below uses ':' as the separator, windows users
+should use ';'.
+
+Overriding the default user plugin directory:
+``BZR_PLUGIN_PATH='/path/to/my/other/plugins'``
+
+Disabling the site directory while retaining the user directory:
+``BZR_PLUGIN_PATH='-site:+user'``
+
+Disabling all plugins (better achieved with --no-plugins):
+``BZR_PLUGIN_PATH='-user:-core:-site'``
+
+Overriding the default site plugin directory:
+``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
+
+
 
 BZRPATH
 ~~~~~~~

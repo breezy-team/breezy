@@ -99,12 +99,27 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
     def test_children_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(['rev1'], graph._nodes[NULL_REVISION].child_keys)
+        self.assertEqual(['rev1'], graph.get_child_keys(NULL_REVISION))
         self.assertEqual(['rev2a', 'rev2b'],
-                         sorted(graph._nodes['rev1'].child_keys))
-        self.assertEqual(['rev3'], sorted(graph._nodes['rev2a'].child_keys))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev3'].child_keys))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev2b'].child_keys))
+                         sorted(graph.get_child_keys('rev1')))
+        self.assertEqual(['rev3'], graph.get_child_keys('rev2a'))
+        self.assertEqual(['rev4'], graph.get_child_keys('rev3'))
+        self.assertEqual(['rev4'], graph.get_child_keys('rev2b'))
+        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
+
+    def test_parent_ancestry1(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertEqual([NULL_REVISION], graph.get_parent_keys('rev1'))
+        self.assertEqual(['rev1'], graph.get_parent_keys('rev2a'))
+        self.assertEqual(['rev1'], graph.get_parent_keys('rev2b'))
+        self.assertEqual(['rev2a'], graph.get_parent_keys('rev3'))
+        self.assertEqual(['rev2b', 'rev3'],
+                         sorted(graph.get_parent_keys('rev4')))
+        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
+    
+    def test_parent_with_ghost(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        self.assertEqual(None, graph.get_parent_keys('g'))
 
     def test_gdfo_ancestry_1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -768,3 +783,70 @@ class TestKnownGraphMergeSort(TestCaseWithKnownGraph):
                 },
                 'E',
                 [])
+
+
+class TestKnownGraphStableReverseTopoSort(TestCaseWithKnownGraph):
+    """Test the sort order returned by gc_sort."""
+
+    def assertSorted(self, expected, parent_map):
+        graph = self.make_known_graph(parent_map)
+        value = graph.gc_sort()
+        if expected != value:
+            self.assertEqualDiff(pprint.pformat(expected),
+                                 pprint.pformat(value))
+
+    def test_empty(self):
+        self.assertSorted([], {})
+
+    def test_single(self):
+        self.assertSorted(['a'], {'a':()})
+        self.assertSorted([('a',)], {('a',):()})
+        self.assertSorted([('F', 'a')], {('F', 'a'):()})
+
+    def test_linear(self):
+        self.assertSorted(['c', 'b', 'a'], {'a':(), 'b':('a',), 'c':('b',)})
+        self.assertSorted([('c',), ('b',), ('a',)],
+                          {('a',):(), ('b',): (('a',),), ('c',): (('b',),)})
+        self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a')],
+                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                           ('F', 'c'): (('F', 'b'),)})
+
+    def test_mixed_ancestries(self):
+        # Each prefix should be sorted separately
+        self.assertSorted([('F', 'c'), ('F', 'b'), ('F', 'a'),
+                           ('G', 'c'), ('G', 'b'), ('G', 'a'),
+                           ('Q', 'c'), ('Q', 'b'), ('Q', 'a'),
+                          ],
+                          {('F', 'a'):(), ('F', 'b'): (('F', 'a'),),
+                           ('F', 'c'): (('F', 'b'),),
+                           ('G', 'a'):(), ('G', 'b'): (('G', 'a'),),
+                           ('G', 'c'): (('G', 'b'),),
+                           ('Q', 'a'):(), ('Q', 'b'): (('Q', 'a'),),
+                           ('Q', 'c'): (('Q', 'b'),),
+                          })
+
+    def test_stable_sorting(self):
+        # the sort order should be stable even when extra nodes are added
+        self.assertSorted(['b', 'c', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',)})
+        self.assertSorted(['b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+        self.assertSorted(['b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',)})
+        self.assertSorted(['Z', 'b', 'c', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
+                           'Z':('a',)})
+        self.assertSorted(['e', 'b', 'c', 'f', 'Z', 'd', 'a'],
+                          {'a':(), 'b':('a',), 'c':('a',), 'd':('a',),
+                           'Z':('a',),
+                           'e':('b', 'c', 'd'),
+                           'f':('d', 'Z'),
+                           })
+
+    def test_skip_ghost(self):
+        self.assertSorted(['b', 'c', 'a'],
+                          {'a':(), 'b':('a', 'ghost'), 'c':('a',)})
+
+    def test_skip_mainline_ghost(self):
+        self.assertSorted(['b', 'c', 'a'],
+                          {'a':(), 'b':('ghost', 'a'), 'c':('a',)})

@@ -56,23 +56,11 @@ to ``$BZR_HOME/plugins/gtk``.
 Alternative plugin locations
 ----------------------------
 
-If you have the necessary permissions, plugins can also be installed on
-a system-wide basis. Two locations are currently checked for plugins:
-
- 1. the system location - bzrlib/plugins
- 2. the personal location - $BZR_HOME/plugins.
-
-On a Linux installation, these locations are typically
-``/usr/lib/python2.4/site-packages/bzrlib/plugins/`` and
-``$HOME/.bazaar/plugins/``.
-On a Windows installation, the system location might be
-``C:\\Program Files\\Bazaar\\plugins``
-while the personal location might be
-``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\plugins``.
-
-One can additionally override the personal plugins location
-by setting the environment variable ``BZR_PLUGIN_PATH``
-to a directory that contains plugins.
+If you have the necessary permissions, plugins can also be installed on a
+system-wide basis.  One can additionally override the personal plugins
+location by setting the environment variable ``BZR_PLUGIN_PATH`` (see `User
+Reference <../user-reference/bzr_man.html#bzr-plugin-path>`_ for a detailed
+explanation).
 
 Listing the installed plugins
 -----------------------------
