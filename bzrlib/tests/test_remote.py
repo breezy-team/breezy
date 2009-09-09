@@ -2326,6 +2326,10 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         class FakeRealRepository:
             def _get_sink(self):
                 return fake_real_sink
+            def is_in_write_group(self):
+                return False
+            def refresh_data(self):
+                return True
         repo._real_repository = FakeRealRepository()
         sink = repo._get_sink()
         fmt = repository.RepositoryFormat.get_default_format()
