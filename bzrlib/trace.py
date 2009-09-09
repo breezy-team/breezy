@@ -432,6 +432,9 @@ def report_exception(exc_info, err_file):
     elif isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
+    elif isinstance(exc_object, MemoryError):
+        err_file.write("bzr: out of memory\n")
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
         report_user_error(exc_info, err_file,
