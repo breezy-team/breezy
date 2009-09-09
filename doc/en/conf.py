@@ -75,8 +75,15 @@ latex_documents = [
 unused_docs = [
     # Placeholder for later
     'admin-guide/index',
+    # Subtopics that get included
     'upgrade-guide/overview',
     'upgrade-guide/data_migration',
     'upgrade-guide/tips_and_tricks',
+    # Plain-style documentation generation stuff
+    'release-notes/NEWS',
+    'user-reference/bzr_man',
+    'user-guide/index-plain',
+    # Miscellaneous
+    'user-reference/readme',
 ]
 
