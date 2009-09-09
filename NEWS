@@ -7,8 +7,17 @@ Bazaar Release Notes
    :depth: 1
 
 
-bzr 1.18.1 NOT RELEASED YET
-###########################
+bzr 1.18.1
+##########
+
+:Codename:     nein nein nein!
+:1.18.1:       2009-09-09
+
+This release fixes two small but worthwhile bugs relevant to users on
+Microsoft Windows: some commands that failed on with locking errors will
+now work, and a bug that caused poor performance after committing a file
+with line-ending conversion has now been fixed.  It also fixes a bug in
+pushing to older servers.
 
 Bug Fixes
 *********
@@ -17,13 +26,17 @@ Bug Fixes
   conversion will commit too many copies a file.
   (Martin Pool, #415508)
 
+* Fix assertion error about ``_remember_remote_is_before`` in
+  ``set_tags_bytes`` when pushing to older smart servers.  
+  (Andrew Bennetts, Alexander Belchenko, #418931)
+
 Improvements
 ************
 
-* ``bzr push`` locally on windows will no longer give a locking error with
+* ``bzr push`` locally on Windows will no longer give a locking error with
   dirstate based formats. (Robert Collins)
 
-* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+* ``bzr shelve`` and ``bzr unshelve`` now work on Windows.
   (Robert Collins, #305006)
 
 API Changes

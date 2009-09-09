@@ -277,6 +277,12 @@ class FakeClient(_SmartClient):
         self.expecting_body = True
         return result[1], FakeProtocol(result[2], self)
 
+    def call_with_body_bytes(self, method, args, body):
+        self._check_call(method, args)
+        self._calls.append(('call_with_body_bytes', method, args, body))
+        result = self._get_next_response()
+        return result[1], FakeProtocol(result[2], self)
+
     def call_with_body_bytes_expecting_body(self, method, args, body):
         self._check_call(method, args)
         self._calls.append(('call_with_body_bytes_expecting_body', method,
@@ -856,6 +862,16 @@ class RemoteBzrDirTestCase(TestRemote):
 
 class RemoteBranchTestCase(RemoteBzrDirTestCase):
 
+    def lock_remote_branch(self, branch):
+        """Trick a RemoteBranch into thinking it is locked."""
+        branch._lock_mode = 'w'
+        branch._lock_count = 2
+        branch._lock_token = 'branch token'
+        branch._repo_lock_token = 'repo token'
+        branch.repository._lock_mode = 'w'
+        branch.repository._lock_count = 2
+        branch.repository._lock_token = 'repo token'
+
     def make_remote_branch(self, transport, client):
         """Make a RemoteBranch using 'client' as its _SmartClient.
 
@@ -998,6 +1014,54 @@ class TestBranchGetTagsBytes(RemoteBranchTestCase):
         result = branch.tags.get_tag_dict()
         self.assertFinished(client)
         self.assertEqual({}, result)
+
+
+class TestBranchSetTagsBytes(RemoteBranchTestCase):
+
+    def test_trivial(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.set_tags_bytes', ('quack/', 'branch token', 'repo token'),
+            'success', ('',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.lock_remote_branch(branch)
+        branch._set_tags_bytes('tags bytes')
+        self.assertFinished(client)
+        self.assertEqual('tags bytes', client._calls[-1][-1])
+
+    def test_backwards_compatible(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.set_tags_bytes', ('quack/', 'branch token', 'repo token'),
+            'unknown', ('Branch.set_tags_bytes',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        self.lock_remote_branch(branch)
+        class StubRealBranch(object):
+            def __init__(self):
+                self.calls = []
+            def _set_tags_bytes(self, bytes):
+                self.calls.append(('set_tags_bytes', bytes))
+        real_branch = StubRealBranch()
+        branch._real_branch = real_branch
+        branch._set_tags_bytes('tags bytes')
+        # Call a second time, to exercise the 'remote version already inferred'
+        # code path.
+        branch._set_tags_bytes('tags bytes')
+        self.assertFinished(client)
+        self.assertEqual(
+            [('set_tags_bytes', 'tags bytes')] * 2, real_branch.calls)
 
 
 class TestBranchLastRevisionInfo(RemoteBranchTestCase):
@@ -1346,16 +1410,6 @@ class TestBranchSetLastRevisionInfo(RemoteBranchTestCase):
         self.assertRaises(
             errors.NoSuchRevision, branch.set_last_revision_info, 123, 'revid')
         branch.unlock()
-
-    def lock_remote_branch(self, branch):
-        """Trick a RemoteBranch into thinking it is locked."""
-        branch._lock_mode = 'w'
-        branch._lock_count = 2
-        branch._lock_token = 'branch token'
-        branch._repo_lock_token = 'repo token'
-        branch.repository._lock_mode = 'w'
-        branch.repository._lock_count = 2
-        branch.repository._lock_token = 'repo token'
 
     def test_backwards_compatibility(self):
         """If the server does not support the Branch.set_last_revision_info
