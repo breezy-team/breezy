@@ -696,9 +696,9 @@ class BTreeGraphIndex(object):
                 if start_of_leaves is None:
                     start_of_leaves = self._row_offsets[-2]
                 if node_pos < start_of_leaves:
-                    self._internal_node_cache.add(node_pos, node)
+                    self._internal_node_cache[node_pos] = node
                 else:
-                    self._leaf_node_cache.add(node_pos, node)
+                    self._leaf_node_cache[node_pos] = node
             found[node_pos] = node
         return found
 

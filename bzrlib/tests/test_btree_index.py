@@ -1119,6 +1119,9 @@ class TestBTreeIndex(BTreeTestCase):
 
     def test_supports_unlimited_cache(self):
         builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        nodes = self.make_nodes(500, 1, 0)
+        for node in nodes:
+            builder.add_node(*node)
         stream = builder.finish()
         trans = get_transport(self.get_url())
         size = trans.put_file('index', stream)
@@ -1140,6 +1143,7 @@ class TestBTreeIndex(BTreeTestCase):
                                             unlimited_cache=True)
         self.assertIsInstance(index._leaf_node_cache, dict)
         self.assertIs(type(index._internal_node_cache), dict)
+        entries = set(index.iter_entries([nodes[0][1], nodes[300][0]]))
 
 
 class TestBTreeNodes(BTreeTestCase):
