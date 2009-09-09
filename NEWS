@@ -102,9 +102,8 @@ default.  Most of the work in this release now focuses on bug
 fixes and stabilization, covering both 2a and previous formats.
 
 The Bazaar team decided that 2.0 will be a long-term supported
-release, with bugfix-only releases based on it continuing for at
-least six months or until the following stable release (we said
-that previously, but that's worth repeating).
+release, with bugfix-only releases based on it, continuing for at
+least six months or until the following stable release.
 
 Compatibility Breaks
 ********************
@@ -112,7 +111,7 @@ Compatibility Breaks
 * The default format for bzr is now ``2a``. This format brings many
   significant performance and size improvements. bzr can pull from
   any existing repository into a ``2a`` one, but can only transfer
-  into ``rich-root`` repositories from ``2a``. The Upgrade guide
+  from ``2a`` into ``rich-root`` repositories. The Upgrade guide
   has more information about this change. (Robert Collins)
 
 * On Windows auto-detection of Putty's plink.exe is disabled.
