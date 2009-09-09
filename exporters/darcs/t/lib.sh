@@ -176,6 +176,8 @@ third line" | hg commit -l /dev/stdin
 	echo test > subdir/file
 	hg add subdir/file
 	hg commit -m "add subdir file"
+	echo test2 > subdir/file
+	hg commit -m "commit with weird date" -d "Fri Apr 03 12:38:26 2009 +1300"
 	cd ..
 }
 create_git()
