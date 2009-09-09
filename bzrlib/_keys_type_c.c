@@ -42,6 +42,8 @@ typedef struct {
 extern PyTypeObject KeysType;
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
+#define Keys_CheckExact(op) (Py_TYPE(op) == &KeysType)
+
 static void
 Keys_dealloc(Keys *keys)
 {
@@ -156,6 +158,41 @@ Err:
 }
 
 static PyObject *
+Keys_richcompare(PyObject *v, PyObject *w, int op)
+{
+    PyObject *vt, *wt;
+    PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
+    PyObject *result;
+    
+    if (Keys_CheckExact(v)) {
+        vt = Keys_as_tuples((Keys *)v);
+        vt_to_decref = vt;
+    } else if (PyTuple_Check(v)) {
+        vt = v;
+        vt_to_decref = NULL;
+    } else {
+		Py_INCREF(Py_NotImplemented);
+		return Py_NotImplemented;
+    }
+    if (Keys_CheckExact(w)) {
+        wt = Keys_as_tuples((Keys *)w);
+        wt_to_decref = wt;
+    } else if (PyTuple_Check(w)) {
+        wt = w;
+        wt_to_decref = NULL;
+    } else {
+        Py_XDECREF(vt_to_decref);
+		Py_INCREF(Py_NotImplemented);
+		return Py_NotImplemented;
+    }
+    /* Now we have 2 tuples to compare, do it */
+    result = PyTuple_Type.tp_richcompare(vt, wt, op);
+    Py_XDECREF(vt_to_decref);
+    Py_XDECREF(wt_to_decref);
+    return result;
+}
+
+static PyObject *
 Keys_repr(Keys *self)
 {
     PyObject *as_tpl;
@@ -166,7 +203,6 @@ Keys_repr(Keys *self)
         return NULL;
     }
     result = PyObject_Repr(as_tpl);
-Done:
     Py_DECREF(as_tpl);
     return result;
 }
@@ -244,7 +280,7 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
     // TODO: implement repr() and possibly str()
-    Keys_repr,                                           /* tp_repr */
+    (reprfunc)Keys_repr,                         /* tp_repr */
     0,                                           /* tp_as_number */
     &Keys_as_sequence,                           /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
@@ -263,7 +299,7 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another Keys object.
-    0,                                           /* tp_richcompare */
+    Keys_richcompare,                            /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
     // We could implement this as returning tuples of keys...
     0,                                           /* tp_iter */

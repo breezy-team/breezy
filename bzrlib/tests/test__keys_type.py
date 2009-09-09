@@ -120,3 +120,30 @@ class TestKeysType(tests.TestCase):
     def test_repr(self):
         k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
         self.assertEqual("(('foo', 'bar'), ('baz', 'bing'))", repr(k))
+
+    def test_compare(self):
+        k1 = self.module.Keys(2, 'foo', 'bar')
+        k2 = self.module.Keys(2, 'baz', 'bing')
+        k3 = self.module.Keys(2, 'foo', 'zzz')
+        k4 = self.module.Keys(2, 'foo', 'bar')
+        # Comparison should be done on the keys themselves, and not based on
+        # object id, etc.
+        self.assertTrue(k1 == k1)
+        self.assertTrue(k1 == k4)
+        self.assertTrue(k2 < k1)
+        self.assertTrue(k2 < k4)
+        self.assertTrue(k3 > k1)
+        self.assertTrue(k3 > k4)
+        # We should also be able to compare against raw tuples
+        self.assertTrue(k1 == (('foo', 'bar'),))
+
+    def test_sorted(self):
+        k1 = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
+        self.assertEqual([('baz', 'bing'), ('foo', 'bar'), ('foo', 'zzz')],
+                         sorted(k1))
+
+        k1 = self.module.Keys(2, 'foo', 'bar')
+        k2 = self.module.Keys(2, 'baz', 'bing')
+        k3 = self.module.Keys(2, 'foo', 'zzz')
+        self.assertEqual([(('baz', 'bing'),), (('foo', 'bar'),),
+                          (('foo', 'zzz'),)], sorted([k1, k2, k3]))
