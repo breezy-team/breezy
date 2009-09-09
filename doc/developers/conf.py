@@ -43,3 +43,33 @@ latex_documents = [
   ('integration', 'bzr-en-integration-guide.tex', u'Bazaar Integration Guide',
    u'Bazaar Developers', 'howto'),
 ]
+
+# List of documents that shouldn't be included in the build.
+# Note: These are taken from the main Makefile. Maybe some of them *ought*
+# to be linked in somewhere?
+unused_docs = [
+  'doc/developers/add',
+  'doc/developers/annotate',
+  'doc/developers/bundle-creation',
+  'doc/developers/commit',
+  'doc/developers/diff',
+  'doc/developers/directory-fingerprints',
+  'doc/developers/gc',
+  'doc/developers/implementation-notes',
+  'doc/developers/incremental-push-pull',
+  'doc/developers/index',
+  'doc/developers/initial-push-pull',
+  'doc/developers/merge-scaling',
+  'doc/developers/miscellaneous-notes',
+  'doc/developers/missing',
+  'doc/developers/performance-roadmap-rationale',
+  'doc/developers/performance-use-case-analysis',
+  'doc/developers/planned-change-integration',
+  'doc/developers/planned-performance-changes',
+  'doc/developers/plans',
+  'doc/developers/process',
+  'doc/developers/revert',
+  'doc/developers/specifications',
+  'doc/developers/status',
+  'doc/developers/uncommit.txt',
+]
