@@ -15,21 +15,65 @@ Compatibility Breaks
 New Features
 ************
 
+* Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
+  disable the user, site and core plugin directories.
+  (Vincent Ladeuil, #412930, #316192, #145612)
+
 Bug Fixes
 *********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
 
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
 
+* ``bzr info -v`` on a 2a format still claimed that it was a "Development
+  format" (John Arbash Meinel, #424392)
+
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories or inventories without
+  chk_bytes root records.
+  (Andrew Bennetts, #423506)
+  
 Improvements
 ************
 
 Documentation
 *************
+
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
 
 API Changes
 ***********
@@ -39,6 +83,11 @@ API Changes
 
 Internals
 *********
+
+* ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
+  mallocs while parsing the index (approx 3=>1 mallocs per key read).
+  This results in a 10% speedup while reading an index.
+  (John Arbash Meinel)
 
 * The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
   profiling in some situations like callbacks and generators easier.
@@ -55,23 +104,77 @@ Testing
   parameterisation, and is substantially faster. (Robert Collins)
 
 
-bzr 2.0rc2
-##########
+bzr 2.0rc2 (not released yet)
+#############################
 
 Bug Fixes
 *********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
 
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
 
+* ``bzr info -v`` on a 2a format still claimed that it was a "Development
+  format" (John Arbash Meinel, #424392)
+
 * ``bzr log stacked-branch`` shows the full log including
   revisions that are in the fallback repository. (Regressed in 2.0rc1).
   (John Arbash Meinel, #419241)
 
-* Fix a segmentation fault when computing the ``merge_sort`` of a graph
-  that has a ghost in the mainline ancestry.
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Fix a potential segmentation fault when doing 'log' of a branch that had
+  ghosts in its mainline.  (Evaluating None as a tuple is bad.)
   (John Arbash Meinel, #419241)
+
+* ``groupcompress`` sort order is now more stable, rather than relying on
+  ``topo_sort`` ordering. The implementation is now
+  ``KnownGraph.gc_sort``. (John Arbash Meinel)
+
+* Local data conversion will generate correct deltas. This is a critical
+  bugfix vs 2.0rc1, and all 2.0rc1 users should upgrade to 2.0rc2 before
+  converting repositories. (Robert Collins, #422849)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories or inventories without
+  chk_bytes root records.
+  (Andrew Bennetts, #423506)
+  
+Documentation
+*************
+
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
+* The main table of contents now provides links to the new Migration Docs
+  and Plugins Guide. (Ian Clatworthy)
 
 
 bzr 2.0rc1
