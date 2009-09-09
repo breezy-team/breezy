@@ -147,3 +147,13 @@ class TestKeysType(tests.TestCase):
         k3 = self.module.Keys(2, 'foo', 'zzz')
         self.assertEqual([(('baz', 'bing'),), (('foo', 'bar'),),
                           (('foo', 'zzz'),)], sorted([k1, k2, k3]))
+
+    def test_hash(self):
+        k1 = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
+        as_tuple =(('foo', 'bar'), ('baz', 'bing'), ('foo', 'zzz')) 
+        self.assertEqual(hash(k1), hash(as_tuple))
+        x = {k1: 'foo'}
+        # Because k1 == as_tuple, it replaces the slot, rather than having both
+        # present in the dict.
+        x[as_tuple] = 'bar'
+        self.assertEqual({as_tuple: 'bar'}, x)

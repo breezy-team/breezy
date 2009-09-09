@@ -157,6 +157,21 @@ Err:
     return NULL;
 }
 
+static long
+Keys_hash(Keys *self)
+{
+    PyObject *as_tuples = NULL;
+    long hash = -1;
+
+    as_tuples = Keys_as_tuples(self);
+    if (as_tuples == NULL) {
+        return NULL;
+    }
+    hash = PyTuple_Type.tp_hash(as_tuples);
+    Py_DECREF(as_tuples);
+    return hash;
+}
+
 static PyObject *
 Keys_richcompare(PyObject *v, PyObject *w, int op)
 {
@@ -284,8 +299,7 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_as_number */
     &Keys_as_sequence,                           /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
-    // TODO: implement hash() as something similar to tuple.hash()
-    0,                                           /* tp_hash */
+    (hashfunc)Keys_hash,                         /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
     PyObject_GenericGetAttr,                     /* tp_getattro */
