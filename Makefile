@@ -83,7 +83,7 @@ tags:
 # Default to plain documentation for maximum backwards compatibility.
 # (Post 2.0, the defaults will most likely be Sphinx-style instead.)
 
-doc: docs-plain
+docs: docs-plain
 
 clean-docs: clean-plain
 
@@ -177,7 +177,7 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 DOC_WEBSITE_BUILD := build_doc_website
 
 # Build and package docs into a website, complete with downloads.
-doc-website: html-docs pdf-docs
+doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
