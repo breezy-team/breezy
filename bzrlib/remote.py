@@ -1739,6 +1739,7 @@ class RemoteStreamSink(repository.StreamSink):
             # The stream included an inventory-delta record, but the remote
             # side isn't new enough to support them.  So we need to send the
             # rest of the stream via VFS.
+            self.target_repo.refresh_data()
             return self._resume_stream_with_vfs(response, src_format)
         if response[0][0] == 'missing-basis':
             tokens, missing_keys = bencode.bdecode_as_tuple(response[0][1])
@@ -2760,7 +2761,10 @@ def _translate_error(err, **context):
                     'Missing key %r in context %r', key_err.args[0], context)
                 raise err
 
-    if err.error_verb == 'NoSuchRevision':
+    if err.error_verb == 'IncompatibleRepositories':
+        raise errors.IncompatibleRepositories(err.error_args[0],
+            err.error_args[1], err.error_args[2])
+    elif err.error_verb == 'NoSuchRevision':
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])

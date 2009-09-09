@@ -2380,6 +2380,10 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
         class FakeRealRepository:
             def _get_sink(self):
                 return fake_real_sink
+            def is_in_write_group(self):
+                return False
+            def refresh_data(self):
+                return True
         repo._real_repository = FakeRealRepository()
         sink = repo._get_sink()
         fmt = repository.RepositoryFormat.get_default_format()
@@ -2720,6 +2724,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         path = 'a path'
         translated_error = self.translateTuple(('ReadError', path))
         expected_error = errors.ReadError(path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_IncompatibleRepositories(self):
+        translated_error = self.translateTuple(('IncompatibleRepositories',
+            "repo1", "repo2", "details here"))
+        expected_error = errors.IncompatibleRepositories("repo1", "repo2",
+            "details here")
         self.assertEqual(expected_error, translated_error)
 
     def test_PermissionDenied_no_args(self):

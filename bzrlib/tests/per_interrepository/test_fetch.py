@@ -45,7 +45,15 @@ from bzrlib.tests.per_interrepository.test_interrepository import (
     )
 
 
+
 class TestInterRepository(TestCaseWithInterRepository):
+
+    def disable_commit_write_group_paranoia(self, repo):
+        pack_coll = getattr(repo, '_pack_collection', None)
+        if pack_coll is not None:
+            # Monkey-patch the pack collection instance to allow storing
+            # incomplete revisions.
+            pack_coll._check_new_inventories = lambda: []
 
     def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
@@ -365,11 +373,16 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo.lock_write()
         try:
             to_repo.start_write_group()
-            inv = tree.branch.repository.get_inventory('rev-one')
-            to_repo.add_inventory('rev-one', inv, [])
-            rev = tree.branch.repository.get_revision('rev-one')
-            to_repo.add_revision('rev-one', rev, inv=inv)
-            to_repo.commit_write_group()
+            try:
+                inv = tree.branch.repository.get_inventory('rev-one')
+                to_repo.add_inventory('rev-one', inv, [])
+                rev = tree.branch.repository.get_revision('rev-one')
+                to_repo.add_revision('rev-one', rev, inv=inv)
+                self.disable_commit_write_group_paranoia(to_repo)
+                to_repo.commit_write_group()
+            except:
+                to_repo.abort_write_group(suppress_errors=True)
+                raise
         finally:
             to_repo.unlock()
 
@@ -424,7 +437,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')
         # now we manually insert a revision with an inventory referencing
-        # 'id' at revision 'b', but we do not insert revision b.
+        # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
         # for during pull operations
         inv = source.get_inventory('a')
@@ -442,6 +455,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                        revision_id='b')
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
+        self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
