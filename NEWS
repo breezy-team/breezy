@@ -107,6 +107,13 @@ Testing
 bzr 2.0rc2 (not released yet)
 #############################
 
+New Features
+************
+
+* Added post_commit hook for mutable trees. This allows the keywords
+  plugin to expand keywords on files changed by the commit.
+  (Ian Clatworthy, #408841)
+
 Bug Fixes
 *********
 
@@ -163,12 +170,16 @@ Bug Fixes
   single stream, reducing layering churn. (Robert Collins)
 
 * Prevent some kinds of incomplete data from being committed to a 2a
-  repository, such as revisions without inventories or inventories without
-  chk_bytes root records.
-  (Andrew Bennetts, #423506)
+  repository, such as revisions without inventories, a missing chk_bytes
+  record for an inventory, or a missing text referenced by an inventory.
+  (Andrew Bennetts, #423506, #406687)
   
 Documentation
 *************
+
+* Fix assertion error about "_remember_remote_is_before" when pushing to
+  older smart servers.
+  (Andrew Bennetts, #418931)
 
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
