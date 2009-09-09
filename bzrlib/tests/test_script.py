@@ -68,6 +68,7 @@ bzr branch foo
         self.assertEquals([(['bzr', 'branch', 'foo'],
                             None, None, 'bzr: ERROR: Not a branch: "foo"\n')],
                           script._script_to_commands(story))
+
     def test_input_without_command(self):
         self.assertRaises(SyntaxError, script._script_to_commands, '<input')
 
@@ -92,7 +93,7 @@ class TestScriptExecution(script.TestCaseWithTransportAndScript):
         story = """
 mkdir dir
 cd dir
->Hello, I have just cd into dir !
+>The cd command ouputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
 
@@ -143,29 +144,34 @@ class TestCat(script.TestCaseWithTransportAndScript):
         self.assertRaises(SyntaxError, self.run_script, 'cat foo <bar')
 
     def test_cat_input_to_output(self):
-        out, err = self.run_command(['cat'], 'content\n', 'content\n', None)
+        retcode, out, err = self.run_command(['cat'],
+                                             'content\n', 'content\n', None)
         self.assertEquals('content\n', out)
         self.assertEquals(None, err)
 
     def test_cat_file_to_output(self):
         self.build_tree_contents([('file', 'content\n')])
-        out, err = self.run_command(['cat', 'file'], None, 'content\n', None)
+        retcode, out, err = self.run_command(['cat', 'file'],
+                                             None, 'content\n', None)
         self.assertEquals('content\n', out)
         self.assertEquals(None, err)
 
     def test_cat_input_to_file(self):
-        out, err = self.run_command(['cat', '>file'], 'content\n', None, None)
+        retcode, out, err = self.run_command(['cat', '>file'],
+                                             'content\n', None, None)
         self.assertFileEqual('content\n', 'file')
         self.assertEquals(None, out)
         self.assertEquals(None, err)
-        out, err = self.run_command(['cat', '>>file'], 'more\n', None, None)
+        retcode, out, err = self.run_command(['cat', '>>file'],
+                                             'more\n', None, None)
         self.assertFileEqual('content\nmore\n', 'file')
         self.assertEquals(None, out)
         self.assertEquals(None, err)
 
     def test_cat_file_to_file(self):
         self.build_tree_contents([('file', 'content\n')])
-        out, err = self.run_command(['cat', 'file', '>file2'], None, None, None)
+        retcode, out, err = self.run_command(['cat', 'file', '>file2'],
+                                             None, None, None)
         self.assertFileEqual('content\n', 'file2')
 
 
@@ -229,29 +235,32 @@ echo foo
         self.assertRaises(SyntaxError, self.run_script, story)
 
     def test_echo_to_output(self):
-        out, err = self.run_command(['echo'], None, '\n', None)
+        retcode, out, err = self.run_command(['echo'], None, '\n', None)
         self.assertEquals('\n', out)
         self.assertEquals(None, err)
 
     def test_echo_some_to_output(self):
-        out, err = self.run_command(['echo', 'hello'], None, 'hello\n', None)
+        retcode, out, err = self.run_command(['echo', 'hello'],
+                                             None, 'hello\n', None)
         self.assertEquals('hello\n', out)
         self.assertEquals(None, err)
 
     def test_echo_more_output(self):
-        out, err = self.run_command(['echo', 'hello', 'happy', 'world'],
-                                    None, 'hellohappyworld\n', None)
+        retcode, out, err = self.run_command(
+            ['echo', 'hello', 'happy', 'world'],
+            None, 'hellohappyworld\n', None)
         self.assertEquals('hellohappyworld\n', out)
         self.assertEquals(None, err)
 
     def test_echo_appended(self):
-        out, err = self.run_command(['echo', 'hello', '>file'],
-                                    None, None, None)
+        retcode, out, err = self.run_command(['echo', 'hello', '>file'],
+                                             None, None, None)
         self.assertEquals(None, out)
         self.assertEquals(None, err)
         self.assertFileEqual('hello\n', 'file')
-        out, err = self.run_command(['echo', 'happy', '>>file'],
-                                    None, None, None)
+        retcode, out, err = self.run_command(['echo', 'happy', '>>file'],
+                                             None, None, None)
         self.assertEquals(None, out)
         self.assertEquals(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
+
