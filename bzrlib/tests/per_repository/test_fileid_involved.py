@@ -20,6 +20,7 @@ import time
 
 from bzrlib import (
     errors,
+    remote,
     revision as _mod_revision,
     tests,
     )
@@ -343,14 +344,22 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         b.repository.start_write_group()
         b.repository.add_revision('B-id', new_rev, new_inv)
-        try:
-            b.repository.commit_write_group()
-        except errors.BzrCheckError:
-            b.repository.abort_write_group()
+        self.disable_commit_write_group_paranoia(b.repository)
+        b.repository.commit_write_group()
+        return b
+
+    def disable_commit_write_group_paranoia(self, repo):
+        if isinstance(repo, remote.RemoteRepository):
+            # We can't easily disable the checks in a remote repo.
+            repo.abort_write_group()
             raise TestSkipped(
                 "repository format does not support storing revisions with "
                 "missing texts.")
-        return b
+        pack_coll = getattr(repo, '_pack_collection', None)
+        if pack_coll is not None:
+            # Monkey-patch the pack collection instance to allow storing
+            # incomplete revisions.
+            pack_coll._check_new_inventories = lambda: []
 
     def test_file_ids_include_ghosts(self):
         b = self.create_branch_with_ghost_text()
