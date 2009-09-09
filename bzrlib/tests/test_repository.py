@@ -1008,6 +1008,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             inv = inventory.Inventory(revision_id='rev1a')
             inv.root.revision = 'rev1a'
             self.add_file(repo, inv, 'file1', 'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
             repo.add_inventory('rev1a', inv, [])
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
@@ -1048,6 +1049,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
         inv.root.revision = revision_id
+        repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
