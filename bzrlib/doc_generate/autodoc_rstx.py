@@ -31,6 +31,14 @@ import bzrlib.commands
 import bzrlib.osutils
 
 
+# Set this to True to generate a file per topic.
+# This probably ought to be an option. The files probably
+# ought to be prefixed with their section name as well so
+# there's zero risk of clashing with a standard sphinx
+# topic (like search.html).
+FILE_PER_TOPIC = False
+
+
 def get_filename(options):
     """Provides name of manual"""
     return "%s_man.txt" % (options.bzr_name)
@@ -119,6 +127,8 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
 
 def _dump_text(filename, text):
     """Dump text to filename."""
+    if not FILE_PER_TOPIC:
+        return
     f =  open(filename, "w")
     f.writelines(text)
     f.close()

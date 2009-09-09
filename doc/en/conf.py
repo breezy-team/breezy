@@ -70,3 +70,13 @@ latex_documents = [
     'bzr-%s-tutorial-centralized.tex' % (bzr_locale,),
     bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
 ]
+
+# List of documents that shouldn't be included in the build.
+unused_docs = [
+    # Placeholder for later
+    'admin-guide/index',
+    'upgrade-guide/overview',
+    'upgrade-guide/data_migration',
+    'upgrade-guide/tips_and_tricks',
+]
+

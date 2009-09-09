@@ -13,6 +13,6 @@ Table of Contents
    user-guide/index
    tutorials/index
    quick-reference/index
-   release-notes/NEWS
+   release-notes/index
    upgrade-guide/index
-   user-reference/bzr_man
+   user-reference/index
