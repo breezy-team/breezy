@@ -589,7 +589,7 @@ class TestMerge(tests.TestCaseWithTransport):
         self.failUnlessExists('this/other_file')
 
 
-class TestMergeForce(TestMerge):
+class TestMergeForce(tests.TestCaseWithTransport):
 
     def test_merge_force(self):
         tree_a = self.make_branch_and_tree('a')
