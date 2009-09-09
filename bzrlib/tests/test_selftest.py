@@ -1991,30 +1991,32 @@ class TestRunBzr(tests.TestCase):
 
         Attempts to run bzr from inside this class don't actually run it.
 
-        We test how run_bzr actually invokes bzr in another location.
-        Here we only need to test that it is run_bzr passes the right
-        parameters to run_bzr.
+        We test how run_bzr actually invokes bzr in another location.  Here we
+        only need to test that it passes the right parameters to run_bzr.
         """
         self.argv = list(argv)
         self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
-        return self.out, self.err
+        return self.retcode, self.out, self.err
 
     def test_run_bzr_error(self):
         self.out = "It sure does!\n"
         out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
         self.assertEqual(['rocks'], self.argv)
         self.assertEqual(34, self.retcode)
-        self.assertEqual(out, 'It sure does!\n')
+        self.assertEqual('It sure does!\n', out)
+        self.assertEquals(out, self.out)
+        self.assertEqual('', err)
+        self.assertEquals(err, self.err)
 
     def test_run_bzr_error_regexes(self):
         self.out = ''
         self.err = "bzr: ERROR: foobarbaz is not versioned"
         out, err = self.run_bzr_error(
-                ["bzr: ERROR: foobarbaz is not versioned"],
-                ['file-id', 'foobarbaz'])
+            ["bzr: ERROR: foobarbaz is not versioned"],
+            ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""

@@ -38,6 +38,9 @@ and let the execution continue.
 
 If an error occurs and no expected error is specified, the execution stops.
 
+An error is defined by a returned status different from zero, not by the
+presence of text on the error stream.
+
 The matching is done on a full string comparison basis unless '...' is used, in
 which case expected output/errors can be lees precise.
 
@@ -232,7 +235,7 @@ class ScriptRunner(object):
 
     def run_script(self, text):
         for cmd, input, output, error in _script_to_commands(text):
-            out, err = self.run_command(cmd, input, output, error)
+            self.run_command(cmd, input, output, error)
 
     def _check_output(self, expected, actual):
         if expected is None:
@@ -244,11 +247,11 @@ class ScriptRunner(object):
             expected, actual, self.check_options)
         if not matching:
             # Note that we can't use output_checker.output_difference() here
-            # because... the API is boken (expected must be a doctest specific
-            # object of whicha 'want' attribute will be our 'expected'
-            # parameter. So we just fallbacl to our good old assertEqualDiff
-            # since we know there are differences and the output should be
-            # decently readable.
+            # because... the API is broken ('expected' must be a doctest
+            # specific object of which a 'want' attribute will be our
+            # 'expected' parameter. So we just fallback to our good old
+            # assertEqualDiff since we know there *are* differences and the
+            # output should be decently readable.
             self.test_case.assertEqualDiff(expected, actual)
 
     def run_command(self, cmd, input, output, error):
@@ -261,13 +264,13 @@ class ScriptRunner(object):
             str_input = ''
         else:
             str_input = ''.join(input)
-        actual_output, actual_error = method(str_input, cmd[1:])
+        retcode, actual_output, actual_error = method(str_input, cmd[1:])
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
-        if not error and actual_error:
+        if retcode and not error and actual_error:
             self.test_case.fail('Unexpected error: %s' % actual_error)
-        return actual_output, actual_error
+        return retcode, actual_output, actual_error
 
     def _read_input(self, input, in_name):
         if in_name is not None:
@@ -290,9 +293,9 @@ class ScriptRunner(object):
         return output
 
     def do_bzr(self, input, args):
-        out, err = self.test_case._run_bzr_core(
+        retcode, out, err = self.test_case._run_bzr_core(
             args, retcode=None, encoding=None, stdin=input, working_dir=None)
-        return out, err
+        return retcode, out, err
 
     def do_cat(self, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
@@ -307,7 +310,7 @@ class ScriptRunner(object):
         output = input
         # Handle output redirections
         output = self._write_output(output, out_name, out_mode)
-        return output, None
+        return 0, output, None
 
     def do_echo(self, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
@@ -322,7 +325,7 @@ class ScriptRunner(object):
         output = input
         # Handle output redirections
         output = self._write_output(output, out_name, out_mode)
-        return output, None
+        return 0, output, None
 
     def _ensure_in_jail(self, path):
         jail_root = self.test_case.get_jail_root()
@@ -338,7 +341,7 @@ class ScriptRunner(object):
         else:
             d = self.test_case.get_jail_root()
         os.chdir(d)
-        return None, None
+        return 0, None, None
 
     def do_mkdir(self, input, args):
         if not args or len(args) != 1:
@@ -346,7 +349,7 @@ class ScriptRunner(object):
         d = args[0]
         self._ensure_in_jail(d)
         os.mkdir(d)
-        return None, None
+        return 0, None, None
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
