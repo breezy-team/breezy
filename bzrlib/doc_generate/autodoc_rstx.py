@@ -170,13 +170,6 @@ rstx_head = """\
 Bazaar User Reference
 #####################
 
-:Version:   %(version)s
-:Generated: %(datestamp)s
-
-.. contents:: :depth: 3
-
------
-
 About This Manual
 #################
 
