@@ -2,56 +2,44 @@
 Bazaar Developer Document Catalog
 =================================
 
+Enhancing Bazaar
+================
+
 .. toctree::
-   :hidden:
+   :maxdepth: 1
 
    process
    HACKING
    testing
+
+* `Bazaar Writer Guide <http://bazaar-vcs.org/ContributingToTheDocs>`_ (web link)
+
+
+Developing using bzrlib
+=======================
+
+.. toctree::
+   :maxdepth: 1
+
    overview
    integration
+
+* `Writing plugins for Bazaar <http://bazaar-vcs.org/WritingPlugins>`_ (web link) 
+
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
+  (web link)
+
+
+Other documents
+===============
+
+.. toctree::
+   :maxdepth: 1
+
    plans
    specifications
    implementation-notes
    miscellaneous-notes
-
-
-Core developer documentation
-============================
-
-* `Process Docs <process.html>`_ |--| How Bazaar is developed
-
-* `Developer Guide <HACKING.html>`_ |--| Guide to writing code for Bazaar
-
-* `Testing Guide <testing.html>`_ |--| Guide to writing tests for Bazaar
-
-* `Writer Guide <http://bazaar-vcs.org/ContributingToTheDocs>`_ (web link)
-  |--| Guide to writing documentation for Bazaar
-
-* `Architectural Overview <overview.html>`_ |--| Describes some of the
-  most important classes and concepts
-
-* `Integration Guide <integration.html>`_ |--| A guide to integrating Bazaar
-  into other applications
-
-* `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (web link) 
-  |--| Advice on writing Bazaar plugins
-
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
-  (web link)
-  |--| Automatically generated API reference information
-
-
-Other developer documentation
-=============================
-
-* `Plans <plans.html>`_
-
-* `Specifications <specifications.html>`_
-
-* `Implementation notes <implementation-notes.html>`_
-
-* `Miscellaneous notes <miscellaneous-notes.html>`_
 
 
 .. |--| unicode:: U+2014

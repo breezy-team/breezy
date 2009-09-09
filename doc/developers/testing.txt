@@ -1,6 +1,6 @@
-=======================
-Guide to Testing Bazaar
-=======================
+====================
+Bazaar Testing Guide
+====================
 
 
 The Importance of Testing

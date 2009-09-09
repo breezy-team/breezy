@@ -1,5 +1,5 @@
-Process Docs
-============
+Bazaar Development Processes
+============================
 
 .. toctree::
    :hidden:
