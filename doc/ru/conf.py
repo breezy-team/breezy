@@ -81,6 +81,13 @@ unused_docs = [
     'upgrade-guide/overview',
     'upgrade-guide/data_migration',
     'upgrade-guide/tips_and_tricks',
+    'user-guide/branching_a_project',
+    'user-guide/core_concepts',
+    'user-guide/introducing_bazaar',
+    'user-guide/specifying_revisions',
+    'user-guide/stacked',
+    'user-guide/using_checkouts',
+    'user-guide/zen',
     # Plain-style documentation generation stuff
     'user-guide/index-plain',
 ]

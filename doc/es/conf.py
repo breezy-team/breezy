@@ -81,6 +81,8 @@ unused_docs = [
     'upgrade-guide/overview',
     'upgrade-guide/data_migration',
     'upgrade-guide/tips_and_tricks',
+    'user-guide/resolving_conflicts',
+    'user-guide/version_info',
     # Plain-style documentation generation stuff
     'user-guide/index-plain',
 ]
