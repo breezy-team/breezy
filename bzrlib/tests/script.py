@@ -13,10 +13,89 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+"""Shell-like test scripts.
 
-from cStringIO import StringIO
+This allows users to write tests in a syntax very close to a shell session,
+using a restricted and limited set of commands that should be enough to mimic
+most of the behaviours.
+
+A script is a set of commands, each command is composed of:
+- one mandatory command line,
+- one optional set of input lines to feed the command,
+- one optional set of output expected lines,
+- one optional set of error expected lines.
+
+The optional lines starts with a special string (mnemonic: shell redirection):
+- '<' for input,
+- '>' for output,
+- '2>' for errors,
+
+The execution stops as soon as an expected output or an expected error is not
+matched. 
+
+When no output is specified, any ouput from the command is accepted
+and let the execution continue. 
+
+If an error occurs and no expected error is specified, the execution stops.
+
+The matching is done on a full string comparison basis unless '...' is used, in
+which case expected output/errors can be lees precise.
+
+Examples:
+
+The following will succeeds only if 'bzr add' outputs 'adding file'.
+
+  bzr add file
+  >adding file
+
+If you want the command to succeed for any output, just use:
+
+  bzr add file
+
+The following will stop with an error:
+
+  bzr not-a-command
+
+If you want it to succeed, use:
+
+  bzr not-a-command
+  2> bzr: ERROR: unknown command "not-a-command"
+
+You can use ellipsis (...) to replace any piece of text you don't want to be
+matched exactly:
+
+  bzr branch not-a-branch
+  2>bzr: ERROR: Not a branch...not-a-branch/".
+
+
+This can be used to ignore entire lines too:
+
+cat
+<first line
+<second line
+<third line
+<fourth line
+<last line
+>first line
+>...
+>last line
+
+You can check the content of a file with cat:
+
+  cat <file
+  >expected content
+
+You can also check the existence of a file with cat, the following will fail if
+the file doesn't exist:
+
+  cat file
+
+"""
+
+import doctest
 import os
 import shlex
+from cStringIO import StringIO
 
 from bzrlib import (
     osutils,
@@ -144,21 +223,33 @@ def _scan_redirection_options(args):
     return in_name, out_name, out_mode, remaining
 
 
-class TestCaseWithScript(tests.TestCaseWithTransport):
+class ScriptRunner(object):
 
-    def setUp(self):
-        super(TestCaseWithScript, self).setUp()
-        self._vars = {}
+    def __init__(self, test_case):
+        self.test_case = test_case
+        self.output_checker = doctest.OutputChecker()
+        self.check_options = doctest.ELLIPSIS
 
     def run_script(self, text):
         for cmd, input, output, error in _script_to_commands(text):
-            self.run_command(cmd, input, output, error)
+            out, err = self.run_command(cmd, input, output, error)
 
     def _check_output(self, expected, actual):
         if expected is None:
             # Specifying None means: any output is accepted
             return
-        self.assertEquals(expected, actual)
+        if actual is None:
+            self.test_case.fail('Unexpected: %s' % actual)
+        matching = self.output_checker.check_output(
+            expected, actual, self.check_options)
+        if not matching:
+            # Note that we can't use output_checker.output_difference() here
+            # because... the API is boken (expected must be a doctest specific
+            # object of whicha 'want' attribute will be our 'expected'
+            # parameter. So we just fallbacl to our good old assertEqualDiff
+            # since we know there are differences and the output should be
+            # decently readable.
+            self.test_case.assertEqualDiff(expected, actual)
 
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
@@ -174,6 +265,8 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
+        if not error and actual_error:
+            self.test_case.fail('Unexpected error: %s' % actual_error)
         return actual_output, actual_error
 
     def _read_input(self, input, in_name):
@@ -197,8 +290,8 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         return output
 
     def do_bzr(self, input, args):
-        out, err = self._run_bzr_core(args, retcode=None, encoding=None,
-                                      stdin=input, working_dir=None)
+        out, err = self.test_case._run_bzr_core(
+            args, retcode=None, encoding=None, stdin=input, working_dir=None)
         return out, err
 
     def do_cat(self, input, args):
@@ -232,8 +325,9 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         return output, None
 
     def _ensure_in_jail(self, path):
-        if not osutils.is_inside(self.test_dir, osutils.normalizepath(path)):
-                raise ValueError('%s is not inside %s' % (path, self.test_dir))
+        jail_root = self.test_case.get_jail_root()
+        if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
+            raise ValueError('%s is not inside %s' % (path, jail_root))
 
     def do_cd(self, input, args):
         if len(args) > 1:
@@ -242,7 +336,7 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
             d = args[0]
             self._ensure_in_jail(d)
         else:
-            d = self.test_dir
+            d = self.test_case.get_jail_root()
         os.chdir(d)
         return None, None
 
@@ -254,3 +348,42 @@ class TestCaseWithScript(tests.TestCaseWithTransport):
         os.mkdir(d)
         return None, None
 
+
+class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        super(TestCaseWithMemoryTransportAndScript, self).setUp()
+        self.script_runner = ScriptRunner(self)
+        # Break the circular dependency
+        def break_dependency():
+            self.script_runner = None
+        self.addCleanup(break_dependency)
+
+    def get_jail_root(self):
+        raise NotImplementedError(self.get_jail_root)
+
+    def run_script(self, script):
+        return self.script_runner.run_script(script)
+
+    def run_command(self, cmd, input, output, error):
+        return self.script_runner.run_command(cmd, input, output, error)
+
+
+class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestCaseWithTransportAndScript, self).setUp()
+        self.script_runner = ScriptRunner(self)
+        # Break the circular dependency
+        def break_dependency():
+            self.script_runner = None
+        self.addCleanup(break_dependency)
+
+    def get_jail_root(self):
+        return self.test_dir
+
+    def run_script(self, script):
+        return self.script_runner.run_script(script)
+
+    def run_command(self, cmd, input, output, error):
+        return self.script_runner.run_command(cmd, input, output, error)
