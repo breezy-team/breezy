@@ -81,6 +81,11 @@ class Handler:
 		raise Exception(s)
 
 	def get_date(self, ts, tz):
+		# first fix the case when tz is higher than +1200, as
+		# darcs won't accept it
+		if int(tz[:3]) > 12:
+			ts = str(int(ts) + 60*60*24)
+			tz = str(int(tz[:3])-24) + tz[3:]
                 # int(ts) is seconds since epoch. Since we're trying to
                 # capture both the absolute time of the commit and the
                 # localtime in the timezone of the committer, we need to turn
