@@ -1604,7 +1604,7 @@ class Repository(object):
         # but at the moment we're only checking for texts referenced by
         # inventories at the graph's edge.
         key_deps = self.revisions._index._key_dependencies
-        key_deps.add_keys(present_inventories)
+        key_deps.satisfy_refs_for_keys(present_inventories)
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
         missing_texts = set()
@@ -2329,7 +2329,7 @@ class Repository(object):
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
             if pb is not None:
-                pb.update("fetch texts", count, num_file_ids)
+                pb.update("Fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
 
@@ -3585,7 +3585,7 @@ class InterWeaveRepo(InterSameDataRepository):
                 self.target.texts.insert_record_stream(
                     self.source.texts.get_record_stream(
                         self.source.texts.keys(), 'topological', False))
-                pb.update('copying inventory', 0, 1)
+                pb.update('Copying inventory', 0, 1)
                 self.target.inventories.insert_record_stream(
                     self.source.inventories.get_record_stream(
                         self.source.inventories.keys(), 'topological', False))
@@ -3844,6 +3844,9 @@ class InterDifferingSerializer(InterRepository):
                 possible_trees.append((basis_id, cache[basis_id]))
             basis_id, delta = self._get_delta_for_revision(tree, parent_ids,
                                                            possible_trees)
+            revision = self.source.get_revision(current_revision_id)
+            pending_deltas.append((basis_id, delta,
+                current_revision_id, revision.parent_ids))
             if self._converting_to_rich_root:
                 self._revision_id_to_root_id[current_revision_id] = \
                     tree.get_root_id()
@@ -3878,9 +3881,6 @@ class InterDifferingSerializer(InterRepository):
                     if entry.revision == file_revision:
                         texts_possibly_new_in_tree.remove(file_key)
             text_keys.update(texts_possibly_new_in_tree)
-            revision = self.source.get_revision(current_revision_id)
-            pending_deltas.append((basis_id, delta,
-                current_revision_id, revision.parent_ids))
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
@@ -4078,11 +4078,11 @@ class CopyConverter(object):
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            self.step('Copying content into repository.')
+            self.step('Copying content')
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        self.step('Deleting old repository content.')
+        self.step('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
         self.pb.note('repository converted')
 

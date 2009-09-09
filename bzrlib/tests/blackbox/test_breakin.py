@@ -127,7 +127,7 @@ class TestBreakin(tests.TestCase):
                 #       instead. Most notably, the WNOHANG isn't allowed, so
                 #       this can hang indefinitely.
                 pid_killed, returncode = os.waitpid(pid, opts)
-                if (pid_killed, returncode) != (0, 0):
+                if pid_killed != 0 and returncode != 0:
                     if sig is not None:
                         # high bit in low byte says if core was dumped; we
                         # don't care
