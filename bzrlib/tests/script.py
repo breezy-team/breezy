@@ -38,6 +38,9 @@ and let the execution continue.
 
 If an error occurs and no expected error is specified, the execution stops.
 
+An error is defined by a returned status different from zero, not by the
+presence of text on the error stream.
+
 The matching is done on a full string comparison basis unless '...' is used, in
 which case expected output/errors can be lees precise.
 
@@ -265,7 +268,7 @@ class ScriptRunner(object):
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
-        if not error and actual_error:
+        if retcode and not error and actual_error:
             self.test_case.fail('Unexpected error: %s' % actual_error)
         return retcode, actual_output, actual_error
 

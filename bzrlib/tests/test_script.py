@@ -113,6 +113,17 @@ bzr not-a-command
 """
         self.run_script(story)
 
+    def test_continue_on_error_output(self):
+        # The status matters, not the output
+        story = """
+bzr init
+cat >file
+<Hello
+bzr add file
+bzr commit -m 'adding file'
+"""
+        self.run_script(story)
+
     def test_ellipsis_output(self):
         story = """
 cat
