@@ -33,8 +33,12 @@
  * Perhaps we should use the high bits for extra flags?
  */
 typedef struct {
-    PyObject_VAR_HEAD
-    int key_width;
+    PyObject_HEAD
+    // unsigned char key_width;
+    // unsigned char depth;
+    // unsigned char num_keys;
+    // unsigned char flags; /* not used yet */
+    unsigned int info; /* Broken down into 4 1-byte fields */
     PyStringObject *key_strings[1]; /* key_width * num_keys entries */
 } Keys;
 
@@ -42,22 +46,58 @@ typedef struct {
 extern PyTypeObject KeysType;
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
+static inline void
+Keys_set_info(Keys *self, int key_width, int depth,
+                          int num_keys, int flags)
+{
+    self->info = ((unsigned int)key_width)
+                 | (((unsigned int) num_keys) << 8)
+                 | (((unsigned int) depth) << 16)
+                 | (((unsigned int) flags) << 24);
+}
+
+static inline int 
+Keys_get_key_width(Keys *self)
+{
+    return (int)(self->info & 0xFF);
+}
+
+static inline int 
+Keys_get_num_keys(Keys *self)
+{
+    return (int)((self->info >> 8) & 0xFF);
+}
+
+static inline int 
+Keys_get_depth(Keys *self)
+{
+    return (int)((self->info >> 16) & 0xFF);
+}
+
+static inline int 
+Keys_get_flags(Keys *self)
+{
+    return (int)((self->info >> 24) & 0xFF);
+}
+
 #define Keys_CheckExact(op) (Py_TYPE(op) == &KeysType)
 
 static void
-Keys_dealloc(Keys *keys)
+Keys_dealloc(Keys *self)
 {
+    int num_keys;
+    num_keys = Keys_get_num_keys(self);
     /* Do we want to use the Py_TRASHCAN_SAFE_BEGIN/END operations? */
-    if (keys->ob_size > 0) {
+    if (num_keys > 0) {
         /* tuple deallocs from the end to the beginning. Not sure why, but
          * we'll do the same here.
          */
         int i;
-        for(i = keys->ob_size - 1; i >= 0; --i) {
-            Py_XDECREF(keys->key_strings[i]);
+        for(i = num_keys - 1; i >= 0; --i) {
+            Py_XDECREF(self->key_strings[i]);
         }
     }
-    Py_TYPE(keys)->tp_free((PyObject *)keys);
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 
@@ -70,6 +110,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     long num_keys;
     long depth;
     long num_key_bits;
+    long flags = 0; /* Not used */
 	PyObject *obj= NULL;
     Keys *self;
 
@@ -136,8 +177,10 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     self = (Keys *)(type->tp_alloc(type, num_key_bits));
-    self->key_width = (unsigned char)key_width;
-    self->ob_size = (unsigned char)num_keys;
+    // self->key_width = (unsigned char)key_width;
+    // self->depth = (unsigned char)depth;
+    // self->num_keys = (unsigned char)num_keys;
+    Keys_set_info(self, key_width, depth, num_keys, flags);
     for (i = 0; i < num_key_bits; i++) {
         obj = PyTuple_GET_ITEM(args, i + 2);
         if (!PyString_CheckExact(obj)) {
@@ -159,12 +202,14 @@ Keys_as_tuples(Keys *self)
     PyObject *as_tuple = NULL;
     PyObject *a_key = NULL;
     Py_ssize_t i;
+    int num_keys;
 
-    as_tuple = PyTuple_New(self->ob_size);
+    num_keys = Keys_get_num_keys(self);
+    as_tuple = PyTuple_New(num_keys);
     if (as_tuple == NULL) {
         return NULL;
     }
-    for (i = 0; i < self->ob_size; ++i) {
+    for (i = 0; i < num_keys; ++i) {
         a_key = Keys_item(self, i);
         if (a_key == NULL) {
             goto Err;
@@ -185,7 +230,7 @@ Keys_hash(Keys *self)
 
     as_tuples = Keys_as_tuples(self);
     if (as_tuples == NULL) {
-        return NULL;
+        return -1;
     }
     hash = PyTuple_Type.tp_hash(as_tuples);
     Py_DECREF(as_tuples);
@@ -254,9 +299,9 @@ static char Keys_doc[] =
 
 
 static Py_ssize_t
-Keys_length(Keys *k)
+Keys_length(Keys *self)
 {
-    return (Py_ssize_t)k->ob_size;
+    return (Py_ssize_t)Keys_get_num_keys(self);
 }
 
 
@@ -264,19 +309,21 @@ static PyObject *
 Keys_item(Keys *self, Py_ssize_t offset)
 {
     long start, i;
+    int key_width;
     PyObject *tpl, *obj;
 
-    if (offset < 0 || offset >= self->ob_size) {
+    if (offset < 0 || offset >= Keys_get_num_keys(self)) {
         PyErr_SetString(PyExc_IndexError, "Keys index out of range");
         return NULL;
     }
-    tpl = PyTuple_New(self->key_width);
+    key_width = Keys_get_key_width(self);
+    tpl = PyTuple_New(key_width);
     if (!tpl) {
         /* Malloc failure */
         return NULL;
     }
-    start = offset * self->key_width;
-    for (i = 0; i < self->key_width; ++i) {
+    start = offset * key_width;
+    for (i = 0; i < key_width; ++i) {
         obj = (PyObject *)self->key_strings[start + i];
         Py_INCREF(obj);
         PyTuple_SET_ITEM(tpl, i, obj);
