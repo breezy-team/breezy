@@ -148,6 +148,12 @@ class GitBranch(ForeignBranch):
         self._head = None
         self.base = bzrdir.transport.base
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        return get_rich_root_format()
+
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
         ret = self.get_config().get_user_option("child_submit_format")
@@ -217,14 +223,6 @@ class GitBranch(ForeignBranch):
  
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
-
-    def _get_checkout_format(self):
-        """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repository uses weaves.
-        """
-        format = self.repository.bzrdir.checkout_metadir()
-        format.set_branch_format(self._format)
-        return format
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
