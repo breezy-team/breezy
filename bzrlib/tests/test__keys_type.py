@@ -158,6 +158,11 @@ class TestKeyType(tests.TestCase):
         x[as_tuple] = 'bar'
         self.assertEqual({as_tuple: 'bar'}, x)
 
+    def test_slice(self):
+        k = self.module.Key('foo', 'bar', 'baz', 'bing')
+        self.assertEqual(('foo', 'bar'), k[:2])
+        self.assertEqual(('baz',), k[2:-1])
+
 
 class TestKeysType(tests.TestCase):
 

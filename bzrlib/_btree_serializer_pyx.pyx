@@ -169,7 +169,7 @@ cdef class BTreeLeafParser:
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
             PyTuple_SET_ITEM(key, loop_counter, key_element)
-        return key
+        return _keys_type_c.Key(*key)
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""

@@ -119,6 +119,9 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     self = (Key *)(type->tp_alloc(type, len));
+    if (self == NULL) {
+        return NULL;
+    }
     self->ob_size = len;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
@@ -169,31 +172,39 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
 {
     PyObject *vt, *wt;
     PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
-    PyObject *result;
+    PyObject *result = NULL;
     
     if (Key_CheckExact(v)) {
         vt = Key_as_tuple((Key *)v);
+        if (vt == NULL) {
+            goto Done;
+        }
         vt_to_decref = vt;
     } else if (PyTuple_Check(v)) {
         vt = v;
         vt_to_decref = NULL;
     } else {
         Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        result = Py_NotImplemented;
+        goto Done;
     }
     if (Key_CheckExact(w)) {
         wt = Key_as_tuple((Key *)w);
+        if (wt == NULL) {
+            goto Done;
+        }
         wt_to_decref = wt;
     } else if (PyTuple_Check(w)) {
         wt = w;
         wt_to_decref = NULL;
     } else {
-        Py_XDECREF(vt_to_decref);
         Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        result = Py_NotImplemented;
+        goto Done;
     }
     /* Now we have 2 tuples to compare, do it */
     result = PyTuple_Type.tp_richcompare(vt, wt, op);
+Done:
     Py_XDECREF(vt_to_decref);
     Py_XDECREF(wt_to_decref);
     return result;
@@ -209,13 +220,27 @@ static PyObject *
 Key_item(Key *self, Py_ssize_t offset)
 {
     PyObject *obj;
-    if (offset < 0 || offset > self->ob_size) {
+    if (offset < 0 || offset >= self->ob_size) {
         PyErr_SetString(PyExc_IndexError, "Key index out of range");
         return NULL;
     }
     obj = (PyObject *)self->key_strings[offset];
     Py_INCREF(obj);
     return obj;
+}
+
+static PyObject *
+Key_slice(Key *self, Py_ssize_t ilow, Py_ssize_t ihigh)
+{
+    PyObject *as_tuple, *result;
+
+    as_tuple = Key_as_tuple(self);
+    if (as_tuple == NULL) {
+        return NULL;
+    }
+    result = PyTuple_Type.tp_as_sequence->sq_slice(as_tuple, ilow, ihigh);
+    Py_DECREF(as_tuple);
+    return result;
 }
 
 static char Key_doc[] =
@@ -234,7 +259,7 @@ static PySequenceMethods Key_as_sequence = {
     0,                              /* sq_concat */
     0,                              /* sq_repeat */
     (ssizeargfunc)Key_item,         /* sq_item */
-    0,                              /* sq_slice */
+    (ssizessizeargfunc)Key_slice,   /* sq_slice */
     0,                              /* sq_ass_item */
     0,                              /* sq_ass_slice */
     0,                              /* sq_contains */
@@ -390,6 +415,9 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     self = (Keys *)(type->tp_alloc(type, num_key_bits));
+    if (self == NULL) {
+        return NULL;
+    }
     // self->key_width = (unsigned char)key_width;
     // self->num_keys = (unsigned char)num_keys;
     Keys_set_info(self, key_width, num_keys, flags);
@@ -454,31 +482,39 @@ Keys_richcompare(PyObject *v, PyObject *w, int op)
 {
     PyObject *vt, *wt;
     PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
-    PyObject *result;
+    PyObject *result = NULL;
     
     if (Keys_CheckExact(v)) {
         vt = Keys_as_tuple((Keys *)v);
+        if (vt == NULL) {
+            goto Done;
+        }
         vt_to_decref = vt;
     } else if (PyTuple_Check(v)) {
         vt = v;
         vt_to_decref = NULL;
     } else {
         Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        result = Py_NotImplemented;
+        goto Done;
     }
     if (Keys_CheckExact(w)) {
         wt = Keys_as_tuple((Keys *)w);
+        if (wt == NULL) {
+            goto Done;
+        }
         wt_to_decref = wt;
     } else if (PyTuple_Check(w)) {
         wt = w;
         wt_to_decref = NULL;
     } else {
-        Py_XDECREF(vt_to_decref);
         Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        result = Py_NotImplemented;
+        goto Done;
     }
     /* Now we have 2 tuples to compare, do it */
     result = PyTuple_Type.tp_richcompare(vt, wt, op);
+Done:
     Py_XDECREF(vt_to_decref);
     Py_XDECREF(wt_to_decref);
     return result;
