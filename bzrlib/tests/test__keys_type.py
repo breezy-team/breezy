@@ -62,36 +62,33 @@ CompiledKeysType = _CompiledKeysType()
 class TestKeysType(tests.TestCase):
 
     def test_create(self):
-        #k = self.module.Keys(1, 1, 'foo')
-        k = self.module.Keys(1, 2, 'foo', 'bar')
-        #k = self.module.Keys(2, 1, 'foo', 'bar')
+        k = self.module.Keys(1, 'foo', 'bar')
+        k = self.module.Keys(2, 'foo', 'bar')
 
     def test_create_bad_args(self):
         self.assertRaises(TypeError, self.module.Keys)
         self.assertRaises(TypeError, self.module.Keys, 'foo')
-        self.assertRaises(TypeError, self.module.Keys, 0)
-        self.assertRaises(ValueError, self.module.Keys, 0, 2)
-        self.assertRaises(ValueError, self.module.Keys, 1, 0)
-        self.assertRaises(ValueError, self.module.Keys, -1, 2)
-        self.assertRaises(ValueError, self.module.Keys, -200, 2)
-        self.assertRaises(ValueError, self.module.Keys, 2, 2, 'foo')
-        self.assertRaises(ValueError, self.module.Keys, 257, 2)
+        self.assertRaises(ValueError, self.module.Keys, 0)
+        self.assertRaises(ValueError, self.module.Keys, -1)
+        self.assertRaises(ValueError, self.module.Keys, -200)
+        self.assertRaises(ValueError, self.module.Keys, 2, 'foo')
+        self.assertRaises(ValueError, self.module.Keys, 257)
         lots_of_args = ['a']*300
         # too many args
-        self.assertRaises(ValueError, self.module.Keys, 1, 2, *lots_of_args)
-        self.assertRaises(TypeError, self.module.Keys, 1, 2, 'foo', 10)
+        self.assertRaises(ValueError, self.module.Keys, 1, *lots_of_args)
+        self.assertRaises(TypeError, self.module.Keys, 1, 'foo', 10)
 
     def test_create_and_del_correct_refcount(self):
         s = 'my custom' + ' foo bar'
         n_ref = sys.getrefcount(s)
-        k = self.module.Keys(1, 2, s)
+        k = self.module.Keys(1, s)
         self.assertEqual(n_ref + 1, sys.getrefcount(s))
         del k
         self.assertEqual(n_ref, sys.getrefcount(s))
 
     def test_get_item(self):
         f = 'fo' + 'o'
-        k = self.module.Keys(1, 2, f, 'bar')
+        k = self.module.Keys(1, f, 'bar')
         self.assertEqual(('foo',), k[0])
         self.assertEqual(('bar',), k[1])
         self.assertRaises(IndexError, k.__getitem__, 2)
@@ -107,29 +104,29 @@ class TestKeysType(tests.TestCase):
         self.assertEqual(2, len(k))
 
     def test_get_wide_key(self):
-        k = self.module.Keys(2, 2, 'foo', 'bar', 'baz', 'bing')
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
         self.assertEqual(('foo', 'bar'), k[0])
         self.assertEqual(('baz', 'bing'), k[1])
         self.assertRaises(IndexError, k.__getitem__, 2)
         self.assertEqual(2, len(k))
 
     def test_as_tuple(self):
-        k = self.module.Keys(2, 2, 'foo', 'bar', 'baz', 'bing')
-        if getattr(k, 'as_tuples', None) is not None:
-            t = k.as_tuples()
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
+        if getattr(k, 'as_tuple', None) is not None:
+            t = k.as_tuple()
         else:
             t = k # The pure-python form is in tuples already
         self.assertEqual((('foo', 'bar'), ('baz', 'bing')), t)
 
     def test_repr(self):
-        k = self.module.Keys(2, 2, 'foo', 'bar', 'baz', 'bing')
+        k = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing')
         self.assertEqual("(('foo', 'bar'), ('baz', 'bing'))", repr(k))
 
     def test_compare(self):
-        k1 = self.module.Keys(2, 2, 'foo', 'bar')
-        k2 = self.module.Keys(2, 2, 'baz', 'bing')
-        k3 = self.module.Keys(2, 2, 'foo', 'zzz')
-        k4 = self.module.Keys(2, 2, 'foo', 'bar')
+        k1 = self.module.Keys(2, 'foo', 'bar')
+        k2 = self.module.Keys(2, 'baz', 'bing')
+        k3 = self.module.Keys(2, 'foo', 'zzz')
+        k4 = self.module.Keys(2, 'foo', 'bar')
         # Comparison should be done on the keys themselves, and not based on
         # object id, etc.
         self.assertTrue(k1 == k1)
@@ -142,18 +139,18 @@ class TestKeysType(tests.TestCase):
         self.assertTrue(k1 == (('foo', 'bar'),))
 
     def test_sorted(self):
-        k1 = self.module.Keys(2, 2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
+        k1 = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
         self.assertEqual([('baz', 'bing'), ('foo', 'bar'), ('foo', 'zzz')],
                          sorted(k1))
 
-        k1 = self.module.Keys(2, 2, 'foo', 'bar')
-        k2 = self.module.Keys(2, 2, 'baz', 'bing')
-        k3 = self.module.Keys(2, 2, 'foo', 'zzz')
+        k1 = self.module.Keys(2, 'foo', 'bar')
+        k2 = self.module.Keys(2, 'baz', 'bing')
+        k3 = self.module.Keys(2, 'foo', 'zzz')
         self.assertEqual([(('baz', 'bing'),), (('foo', 'bar'),),
                           (('foo', 'zzz'),)], sorted([k1, k2, k3]))
 
     def test_hash(self):
-        k1 = self.module.Keys(2, 2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
+        k1 = self.module.Keys(2, 'foo', 'bar', 'baz', 'bing', 'foo', 'zzz')
         as_tuple =(('foo', 'bar'), ('baz', 'bing'), ('foo', 'zzz')) 
         self.assertEqual(hash(k1), hash(as_tuple))
         x = {k1: 'foo'}

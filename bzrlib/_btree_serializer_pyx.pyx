@@ -253,7 +253,7 @@ cdef class BTreeLeafParser:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     ref_list.extend(self.extract_key(temp_ptr))
-                ref_list = _keys_type_c.Keys(self.key_length, 2, *ref_list)
+                ref_list = _keys_type_c.Keys(self.key_length, *ref_list)
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start

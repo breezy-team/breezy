@@ -35,7 +35,6 @@
 typedef struct {
     PyObject_HEAD
     // unsigned char key_width;
-    // unsigned char depth;
     // unsigned char num_keys;
     // unsigned char flags; /* not used yet */
     unsigned int info; /* Broken down into 4 1-byte fields */
@@ -47,12 +46,11 @@ extern PyTypeObject KeysType;
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
 static inline void
-Keys_set_info(Keys *self, int key_width, int depth,
+Keys_set_info(Keys *self, int key_width,
                           int num_keys, int flags)
 {
     self->info = ((unsigned int)key_width)
                  | (((unsigned int) num_keys) << 8)
-                 | (((unsigned int) depth) << 16)
                  | (((unsigned int) flags) << 24);
 }
 
@@ -66,12 +64,6 @@ static inline int
 Keys_get_num_keys(Keys *self)
 {
     return (int)((self->info >> 8) & 0xFF);
-}
-
-static inline int 
-Keys_get_depth(Keys *self)
-{
-    return (int)((self->info >> 16) & 0xFF);
 }
 
 static inline int 
@@ -108,7 +100,6 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     Py_ssize_t i;
     long key_width;
     long num_keys;
-    long depth;
     long num_key_bits;
     long flags = 0; /* Not used */
 	PyObject *obj= NULL;
@@ -124,8 +115,8 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     num_args = PyTuple_GET_SIZE(args);
-    if (num_args < 2) {
-        PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, depth, ...)"
+    if (num_args < 1) {
+        PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...)"
             " takes at least two arguments.");
         return NULL;
     }
@@ -134,36 +125,17 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     if (key_width <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...)"
             " width should be a positive integer.");
         return NULL;
     }
     if (key_width > 256) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
+        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...)"
             " width must be <= 256");
         return NULL;
     }
-    depth = PyInt_AsLong(PyTuple_GET_ITEM(args, 1));
-    if (depth == -1 && PyErr_Occurred()) {
-        return NULL;
-    }
-    if (depth <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
-            " depth must be > 0");
-        return NULL;
-    }
-    if (depth > 256) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
-            " depth must be <= 256");
-        return NULL;
-    }
-    if (depth != 2) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, depth, ...)"
-            " only depth == 2 currently supported");
-        return NULL;
-    }
     /* First arg is the key width, the rest are the actual key items */
-    num_key_bits = num_args - 2;
+    num_key_bits = num_args - 1;
     num_keys = num_key_bits / key_width;
     if (num_keys * key_width != num_key_bits) {
         PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), was"
@@ -178,11 +150,10 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     self = (Keys *)(type->tp_alloc(type, num_key_bits));
     // self->key_width = (unsigned char)key_width;
-    // self->depth = (unsigned char)depth;
     // self->num_keys = (unsigned char)num_keys;
-    Keys_set_info(self, key_width, depth, num_keys, flags);
+    Keys_set_info(self, key_width, num_keys, flags);
     for (i = 0; i < num_key_bits; i++) {
-        obj = PyTuple_GET_ITEM(args, i + 2);
+        obj = PyTuple_GET_ITEM(args, i + 1);
         if (!PyString_CheckExact(obj)) {
             PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...)"
                 " requires that all key bits are strings.");
@@ -197,7 +168,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static PyObject *
-Keys_as_tuples(Keys *self)
+Keys_as_tuple(Keys *self)
 {
     PyObject *as_tuple = NULL;
     PyObject *a_key = NULL;
@@ -218,22 +189,22 @@ Keys_as_tuples(Keys *self)
     }
     return as_tuple;
 Err:
-    Py_DECREF(as_tuple);
+    Py_XDECREF(as_tuple);
     return NULL;
 }
 
 static long
 Keys_hash(Keys *self)
 {
-    PyObject *as_tuples = NULL;
+    PyObject *as_tuple = NULL;
     long hash = -1;
 
-    as_tuples = Keys_as_tuples(self);
-    if (as_tuples == NULL) {
+    as_tuple = Keys_as_tuple(self);
+    if (as_tuple == NULL) {
         return -1;
     }
-    hash = PyTuple_Type.tp_hash(as_tuples);
-    Py_DECREF(as_tuples);
+    hash = PyTuple_Type.tp_hash(as_tuple);
+    Py_DECREF(as_tuple);
     return hash;
 }
 
@@ -245,7 +216,7 @@ Keys_richcompare(PyObject *v, PyObject *w, int op)
     PyObject *result;
     
     if (Keys_CheckExact(v)) {
-        vt = Keys_as_tuples((Keys *)v);
+        vt = Keys_as_tuple((Keys *)v);
         vt_to_decref = vt;
     } else if (PyTuple_Check(v)) {
         vt = v;
@@ -255,7 +226,7 @@ Keys_richcompare(PyObject *v, PyObject *w, int op)
 		return Py_NotImplemented;
     }
     if (Keys_CheckExact(w)) {
-        wt = Keys_as_tuples((Keys *)w);
+        wt = Keys_as_tuple((Keys *)w);
         wt_to_decref = wt;
     } else if (PyTuple_Check(w)) {
         wt = w;
@@ -278,7 +249,7 @@ Keys_repr(Keys *self)
     PyObject *as_tpl;
     PyObject *result;
 
-    as_tpl = Keys_as_tuples(self);
+    as_tpl = Keys_as_tuple(self);
     if (as_tpl == NULL) {
         return NULL;
     }
@@ -335,7 +306,7 @@ Keys_item(Keys *self, Py_ssize_t offset)
 static char Keys_get_key_doc[] = "get_keys(offset)";
 
 static PyMethodDef Keys_methods[] = {
-    {"as_tuples", (PyCFunction)Keys_as_tuples, METH_VARARGS},
+    {"as_tuple", (PyCFunction)Keys_as_tuple, METH_VARARGS},
     {NULL, NULL} /* sentinel */
 };
 

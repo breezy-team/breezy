@@ -21,15 +21,11 @@ strings.
 """
 
 
-def Keys(width, depth, *args):
+def Keys(width, *args):
     if not isinstance(width, int):
         raise TypeError('width must be an integer.')
-    if not isinstance(depth, int):
-        raise TypeError('depth must be an integer.')
     if width <= 0 or width > 256:
         raise ValueError('width must be in the range 1 => 256')
-    if depth <= 0 or depth > 256:
-        raise ValueError('depth must be in the range 1 => 256')
     num_keys = len(args) // width
     if (num_keys * width != len(args)):
         raise ValueError('number of entries not a multiple of width')
