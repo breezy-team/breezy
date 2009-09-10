@@ -10,7 +10,7 @@ if len(sys.argv) != 2 or not os.path.isdir(sys.argv[1]):
     print "usage: git-receive-pack <git-dir>"
     sys.exit(1)
  
-backend = BzrBackend(bzrlib.transport.get_transport("file://"+sys.argv[1]))
+backend = BzrBackend(bzrlib.transport.get_transport(sys.argv[1]))
 
 def write_fn(data):
     sys.stdout.write(data)
