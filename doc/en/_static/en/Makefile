@@ -2,8 +2,8 @@
 # doc/*/quick-reference/Makefile and update TARGETS and OBJECTS usages in
 # doc/Makefile
 
-TARGETS=bzr-quick-reference.png bzr-quick-reference.pdf
-OBJECTS=bzr-quick-reference.svg Makefile
+TARGETS=bzr-en-quick-reference.png bzr-en-quick-reference.pdf
+OBJECTS=bzr-en-quick-reference.svg Makefile
 
 all: $(TARGETS)
 
@@ -15,9 +15,9 @@ all: $(TARGETS)
 .svg.png:
 	rsvg-convert -d 300 -p 300 -z 3.3346 -f png -o $@ $<
 
-bzr-quickref.png: $(OBJECTS)
+bzr-en-quick-reference.png: $(OBJECTS)
 
-bzr-quickref.pdf: $(OBJECTS)
+bzr-en-quick-reference.pdf: $(OBJECTS)
 
 clean:
 	rm -f $(TARGETS)
