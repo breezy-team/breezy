@@ -33,6 +33,7 @@ from bzrlib.trace import info
 from bzrlib.plugins.builddeb.errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
+    PristineTarError,
     )
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
@@ -83,7 +84,10 @@ class PristineTarSource(UpstreamSource):
         if not db.has_pristine_tar_delta(revid):
             raise PackageVersionNotPresent(package, version, self)
         info("Using pristine-tar to reconstruct the needed tarball.")
-        db.reconstruct_pristine_tar(revid, package, version, target_filename)
+        try:
+            db.reconstruct_pristine_tar(revid, package, version, target_filename)
+        except PristineTarError:
+            raise PackageVersionNotPresent(package, version, self)
 
 
 class AptSource(UpstreamSource):

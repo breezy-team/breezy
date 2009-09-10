@@ -82,14 +82,6 @@ files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
     '.hg', '_darcs', '.git', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
     '.bzr-builddeb'])
 
-exclude_as_files = ['*/' + x for x in files_to_ignore]
-exclude_as_dirs = ['*/' + x + '/*' for x in files_to_ignore]
-exclude = exclude_as_files + exclude_as_dirs
-underscore_x = ['-x'] * len(exclude)
-ignore_arguments = []
-map(ignore_arguments.extend, zip(underscore_x, exclude))
-ignore_arguments = ignore_arguments + ['-x', '*,v']
-
 
 class DirWrapper(object):
     def __init__(self, fileobj, mode='r'):
