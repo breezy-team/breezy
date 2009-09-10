@@ -83,18 +83,13 @@ Key_as_tuple(Key *self)
 static char Key_as_tuple_doc[] = "as_tuple() => tuple";
 
 static void
-Key_dealloc(Keys *self)
+Key_dealloc(Key *self)
 {
-    // /* Do we want to use the Py_TRASHCAN_SAFE_BEGIN/END operations? */
-    // if (num_keys > 0) {
-    //     /* tuple deallocs from the end to the beginning. Not sure why, but
-    //      * we'll do the same here.
-    //      */
-    //     int i;
-    //     for(i = num_keys - 1; i >= 0; --i) {
-    //         Py_XDECREF(self->key_strings[i]);
-    //     }
-    // }
+    Py_ssize_t i;
+
+    for (i = 0; i < self->ob_size; ++i) {
+        Py_XDECREF(self->key_strings[i]);
+    }
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -138,6 +133,24 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
+static Py_ssize_t
+Key_length(Key *self)
+{
+    return self->ob_size;
+}
+
+static PyObject *
+Key_item(Key *self, Py_ssize_t offset)
+{
+    PyObject *obj;
+    if (offset < 0 || offset > self->ob_size) {
+        PyErr_SetString(PyExc_IndexError, "Key index out of range");
+        return NULL;
+    }
+    obj = (PyObject *)self->key_strings[offset];
+    Py_INCREF(obj);
+    return obj;
+}
 
 static char Key_doc[] =
     "C implementation of a Key structure."
@@ -150,16 +163,16 @@ static PyMethodDef Key_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-// static PySequenceMethods Key_as_sequence = {
-//     (lenfunc)Key_length,            /* sq_length */
-//     0,                              /* sq_concat */
-//     0,                              /* sq_repeat */
-//     (ssizeargfunc)Key_item,         /* sq_item */
-//     0,                              /* sq_slice */
-//     0,                              /* sq_ass_item */
-//     0,                              /* sq_ass_slice */
-//     0,                              /* sq_contains */
-// };
+static PySequenceMethods Key_as_sequence = {
+    (lenfunc)Key_length,            /* sq_length */
+    0,                              /* sq_concat */
+    0,                              /* sq_repeat */
+    (ssizeargfunc)Key_item,         /* sq_item */
+    0,                              /* sq_slice */
+    0,                              /* sq_ass_item */
+    0,                              /* sq_ass_slice */
+    0,                              /* sq_contains */
+};
 
 static PyTypeObject KeyType = {
     PyObject_HEAD_INIT(NULL)
@@ -167,14 +180,14 @@ static PyTypeObject KeyType = {
     "Key",                                       /* tp_name */
     sizeof(Key) - sizeof(PyStringObject *),      /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
-    Key_dealloc,                                 /* tp_dealloc */
+    (destructor)Key_dealloc,                     /* tp_dealloc */
     0,                                           /* tp_print */
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
     0, //(reprfunc)Keys_repr,                         /* tp_repr */
     0,                                           /* tp_as_number */
-    0, //&Keys_as_sequence,                           /* tp_as_sequence */
+    &Key_as_sequence,                            /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
     0, //(hashfunc)Keys_hash,                         /* tp_hash */
     0,                                           /* tp_call */

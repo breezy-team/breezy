@@ -87,6 +87,38 @@ class TestKeyType(tests.TestCase):
             t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
 
+    def test_len(self):
+        k = self.module.Key('foo')
+        self.assertEqual(1, len(k))
+        k = self.module.Key('foo', 'bar')
+        self.assertEqual(2, len(k))
+        k = self.module.Key('foo', 'bar', 'b', 'b', 'b', 'b', 'b')
+        self.assertEqual(7, len(k))
+
+    def test_getitem(self):
+        k = self.module.Key('foo', 'bar', 'b', 'b', 'b', 'b', 'z')
+        self.assertEqual('foo', k[0])
+        self.assertEqual('foo', k[0])
+        self.assertEqual('foo', k[0])
+        self.assertEqual('z', k[6])
+        self.assertEqual('z', k[-1])
+
+    def test_refcount(self):
+        f = 'fo' + 'oo'
+        num_refs = sys.getrefcount(f)
+        k = self.module.Key(f)
+        self.assertEqual(num_refs + 1, sys.getrefcount(f))
+        b = k[0]
+        self.assertEqual(num_refs + 2, sys.getrefcount(f))
+        b = k[0]
+        self.assertEqual(num_refs + 2, sys.getrefcount(f))
+        c = k[0]
+        self.assertEqual(num_refs + 3, sys.getrefcount(f))
+        del b, c
+        self.assertEqual(num_refs + 1, sys.getrefcount(f))
+        del k
+        self.assertEqual(num_refs, sys.getrefcount(f))
+
 
 class TestKeysType(tests.TestCase):
 
@@ -115,7 +147,7 @@ class TestKeysType(tests.TestCase):
         del k
         self.assertEqual(n_ref, sys.getrefcount(s))
 
-    def test_get_item(self):
+    def test_getitem(self):
         f = 'fo' + 'o'
         k = self.module.Keys(1, f, 'bar')
         self.assertEqual(('foo',), k[0])
