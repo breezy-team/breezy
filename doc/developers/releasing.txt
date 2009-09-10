@@ -173,9 +173,6 @@ Making the source tarball
   
      make dist
 
-   This also makes a zip file, which is easier to access on Microsoft
-   Windows.
-
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
  
@@ -196,7 +193,7 @@ available to the world.
 
 go to the release
 
-#. Within that release, upload the source tarball and zipfile and the GPG
+#. Within that release, upload the source tarball and the GPG
    signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this.
 
