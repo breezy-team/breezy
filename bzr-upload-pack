@@ -15,7 +15,7 @@ if len(args) != 1 or not os.path.isdir(args[0]):
     print "usage: " + parser.usage
     sys.exit(1)
 
-backend = BzrBackend(sys.argv[1])
+backend = BzrBackend(bzrlib.transport.get_transport("file://"+sys.argv[1]))
 
 def write_fn(data):
     sys.stdout.write(data)
