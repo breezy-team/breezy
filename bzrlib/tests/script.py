@@ -96,6 +96,7 @@ the file doesn't exist:
 """
 
 import doctest
+import errno
 import os
 import shlex
 from cStringIO import StringIO
@@ -350,6 +351,48 @@ class ScriptRunner(object):
         self._ensure_in_jail(d)
         os.mkdir(d)
         return 0, None, None
+
+    def do_rm(self, input, args):
+        err = None
+
+        def error(msg, path):
+            return  "rm: cannot remove '%s': %s\n" % (path, msg)
+
+        force, recursive = False, False
+        opts = None
+        if args and args[0][0] == '-':
+            opts = args.pop(0)[1:]
+            if 'f' in opts:
+                force = True
+                opts = opts.replace('f', '', 1)
+            if 'r' in opts:
+                recursive = True
+                opts = opts.replace('r', '', 1)
+        if not args or opts:
+            raise SyntaxError('Usage: rm [-fr] path+')
+        for p in args:
+            self._ensure_in_jail(p)
+            # FIXME: Should we put that in osutils ?
+            try:
+                os.remove(p)
+            except OSError, e:
+                if e.errno == errno.EISDIR:
+                    if recursive:
+                        osutils.rmtree(p)
+                    else:
+                        err = error('Is a directory', p)
+                        break
+                elif e.errno == errno.ENOENT:
+                    if not force:
+                        err =  error('No such file or directory', p)
+                        break
+                else:
+                    raise
+        if err:
+            retcode = 1
+        else:
+            retcode = 0
+        return retcode, None, err
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):

@@ -275,3 +275,45 @@ echo foo
         self.assertEquals(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
 
+
+class TestRm(script.TestCaseWithTransportAndScript):
+
+    def test_rm_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, 'rm')
+        self.assertRaises(SyntaxError, self.run_script, 'rm -ff foo')
+
+    def test_rm_file(self):
+        self.run_script('echo content >file')
+        self.failUnlessExists('file')
+        self.run_script('rm file')
+        self.failIfExists('file')
+
+    def test_rm_file_force(self):
+        self.failIfExists('file')
+        self.run_script('rm -f file')
+        self.failIfExists('file')
+
+    def test_rm_files(self):
+        self.run_script("""
+echo content >file
+echo content >file2
+""")
+        self.failUnlessExists('file2')
+        self.run_script('rm file file2')
+        self.failIfExists('file2')
+
+    def test_rm_dir(self):
+        self.run_script('mkdir dir')
+        self.failUnlessExists('dir')
+        self.run_script("""
+rm dir
+2>rm: cannot remove 'dir': Is a directory
+""")
+        self.failUnlessExists('dir')
+
+    def test_rm_dir_recursive(self):
+        self.run_script("""
+mkdir dir
+rm -r dir
+""")
+        self.failIfExists('dir')
