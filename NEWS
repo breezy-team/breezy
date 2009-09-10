@@ -4,6 +4,8 @@
 
   * Cope with ghosts a bit better during "bzr dpush".
 
+  * Better error message when Dulwich is missing. (#427276)
+
  FEATURES
 
   * New "git" format supported by "bzr send". All revisions 
