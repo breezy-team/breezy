@@ -81,7 +81,7 @@ def _format_version_tuple(version_info):
     ...
     ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
     """
-    if len(version_info) == 2 or version_info[2] == 0:
+    if len(version_info) == 2:
         main_version = '%d.%d' % version_info[:2]
     else:
         main_version = '%d.%d.%d' % version_info[:3]
