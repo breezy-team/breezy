@@ -1,11 +1,7 @@
-=======================
-Guide to Testing Bazaar
-=======================
+====================
+Bazaar Testing Guide
+====================
 
-.. contents::
-
-Testing Bazaar
-##############
 
 The Importance of Testing
 =========================
