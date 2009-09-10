@@ -119,6 +119,45 @@ class TestKeyType(tests.TestCase):
         del k
         self.assertEqual(num_refs, sys.getrefcount(f))
 
+    def test__repr__(self):
+        k = self.module.Key('foo', 'bar', 'baz', 'bing')
+        self.assertEqual("('foo', 'bar', 'baz', 'bing')", repr(k))
+
+    def test_compare(self):
+        k1 = self.module.Key('foo', 'bar')
+        k2 = self.module.Key('baz', 'bing')
+        k3 = self.module.Key('foo', 'zzz')
+        k4 = self.module.Key('foo', 'bar')
+        k5 = self.module.Key('foo')
+        # Comparison should be done on the keys themselves, and not based on
+        # object id, etc.
+        self.assertTrue(k1 == k1)
+        self.assertTrue(k1 == k4)
+        self.assertTrue(k1 != k2)
+        self.assertTrue(k1 != k3)
+        self.assertTrue(k1 != k5)
+        self.assertTrue(k2 < k1)
+        self.assertTrue(k2 < k4)
+        self.assertTrue(k3 > k1)
+        self.assertTrue(k3 > k4)
+        self.assertTrue(k5 < k1)
+        self.assertTrue(k1 > k5)
+        # We should also be able to compare against raw tuples
+        self.assertTrue(k1 == ('foo', 'bar'))
+
+    def test_hash(self):
+        k = self.module.Key('foo')
+        self.assertEqual(hash(k), hash(('foo',)))
+        k = self.module.Key('foo', 'bar', 'baz', 'bing')
+        as_tuple = ('foo', 'bar', 'baz', 'bing')
+        self.assertEqual(hash(k), hash(as_tuple))
+        x = {k: 'foo'}
+        # Because k == , it replaces the slot, rather than having both
+        # present in the dict.
+        self.assertEqual('foo', x[as_tuple])
+        x[as_tuple] = 'bar'
+        self.assertEqual({as_tuple: 'bar'}, x)
+
 
 class TestKeysType(tests.TestCase):
 
@@ -217,5 +256,6 @@ class TestKeysType(tests.TestCase):
         x = {k1: 'foo'}
         # Because k1 == as_tuple, it replaces the slot, rather than having both
         # present in the dict.
+        self.assertEqual('foo', x[as_tuple])
         x[as_tuple] = 'bar'
         self.assertEqual({as_tuple: 'bar'}, x)

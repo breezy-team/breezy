@@ -61,6 +61,8 @@ extern PyTypeObject KeysType;
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
 
+#define Key_CheckExact(op) (Py_TYPE(op) == &KeyType)
+
 static PyObject *
 Key_as_tuple(Key *self)
 {
@@ -133,6 +135,70 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     return (PyObject *)self;
 }
 
+static PyObject *
+Key_repr(Key *self)
+{
+    PyObject *as_tuple, *result;
+
+    as_tuple = Key_as_tuple(self);
+    if (as_tuple == NULL) {
+        return NULL;
+    }
+    result = PyObject_Repr(as_tuple);
+    Py_DECREF(as_tuple);
+    return result;
+}
+
+static long
+Key_hash(Key *self)
+{
+    PyObject *as_tuple = NULL;
+    long hash = -1;
+
+    as_tuple = Key_as_tuple(self);
+    if (as_tuple == NULL) {
+        return -1;
+    }
+    hash = PyTuple_Type.tp_hash(as_tuple);
+    Py_DECREF(as_tuple);
+    return hash;
+}
+
+static PyObject *
+Key_richcompare(PyObject *v, PyObject *w, int op)
+{
+    PyObject *vt, *wt;
+    PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
+    PyObject *result;
+    
+    if (Key_CheckExact(v)) {
+        vt = Key_as_tuple((Key *)v);
+        vt_to_decref = vt;
+    } else if (PyTuple_Check(v)) {
+        vt = v;
+        vt_to_decref = NULL;
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    if (Key_CheckExact(w)) {
+        wt = Key_as_tuple((Key *)w);
+        wt_to_decref = wt;
+    } else if (PyTuple_Check(w)) {
+        wt = w;
+        wt_to_decref = NULL;
+    } else {
+        Py_XDECREF(vt_to_decref);
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    /* Now we have 2 tuples to compare, do it */
+    result = PyTuple_Type.tp_richcompare(vt, wt, op);
+    Py_XDECREF(vt_to_decref);
+    Py_XDECREF(wt_to_decref);
+    return result;
+}
+
 static Py_ssize_t
 Key_length(Key *self)
 {
@@ -185,11 +251,11 @@ static PyTypeObject KeyType = {
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
-    0, //(reprfunc)Keys_repr,                         /* tp_repr */
+    (reprfunc)Key_repr,                          /* tp_repr */
     0,                                           /* tp_as_number */
     &Key_as_sequence,                            /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
-    0, //(hashfunc)Keys_hash,                         /* tp_hash */
+    (hashfunc)Key_hash,                          /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
     PyObject_GenericGetAttr,                     /* tp_getattro */
@@ -203,7 +269,7 @@ static PyTypeObject KeyType = {
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another Keys object.
-    0, //Key_richcompare,                             /* tp_richcompare */
+    Key_richcompare,                             /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
     // We could implement this as returning tuples of keys...
     0,                                           /* tp_iter */
