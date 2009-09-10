@@ -247,6 +247,42 @@ and ``bzr-builddeb`` will create the tarball for you.
 
   $ bzr merge-upstream --version 0.2 http://scruff.org/bzr/scruff.dev
 
+Merging a package
+#################
+
+When merging a package you should use the ``merge-package`` command,
+which knows about packages in a way that ``merge`` does not. This
+knowledge allows it to reconcile deviations in the upstream
+ancestry so that they don't cause excess conflicts. (Note that the
+command works whether or not there are deviations in the upstream
+ancestry.)
+
+The command works in the same way as ``merge``. For example::
+
+    $ cd scruff-unstable/
+    $ bzr merge-package ../scruff-experimental
+
+will leave the branch in the same state as a normal merge allowing
+you to review the changes and commit.
+
+In a small number of cases, however, the source `upstream` and target
+`packaging` branches will have conflicts that cause the following error
+instead::
+
+    $ bzr merge-package ../scruff-highly-experimental
+    The upstream branches for the merge source and target have diverged.
+    Unfortunately, the attempt to fix this problem resulted in conflicts.
+    Please resolve these, commit and re-run the "merge-package" command to
+    finish.
+    Alternatively, until you commit you can use "bzr revert" to restore the
+    state of the unmerged branch.
+
+This will leave you in a conflicted tree, and you can deal with the conflicts
+and use ``resolve`` as normal. Once you have resolved all the conflicts you
+need to commit and then run the same ``merge-package`` command again to
+complete the operation. As with normal merges until you commit you can
+use ``revert`` to return you to the state before you started.
+
 Importing a source package from elsewhere
 #########################################
 
