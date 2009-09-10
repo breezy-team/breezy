@@ -39,7 +39,7 @@
  */
 typedef struct {
     PyObject_VAR_HEAD
-    PyStringObject *key_strings[1];
+    PyStringObject *key_bits[1];
 } Key;
 extern PyTypeObject KeyType;
 
@@ -53,7 +53,7 @@ typedef struct {
     // unsigned char num_keys;
     // unsigned char flags; /* not used yet */
     unsigned int info; /* Broken down into 4 1-byte fields */
-    PyStringObject *key_strings[1]; /* key_width * num_keys entries */
+    PyStringObject *key_bits[1]; /* key_width * num_keys entries */
 } Keys;
 
 /* Forward declaration */
@@ -75,7 +75,7 @@ Key_as_tuple(Key *self)
         return NULL;
     }
     for (i = 0; i < self->ob_size; ++i) {
-        obj = (PyObject *)self->key_strings[i];
+        obj = (PyObject *)self->key_bits[i];
         Py_INCREF(obj);
         PyTuple_SET_ITEM(tpl, i, obj);
     }
@@ -90,7 +90,7 @@ Key_dealloc(Key *self)
     Py_ssize_t i;
 
     for (i = 0; i < self->ob_size; ++i) {
-        Py_XDECREF(self->key_strings[i]);
+        Py_XDECREF(self->key_bits[i]);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
@@ -133,7 +133,7 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             return NULL;
         }
         Py_INCREF(obj);
-        self->key_strings[i] = (PyStringObject *)obj;
+        self->key_bits[i] = (PyStringObject *)obj;
     }
     return (PyObject *)self;
 }
@@ -224,7 +224,7 @@ Key_item(Key *self, Py_ssize_t offset)
         PyErr_SetString(PyExc_IndexError, "Key index out of range");
         return NULL;
     }
-    obj = (PyObject *)self->key_strings[offset];
+    obj = (PyObject *)self->key_bits[offset];
     Py_INCREF(obj);
     return obj;
 }
@@ -241,6 +241,16 @@ Key_slice(Key *self, Py_ssize_t ilow, Py_ssize_t ihigh)
     result = PyTuple_Type.tp_as_sequence->sq_slice(as_tuple, ilow, ihigh);
     Py_DECREF(as_tuple);
     return result;
+}
+
+static int
+Key_traverse(Key *self, visitproc visit, void *arg)
+{
+    Py_ssize_t i;
+    for (i = Py_SIZE(self); --i >= 0;) {
+        Py_VISIT(self->key_bits[i]);
+    }
+    return 0;
 }
 
 static char Key_doc[] =
@@ -288,9 +298,12 @@ static PyTypeObject KeyType = {
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
     Key_doc,                                     /* tp_doc */
-    // might want to set this, except we don't participate in gc, so it might
-    // confuse things
-    0,                                           /* tp_traverse */
+    /* gc.get_referents checks the IS_GC flag before it calls tp_traverse
+     * And we don't include this object in the garbage collector because we
+     * know it doesn't create cycles. However, 'meliae' will follow
+     * tp_traverse, even if the object isn't GC, and we want that.
+     */
+    (traverseproc)Key_traverse,                  /* tp_traverse */
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another Keys object.
@@ -353,7 +366,7 @@ Keys_dealloc(Keys *self)
          */
         int i;
         for(i = num_keys - 1; i >= 0; --i) {
-            Py_XDECREF(self->key_strings[i]);
+            Py_XDECREF(self->key_bits[i]);
         }
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
@@ -431,7 +444,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             return NULL;
         }
         Py_INCREF(obj);
-        self->key_strings[i] = (PyStringObject *)obj;
+        self->key_bits[i] = (PyStringObject *)obj;
     }
     return (PyObject *)self;
 }
@@ -535,6 +548,17 @@ Keys_repr(Keys *self)
     return result;
 }
 
+static int
+Keys_traverse(Keys *self, visitproc visit, void *arg)
+{
+    Py_ssize_t i, num_key_bits;
+    num_key_bits = Keys_get_key_width(self) * Keys_get_num_keys(self);
+    for (i = num_key_bits; --i >= 0;) {
+        Py_VISIT(self->key_bits[i]);
+    }
+    return 0;
+}
+
 static char Keys_doc[] =
     "C implementation of a Keys structure."
     "\n This is used as Keys(width, key_bit_1, key_bit_2, key_bit_3, ...)"
@@ -572,7 +596,7 @@ Keys_item(Keys *self, Py_ssize_t offset)
     }
     start = offset * key_width;
     for (i = 0; i < key_width; ++i) {
-        obj = (PyObject *)self->key_strings[start + i];
+        obj = (PyObject *)self->key_bits[start + i];
         Py_INCREF(obj);
         PyTuple_SET_ITEM(tpl, i, obj);
     }
@@ -622,9 +646,8 @@ static PyTypeObject KeysType = {
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
     Keys_doc,                                    /* tp_doc */
-    // might want to set this, except we don't participate in gc, so it might
-    // confuse things
-    0,                                           /* tp_traverse */
+    /* See Key_traverse for why we have this, even though we aren't GC */
+    Keys_traverse,                               /* tp_traverse */
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another Keys object.

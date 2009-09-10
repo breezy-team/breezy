@@ -16,6 +16,7 @@
 
 """Tests for the Keys type."""
 
+import gc
 import sys
 
 from bzrlib import (
@@ -163,6 +164,19 @@ class TestKeyType(tests.TestCase):
         self.assertEqual(('foo', 'bar'), k[:2])
         self.assertEqual(('baz',), k[2:-1])
 
+    def test_referents(self):
+        # We implement tp_traverse so that things like 'meliae' can measure the
+        # amount of referenced memory. Unfortunately gc.get_referents() first
+        # checks the IS_GC flag before it traverses anything. So there isn't a
+        # way to expose it that I can see.
+        try:
+            from meliae import scanner
+        except ImportError:
+            return
+        strs = ['foo', 'bar', 'baz', 'bing']
+        k = self.module.Key(*strs)
+        self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
+
 
 class TestKeysType(tests.TestCase):
 
@@ -264,3 +278,20 @@ class TestKeysType(tests.TestCase):
         self.assertEqual('foo', x[as_tuple])
         x[as_tuple] = 'bar'
         self.assertEqual({as_tuple: 'bar'}, x)
+
+    def test_referents(self):
+        # We implement tp_traverse so that things like 'meliae' can measure the
+        # amount of referenced memory. Unfortunately gc.get_referents() first
+        # checks the IS_GC flag before it traverses anything. So there isn't a
+        # way to expose it that I can see.
+        try:
+            from meliae import scanner
+        except ImportError:
+            return
+        strs = ['foo', 'bar', 'baz', 'bing']
+        k = self.module.Keys(2, *strs)
+        if type(k) == tuple:
+            self.assertEqual(sorted([('foo', 'bar'), ('baz', 'bing')]),
+                             sorted(scanner.get_referents(k)))
+        else:
+            self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
