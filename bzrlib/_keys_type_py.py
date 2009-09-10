@@ -21,6 +21,17 @@ strings.
 """
 
 
+def Key(*args):
+    """Implemented as just returning a tuple of the arguments supplied."""
+    for bit in args:
+        if not isinstance(bit, str):
+            raise TypeError('key bits must be strings')
+    num_keys = len(args)
+    if num_keys <= 0 or num_keys > 256:
+        raise ValueError('must have 1 => 256 key bits')
+    return args
+
+
 def Keys(width, *args):
     if not isinstance(width, int):
         raise TypeError('width must be an integer.')

@@ -59,6 +59,35 @@ class _CompiledKeysType(tests.Feature):
 CompiledKeysType = _CompiledKeysType()
 
 
+class TestKeyType(tests.TestCase):
+
+    def test_create(self):
+        k = self.module.Key('foo')
+        k = self.module.Key('foo', 'bar')
+
+    def test_create_bad_args(self):
+        self.assertRaises(ValueError, self.module.Key)
+        lots_of_args = ['a']*300
+        # too many args
+        self.assertRaises(ValueError, self.module.Key, *lots_of_args)
+        # not a string
+        self.assertRaises(TypeError, self.module.Key, 10)
+        
+    def test_as_tuple(self):
+        k = self.module.Key('foo')
+        if getattr(k, 'as_tuple', None) is None:
+            t = k
+        else:
+            t = k.as_tuple()
+        self.assertEqual(('foo',), t)
+        k = self.module.Key('foo', 'bar')
+        if getattr(k, 'as_tuple', None) is None:
+            t = k
+        else:
+            t = k.as_tuple()
+        self.assertEqual(('foo', 'bar'), t)
+
+
 class TestKeysType(tests.TestCase):
 
     def test_create(self):
