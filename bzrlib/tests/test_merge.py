@@ -1162,7 +1162,7 @@ class TestMergeImplementation(object):
         wt = self.make_branch_and_tree('this')
         (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
         os.mkdir(deletiondir)
-        self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
+        self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
         self.assertRaises(errors.LockError, wt.unlock)
 
 
