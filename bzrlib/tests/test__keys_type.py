@@ -124,27 +124,66 @@ class TestKeyType(tests.TestCase):
         k = self.module.Key('foo', 'bar', 'baz', 'bing')
         self.assertEqual("('foo', 'bar', 'baz', 'bing')", repr(k))
 
-    def test_compare(self):
+    def assertCompareEqual(self, k1, k2):
+        self.assertTrue(k1 == k2)
+        self.assertTrue(k1 <= k2)
+        self.assertTrue(k1 >= k2)
+        self.assertFalse(k1 != k2)
+        self.assertFalse(k1 < k2)
+        self.assertFalse(k1 > k2)
+
+    def test_compare_same_obj(self):
         k1 = self.module.Key('foo', 'bar')
-        k2 = self.module.Key('baz', 'bing')
-        k3 = self.module.Key('foo', 'zzz')
-        k4 = self.module.Key('foo', 'bar')
-        k5 = self.module.Key('foo')
-        # Comparison should be done on the keys themselves, and not based on
-        # object id, etc.
-        self.assertTrue(k1 == k1)
-        self.assertTrue(k1 == k4)
-        self.assertTrue(k1 != k2)
-        self.assertTrue(k1 != k3)
-        self.assertTrue(k1 != k5)
-        self.assertTrue(k2 < k1)
-        self.assertTrue(k2 < k4)
-        self.assertTrue(k3 > k1)
-        self.assertTrue(k3 > k4)
-        self.assertTrue(k5 < k1)
-        self.assertTrue(k1 > k5)
-        # We should also be able to compare against raw tuples
-        self.assertTrue(k1 == ('foo', 'bar'))
+        self.assertCompareEqual(k1, k1)
+
+    def test_compare_equivalent_obj(self):
+        k1 = self.module.Key('foo', 'bar')
+        k2 = self.module.Key('foo', 'bar')
+        self.assertCompareEqual(k1, k2)
+
+    def test_compare_similar_obj(self):
+        k1 = self.module.Key('foo' + ' bar', 'bar' + ' baz')
+        k2 = self.module.Key('fo' + 'o bar', 'ba' + 'r baz')
+        self.assertCompareEqual(k1, k2)
+
+    def assertCompareDifferent(self, k_small, k_big):
+        self.assertFalse(k_small == k_big)
+        self.assertFalse(k_small >= k_big)
+        self.assertFalse(k_small > k_big)
+        self.assertTrue(k_small != k_big)
+        self.assertTrue(k_small <= k_big)
+        self.assertTrue(k_small < k_big)
+
+    def test_compare_all_different_same_width(self):
+        k1 = self.module.Key('baz', 'bing')
+        k2 = self.module.Key('foo', 'bar')
+        self.assertCompareDifferent(k1, k2)
+
+    def test_compare_some_different(self):
+        k1 = self.module.Key('foo', 'bar')
+        k2 = self.module.Key('foo', 'zzz')
+        self.assertCompareDifferent(k1, k2)
+
+    def test_compare_diff_width(self):
+        k1 = self.module.Key('foo')
+        k2 = self.module.Key('foo', 'bar')
+        self.assertCompareDifferent(k1, k2)
+
+    def test_compare_to_tuples(self):
+        k1 = self.module.Key('foo')
+        self.assertCompareEqual(k1, ('foo',))
+        self.assertCompareEqual(('foo',), k1)
+        self.assertCompareDifferent(k1, ('foo', 'bar'))
+        self.assertCompareDifferent(k1, ('foo', 10))
+
+        k2 = self.module.Key('foo', 'bar')
+        self.assertCompareEqual(k2, ('foo', 'bar'))
+        self.assertCompareEqual(('foo', 'bar'), k2)
+        self.assertCompareDifferent(k2, ('foo', 'zzz'))
+        self.assertCompareDifferent(('foo',), k2)
+        self.assertCompareDifferent(('foo', 'aaa'), k2)
+        self.assertCompareDifferent(('baz', 'bing'), k2)
+        self.assertCompareDifferent(('foo', 10), k2)
 
     def test_hash(self):
         k = self.module.Key('foo')

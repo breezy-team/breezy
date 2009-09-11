@@ -168,7 +168,7 @@ Key_hash(Key *self)
 }
 
 static PyObject *
-Key_richcompare(PyObject *v, PyObject *w, int op)
+Key_richcompare_to_tuple(PyObject *v, PyObject *w, int op)
 {
     PyObject *vt, *wt;
     PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
@@ -209,6 +209,118 @@ Done:
     Py_XDECREF(wt_to_decref);
     return result;
 }
+
+
+static PyObject *
+Key_richcompare(PyObject *v, PyObject *w, int op)
+{
+    Key *vk, *wk;
+    Py_ssize_t vlen, wlen, min_len, i;
+    richcmpfunc string_richcompare;
+
+    if (PyTuple_Check(v) || PyTuple_Check(w)) {
+        /* One of v or w is a tuple, so we go the 'slow' route and cast up to
+         * tuples to compare.
+         */
+        return Key_richcompare_to_tuple(v, w, op);
+    }
+    if (!Key_CheckExact(v) || !Key_CheckExact(w)) {
+        /* Both are not Key objects, and they aren't Tuple objects or the
+         * previous path would have been taken. We don't support comparing with
+         * anything else.
+         */
+         Py_INCREF(Py_NotImplemented);
+         return Py_NotImplemented;
+    }
+    /* Now we know that we have 2 Key objects, so let's compare them.
+     * This code is somewhat borrowed from tuplerichcompare, except we know our
+     * objects are strings, so we get to cheat a bit.
+     */
+    if (v == w) {
+        /* Identical pointers, we can shortcut this easily. */
+		switch (op) {
+		case Py_EQ:case Py_LE:case Py_GE:
+            Py_INCREF(Py_True);
+            return Py_True;
+		case Py_NE:case Py_LT:case Py_GT:
+            Py_INCREF(Py_False);
+            return Py_False;
+		}
+    }
+    vk = (Key*)v;
+    wk = (Key*)w;
+
+    /* It will be rare that we compare tuples of different lengths, so we don't
+     * start by optimizing the length comparision, same as the tuple code
+     */
+    vlen = vk->ob_size;
+    wlen = wk->ob_size;
+	min_len = (vlen < wlen) ? vlen : wlen;
+    string_richcompare = PyString_Type.tp_richcompare;
+    for (i = 0; i < min_len; i++) {
+        PyObject *result;
+        result = string_richcompare((PyObject *)vk->key_bits[i],
+                                    (PyObject *)wk->key_bits[i],
+                                    Py_EQ);
+        if (result == NULL) {
+            return NULL; /* Seems to be an error */
+        }
+        if (result == Py_NotImplemented) {
+            PyErr_BadInternalCall();
+            Py_DECREF(result);
+            return NULL;
+        }
+        if (result == Py_False) {
+            /* These strings are not identical
+             * Shortcut for Py_EQ
+             */
+            if (op == Py_EQ) {
+                return result;
+            }
+            Py_DECREF(result);
+            break;
+        }
+        if (result != Py_True) {
+            /* We don't know *what* string_richcompare is returning, but it
+             * isn't correct.
+             */
+            PyErr_BadInternalCall();
+            Py_DECREF(result);
+            return NULL;
+        }
+        Py_DECREF(result);
+    }
+	if (i >= vlen || i >= wlen) {
+		/* No more items to compare -- compare sizes */
+		int cmp;
+		PyObject *res;
+		switch (op) {
+		case Py_LT: cmp = vlen <  wlen; break;
+		case Py_LE: cmp = vlen <= wlen; break;
+		case Py_EQ: cmp = vlen == wlen; break;
+		case Py_NE: cmp = vlen != wlen; break;
+		case Py_GT: cmp = vlen >  wlen; break;
+		case Py_GE: cmp = vlen >= wlen; break;
+		default: return NULL; /* cannot happen */
+		}
+		if (cmp)
+			res = Py_True;
+		else
+			res = Py_False;
+		Py_INCREF(res);
+		return res;
+	}
+    /* The last item differs, shortcut the Py_NE case */
+    if (op == Py_NE) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    }
+    /* It is some other comparison, go ahead and do the real check. */
+    return string_richcompare((PyObject *)vk->key_bits[i],
+                              (PyObject *)wk->key_bits[i],
+                              op);
+}
+
 
 static Py_ssize_t
 Key_length(Key *self)
@@ -496,7 +608,7 @@ Keys_richcompare(PyObject *v, PyObject *w, int op)
     PyObject *vt, *wt;
     PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
     PyObject *result = NULL;
-    
+
     if (Keys_CheckExact(v)) {
         vt = Keys_as_tuple((Keys *)v);
         if (vt == NULL) {
@@ -532,7 +644,7 @@ Done:
     Py_XDECREF(wt_to_decref);
     return result;
 }
-
+    
 static PyObject *
 Keys_repr(Keys *self)
 {
