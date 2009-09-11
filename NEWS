@@ -69,6 +69,10 @@ Bug Fixes
   repository, such as revisions without inventories or inventories without
   chk_bytes root records.
   (Andrew Bennetts, #423506)
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
   
 Improvements
 ************
