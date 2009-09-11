@@ -36,7 +36,7 @@ from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
 from bzrlib.workingtree import WorkingTree
-
+from bzrlib.transform import TreeTransform
 
 class TestMerge(TestCaseWithTransport):
     """Test appending more than one revision"""
@@ -284,7 +284,8 @@ class TestMerge(TestCaseWithTransport):
         except AttributeError:
             self.fail('tried to join a path when name was None')
 
-    def test_merge_uncommitted_otherbasis_ancestor_of_thisbasis(self):
+
+    def test_merge_existing_limbo_or_pending_deletion(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file_1', 'a/file_2'])
         tree_a.add(['file_1'])
@@ -1142,6 +1143,27 @@ class TestMergeImplementation(object):
                 'd\n'
                 'X\n'
                 'e\n', 'test/foo')
+
+    def get_limbodir_deletiondir(self, wt):
+        transform = TreeTransform(wt)
+        limbodir = transform._limbodir
+        deletiondir = transform._deletiondir
+        transform.finalize()
+        return (limbodir, deletiondir)
+    
+    def test_merge_with_existing_limbo(self):
+        wt = self.make_branch_and_tree('this')
+        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        os.mkdir(limbodir)
+        self.assertRaises(errors.ExistingLimbo, self.do_merge, wt, wt)
+        self.assertRaises(errors.LockError, wt.unlock)
+
+    def test_merge_with_pending_deletion(self):
+        wt = self.make_branch_and_tree('this')
+        (limbodir, deletiondir) =  self.get_limbodir_deletiondir(wt)
+        os.mkdir(deletiondir)
+        self.assertRaises(errors.ExistingPendingDeletion, self.do_merge, wt, wt)
+        self.assertRaises(errors.LockError, wt.unlock)
 
 
 class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
