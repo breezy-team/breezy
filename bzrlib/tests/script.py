@@ -210,17 +210,28 @@ def _scan_redirection_options(args):
         - The mode to open the output file or None
         - The reamining arguments
     """
+    def redirected_file_name(direction, name, args):
+        if name == '':
+            try:
+                name = args.pop(0)
+            except IndexError:
+                # We leave the error handling to higher levels, an empty name
+                # can't be legal.
+                name = ''
+        return name
+
     remaining = []
     in_name = None
     out_name, out_mode = None, None
-    for arg in  args:
+    while args:
+        arg = args.pop(0)
         if arg.startswith('<'):
-            in_name = arg[1:]
+            in_name = redirected_file_name('<', arg[1:], args)
         elif arg.startswith('>>'):
-            out_name = arg[2:]
+            out_name = redirected_file_name('>>', arg[2:], args)
             out_mode = 'ab+'
-        elif arg.startswith('>'):
-            out_name = arg[1:]
+        elif arg.startswith('>',):
+            out_name = redirected_file_name('>', arg[1:], args)
             out_mode = 'wb+'
         else:
             remaining.append(arg)
@@ -270,7 +281,8 @@ class ScriptRunner(object):
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
         if retcode and not error and actual_error:
-            self.test_case.fail('Unexpected error: %s' % actual_error)
+            self.test_case.fail('In \n\t%s\nUnexpected error: %s'
+                                % (' '.join(cmd), actual_error))
         return retcode, actual_output, actual_error
 
     def _read_input(self, input, in_name):
@@ -306,11 +318,19 @@ class ScriptRunner(object):
             if in_name is not None:
                 raise SyntaxError('Specify a file OR use redirection')
             in_name = args[0]
-        input = self._read_input(input, in_name)
+        try:
+            input = self._read_input(input, in_name)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (in_name,)
         # Basically cat copy input to output
         output = input
         # Handle output redirections
-        output = self._write_output(output, out_name, out_mode)
+        try:
+            output = self._write_output(output, out_name, out_mode)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
     def do_echo(self, input, args):
@@ -319,13 +339,21 @@ class ScriptRunner(object):
                 raise SyntaxError('Specify parameters OR use redirection')
         if args:
             input = ''.join(args)
-        input = self._read_input(input, in_name)
+        try:
+            input = self._read_input(input, in_name)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (in_name,)
         # Always append a \n'
         input += '\n'
         # Process output
         output = input
         # Handle output redirections
-        output = self._write_output(output, out_name, out_mode)
+        try:
+            output = self._write_output(output, out_name, out_mode)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
     def _ensure_in_jail(self, path):

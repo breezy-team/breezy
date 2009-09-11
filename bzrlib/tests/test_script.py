@@ -84,6 +84,39 @@ foo = `bzr file-id toto`
                           script._script_to_commands(story))
 
 
+class TestRedirections(tests.TestCase):
+
+    def _check(self, in_name, out_name, out_mode, remaining, args):
+        self.assertEqual(script._scan_redirection_options(args),
+                         (in_name, out_name, out_mode, remaining))
+
+    def test_no_redirection(self):
+        self._check(None, None, None, [], [])
+        self._check(None, None, None, ['foo', 'bar'], ['foo', 'bar'])
+
+    def test_input_redirection(self):
+        self._check('foo', None, None, [], ['<foo'])
+        self._check('foo', None, None, ['bar'], ['bar', '<foo'])
+        self._check('foo', None, None, ['bar'], ['bar', '<', 'foo'])
+        self._check('foo', None, None, ['bar'], ['<foo', 'bar'])
+        self._check('foo', None, None, ['bar', 'baz'], ['bar', '<foo', 'baz'])
+
+    def test_output_redirection(self):
+        self._check(None, 'foo', 'wb+', [], ['>foo'])
+        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>foo'])
+        self._check(None, 'foo', 'wb+', ['bar'], ['bar', '>', 'foo'])
+        self._check(None, 'foo', 'ab+', [], ['>>foo'])
+        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>foo'])
+        self._check(None, 'foo', 'ab+', ['bar'], ['bar', '>>', 'foo'])
+
+    def test_redirection_syntax_errors(self):
+        self._check('', None, None, [], ['<'])
+        self._check(None, '', 'wb+', [], ['>'])
+        self._check(None, '', 'ab+', [], ['>>'])
+        self._check('>', '', 'ab+', [], ['<', '>', '>>'])
+
+
+
 class TestScriptExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
@@ -184,6 +217,34 @@ class TestCat(script.TestCaseWithTransportAndScript):
         retcode, out, err = self.run_command(['cat', 'file', '>file2'],
                                              None, None, None)
         self.assertFileEqual('content\n', 'file2')
+
+    def test_cat_bogus_input_file(self):
+        self.run_script("""
+cat <file
+2>file: No such file or directory
+""")
+
+    def test_cat_bogus_output_file(self):
+        self.run_script("""
+cat >
+2>: No such file or directory
+""")
+
+    def test_echo_bogus_input_file(self):
+        # We need a backing file sysytem for that test so it can't be in
+        # TestEcho
+        self.run_script("""
+echo <file
+2>file: No such file or directory
+""")
+
+    def test_echo_bogus_output_file(self):
+        # We need a backing file sysytem for that test so it can't be in
+        # TestEcho
+        self.run_script("""
+echo >
+2>: No such file or directory
+""")
 
 
 class TestMkdir(script.TestCaseWithTransportAndScript):
