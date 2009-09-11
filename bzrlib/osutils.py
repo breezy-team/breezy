@@ -921,11 +921,11 @@ def report_extension_load_failures():
         return
     # the warnings framework should by default show this only once
     warnings.warn(
-        "bzr: warning: Failed to load compiled extensions: "
-        "%s\n" 
+        "bzr: warning: Failed to load compiled extensions:\n"
+        "    %s\n" 
         "    Bazaar can run, but performance may be reduced.\n"
         "    Check Bazaar is correctly installed or set ignore_missing_extensions"
-        % '\n'.join(_extension_load_failures,))
+        % '\n    '.join(_extension_load_failures,))
 
 
 try:
