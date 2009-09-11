@@ -1,0 +1,20 @@
+Miscellaneous notes
+===================
+
+.. toctree::
+   :hidden:
+
+   dirstate
+   update
+
+
+* `dirstate <dirstate.html>`_ |--| An observation re. the dirstate file
+
+* `"bzr update" performance analysis <update.html>`_ |--| "bzr update"
+  performance analysis
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai
