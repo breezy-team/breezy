@@ -96,7 +96,14 @@ class AptSource(UpstreamSource):
         else:
             apt_pkg = _apt_pkg
         apt_pkg.init()
-        sources = apt_pkg.GetPkgSrcRecords()
+
+        # Handle the case where the apt.sources file contains no source
+        # URIs (LP:375897)
+        try:
+            sources = apt_pkg.GetPkgSrcRecords()
+        except SystemError:
+            raise PackageVersionNotPresent(package, upstream_version, self)
+
         sources.Restart()
         info("Using apt to look for the upstream tarball.")
         while sources.Lookup(package):
