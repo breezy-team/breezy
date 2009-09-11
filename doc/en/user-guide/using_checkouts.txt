@@ -66,8 +66,9 @@ The ``--lightweight`` option only applies to checkouts, not to all branches.
 Note: If your code base is really large and disk space on your computer
 is limited, lightweight checkouts may be the right choice for you.
 Be sure to consider all your options though including
-`shared repositories <#a-reminder-about-shared-repositories>`_,
-`stacked branches <#using-stacked-branches>`_, and `reusing a checkout`_.
+`shared repositories <branching_a_project.html#a-reminder-about-shared-repositories>`_,
+`stacked branches <stacked.html>`_, and
+`reusing a checkout <reusing_a_checkout.html>`_.
 
 Updating to the latest content
 ------------------------------

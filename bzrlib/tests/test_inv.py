@@ -65,6 +65,14 @@ def load_tests(standard_tests, module, loader):
     return multiply_tests(to_adapt, scenarios, result)
 
 
+def create_texts_for_inv(repo, inv):
+    for path, ie in inv.iter_entries():
+        if ie.text_size:
+            lines = ['a' * ie.text_size]
+        else:
+            lines = []
+        repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
+    
 def apply_inventory_Inventory(self, basis, delta):
     """Apply delta to basis and return the result.
     
@@ -137,6 +145,7 @@ def apply_inventory_WT_basis(self, basis, delta):
             rev = revision.Revision('basis', timestamp=0, timezone=None,
                 message="", committer="foo@example.com")
             basis.revision_id = 'basis'
+            create_texts_for_inv(tree.branch.repository, basis)
             repo.add_revision('basis', rev, basis)
             # Add a revision for the result, with the basis content - 
             # update_basis_by_delta doesn't check that the delta results in
@@ -146,11 +155,10 @@ def apply_inventory_WT_basis(self, basis, delta):
                 message="", committer="foo@example.com")
             basis.revision_id = 'result'
             repo.add_revision('result', rev, basis)
+            repo.commit_write_group()
         except:
             repo.abort_write_group()
             raise
-        else:
-            repo.commit_write_group()
         # Set the basis state as the trees current state
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
@@ -221,12 +229,12 @@ def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta):
             rev = revision.Revision('basis', timestamp=0, timezone=None,
                 message="", committer="foo@example.com")
             basis.revision_id = 'basis'
+            create_texts_for_inv(repo, basis)
             repo.add_revision('basis', rev, basis)
+            repo.commit_write_group()
         except:
             repo.abort_write_group()
             raise
-        else:
-            repo.commit_write_group()
     finally:
         repo.unlock()
     repo.lock_write()
