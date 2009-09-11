@@ -97,6 +97,7 @@ the file doesn't exist:
 
 import doctest
 import errno
+import glob
 import os
 import shlex
 from cStringIO import StringIO
@@ -113,13 +114,7 @@ def split(s):
     scanner.quotes = '\'"`'
     scanner.whitespace_split = True
     for t in list(scanner):
-        # Strip the simple and double quotes since we don't care about them.
-        # We leave the backquotes in place though since they have a different
-        # semantic.
-        if t[0] in  ('"', "'") and t[0] == t[-1]:
-            yield t[1:-1]
-        else:
-            yield t
+        yield t
 
 
 def _script_to_commands(text, file_name=None):
@@ -266,6 +261,26 @@ class ScriptRunner(object):
             # output should be decently readable.
             self.test_case.assertEqualDiff(expected, actual)
 
+    def _pre_process_args(self, args):
+        new_args = []
+        for arg in args:
+            # Strip the simple and double quotes since we don't care about
+            # them.  We leave the backquotes in place though since they have a
+            # different semantic.
+            if arg[0] in  ('"', "'") and arg[0] == arg[-1]:
+                yield arg[1:-1]
+            else:
+                if glob.has_magic(arg):
+                    matches = glob.glob(arg)
+                    if matches:
+                        # We care more about order stability than performance
+                        # here
+                        matches.sort()
+                        for m in matches:
+                            yield m
+                else:
+                    yield arg
+
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
@@ -276,7 +291,8 @@ class ScriptRunner(object):
             str_input = ''
         else:
             str_input = ''.join(input)
-        retcode, actual_output, actual_error = method(str_input, cmd[1:])
+        args = list(self._pre_process_args(cmd[1:]))
+        retcode, actual_output, actual_error = method(str_input, args)
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
@@ -312,19 +328,24 @@ class ScriptRunner(object):
 
     def do_cat(self, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
-        if len(args) > 1:
-            raise SyntaxError('Usage: cat [file1]')
-        if args:
-            if in_name is not None:
-                raise SyntaxError('Specify a file OR use redirection')
-            in_name = args[0]
-        try:
-            input = self._read_input(input, in_name)
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return 1, None, '%s: No such file or directory\n' % (in_name,)
+        if args and in_name is not None:
+            raise SyntaxError('Specify a file OR use redirection')
+
+        inputs = []
+        if input:
+            inputs.append(input)
+        input_names = args
+        if in_name:
+            args.append(in_name)
+        for in_name in input_names:
+            try:
+                inputs.append(self._read_input(None, in_name))
+            except IOError, e:
+                if e.errno == errno.ENOENT:
+                    return (1, None,
+                            '%s: No such file or directory\n' % (in_name,))
         # Basically cat copy input to output
-        output = input
+        output = ''.join(inputs)
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)

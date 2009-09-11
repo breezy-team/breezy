@@ -22,7 +22,7 @@ from bzrlib import (
 from bzrlib.tests import script
 
 
-class TestScriptSyntax(tests.TestCase):
+class TestSyntax(tests.TestCase):
 
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
@@ -36,13 +36,13 @@ class TestScriptSyntax(tests.TestCase):
 
     def test_command_with_single_quoted_param(self):
         story = """bzr commit -m 'two words'"""
-        self.assertEquals([(['bzr', 'commit', '-m', 'two words'],
+        self.assertEquals([(['bzr', 'commit', '-m', "'two words'"],
                             None, None, None)],
                            script._script_to_commands(story))
 
     def test_command_with_double_quoted_param(self):
         story = """bzr commit -m "two words" """
-        self.assertEquals([(['bzr', 'commit', '-m', 'two words'],
+        self.assertEquals([(['bzr', 'commit', '-m', '"two words"'],
                             None, None, None)],
                            script._script_to_commands(story))
 
@@ -117,7 +117,7 @@ class TestRedirections(tests.TestCase):
 
 
 
-class TestScriptExecution(script.TestCaseWithTransportAndScript):
+class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
         self.assertRaises(SyntaxError, self.run_script, 'foo')
@@ -181,10 +181,34 @@ bzr branch not-a-branch
         self.run_script(story)
 
 
+class TestArgumentProcessing(script.TestCaseWithTransportAndScript):
+
+    def test_globing(self):
+        self.run_script("""
+echo cat >cat
+echo dog >dog
+cat *
+>cat
+>dog
+""")
+
+    def test_quoted_globbing(self):
+        self.run_script("""
+echo cat >cat
+cat '*'
+2>*: No such file or directory
+""")
+
+    def test_quotes_removal(self):
+        self.run_script("""
+echo 'cat' "dog" '"chicken"' "'dragon'"
+>catdog"chicken"'dragon'
+""")
+
+
 class TestCat(script.TestCaseWithTransportAndScript):
 
     def test_cat_usage(self):
-        self.assertRaises(SyntaxError, self.run_script, 'cat foo bar baz')
         self.assertRaises(SyntaxError, self.run_script, 'cat foo <bar')
 
     def test_cat_input_to_output(self):
@@ -217,6 +241,13 @@ class TestCat(script.TestCaseWithTransportAndScript):
         retcode, out, err = self.run_command(['cat', 'file', '>file2'],
                                              None, None, None)
         self.assertFileEqual('content\n', 'file2')
+
+    def test_cat_files_to_file(self):
+        self.build_tree_contents([('cat', 'cat\n')])
+        self.build_tree_contents([('dog', 'dog\n')])
+        retcode, out, err = self.run_command(['cat', 'cat', 'dog', '>file'],
+                                             None, None, None)
+        self.assertFileEqual('cat\ndog\n', 'file')
 
     def test_cat_bogus_input_file(self):
         self.run_script("""
