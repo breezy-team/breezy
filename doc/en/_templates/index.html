@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% set title = 'Table of Contents' %}
+{% block body %}
+
+  <h2>Core documentation</h2>
+
+  <table class="contentstable" align="center" style="margin-left: 30px"><tr>
+    <td width="50%">
+        <p class="biglink"><a class="biglink" href="{{ pathto("user-guide/index") }}">User Guide</a><br/>
+        <span class="linkdescr">how to use Bazaar effectively</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("tutorials/index") }}">Tutorials</a><br/>
+      <span class="linkdescr">brief introductions</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("quick-reference/index") }}">Quick Reference</a><br/>
+      <span class="linkdescr">for your wall</span>
+      </p>
+    </td><td width="50%">
+    <p class="biglink"><a class="biglink" href="{{ pathto("release-notes/index") }}">Release Notes</a><br/>
+      <span class="linkdescr">what's new</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("upgrade-guide/index") }}">Upgrade Guide</a><br/>
+      <span class="linkdescr">moving to Bazaar 2.x</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="{{ pathto("user-reference/index") }}">User Reference</a><br/>
+      <span class="linkdescr">all the gory details</span>
+      </p>
+    </td></tr>
+  </table>
+
+  <h2>Related links</h2>
+
+  <table class="contentstable" align="center" style="margin-left: 30px"><tr>
+    <td width="50%">
+        <p class="biglink"><a class="biglink" href="https://answers.launchpad.net/bzr">FAQ</a><br/>
+      <span class="linkdescr">frequently asked questions</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="http://bazaar-vcs.org/BzrGlossary/">Glossary</a><br/>
+      <span class="linkdescr">help with terminology</span>
+      </p>
+    </td><td width="50%">
+      <p class="biglink"><a class="biglink" href="http://doc.bazaar-vcs.org/migration/en/">Migration Docs</a><br/>
+      <span class="linkdescr">for refugees of other tools</span>
+      </p>
+      <p class="biglink"><a class="biglink" href="http://doc.bazaar-vcs.org/plugins/en/">Plugins Guide</a><br/>
+      <span class="linkdescr">help on popular plugins</span>
+      </p>
+    </td></tr>
+  </table>
+
+  <p>Keen to help? See the <a href="http://doc.bazaar-vcs.org/developers/">Developer Docs</a>
+      for policies and tools on contributing code, tests and documentation.</p>
+
+{% endblock %}
