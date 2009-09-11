@@ -97,12 +97,12 @@ Schedule
 
 ::
 
- 2.0 --- 2.0.1 -- 2.0.2 -- ...
+ 2.0.0 --- 2.0.1 -- 2.0.2 -- ...
   \
-   +--2.1beta1 -- 2.1beta2 -- ... -- 2.1rc1 -- 2.1 -- 2.1.1 -- ...
-                                                \
-                                                 \
-                                                  +-- 3.0beta1 ...
+   +--2.1.0beta1 -- 2.1.0beta2 -- ... -- 2.1.0rc1 -- 2.1.0 -- 2.1.1 -- ...
+                                                      \
+                                                       \
+                                                        +-- 3.0.0beta1 ...
 
 
 Starting from the date of a major release: 
@@ -144,26 +144,32 @@ Numbering
 ---------
 
 The number for a six-month cycle is chosen at the start, with an increment
-to either the first field (3.0) or second field (3.1) depending on what we
-expect to be the user impact of the release.  We expect releases that
-culminate in a new disk format or that require changes in how people use
-the tool will get a new major number.  We can change (forward only) if it
-turns out that we land larger changes than were expected.
+to either the first field (3.0.0) or second field (3.1.0) depending on
+what we expect to be the user impact of the release.  We expect releases
+that culminate in a new disk format or that require changes in how people
+use the tool will get a new major number.  We can change (forward only) if
+it turns out that we land larger changes than were expected.
+
+We will always use the 3-digit form (major.minor.micro) even when
+referring to the initial major release. This should help clarify where a
+patch is intended to land. (eg, "I propose this for 2.0.0" is clear, while
+"I propose this for 2.0" could mean you want to make the 2.0.0 release, or
+that you just want to land on the 2.0.x stable release series.)
 
 
 Terminology
 -----------
 
-Major releases (2.0 or 2.1)
+Major releases (2.0.0 or 2.1.0)
     The big ones, every six months, intended to ship in distributions and
     to be used by stability-oriented users.
 
-Release candidate (2.0rc1)
+Release candidate (2.0.0rc1)
     A preview of a major release, made one or a few weeks beforehand at
     the time the release branch is created.  There should be few if any
     changes from the rc to the stable release.  We should avoid the
-    confusing phrasing "release candidate 2.0rc1 is released"; instead use
-    "available."
+    confusing phrasing "release candidate 2.0.0rc1 is released"; instead
+    use "available."
 
 Bugfix releases (2.0.1)
     Based on the previous major release or bugfix; contains only bugfixes
@@ -175,7 +181,7 @@ Stable series
 Stable release
     Either a major release or a bugfix release.
 
-Beta release (3.0beta1)
+Beta release (3.0.0beta1)
     Made from trunk every month, except for the month there's a major
     release.  Stable and suitable for users who want the latest code and
     can live with some changes from month to month.
@@ -260,7 +266,7 @@ able to interoperate with all previous releases as at present.
 Each major release will have one recommended data format which will be the
 default.  The name of the format will indicate which release series (not
 specific release) it comes from: '2a' is the first supported format for
-the 2.0 series, '2b' the second, etc.  We don't mention the particular
+the 2.0.x series, '2b' the second, etc.  We don't mention the particular
 release that introduced it so as to avoid problems predicting precisely
 when it will land.
 
@@ -321,9 +327,10 @@ Some platforms with relatively less active packagers may choose to ship
 only the stable releases.  This is probably better than having them only
 intermittently or slowly ship the monthly releases.
 
-Binary installers should use a version number like '2.0-1' or '2.0beta1-1'
-so that the last component just reflects the packaging version, and can be
-incremented if a new installer is made with no upstream source changes.
+Binary installers should use a version number like '2.0.0-1' or
+'2.0.0beta1-1' so that the last component just reflects the packaging
+version, and can be incremented if a new installer is made with no
+upstream source changes.
 
 
 Code Freeze vs Announcement
