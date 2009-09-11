@@ -31,14 +31,8 @@ if getattr(sys, '_bzr_lazy_regex', False):
     import bzrlib.lazy_regex
     bzrlib.lazy_regex.install_lazy_compile()
 
-from bzrlib.osutils import get_user_encoding
-
 
 IGNORE_FILENAME = ".bzrignore"
-
-
-# XXX: Deprecated as of bzr-1.17 use osutils.get_user_encoding() directly
-user_encoding = get_user_encoding()
 
 
 __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
