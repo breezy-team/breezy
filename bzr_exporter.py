@@ -378,8 +378,9 @@ class BzrFastExporter(object):
                 file_cmds.append(commands.FileModifyCommand(path, 'symlink',
                     False, None, tree_new.get_symlink_target(id_)))
             elif kind == 'directory':
-                file_cmds.append(commands.FileModifyCommand(path, 'directory',
-                    False, None, None))
+                if not self.plain_format:
+                    file_cmds.append(commands.FileModifyCommand(path, 'directory',
+                        False, None, None))
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                     (path, kind))
