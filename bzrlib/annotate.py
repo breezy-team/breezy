@@ -455,5 +455,5 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
 try:
     from bzrlib._annotator_pyx import Annotator
 except ImportError, e:
-    osutils._failed_to_load_extension(e)
+    osutils.failed_to_load_extension(e)
     from bzrlib._annotator_py import Annotator

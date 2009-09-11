@@ -1386,5 +1386,5 @@ class BTreeGraphIndex(object):
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
 except ImportError, e:
-    osutils._failed_to_load_extension(e)
+    osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

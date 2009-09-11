@@ -882,7 +882,10 @@ def parent_directories(filename):
     return parents
 
 
-def _failed_to_load_extension(exception):
+_extension_load_failures = []
+
+
+def failed_to_load_extension(exception):
     """Handle failing to load a binary extension.
 
     This should be called from the ImportError block guarding the attempt to
@@ -892,33 +895,43 @@ def _failed_to_load_extension(exception):
     >>> try:
     >>>     import bzrlib._fictional_extension_pyx
     >>> except ImportError, e:
-    >>>     bzrlib.osutils._failed_to_load_extension(e)
+    >>>     bzrlib.osutils.failed_to_load_extension(e)
     >>>     import bzrlib._fictional_extension_py
     """
     # NB: This docstring is just an example, not a doctest, because doctest
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
-   
-    # We use Python warnings so you can turn this into an error etc if you
-    # want.  Although there is a mechanism to disable particular extensions
-    # it's not very easy to use or to set persistently so we have a special
-    # mechanism.
-    if os.environ.get('BZR_IGNORE_MISSING_EXTENSIONS') == '1':
+    
+    # This currently doesn't report the failure at the time it occurs, because
+    # they tend to happen very early in startup when we can't check config
+    # files etc, and also we want to report all failures but not spam the user
+    # with 10 warnings.
+    from bzrlib import trace
+    exception_str = str(exception)
+    if exception_str not in _extension_load_failures:
+        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        _extension_load_failures.append(exception_str)
+
+
+def report_extension_load_failures():
+    if not _extension_load_failures:
         return
+    from bzrlib.config import GlobalConfig
+    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+        return
+    # the warnings framework should by default show this only once
     warnings.warn(
-        "bzr: warning: Failed to load compiled extension: "
+        "bzr: warning: Failed to load compiled extensions: "
         "%s\n" 
         "    Bazaar can run, but performance may be reduced.\n"
-        "    Check Bazaar is correctly installed "
-        "(or set BZR_IGNORE_MISSING_EXTENSIONS=1)."
-        % (exception,),
-        stacklevel=2)
+        "    Check Bazaar is correctly installed or set ignore_missing_extensions"
+        % '\n'.join(_extension_load_failures,))
 
 
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
 except ImportError, e:
-    _failed_to_load_extension(e)
+    failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
 
@@ -1502,7 +1515,7 @@ def _walkdirs_utf8(top, prefix=""):
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
             except ImportError, e:
-                _failed_to_load_extension(e)
+                failed_to_load_extension(e)
                 pass
 
     if _selected_dir_reader is None:
@@ -1815,7 +1828,7 @@ def file_kind_from_stat_mode_thunk(mode):
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
         except ImportError, e:
-            _failed_to_load_extension(e)
+            failed_to_load_extension(e)
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )

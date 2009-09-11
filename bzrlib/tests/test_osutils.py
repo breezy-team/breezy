@@ -1806,21 +1806,25 @@ class TestFailedToLoadExtension(tests.TestCase):
         try:
             import bzrlib._fictional_extension_py
         except ImportError, e:
-            osutils._failed_to_load_extension(e)
+            osutils.failed_to_load_extension(e)
             return True
 
-    def test_failure_to_load(self):
-        k = 'BZR_IGNORE_MISSING_EXTENSIONS'
-        if k in os.environ:
-            del os.environ[k]
-        warnings, result = self.callCatchWarnings(self._try_loading)
-        self.assertEquals(result, True)
-        self.assertLength(1, warnings)
-        self.assertContainsRe(str(warnings[0]),
-            r".*Failed to load compiled extension: .*fictional.*")
+    def setUp(self):
+        super(TestFailedToLoadExtension, self).setUp()
+        self.saved_failures = osutils._extension_load_failures[:]
+        del osutils._extension_load_failures[:]
+        self.addCleanup(self.restore_failures)
 
-    def test_failure_to_load_ignored(self):
-        os.environ['BZR_IGNORE_MISSING_EXTENSIONS'] = '1'
-        warnings, result = self.callCatchWarnings(self._try_loading)
-        self.assertEquals(result, True)
-        self.assertLength(0, warnings)
+    def restore_failures(self):
+        osutils._extension_load_failures = self.saved_failures
+
+    def test_failure_to_load(self):
+        self._try_loading()
+        self.assertLength(1, osutils._extension_load_failures)
+        self.assertEquals(osutils._extension_load_failures[0],
+            "No module named _fictional_extension_py")
+
+    def test_report_extension_load_failures(self):
+        self.assertTrue(self._try_loading())
+        warnings, result = self.callCatchWarnings(osutils.report_extension_load_failures)
+        self.assertLength(1, warnings)
