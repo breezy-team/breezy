@@ -356,6 +356,12 @@ class cmd_builddeb(Command):
                 branch_or_build_options_list, source)
         tree, branch, is_local = self._get_tree_and_branch(branch)
         tree, working_tree = self._get_build_tree(revision, tree, branch)
+
+        if len(tree.conflicts()) > 0:
+            raise BzrCommandError(
+                "There are conflicts in the working tree. "
+                "You must resolve these before building.")
+
         tree.lock_read()
         try:
             config = debuild_config(tree, working_tree, no_user_config)
