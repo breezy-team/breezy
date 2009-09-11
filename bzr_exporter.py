@@ -417,8 +417,10 @@ class BzrFastExporter(object):
         deleted_paths = set([p for p, _, _ in deletes])
         for (oldpath, newpath, id_, kind,
                 text_modified, meta_modified) in renames:
+            emit = kind != 'directory' or not self.plain_format
             if newpath in deleted_paths:
-                file_cmds.append(commands.FileDeleteCommand(newpath))
+                if emit:
+                    file_cmds.append(commands.FileDeleteCommand(newpath))
                 deleted_paths.remove(newpath)
             if (self.is_empty_dir(tree_old, oldpath)):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
@@ -428,7 +430,8 @@ class BzrFastExporter(object):
             #    revision_id)
             renamed.append([oldpath, newpath])
             old_to_new[oldpath] = newpath
-            file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
+            if emit:
+                file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
             if text_modified or meta_modified:
                 modifies.append((newpath, id_, kind))
 
@@ -436,6 +439,8 @@ class BzrFastExporter(object):
             # Note: changes_from() doesn't handle this
             if kind == 'directory':
                 for p, e in tree_old.inventory.iter_entries_by_dir(from_dir=id_):
+                    if e.kind == 'directory' and self.plain_format:
+                        continue
                     old_child_path = osutils.pathjoin(oldpath, p)
                     new_child_path = osutils.pathjoin(newpath, p)
                     must_be_renamed[old_child_path] = new_child_path
@@ -455,6 +460,8 @@ class BzrFastExporter(object):
         # Record remaining deletes
         for path, id_, kind in deletes:
             if path not in deleted_paths:
+                continue
+            if kind == 'directory' and self.plain_format:
                 continue
             #path = self._adjust_path_for_renames(path, renamed, revision_id)
             file_cmds.append(commands.FileDeleteCommand(path))
