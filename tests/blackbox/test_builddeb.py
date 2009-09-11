@@ -109,7 +109,7 @@ class TestBuilddeb(BuilddebTestCase):
     (conflicts, tree) = self.build_tree_with_conflict()
     self.assertTrue(conflicts > 0)
     self.run_bzr_error(
-      ['There are conflicts in the working tree. You must resolve these before building.'],
+      ['There are conflicts in the working tree. You must resolve these'],
       "builddeb --no-user-conf --native --builder true --dont-purge")
 
   def test_builddeb_uses_revision_when_told(self):
