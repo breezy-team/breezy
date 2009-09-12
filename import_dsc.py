@@ -308,7 +308,7 @@ def open_transport(path):
   return (path, transport)
 
 
-def get_file_via_transport(file, transport):
+def open_file_via_transport(file, transport):
   """Open a file using the transport, follow redirects as necessary."""
   try:
     result = transport.get(file)
