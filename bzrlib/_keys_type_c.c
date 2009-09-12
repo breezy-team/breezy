@@ -192,45 +192,24 @@ Key_hash(Key *self)
 }
 
 static PyObject *
-Key_richcompare_to_tuple(PyObject *v, PyObject *w, int op)
+Key_richcompare_to_tuple(Key *v, PyObject *wt, int op)
 {
-    PyObject *vt, *wt;
-    PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
+    PyObject *vt;
     PyObject *result = NULL;
     
-    if (Key_CheckExact(v)) {
-        vt = Key_as_tuple((Key *)v);
-        if (vt == NULL) {
-            goto Done;
-        }
-        vt_to_decref = vt;
-    } else if (PyTuple_Check(v)) {
-        vt = v;
-        vt_to_decref = NULL;
-    } else {
-        Py_INCREF(Py_NotImplemented);
-        result = Py_NotImplemented;
+    vt = Key_as_tuple((Key *)v);
+    if (vt == NULL) {
         goto Done;
     }
-    if (Key_CheckExact(w)) {
-        wt = Key_as_tuple((Key *)w);
-        if (wt == NULL) {
-            goto Done;
-        }
-        wt_to_decref = wt;
-    } else if (PyTuple_Check(w)) {
-        wt = w;
-        wt_to_decref = NULL;
-    } else {
-        Py_INCREF(Py_NotImplemented);
-        result = Py_NotImplemented;
+    if (!PyTuple_Check(wt)) {
+        PyErr_BadInternalCall();
+        result = NULL;
         goto Done;
     }
     /* Now we have 2 tuples to compare, do it */
     result = PyTuple_Type.tp_richcompare(vt, wt, op);
 Done:
-    Py_XDECREF(vt_to_decref);
-    Py_XDECREF(wt_to_decref);
+    Py_XDECREF(vt);
     return result;
 }
 
@@ -242,17 +221,29 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
     Py_ssize_t vlen, wlen, min_len, i;
     richcmpfunc string_richcompare;
 
-    if (PyTuple_Check(v) || PyTuple_Check(w)) {
+    if (!Key_CheckExact(v)) {
+        /* This has never triggered */
+        fprintf(stderr, "self is tuple\n");
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    vk = (Key *)v;
+    if (PyTuple_Check(w)) {
         /* One of v or w is a tuple, so we go the 'slow' route and cast up to
          * tuples to compare.
          */
-        return Key_richcompare_to_tuple(v, w, op);
+        /* TODO: This seems to be triggering more than I thought it would...
+         *       We probably want to optimize comparing self to other when
+         *       other is a tuple.
+         */
+        return Key_richcompare_to_tuple(vk, w, op);
     }
-    if (!Key_CheckExact(v) || !Key_CheckExact(w)) {
+    if (!Key_CheckExact(w)) {
         /* Both are not Key objects, and they aren't Tuple objects or the
          * previous path would have been taken. We don't support comparing with
          * anything else.
          */
+         fprintf(stderr, "not comparing to key: %s\n", Py_TYPE(w)->tp_name);
          Py_INCREF(Py_NotImplemented);
          return Py_NotImplemented;
     }
@@ -271,7 +262,6 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
             return Py_False;
 		}
     }
-    vk = (Key*)v;
     wk = (Key*)w;
 
     /* It will be rare that we compare tuples of different lengths, so we don't
