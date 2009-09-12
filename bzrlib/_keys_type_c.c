@@ -39,6 +39,7 @@
  */
 typedef struct {
     PyObject_VAR_HEAD
+    long hash;
     PyStringObject *key_bits[1];
 } Key;
 extern PyTypeObject KeyType;
@@ -122,6 +123,7 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
+    self->hash = -1;
     self->ob_size = len;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
@@ -155,16 +157,38 @@ Key_repr(Key *self)
 static long
 Key_hash(Key *self)
 {
-    PyObject *as_tuple = NULL;
-    long hash = -1;
+    /* adapted from tuplehash(), is the specific hash value considered
+     * 'stable'?
+     */
+	register long x, y;
+	Py_ssize_t len = self->ob_size;
+	PyStringObject **p;
+    hashfunc string_hash;
+	long mult = 1000003L;
 
-    as_tuple = Key_as_tuple(self);
-    if (as_tuple == NULL) {
-        return -1;
+    if (self->hash != -1) {
+        return self->hash;
     }
-    hash = PyTuple_Type.tp_hash(as_tuple);
-    Py_DECREF(as_tuple);
-    return hash;
+	x = 0x345678L;
+	p = self->key_bits;
+    string_hash = PyString_Type.tp_hash;
+	while (--len >= 0) {
+        y = (*p)->ob_shash;
+        if (y == -1) { /* not computed yet */
+            y = string_hash((PyObject *)(*p));
+        }
+		if (y == -1) /* failure */
+			return -1;
+		x = (x ^ y) * mult;
+		/* the cast might truncate len; that doesn't change hash stability */
+		mult += (long)(82520L + len + len);
+        p++;
+	}
+	x += 97531L;
+	if (x == -1)
+		x = -2;
+    self->hash = x;
+	return x;
 }
 
 static PyObject *
@@ -759,7 +783,7 @@ static PyTypeObject KeysType = {
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
     Keys_doc,                                    /* tp_doc */
     /* See Key_traverse for why we have this, even though we aren't GC */
-    Keys_traverse,                               /* tp_traverse */
+    (traverseproc)Keys_traverse,                 /* tp_traverse */
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another Keys object.
