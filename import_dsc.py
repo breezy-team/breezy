@@ -337,6 +337,9 @@ class DscCache(object):
         f1 = transport.get(path)
       except RedirectRequested, e:
         mutter("obtaining dsc file, redirected to: %s" % e.target)
+        # Despite the redirection we'll hold on to the original transport
+        # (for caching purposes) because the latter will be used to obtain
+        # the other files comprising the package.
         path, redirected_transport = open_transport(e.target)
         f1 = redirected_transport.get(path)
       try:
