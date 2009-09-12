@@ -51,9 +51,10 @@ from bzrlib import (
                     )
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (
+        AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
-        AlreadyBranchError,
+        RedirectRequested,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
@@ -300,19 +301,23 @@ def import_archive(tree, archive_file, file_ids_from=None):
     tt.apply()
 
 
-def open_file(path, transport, base_dir=None):
-  """Open a file, possibly over a transport.
+def open_transport(path):
+  """Obtain an appropriate transport instance for the given path."""
+  base_dir, path = urlutils.split(path)
+  transport = get_transport(base_dir)
+  return (path, transport)
 
-  Open the named path, using the transport if not None. If the transport and
-  base_dir are not None, then path will be interpreted relative to base_dir.
-  """
-  if transport is None:
-    base_dir, path = urlutils.split(path)
-    transport = get_transport(base_dir)
-  else:
-    if base_dir is not None:
-      path = urlutils.join(base_dir, path)
-  return (transport.get(path), transport)
+
+def get_file_via_transport(file, transport):
+  """Open a file using the transport, follow redirects as necessary."""
+  try:
+    result = transport.get(file)
+  except RedirectRequested, e:
+    mutter("redirected to: %s" % e.target)
+    path, transport = open_transport(e.target)
+    result = transport.get(file)
+
+  return result
 
 
 class DscCache(object):
@@ -326,13 +331,21 @@ class DscCache(object):
     if name in self.cache:
       dsc1 = self.cache[name]
     else:
-      (f1, transport) = open_file(name, self.transport)
+      # Obtain the dsc file, following any redirects as needed.
+      path, transport = open_transport(name)
+      try:
+        f1 = transport.get(path)
+      except RedirectRequested, e:
+        mutter("obtaining dsc file, redirected to: %s" % e.target)
+        path, redirected_transport = open_transport(e.target)
+        f1 = redirected_transport.get(path)
       try:
         dsc1 = deb822.Dsc(f1)
       finally:
         f1.close()
       self.cache[name] = dsc1
       self.transport_cache[name] = transport
+
     return dsc1
 
   def get_transport(self, name):
