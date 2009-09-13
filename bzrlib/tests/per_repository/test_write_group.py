@@ -28,9 +28,8 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.branch import BzrBranchFormat7
-from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import KnownFailure, TestNotApplicable
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 

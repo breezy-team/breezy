@@ -1518,10 +1518,10 @@ class KnitVersionedFiles(VersionedFiles):
                 if source is parent_maps[0]:
                     # this KnitVersionedFiles
                     records = [(key, positions[key][1]) for key in keys]
-                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                    for key, raw_data in self._read_records_iter_unchecked(records):
                         (record_details, index_memo, _) = positions[key]
                         yield KnitContentFactory(key, global_map[key],
-                            record_details, sha1, raw_data, self._factory.annotated, None)
+                            record_details, None, raw_data, self._factory.annotated, None)
                 else:
                     vf = self._fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
@@ -1596,6 +1596,13 @@ class KnitVersionedFiles(VersionedFiles):
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
+            kind = record.storage_kind
+            if kind.startswith('knit-') and kind.endswith('-gz'):
+                # Check that the ID in the header of the raw knit bytes matches
+                # the record metadata.
+                raw_data = record._raw_record
+                df, rec = self._parse_record_header(record.key, raw_data)
+                df.close()
             buffered = False
             parents = record.parents
             if record.storage_kind in delta_types:
@@ -2777,9 +2784,20 @@ class _KndxIndex(object):
 
 class _KeyRefs(object):
 
-    def __init__(self):
+    def __init__(self, track_new_keys=False):
         # dict mapping 'key' to 'set of keys referring to that key'
         self.refs = {}
+        if track_new_keys:
+            # set remembering all new keys
+            self.new_keys = set()
+        else:
+            self.new_keys = None
+
+    def clear(self):
+        if self.refs:
+            self.refs.clear()
+        if self.new_keys:
+            self.new_keys.clear()
 
     def add_references(self, key, refs):
         # Record the new references
@@ -2792,19 +2810,28 @@ class _KeyRefs(object):
         # Discard references satisfied by the new key
         self.add_key(key)
 
+    def get_new_keys(self):
+        return self.new_keys
+    
     def get_unsatisfied_refs(self):
         return self.refs.iterkeys()
 
-    def add_key(self, key):
+    def _satisfy_refs_for_key(self, key):
         try:
             del self.refs[key]
         except KeyError:
             # No keys depended on this key.  That's ok.
             pass
 
-    def add_keys(self, keys):
+    def add_key(self, key):
+        # satisfy refs for key, and remember that we've seen this key.
+        self._satisfy_refs_for_key(key)
+        if self.new_keys is not None:
+            self.new_keys.add(key)
+
+    def satisfy_refs_for_keys(self, keys):
         for key in keys:
-            self.add_key(key)
+            self._satisfy_refs_for_key(key)
 
     def get_referrers(self):
         result = set()
@@ -2972,7 +2999,7 @@ class _KnitGraphIndex(object):
         # If updating this, you should also update
         # groupcompress._GCGraphIndex.get_missing_parents
         # We may have false positives, so filter those out.
-        self._key_dependencies.add_keys(
+        self._key_dependencies.satisfy_refs_for_keys(
             self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 

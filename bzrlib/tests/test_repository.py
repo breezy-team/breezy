@@ -705,6 +705,28 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         # versions of the file.
         self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
 
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
+
     def test_format_pack_compresses_True(self):
         repo = self.make_repository('repo', format='2a')
         self.assertTrue(repo._format.pack_compresses)
@@ -986,6 +1008,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             inv = inventory.Inventory(revision_id='rev1a')
             inv.root.revision = 'rev1a'
             self.add_file(repo, inv, 'file1', 'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
             repo.add_inventory('rev1a', inv, [])
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
@@ -1026,6 +1049,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
         inv.root.revision = revision_id
+        repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
