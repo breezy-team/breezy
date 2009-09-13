@@ -15,7 +15,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include <Python.h>
+#include "_keys_type_c.h"
 
 #include "python-compat.h"
 
@@ -28,41 +28,10 @@
 #endif
 
 
-/* This defines a single variable-width key.
- * It is basically the same as a tuple, but
- * 1) Lighter weight in memory
- * 2) Only supports strings.
- * It is mostly used as a helper. Note that Keys() is a similar structure for
- * lists of Key objects. Its main advantage, though, is that it inlines all of
- * the Key objects so that you have 1 python object overhead for N Keys, rather
- * than N objects.
- */
-typedef struct {
-    PyObject_VAR_HEAD
-    long hash;
-    PyStringObject *key_bits[1];
-} Key;
-extern PyTypeObject KeyType;
-
-/* Because of object alignment, it seems that using unsigned char doesn't make
- * things any smaller than using an 'int'... :(
- * Perhaps we should use the high bits for extra flags?
- */
-typedef struct {
-    PyObject_HEAD
-    // unsigned char key_width;
-    // unsigned char num_keys;
-    // unsigned char flags; /* not used yet */
-    unsigned int info; /* Broken down into 4 1-byte fields */
-    PyStringObject *key_bits[1]; /* key_width * num_keys entries */
-} Keys;
-
-/* Forward declaration */
-extern PyTypeObject KeysType;
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 
 
-#define Key_CheckExact(op) (Py_TYPE(op) == &KeyType)
+#define Key_CheckExact(op) (Py_TYPE(op) == &Key_Type)
 
 static PyObject *
 Key_as_tuple(Key *self)
@@ -97,6 +66,26 @@ Key_dealloc(Key *self)
 }
 
 
+/* Similar to PyTuple_New() */
+PyObject *
+Key_New(Py_ssize_t size)
+{
+    Key *key;
+    if (size < 0) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+
+    key = PyObject_NewVar(Key, &Key_Type, size);
+    if (key == NULL) {
+        return NULL;
+    }
+    memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
+    key->hash = -1;
+    return (PyObject *)key;
+}
+
+
 static PyObject *
 Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -104,7 +93,7 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *obj = NULL;
     Py_ssize_t i, len = 0;
 
-    if (type != &KeyType) {
+    if (type != &Key_Type) {
         PyErr_SetString(PyExc_TypeError, "we only support creating Key");
         return NULL;
     }
@@ -187,6 +176,11 @@ Key_hash(Key *self)
 	x += 97531L;
 	if (x == -1)
 		x = -2;
+    if (self->hash != -1) {
+        if (self->hash != x) {
+            fprintf(stderr, "hash changed: %d => %d\n", self->hash, x);
+        }
+    }
     self->hash = x;
 	return x;
 }
@@ -401,7 +395,7 @@ static PySequenceMethods Key_as_sequence = {
     0,                              /* sq_contains */
 };
 
-static PyTypeObject KeyType = {
+static PyTypeObject Key_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "Key",                                       /* tp_name */
@@ -478,7 +472,7 @@ Keys_get_flags(Keys *self)
     return (int)((self->info >> 24) & 0xFF);
 }
 
-#define Keys_CheckExact(op) (Py_TYPE(op) == &KeysType)
+#define Keys_CheckExact(op) (Py_TYPE(op) == &Keys_Type)
 
 static void
 Keys_dealloc(Keys *self)
@@ -511,7 +505,7 @@ Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *obj= NULL;
     Keys *self;
 
-    if (type != &KeysType) {
+    if (type != &Keys_Type) {
         PyErr_SetString(PyExc_TypeError, "we only support creating Keys");
         return NULL;
     }
@@ -708,15 +702,16 @@ Keys_item(Keys *self, Py_ssize_t offset)
 {
     long start, i;
     int key_width;
-    PyObject *tpl, *obj;
+    PyObject *obj;
+    Key *key;
 
     if (offset < 0 || offset >= Keys_get_num_keys(self)) {
         PyErr_SetString(PyExc_IndexError, "Keys index out of range");
         return NULL;
     }
     key_width = Keys_get_key_width(self);
-    tpl = PyTuple_New(key_width);
-    if (!tpl) {
+    key = (Key *)Key_New(key_width);
+    if (!key) {
         /* Malloc failure */
         return NULL;
     }
@@ -724,9 +719,9 @@ Keys_item(Keys *self, Py_ssize_t offset)
     for (i = 0; i < key_width; ++i) {
         obj = (PyObject *)self->key_bits[start + i];
         Py_INCREF(obj);
-        PyTuple_SET_ITEM(tpl, i, obj);
+        key->key_bits[i] = (PyStringObject *)obj;
     }
-    return tpl;
+    return (PyObject *)key;
 }
 
 
@@ -748,7 +743,7 @@ static PySequenceMethods Keys_as_sequence = {
     0,                              /* sq_contains */
 };
 
-static PyTypeObject KeysType = {
+static PyTypeObject Keys_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "Keys",                                      /* tp_name */
@@ -807,9 +802,9 @@ init_keys_type_c(void)
 {
     PyObject* m;
 
-    if (PyType_Ready(&KeyType) < 0)
+    if (PyType_Ready(&Key_Type) < 0)
         return;
-    if (PyType_Ready(&KeysType) < 0)
+    if (PyType_Ready(&Keys_Type) < 0)
         return;
 
     m = Py_InitModule3("_keys_type_c", keys_type_c_methods,
@@ -817,8 +812,8 @@ init_keys_type_c(void)
     if (m == NULL)
       return;
 
-    Py_INCREF(&KeyType);
-    PyModule_AddObject(m, "Key", (PyObject *)&KeyType);
-    Py_INCREF(&KeysType);
-    PyModule_AddObject(m, "Keys", (PyObject *)&KeysType);
+    Py_INCREF(&Key_Type);
+    PyModule_AddObject(m, "Key", (PyObject *)&Key_Type);
+    Py_INCREF(&Keys_Type);
+    PyModule_AddObject(m, "Keys", (PyObject *)&Keys_Type);
 }
