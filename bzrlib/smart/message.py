@@ -134,7 +134,7 @@ class ConventionalRequestHandler(MessageHandler):
 
     def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(args[0], args[1:])
+        self.request_handler.args_received(args)
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
