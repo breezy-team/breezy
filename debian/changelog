@@ -8,6 +8,19 @@ bzr-builddeb (2.2~ubuntu3) UNRELEASED; urgency=low
   * Merge merge-package command from Muharem Hrnjadovic to allow merging
     another branch of the same package in a way that will avoid spurious
     conflicts from divergent upstream histories. Thanks Muharem.
+  * Don't crash on merge-upstream due to API changes not being fully applied.
+  * Add plugin information as parsed by "bzr plugin-info".
+  * Improve the error when the upstream tag is missing during merge-upstream.
+  * Also query the config file for the revision to use in export-upstream
+    (LP: #415572)
+  * Don't populate the commit message editor with all lines added to
+    debian/changelog. Only use the stripped version of the "change" lines.
+  * Always use the date from debian/changelog during import-dsc. Thanks
+    Sveinung Kvilhaugsvik.
+  * pristine-tar errors are no longer fatal for building the package.
+    Thanks Muharem. (LP: #417153)
+  * Refuse to build a conflicted tree. Thanks Muharem. (LP: #381303)
+  * Don't crash if there are no deb-src lines when building. (LP: #375897)
 
  -- James Westby <james.westby@ubuntu.com>  Sun, 26 Jul 2009 18:38:47 +0200
 
