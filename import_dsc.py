@@ -62,7 +62,10 @@ from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 
 from bzrlib.plugins.bzrtools.upstream_import import (
                                                      names_of_files,
@@ -308,15 +311,18 @@ def open_transport(path):
   return (path, transport)
 
 
-def open_file_via_transport(file, transport):
+def open_file_via_transport(filename, transport):
   """Open a file using the transport, follow redirects as necessary."""
-  try:
-    result = transport.get(file)
-  except RedirectRequested, e:
-    mutter("redirected to: %s" % e.target)
-    path, transport = open_transport(e.target)
-    result = transport.get(file)
+  def open_file(transport):
+    return transport.get(filename)
+  def follow_redirection(transport, e, redirection_notice):
+    mutter(redirection_notice)
+    _filename, redirected_transport = open_transport(e.target)
+    return redirected_transport
 
+  result = do_catching_redirections(open_file, transport, follow_redirection)
+  import pdb
+  pdb.set_trace()
   return result
 
 
@@ -328,20 +334,13 @@ class DscCache(object):
     self.transport = transport
 
   def get_dsc(self, name):
+
     if name in self.cache:
       dsc1 = self.cache[name]
     else:
       # Obtain the dsc file, following any redirects as needed.
-      path, transport = open_transport(name)
-      try:
-        f1 = transport.get(path)
-      except RedirectRequested, e:
-        mutter("obtaining dsc file, redirected to: %s" % e.target)
-        # Despite the redirection we'll hold on to the original transport
-        # (for caching purposes) because the latter will be used to obtain
-        # the other files comprising the package.
-        path, redirected_transport = open_transport(e.target)
-        f1 = redirected_transport.get(path)
+      filename, transport = open_transport(name)
+      f1 = open_file_via_transport(filename, transport)
       try:
         dsc1 = deb822.Dsc(f1)
       finally:
