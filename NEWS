@@ -7,6 +7,8 @@
   * Better error message when Dulwich is missing. (#427276)
 
   * Support checkouts. (#427310)
+  
+  * Don't break "bzr info -v" when Dulwich is not installed. (#429394)
 
  FEATURES
 

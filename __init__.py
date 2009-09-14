@@ -117,6 +117,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
+        lazy_check_versions()
         import dulwich
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
@@ -144,6 +145,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         if not transport.has(".git") and not transport.has("objects"):
             raise bzr_errors.NotBranchError(path=transport.base)
 
+        lazy_check_versions()
         import dulwich
         format = klass()
         try:
@@ -167,6 +169,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 "Can't create Git Repositories/branches on "
                 "non-local transports")
 
+        lazy_check_versions()
         from dulwich.repo import Repo
         Repo.create(transport.local_abspath(".").encode(osutils._fs_enc)) 
         return self.open(transport)
