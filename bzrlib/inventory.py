@@ -260,7 +260,7 @@ class InventoryEntry(object):
     def versionable_kind(kind):
         return (kind in ('file', 'directory', 'symlink', 'tree-reference'))
 
-    def check(self, checker, rev_id, inv, tree):
+    def check(self, checker, rev_id, inv):
         """Check this inventory entry is intact.
 
         This is a template method, override _check for kind specific
@@ -272,18 +272,18 @@ class InventoryEntry(object):
         :param rev_id: Revision id from which this InventoryEntry was loaded.
              Not necessarily the last-changed revision for this file.
         :param inv: Inventory from which the entry was loaded.
-        :param tree: RevisionTree for this entry.
         """
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
                 raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
                         % (self.parent_id, rev_id))
-        self._check(checker, rev_id, tree)
+        checker._add_entry_to_text_key_references(inv, self)
+        self._check(checker, rev_id)
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """Check this inventory entry for kind specific errors."""
-        raise BzrCheckError('unknown entry kind %r in revision {%s}' %
-                            (self.kind, rev_id))
+        checker._report_items.append(
+            'unknown entry kind %r in revision {%s}' % (self.kind, rev_id))
 
     def copy(self):
         """Clone this inventory entry."""
@@ -402,7 +402,7 @@ class RootEntry(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """See InventoryEntry._check"""
 
     def __init__(self, file_id):
@@ -431,11 +431,22 @@ class InventoryDirectory(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, rev_id):
         """See InventoryEntry._check"""
-        if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
-            raise BzrCheckError('directory {%s} has text in revision {%s}'
+        if (self.text_sha1 is not None or self.text_size is not None or
+            self.text_id is not None):
+            checker._report_items.append('directory {%s} has text in revision {%s}'
                                 % (self.file_id, rev_id))
+        # In non rich root repositories we do not expect a file graph for the
+        # root.
+        if self.name == '' and not checker.rich_roots:
+            return
+        # Directories are stored as an empty file, but the file should exist
+        # to provide a per-fileid log. The hash of every directory content is
+        # "da..." below (the sha1sum of '').
+        checker.add_pending_item(rev_id,
+            ('texts', self.file_id, self.revision), 'text',
+             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryDirectory(self.file_id, self.name, self.parent_id)
@@ -474,27 +485,16 @@ class InventoryFile(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, tree_revision_id, tree):
+    def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
-        key = (self.file_id, self.revision)
-        if key in checker.checked_texts:
-            prev_sha = checker.checked_texts[key]
-            if prev_sha != self.text_sha1:
-                raise BzrCheckError(
-                    'mismatched sha1 on {%s} in {%s} (%s != %s) %r' %
-                    (self.file_id, tree_revision_id, prev_sha, self.text_sha1,
-                     t))
-            else:
-                checker.repeated_text_cnt += 1
-                return
-
-        checker.checked_text_cnt += 1
-        # We can't check the length, because Weave doesn't store that
-        # information, and the whole point of looking at the weave's
-        # sha1sum is that we don't have to extract the text.
-        if (self.text_sha1 != tree._repository.texts.get_sha1s([key])[key]):
-            raise BzrCheckError('text {%s} version {%s} wrong sha1' % key)
-        checker.checked_texts[key] = self.text_sha1
+        # TODO: check size too.
+        checker.add_pending_item(tree_revision_id,
+            ('texts', self.file_id, self.revision), 'text',
+             self.text_sha1)
+        if self.text_size is None:
+            checker._report_items.append(
+                'fileid {%s} in {%s} has None for text_size' % (self.file_id,
+                tree_revision_id))
 
     def copy(self):
         other = InventoryFile(self.file_id, self.name, self.parent_id)
@@ -598,14 +598,20 @@ class InventoryLink(InventoryEntry):
                  'text_id', 'parent_id', 'children', 'executable',
                  'revision', 'symlink_target', 'reference_revision']
 
-    def _check(self, checker, rev_id, tree):
+    def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
         if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
-            raise BzrCheckError('symlink {%s} has text in revision {%s}'
-                    % (self.file_id, rev_id))
+            checker._report_items.append(
+               'symlink {%s} has text in revision {%s}'
+                    % (self.file_id, tree_revision_id))
         if self.symlink_target is None:
-            raise BzrCheckError('symlink {%s} has no target in revision {%s}'
-                    % (self.file_id, rev_id))
+            checker._report_items.append(
+                'symlink {%s} has no target in revision {%s}'
+                    % (self.file_id, tree_revision_id))
+        # Symlinks are stored as ''
+        checker.add_pending_item(tree_revision_id,
+            ('texts', self.file_id, self.revision), 'text',
+             'da39a3ee5e6b4b0d3255bfef95601890afd80709')
 
     def copy(self):
         other = InventoryLink(self.file_id, self.name, self.parent_id)
@@ -743,6 +749,9 @@ class CommonInventory(object):
         """
         return self.has_id(file_id)
 
+    def has_filename(self, filename):
+        return bool(self.path2id(filename))
+
     def id2path(self, file_id):
         """Return as a string the path to file_id.
 
@@ -751,6 +760,8 @@ class CommonInventory(object):
         >>> e = i.add(InventoryFile('foo-id', 'foo.c', parent_id='src-id'))
         >>> print i.id2path('foo-id')
         src/foo.c
+
+        :raises NoSuchId: If file_id is not present in the inventory.
         """
         # get all names, skipping root
         return '/'.join(reversed(
@@ -1362,9 +1373,6 @@ class Inventory(CommonInventory):
                 raise errors.NoSuchId(tree=None, file_id=file_id)
             yield ie
             file_id = ie.parent_id
-
-    def has_filename(self, filename):
-        return bool(self.path2id(filename))
 
     def has_id(self, file_id):
         return (file_id in self._byid)

@@ -23,6 +23,7 @@ from bzrlib import (
     branch,
     builtins,
     bzrdir,
+    check,
     debug,
     errors,
     push,
@@ -224,7 +225,7 @@ class TestPush(TestCaseWithBranch):
         # fulltext record for f-id @ rev-1, then this will fail.
         remote_branch = Branch.open(self.get_url('remote'))
         trunk.push(remote_branch)
-        remote_branch.check()
+        check.check_dwim(remote_branch.base, False, True, True)
 
     def test_no_get_parent_map_after_insert_stream(self):
         # Effort test for bug 331823
@@ -260,14 +261,15 @@ class TestPush(TestCaseWithBranch):
         self.assertFalse(local.is_locked())
         local.push(remote)
         hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream' in hpss_call_names)
-        insert_stream_idx = hpss_call_names.index('Repository.insert_stream')
+        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
+        insert_stream_idx = hpss_call_names.index(
+            'Repository.insert_stream_1.19')
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
         self.assertEqual(
-            ['Repository.insert_stream', 'Repository.insert_stream', 'get',
-             'Branch.set_last_revision_info', 'Branch.unlock'],
+            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
+             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
             calls_after_insert_stream)
 
     def disableOptimisticGetParentMap(self):
@@ -392,8 +394,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Make two empty branches, 'empty' and 'target'.
         self.empty_branch = self.make_branch('empty')
         self.make_branch('target')

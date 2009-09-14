@@ -26,6 +26,7 @@ import sys
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     lockdir,
     osutils,
@@ -38,7 +39,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -1255,7 +1255,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # repository is the same as the external location of the stacked-on
         # branch.
         balloon = self.make_bzrdir('balloon')
-        if isinstance(balloon, bzrdir.BzrDirMetaFormat1):
+        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
@@ -1738,8 +1738,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
-                         False)
+            check.check_dwim(self.get_url('.'), False, True, True)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')

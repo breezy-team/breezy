@@ -102,7 +102,7 @@ class Store(object):
 
         :param other: Another Store object
         :param ids: A list of entry ids to be copied
-        :param pb: A ProgressBar object, if none is given, the default will be created.
+        :param pb: A ProgressTask object, if none is given, the default will be created.
         :param permit_failure: Allow missing entries to be ignored
         :return: (n_copied, [failed]) The number of entries copied successfully,
             followed by a list of entries which could not be copied (because they

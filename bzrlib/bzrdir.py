@@ -77,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -128,9 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -1384,6 +1392,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -1630,6 +1641,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
+        # XXX: this shouldn't implicitly create the directory if it's just
+        # promising to get a transport -- mbp 20090727
         if branch_format is None:
             return self.transport.clone('branch')
         try:
@@ -3033,7 +3046,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
@@ -3542,6 +3556,10 @@ class RepositoryAcquisitionPolicy(object):
             if self._require_stacking:
                 raise
 
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
+
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
         if self._stack_on is None:
@@ -3854,11 +3872,11 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
-    )
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')

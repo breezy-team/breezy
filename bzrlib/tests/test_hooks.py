@@ -80,7 +80,6 @@ class TestHooks(TestCase):
             "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.4\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked after the tip of a branch changes. Called with a\n"
             "ChangeBranchTipParams object.\n"
@@ -89,7 +88,6 @@ class TestHooks(TestCase):
             "~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.6\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked before the tip of a branch changes. Called with a\n"
             "ChangeBranchTipParams object. Hooks should raise TipChangeRejected to\n"
@@ -133,7 +131,6 @@ class TestHook(TestCase):
             "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 0.15\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked after changing the tip of a branch object. Called with a\n"
             "bzrlib.branch.PostChangeBranchTipParams object\n", hook.docs())

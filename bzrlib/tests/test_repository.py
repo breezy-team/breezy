@@ -486,6 +486,8 @@ class DummyRepository(object):
     _serializer = None
 
     def supports_rich_root(self):
+        if self._format is not None:
+            return self._format.rich_root_data
         return False
 
     def get_graph(self):
@@ -542,11 +544,17 @@ class TestInterRepository(TestCaseWithTransport):
         # pair that it returns true on for the is_compatible static method
         # check
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
         repo = self.make_repository('.')
         # hack dummies to look like repo somewhat.
         dummy_a._serializer = repo._serializer
+        dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_a._format.rich_root_data = repo._format.rich_root_data
         dummy_b._serializer = repo._serializer
+        dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
+        dummy_b._format.rich_root_data = repo._format.rich_root_data
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -673,15 +681,62 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class Test2a(TestCaseWithTransport):
+class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
 
     def test_format_pack_compresses_True(self):
         repo = self.make_repository('repo', format='2a')
         self.assertTrue(repo._format.pack_compresses)
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="2a")
+        tree = self.make_branch_and_memory_tree('repo', format="2a")
+        tree.lock_write()
+        tree.add([''], ['TREE_ROOT'])
         revid = tree.commit("foo")
+        tree.unlock()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         inv = tree.branch.repository.get_inventory(revid)
@@ -696,12 +751,19 @@ class Test2a(TestCaseWithTransport):
         # at 20 unchanged commits, chk pages are packed that are split into
         # two groups such that the new pack being made doesn't have all its
         # pages in the source packs (though they are in the repository).
-        tree = self.make_branch_and_tree('tree', format='2a')
+        # Use a memory backed repository, we don't need to hit disk for this
+        tree = self.make_branch_and_memory_tree('tree', format='2a')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
         for pos in range(20):
             tree.commit(str(pos))
 
     def test_pack_with_hint(self):
-        tree = self.make_branch_and_tree('tree', format='2a')
+        tree = self.make_branch_and_memory_tree('tree', format='2a')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
         # 1 commit to leave untouched
         tree.commit('1')
         to_keep = tree.branch.repository._pack_collection.names()
@@ -946,6 +1008,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             inv = inventory.Inventory(revision_id='rev1a')
             inv.root.revision = 'rev1a'
             self.add_file(repo, inv, 'file1', 'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
             repo.add_inventory('rev1a', inv, [])
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
@@ -986,6 +1049,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
         inv.root.revision = revision_id
+        repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',
@@ -1008,14 +1072,17 @@ class TestWithBrokenRepo(TestCaseWithTransport):
         """
         broken_repo = self.make_broken_repository()
         empty_repo = self.make_repository('empty-repo')
-        # See bug https://bugs.launchpad.net/bzr/+bug/389141 for information
-        # about why this was turned into expectFailure
-        self.expectFailure('new Stream fetch fills in missing compression'
-           ' parents (bug #389141)',
-           self.assertRaises, (errors.RevisionNotPresent, errors.BzrCheckError),
-                              empty_repo.fetch, broken_repo)
-        self.assertRaises((errors.RevisionNotPresent, errors.BzrCheckError),
-                          empty_repo.fetch, broken_repo)
+        try:
+            empty_repo.fetch(broken_repo)
+        except (errors.RevisionNotPresent, errors.BzrCheckError):
+            # Test successful: compression parent not being copied leads to
+            # error.
+            return
+        empty_repo.lock_read()
+        self.addCleanup(empty_repo.unlock)
+        text = empty_repo.texts.get_record_stream(
+            [('file2-id', 'rev3')], 'topological', True).next()
+        self.assertEqual('line\n', text.get_bytes_as('fulltext'))
 
 
 class TestRepositoryPackCollection(TestCaseWithTransport):
@@ -1030,7 +1097,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
 
     def make_packs_and_alt_repo(self, write_lock=False):
         """Create a pack repo with 3 packs, and access it via a second repo."""
-        tree = self.make_branch_and_tree('.')
+        tree = self.make_branch_and_tree('.', format=self.get_format())
         tree.lock_write()
         self.addCleanup(tree.unlock)
         rev1 = tree.commit('one')
@@ -1346,7 +1413,7 @@ class TestPacker(TestCaseWithTransport):
     """Tests for the packs repository Packer class."""
 
     def test_pack_optimizes_pack_order(self):
-        builder = self.make_branch_builder('.')
+        builder = self.make_branch_builder('.', format="1.9")
         builder.start_series()
         builder.build_snapshot('A', None, [
             ('add', ('', 'root-id', 'directory', None)),

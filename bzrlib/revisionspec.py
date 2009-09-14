@@ -161,9 +161,9 @@ class RevisionSpec(object):
             return spectype(spec, _internal=True)
         else:
             for spectype in SPEC_TYPES:
-                trace.mutter('Returning RevisionSpec %s for %s',
-                             spectype.__name__, spec)
                 if spec.startswith(spectype.prefix):
+                    trace.mutter('Returning RevisionSpec %s for %s',
+                                 spectype.__name__, spec)
                     return spectype(spec, _internal=True)
             # RevisionSpec_revno is special cased, because it is the only
             # one that directly handles plain integers
@@ -185,7 +185,6 @@ class RevisionSpec(object):
             called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
-            # XXX: Update this after 0.10 is released
             symbol_versioning.warn('Creating a RevisionSpec directly has'
                                    ' been deprecated in version 0.11. Use'
                                    ' RevisionSpec.from_string()'

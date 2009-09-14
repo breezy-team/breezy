@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ from bzrlib.repofmt import (
     pack_repo,
     groupcompress_repo,
     )
-from bzrlib.repofmt.groupcompress_repo import RepositoryFormatCHK1
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
     server,
@@ -84,7 +84,7 @@ class TestPackRepository(TestCaseWithTransport):
         """Packs reuse deltas."""
         format = self.get_format()
         repo = self.make_repository('.', format=format)
-        if isinstance(format.repository_format, RepositoryFormatCHK1):
+        if isinstance(format.repository_format, RepositoryFormat2a):
             # TODO: This is currently a workaround. CHK format repositories
             #       ignore the 'deltas' flag, but during conversions, we can't
             #       do unordered delta fetches. Remove this clause once we
@@ -239,31 +239,38 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertTrue(large_pack_name in pack_names)
 
     def test_commit_write_group_returns_new_pack_names(self):
+        # This test doesn't need real disk.
+        self.vfs_transport_factory = tests.MemoryServer
         format = self.get_format()
-        tree = self.make_branch_and_tree('foo', format=format)
-        tree.commit('first post')
-        repo = tree.branch.repository
+        repo = self.make_repository('foo', format=format)
         repo.lock_write()
         try:
-            repo.start_write_group()
-            try:
-                inv = inventory.Inventory(revision_id="A")
-                inv.root.revision = "A"
-                repo.texts.add_lines((inv.root.file_id, "A"), [], [])
-                rev = _mod_revision.Revision(timestamp=0, timezone=None,
-                    committer="Foo Bar <foo@example.com>", message="Message",
-                    revision_id="A")
-                rev.parent_ids = ()
-                repo.add_revision("A", rev, inv=inv)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                old_names = repo._pack_collection._names.keys()
-                result = repo.commit_write_group()
-                cur_names = repo._pack_collection._names.keys()
-                new_names = list(set(cur_names) - set(old_names))
-                self.assertEqual(new_names, result)
+            # All current pack repository styles autopack at 10 revisions; and
+            # autopack as well as regular commit write group needs to return
+            # the new pack name. Looping is a little ugly, but we don't have a
+            # clean way to test both the autopack logic and the normal code
+            # path without doing this loop.
+            for pos in range(10):
+                revid = str(pos)
+                repo.start_write_group()
+                try:
+                    inv = inventory.Inventory(revision_id=revid)
+                    inv.root.revision = revid
+                    repo.texts.add_lines((inv.root.file_id, revid), [], [])
+                    rev = _mod_revision.Revision(timestamp=0, timezone=None,
+                        committer="Foo Bar <foo@example.com>", message="Message",
+                        revision_id=revid)
+                    rev.parent_ids = ()
+                    repo.add_revision(revid, rev, inv=inv)
+                except:
+                    repo.abort_write_group()
+                    raise
+                else:
+                    old_names = repo._pack_collection._names.keys()
+                    result = repo.commit_write_group()
+                    cur_names = repo._pack_collection._names.keys()
+                    new_names = list(set(cur_names) - set(old_names))
+                    self.assertEqual(new_names, result)
         finally:
             repo.unlock()
 
@@ -271,8 +278,7 @@ class TestPackRepository(TestCaseWithTransport):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
         server = fakenfs.FakeNFSServer()
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         transport = get_transport(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(transport)
         repo = bzrdir.create_repository()
@@ -295,6 +301,41 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(1, len(list(index.iter_all_entries())))
         self.assertEqual(2, len(tree.branch.repository.all_revision_ids()))
 
+    def test_pack_preserves_all_inventories(self):
+        # This is related to bug:
+        #   https://bugs.launchpad.net/bzr/+bug/412198
+        # Stacked repositories need to keep the inventory for parents, even
+        # after a pack operation. However, it is harder to test that, then just
+        # test that all inventory texts are preserved.
+        format = self.get_format()
+        builder = self.make_branch_builder('source', format=format)
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        builder.build_snapshot('B-id', None, [
+            ('add', ('file', 'file-id', 'file', 'B content\n'))])
+        builder.build_snapshot('C-id', None, [
+            ('modify', ('file-id', 'C content\n'))])
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo = self.make_repository('repo', shared=True, format=format)
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.fetch(b.repository, revision_id='B-id')
+        inv = b.repository.iter_inventories(['C-id']).next()
+        repo.start_write_group()
+        repo.add_inventory('C-id', inv, ['B-id'])
+        repo.commit_write_group()
+        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+                         sorted(repo.inventories.keys()))
+        repo.pack()
+        self.assertEqual([('A-id',), ('B-id',), ('C-id',)],
+                         sorted(repo.inventories.keys()))
+        # Content should be preserved as well
+        self.assertEqual(inv, repo.iter_inventories(['C-id']).next())
+
     def test_pack_layout(self):
         # Test that the ordering of revisions in pack repositories is
         # tip->ancestor
@@ -311,7 +352,7 @@ class TestPackRepository(TestCaseWithTransport):
         # revision access tends to be tip->ancestor, so ordering that way on
         # disk is a good idea.
         for _1, key, val, refs in pack.revision_index.iter_all_entries():
-            if type(format.repository_format) is RepositoryFormatCHK1:
+            if type(format.repository_format) is RepositoryFormat2a:
                 # group_start, group_len, internal_start, internal_len
                 pos = map(int, val.split())
             else:
@@ -589,7 +630,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def make_write_ready_repo(self):
         format = self.get_format()
-        if isinstance(format.repository_format, RepositoryFormatCHK1):
+        if isinstance(format.repository_format, RepositoryFormat2a):
             raise TestNotApplicable("No missing compression parents")
         repo = self.make_repository('.', format=format)
         repo.lock_write()
@@ -808,7 +849,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
                 matching_format_name = 'pack-0.92-subtree'
             else:
                 if repo._format.supports_chks:
-                    matching_format_name = 'development6-rich-root'
+                    matching_format_name = '2a'
                 else:
                     matching_format_name = 'rich-root-pack'
             mismatching_format_name = 'pack-0.92'
@@ -841,7 +882,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         else:
             if repo.supports_rich_root():
                 if repo._format.supports_chks:
-                    matching_format_name = 'development6-rich-root'
+                    matching_format_name = '2a'
                 else:
                     matching_format_name = 'rich-root-pack'
                 mismatching_format_name = 'pack-0.92-subtree'
@@ -865,7 +906,8 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         base.commit('foo')
         referencing = self.make_branch_and_tree('repo', format=self.get_format())
         referencing.branch.repository.add_fallback_repository(base.branch.repository)
-        referencing.commit('bar')
+        local_tree = referencing.branch.create_checkout('local')
+        local_tree.commit('bar')
         new_instance = referencing.bzrdir.open_repository()
         new_instance.lock_read()
         self.addCleanup(new_instance.unlock)
@@ -884,13 +926,14 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # and max packs policy - so we are checking the policy is honoured
         # in the test. But for now 11 commits is not a big deal in a single
         # test.
+        local_tree = tree.branch.create_checkout('local')
         for x in range(9):
-            tree.commit('commit %s' % x)
+            local_tree.commit('commit %s' % x)
         # there should be 9 packs:
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(9, len(list(index.iter_all_entries())))
         # committing one more should coalesce to 1 of 10.
-        tree.commit('commit triggering pack')
+        local_tree.commit('commit triggering pack')
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(1, len(list(index.iter_all_entries())))
         # packing should not damage data
@@ -909,7 +952,7 @@ class TestPackRepositoryStacking(TestCaseWithTransport):
         # in the obsolete_packs directory.
         large_pack_name = list(index.iter_all_entries())[0][1][0]
         # finally, committing again should not touch the large pack.
-        tree.commit('commit not triggering pack')
+        local_tree.commit('commit not triggering pack')
         index = self.index_class(trans, 'pack-names', None)
         self.assertEqual(2, len(list(index.iter_all_entries())))
         pack_names = [node[1][0] for node in index.iter_all_entries()]
@@ -928,7 +971,7 @@ class TestKeyDependencies(TestCaseWithTransport):
             ('add', ('', 'root-id', 'directory', None))])
         builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
         builder.finish_series()
-        repo = self.make_repository('target')
+        repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -966,8 +1009,19 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
-                                                             'unordered', True)
+            # Copy all texts, inventories, and chks so that nothing is missing
+            # for revision B-id.
+            for vf_name in ['texts', 'chk_bytes', 'inventories']:
+                source_vf = getattr(source_repo, vf_name, None)
+                if source_vf is None:
+                    continue
+                target_vf = getattr(target_repo, vf_name)
+                stream = source_vf.get_record_stream(
+                    source_vf.keys(), 'unordered', True)
+                target_vf.insert_record_stream(stream)
+            # Copy just revision B-id
+            stream = source_repo.revisions.get_record_stream(
+                [('B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
             self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
@@ -983,8 +1037,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         client._SmartClient.hooks.install_named_hook(
             'call', self.capture_hpss_call, None)
@@ -1014,8 +1067,8 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         tree.branch.push(remote_branch)
         autopack_calls = len([call for call in self.hpss_calls if call ==
             'PackRepository.autopack'])
-        streaming_calls = len([call for call in self.hpss_calls if call ==
-            'Repository.insert_stream'])
+        streaming_calls = len([call for call in self.hpss_calls if call in
+            ('Repository.insert_stream', 'Repository.insert_stream_1.19')])
         if autopack_calls:
             # Non streaming server
             self.assertEqual(1, autopack_calls)
@@ -1060,9 +1113,9 @@ def load_tests(basic_tests, module, loader):
                   "(bzr 1.9)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
-         dict(format_name='development6-rich-root',
-              format_string='Bazaar development format - group compression '
-                  'and chk inventory (needs bzr.dev from 1.14)\n',
+         dict(format_name='2a',
+              format_string="Bazaar repository format 2a "
+                "(needs bzr 1.16 or later)\n",
               format_supports_external_lookups=True,
               index_class=BTreeGraphIndex),
          ]

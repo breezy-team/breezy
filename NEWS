@@ -6,12 +6,482 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-
-In Development
-##############
+2.1 series (not released yet)
+#############################
 
 Compatibility Breaks
 ********************
+
+New Features
+************
+
+* Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
+  disable the user, site and core plugin directories.
+  (Vincent Ladeuil, #412930, #316192, #145612)
+
+Bug Fixes
+*********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
+
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
+* ``bzr info -v`` on a 2a format still claimed that it was a "Development
+  format" (John Arbash Meinel, #424392)
+
+* ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
+  merges are present in the working tree.
+  (Vincent Ladeuil, #426344)
+
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
+* Don't restrict the command name used to run the test suite.
+  (Vincent Ladeuil, #419950)
+
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories or inventories without
+  chk_bytes root records.
+  (Andrew Bennetts, #423506)
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+  
+Improvements
+************
+
+* Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
+  compiled extensions can't be loaded.  This typically indicates a
+  packaging or installation problem.  In this case Bazaar will keep
+  running using pure-Python versions, but this may be substantially
+  slower.  The warning can be disabled by setting
+  ``ignore_missing_extensions = True`` in ``bazaar.conf``.
+  (Martin Pool, #406113)
+
+Documentation
+*************
+
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
+API Changes
+***********
+
+* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
+  subclasses - the same as python's unittest module. (Robert Collins)
+
+Internals
+*********
+
+* ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
+  mallocs while parsing the index (approx 3=>1 mallocs per key read).
+  This results in a 10% speedup while reading an index.
+  (John Arbash Meinel)
+
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
+Testing
+*******
+
+* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
+  be output for every test. Note that this is very verbose! (Robert Collins)
+
+* Test parameterisation now does a shallow copy, not a deep copy of the test
+  to be parameterised. This is not expected to break external use of test
+  parameterisation, and is substantially faster. (Robert Collins)
+
+
+bzr 2.0rc2 (not released yet)
+#############################
+
+New Features
+************
+
+* Added post_commit hook for mutable trees. This allows the keywords
+  plugin to expand keywords on files changed by the commit.
+  (Ian Clatworthy, #408841)
+
+Bug Fixes
+*********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
+
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
+* ``bzr info -v`` on a 2a format still claimed that it was a "Development
+  format" (John Arbash Meinel, #424392)
+
+* ``bzr log stacked-branch`` shows the full log including
+  revisions that are in the fallback repository. (Regressed in 2.0rc1).
+  (John Arbash Meinel, #419241)
+
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Fix a potential segmentation fault when doing 'log' of a branch that had
+  ghosts in its mainline.  (Evaluating None as a tuple is bad.)
+  (John Arbash Meinel, #419241)
+
+* ``groupcompress`` sort order is now more stable, rather than relying on
+  ``topo_sort`` ordering. The implementation is now
+  ``KnownGraph.gc_sort``. (John Arbash Meinel)
+
+* Local data conversion will generate correct deltas. This is a critical
+  bugfix vs 2.0rc1, and all 2.0rc1 users should upgrade to 2.0rc2 before
+  converting repositories. (Robert Collins, #422849)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories, a missing chk_bytes
+  record for an inventory, or a missing text referenced by an inventory.
+  (Andrew Bennetts, #423506, #406687)
+  
+Documentation
+*************
+
+* Fix assertion error about "_remember_remote_is_before" when pushing to
+  older smart servers.
+  (Andrew Bennetts, #418931)
+
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
+* The main table of contents now provides links to the new Migration Docs
+  and Plugins Guide. (Ian Clatworthy)
+
+
+bzr 2.0rc1
+##########
+
+
+:Codename: no worries
+:2.0rc1: 2009-08-26
+
+This release of Bazaar makes 2a 'brisbane-core' format the
+default.  Most of the work in this release now focuses on bug
+fixes and stabilization, covering both 2a and previous formats.
+
+The Bazaar team decided that 2.0 will be a long-term supported
+release, with bugfix-only releases based on it continuing for at
+least six months or until the following stable release (we said
+that previously, but that's worth repeating).
+
+Compatibility Breaks
+********************
+
+* The default format for bzr is now ``2a``. This format brings many
+  significant performance and size improvements. bzr can pull from
+  any existing repository into a ``2a`` one, but can only transfer
+  into ``rich-root`` repositories from ``2a``. The Upgrade guide
+  has more information about this change. (Robert Collins)
+
+* On Windows auto-detection of Putty's plink.exe is disabled.
+  Default SSH client for Windows is paramiko. User still can force
+  usage of plink if explicitly set environment variable BZR_SSH=plink.
+  (#414743, Alexander Belchenko)
+
+New Features
+************
+
+* ``bzr branch --switch`` can now switch the checkout in the current directory
+  to the newly created branch. (Lukáš Lalinský)
+
+Bug Fixes
+*********
+
+* Further tweaks to handling of ``bzr add`` messages about ignored files.
+  (Jason Spashett, #76616)
+
+* Fetches were being requested in 'groupcompress' order, but weren't
+  recombining the groups. Thus they would 'fragment' to get the correct
+  order, but not 'recombine' to actually benefit from it. Until we get
+  recombining to work, switching to 'unordered' fetches avoids the
+  fragmentation. (John Arbash Meinel, #402645)
+
+* Fix a pycurl related test failure on karmic by recognizing an error
+  raised by newer versions of pycurl.
+  (Vincent Ladeuil, #306264)
+
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
+* Fix IndexError printing CannotBindAddress errors.
+  (Martin Pool, #286871)
+
+* Fix "Revision ... not present" errors when upgrading stacked branches,
+  or when doing fetches from a stacked source to a stacked target.
+  (Andrew Bennetts, #399140)
+
+* ``bzr branch`` of 2a repositories over HTTP is much faster.  bzr now
+  batches together small fetches from 2a repositories, rather than
+  fetching only a few hundred bytes at a time.
+  (Andrew Bennetts, #402657)
+
+Improvements
+************
+
+* A better description of the platform is shown in crash tracebacks, ``bzr
+  --version`` and ``bzr selftest``.
+  (Martin Pool, #409137)
+
+* bzr can now (again) capture crash data through the apport library, 
+  so that a single human-readable file can be attached to bug reports.
+  This can be disabled by using ``-Dno_apport`` on the command line, or by
+  putting ``no_apport`` into the ``debug_flags`` section of
+  ``bazaar.conf``.
+  (Martin Pool, Robert Collins, #389328)
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
+* Commit of specific files no longer prevents using the the iter_changes
+  codepath. On 2a repositories, commit of specific files should now be as
+  fast, or slightly faster, than a full commit. (Robert Collins)
+
+* The internal core code that handles specific file operations like
+  ``bzr st FILENAME`` or ``bzr commit FILENAME`` has been changed to
+  include the parent directories if they have altered, and when a
+  directory stops being a directory its children are always included. This
+  fixes a number of causes for ``InconsistentDelta`` errors, and permits
+  faster commit of specific paths. (Robert Collins, #347649)
+
+Documentation
+*************
+
+* New developer documentation for content filtering.
+  (Martin Pool)
+
+API Changes
+***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
+
+Testing
+*******
+
+bzr 1.18.1 NOT RELEASED YET
+###########################
+
+Bug Fixes
+*********
+
+* Fixed a problem where using content filtering and especially end-of-line
+  conversion will commit too many copies a file.
+  (Martin Pool, #415508)
+
+Improvements
+************
+
+* ``bzr push`` locally on windows will no longer give a locking error with
+  dirstate based formats. (Robert Collins)
+
+* ``bzr shelve`` and ``bzr unshelve`` now work on windows.
+  (Robert Collins, #305006)
+
+API Changes
+***********
+
+* ``bzrlib.shelf_ui`` has had the ``from_args`` convenience methods of its
+  classes changed to manage lock lifetime of the trees they open in a way
+  consistent with reader-exclusive locks. (Robert Collins, #305006)
+
+* ``Tree.path_content_summary`` may return a size of None, when called on
+  a tree with content filtering where the size of the canonical form
+  cannot be cheaply determined.  (Martin Pool)
+
+* When manually creating transport servers in test cases, a new helper
+  ``TestCase.start_server`` that registers a cleanup and starts the server
+  should be used. (Robert Collins)
+
+bzr 1.18
+########
+
+Compatibility Breaks
+********************
+
+* Committing directly to a stacked branch from a lightweight checkout will
+  no longer work. In previous versions this would appear to work but would
+  generate repositories with insufficient data to create deltas, leading
+  to later errors when branching or reading from the repository.
+  (Robert Collins, bug #375013)
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Fetching from 2a branches from a version-2 bzr protocol would fail to
+  copy the internal inventory pages from the CHK store. This cannot happen
+  in normal use as all 2a compatible clients and servers support the
+  version-3 protocol, but it does cause test suite failures when testing
+  downlevel protocol behaviour. (Robert Collins)
+
+* Fix a test failure on karmic by making a locale test more robust.
+  (Vincent Ladeuil, #413514)
+
+* Fixed "Pack ... already exists" error when running ``bzr pack`` on a
+  fully packed 2a repository.  (Andrew Bennetts, #382463)
+
+* Further tweaks to handling of ``bzr add`` messages about ignored files.
+  (Jason Spashett, #76616)
+
+* Properly handle fetching into a stacked branch while converting the
+  data, especially when there are also ghosts. The code was filling in
+  parent inventories incorrectly, and also not handling when one of the
+  parents was a ghost. (John Arbash Meinel, #402778, #412198)
+
+* ``RemoteStreamSource.get_stream_for_missing_keys`` will fetch CHK
+  inventory pages when appropriate (by falling back to the vfs stream
+  source).  (Andrew Bennetts, #406686)
+
+* StreamSource generates rich roots from non-rich root sources correctly
+  now.  (Andrew Bennetts, #368921)
+
+* When deciding whether a repository was compatible for upgrading or
+  fetching, we previously incorrectly checked the default repository
+  format for the bzrdir format, rather than the format that was actually
+  present on disk.  (Martin Pool, #408824)
+
+Improvements
+************
+
+* A better description of the platform is shown in crash tracebacks, ``bzr
+  --version`` and ``bzr selftest``.
+  (Martin Pool, #409137)
+
+* Cross-format fetches (such as between 1.9-rich-root and 2a) via the
+  smart server are more efficient now.  They send inventory deltas rather
+  than full inventories.  The smart server has two new requests,
+  ``Repository.get_stream_1.19`` and ``Repository.insert_stream_1.19`` to
+  support this.  (Andrew Bennetts, #374738, #385826)
+
+* Extracting the full ancestry and computing the ``merge_sort`` is now
+  significantly faster. This effects things like ``bzr log -n0``. (For
+  example, ``bzr log -r -10..-1 -n0 bzr.dev`` is 2.5s down to 1.0s.
+  (John Arbash Meinel)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+* ``-Dstrict_locks`` can now be used to check that read and write locks
+  are treated properly w.r.t. exclusivity. (We don't try to take an OS
+  read lock on a file that we already have an OS write lock on.) This is
+  now set by default for all tests, if you have a test which cannot be
+  fixed, you can use ``self.thisFailsStrictLockCheck()`` as a
+  compatibility knob. (John Arbash Meinel)
+
+* InterDifferingSerializer is now only used locally.  Other fetches that
+  would have used InterDifferingSerializer now use the more network
+  friendly StreamSource, which now automatically does the same
+  transformations as InterDifferingSerializer.  (Andrew Bennetts)
+
+* ``KnownGraph`` now has a ``.topo_sort`` and ``.merge_sort`` member which
+  are implemented in pyrex and significantly faster. This is exposed along
+  with ``CombinedGraphIndex.find_ancestry()`` as
+  ``VersionedFiles.get_known_graph_ancestry(keys)``.
+  (John Arbash Meinel)
+
+* RemoteBranch.open now honours ignore_fallbacks correctly on bzr-v2
+  protocols. (Robert Collins)
+
+* The index code now has some specialized routines to extract the full
+  ancestry of a key in a more efficient manner.
+  ``CombinedGraphIndex.find_ancestry()``. (Time to get ancestry for
+  bzr.dev drops from 1.5s down to 300ms. For OOo from 33s => 10.5s) (John
+  Arbash Meinel)
+
+Testing
+*******
+
+* Install the test ssl certificate and key so that installed bzr
+  can run the https tests. (Denys Duchier, #392401)
+  
+
+bzr 1.18rc1
+###########
+
+:Codename: little traveller
+:1.18:    2009-08-20
+:1.18rc1: 2009-08-10
+
+This release of Bazaar marches on towards the 2.0 release in which the 2a
+'brisbane-core' format becomes generally recommended.  Most of the work in
+this release now focusses on bug fixes and stabilization, covering both 2a
+and previous formats.  There is a new text-mode interactive merge feature,
+a new guide to migration to 2a format in the user documentation, and
+pushing branches to a smart server is now much faster.  
+
+The Bazaar team decided that 2.0 will be a long-term supported release,
+with bugfix-only releases based on it continuing for at least six months
+or until the following stable release.
+
+There are no changes from 1.18rc1 to 1.18.
 
 New Features
 ************
@@ -30,6 +500,11 @@ Bug Fixes
   There are still some complex scenarios where it will fail (bug #399884)
   (John Arbash Meinel, #393366)
 
+* A progress bar is no longer left dangling when ``bzr selftest``
+  completes, and the progress bar updates with zero latency so the
+  displayed test name is always the one that's actually running.
+  (Martin Pool, #123688)
+
 * Authenticating against an ssh server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
@@ -37,13 +512,6 @@ Bug Fixes
 
 * BranchBuilder now accepts timezone to avoid test failures in countries far
   from GMT. (Vincent Ladeuil, #397716)
-
-* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
-  always forces progress bars either on or off respectively.  Otherwise,
-  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
-  bzr always uses the 'text' user interface when run as a command, so
-  ``BZR_USE_TEXT_UI`` is no longer needed.
-  (Martin Pool, #339385, #387717)
 
 * ``bzr commit`` no longer saves the unversioning of missing files until
   the commit has completed on the branch. This means that aborting a
@@ -56,16 +524,45 @@ Bug Fixes
 * ``bzr revert .`` no longer generates an InconsistentDelta error when
   there are missing subtrees. (Robert Collins, #367632)
 
+* ``bzr send`` now generates valid bundles with ``--2a`` formats. However,
+  do to internal changes necessary to support this, older clients will
+  fail when trying to insert them. For newer clients, the bundle can be
+  used to apply the changes to any rich-root compatible format.
+  (John Arbash Meinel, #393349)
+
 * Cope with FTP servers that don't support restart/append by falling back
   to reading and then rewriting the whole file, such as TahoeLAFS.  (This
   fallback may be slow for some access patterns.)  (Nils Durner, #294709)
 
+* Encode the paths in ``mbcs`` encoding on Windows when spawning an
+  external diff client. This at least allows supporting filenames that are
+  not ascii, but are present in the current locale. Ideally we would be
+  able to pass the Unicode path, but that would be client dependent.
+  (John Arbash Meinel, #382709)
+
+* Fix a compile bug on Solaris having to do with const and
+  pointer-to-pointers. (John Arbash Meinel, #408441)
+
 * Fixed a NameError that occurs when merging or pulling from a URL that
   causes a redirection loop when bzr tries to read a URL as a bundle.
   (Andrew Bennetts, #400847)
+
+* Fix ``AttributeError: 'TestUIFactory' object has no attribute 'tick'``
+  running send and similar commands on 2a formats.
+  (Martin Pool, #408201)
   
+* Fix crash in some invocations of ``bzr status`` in format 2a.
+  (Martin Pool, #403523)
+
+* Fixed export to existing directory: if directory is empty then export 
+  will succeed, otherwise it fails with error.
+  (Alexander Belchenko, #406174)
+
 * Fixed spurious "Source branch does not support stacking" warning when
   pushing. (Andrew Bennetts, #388908)
+
+* Fixed spurious transport activity indicator appearing while tests are
+  running.  (Martin Pool, #343532)
 
 * Merge now correctly handles empty right-hand revision specs.
   (Aaron Bentley, #333961)
@@ -77,11 +574,28 @@ Bug Fixes
 * Requests for unknown methods no longer cause the smart server to log
   lots of backtraces about ``UnknownSmartMethod``, ``do_chunk`` or
   ``do_end``.  (Andrew Bennetts, #338561)
-  
+
+* Shelve will not shelve the initial add of the tree root.  (Aaron Bentley)
+
+* Streaming from bzr servers where there is a chain of stacked branches
+  (A stacked on B stacked on C) will now work. (Robert Collins, #406597)
+
+* The environment variable ``BZR_PROGRESS_BAR`` set to either ``text`` or ``none``
+  always forces progress bars either on or off respectively.  Otherwise,
+  they're turned on if ``TERM`` is not ``dumb`` and stderr is a terminal.
+  bzr always uses the 'text' user interface when run as a command, so
+  ``BZR_USE_TEXT_UI`` is no longer needed.
+  (Martin Pool, #339385, #387717)
+
 * The optional ``_knit_load_data_pyx`` C extension was never being
   imported.  This caused significant slowdowns when reading data from
   repositories.  (Andrew Bennetts, #405653)
   
+* The ``--hardlink`` option to ``branch`` and ``checkout`` is not
+  supported at the moment on workingtree formats that can do content
+  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  bzr now says so, rather than just ignoring the option.  (Martin Pool)
+
 * There was a bug in ``osutils.relpath`` that was only triggered on
   Windows. Essentially if you were at the root of a drive, and did
   something to a branch/repo on another drive, we would go into an
@@ -95,14 +609,6 @@ Bug Fixes
 Improvements
 ************
 
-* Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
-  compiled extensions can't be loaded.  This typically indicates a
-  packaging or installation problem.  In this case Bazaar will keep
-  running using pure-Python versions, but this may be substantially
-  slower.  The warning can be disabled by setting
-  ``ignore_missing_extensions = True`` in ``bazaar.conf``.
-  (Martin Pool, #406113)
-
 * Can now rename/move files even if they have been removed from the inventory.
   (Marius Kruger)
 
@@ -110,6 +616,10 @@ Improvements
   faster, using a new ``Branch.set_tags_bytes`` smart server verb rather
   than VFS methods.  For example, pushes of small branches with tags take
   11 rather than 18 smart server requests.  (Andrew Bennetts, #398608)
+
+* Sending Ctrl-Break on Windows will now drop you into the debugger, in
+  the same way that sending Ctrl-\\ does on other platforms.
+  (John Arbash Meinel)
 
 Documentation
 *************
@@ -129,9 +639,15 @@ API Changes
 * New TransformPreview.commit() allows committing without a working tree.
   (Aaron Bentley)
 
+* ``pb`` parameter to ``TextTestResult`` is deprecated and ignored.
+  (Martin Pool)
+
 * ProgressTasks now prefer to talk direct to their ProgressView not to the
   UIFactory. 
   (Martin Pool)
+
+* ``WorkingTree._check`` now requires a references dict with keys matching
+  those returned by ``WorkingTree._get_check_refs``. (Robert Collins)
 
 Internals
 *********
@@ -150,6 +666,38 @@ Internals
 * --subunit support now adds timestamps if the subunit version supports
   it. (Robert Collins)
 
+* The Windows all-in-one installer now bundles the PyQt image format
+  plugins, which allows previewing more images as part of 'qdiff'.
+  (Alexander Belchenko)
+
+
+Testing
+*******
+
+* Merge directive cherrypick tests must use the same root id.
+  (Martin Pool, #409684)
+
+* Spurious failure in ``check`` tests on rich-root formats fixed.
+  (Martin Pool, #408199)
+
+* The ``bzrlib.tests.TextTestRunner`` will no longer call
+  ``countTestsCases`` on the test being run. Progress information is
+  instead handled by having the test passed in call ``result.progress``
+  before running its contents. This improves the behaviour when using
+  ``TextTestRunner`` with test suites that don't support
+  ``countTestsCases``. (Robert Collins)
+
+
+bzr 1.17.1 (unreleased)
+#######################
+
+Bug Fixes
+*********
+
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  knit format repositories.  (Andrew Bennetts, #405653)
+  
 
 bzr 1.17 "So late it's brunch" 2009-07-20
 #########################################
@@ -649,6 +1197,9 @@ Internals
 Testing
 *******
 
+* ``make check`` no longer repeats the test run in ``LANG=C``.
+  (Martin Pool, #386180)
+
 * The number of cores is now correctly detected on OSX. (John Szakmeister)
 
 * The number of cores is also detected on Solaris and win32. (Vincent Ladeuil)
@@ -845,6 +1396,9 @@ Internals
   cause mismatched physical locks to cause test errors rather than just
   reporting to the screen. (Robert Collins)
 
+* -Dprogress will cause pdb to start up if a progress view jumps
+  backwards. (Robert Collins)
+
 * Fallback ``CredentialStore`` instances registered with ``fallback=True``
   are now be able to provide credentials if obtaining credentials 
   via ~/.bazaar/authentication.conf fails. (Jelmer Vernooij, 
@@ -874,7 +1428,7 @@ Testing
   (Vincent Ladeuil, Robert Collins)
 
 bzr 1.14
-###########
+########
 :Codename: brisbane-core
 :1.14rc1: 2009-04-06
 :1.14rc2: 2009-04-19
@@ -4626,7 +5180,7 @@ Bugfixes
   checkouts.  (Aaron Bentley, #182040)
 
 * Stop polluting /tmp when running selftest.
-  (Vincent Ladeuil, #123623)
+  (Vincent Ladeuil, #123363)
 
 * Switch from NFKC => NFC for normalization checks. NFC allows a few
   more characters which should be considered valid.

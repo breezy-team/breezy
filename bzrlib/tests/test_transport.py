@@ -363,24 +363,22 @@ class ChrootDecoratorTransportTest(TestCase):
     def test_abspath(self):
         # The abspath is always relative to the chroot_url.
         server = ChrootServer(get_transport('memory:///foo/bar/'))
-        server.setUp()
+        self.start_server(server)
         transport = get_transport(server.get_url())
         self.assertEqual(server.get_url(), transport.abspath('/'))
 
         subdir_transport = transport.clone('subdir')
         self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
-        server.tearDown()
 
     def test_clone(self):
         server = ChrootServer(get_transport('memory:///foo/bar/'))
-        server.setUp()
+        self.start_server(server)
         transport = get_transport(server.get_url())
         # relpath from root and root path are the same
         relpath_cloned = transport.clone('foo')
         abspath_cloned = transport.clone('/foo')
         self.assertEqual(server, relpath_cloned.server)
         self.assertEqual(server, abspath_cloned.server)
-        server.tearDown()
 
     def test_chroot_url_preserves_chroot(self):
         """Calling get_transport on a chroot transport's base should produce a
@@ -393,12 +391,11 @@ class ChrootDecoratorTransportTest(TestCase):
             new_transport = get_transport(parent_url)
         """
         server = ChrootServer(get_transport('memory:///path/subpath'))
-        server.setUp()
+        self.start_server(server)
         transport = get_transport(server.get_url())
         new_transport = get_transport(transport.base)
         self.assertEqual(transport.server, new_transport.server)
         self.assertEqual(transport.base, new_transport.base)
-        server.tearDown()
 
     def test_urljoin_preserves_chroot(self):
         """Using urlutils.join(url, '..') on a chroot URL should not produce a
@@ -410,11 +407,10 @@ class ChrootDecoratorTransportTest(TestCase):
             new_transport = get_transport(parent_url)
         """
         server = ChrootServer(get_transport('memory:///path/'))
-        server.setUp()
+        self.start_server(server)
         transport = get_transport(server.get_url())
         self.assertRaises(
             InvalidURLJoin, urlutils.join, transport.base, '..')
-        server.tearDown()
 
 
 class ChrootServerTest(TestCase):
@@ -428,7 +424,10 @@ class ChrootServerTest(TestCase):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
-        self.assertTrue(server.scheme in _get_protocol_handlers().keys())
+        try:
+            self.assertTrue(server.scheme in _get_protocol_handlers().keys())
+        finally:
+            server.tearDown()
 
     def test_tearDown(self):
         backing_transport = MemoryTransport()
@@ -441,8 +440,10 @@ class ChrootServerTest(TestCase):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
-        self.assertEqual('chroot-%d:///' % id(server), server.get_url())
-        server.tearDown()
+        try:
+            self.assertEqual('chroot-%d:///' % id(server), server.get_url())
+        finally:
+            server.tearDown()
 
 
 class ReadonlyDecoratorTransportTest(TestCase):
@@ -460,15 +461,12 @@ class ReadonlyDecoratorTransportTest(TestCase):
         import bzrlib.transport.readonly as readonly
         # connect to '.' via http which is not listable
         server = HttpServer()
-        server.setUp()
-        try:
-            transport = get_transport('readonly+' + server.get_url())
-            self.failUnless(isinstance(transport,
-                                       readonly.ReadonlyTransportDecorator))
-            self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.is_readonly())
-        finally:
-            server.tearDown()
+        self.start_server(server)
+        transport = get_transport('readonly+' + server.get_url())
+        self.failUnless(isinstance(transport,
+                                   readonly.ReadonlyTransportDecorator))
+        self.assertEqual(False, transport.listable())
+        self.assertEqual(True, transport.is_readonly())
 
 
 class FakeNFSDecoratorTests(TestCaseInTempDir):
@@ -492,31 +490,24 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         from bzrlib.tests.http_server import HttpServer
         # connect to '.' via http which is not listable
         server = HttpServer()
-        server.setUp()
-        try:
-            transport = self.get_nfs_transport(server.get_url())
-            self.assertIsInstance(
-                transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
-            self.assertEqual(False, transport.listable())
-            self.assertEqual(True, transport.is_readonly())
-        finally:
-            server.tearDown()
+        self.start_server(server)
+        transport = self.get_nfs_transport(server.get_url())
+        self.assertIsInstance(
+            transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
+        self.assertEqual(False, transport.listable())
+        self.assertEqual(True, transport.is_readonly())
 
     def test_fakenfs_server_default(self):
         # a FakeNFSServer() should bring up a local relpath server for itself
         import bzrlib.transport.fakenfs as fakenfs
         server = fakenfs.FakeNFSServer()
-        server.setUp()
-        try:
-            # the url should be decorated appropriately
-            self.assertStartsWith(server.get_url(), 'fakenfs+')
-            # and we should be able to get a transport for it
-            transport = get_transport(server.get_url())
-            # which must be a FakeNFSTransportDecorator instance.
-            self.assertIsInstance(
-                transport, fakenfs.FakeNFSTransportDecorator)
-        finally:
-            server.tearDown()
+        self.start_server(server)
+        # the url should be decorated appropriately
+        self.assertStartsWith(server.get_url(), 'fakenfs+')
+        # and we should be able to get a transport for it
+        transport = get_transport(server.get_url())
+        # which must be a FakeNFSTransportDecorator instance.
+        self.assertIsInstance(transport, fakenfs.FakeNFSTransportDecorator)
 
     def test_fakenfs_rename_semantics(self):
         # a FakeNFS transport must mangle the way rename errors occur to
@@ -587,8 +578,7 @@ class TestTransportImplementation(TestCaseInTempDir):
     def setUp(self):
         super(TestTransportImplementation, self).setUp()
         self._server = self.transport_server()
-        self._server.setUp()
-        self.addCleanup(self._server.tearDown)
+        self.start_server(self._server)
 
     def get_transport(self, relpath=None):
         """Return a connected transport to the local directory.

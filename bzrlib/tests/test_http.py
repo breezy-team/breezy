@@ -304,7 +304,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(BogusRequestHandler)
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
             server.tearDown()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
@@ -312,7 +312,7 @@ class TestHTTPServer(tests.TestCase):
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
             server.tearDown()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
@@ -320,8 +320,10 @@ class TestHTTPServer(tests.TestCase):
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
         server.setUp()
-        self.assertTrue(server._http_running)
-        server.tearDown()
+        try:
+            self.assertTrue(server._http_running)
+        finally:
+            server.tearDown()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -330,8 +332,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.0'
 
         server = http_server.HttpServer(RequestHandlerOneZero)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
@@ -340,8 +341,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.1'
 
         server = http_server.HttpServer(RequestHandlerOneOne)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -352,8 +352,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero,
                                         protocol_version='HTTP/1.1')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -364,8 +363,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne,
                                         protocol_version='HTTP/1.0')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingHTTPServer)
 
@@ -431,8 +429,8 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
         server = self._server()
+        server.setUp()
         try:
-            server.setUp()
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
@@ -544,8 +542,7 @@ class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
         server = RecordingServer(expect_body_tail='end-of-body')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         scheme = self._qualified_prefix
         url = '%s://%s:%s/' % (scheme, server.host, server.port)
         http_transport = self._transport(url)
@@ -625,14 +622,17 @@ class TestWallServer(TestSpecificRequestHandler):
         # for details) make no distinction between a closed
         # socket and badly formatted status line, so we can't
         # just test for ConnectionError, we have to test
-        # InvalidHttpResponse too.
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        # InvalidHttpResponse too. And pycurl may raise ConnectionReset
+        # instead of ConnectionError too.
+        self.assertRaises(( errors.ConnectionError, errors.ConnectionReset,
+                            errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+                           errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
 
 
@@ -777,8 +777,7 @@ class TestRecordingServer(tests.TestCase):
 
     def test_send_receive_bytes(self):
         server = RecordingServer(expect_body_tail='c')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
         sock.sendall('abc')

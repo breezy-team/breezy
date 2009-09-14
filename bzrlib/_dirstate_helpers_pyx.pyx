@@ -28,7 +28,7 @@ import sys
 
 from bzrlib import cache_utf8, errors, osutils
 from bzrlib.dirstate import DirState
-from bzrlib.osutils import pathjoin, splitpath
+from bzrlib.osutils import parent_directories, pathjoin, splitpath
 
 
 # This is the Windows equivalent of ENOTDIR
@@ -963,16 +963,21 @@ cdef int _versioned_minikind(char minikind):
 
 cdef class ProcessEntryC:
 
+    cdef int doing_consistency_expansion
     cdef object old_dirname_to_file_id # dict
     cdef object new_dirname_to_file_id # dict
-    cdef readonly object uninteresting
     cdef object last_source_parent
     cdef object last_target_parent
-    cdef object include_unchanged
+    cdef int include_unchanged
+    cdef int partial
     cdef object use_filesystem_for_exec
     cdef object utf8_decode
     cdef readonly object searched_specific_files
+    cdef readonly object searched_exact_paths
     cdef object search_specific_files
+    # The parents up to the root of the paths we are searching.
+    # After all normal paths are returned, these specific items are returned.
+    cdef object search_specific_file_parents
     cdef object state
     # Current iteration variables:
     cdef object current_root
@@ -990,34 +995,48 @@ cdef class ProcessEntryC:
     cdef object current_block_list
     cdef object current_dir_info
     cdef object current_dir_list
+    cdef object _pending_consistent_entries # list
     cdef int path_index
     cdef object root_dir_info
     cdef object bisect_left
     cdef object pathjoin
     cdef object fstat
+    # A set of the ids we've output when doing partial output.
+    cdef object seen_ids
     cdef object sha_file
 
     def __init__(self, include_unchanged, use_filesystem_for_exec,
         search_specific_files, state, source_index, target_index,
         want_unversioned, tree):
+        self.doing_consistency_expansion = 0
         self.old_dirname_to_file_id = {}
         self.new_dirname_to_file_id = {}
-        # Just a sentry, so that _process_entry can say that this
-        # record is handled, but isn't interesting to process (unchanged)
-        self.uninteresting = object()
+        # Are we doing a partial iter_changes?
+        self.partial = set(['']).__ne__(search_specific_files)
         # Using a list so that we can access the values and change them in
         # nested scope. Each one is [path, file_id, entry]
         self.last_source_parent = [None, None]
         self.last_target_parent = [None, None]
-        self.include_unchanged = include_unchanged
+        if include_unchanged is None:
+            self.include_unchanged = False
+        else:
+            self.include_unchanged = int(include_unchanged)
         self.use_filesystem_for_exec = use_filesystem_for_exec
         self.utf8_decode = cache_utf8._utf8_decode
         # for all search_indexs in each path at or under each element of
-        # search_specific_files, if the detail is relocated: add the id, and add the
-        # relocated path as one to search if its not searched already. If the
-        # detail is not relocated, add the id.
+        # search_specific_files, if the detail is relocated: add the id, and
+        # add the relocated path as one to search if its not searched already.
+        # If the detail is not relocated, add the id.
         self.searched_specific_files = set()
+        # When we search exact paths without expanding downwards, we record
+        # that here.
+        self.searched_exact_paths = set()
         self.search_specific_files = search_specific_files
+        # The parents up to the root of the paths we are searching.
+        # After all normal paths are returned, these specific items are returned.
+        self.search_specific_file_parents = set()
+        # The ids we've sent out in the delta.
+        self.seen_ids = set()
         self.state = state
         self.current_root = None
         self.current_root_unicode = None
@@ -1039,26 +1058,33 @@ cdef class ProcessEntryC:
         self.current_block_pos = -1
         self.current_dir_info = None
         self.current_dir_list = None
+        self._pending_consistent_entries = []
         self.path_index = 0
         self.root_dir_info = None
         self.bisect_left = bisect.bisect_left
         self.pathjoin = osutils.pathjoin
         self.fstat = os.fstat
         self.sha_file = osutils.sha_file
+        if target_index != 0:
+            # A lot of code in here depends on target_index == 0
+            raise errors.BzrError('unsupported target index')
 
     cdef _process_entry(self, entry, path_info):
         """Compare an entry and real disk to generate delta information.
 
         :param path_info: top_relpath, basename, kind, lstat, abspath for
-            the path of entry. If None, then the path is considered absent.
-            (Perhaps we should pass in a concrete entry for this ?)
+            the path of entry. If None, then the path is considered absent in 
+            the target (Perhaps we should pass in a concrete entry for this ?)
             Basename is returned as a utf8 string because we expect this
             tuple will be ignored, and don't want to take the time to
             decode.
-        :return: None if the these don't match
-                 A tuple of information about the change, or
-                 the object 'uninteresting' if these match, but are
-                 basically identical.
+        :return: (iter_changes_result, changed). If the entry has not been
+            handled then changed is None. Otherwise it is False if no content
+            or metadata changes have occured, and True if any content or
+            metadata change has occurred. If self.include_unchanged is True then
+            if changed is not None, iter_changes_result will always be a result
+            tuple. Otherwise, iter_changes_result is None unless changed is
+            True.
         """
         cdef char target_minikind
         cdef char source_minikind
@@ -1100,9 +1126,12 @@ cdef class ProcessEntryC:
             else:
                 # add the source to the search path to find any children it
                 # has.  TODO ? : only add if it is a container ?
-                if not osutils.is_inside_any(self.searched_specific_files,
-                                             source_details[1]):
+                if (not self.doing_consistency_expansion and 
+                    not osutils.is_inside_any(self.searched_specific_files,
+                                             source_details[1])):
                     self.search_specific_files.add(source_details[1])
+                    # expanding from a user requested path, parent expansion
+                    # for delta consistency happens later.
                 # generate the old path; this is needed for stating later
                 # as well.
                 old_path = source_details[1]
@@ -1181,7 +1210,8 @@ cdef class ProcessEntryC:
                     file_id = entry[0][2]
                 self.old_dirname_to_file_id[old_path] = file_id
             # parent id is the entry for the path in the target tree
-            if old_dirname == self.last_source_parent[0]:
+            if old_basename and old_dirname == self.last_source_parent[0]:
+                # use a cached hit for non-root source entries.
                 source_parent_id = self.last_source_parent[1]
             else:
                 try:
@@ -1197,7 +1227,8 @@ cdef class ProcessEntryC:
                     self.last_source_parent[0] = old_dirname
                     self.last_source_parent[1] = source_parent_id
             new_dirname = entry[0][0]
-            if new_dirname == self.last_target_parent[0]:
+            if entry[0][1] and new_dirname == self.last_target_parent[0]:
+                # use a cached hit for non-root target entries.
                 target_parent_id = self.last_target_parent[1]
             else:
                 try:
@@ -1220,12 +1251,14 @@ cdef class ProcessEntryC:
                     self.last_target_parent[1] = target_parent_id
 
             source_exec = source_details[3]
-            if (self.include_unchanged
-                or content_change
+            changed = (content_change
                 or source_parent_id != target_parent_id
                 or old_basename != entry[0][1]
                 or source_exec != target_exec
-                ):
+                )
+            if not changed and not self.include_unchanged:
+                return None, False
+            else:
                 if old_path is None:
                     path = self.pathjoin(old_dirname, old_basename)
                     old_path = path
@@ -1245,9 +1278,7 @@ cdef class ProcessEntryC:
                        (source_parent_id, target_parent_id),
                        (self.utf8_decode(old_basename)[0], self.utf8_decode(entry[0][1])[0]),
                        (source_kind, target_kind),
-                       (source_exec, target_exec))
-            else:
-                return self.uninteresting
+                       (source_exec, target_exec)), changed
         elif source_minikind == c'a' and _versioned_minikind(target_minikind):
             # looks like a new file
             path = self.pathjoin(entry[0][0], entry[0][1])
@@ -1280,7 +1311,7 @@ cdef class ProcessEntryC:
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, path_info[2]),
-                       (None, target_exec))
+                       (None, target_exec)), True
             else:
                 # Its a missing file, report it as such.
                 return (entry[0][2],
@@ -1290,7 +1321,7 @@ cdef class ProcessEntryC:
                        (None, parent_id),
                        (None, self.utf8_decode(entry[0][1])[0]),
                        (None, None),
-                       (None, False))
+                       (None, False)), True
         elif _versioned_minikind(source_minikind) and target_minikind == c'a':
             # unversioned, possibly, or possibly not deleted: we dont care.
             # if its still on disk, *and* theres no other entry at this
@@ -1308,14 +1339,19 @@ cdef class ProcessEntryC:
                    (parent_id, None),
                    (self.utf8_decode(entry[0][1])[0], None),
                    (_minikind_to_kind(source_minikind), None),
-                   (source_details[3], None))
+                   (source_details[3], None)), True
         elif _versioned_minikind(source_minikind) and target_minikind == c'r':
             # a rename; could be a true rename, or a rename inherited from
             # a renamed parent. TODO: handle this efficiently. Its not
             # common case to rename dirs though, so a correct but slow
             # implementation will do.
-            if not osutils.is_inside_any(self.searched_specific_files, target_details[1]):
+            if (not self.doing_consistency_expansion and 
+                not osutils.is_inside_any(self.searched_specific_files,
+                    target_details[1])):
                 self.search_specific_files.add(target_details[1])
+                # We don't expand the specific files parents list here as
+                # the path is absent in target and won't create a delta with
+                # missing parent.
         elif ((source_minikind == c'r' or source_minikind == c'a') and
               (target_minikind == c'r' or target_minikind == c'a')):
             # neither of the selected trees contain this path,
@@ -1327,13 +1363,32 @@ cdef class ProcessEntryC:
                 "source_minikind=%r, target_minikind=%r"
                 % (source_minikind, target_minikind))
             ## import pdb;pdb.set_trace()
-        return None
+        return None, None
 
     def __iter__(self):
         return self
 
     def iter_changes(self):
         return self
+
+    cdef void _gather_result_for_consistency(self, result):
+        """Check a result we will yield to make sure we are consistent later.
+        
+        This gathers result's parents into a set to output later.
+
+        :param result: A result tuple.
+        """
+        if not self.partial or not result[0]:
+            return
+        self.seen_ids.add(result[0])
+        new_path = result[1][1]
+        if new_path:
+            # Not the root and not a delete: queue up the parents of the path.
+            self.search_specific_file_parents.update(
+                osutils.parent_directories(new_path.encode('utf8')))
+            # Add the root directory which parent_directories does not
+            # provide.
+            self.search_specific_file_parents.add('')
 
     cdef void _update_current_block(self):
         if (self.block_index < len(self.state._dirblocks) and
@@ -1401,15 +1456,17 @@ cdef class ProcessEntryC:
         cdef char * current_dirname_c, * current_blockname_c
         cdef int advance_entry, advance_path
         cdef int path_handled
-        uninteresting = self.uninteresting
         searched_specific_files = self.searched_specific_files
         # Are we walking a root?
         while self.root_entries_pos < self.root_entries_len:
             entry = self.root_entries[self.root_entries_pos]
             self.root_entries_pos = self.root_entries_pos + 1
-            result = self._process_entry(entry, self.root_dir_info)
-            if result is not None and result is not self.uninteresting:
-                return result
+            result, changed = self._process_entry(entry, self.root_dir_info)
+            if changed is not None:
+                if changed:
+                    self._gather_result_for_consistency(result)
+                if changed or self.include_unchanged:
+                    return result
         # Have we finished the prior root, or never started one ?
         if self.current_root is None:
             # TODO: the pending list should be lexically sorted?  the
@@ -1418,12 +1475,12 @@ cdef class ProcessEntryC:
                 self.current_root = self.search_specific_files.pop()
             except KeyError:
                 raise StopIteration()
-            self.current_root_unicode = self.current_root.decode('utf8')
             self.searched_specific_files.add(self.current_root)
             # process the entries for this containing directory: the rest will be
             # found by their parents recursively.
             self.root_entries = self.state._entries_for_path(self.current_root)
             self.root_entries_len = len(self.root_entries)
+            self.current_root_unicode = self.current_root.decode('utf8')
             self.root_abspath = self.tree.abspath(self.current_root_unicode)
             try:
                 root_stat = os.lstat(self.root_abspath)
@@ -1457,10 +1514,12 @@ cdef class ProcessEntryC:
             while self.root_entries_pos < self.root_entries_len:
                 entry = self.root_entries[self.root_entries_pos]
                 self.root_entries_pos = self.root_entries_pos + 1
-                result = self._process_entry(entry, self.root_dir_info)
-                if result is not None:
+                result, changed = self._process_entry(entry, self.root_dir_info)
+                if changed is not None:
                     path_handled = -1
-                    if result is not self.uninteresting:
+                    if changed:
+                        self._gather_result_for_consistency(result)
+                    if changed or self.include_unchanged:
                         return result
             # handle unversioned specified paths:
             if self.want_unversioned and not path_handled and self.root_dir_info:
@@ -1478,7 +1537,8 @@ cdef class ProcessEntryC:
                       )
             # If we reach here, the outer flow continues, which enters into the
             # per-root setup logic.
-        if self.current_dir_info is None and self.current_block is None:
+        if (self.current_dir_info is None and self.current_block is None and not
+            self.doing_consistency_expansion):
             # setup iteration of this root:
             self.current_dir_list = None
             if self.root_dir_info and self.root_dir_info[2] == 'tree-reference':
@@ -1606,9 +1666,11 @@ cdef class ProcessEntryC:
                         self.current_block_pos = self.current_block_pos + 1
                         # entry referring to file not present on disk.
                         # advance the entry only, after processing.
-                        result = self._process_entry(current_entry, None)
-                        if result is not None:
-                            if result is not self.uninteresting:
+                        result, changed = self._process_entry(current_entry, None)
+                        if changed is not None:
+                            if changed:
+                                self._gather_result_for_consistency(result)
+                            if changed or self.include_unchanged:
                                 return result
                     self.block_index = self.block_index + 1
                     self._update_current_block()
@@ -1620,6 +1682,15 @@ cdef class ProcessEntryC:
             # More supplied paths to process
             self.current_root = None
             return self._iter_next()
+        # Start expanding more conservatively, adding paths the user may not
+        # have intended but required for consistent deltas.
+        self.doing_consistency_expansion = 1
+        if not self._pending_consistent_entries:
+            self._pending_consistent_entries = self._next_consistent_entries()
+        while self._pending_consistent_entries:
+            result, changed = self._pending_consistent_entries.pop()
+            if changed is not None:
+                return result
         raise StopIteration()
 
     cdef object _maybe_tree_ref(self, current_path_info):
@@ -1675,10 +1746,8 @@ cdef class ProcessEntryC:
                     pass
                 elif current_path_info is None:
                     # no path is fine: the per entry code will handle it.
-                    result = self._process_entry(current_entry, current_path_info)
-                    if result is not None:
-                        if result is self.uninteresting:
-                            result = None
+                    result, changed = self._process_entry(current_entry,
+                        current_path_info)
                 else:
                     minikind = _minikind_from_string(
                         current_entry[1][self.target_index][0])
@@ -1699,19 +1768,18 @@ cdef class ProcessEntryC:
                         else:
                             # entry referring to file not present on disk.
                             # advance the entry only, after processing.
-                            result = self._process_entry(current_entry, None)
-                            if result is not None:
-                                if result is self.uninteresting:
-                                    result = None
+                            result, changed = self._process_entry(current_entry,
+                                None)
                             advance_path = 0
                     else:
                         # paths are the same,and the dirstate entry is not
                         # absent or renamed.
-                        result = self._process_entry(current_entry, current_path_info)
-                        if result is not None:
+                        result, changed = self._process_entry(current_entry,
+                            current_path_info)
+                        if changed is not None:
                             path_handled = -1
-                            if result is self.uninteresting:
-                                result = None
+                            if not changed and not self.include_unchanged:
+                                changed = None
                 # >- loop control starts here:
                 # >- entry
                 if advance_entry and current_entry is not None:
@@ -1733,7 +1801,7 @@ cdef class ProcessEntryC:
                             except UnicodeDecodeError:
                                 raise errors.BadFilenameEncoding(
                                     current_path_info[0], osutils._fs_enc)
-                            if result is not None:
+                            if changed is not None:
                                 raise AssertionError(
                                     "result is not None: %r" % result)
                             result = (None,
@@ -1744,6 +1812,7 @@ cdef class ProcessEntryC:
                                 (None, self.utf8_decode(current_path_info[1])[0]),
                                 (None, current_path_info[2]),
                                 (None, new_executable))
+                            changed = True
                         # dont descend into this unversioned path if it is
                         # a dir
                         if current_path_info[2] in ('directory'):
@@ -1762,9 +1831,12 @@ cdef class ProcessEntryC:
                                 current_path_info)
                     else:
                         current_path_info = None
-                if result is not None:
+                if changed is not None:
                     # Found a result on this pass, yield it
-                    return result
+                    if changed:
+                        self._gather_result_for_consistency(result)
+                    if changed or self.include_unchanged:
+                        return result
             if self.current_block is not None:
                 self.block_index = self.block_index + 1
                 self._update_current_block()
@@ -1776,3 +1848,123 @@ cdef class ProcessEntryC:
                     self.current_dir_list = self.current_dir_info[1]
                 except StopIteration:
                     self.current_dir_info = None
+
+    cdef object _next_consistent_entries(self):
+        """Grabs the next specific file parent case to consider.
+        
+        :return: A list of the results, each of which is as for _process_entry.
+        """
+        results = []
+        while self.search_specific_file_parents:
+            # Process the parent directories for the paths we were iterating.
+            # Even in extremely large trees this should be modest, so currently
+            # no attempt is made to optimise.
+            path_utf8 = self.search_specific_file_parents.pop()
+            if path_utf8 in self.searched_exact_paths:
+                # We've examined this path.
+                continue
+            if osutils.is_inside_any(self.searched_specific_files, path_utf8):
+                # We've examined this path.
+                continue
+            path_entries = self.state._entries_for_path(path_utf8)
+            # We need either one or two entries. If the path in
+            # self.target_index has moved (so the entry in source_index is in
+            # 'ar') then we need to also look for the entry for this path in
+            # self.source_index, to output the appropriate delete-or-rename.
+            selected_entries = []
+            found_item = False
+            for candidate_entry in path_entries:
+                # Find entries present in target at this path:
+                if candidate_entry[1][self.target_index][0] not in 'ar':
+                    found_item = True
+                    selected_entries.append(candidate_entry)
+                # Find entries present in source at this path:
+                elif (self.source_index is not None and
+                    candidate_entry[1][self.source_index][0] not in 'ar'):
+                    found_item = True
+                    if candidate_entry[1][self.target_index][0] == 'a':
+                        # Deleted, emit it here.
+                        selected_entries.append(candidate_entry)
+                    else:
+                        # renamed, emit it when we process the directory it
+                        # ended up at.
+                        self.search_specific_file_parents.add(
+                            candidate_entry[1][self.target_index][1])
+            if not found_item:
+                raise AssertionError(
+                    "Missing entry for specific path parent %r, %r" % (
+                    path_utf8, path_entries))
+            path_info = self._path_info(path_utf8, path_utf8.decode('utf8'))
+            for entry in selected_entries:
+                if entry[0][2] in self.seen_ids:
+                    continue
+                result, changed = self._process_entry(entry, path_info)
+                if changed is None:
+                    raise AssertionError(
+                        "Got entry<->path mismatch for specific path "
+                        "%r entry %r path_info %r " % (
+                        path_utf8, entry, path_info))
+                # Only include changes - we're outside the users requested
+                # expansion.
+                if changed:
+                    self._gather_result_for_consistency(result)
+                    if (result[6][0] == 'directory' and
+                        result[6][1] != 'directory'):
+                        # This stopped being a directory, the old children have
+                        # to be included.
+                        if entry[1][self.source_index][0] == 'r':
+                            # renamed, take the source path
+                            entry_path_utf8 = entry[1][self.source_index][1]
+                        else:
+                            entry_path_utf8 = path_utf8
+                        initial_key = (entry_path_utf8, '', '')
+                        block_index, _ = self.state._find_block_index_from_key(
+                            initial_key)
+                        if block_index == 0:
+                            # The children of the root are in block index 1.
+                            block_index = block_index + 1
+                        current_block = None
+                        if block_index < len(self.state._dirblocks):
+                            current_block = self.state._dirblocks[block_index]
+                            if not osutils.is_inside(
+                                entry_path_utf8, current_block[0]):
+                                # No entries for this directory at all.
+                                current_block = None
+                        if current_block is not None:
+                            for entry in current_block[1]:
+                                if entry[1][self.source_index][0] in 'ar':
+                                    # Not in the source tree, so doesn't have to be
+                                    # included.
+                                    continue
+                                # Path of the entry itself.
+                                self.search_specific_file_parents.add(
+                                    self.pathjoin(*entry[0][:2]))
+                if changed or self.include_unchanged:
+                    results.append((result, changed))
+            self.searched_exact_paths.add(path_utf8)
+        return results
+
+    cdef object _path_info(self, utf8_path, unicode_path):
+        """Generate path_info for unicode_path.
+
+        :return: None if unicode_path does not exist, or a path_info tuple.
+        """
+        abspath = self.tree.abspath(unicode_path)
+        try:
+            stat = os.lstat(abspath)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                # the path does not exist.
+                return None
+            else:
+                raise
+        utf8_basename = utf8_path.rsplit('/', 1)[-1]
+        dir_info = (utf8_path, utf8_basename,
+            osutils.file_kind_from_stat_mode(stat.st_mode), stat,
+            abspath)
+        if dir_info[2] == 'directory':
+            if self.tree._directory_is_tree_reference(
+                unicode_path):
+                self.root_dir_info = self.root_dir_info[:2] + \
+                    ('tree-reference',) + self.root_dir_info[3:]
+        return dir_info

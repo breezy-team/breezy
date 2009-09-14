@@ -1267,3 +1267,19 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.addCleanup(branch.repository.abort_write_group)
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
+
+    def test_stacked_repositories_reject_commit_builder(self):
+        # As per bug 375013, committing to stacked repositories is currently
+        # broken, so repositories with fallbacks refuse to hand out a commit
+        # builder.
+        repo_basis = self.make_repository('basis')
+        branch = self.make_branch('local')
+        repo_local = branch.repository
+        try:
+            repo_local.add_fallback_repository(repo_basis)
+        except errors.UnstackableRepositoryFormat:
+            raise tests.TestNotApplicable("not a stackable format.")
+        repo_local.lock_write()
+        self.addCleanup(repo_local.unlock)
+        self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
+            branch, [], branch.get_config())
