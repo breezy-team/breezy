@@ -68,6 +68,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranchSet,
         DscCache,
         DscComp,
+        open_file_via_transport,
         )
 from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
 from bzrlib.plugins.builddeb.source_distiller import (
@@ -664,7 +665,7 @@ class cmd_import_dsc(Command):
         for dscname in files_list:
             dsc = cache.get_dsc(dscname)
             def get_dsc_part(from_transport, filename):
-                from_f = from_transport.get(filename)
+                from_f = open_file_via_transport(filename, from_transport)
                 contents = from_f.read()
                 to_f = open(os.path.join(orig_target, filename), 'wb')
                 try:

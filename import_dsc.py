@@ -51,9 +51,9 @@ from bzrlib import (
                     )
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (
+        AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
-        AlreadyBranchError,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
@@ -61,7 +61,10 @@ from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 
 from bzrlib.plugins.bzrtools.upstream_import import (
                                                      names_of_files,
@@ -292,19 +295,24 @@ def import_archive(tree, archive_file, file_ids_from=None):
     tt.apply()
 
 
-def open_file(path, transport, base_dir=None):
-  """Open a file, possibly over a transport.
+def open_transport(path):
+  """Obtain an appropriate transport instance for the given path."""
+  base_dir, path = urlutils.split(path)
+  transport = get_transport(base_dir)
+  return (path, transport)
 
-  Open the named path, using the transport if not None. If the transport and
-  base_dir are not None, then path will be interpreted relative to base_dir.
-  """
-  if transport is None:
-    base_dir, path = urlutils.split(path)
-    transport = get_transport(base_dir)
-  else:
-    if base_dir is not None:
-      path = urlutils.join(base_dir, path)
-  return (transport.get(path), transport)
+
+def open_file_via_transport(filename, transport):
+  """Open a file using the transport, follow redirects as necessary."""
+  def open_file(transport):
+    return transport.get(filename)
+  def follow_redirection(transport, e, redirection_notice):
+    mutter(redirection_notice)
+    _filename, redirected_transport = open_transport(e.target)
+    return redirected_transport
+
+  result = do_catching_redirections(open_file, transport, follow_redirection)
+  return result
 
 
 class DscCache(object):
@@ -315,16 +323,20 @@ class DscCache(object):
     self.transport = transport
 
   def get_dsc(self, name):
+
     if name in self.cache:
       dsc1 = self.cache[name]
     else:
-      (f1, transport) = open_file(name, self.transport)
+      # Obtain the dsc file, following any redirects as needed.
+      filename, transport = open_transport(name)
+      f1 = open_file_via_transport(filename, transport)
       try:
         dsc1 = deb822.Dsc(f1)
       finally:
         f1.close()
       self.cache[name] = dsc1
       self.transport_cache[name] = transport
+
     return dsc1
 
   def get_transport(self, name):

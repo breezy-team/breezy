@@ -21,6 +21,7 @@ bzr-builddeb (2.2~ubuntu3) UNRELEASED; urgency=low
     Thanks Muharem. (LP: #417153)
   * Refuse to build a conflicted tree. Thanks Muharem. (LP: #381303)
   * Don't crash if there are no deb-src lines when building. (LP: #375897)
+  * Make import-dsc work against redirected URIs. Thanks Muharem (LP: #337209)
 
  -- James Westby <james.westby@ubuntu.com>  Sun, 26 Jul 2009 18:38:47 +0200
 
