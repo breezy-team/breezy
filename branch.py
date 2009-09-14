@@ -536,7 +536,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        result.old_revid = self.target.last_revision()
+        try:
+            result.old_revid = self.target.last_revision()
+        except NoSuchRef:
+            result.old_revid = revision.NULL_REVISION
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
