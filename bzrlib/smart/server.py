@@ -340,8 +340,20 @@ def _local_path_for_transport(transport):
         except errors.InvalidURL:
             return None
 
+
 def _make_expand_userdirs_filter(transport, base_path):
-    def _expand_userdirs(path):
+    def expand_userdirs(path):
+        """Translate /~/ or /~user/ to e.g. /home/foo, using
+        os.path.expanduser.
+
+        If the translated path would fall outside base_path, or the path does
+        not start with ~, then no translation is applied.
+
+        If the path is inside, it is adjusted to be relative to the base path.
+
+        e.g. if base_path is /home, and the expanded path is /home/joe, then
+        the translated path is joe.
+        """
         result = path
         if path.startswith('~'):
             expanded = os.path.expanduser(path)
@@ -350,9 +362,7 @@ def _make_expand_userdirs_filter(transport, base_path):
             if expanded.startswith(base_path):
                 result = expanded[len(base_path):]
         return result
-    expand_userdirs = pathfilter.PathFilteringServer(
-        transport, _expand_userdirs)
-    return expand_userdirs
+    return pathfilter.PathFilteringServer(transport, expand_userdirs)
 
 
 def serve_bzr(transport, host=None, port=None, inet=False):
