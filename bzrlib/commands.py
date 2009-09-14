@@ -1107,6 +1107,7 @@ def main(argv=None):
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
+    osutils.report_extension_load_failures()
     return ret
 
 

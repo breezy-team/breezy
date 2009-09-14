@@ -6,8 +6,8 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
+2.1 series (not released yet)
+#############################
 
 Compatibility Breaks
 ********************
@@ -76,6 +76,14 @@ Bug Fixes
   
 Improvements
 ************
+
+* Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
+  compiled extensions can't be loaded.  This typically indicates a
+  packaging or installation problem.  In this case Bazaar will keep
+  running using pure-Python versions, but this may be substantially
+  slower.  The warning can be disabled by setting
+  ``ignore_missing_extensions = True`` in ``bazaar.conf``.
+  (Martin Pool, #406113)
 
 Documentation
 *************
