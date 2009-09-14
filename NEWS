@@ -107,6 +107,9 @@ Testing
 * Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
   be output for every test. Note that this is very verbose! (Robert Collins)
 
+* Setting ``BZR_TEST_PDB=1`` when running selftest will cause a pdb
+  post_mortem to be triggered when a test failure occurs. (Robert Collins)
+
 * Test parameterisation now does a shallow copy, not a deep copy of the test
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)

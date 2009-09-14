@@ -298,6 +298,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._post_mortem()
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -315,6 +316,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._post_mortem()
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -403,6 +405,11 @@ class ExtendedTestResult(unittest._TextTestResult):
                     self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
+
+    def _post_mortem(self):
+        """Start a PDB post mortem session."""
+        if os.environ.get('BZR_TEST_PDB', None):
+            import pdb;pdb.post_mortem()
 
     def progress(self, offset, whence):
         """The test is adjusting the count of tests to run."""
