@@ -54,7 +54,6 @@ from bzrlib.errors import (
         AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
-        RedirectRequested,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
