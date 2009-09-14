@@ -78,12 +78,39 @@ class TestBuilddeb(BuilddebTestCase):
     tree.add([self.uncommited_file])
     return tree
 
+  def build_tree_with_conflict(self):
+    tree = self.make_unpacked_source()
+    self.build_tree([self.commited_file, self.uncommited_file,
+                     self.unadded_file])
+    tree.add([self.commited_file])
+    tree.commit("one", rev_id='revid1')
+    newtree = tree.bzrdir.sprout('newtree').open_workingtree()
+    tree.add([self.uncommited_file])
+    tree.commit("two", rev_id='revid2')
+
+    p = '%s/work/newtree/%s' % (self.test_base_dir, self.uncommited_file)
+    fh = open(p, 'w')
+    fh.write('** This is the conflicting line.')
+    fh.close()
+    newtree.add([self.uncommited_file])
+    newtree.commit("new-two", rev_id='revidn2')
+    conflicts = tree.merge_from_branch(newtree.branch) 
+
+    return (conflicts, tree)
+
   def test_builddeb_uses_working_tree(self):
     self.build_really_simple_tree()
     self.run_bzr("builddeb --no-user-conf --native --builder true "
             "--dont-purge")
     self.assertInBuildDir([self.commited_file, self.uncommited_file])
     self.assertNotInBuildDir([self.unadded_file])
+
+  def test_builddeb_refuses_tree_with_conflicts(self):
+    (conflicts, tree) = self.build_tree_with_conflict()
+    self.assertTrue(conflicts > 0)
+    self.run_bzr_error(
+      ['There are conflicts in the working tree. You must resolve these'],
+      "builddeb --no-user-conf --native --builder true --dont-purge")
 
   def test_builddeb_uses_revision_when_told(self):
     self.build_really_simple_tree()
