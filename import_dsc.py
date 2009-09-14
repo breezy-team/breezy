@@ -321,8 +321,6 @@ def open_file_via_transport(filename, transport):
     return redirected_transport
 
   result = do_catching_redirections(open_file, transport, follow_redirection)
-  import pdb
-  pdb.set_trace()
   return result
 
 
