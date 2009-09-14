@@ -48,6 +48,7 @@ from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
+from bzrlib.transport.pathfilter import PathFilteringServer
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -443,6 +444,75 @@ class ChrootServerTest(TestCase):
         server.setUp()
         self.assertEqual('chroot-%d:///' % id(server), server.get_url())
         server.tearDown()
+
+
+class PathFilteringDecoratorTransportTest(TestCase):
+    """Pathfilter decoration specific tests."""
+
+    def test_abspath(self):
+        # The abspath is always relative to the base of the backing transport.
+        server = PathFilteringServer(get_transport('memory:///foo/bar/'),
+            lambda x: x)
+        server.setUp()
+        transport = get_transport(server.get_url())
+        self.assertEqual(server.get_url(), transport.abspath('/'))
+
+        subdir_transport = transport.clone('subdir')
+        self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
+        server.tearDown()
+
+    def make_pf_transport(self, filter_func=None):
+        """Make a PathFilteringTransport backed by a MemoryTransport.
+        
+        :param filter_func: by default this will be a no-op function.  Use this
+            parameter to override it."""
+        if filter_func is None:
+            filter_func = lambda x: x
+        server = PathFilteringServer(
+            get_transport('memory:///foo/bar/'), filter_func)
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        return get_transport(server.get_url())
+
+    def test__filter(self):
+        # _filter (with an identity func as filter_func) always returns
+        # paths relative to the base of the backing transport.
+        transport = self.make_pf_transport()
+        self.assertEqual('foo', transport._filter('foo'))
+        self.assertEqual('foo/bar', transport._filter('foo/bar'))
+        self.assertEqual('', transport._filter('..'))
+        self.assertEqual('', transport._filter('/'))
+        # The base of the pathfiltering transport is taken into account too.
+        transport = transport.clone('subdir1/subdir2')
+        self.assertEqual('subdir1/subdir2/foo', transport._filter('foo'))
+        self.assertEqual(
+            'subdir1/subdir2/foo/bar', transport._filter('foo/bar'))
+        self.assertEqual('subdir1', transport._filter('..'))
+        self.assertEqual('', transport._filter('/'))
+
+    def test_clone(self):
+       transport = self.make_pf_transport()
+       # relpath from root and root path are the same
+       relpath_cloned = transport.clone('foo')
+       abspath_cloned = transport.clone('/foo')
+       self.assertEqual(transport.server, relpath_cloned.server)
+       self.assertEqual(transport.server, abspath_cloned.server)
+
+    def test_url_preserves_pathfiltering(self):
+        """Calling get_transport on a pathfiltered transport's base should
+        produce a transport with exactly the same behaviour as the original
+        pathfiltered transport.
+
+        This is so that it is not possible to escape (accidentally or
+        otherwise) the filtering by doing::
+            url = filtered_transport.base
+            parent_url = urlutils.join(url, '..')
+            new_transport = get_transport(parent_url)
+        """
+        transport = self.make_pf_transport()
+        new_transport = get_transport(transport.base)
+        self.assertEqual(transport.server, new_transport.server)
+        self.assertEqual(transport.base, new_transport.base)
 
 
 class ReadonlyDecoratorTransportTest(TestCase):
