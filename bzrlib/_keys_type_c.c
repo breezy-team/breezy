@@ -15,6 +15,13 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+/* Must be defined before importing _keys_type_c.h so that we get the right
+ * linkage.
+ */
+#if defined(_WIN32)
+#  define KeysAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
+#endif
+
 #include "_keys_type_c.h"
 
 #include "python-compat.h"

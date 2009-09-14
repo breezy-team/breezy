@@ -265,7 +265,6 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
 
 add_pyrex_extension('bzrlib._annotator_pyx')
 add_pyrex_extension('bzrlib._bencode_pyx')
-add_pyrex_extension('bzrlib._btree_serializer_pyx')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
@@ -297,6 +296,9 @@ ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 ext_modules.append(Extension('bzrlib._keys_type_c',
                              ['bzrlib/_keys_type_c.c']))
+add_pyrex_extension('bzrlib._btree_serializer_pyx',
+                    libraries=['_keys_type_c'])
+ext_modules[-1].library_dirs.append('build/temp.win32-2.6/Release/bzrlib')
 
 
 if unavailable_files:

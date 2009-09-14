@@ -17,6 +17,13 @@
 
 #include <Python.h>
 
+#if !defined(KeysAPI_FUNC)
+#  if defined(_WIN32)
+#    define KeysAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
+#  else
+#    define KeysAPI_FUNC(RTYPE) RTYPE
+#  endif
+#endif
 
 /* This defines a single variable-width key.
  * It is basically the same as a tuple, but
@@ -35,7 +42,7 @@ typedef struct {
 extern PyTypeObject Key_Type;
 
 /* Do we need a PyAPI_FUNC sort of wrapper? */
-PyObject * Key_New(Py_ssize_t size);
+KeysAPI_FUNC(PyObject *) Key_New(Py_ssize_t size);
 
 /* Because of object alignment, it seems that using unsigned char doesn't make
  * things any smaller than using an 'int'... :(
@@ -52,3 +59,7 @@ typedef struct {
 
 /* Forward declaration */
 extern PyTypeObject Keys_Type;
+
+#define Key_SET_ITEM(key, offset, val) \
+    ((((Key*)key)->key_bits[offset]) = (PyStringObject *)val)
+#define Key_GET_ITEM(key, offset) (((Key*)key)->key_bits[offset])
