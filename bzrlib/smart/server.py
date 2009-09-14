@@ -17,6 +17,7 @@
 """Server for smart-server protocol."""
 
 import errno
+import os.path
 import socket
 import sys
 import threading
@@ -30,6 +31,10 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
+from bzrlib.transport import pathfilter
+from bzrlib import (
+    urlutils,
+    )
 """)
 
 
@@ -313,34 +318,85 @@ class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_o
         return transport.get_transport(url)
 
 
+def _local_path_for_transport(transport):
+    """Return a local path for transport, if reasonably possible.
+    
+    This function works even if transport's url has a "readonly+" prefix,
+    unlike local_path_from_url.
+    
+    This essentially recovers the --directory argument the user passed to "bzr
+    serve" from the transport passed to serve_bzr.
+    """
+    try:
+        base_url = transport.external_url()
+    except (errors.InProcessTransport, NotImplementedError):
+        return None
+    else:
+        # Strip readonly prefix
+        if base_url.startswith('readonly+'):
+            base_url = base_url[len('readonly+'):]
+        try:
+            return urlutils.local_path_from_url(base_url)
+        except errors.InvalidURL:
+            return None
+
+def _make_expand_userdirs_filter(transport, base_path):
+    def _expand_userdirs(path):
+        result = path
+        if path.startswith('~'):
+            expanded = os.path.expanduser(path)
+            if not expanded.endswith('/'):
+                expanded += '/'
+            if expanded.startswith(base_path):
+                result = expanded[len(base_path):]
+        return result
+    expand_userdirs = pathfilter.PathFilteringServer(
+        transport, _expand_userdirs)
+    return expand_userdirs
+
+
 def serve_bzr(transport, host=None, port=None, inet=False):
     from bzrlib import lockdir, ui
     from bzrlib.transport import get_transport
     from bzrlib.transport.chroot import ChrootServer
-    chroot_server = ChrootServer(transport)
-    chroot_server.setUp()
-    transport = get_transport(chroot_server.get_url())
-    if inet:
-        smart_server = medium.SmartServerPipeStreamMedium(
-            sys.stdin, sys.stdout, transport)
-    else:
-        if host is None:
-            host = medium.BZR_DEFAULT_INTERFACE
-        if port is None:
-            port = medium.BZR_DEFAULT_PORT
-        smart_server = SmartTCPServer(transport, host=host, port=port)
-        trace.note('listening on port: %s' % smart_server.port)
-    # For the duration of this server, no UI output is permitted. note
-    # that this may cause problems with blackbox tests. This should be
-    # changed with care though, as we dont want to use bandwidth sending
-    # progress over stderr to smart server clients!
-    old_factory = ui.ui_factory
-    old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+    cleanups = []
     try:
+        base_path = _local_path_for_transport(transport)
+        chroot_server = ChrootServer(transport)
+        chroot_server.setUp()
+        cleanups.append(chroot_server.tearDown)
+        transport = get_transport(chroot_server.get_url())
+        if base_path is not None:
+            # Decorate the server's backing transport with a filter that can
+            # expand homedirs.
+            expand_userdirs = _make_expand_userdirs_filter(transport, base_path)
+            expand_userdirs.setUp()
+            cleanups.append(expand_userdirs.tearDown)
+            transport = get_transport(expand_userdirs.get_url())
+        if inet:
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, transport)
+        else:
+            if host is None:
+                host = medium.BZR_DEFAULT_INTERFACE
+            if port is None:
+                port = medium.BZR_DEFAULT_PORT
+            smart_server = SmartTCPServer(transport, host=host, port=port)
+            trace.note('listening on port: %s' % smart_server.port)
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        def restore_default_ui_factory_and_lockdir_timeout():
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
         smart_server.serve()
     finally:
-        ui.ui_factory = old_factory
-        lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        for cleanup in reversed(cleanups):
+            cleanup()
 
