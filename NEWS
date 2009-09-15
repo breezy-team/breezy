@@ -2,6 +2,16 @@
 Bazaar Release Notes
 ####################
 
+bzr 2.0.1
+##########
+
+Bug Fixes
+*********
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+
 
 bzr 2.0rc2
 ##########
