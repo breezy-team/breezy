@@ -166,7 +166,7 @@ Fix Released
     require action. When setting a bug task to fix released, the bug target
     milestone should be set to the release the fix will be included in (or
     was included in, if you are updating an old bug). Don't spend too much time
-    updating this if you don't immediately know : its not critical that it be
+    updating this if you don't immediately know: its not critical that it be
     set.
 
 
@@ -217,7 +217,7 @@ release manager know what **must** be merged to make the release.
 Therefore, we don't target bugs that we'd like to have fixed or that could
 be fixed in a particular release, we only target bugs that must be fixed
 and that will cause us to slip the release if they're not fixed.  At any time,
-very few if any of the bugs targetted to a release should be still open.  By
+very few if any of the bugs targeted to a release should be still open.  By
 definition, these bugs should normally be Critical priority.
 
 
