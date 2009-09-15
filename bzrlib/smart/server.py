@@ -31,7 +31,11 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
-from bzrlib.transport import pathfilter
+from bzrlib.transport import (
+    chroot,
+    get_transport,
+    pathfilter,
+    )
 from bzrlib import (
     urlutils,
     )
@@ -365,34 +369,43 @@ def _make_expand_userdirs_filter(transport, base_path):
     return pathfilter.PathFilteringServer(transport, expand_userdirs)
 
 
-def serve_bzr(transport, host=None, port=None, inet=False):
-    from bzrlib import lockdir, ui
-    from bzrlib.transport import get_transport
-    from bzrlib.transport.chroot import ChrootServer
-    cleanups = []
-    try:
+class BzrServer(object):
+
+    def __init__(self):
+        self.cleanups = []
+        self.backing_transport = None
+
+    def _make_backing_transport(self, transport):
+        """Chroot transport, and decorate with userdir expander."""
         base_path = _local_path_for_transport(transport)
-        chroot_server = ChrootServer(transport)
+        chroot_server = chroot.ChrootServer(transport)
         chroot_server.setUp()
-        cleanups.append(chroot_server.tearDown)
+        self.cleanups.append(chroot_server.tearDown)
         transport = get_transport(chroot_server.get_url())
         if base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = _make_expand_userdirs_filter(transport, base_path)
             expand_userdirs.setUp()
-            cleanups.append(expand_userdirs.tearDown)
+            self.cleanups.append(expand_userdirs.tearDown)
             transport = get_transport(expand_userdirs.get_url())
+        self.transport = transport
+
+    def _make_smart_server(self, host, port, inet):
         if inet:
             smart_server = medium.SmartServerPipeStreamMedium(
-                sys.stdin, sys.stdout, transport)
+                sys.stdin, sys.stdout, self.transport)
         else:
             if host is None:
                 host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
-            smart_server = SmartTCPServer(transport, host=host, port=port)
+            smart_server = SmartTCPServer(self.transport, host=host, port=port)
             trace.note('listening on port: %s' % smart_server.port)
+        self.smart_server = smart_server
+
+    def _change_globals(self):
+        from bzrlib import lockdir, ui
         # For the duration of this server, no UI output is permitted. note
         # that this may cause problems with blackbox tests. This should be
         # changed with care though, as we dont want to use bandwidth sending
@@ -402,11 +415,22 @@ def serve_bzr(transport, host=None, port=None, inet=False):
         def restore_default_ui_factory_and_lockdir_timeout():
             ui.ui_factory = old_factory
             lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
-        cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
+        self.cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-        smart_server.serve()
+
+    def setUp(self, transport, host, port, inet):
+        self._make_backing_transport(transport)
+        self._make_smart_server(host, port, inet)
+        self._change_globals()
+
+
+def serve_bzr(transport, host=None, port=None, inet=False):
+    bzr_server = BzrServer()
+    try:
+        bzr_server.setUp(transport, host, port, inet)
+        bzr_server.smart_server.serve()
     finally:
-        for cleanup in reversed(cleanups):
+        for cleanup in reversed(bzr_server.cleanups):
             cleanup()
 
