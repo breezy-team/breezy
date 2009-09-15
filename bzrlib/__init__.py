@@ -65,23 +65,29 @@ def _format_version_tuple(version_info):
     zero for final releases.
 
     >>> print _format_version_tuple((1, 0, 0, 'final', 0))
-    1.0
+    1.0.0
     >>> print _format_version_tuple((1, 2, 0, 'dev', 0))
-    1.2dev
+    1.2.0dev
+    >>> print bzrlib._format_version_tuple((1, 2, 0, 'dev', 1))
+    1.2.0dev1
     >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
     1.1.1rc2
     >>> print bzrlib._format_version_tuple((2, 1, 0, 'beta', 1))
-    2.1b1
+    2.1.0b1
     >>> print _format_version_tuple((1, 4, 0))
-    1.4
+    1.4.0
     >>> print _format_version_tuple((1, 4))
     1.4
+    >>> print bzrlib._format_version_tuple((2, 1, 0, 'final', 1))
+    Traceback (most recent call last):
+    ...
+    ValueError: version_info (2, 1, 0, 'final', 1) not valid
     >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
     Traceback (most recent call last):
     ...
     ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
     """
-    if len(version_info) == 2 or version_info[2] == 0:
+    if len(version_info) == 2:
         main_version = '%d.%d' % version_info[:2]
     else:
         main_version = '%d.%d.%d' % version_info[:3]
@@ -96,6 +102,8 @@ def _format_version_tuple(version_info):
         sub_string = ''
     elif release_type == 'dev' and sub == 0:
         sub_string = 'dev'
+    elif release_type == 'dev':
+        sub_string = 'dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
         sub_string = release_type[0] + str(sub)
     elif release_type == 'candidate':
@@ -103,7 +111,6 @@ def _format_version_tuple(version_info):
     else:
         raise ValueError("version_info %r not valid" % (version_info,))
 
-    version_string = '%d.%d.%d.%s.%d' % tuple(version_info)
     return main_version + sub_string
 
 
