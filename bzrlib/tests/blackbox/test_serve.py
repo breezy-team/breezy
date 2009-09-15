@@ -28,7 +28,6 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
-    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir

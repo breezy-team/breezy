@@ -345,8 +345,17 @@ def _local_path_for_transport(transport):
             return None
 
 
-def _make_expand_userdirs_filter(transport, base_path):
-    def expand_userdirs(path):
+class BzrServer(object):
+
+    def __init__(self, userdir_expander=None):
+        self.cleanups = []
+        self.base_path = None
+        self.backing_transport = None
+        if userdir_expander is None:
+            userdir_expander = os.path.expanduser
+        self.userdir_expander = userdir_expander
+
+    def _expand_userdirs(self, path):
         """Translate /~/ or /~user/ to e.g. /home/foo, using
         os.path.expanduser.
 
@@ -360,32 +369,27 @@ def _make_expand_userdirs_filter(transport, base_path):
         """
         result = path
         if path.startswith('~'):
-            expanded = os.path.expanduser(path)
+            expanded = self.userdir_expander(path)
             if not expanded.endswith('/'):
                 expanded += '/'
-            if expanded.startswith(base_path):
-                result = expanded[len(base_path):]
+            if expanded.startswith(self.base_path):
+                result = expanded[len(self.base_path):]
         return result
-    return pathfilter.PathFilteringServer(transport, expand_userdirs)
 
-
-class BzrServer(object):
-
-    def __init__(self):
-        self.cleanups = []
-        self.backing_transport = None
+    def _make_expand_userdirs_filter(self, transport):
+        return pathfilter.PathFilteringServer(transport, self._expand_userdirs)
 
     def _make_backing_transport(self, transport):
         """Chroot transport, and decorate with userdir expander."""
-        base_path = _local_path_for_transport(transport)
+        self.base_path = _local_path_for_transport(transport)
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.setUp()
         self.cleanups.append(chroot_server.tearDown)
         transport = get_transport(chroot_server.get_url())
-        if base_path is not None:
+        if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
-            expand_userdirs = _make_expand_userdirs_filter(transport, base_path)
+            expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.setUp()
             self.cleanups.append(expand_userdirs.tearDown)
             transport = get_transport(expand_userdirs.get_url())
