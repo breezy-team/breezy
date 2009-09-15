@@ -9,17 +9,17 @@
 Основная документация
 =====================
 
-* `Руководство пользователя <ru/user-guide/index.html>`_
+* `Руководство пользователя <ru/user-guide/index-plain.html>`_
 
 * `Справочник пользователя <en/user-reference/bzr_man.html>`_ (англ.)
 
-* `Карточка быстрого старта <ru/quick-reference/quick-start-summary.svg>`_
-  (`PDF <ru/quick-reference/quick-start-summary.pdf>`_,
-  `PNG <ru/quick-reference/quick-start-summary.png>`_)
+* `Карточка быстрого старта <ru/_static/ru/bzr-ru-quick-reference.svg>`_
+  (`PDF <ru/_static/ru/bzr-ru-quick-reference.pdf>`_,
+  `PNG <ru/_static/ru/bzr-ru-quick-reference.png>`_)
 
 * `Список изменений <en/release-notes/NEWS.html>`_ (англ.)
 
-* `Каталог информации для разработчиков <developers/index.html>`_ (англ.) |--| 
+* `Каталог информации для разработчиков <developers/index-plain.html>`_ (англ.) |--| 
   для разработчиков Bazaar и плагинов
 
 Учебники
