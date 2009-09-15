@@ -732,7 +732,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
         server_sock.close()
-        self.assertEqual(expected_response, client_sock.recv(50),
+        self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
 

@@ -281,3 +281,26 @@ class KnownGraph(object):
                  in tsort.merge_sort(as_parent_map, tip_key,
                                      mainline_revisions=None,
                                      generate_revno=True)]
+    
+    def get_parent_keys(self, key):
+        """Get the parents for a key
+        
+        Returns a list containg the parents keys. If the key is a ghost,
+        None is returned. A KeyError will be raised if the key is not in
+        the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of parents
+        """
+        return self._nodes[key].parent_keys
+
+    def get_child_keys(self, key):
+        """Get the children for a key
+        
+        Returns a list containg the children keys. A KeyError will be raised
+        if the key is not in the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of children
+        """
+        return self._nodes[key].child_keys
