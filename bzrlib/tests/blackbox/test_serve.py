@@ -26,6 +26,7 @@ import thread
 import threading
 
 from bzrlib import (
+    builtins,
     errors,
     osutils,
     revision as _mod_revision,
@@ -34,7 +35,7 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.smart import client, medium
-from bzrlib.smart.server import SmartTCPServer
+from bzrlib.smart.server import BzrServerMaker, SmartTCPServer
 from bzrlib.tests import (
     TestCaseWithTransport,
     TestCaseWithMemoryTransport,
@@ -337,7 +338,6 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         """Make and setUp a BzrServerMaker, backed by a memory transport, and
         creat '/home/user' in that transport.
         """
-        from bzrlib.smart.server import BzrServerMaker
         bzr_server = BzrServerMaker(
             self.fake_expanduser, lambda t: base_path)
         mem_transport = self.get_transport()
@@ -352,4 +352,29 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
     def test_bzr_serve_does_not_expand_userdir_outside_base(self):
         bzr_server = self.make_test_server('/foo')
         self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_get_base_path(self):
+        """cmd_serve will turn the --directory option into a LocalTransport
+        (optionally decorated with 'readonly+').  BzrServerMaker can determine
+        the original --directory from that transport.
+        """
+        # Define a fake 'protocol' to capture the transport that cmd_serve
+        # passes to serve_bzr.
+        def capture_transport(transport, host, port, inet):
+            self.bzr_serve_transport = transport
+        cmd = builtins.cmd_serve()
+        # Read-only
+        cmd.run(directory='/a/b/c', protocol=capture_transport)
+        server_maker = BzrServerMaker()
+        self.assertEqual(
+            'readonly+file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+        # Read-write
+        cmd.run(directory='/a/b/c', protocol=capture_transport,
+            allow_writes=True)
+        server_maker = BzrServerMaker()
+        self.assertEqual('file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
 
