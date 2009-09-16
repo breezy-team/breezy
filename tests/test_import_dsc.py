@@ -62,22 +62,30 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
     def setUp(self):
         super(DistributionBranchTests, self).setUp()
         self.tree1 = self.make_branch_and_tree('unstable')
+        root_id = self.tree1.path2id("")
         self.up_tree1 = self.make_branch_and_tree('unstable-upstream')
+        self.up_tree1.set_root_id(root_id)
         self.db1 = DistributionBranch(self.tree1.branch,
                 self.up_tree1.branch, tree=self.tree1,
                 upstream_tree=self.up_tree1)
         self.tree2 = self.make_branch_and_tree('experimental')
+        self.tree2.set_root_id(root_id)
         self.up_tree2 = self.make_branch_and_tree('experimental-upstream')
+        self.up_tree2.set_root_id(root_id)
         self.db2 = DistributionBranch(self.tree2.branch,
                 self.up_tree2.branch, tree=self.tree2,
                 upstream_tree=self.up_tree2)
         self.tree3 = self.make_branch_and_tree('gutsy')
+        self.tree3.set_root_id(root_id)
         self.up_tree3 = self.make_branch_and_tree('gutsy-upstream')
+        self.up_tree3.set_root_id(root_id)
         self.db3 = DistributionBranch(self.tree3.branch,
                 self.up_tree3.branch, tree=self.tree3,
                 upstream_tree=self.up_tree3)
         self.tree4 = self.make_branch_and_tree('hardy')
+        self.tree4.set_root_id(root_id)
         self.up_tree4 = self.make_branch_and_tree('hardy-upstream')
+        self.up_tree4.set_root_id(root_id)
         self.db4 = DistributionBranch(self.tree4.branch,
                 self.up_tree4.branch, tree=self.tree4,
                 upstream_tree=self.up_tree4)
