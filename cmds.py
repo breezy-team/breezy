@@ -45,7 +45,6 @@ from bzrlib.export import export
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import info, warning
-from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb import (
@@ -68,8 +67,6 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranchSet,
         DscCache,
         DscComp,
-        open_file,
-        open_file_via_transport,
         )
 from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
 from bzrlib.plugins.builddeb.source_distiller import (
@@ -83,12 +80,14 @@ from bzrlib.plugins.builddeb.upstream import (
         get_upstream_sources,
         )
 from bzrlib.plugins.builddeb.util import (find_changelog,
-        get_export_upstream_revision,
+        dget_changes,
         find_last_distribution,
+        get_export_upstream_revision,
         lookup_distribution,
+        open_file,
+        open_file_via_transport,
         suite_to_distribution,
         tarball_name,
-        dget_changes,
         )
 
 dont_purge_opt = Option('dont-purge',
