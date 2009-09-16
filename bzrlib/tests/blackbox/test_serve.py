@@ -18,6 +18,7 @@
 """Tests of the bzr serve command."""
 
 import os
+import os.path
 import signal
 import subprocess
 import sys
@@ -34,7 +35,11 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import SmartTCPServer
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestCaseWithMemoryTransport,
+    TestSkipped,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
@@ -315,4 +320,36 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         client_medium.disconnect()
 
 
+class TestUserdirExpansion(TestCaseWithMemoryTransport):
+
+    def fake_expanduser(self, path):
+        """A simple, environment-independent, function for the duration of this
+        test.
+
+        Paths starting with a path segment of '~user' will expand to start with
+        '/home/user/'.  Every other path will be unchanged.
+        """
+        if path.split('/', 1)[0] == '~user':
+            return '/home/user' + path[len('~user'):]
+        return path
+
+    def make_test_server(self, base_path='/'):
+        """Make and setUp a BzrServerMaker, backed by a memory transport, and
+        creat '/home/user' in that transport.
+        """
+        from bzrlib.smart.server import BzrServerMaker
+        bzr_server = BzrServerMaker(
+            self.fake_expanduser, lambda t: base_path)
+        mem_transport = self.get_transport()
+        mem_transport.mkdir_multi(['home', 'home/user'])
+        bzr_server.setUp(mem_transport, None, None, inet=True)
+        return bzr_server
+
+    def test_bzr_serve_expands_userdir(self):
+        bzr_server = self.make_test_server()
+        self.assertTrue(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_bzr_serve_does_not_expand_userdir_outside_base(self):
+        bzr_server = self.make_test_server('/foo')
+        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
 

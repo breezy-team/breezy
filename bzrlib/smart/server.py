@@ -345,15 +345,18 @@ def _local_path_for_transport(transport):
             return None
 
 
-class BzrServer(object):
+class BzrServerMaker(object):
 
-    def __init__(self, userdir_expander=None):
+    def __init__(self, userdir_expander=None, get_base_path=None):
         self.cleanups = []
         self.base_path = None
         self.backing_transport = None
         if userdir_expander is None:
             userdir_expander = os.path.expanduser
         self.userdir_expander = userdir_expander
+        if get_base_path is None:
+            get_base_path = _local_path_for_transport
+        self.get_base_path = get_base_path
 
     def _expand_userdirs(self, path):
         """Translate /~/ or /~user/ to e.g. /home/foo, using
@@ -381,7 +384,7 @@ class BzrServer(object):
 
     def _make_backing_transport(self, transport):
         """Chroot transport, and decorate with userdir expander."""
-        self.base_path = _local_path_for_transport(transport)
+        self.base_path = self.get_base_path(transport)
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.setUp()
         self.cleanups.append(chroot_server.tearDown)
@@ -430,7 +433,7 @@ class BzrServer(object):
 
 
 def serve_bzr(transport, host=None, port=None, inet=False):
-    bzr_server = BzrServer()
+    bzr_server = BzrServerMaker()
     try:
         bzr_server.setUp(transport, host, port, inet)
         bzr_server.smart_server.serve()
