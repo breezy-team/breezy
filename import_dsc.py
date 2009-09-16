@@ -1578,6 +1578,7 @@ class DistributionBranch(object):
                 existing_bzrdir.create_workingtree()
         self.upstream_branch = branch
         self.upstream_tree = branch.bzrdir.open_workingtree()
+        self.upstream_tree.set_root_id(self.tree.path2id(""))
 
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
