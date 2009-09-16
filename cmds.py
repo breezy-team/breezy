@@ -79,8 +79,9 @@ from bzrlib.plugins.builddeb.upstream import (
         UpstreamBranchSource,
         get_upstream_sources,
         )
-from bzrlib.plugins.builddeb.util import (find_changelog,
+from bzrlib.plugins.builddeb.util import (
         dget_changes,
+        find_changelog,
         find_last_distribution,
         get_export_upstream_revision,
         lookup_distribution,
