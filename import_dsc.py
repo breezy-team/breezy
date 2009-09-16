@@ -80,10 +80,9 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.util import get_commit_info_from_changelog, get_snapshot_revision
 
 
-files_to_ignore = set(['.cvsignore', '.arch-inventory', '.bzrignore',
-    '.gitignore', 'CVS', 'RCS', '.deps', '{arch}', '.arch-ids', '.svn',
-    '.hg', '_darcs', '.git', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
-    '.bzr-builddeb'])
+files_to_ignore = set(
+    ['.bzrignore', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+     '.bzr-builddeb'])
 
 
 class DirWrapper(object):
