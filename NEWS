@@ -74,6 +74,10 @@ Bug Fixes
   chk_bytes root records.
   (Andrew Bennetts, #423506)
 
+* Weave based repositories couldn't be cloned when committers were using
+  domains or user ids embedding '.sig'. Now they can.
+  (Matthew Fuller, Vincent Ladeuil, #430868)
+
 Improvements
 ************
 
