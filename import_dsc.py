@@ -295,6 +295,11 @@ def import_archive(tree, archive_file, file_ids_from=None):
     tt.apply()
 
 
+def open_file(path):
+    filename, transport = open_transport(path)
+    return open_file_via_transport(filename, transport)
+
+
 def open_transport(path):
   """Obtain an appropriate transport instance for the given path."""
   base_dir, path = urlutils.split(path)

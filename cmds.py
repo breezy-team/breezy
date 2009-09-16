@@ -68,6 +68,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranchSet,
         DscCache,
         DscComp,
+        open_file,
         open_file_via_transport,
         )
 from bzrlib.plugins.builddeb.merge_package import fix_ancestry_as_needed
@@ -652,8 +653,7 @@ class cmd_import_dsc(Command):
     takes_args = ['files*']
 
     filename_opt = Option('file', help="File containing URIs of source "
-                          "packages to import.", type=str, argname="filename",
-                          short_name='F')
+                          "packages to import.", type=str, short_name='F')
 
     takes_options = [filename_opt]
 
@@ -680,7 +680,7 @@ class cmd_import_dsc(Command):
                 get_dsc_part(from_transport, name)
             db.import_package(os.path.join(orig_target, filename))
 
-    def run(self, files_list, filename=None):
+    def run(self, files_list, file=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         try:
             tree = WorkingTree.open_containing('.')[0]
@@ -694,14 +694,14 @@ class cmd_import_dsc(Command):
                         "command")
             if files_list is None:
                 files_list = []
-            if filename is not None:
-                if isinstance(filename, unicode):
-                    filename = filename.encode('utf-8')
-                base_dir, path = urlutils.split(filename)
-                sources_file = get_transport(base_dir).get(path)
+            if file is not None:
+                if isinstance(file, unicode):
+                    file = file.encode('utf-8')
+                sources_file = open_file(file)
                 for line in sources_file:
-                    line.strip()
-                    files_list.append(line)
+                    line = line.strip()
+                    if len(line) > 0:
+                        files_list.append(line)
             if len(files_list) < 1:
                 raise BzrCommandError("You must give the location of at least one "
                                       "source package to install, or use the "
