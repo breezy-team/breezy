@@ -8,6 +8,7 @@ https://bugs.edge.launchpad.net/bzr/+bug/228506
 https://bugs.edge.launchpad.net/bzr/+bug/113809
 https://bugs.edge.launchpad.net/bzr/+bug/322767
 https://bugs.edge.launchpad.net/bzr/+bug/416903
+https://bugs.edge.launchpad.net/bzr/+bug/355964
 
 https://bugs.edge.launchpad.net/bzr/+bug/405264
 
@@ -135,7 +136,9 @@ bzr made a choice
 - manually combine <item> and .moved
 
 resolve:
-- delete .moved if still present ? (not done so far ?)
+
+- nothing to do ? If the '.moved' file still exists emit a
+  warning ? Delete it ? Put it to the trash ?
 
 
 Unversioned parent
@@ -149,9 +152,7 @@ bzr made a choice: version the parent
 - manually rename <children>
 
 resolve:
-- nothing to do ?
-
-XXX: need investigation to enumerate all cases
+- nothing to do nothing more than the conflicted objects have been created
 
 
 Missing parent
@@ -165,9 +166,7 @@ bzr made a choice: create the missing parent and version it.
 - manually rename <children>
 
 resolve:
-- nothing to do ?
-
-XXX: need investigation to enumerate all cases
+- nothing to do, nothing more than the conflicted objects have been created
 
 
 Deleting parent
