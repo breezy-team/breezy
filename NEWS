@@ -52,6 +52,9 @@ Bug Fixes
   the partial packs created during the conversion not being consolidated
   at the end of the conversion process. (Robert Collins, #423818)
 
+* Don't give a warning on Windows when failing to import ``_readdir_pyx``
+  as it is never built. (John Arbash Meinel, #430645)
+
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
