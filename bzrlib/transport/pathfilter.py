@@ -81,15 +81,14 @@ class PathFilteringTransport(Transport):
         self.base_path = self.base[len(self.server.scheme)-1:]
         self.scheme = self.server.scheme
 
-    def _filtered(self):
-        return self.server.backing_transport.clone(
-            self._filter(self.base_path))
-        
-    def _filter(self, relpath):
+    def _relpath_from_server_root(self, relpath):
         unfiltered_path = self._combine_paths(self.base_path, relpath)
         if not unfiltered_path.startswith('/'):
             raise ValueError(unfiltered_path)
-        return self.server.filter_func(unfiltered_path[1:])
+        return unfiltered_path[1:]
+
+    def _filter(self, relpath):
+        return self.server.filter_func(self._relpath_from_server_root(relpath))
 
     def _call(self, methodname, relpath, *args):
         """Helper for Transport methods of the form:
@@ -100,19 +99,12 @@ class PathFilteringTransport(Transport):
 
     # Transport methods
     def abspath(self, relpath):
-        # I think we do *not* want to filter at this point; e.g if the filter
-        # is homedir expansion, self.base == 'this:///' and relpath == '~/',
-        # then the abspath should be this:///~/foo.  Instead filtering should
-        # happen when self's base is passed to the backing.
-        # On the other hand, this means that a relpath of '../../..' will not
-        # be an error here, but I think that's ok (or even good?)
-        full_path = self._combine_paths(self.base_path, relpath)
-        if not full_path.startswith('/'):
-            raise AssertionError(
-                '_combine_paths did not return a path starting with / '
-                '(got %r)' % (full_path,))
-        path = full_path[1:]
-        return self.scheme + path
+        # We do *not* want to filter at this point; e.g if the filter is
+        # homedir expansion, self.base == 'this:///' and relpath == '~/foo',
+        # then the abspath should be this:///~/foo (not this:///home/user/foo).
+        # Instead filtering should happen when self's base is passed to the
+        # backing.
+        return self.scheme + self._relpath_from_server_root(relpath)
 
     def append_file(self, relpath, f, mode=None):
         return self._call('append_file', relpath, f, mode)
@@ -121,7 +113,7 @@ class PathFilteringTransport(Transport):
         return self.server.backing_transport._can_roundtrip_unix_modebits()
 
     def clone(self, relpath):
-        return PathFilteringTransport(self.server, self.abspath(relpath))
+        return self.__class__(self.server, self.abspath(relpath))
 
     def delete(self, relpath):
         return self._call('delete', relpath)
@@ -147,7 +139,9 @@ class PathFilteringTransport(Transport):
         return self.server.backing_transport.is_readonly()
 
     def iter_files_recursive(self):
-        return self._filtered().iter_files_recursive()
+        backing_transport = self.server.backing_transport.clone(
+            self._filter('.'))
+        return backing_transport.iter_files_recursive()
 
     def listable(self):
         return self.server.backing_transport.listable()
