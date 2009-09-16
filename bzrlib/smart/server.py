@@ -431,6 +431,10 @@ class BzrServerMaker(object):
         self._make_smart_server(host, port, inet)
         self._change_globals()
 
+    def tearDown(self):
+        for cleanup in reversed(self.cleanups):
+            cleanup()
+
 
 def serve_bzr(transport, host=None, port=None, inet=False):
     bzr_server = BzrServerMaker()
@@ -438,6 +442,5 @@ def serve_bzr(transport, host=None, port=None, inet=False):
         bzr_server.setUp(transport, host, port, inet)
         bzr_server.smart_server.serve()
     finally:
-        for cleanup in reversed(bzr_server.cleanups):
-            cleanup()
+        bzr_server.tearDown()
 

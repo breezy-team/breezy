@@ -343,6 +343,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         mem_transport = self.get_transport()
         mem_transport.mkdir_multi(['home', 'home/user'])
         bzr_server.setUp(mem_transport, None, None, inet=True)
+        self.addCleanup(bzr_server.tearDown)
         return bzr_server
 
     def test_bzr_serve_expands_userdir(self):
