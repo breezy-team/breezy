@@ -62,7 +62,6 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, info, mutter
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import (
-    do_catching_redirections,
     get_transport,
     )
 
@@ -77,7 +76,12 @@ from bzrlib.plugins.builddeb.errors import (
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
                 )
-from bzrlib.plugins.builddeb.util import get_commit_info_from_changelog, get_snapshot_revision
+from bzrlib.plugins.builddeb.util import (
+    get_commit_info_from_changelog,
+    get_snapshot_revision,
+    open_file_via_transport,
+    open_transport,
+    )
 
 
 files_to_ignore = set(
@@ -292,26 +296,6 @@ def import_archive(tree, archive_file, file_ids_from=None):
     for conflict in cook_conflicts(resolve_conflicts(tt), tt):
         warning(conflict)
     tt.apply()
-
-
-def open_transport(path):
-  """Obtain an appropriate transport instance for the given path."""
-  base_dir, path = urlutils.split(path)
-  transport = get_transport(base_dir)
-  return (path, transport)
-
-
-def open_file_via_transport(filename, transport):
-  """Open a file using the transport, follow redirects as necessary."""
-  def open_file(transport):
-    return transport.get(filename)
-  def follow_redirection(transport, e, redirection_notice):
-    mutter(redirection_notice)
-    _filename, redirected_transport = open_transport(e.target)
-    return redirected_transport
-
-  result = do_catching_redirections(open_file, transport, follow_redirection)
-  return result
 
 
 class DscCache(object):
@@ -1605,6 +1589,7 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
+    def _revid_of_upstream_version_from_branch(self, version):
         """The private method below will go away eventually."""
         return self.revid_of_upstream_version_from_branch(version)
 

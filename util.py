@@ -37,7 +37,10 @@ from bzrlib import (
         errors,
         urlutils,
         )
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    do_catching_redirections,
+    get_transport,
+    )
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
@@ -288,12 +291,36 @@ def _download_part(name, base_transport, target_dir, md5sum):
         f_f.close()
 
 
+def open_file(path):
+    filename, transport = open_transport(path)
+    return open_file_via_transport(filename, transport)
+
+
+def open_transport(path):
+  """Obtain an appropriate transport instance for the given path."""
+  base_dir, path = urlutils.split(path)
+  transport = get_transport(base_dir)
+  return (path, transport)
+
+
+def open_file_via_transport(filename, transport):
+  """Open a file using the transport, follow redirects as necessary."""
+  def open_file(transport):
+    return transport.get(filename)
+  def follow_redirection(transport, e, redirection_notice):
+    mutter(redirection_notice)
+    _filename, redirected_transport = open_transport(e.target)
+    return redirected_transport
+
+  result = do_catching_redirections(open_file, transport, follow_redirection)
+  return result
+
+
 def _dget(cls, dsc_location, target_dir):
     if not os.path.isdir(target_dir):
         raise errors.NotADirectory(target_dir)
-    base_dir, path = urlutils.split(dsc_location)
-    dsc_t = get_transport(base_dir)
-    dsc_contents = dsc_t.get_bytes(path)
+    path, dsc_t = open_transport(dsc_location)
+    dsc_contents = open_file_via_transport(path, dsc_t).read()
     dsc = cls(dsc_contents)
     for file_details in dsc['files']:
         name = file_details['name']

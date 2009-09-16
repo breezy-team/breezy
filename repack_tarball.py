@@ -42,6 +42,7 @@ from bzrlib.transport import get_transport
 from bzrlib import urlutils
 
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
+from bzrlib.plugins.builddeb.util import open_file, open_file_via_transport
 
 
 class TgzRepacker(object):
@@ -138,21 +139,15 @@ def get_repacker_class(source_filename):
     return None
 
 
-def _get_file_from_location(location):
-    base_dir, path = urlutils.split(location)
-    transport = get_transport(base_dir)
-    return transport.get(path)
-
-
 def _error_if_exists(target_transport, new_name, source_name):
     if not source_name.endswith('.tar.gz'):
         raise FileExists(new_name)
-    source_f = _get_file_from_location(source_name)
+    source_f = open_file(source_name)
     try:
         source_sha = new_sha(source_f.read()).hexdigest()
     finally:
         source_f.close()
-    target_f = target_transport.get(new_name)
+    target_f = open_file_via_transport(new_name, target_transport)
     try:
         target_sha = new_sha(target_f.read()).hexdigest()
     finally:
@@ -181,7 +176,7 @@ def _repack_other(target_transport, new_name, source_name):
     target_transport.ensure_base()
     target_f = target_transport.open_write_stream(new_name)
     try:
-        source_f = _get_file_from_location(source_name)
+        source_f = open_file(source_name)
         try:
             repacker = repacker_cls(source_f)
             repacker.repack(target_f)
