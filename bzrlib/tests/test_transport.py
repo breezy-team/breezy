@@ -490,13 +490,28 @@ class PathFilteringDecoratorTransportTest(TestCase):
         self.assertEqual('subdir1', transport._filter('..'))
         self.assertEqual('', transport._filter('/'))
 
+    def test_filter_invocation(self):
+        filter_log = []
+        def filter(path):
+            filter_log.append(path)
+            return path
+        transport = self.make_pf_transport(filter)
+        transport.has('abc')
+        self.assertEqual(['abc'], filter_log)
+        del filter_log[:]
+        transport.clone('abc').has('xyz')
+        self.assertEqual(['abc/xyz'], filter_log)
+        del filter_log[:]
+        transport.has('/abc')
+        self.assertEqual(['abc'], filter_log)
+
     def test_clone(self):
-       transport = self.make_pf_transport()
-       # relpath from root and root path are the same
-       relpath_cloned = transport.clone('foo')
-       abspath_cloned = transport.clone('/foo')
-       self.assertEqual(transport.server, relpath_cloned.server)
-       self.assertEqual(transport.server, abspath_cloned.server)
+        transport = self.make_pf_transport()
+        # relpath from root and root path are the same
+        relpath_cloned = transport.clone('foo')
+        abspath_cloned = transport.clone('/foo')
+        self.assertEqual(transport.server, relpath_cloned.server)
+        self.assertEqual(transport.server, abspath_cloned.server)
 
     def test_url_preserves_pathfiltering(self):
         """Calling get_transport on a pathfiltered transport's base should
