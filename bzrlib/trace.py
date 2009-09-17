@@ -59,7 +59,6 @@ import codecs
 import logging
 import os
 import sys
-import re
 import time
 
 from bzrlib.lazy_import import lazy_import
