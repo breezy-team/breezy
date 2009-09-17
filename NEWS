@@ -77,6 +77,10 @@ Bug Fixes
 * Registry objects should not use iteritems() when asked to use items().
   (Vincent Ladeuil, #430510)
 
+* Weave based repositories couldn't be cloned when committers were using
+  domains or user ids embedding '.sig'. Now they can.
+  (Matthew Fuller, Vincent Ladeuil, #430868)
+
 Improvements
 ************
 
