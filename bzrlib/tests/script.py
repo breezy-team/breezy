@@ -13,90 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """Shell-like test scripts.
 
-This allows users to write tests in a syntax very close to a shell session,
-using a restricted and limited set of commands that should be enough to mimic
-most of the behaviours.
-
-A script is a set of commands, each command is composed of:
-- one mandatory command line,
-- one optional set of input lines to feed the command,
-- one optional set of output expected lines,
-- one optional set of error expected lines.
-
-The optional lines starts with a special string (mnemonic: shell redirection):
-- '<' for input,
-- '>' for output,
-- '2>' for errors,
-
-The execution stops as soon as an expected output or an expected error is not
-matched. 
-
-When no output is specified, any ouput from the command is accepted
-and let the execution continue. 
-
-If an error occurs and no expected error is specified, the execution stops.
-
-An error is defined by a returned status different from zero, not by the
-presence of text on the error stream.
-
-The matching is done on a full string comparison basis unless '...' is used, in
-which case expected output/errors can be lees precise.
-
-Examples:
-
-The following will succeeds only if 'bzr add' outputs 'adding file'.
-
-  bzr add file
-  >adding file
-
-If you want the command to succeed for any output, just use:
-
-  bzr add file
-
-The following will stop with an error:
-
-  bzr not-a-command
-
-If you want it to succeed, use:
-
-  bzr not-a-command
-  2> bzr: ERROR: unknown command "not-a-command"
-
-You can use ellipsis (...) to replace any piece of text you don't want to be
-matched exactly:
-
-  bzr branch not-a-branch
-  2>bzr: ERROR: Not a branch...not-a-branch/".
-
-
-This can be used to ignore entire lines too:
-
-cat
-<first line
-<second line
-<third line
-<fourth line
-<last line
->first line
->...
->last line
-
-You can check the content of a file with cat:
-
-  cat <file
-  >expected content
-
-You can also check the existence of a file with cat, the following will fail if
-the file doesn't exist:
-
-  cat file
-
+See developpers/testing.html for more explanations.
 """
 
 import doctest
 import errno
+import glob
 import os
 import shlex
 from cStringIO import StringIO
@@ -113,13 +38,7 @@ def split(s):
     scanner.quotes = '\'"`'
     scanner.whitespace_split = True
     for t in list(scanner):
-        # Strip the simple and double quotes since we don't care about them.
-        # We leave the backquotes in place though since they have a different
-        # semantic.
-        if t[0] in  ('"', "'") and t[0] == t[-1]:
-            yield t[1:-1]
-        else:
-            yield t
+        yield t
 
 
 def _script_to_commands(text, file_name=None):
@@ -163,22 +82,20 @@ def _script_to_commands(text, file_name=None):
         if line == '':
             # Ignore empty lines
             continue
-        if line.startswith('<'):
+        if line.startswith('$'):
+            # Time to output the current command
+            add_command(cmd_cur, input, output, error)
+            # And start a new one
+            cmd_cur = list(split(line[1:]))
+            cmd_line = lineno
+            input, output, error = None, None, None
+        elif line.startswith('<'):
             if input is None:
                 if cmd_cur is None:
                     raise SyntaxError('No command for that input',
                                       (file_name, lineno, 1, orig))
                 input = []
             input.append(line[1:] + '\n')
-            continue
-        elif line.startswith('>'):
-            if output is None:
-                if cmd_cur is None:
-                    raise SyntaxError('No command for that output',
-                                      (file_name, lineno, 1, orig))
-                output = []
-            output.append(line[1:] + '\n')
-            continue
         elif line.startswith('2>'):
             if error is None:
                 if cmd_cur is None:
@@ -186,14 +103,13 @@ def _script_to_commands(text, file_name=None):
                                       (file_name, lineno, 1, orig))
                 error = []
             error.append(line[2:] + '\n')
-            continue
         else:
-            # Time to output the current command
-            add_command(cmd_cur, input, output, error)
-            # And start a new one
-            cmd_cur = list(split(line))
-            cmd_line = lineno
-            input, output, error = None, None, None
+            if output is None:
+                if cmd_cur is None:
+                    raise SyntaxError('No command for that output',
+                                      (file_name, lineno, 1, orig))
+                output = []
+            output.append(line + '\n')
     # Add the last seen command
     add_command(cmd_cur, input, output, error)
     return commands
@@ -210,17 +126,28 @@ def _scan_redirection_options(args):
         - The mode to open the output file or None
         - The reamining arguments
     """
+    def redirected_file_name(direction, name, args):
+        if name == '':
+            try:
+                name = args.pop(0)
+            except IndexError:
+                # We leave the error handling to higher levels, an empty name
+                # can't be legal.
+                name = ''
+        return name
+
     remaining = []
     in_name = None
     out_name, out_mode = None, None
-    for arg in  args:
+    while args:
+        arg = args.pop(0)
         if arg.startswith('<'):
-            in_name = arg[1:]
+            in_name = redirected_file_name('<', arg[1:], args)
         elif arg.startswith('>>'):
-            out_name = arg[2:]
+            out_name = redirected_file_name('>>', arg[2:], args)
             out_mode = 'ab+'
-        elif arg.startswith('>'):
-            out_name = arg[1:]
+        elif arg.startswith('>',):
+            out_name = redirected_file_name('>', arg[1:], args)
             out_mode = 'wb+'
         else:
             remaining.append(arg)
@@ -255,6 +182,26 @@ class ScriptRunner(object):
             # output should be decently readable.
             self.test_case.assertEqualDiff(expected, actual)
 
+    def _pre_process_args(self, args):
+        new_args = []
+        for arg in args:
+            # Strip the simple and double quotes since we don't care about
+            # them.  We leave the backquotes in place though since they have a
+            # different semantic.
+            if arg[0] in  ('"', "'") and arg[0] == arg[-1]:
+                yield arg[1:-1]
+            else:
+                if glob.has_magic(arg):
+                    matches = glob.glob(arg)
+                    if matches:
+                        # We care more about order stability than performance
+                        # here
+                        matches.sort()
+                        for m in matches:
+                            yield m
+                else:
+                    yield arg
+
     def run_command(self, cmd, input, output, error):
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
@@ -265,12 +212,14 @@ class ScriptRunner(object):
             str_input = ''
         else:
             str_input = ''.join(input)
-        retcode, actual_output, actual_error = method(str_input, cmd[1:])
+        args = list(self._pre_process_args(cmd[1:]))
+        retcode, actual_output, actual_error = method(str_input, args)
 
         self._check_output(output, actual_output)
         self._check_output(error, actual_error)
         if retcode and not error and actual_error:
-            self.test_case.fail('Unexpected error: %s' % actual_error)
+            self.test_case.fail('In \n\t%s\nUnexpected error: %s'
+                                % (' '.join(cmd), actual_error))
         return retcode, actual_output, actual_error
 
     def _read_input(self, input, in_name):
@@ -300,17 +249,30 @@ class ScriptRunner(object):
 
     def do_cat(self, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
-        if len(args) > 1:
-            raise SyntaxError('Usage: cat [file1]')
-        if args:
-            if in_name is not None:
-                raise SyntaxError('Specify a file OR use redirection')
-            in_name = args[0]
-        input = self._read_input(input, in_name)
+        if args and in_name is not None:
+            raise SyntaxError('Specify a file OR use redirection')
+
+        inputs = []
+        if input:
+            inputs.append(input)
+        input_names = args
+        if in_name:
+            args.append(in_name)
+        for in_name in input_names:
+            try:
+                inputs.append(self._read_input(None, in_name))
+            except IOError, e:
+                if e.errno == errno.ENOENT:
+                    return (1, None,
+                            '%s: No such file or directory\n' % (in_name,))
         # Basically cat copy input to output
-        output = input
+        output = ''.join(inputs)
         # Handle output redirections
-        output = self._write_output(output, out_name, out_mode)
+        try:
+            output = self._write_output(output, out_name, out_mode)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
     def do_echo(self, input, args):
@@ -318,14 +280,22 @@ class ScriptRunner(object):
         if input and args:
                 raise SyntaxError('Specify parameters OR use redirection')
         if args:
-            input = ''.join(args)
-        input = self._read_input(input, in_name)
+            input = ' '.join(args)
+        try:
+            input = self._read_input(input, in_name)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (in_name,)
         # Always append a \n'
         input += '\n'
         # Process output
         output = input
         # Handle output redirections
-        output = self._write_output(output, out_name, out_mode)
+        try:
+            output = self._write_output(output, out_name, out_mode)
+        except IOError, e:
+            if e.errno == errno.ENOENT:
+                return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
     def _ensure_in_jail(self, path):
