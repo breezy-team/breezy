@@ -45,7 +45,7 @@ class TestBzrServe(TestCaseWithTransport):
 
     def setUp(self):
         super(TestBzrServe, self).setUp()
-        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
+        self.disable_missing_extensions_warning()
 
     def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""

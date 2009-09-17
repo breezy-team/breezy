@@ -355,7 +355,7 @@ class TestExternalDiff(DiffBase):
 
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
-        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
+        self.disable_missing_extensions_warning()
         # We have to use run_bzr_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).

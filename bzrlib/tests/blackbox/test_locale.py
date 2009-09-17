@@ -44,7 +44,7 @@ class TestLocale(tests.TestCaseWithTransport):
         self.tree = tree
 
     def test_log_C(self):
-        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
+        self.disable_missing_extensions_warning()
         out, err = self.run_bzr_subprocess(
             '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
