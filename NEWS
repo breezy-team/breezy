@@ -125,6 +125,8 @@ Testing
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
 
+* The full test suite is expected to pass when the C extensions are not
+  present. (Vincent Ladeuil, #430749)
 
 bzr 2.0rc2
 ##########

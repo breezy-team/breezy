@@ -25,6 +25,7 @@ import thread
 import threading
 
 from bzrlib import (
+    config,
     errors,
     osutils,
     revision as _mod_revision,
@@ -41,6 +42,10 @@ from bzrlib.transport import get_transport, remote
 
 
 class TestBzrServe(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestBzrServe, self).setUp()
+        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
 
     def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""

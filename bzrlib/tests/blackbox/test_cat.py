@@ -22,9 +22,13 @@
 import os
 import sys
 
-from bzrlib.tests.blackbox import TestCaseWithTransport
+from bzrlib import (
+    config,
+    tests,
+    )
 
-class TestCat(TestCaseWithTransport):
+
+class TestCat(tests.TestCaseWithTransport):
 
     def test_cat(self):
         tree = self.make_branch_and_tree('branch')
@@ -68,6 +72,7 @@ class TestCat(TestCaseWithTransport):
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
+        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
         tree = self.make_branch_and_tree('.')
         # the files are named after their path in the revision and
         # current trees later in the test case
