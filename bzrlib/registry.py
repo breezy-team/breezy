@@ -222,7 +222,10 @@ class Registry(object):
             yield key, getter.get_obj()
 
     def items(self):
-        return sorted(self.iteritems())
+        # We should not use the iteritems() implementation below (see bug
+        # #430510)
+        return sorted([(key, getter.get_obj())
+                       for key, getter in self._dict.items()])
 
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
