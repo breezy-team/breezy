@@ -993,6 +993,9 @@ class SmartTCPTests(tests.TestCase):
 
         :param readonly: Create a readonly server.
         """
+        # NB: Tests using this fall into two categories: tests of the server,
+        # tests wanting a server. The latter should be updated to use
+        # self.vfs_transport_factory etc.
         if not backing_transport:
             self.backing_transport = memory.MemoryTransport()
         else:
@@ -1004,6 +1007,7 @@ class SmartTCPTests(tests.TestCase):
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
+        self.permit_url(self.server.get_url())
 
     def tearDownServer(self):
         if getattr(self, 'transport', None):

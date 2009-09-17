@@ -90,7 +90,7 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport
+from bzrlib.transport import chroot, get_transport
 import bzrlib.transport
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
@@ -819,6 +819,7 @@ class TestCase(unittest.TestCase):
         self._cleanups = []
         self._bzr_test_setUp_run = False
         self._bzr_test_tearDown_run = False
+        self._directory_isolation = True
 
     def setUp(self):
         unittest.TestCase.setUp(self)
@@ -829,6 +830,7 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
@@ -874,6 +876,14 @@ class TestCase(unittest.TestCase):
             setattr(parent, name, factory())
         # this hook should always be installed
         request._install_hook()
+
+    def disable_directory_isolation(self):
+        """Turn off directory isolation checks."""
+        self._directory_isolation = False
+
+    def enable_directory_isolation(self):
+        """Enable directory isolation checks."""
+        self._directory_isolation = True
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -935,6 +945,74 @@ class TestCase(unittest.TestCase):
     def _lock_broken(self, result):
         self._lock_actions.append(('broken', result))
 
+    def permit_dir(self, name):
+        """Permit a directory to be used by this test. See permit_url."""
+        name_transport = get_transport(name)
+        self.permit_url(name)
+        self.permit_url(name_transport.base)
+
+    def permit_url(self, url):
+        """Declare that url is an ok url to use in this test.
+        
+        Do this for memory transports, temporary test directory etc.
+        
+        Do not do this for the current working directory, /tmp, or any other
+        preexisting non isolated url.
+        """
+        if not url.endswith('/'):
+            url += '/'
+        self._bzr_selftest_roots.append(url)
+
+    def permit_source_tree_branch_repo(self):
+        """Permit the source tree bzr is running from to be opened.
+
+        Some code such as bzrlib.version attempts to read from the bzr branch
+        that bzr is executing from (if any). This method permits that directory
+        to be used in the test suite.
+        """
+        path = self.get_source_path()
+        self.disable_directory_isolation()
+        try:
+            try:
+                tree = workingtree.WorkingTree.open(path)
+            except errors.NoWorkingTree:
+                return
+        finally:
+            self.enable_directory_isolation()
+        self.permit_url(tree.bzrdir.root_transport.base)
+        self.permit_url(tree.branch.bzrdir.root_transport.base)
+        self.permit_url(tree.branch.repository.bzrdir.root_transport.base)
+
+    def _preopen_isolate_transport(self, transport):
+        """Check that all transport openings are done in the test work area."""
+        if isinstance(transport, chroot.ChrootTransport):
+            # Unwrap chrooted transports
+            url = transport.server.backing_transport.clone(
+                transport._safe_relpath('.')).base
+        else:
+            url = transport.base
+        # ReadonlySmartTCPServer_for_testing decorates the backing transport
+        # urls it is given by prepending readonly+. This is appropriate as the
+        # client shouldn't know that the server is readonly (or not readonly).
+        # We could register all servers twice, with readonly+ prepending, but
+        # that makes for a long list; this is about the same but easier to
+        # read.
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+        self._preopen_isolate_url(url)
+
+    def _preopen_isolate_url(self, url):
+        if not self._directory_isolation:
+            return
+        # This prevents all transports, including e.g. sftp ones backed on disk
+        # from working unless they are explicitly granted permission. We then
+        # depend on the code that sets up test transports to check that they are
+        # appropriately isolated and enable their use by calling
+        # self.permit_transport()
+        if not osutils.is_inside_any(self._bzr_selftest_roots, url):
+            raise errors.BzrError("Attempt to escape test isolation: %r %r"
+                % (url, self._bzr_selftest_roots))
+
     def start_server(self, transport_server, backing_server=None):
         """Start transport_server for this test.
 
@@ -946,6 +1024,46 @@ class TestCase(unittest.TestCase):
         else:
             transport_server.setUp(backing_server)
         self.addCleanup(transport_server.tearDown)
+        # Obtain a real transport because if the server supplies a password, it
+        # will be hidden from the base on the client side.
+        t = get_transport(transport_server.get_url())
+        # Some transport servers effectively chroot the backing transport;
+        # others like SFTPServer don't - users of the transport can walk up the
+        # transport to read the entire backing transport. This wouldn't matter
+        # except that the workdir tests are given - and that they expect the
+        # server's url to point at - is one directory under the safety net. So
+        # Branch operations into the transport will attempt to walk up one
+        # directory. Chrooting all servers would avoid this but also mean that
+        # we wouldn't be testing directly against non-root urls. Alternatively
+        # getting the test framework to start the server with a backing server
+        # at the actual safety net directory would work too, but this then
+        # means that the self.get_url/self.get_transport methods would need
+        # to transform all their results. On balance its cleaner to handle it
+        # here, and permit a higher url when we have one of these transports.
+        if t.base.endswith('/work/'):
+            # we have safety net/test root/work
+            t = t.clone('../..')
+        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+            # The smart server adds a path similar to work, which is traversed
+            # up from by the client. But the server is chrooted - the actual
+            # backing transport is not escaped from, and VFS requests to the
+            # root will error (because they try to escape the chroot).
+            t2 = t.clone('..')
+            while t2.base != t.base:
+                t = t2
+                t2 = t.clone('..')
+        self.permit_url(t.base)
+
+    def _track_transports(self):
+        """Install checks for transport usage."""
+        # TestCase has no safe place it can write to.
+        self._bzr_selftest_roots = []
+        # Currently the easiest way to be sure that nothing is going on is to
+        # hook into bzr dir opening. This leaves a small window of error for
+        # transport tests, but they are well known, and we can improve on this
+        # step.
+        bzrdir.BzrDir.hooks.install_named_hook("pre_open",
+            self._preopen_isolate_transport, "Check bzr directories are safe.")
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -1869,9 +1987,13 @@ class TestCase(unittest.TestCase):
         """
         return Popen(*args, **kwargs)
 
+    def get_source_path(self):
+        """Return the path of the directory containing bzrlib."""
+        return os.path.dirname(os.path.dirname(bzrlib.__file__))
+
     def get_bzr_path(self):
         """Return the path of the 'bzr' executable for this test suite."""
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        bzr_path = self.get_source_path()+'/bzr'
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
@@ -2203,6 +2325,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
+        self.permit_url(get_transport(root).base)
         wt = workingtree.WorkingTree.open(root)
         last_rev = wt.last_revision()
         if last_rev != 'null:':
@@ -2225,6 +2348,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # specifically told when all tests are finished.  This will do.
             atexit.register(_rmtree_temp_dir, root)
 
+        self.permit_dir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.addCleanup(self._check_safety_net)
 
     def makeAndChdirToTestDir(self):
@@ -2238,6 +2362,7 @@ class TestCaseWithMemoryTransport(TestCase):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.test_dir = TestCaseWithMemoryTransport.TEST_ROOT
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
+        self.permit_dir(self.test_dir)
 
     def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
@@ -2375,10 +2500,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             if os.path.exists(name):
                 name = name_prefix + '_' + str(i)
             else:
-                os.mkdir(name)
+                # now create test and home directories within this dir
+                self.test_base_dir = name
+                self.addCleanup(self.deleteTestDir)
+                os.mkdir(self.test_base_dir)
                 break
-        # now create test and home directories within this dir
-        self.test_base_dir = name
+        self.permit_dir(self.test_base_dir)
+        # 'sprouting' and 'init' of a branch both walk up the tree to find
+        # stacking policy to honour; create a bzr dir with an unshared
+        # repository (but not a branch - our code would be trying to escape
+        # then!) to stop them, and permit it to be read.
+        # control = bzrdir.BzrDir.create(self.test_base_dir)
+        # control.create_repository()
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
         self.test_dir = self.test_base_dir + '/work'
@@ -2390,7 +2523,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             f.write(self.id())
         finally:
             f.close()
-        self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)

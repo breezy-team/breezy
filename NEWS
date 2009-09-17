@@ -122,6 +122,11 @@ Testing
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
 
+* Test's that try to open a bzr dir on an arbitrary transport will now
+  fail unless they have explicitly permitted the transport via
+  ``self.permit_url``. The standard test factories such as ``self.get_url``
+  will permit the urls they provide automatically, so only exceptional
+ tests should need to do this. (Robert Collins)
 
 bzr 2.0rc2
 ##########
