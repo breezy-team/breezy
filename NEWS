@@ -74,6 +74,9 @@ Bug Fixes
   chk_bytes root records.
   (Andrew Bennetts, #423506)
 
+* Registry objects should not use iteritems() when asked to use items().
+  (Vincent Ladeuil, #430510)
+
 Improvements
 ************
 
