@@ -53,6 +53,7 @@ import warnings
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    config,
     debug,
     errors,
     hooks,
@@ -2692,6 +2693,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__vfs_server = None
+
+    def disable_missing_extensions_warning(self):
+        """Some tests expect a precise stderr content.
+
+        There is no point in forcing them to duplicate the extension related
+        warning.
+        """
+        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
 
 
 class ChrootedTestCase(TestCaseWithTransport):

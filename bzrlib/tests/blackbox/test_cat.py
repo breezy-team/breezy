@@ -24,6 +24,7 @@ import sys
 
 from bzrlib.tests import MemoryServer, TestCaseWithTransport
 
+
 class TestCat(TestCaseWithTransport):
 
     def test_cat(self):
@@ -68,6 +69,7 @@ class TestCat(TestCaseWithTransport):
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
+        self.disable_missing_extensions_warning()
         tree = self.make_branch_and_tree('.')
         # the files are named after their path in the revision and
         # current trees later in the test case

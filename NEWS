@@ -52,6 +52,9 @@ Bug Fixes
   the partial packs created during the conversion not being consolidated
   at the end of the conversion process. (Robert Collins, #423818)
 
+* Don't give a warning on Windows when failing to import ``_readdir_pyx``
+  as it is never built. (John Arbash Meinel, #430645)
+
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
@@ -65,15 +68,22 @@ Bug Fixes
 * Network streams now decode adjacent records of the same type into a
   single stream, reducing layering churn. (Robert Collins)
 
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+  
 * Prevent some kinds of incomplete data from being committed to a 2a
   repository, such as revisions without inventories or inventories without
   chk_bytes root records.
   (Andrew Bennetts, #423506)
 
-* Make sure that we unlock the tree if we fail to create a TreeTransform
-  object when doing a merge, and there is limbo, or pending-deletions
-  directory.  (Gary van der Merwe, #427773)
-  
+* Registry objects should not use iteritems() when asked to use items().
+  (Vincent Ladeuil, #430510)
+
+* Weave based repositories couldn't be cloned when committers were using
+  domains or user ids embedding '.sig'. Now they can.
+  (Matthew Fuller, Vincent Ladeuil, #430868)
+
 Improvements
 ************
 
@@ -93,6 +103,9 @@ Documentation
 
 API Changes
 ***********
+
+* ``bzrlib.user_encoding`` has been removed; use
+  ``bzrlib.osutils.get_user_encoding`` instead.  (Martin Pool)
 
 * ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
   subclasses - the same as python's unittest module. (Robert Collins)
@@ -122,11 +135,14 @@ Testing
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
 
-* Test's that try to open a bzr dir on an arbitrary transport will now
+* Tests that try to open a bzr dir on an arbitrary transport will now
   fail unless they have explicitly permitted the transport via
   ``self.permit_url``. The standard test factories such as ``self.get_url``
   will permit the urls they provide automatically, so only exceptional
  tests should need to do this. (Robert Collins)
+
+* The full test suite is expected to pass when the C extensions are not
+  present. (Vincent Ladeuil, #430749)
 
 bzr 2.0rc2
 ##########
