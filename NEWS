@@ -13,6 +13,129 @@ Bug Fixes
   directory.  (Gary van der Merwe, #427773)
 
 
+.. contents:: List of Releases
+   :depth: 1
+
+2.1 series (not released yet)
+#############################
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+* Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
+  disable the user, site and core plugin directories.
+  (Vincent Ladeuil, #412930, #316192, #145612)
+
+Bug Fixes
+*********
+
+* Bazaar's native protocol code now correctly handles EINTR, which most
+  noticeably occurs if you break in to the debugger while connected to a
+  bzr+ssh server.  You can now can continue from the debugger (by typing
+  'c') and the process continues.  However, note that pressing C-\ in the
+  shell may still kill the SSH process, which is bug 162509, so you must
+  sent a signal to the bzr process specifically, for example by typing
+  ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
+
+* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
+  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
+  (Robert Collins, #416732)
+
+* ``bzr info -v`` on a 2a format still claimed that it was a "Development
+  format" (John Arbash Meinel, #424392)
+
+* ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
+  merges are present in the working tree.
+  (Vincent Ladeuil, #426344)
+
+* Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
+  traceback.  (Martin Pool, #109115)
+
+* Conversion to 2a will create a single pack for all the new revisions (as
+  long as it ran without interruption). This improves both ``bzr upgrade``
+  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
+  The autopack logic that occurs every 100 revisions during local
+  conversions was not returning that pack's identifier, which resulted in
+  the partial packs created during the conversion not being consolidated
+  at the end of the conversion process. (Robert Collins, #423818)
+
+* Don't restrict the command name used to run the test suite.
+  (Vincent Ladeuil, #419950)
+
+* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
+  Groups that are seen as 'underutilized' will be repacked on-the-fly.
+  This means that when the source is fully packed, there is minimal
+  overhead during the fetch, but if the source is poorly packed the result
+  is a fairly well packed repository (not as good as 'bzr pack' but
+  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+  
+* Prevent some kinds of incomplete data from being committed to a 2a
+  repository, such as revisions without inventories or inventories without
+  chk_bytes root records.
+  (Andrew Bennetts, #423506)
+
+Improvements
+************
+
+* Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
+  compiled extensions can't be loaded.  This typically indicates a
+  packaging or installation problem.  In this case Bazaar will keep
+  running using pure-Python versions, but this may be substantially
+  slower.  The warning can be disabled by setting
+  ``ignore_missing_extensions = True`` in ``bazaar.conf``.
+  (Martin Pool, #406113)
+
+Documentation
+*************
+
+* Help on hooks no longer says 'Not deprecated' for hooks that are
+  currently supported. (Ian Clatworthy, #422415)
+
+API Changes
+***********
+
+* ``bzrlib.user_encoding`` has been removed; use
+  ``bzrlib.osutils.get_user_encoding`` instead.  (Martin Pool)
+
+* ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
+  subclasses - the same as python's unittest module. (Robert Collins)
+
+Internals
+*********
+
+* ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
+  mallocs while parsing the index (approx 3=>1 mallocs per key read).
+  This results in a 10% speedup while reading an index.
+  (John Arbash Meinel)
+
+* The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
+  profiling in some situations like callbacks and generators easier.
+  (Robert Collins)
+
+Testing
+*******
+
+* Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
+  be output for every test. Note that this is very verbose! (Robert Collins)
+
+* Setting ``BZR_TEST_PDB=1`` when running selftest will cause a pdb
+  post_mortem to be triggered when a test failure occurs. (Robert Collins)
+
+* Test parameterisation now does a shallow copy, not a deep copy of the test
+  to be parameterised. This is not expected to break external use of test
+  parameterisation, and is substantially faster. (Robert Collins)
+
+
 bzr 2.0rc2
 ##########
 
@@ -67,10 +190,6 @@ Bug Fixes
 
 * Fix a potential segmentation fault when doing 'log' of a branch that had
   ghosts in its mainline.  (Evaluating None as a tuple is bad.)
-  (John Arbash Meinel, #419241)
-
-* Fix a segmentation fault when computing the ``merge_sort`` of a graph
-  that has a ghost in the mainline ancestry.
   (John Arbash Meinel, #419241)
 
 * ``groupcompress`` sort order is now more stable, rather than relying on
@@ -148,6 +267,9 @@ New Features
 Bug Fixes
 *********
 
+* Further tweaks to handling of ``bzr add`` messages about ignored files.
+  (Jason Spashett, #76616)
+
 * Fetches were being requested in 'groupcompress' order, but weren't
   recombining the groups. Thus they would 'fragment' to get the correct
   order, but not 'recombine' to actually benefit from it. Until we get
@@ -217,9 +339,6 @@ API Changes
   classes changed to manage lock lifetime of the trees they open in a way
   consistent with reader-exclusive locks. (Robert Collins, #305006)
 
-Internals
-*********
-
 Testing
 *******
 
@@ -266,6 +385,9 @@ API Changes
   a tree with content filtering where the size of the canonical form
   cannot be cheaply determined.  (Martin Pool)
 
+* When manually creating transport servers in test cases, a new helper
+  ``TestCase.start_server`` that registers a cleanup and starts the server
+  should be used. (Robert Collins)
 
 bzr 1.18
 ########
@@ -602,6 +724,17 @@ Testing
   ``TextTestRunner`` with test suites that don't support
   ``countTestsCases``. (Robert Collins)
 
+
+bzr 1.17.1 (unreleased)
+#######################
+
+Bug Fixes
+*********
+
+* The optional ``_knit_load_data_pyx`` C extension was never being
+  imported.  This caused significant slowdowns when reading data from
+  knit format repositories.  (Andrew Bennetts, #405653)
+  
 
 bzr 1.17
 ########
@@ -1102,6 +1235,9 @@ Internals
 
 Testing
 *******
+
+* ``make check`` no longer repeats the test run in ``LANG=C``.
+  (Martin Pool, #386180)
 
 * The number of cores is now correctly detected on OSX. (John Szakmeister)
 
@@ -5156,7 +5292,7 @@ Bugfixes
   checkouts.  (Aaron Bentley, #182040)
 
 * Stop polluting /tmp when running selftest.
-  (Vincent Ladeuil, #123623)
+  (Vincent Ladeuil, #123363)
 
 * Switch from NFKC => NFC for normalization checks. NFC allows a few
   more characters which should be considered valid.

@@ -88,8 +88,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
         if self._chroot_server is None:
             backing_transport = tests.TestCaseWithTransport.get_transport(self)
             self._chroot_server = chroot.ChrootServer(backing_transport)
-            self._chroot_server.setUp()
-            self.addCleanup(self._chroot_server.tearDown)
+            self.start_server(self._chroot_server)
         t = get_transport(self._chroot_server.get_url())
         if relpath is not None:
             t = t.clone(relpath)

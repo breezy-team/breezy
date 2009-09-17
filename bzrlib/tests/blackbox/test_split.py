@@ -31,7 +31,7 @@ class TestSplit(tests.TestCaseWithTransport):
         wt.add(['b', 'b/c'])
         wt.commit('rev1')
         self.run_bzr('split a/b')
-        self.run_bzr_error(('.* is not versioned',), 'split q')
+        self.run_bzr_error(('.* is not versioned',), 'split q', working_dir='a')
 
     def test_split_repo_failure(self):
         repo = self.make_repository('branch', shared=True, format='knit')

@@ -284,7 +284,8 @@ class TestMerge(TestCaseWithTransport):
         except AttributeError:
             self.fail('tried to join a path when name was None')
 
-    def test_merge_uncommitted_otherbasis_ancestor_of_thisbasis(self):
+
+    def test_merge_existing_limbo_or_pending_deletion(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/file_1', 'a/file_2'])
         tree_a.add(['file_1'])

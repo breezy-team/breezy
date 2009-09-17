@@ -687,6 +687,26 @@ class TestChrootedTest(tests.ChrootedTestCase):
         self.assertEqual(url, t.clone('..').base)
 
 
+class TestProfileResult(tests.TestCase):
+
+    def test_profiles_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
+        terminal = unittest.TestResult()
+        result = tests.ProfileResult(terminal)
+        class Sample(tests.TestCase):
+            def a(self):
+                self.sample_function()
+            def sample_function(self):
+                pass
+        test = Sample("a")
+        test.attrs_to_keep = test.attrs_to_keep + ('_benchcalls',)
+        test.run(result)
+        self.assertLength(1, test._benchcalls)
+        # We must be able to unpack it as the test reporting code wants
+        (_, _, _), stats = test._benchcalls[0]
+        self.assertTrue(callable(stats.pprint))
+
+
 class TestTestResult(tests.TestCase):
 
     def check_timing(self, test_case, expected_re):
@@ -800,7 +820,7 @@ class TestTestResult(tests.TestCase):
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_known_failure(self, test, err):
@@ -854,7 +874,7 @@ class TestTestResult(tests.TestCase):
     def test_add_not_supported(self):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def report_unsupported(self, test, feature):
@@ -898,7 +918,7 @@ class TestTestResult(tests.TestCase):
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): pass
+            def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
             def addNotSupported(self, test, feature):
@@ -981,11 +1001,14 @@ class TestRunner(tests.TestCase):
         because of our use of global state.
         """
         old_root = tests.TestCaseInTempDir.TEST_ROOT
+        old_leak = tests.TestCase._first_thread_leaker_id
         try:
             tests.TestCaseInTempDir.TEST_ROOT = None
+            tests.TestCase._first_thread_leaker_id = None
             return testrunner.run(test)
         finally:
             tests.TestCaseInTempDir.TEST_ROOT = old_root
+            tests.TestCase._first_thread_leaker_id = old_leak
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
@@ -1030,6 +1053,20 @@ class TestRunner(tests.TestCase):
             'Ran 1 test in .*\n'
             '\n'
             'OK \\(known_failures=1\\)\n')
+
+    def test_result_decorator(self):
+        # decorate results
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTest(self, test):
+                tests.ForwardingResult.startTest(self, test)
+                calls.append('start')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
 
     def test_skipped_test(self):
         # run a test that is skipped, and check the suite as a whole still
@@ -1102,10 +1139,6 @@ class TestRunner(tests.TestCase):
                 r'(?m)not_applicable_test   * N/A')
         self.assertContainsRe(out.getvalue(),
                 r'(?m)^    this test never runs')
-
-    def test_not_applicable_demo(self):
-        # just so you can see it in the test output
-        raise tests.TestNotApplicable('this test is just a demonstation')
 
     def test_unsupported_features_listed(self):
         """When unsupported features are encountered they are detailed."""
@@ -1260,6 +1293,34 @@ class TestRunner(tests.TestCase):
         log = test._get_log()
         self.assertContainsRe(log, 'this will be kept')
         self.assertEqual(log, test._log_contents)
+
+    def test_startTestRun(self):
+        """run should call result.startTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def startTestRun(self):
+                tests.ForwardingResult.startTestRun(self)
+                calls.append('startTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
+
+    def test_stopTestRun(self):
+        """run should call result.stopTestRun()"""
+        calls = []
+        class LoggingDecorator(tests.ForwardingResult):
+            def stopTestRun(self):
+                tests.ForwardingResult.stopTestRun(self)
+                calls.append('stopTestRun')
+        test = unittest.FunctionTestCase(lambda:None)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream,
+            result_decorators=[LoggingDecorator])
+        result = self.run_test_runner(runner, test)
+        self.assertLength(1, calls)
 
 
 class SampleTestCase(tests.TestCase):
@@ -1432,6 +1493,7 @@ class TestTestCase(tests.TestCase):
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
+        self.addCleanup(osutils.delete_any, outer_test._log_file_name)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
     def method_that_times_a_bit_twice(self):
@@ -1480,6 +1542,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual((time.sleep, (0.003,), {}), self._benchcalls[1][0])
         self.assertIsInstance(self._benchcalls[0][1], bzrlib.lsprof.Stats)
         self.assertIsInstance(self._benchcalls[1][1], bzrlib.lsprof.Stats)
+        del self._benchcalls[:]
 
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
@@ -1660,6 +1723,21 @@ class TestExtraAssertions(tests.TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
+    def test_assertEqualDiff(self):
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '', '\n')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '+' applies to the second string
+                          'first string is missing a final newline.\n+ \n')
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '\n', '')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '-' applies to the second string
+                          'second string is missing a final newline.\n- \n')
+
+
+class TestDeprecations(tests.TestCase):
+
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
         # calling an undeprecated callable raises an assertion
@@ -1742,16 +1820,16 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         tree = self.make_branch_and_memory_tree('a')
         self.assertIsInstance(tree, bzrlib.memorytree.MemoryTree)
 
-
-class TestSFTPMakeBranchAndTree(test_sftp_transport.TestCaseWithSFTPServer):
-
-    def test_make_tree_for_sftp_branch(self):
-        """Transports backed by local directories create local trees."""
-        # NB: This is arguably a bug in the definition of make_branch_and_tree.
+    def test_make_tree_for_local_vfs_backed_transport(self):
+        # make_branch_and_tree has to use local branch and repositories
+        # when the vfs transport and local disk are colocated, even if
+        # a different transport is in use for url generation.
+        from bzrlib.transport.fakevfat import FakeVFATServer
+        self.transport_server = FakeVFATServer
+        self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
-        self.failIf(base.startswith('sftp'),
-                'base %r is on sftp but should be local' % base)
+        self.assertStartsWith(base, 'file://')
         self.assertEquals(tree.bzrdir.root_transport,
                 tree.branch.bzrdir.root_transport)
         self.assertEquals(tree.bzrdir.root_transport,
@@ -1817,6 +1895,20 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertNotContainsRe("Test.b", output.getvalue())
         self.assertLength(2, output.readlines())
 
+    def test_lsprof_tests(self):
+        self.requireFeature(test_lsprof.LSProfFeature)
+        calls = []
+        class Test(object):
+            def __call__(test, result):
+                test.run(result)
+            def run(test, result):
+                self.assertIsInstance(result, tests.ForwardingResult)
+                calls.append("called")
+            def countTestCases(self):
+                return 1
+        self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
+        self.assertLength(1, calls)
+
     def test_random(self):
         # test randomising by listing a number of tests.
         output_123 = self.run_selftest(test_suite_factory=self.factory,
@@ -1877,8 +1969,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
     def test_transport_sftp(self):
         try:
             import bzrlib.transport.sftp
-        except ParamikoNotPresent:
-            raise TestSkipped("Paramiko not present")
+        except errors.ParamikoNotPresent:
+            raise tests.TestSkipped("Paramiko not present")
         self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
@@ -2072,7 +2164,8 @@ class StubProcess(object):
         return self.out, self.err
 
 
-class TestRunBzrSubprocess(tests.TestCaseWithTransport):
+class TestWithFakedStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Base class for tests testing how we might run bzr."""
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
@@ -2088,6 +2181,9 @@ class TestRunBzrSubprocess(tests.TestCaseWithTransport):
             'skip_if_plan_to_signal':skip_if_plan_to_signal,
             'working_dir':working_dir, 'allow_plugins':allow_plugins})
         return self.next_subprocess
+
+
+class TestRunBzrSubprocess(TestWithFakedStartBzrSubprocess):
 
     def assertRunBzrSubprocess(self, expected_args, process, *args, **kwargs):
         """Run run_bzr_subprocess with args and kwargs using a stubbed process.
@@ -2155,6 +2251,32 @@ class TestRunBzrSubprocess(tests.TestCaseWithTransport):
     def test_allow_plugins(self):
         self.assertRunBzrSubprocess({'allow_plugins': True},
             StubProcess(), '', allow_plugins=True)
+
+
+class TestFinishBzrSubprocess(TestWithFakedStartBzrSubprocess):
+
+    def test_finish_bzr_subprocess_with_error(self):
+        """finish_bzr_subprocess allows specification of the desired exit code.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=3)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_bzr_subprocess_ignoring_retcode(self):
+        """finish_bzr_subprocess allows the exit code to be ignored."""
+        process = StubProcess(err="unknown command", retcode=3)
+        result = self.finish_bzr_subprocess(process, retcode=None)
+        self.assertEqual('', result[0])
+        self.assertContainsRe(result[1], 'unknown command')
+
+    def test_finish_subprocess_with_unexpected_retcode(self):
+        """finish_bzr_subprocess raises self.failureException if the retcode is
+        not the expected one.
+        """
+        process = StubProcess(err="unknown command", retcode=3)
+        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
+                          process)
 
 
 class _DontSpawnProcess(Exception):
@@ -2240,39 +2362,8 @@ class TestStartBzrSubProcess(tests.TestCase):
         self.assertEqual(['foo', 'current'], chdirs)
 
 
-class TestBzrSubprocess(tests.TestCaseWithTransport):
-
-    def test_start_and_stop_bzr_subprocess(self):
-        """We can start and perform other test actions while that process is
-        still alive.
-        """
-        process = self.start_bzr_subprocess(['--version'])
-        result = self.finish_bzr_subprocess(process)
-        self.assertContainsRe(result[0], 'is free software')
-        self.assertEqual('', result[1])
-
-    def test_start_and_stop_bzr_subprocess_with_error(self):
-        """finish_bzr_subprocess allows specification of the desired exit code.
-        """
-        process = self.start_bzr_subprocess(['--versionn'])
-        result = self.finish_bzr_subprocess(process, retcode=3)
-        self.assertEqual('', result[0])
-        self.assertContainsRe(result[1], 'unknown command')
-
-    def test_start_and_stop_bzr_subprocess_ignoring_retcode(self):
-        """finish_bzr_subprocess allows the exit code to be ignored."""
-        process = self.start_bzr_subprocess(['--versionn'])
-        result = self.finish_bzr_subprocess(process, retcode=None)
-        self.assertEqual('', result[0])
-        self.assertContainsRe(result[1], 'unknown command')
-
-    def test_start_and_stop_bzr_subprocess_with_unexpected_retcode(self):
-        """finish_bzr_subprocess raises self.failureException if the retcode is
-        not the expected one.
-        """
-        process = self.start_bzr_subprocess(['--versionn'])
-        self.assertRaises(self.failureException, self.finish_bzr_subprocess,
-                          process)
+class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
+    """Tests that really need to do things with an external bzr."""
 
     def test_start_and_stop_bzr_subprocess_send_signal(self):
         """finish_bzr_subprocess raises self.failureException if the retcode is
@@ -2285,14 +2376,6 @@ class TestBzrSubprocess(tests.TestCaseWithTransport):
                                             retcode=3)
         self.assertEqual('', result[0])
         self.assertEqual('bzr: interrupted\n', result[1])
-
-    def test_start_and_stop_working_dir(self):
-        cwd = osutils.getcwd()
-        self.make_branch_and_tree('one')
-        process = self.start_bzr_subprocess(['root'], working_dir='one')
-        result = self.finish_bzr_subprocess(process, universal_newlines=True)
-        self.assertEndsWith(result[0], 'one\n')
-        self.assertEqual('', result[1])
 
 
 class TestKnownFailure(tests.TestCase):
@@ -2681,10 +2764,52 @@ class TestTestIdList(tests.TestCase):
 
 class TestTestSuite(tests.TestCase):
 
+    def test__test_suite_testmod_names(self):
+        # Test that a plausible list of test module names are returned
+        # by _test_suite_testmod_names.
+        test_list = tests._test_suite_testmod_names()
+        self.assertSubset([
+            'bzrlib.tests.blackbox',
+            'bzrlib.tests.per_transport',
+            'bzrlib.tests.test_selftest',
+            ],
+            test_list)
+
+    def test__test_suite_modules_to_doctest(self):
+        # Test that a plausible list of modules to doctest is returned
+        # by _test_suite_modules_to_doctest.
+        test_list = tests._test_suite_modules_to_doctest()
+        self.assertSubset([
+            'bzrlib.timestamp',
+            ],
+            test_list)
+
     def test_test_suite(self):
-        # This test is slow - it loads the entire test suite to operate, so we
-        # do a single test with one test in each category
-        test_list = [
+        # test_suite() loads the entire test suite to operate. To avoid this
+        # overhead, and yet still be confident that things are happening,
+        # we temporarily replace two functions used by test_suite with 
+        # test doubles that supply a few sample tests to load, and check they
+        # are loaded.
+        calls = []
+        def _test_suite_testmod_names():
+            calls.append("testmod_names")
+            return [
+                'bzrlib.tests.blackbox.test_branch',
+                'bzrlib.tests.per_transport',
+                'bzrlib.tests.test_selftest',
+                ]
+        original_testmod_names = tests._test_suite_testmod_names
+        def _test_suite_modules_to_doctest():
+            calls.append("modules_to_doctest")
+            return ['bzrlib.timestamp']
+        orig_modules_to_doctest = tests._test_suite_modules_to_doctest
+        def restore_names():
+            tests._test_suite_testmod_names = original_testmod_names
+            tests._test_suite_modules_to_doctest = orig_modules_to_doctest
+        self.addCleanup(restore_names)
+        tests._test_suite_testmod_names = _test_suite_testmod_names
+        tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
+        expected_test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
@@ -2695,13 +2820,16 @@ class TestTestSuite(tests.TestCase):
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
-        suite = tests.test_suite(test_list)
-        self.assertEquals(test_list, _test_ids(suite))
+        suite = tests.test_suite()
+        self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
+            set(calls))
+        self.assertSubset(expected_test_list, _test_ids(suite))
 
     def test_test_suite_list_and_start(self):
         # We cannot test this at the same time as the main load, because we want
-        # to know that starting_with == None works. So a second full load is
-        # incurred.
+        # to know that starting_with == None works. So a second load is
+        # incurred - note that the starting_with parameter causes a partial load
+        # rather than a full load so this test should be pretty quick.
         test_list = ['bzrlib.tests.test_selftest.TestTestSuite.test_test_suite']
         suite = tests.test_suite(test_list,
                                  ['bzrlib.tests.test_selftest.TestTestSuite'])
@@ -2853,19 +2981,3 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
-
-    def test_done(self):
-        """run_suite should call result.done()"""
-        self.calls = 0
-        def one_more_call(): self.calls += 1
-        def test_function():
-            pass
-        test = unittest.FunctionTestCase(test_function)
-        class InstrumentedTestResult(tests.ExtendedTestResult):
-            def done(self): one_more_call()
-        class MyRunner(tests.TextTestRunner):
-            def run(self, test):
-                return InstrumentedTestResult(self.stream, self.descriptions,
-                                              self.verbosity)
-        tests.run_suite(test, runner_class=MyRunner, stream=StringIO())
-        self.assertEquals(1, self.calls)

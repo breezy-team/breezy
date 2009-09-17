@@ -424,6 +424,10 @@ class EmacsMail(ExternalMailClient):
 
     _client_commands = ['emacsclient']
 
+    def __init__(self, config):
+        super(EmacsMail, self).__init__(config)
+        self.elisp_tmp_file = None
+
     def _prepare_send_function(self):
         """Write our wrapper function into a temporary file.
 
@@ -500,6 +504,7 @@ class EmacsMail(ExternalMailClient):
         if attach_path is not None:
             # Do not create a file if there is no attachment
             elisp = self._prepare_send_function()
+            self.elisp_tmp_file = elisp
             lmmform = '(load "%s")' % elisp
             mmform  = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')

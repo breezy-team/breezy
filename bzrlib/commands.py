@@ -1035,13 +1035,13 @@ def run_bzr(argv):
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
-        if 'memory' in debug.debug_flags:
-            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
+        if 'memory' in debug.debug_flags:
+            trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
 
 
@@ -1114,6 +1114,7 @@ def main(argv=None):
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
+    osutils.report_extension_load_failures()
     return ret
 
 

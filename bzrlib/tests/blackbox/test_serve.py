@@ -214,8 +214,7 @@ class TestBzrServe(TestCaseWithTransport):
         ssh_server = SFTPServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
-        ssh_server.setUp()
-        self.addCleanup(ssh_server.tearDown)
+        self.start_server(ssh_server)
         port = ssh_server._listener.port
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
@@ -261,14 +260,15 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         t = self.get_transport()
         t.mkdir('server-root')
         self.run_bzr_serve_then_func(
-            ['--port', '0', '--directory', t.local_abspath('server-root'),
+            ['--port', '127.0.0.1:0',
+             '--directory', t.local_abspath('server-root'),
              '--allow-writes'],
             self.when_server_started)
         # The when_server_started method issued a find_repositoryV3 that should
         # fail with 'norepository' because there are no repositories inside the
         # --directory.
         self.assertEqual(('norepository',), self.client_resp)
-        
+
     def run_bzr_serve_then_func(self, serve_args, func, *func_args,
             **func_kwargs):
         """Run 'bzr serve', and run the given func in a thread once the server
