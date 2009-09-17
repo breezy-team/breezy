@@ -2066,12 +2066,12 @@ class RepositoryPackCollection(object):
     def _check_new_inventories(self):
         """Detect missing inventories in this write group.
 
-        :returns: set of missing keys.  Note that not every missing key is
-            guaranteed to be reported.
+        :returns: list of strs, summarising any problems found.  If the list is
+            empty no problems were found.
         """
         # The base implementation does no checks.  GCRepositoryPackCollection
         # overrides this.
-        return set()
+        return []
         
     def _commit_write_group(self):
         all_missing = set()
@@ -2087,11 +2087,11 @@ class RepositoryPackCollection(object):
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
                  % (self.repo, sorted(all_missing)))
-        all_missing = self._check_new_inventories()
-        if all_missing:
+        problems = self._check_new_inventories()
+        if problems:
+            problems_summary = '\n'.join(problems)
             raise errors.BzrCheckError(
-                "Repository %s missing keys for new revisions %r "
-                 % (self.repo, sorted(all_missing)))
+                "Cannot add revision(s) to repository: " + problems_summary)
         self._remove_pack_indices(self._new_pack)
         any_new_content = False
         if self._new_pack.data_inserted():

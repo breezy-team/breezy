@@ -457,6 +457,13 @@ class Command(object):
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
         options = option.get_optparser(self.options()).format_option_help()
+        # XXX: According to the spec, ReST option lists actually don't support 
+        # options like --1.9 so that causes syntax errors (in Sphinx at least).
+        # As that pattern always appears in the commands that break, we trap
+        # on that and then format that block of 'format' options as a literal
+        # block.
+        if not plain and options.find('  --1.9  ') != -1:
+            options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
             result += ':' + options
         elif options.startswith('options:'):
@@ -1028,13 +1035,13 @@ def run_bzr(argv):
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
-        if 'memory' in debug.debug_flags:
-            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
+        if 'memory' in debug.debug_flags:
+            trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
 
 
@@ -1107,6 +1114,7 @@ def main(argv=None):
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
+    osutils.report_extension_load_failures()
     return ret
 
 

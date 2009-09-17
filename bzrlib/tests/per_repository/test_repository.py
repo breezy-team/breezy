@@ -760,8 +760,8 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo.lock_write()
         self.addCleanup(repo.unlock)
-        self.addCleanup(repo.commit_write_group)
         repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
         inv = Inventory(revision_id='A')
         inv.root.revision = 'A'
         repo.add_inventory('A', inv, [])
@@ -788,6 +788,8 @@ class TestRepository(TestCaseWithRepository):
         repo = self.make_repository('repo')
         repo.lock_write()
         repo.start_write_group()
+        root_id = inv.root.file_id
+        repo.texts.add_lines(('fixed-root', 'A'), [], [])
         repo.add_revision('A', Revision('A', committer='B', timestamp=0,
                           timezone=0, message='C'), inv=inv)
         repo.commit_write_group()
@@ -1216,6 +1218,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
         repo.start_write_group()
         inv = Inventory(revision_id = 'ghost')
         inv.root.revision = 'ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'ghost'), [], [])
         sha1 = repo.add_inventory('ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
@@ -1231,6 +1236,9 @@ class TestCaseWithCorruptRepository(TestCaseWithRepository):
 
         inv = Inventory(revision_id = 'the_ghost')
         inv.root.revision = 'the_ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'the_ghost'), [], [])
         sha1 = repo.add_inventory('the_ghost', inv, [])
         rev = bzrlib.revision.Revision(timestamp=0,
                                        timezone=None,
