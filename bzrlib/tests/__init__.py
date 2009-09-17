@@ -976,7 +976,7 @@ class TestCase(unittest.TestCase):
         try:
             try:
                 tree = workingtree.WorkingTree.open(path)
-            except errors.NoWorkingTree:
+            except (errors.NotBranchError, errors.NoWorkingTree):
                 return
         finally:
             self.enable_directory_isolation()
