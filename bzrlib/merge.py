@@ -613,19 +613,21 @@ class Merge3Merger(object):
         self.this_tree.lock_tree_write()
         self.base_tree.lock_read()
         self.other_tree.lock_read()
-        self.tt = TreeTransform(self.this_tree, self.pb)
         try:
-            self.pp.next_phase()
-            self._compute_transform()
-            self.pp.next_phase()
-            results = self.tt.apply(no_conflicts=True)
-            self.write_modified(results)
+            self.tt = TreeTransform(self.this_tree, self.pb)
             try:
-                self.this_tree.add_conflicts(self.cooked_conflicts)
-            except UnsupportedOperation:
-                pass
+                self.pp.next_phase()
+                self._compute_transform()
+                self.pp.next_phase()
+                results = self.tt.apply(no_conflicts=True)
+                self.write_modified(results)
+                try:
+                    self.this_tree.add_conflicts(self.cooked_conflicts)
+                except UnsupportedOperation:
+                    pass
+            finally:
+                self.tt.finalize()
         finally:
-            self.tt.finalize()
             self.other_tree.unlock()
             self.base_tree.unlock()
             self.this_tree.unlock()

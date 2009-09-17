@@ -28,9 +28,8 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.branch import BzrBranchFormat7
-from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import KnownFailure, TestNotApplicable
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -360,143 +359,6 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertNotEqual([], tokens)
         sink.insert_stream((), repo._format, tokens)
         self.assertEqual([True], call_log)
-
-    def test_missing_chk_root_for_inventory(self):
-        """commit_write_group fails with BzrCheckError when the chk root record
-        for a new inventory is missing.
-        """
-        builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        b = builder.get_branch()
-        if not b.repository._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        repo = self.make_repository('damaged-repo')
-        repo.lock_write()
-        repo.start_write_group()
-        # Now, add the objects manually
-        text_keys = [('file-id', 'A-id'), ('root-id', 'A-id')]
-        # Directly add the texts, inventory, and revision object for 'A-id' --
-        # but don't add the chk_bytes.
-        src_repo = b.repository
-        repo.texts.insert_record_stream(src_repo.texts.get_record_stream(
-            text_keys, 'unordered', True))
-        repo.inventories.insert_record_stream(
-            src_repo.inventories.get_record_stream(
-                [('A-id',)], 'unordered', True))
-        repo.revisions.insert_record_stream(
-            src_repo.revisions.get_record_stream(
-                [('A-id',)], 'unordered', True))
-        # Make sure the presence of the missing data in a fallback does not
-        # avoid the error.
-        repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(
-            errors.BzrCheckError, reopened_repo.commit_write_group)
-        reopened_repo.abort_write_group()
-
-    def test_missing_chk_root_for_unchanged_inventory(self):
-        """commit_write_group fails with BzrCheckError when the chk root record
-        for a new inventory is missing, even if the parent inventory is present
-        and has identical content (i.e. the same chk root).
-        
-        A stacked repository containing only a revision with an identical
-        inventory to its parent will still have the chk root records for those
-        inventories.
-
-        (In principle the chk records are unnecessary in this case, but in
-        practice bzr 2.0rc1 (at least) expects to find them.)
-        """
-        # Make a branch where the last two revisions have identical
-        # inventories.
-        builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, [])
-        b = builder.get_branch()
-        if not b.repository._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        # check our setup: B-id and C-id should have identical chk root keys.
-        inv_b = b.repository.get_inventory('B-id')
-        inv_c = b.repository.get_inventory('C-id')
-        self.assertEqual(inv_b.id_to_entry.key(), inv_c.id_to_entry.key())
-        # Now, manually insert objects for a stacked repo with only revision
-        # C-id:
-        # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
-        # ('inventories', 'B-id'), and the corresponding chk roots for those
-        # inventories.
-        repo = self.make_repository('damaged-repo')
-        repo.lock_write()
-        repo.start_write_group()
-        src_repo = b.repository
-        repo.inventories.insert_record_stream(
-            src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
-        repo.revisions.insert_record_stream(
-            src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
-        # Make sure the presence of the missing data in a fallback does not
-        # avoid the error.
-        repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(
-            errors.BzrCheckError, reopened_repo.commit_write_group)
-        reopened_repo.abort_write_group()
-
-    def test_missing_chk_root_for_parent_inventory(self):
-        """commit_write_group fails with BzrCheckError when the chk root record
-        for a parent inventory of a new revision is missing.
-        """
-        builder = self.make_branch_builder('simple-branch')
-        builder.build_snapshot('A-id', None, [
-            ('add', ('', 'root-id', 'directory', None)),
-            ('add', ('file', 'file-id', 'file', 'content\n'))])
-        builder.build_snapshot('B-id', None, [])
-        builder.build_snapshot('C-id', None, [
-            ('modify', ('file-id', 'new-content'))])
-        b = builder.get_branch()
-        if not b.repository._format.supports_chks:
-            raise TestNotApplicable('requires repository with chk_bytes')
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        # Now, manually insert objects for a stacked repo with only revision
-        # C-id, *except* the chk root entry for the parent inventory.
-        # We need ('revisions', 'C-id'), ('inventories', 'C-id'),
-        # ('inventories', 'B-id'), and the corresponding chk roots for those
-        # inventories.
-        inv_c = b.repository.get_inventory('C-id')
-        chk_keys_for_c_only = [
-            inv_c.id_to_entry.key(), inv_c.parent_id_basename_to_file_id.key()]
-        repo = self.make_repository('damaged-repo')
-        repo.lock_write()
-        repo.start_write_group()
-        src_repo = b.repository
-        repo.chk_bytes.insert_record_stream(
-            src_repo.chk_bytes.get_record_stream(
-                chk_keys_for_c_only, 'unordered', True))
-        repo.inventories.insert_record_stream(
-            src_repo.inventories.get_record_stream(
-                [('B-id',), ('C-id',)], 'unordered', True))
-        repo.revisions.insert_record_stream(
-            src_repo.revisions.get_record_stream(
-                [('C-id',)], 'unordered', True))
-        # Make sure the presence of the missing data in a fallback does not
-        # avoid the error.
-        repo.add_fallback_repository(b.repository)
-        self.assertRaises(errors.BzrCheckError, repo.commit_write_group)
-        reopened_repo = self.reopen_repo_and_resume_write_group(repo)
-        self.assertRaises(
-            errors.BzrCheckError, reopened_repo.commit_write_group)
-        reopened_repo.abort_write_group()
 
 
 class TestResumeableWriteGroup(TestCaseWithRepository):

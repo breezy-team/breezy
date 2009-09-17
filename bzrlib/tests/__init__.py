@@ -53,6 +53,7 @@ import warnings
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    config,
     debug,
     errors,
     hooks,
@@ -298,6 +299,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._post_mortem()
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -315,6 +317,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._post_mortem()
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -403,6 +406,11 @@ class ExtendedTestResult(unittest._TextTestResult):
                     self.stream.write('\n')
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
+
+    def _post_mortem(self):
+        """Start a PDB post mortem session."""
+        if os.environ.get('BZR_TEST_PDB', None):
+            import pdb;pdb.post_mortem()
 
     def progress(self, offset, whence):
         """The test is adjusting the count of tests to run."""
@@ -982,9 +990,9 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a == b + '\n':
-            message = 'first string is missing a final newline.\n'
         if a + '\n' == b:
+            message = 'first string is missing a final newline.\n'
+        if a == b + '\n':
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
@@ -2553,6 +2561,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__vfs_server = None
+
+    def disable_missing_extensions_warning(self):
+        """Some tests expect a precise stderr content.
+
+        There is no point in forcing them to duplicate the extension related
+        warning.
+        """
+        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
 
 
 class ChrootedTestCase(TestCaseWithTransport):
