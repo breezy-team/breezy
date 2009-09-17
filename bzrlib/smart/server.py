@@ -345,7 +345,7 @@ def _local_path_for_transport(transport):
             return None
 
 
-class BzrServerMaker(object):
+class BzrServerFactory(object):
 
     def __init__(self, userdir_expander=None, get_base_path=None):
         self.cleanups = []
@@ -437,7 +437,7 @@ class BzrServerMaker(object):
 
 
 def serve_bzr(transport, host=None, port=None, inet=False):
-    bzr_server = BzrServerMaker()
+    bzr_server = BzrServerFactory()
     try:
         bzr_server.setUp(transport, host, port, inet)
         bzr_server.smart_server.serve()
