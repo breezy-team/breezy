@@ -13,86 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """Shell-like test scripts.
 
-This allows users to write tests in a syntax very close to a shell session,
-using a restricted and limited set of commands that should be enough to mimic
-most of the behaviours.
-
-A script is a set of commands, each command is composed of:
-- one mandatory command line,
-- one optional set of input lines to feed the command,
-- one optional set of output expected lines,
-- one optional set of error expected lines.
-
-The optional lines starts with a special string (mnemonic: shell redirection):
-- '<' for input,
-- '>' for output,
-- '2>' for errors,
-
-The execution stops as soon as an expected output or an expected error is not
-matched. 
-
-When no output is specified, any ouput from the command is accepted
-and let the execution continue. 
-
-If an error occurs and no expected error is specified, the execution stops.
-
-An error is defined by a returned status different from zero, not by the
-presence of text on the error stream.
-
-The matching is done on a full string comparison basis unless '...' is used, in
-which case expected output/errors can be lees precise.
-
-Examples:
-
-The following will succeeds only if 'bzr add' outputs 'adding file'.
-
-  bzr add file
-  >adding file
-
-If you want the command to succeed for any output, just use:
-
-  bzr add file
-
-The following will stop with an error:
-
-  bzr not-a-command
-
-If you want it to succeed, use:
-
-  bzr not-a-command
-  2> bzr: ERROR: unknown command "not-a-command"
-
-You can use ellipsis (...) to replace any piece of text you don't want to be
-matched exactly:
-
-  bzr branch not-a-branch
-  2>bzr: ERROR: Not a branch...not-a-branch/".
-
-
-This can be used to ignore entire lines too:
-
-cat
-<first line
-<second line
-<third line
-<fourth line
-<last line
->first line
->...
->last line
-
-You can check the content of a file with cat:
-
-  cat <file
-  >expected content
-
-You can also check the existence of a file with cat, the following will fail if
-the file doesn't exist:
-
-  cat file
-
+See developpers/testing.html for more explanations.
 """
 
 import doctest
@@ -158,22 +82,20 @@ def _script_to_commands(text, file_name=None):
         if line == '':
             # Ignore empty lines
             continue
-        if line.startswith('<'):
+        if line.startswith('$'):
+            # Time to output the current command
+            add_command(cmd_cur, input, output, error)
+            # And start a new one
+            cmd_cur = list(split(line[1:]))
+            cmd_line = lineno
+            input, output, error = None, None, None
+        elif line.startswith('<'):
             if input is None:
                 if cmd_cur is None:
                     raise SyntaxError('No command for that input',
                                       (file_name, lineno, 1, orig))
                 input = []
             input.append(line[1:] + '\n')
-            continue
-        elif line.startswith('>'):
-            if output is None:
-                if cmd_cur is None:
-                    raise SyntaxError('No command for that output',
-                                      (file_name, lineno, 1, orig))
-                output = []
-            output.append(line[1:] + '\n')
-            continue
         elif line.startswith('2>'):
             if error is None:
                 if cmd_cur is None:
@@ -181,14 +103,13 @@ def _script_to_commands(text, file_name=None):
                                       (file_name, lineno, 1, orig))
                 error = []
             error.append(line[2:] + '\n')
-            continue
         else:
-            # Time to output the current command
-            add_command(cmd_cur, input, output, error)
-            # And start a new one
-            cmd_cur = list(split(line))
-            cmd_line = lineno
-            input, output, error = None, None, None
+            if output is None:
+                if cmd_cur is None:
+                    raise SyntaxError('No command for that output',
+                                      (file_name, lineno, 1, orig))
+                output = []
+            output.append(line + '\n')
     # Add the last seen command
     add_command(cmd_cur, input, output, error)
     return commands
@@ -359,7 +280,7 @@ class ScriptRunner(object):
         if input and args:
                 raise SyntaxError('Specify parameters OR use redirection')
         if args:
-            input = ''.join(args)
+            input = ' '.join(args)
         try:
             input = self._read_input(input, in_name)
         except IOError, e:
