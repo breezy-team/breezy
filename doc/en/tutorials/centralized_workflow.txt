@@ -1,6 +1,6 @@
-====================
-Centralized Workflow
-====================
+=============================
+Centralized Workflow Tutorial
+=============================
 
 
 Overview
@@ -22,8 +22,6 @@ in sync.  This workflow is also applicable to a single developer working
 on several different machines.
 
 .. _Bazaar: http://bazaar-vcs.org
-
-.. contents::
 
 
 Initial Setup

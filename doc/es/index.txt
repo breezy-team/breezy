@@ -1,0 +1,40 @@
+=================================
+Indice de Documentacion de Bazaar
+=================================
+
+Las ultimas versiones de estos documentos se encuentran disponibles
+en la pagina de  Bazaar, http://doc.bazaar-vcs.org/en/.
+
+Documentacion Principal
+=======================
+
+.. toctree::
+   :maxdepth: 1
+
+   mini-tutorial/index
+   quick-reference/index
+   user-guide/index
+
+
+Otra Documentacion
+==================
+
+Mudandose a Bazaar (enlances web):
+
+* `Guias de Migracion <http://doc.bazaar-vcs.org/migration/en/>`_
+  - para equipos que mudan el historial de otros SCV
+
+* `Guias de Plugins <http://doc.bazaar-vcs.org/plugins/en/>`_ 
+
+Otros Documentos (enlances web):
+
+* `Glosario <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `Preguntas Frecuentes <https://answers.launchpad.net/bzr>`_
+
+* `Referencia del API bzrlib <http://bazaar-vcs.org/BzrLib>`_
+
+Especificaciones tecnicas, planes a futuro y varias
+notas tecnicas varias en Ingles:
+
+* `Catalogo de Documentos para Desarrolladores <http://doc.bazaar-vcs.org/latest/developers/>`_

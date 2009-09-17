@@ -2,8 +2,6 @@
 Bazaar in five minutes
 ======================
 
-.. contents::
-
 Introduction
 ============
 

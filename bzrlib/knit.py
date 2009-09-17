@@ -1518,10 +1518,10 @@ class KnitVersionedFiles(VersionedFiles):
                 if source is parent_maps[0]:
                     # this KnitVersionedFiles
                     records = [(key, positions[key][1]) for key in keys]
-                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                    for key, raw_data in self._read_records_iter_unchecked(records):
                         (record_details, index_memo, _) = positions[key]
                         yield KnitContentFactory(key, global_map[key],
-                            record_details, sha1, raw_data, self._factory.annotated, None)
+                            record_details, None, raw_data, self._factory.annotated, None)
                 else:
                     vf = self._fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
@@ -1596,6 +1596,13 @@ class KnitVersionedFiles(VersionedFiles):
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
+            kind = record.storage_kind
+            if kind.startswith('knit-') and kind.endswith('-gz'):
+                # Check that the ID in the header of the raw knit bytes matches
+                # the record metadata.
+                raw_data = record._raw_record
+                df, rec = self._parse_record_header(record.key, raw_data)
+                df.close()
             buffered = False
             parents = record.parents
             if record.storage_kind in delta_types:
@@ -3693,5 +3700,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

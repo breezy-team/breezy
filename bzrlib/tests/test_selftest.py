@@ -28,6 +28,7 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    config,
     debug,
     errors,
     lockdir,
@@ -1723,6 +1724,21 @@ class TestExtraAssertions(tests.TestCase):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
 
+    def test_assertEqualDiff(self):
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '', '\n')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '+' applies to the second string
+                          'first string is missing a final newline.\n+ \n')
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '\n', '')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '-' applies to the second string
+                          'second string is missing a final newline.\n- \n')
+
+
+class TestDeprecations(tests.TestCase):
+
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
         # calling an undeprecated callable raises an assertion
@@ -2356,6 +2372,7 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         """finish_bzr_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
+        self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
         self.assertEqual('running\n', process.stdout.readline())

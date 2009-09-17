@@ -53,7 +53,7 @@ the following table provides the rules used.
 
 Note that some merges can only be completed with the assistance
 of a human. Details on how to resolve these are given in
-`Resolving conflicts`_.
+`Resolving conflicts <resolving_conflicts.html>`_.
 
 Recording a merge
 -----------------
