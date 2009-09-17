@@ -101,11 +101,11 @@ class CommandRegistry(registry.Registry):
             registry.Registry.register(self, k_unsquished, cmd,
                                        override_existing=decorate, info=info)
         except KeyError:
-            trace.log_error('Two plugins defined the same command: %r' % k)
-            trace.log_error('Not loading the one in %r' %
-                            sys.modules[cmd.__module__])
-            trace.log_error('Previously this command was registered from %r' %
-                            sys.modules[previous.__module__])
+            trace.warning('Two plugins defined the same command: %r' % k)
+            trace.warning('Not loading the one in %r' %
+                sys.modules[cmd.__module__])
+            trace.warning('Previously this command was registered from %r' %
+                sys.modules[previous.__module__])
         return previous
 
     def register_lazy(self, command_name, aliases, module_name):

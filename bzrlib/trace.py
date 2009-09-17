@@ -126,7 +126,6 @@ def warning(*args, **kwargs):
 #
 # TODO: deprecate them, have one name for each.
 info = note
-log_error = _bzr_logger.error
 error =     _bzr_logger.error
 
 
