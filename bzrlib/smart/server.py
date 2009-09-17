@@ -346,6 +346,7 @@ def _local_path_for_transport(transport):
 
 
 class BzrServerFactory(object):
+    """Helper class for serve_bzr."""
 
     def __init__(self, userdir_expander=None, get_base_path=None):
         self.cleanups = []
@@ -360,7 +361,7 @@ class BzrServerFactory(object):
 
     def _expand_userdirs(self, path):
         """Translate /~/ or /~user/ to e.g. /home/foo, using
-        os.path.expanduser.
+        self.userdir_expander (os.path.expanduser by default).
 
         If the translated path would fall outside base_path, or the path does
         not start with ~, then no translation is applied.
@@ -437,6 +438,12 @@ class BzrServerFactory(object):
 
 
 def serve_bzr(transport, host=None, port=None, inet=False):
+    """This is the default implementation of 'bzr serve'.
+    
+    It creates a TCP or pipe smart server on 'transport, and runs it.  The
+    transport will be decorated with a chroot and pathfilter (using
+    os.path.expanduser).
+    """
     bzr_server = BzrServerFactory()
     try:
         bzr_server.setUp(transport, host, port, inet)
