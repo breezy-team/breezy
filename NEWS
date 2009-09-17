@@ -139,7 +139,7 @@ Testing
   fail unless they have explicitly permitted the transport via
   ``self.permit_url``. The standard test factories such as ``self.get_url``
   will permit the urls they provide automatically, so only exceptional
- tests should need to do this. (Robert Collins)
+  tests should need to do this. (Robert Collins)
 
 * The full test suite is expected to pass when the C extensions are not
   present. (Vincent Ladeuil, #430749)
