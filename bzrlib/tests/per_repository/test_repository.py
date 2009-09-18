@@ -52,6 +52,7 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
+from bzrlib.transport.fakevfat import FakeVFATServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
@@ -1295,6 +1296,7 @@ class TestEscaping(TestCaseWithTransport):
         from bzrlib.remote import RemoteRepositoryFormat
         if isinstance(self.repository_format, RemoteRepositoryFormat):
             return
+        self.transport_server = FakeVFATServer
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         # this makes a default format repository always, which is wrong:
@@ -1306,7 +1308,7 @@ class TestEscaping(TestCaseWithTransport):
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)
         # now access over vfat; should be safe
-        branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
+        branch = bzrdir.BzrDir.open(self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)

@@ -689,7 +689,9 @@ class TestBzrDirOpenRepository(TestRemote):
         # fallback all the way to the first version.
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
-        client = FakeClient('bzr://example.com/')
+        server_url = 'bzr://example.com/'
+        self.permit_url(server_url)
+        client = FakeClient(server_url)
         client.add_unknown_method_response('BzrDir.find_repositoryV3')
         client.add_unknown_method_response('BzrDir.find_repositoryV2')
         client.add_success_response('ok', '', 'no', 'no')
@@ -701,7 +703,7 @@ class TestBzrDirOpenRepository(TestRemote):
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
         client.add_success_response('stat', '0', '65535')
-        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+        remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
         bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
             _client=client)
@@ -721,7 +723,9 @@ class TestBzrDirOpenRepository(TestRemote):
         # fallback to find_repositoryV2
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
-        client = FakeClient('bzr://example.com/')
+        server_url = 'bzr://example.com/'
+        self.permit_url(server_url)
+        client = FakeClient(server_url)
         client.add_unknown_method_response('BzrDir.find_repositoryV3')
         client.add_success_response('ok', '', 'no', 'no', 'no')
         # A real repository instance will be created to determine the network
@@ -732,7 +736,7 @@ class TestBzrDirOpenRepository(TestRemote):
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
         client.add_success_response('stat', '0', '65535')
-        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+        remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
         bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
             _client=client)

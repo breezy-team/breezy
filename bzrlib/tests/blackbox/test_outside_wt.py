@@ -23,6 +23,7 @@ import os
 from bzrlib import (
     osutils,
     tests,
+    transport,
     urlutils,
     )
 
@@ -32,12 +33,12 @@ class TestOutsideWT(tests.ChrootedTestCase):
 
     def test_cwd_log(self):
         tmp_dir = osutils.mkdtemp()
+        # We expect a read-to-root attempt to occur.
+        self.permit_url('file:///')
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
-        self.addCleanup(lambda: os.chdir('..'))
-        os.chdir(tmp_dir)
-        out, err = self.run_bzr('log', retcode=3)
+        out, err = self.run_bzr('log', retcode=3, working_dir=tmp_dir)
         self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n'
-                         % (osutils.getcwd(),),
+                         % (tmp_dir,),
                          err)
 
     def test_url_log(self):
@@ -47,34 +48,33 @@ class TestOutsideWT(tests.ChrootedTestCase):
                          u' "%s".\n' % url, err)
 
     def test_diff_outside_tree(self):
+        tree = self.make_branch_and_tree('branch1')
+        tree.commit('nothing')
+        tree.commit('nothing')
+        # A directory we can run commands from which we hope is not contained
+        # in a bzr tree (though if there is one at or above $TEMPDIR, this is
+        # false and may cause test failures).
         tmp_dir = osutils.mkdtemp()
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
-        self.addCleanup(lambda: os.chdir('..'))
-        os.chdir(tmp_dir)
-        self.run_bzr('init branch1')
-        self.run_bzr(['commit', '-m', 'nothing',
-                               '--unchanged', 'branch1'])
-        self.run_bzr(['commit', '-m', 'nothing',
-                               '--unchanged', 'branch1'])
-        this_dir = osutils.getcwd()
-        branch2 = "%s/branch2" % (this_dir,)
+        # We expect a read-to-root attempt to occur.
+        self.permit_url('file:///')
+        expected_error = u'bzr: ERROR: Not a branch: "%s/branch2/".\n' % tmp_dir
         # -r X..Y
-        out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3)
-        self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
-                         err)
+        out, err = self.run_bzr('diff -r revno:2:branch2..revno:1', retcode=3,
+            working_dir=tmp_dir)
+        self.assertEqual('', out)
+        self.assertEqual(expected_error, err)
         # -r X
-        out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3)
-        self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
-                         err)
+        out, err = self.run_bzr('diff -r revno:2:branch2', retcode=3,
+            working_dir=tmp_dir)
+        self.assertEqual('', out)
+        self.assertEqual(expected_error, err)
         # -r X..
-        out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3)
-        self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (branch2,),
-                         err)
+        out, err = self.run_bzr('diff -r revno:2:branch2..', retcode=3,
+            working_dir=tmp_dir)
+        self.assertEqual('', out)
+        self.assertEqual(expected_error, err)
         # no -r at all.
-        out, err = self.run_bzr('diff', retcode=3)
-        self.assertEquals('', out)
-        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % (this_dir,),
-                         err)
+        out, err = self.run_bzr('diff', retcode=3, working_dir=tmp_dir)
+        self.assertEqual('', out)
+        self.assertEqual(u'bzr: ERROR: Not a branch: "%s/".\n' % tmp_dir, err)
