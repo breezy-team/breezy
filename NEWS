@@ -2,12 +2,12 @@
 Bazaar Release Notes
 ####################
 
-
 .. contents:: List of Releases
    :depth: 1
 
-2.1 series (not released yet)
-#############################
+
+2.1.0 series (not released yet)
+###############################
 
 Compatibility Breaks
 ********************
@@ -138,10 +138,31 @@ Testing
 * The full test suite is expected to pass when the C extensions are not
   present. (Vincent Ladeuil, #430749)
 
-bzr 2.0rc2
-##########
 
-:2.0rc2: 2009-09-10
+bzr 2.0.1 (Not Released Yet)
+############################
+
+Bug Fixes
+*********
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+
+
+bzr 2.0.0 (Not Released Yet)
+############################
+
+* Officially branded as 2.0.0 rather than 2.0 to clarify between things
+  that "want to happen on the 2.0.x stable series" versus things that want
+  to "land in 2.0.0". (Changes how bzrlib._format_version_tuple() handles
+  micro = 0.) (John Arbash Meinel)
+
+
+bzr 2.0.0rc2
+############
+
+:2.0.0rc2: 2009-09-10
 
 New Features
 ************
@@ -232,11 +253,11 @@ Documentation
   and Plugins Guide. (Ian Clatworthy)
 
 
-bzr 2.0rc1
-##########
+bzr 2.0.0rc1
+############
 
 :Codename: no worries
-:2.0rc1: 2009-08-26
+:2.0.0rc1: 2009-08-26
 
 This release of Bazaar makes 2a 'brisbane-core' format the
 default.  Most of the work in this release now focuses on bug
