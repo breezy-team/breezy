@@ -125,7 +125,6 @@ def warning(*args, **kwargs):
 # configure convenient aliases for output routines
 #
 # TODO: deprecate them, have one name for each.
-info = note
 error =     _bzr_logger.error
 
 
