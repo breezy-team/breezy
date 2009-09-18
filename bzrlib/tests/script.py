@@ -159,8 +159,7 @@ def _scan_redirection_options(args):
 
 class ScriptRunner(object):
 
-    def __init__(self, jail_root='/'):
-        self.jail_root = jail_root
+    def __init__(self):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
@@ -302,18 +301,20 @@ class ScriptRunner(object):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
-    def _ensure_in_jail(self, path):
-        if not osutils.is_inside(self.jail_root, osutils.normalizepath(path)):
-            raise ValueError('%s is not inside %s' % (path, self.jail_root))
+    def _ensure_in_jail(self, test_case, path):
+        jail_root = test_case.get_jail_root()
+        if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
+            raise ValueError('%s is not inside %s' % (path, jail_root))
 
     def do_cd(self, test_case, input, args):
         if len(args) > 1:
             raise SyntaxError('Usage: cd [dir]')
         if len(args) == 1:
             d = args[0]
-            self._ensure_in_jail(d)
+            self._ensure_in_jail(test_case, d)
         else:
-            d = self.jail_root
+            # The test "home" directory is the root of its jail
+            d = test_case.get_jail_root()
         os.chdir(d)
         return 0, None, None
 
@@ -321,7 +322,7 @@ class ScriptRunner(object):
         if not args or len(args) != 1:
             raise SyntaxError('Usage: mkdir dir')
         d = args[0]
-        self._ensure_in_jail(d)
+        self._ensure_in_jail(test_case, d)
         os.mkdir(d)
         return 0, None, None
 
@@ -344,7 +345,7 @@ class ScriptRunner(object):
         if not args or opts:
             raise SyntaxError('Usage: rm [-fr] path+')
         for p in args:
-            self._ensure_in_jail(p)
+            self._ensure_in_jail(test_case, p)
             # FIXME: Should we put that in osutils ?
             try:
                 os.remove(p)
@@ -378,8 +379,10 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
-        # We don't have a jail_root to provide here. Yet.
         self.script_runner = ScriptRunner()
+
+    def get_jail_root(self):
+        raise NotImplementedError(self.get_jail_root)
 
     def run_script(self, script):
         return self.script_runner.run_script(script, self)
@@ -408,7 +411,10 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithTransportAndScript, self).setUp()
-        self.script_runner = ScriptRunner(self.test_dir)
+        self.script_runner = ScriptRunner()
+
+    def get_jail_root(self):
+        return self.test_dir
 
     def run_script(self, script):
         return self.script_runner.run_script(script, self)
