@@ -122,12 +122,6 @@ def warning(*args, **kwargs):
     _bzr_logger.warning(*args, **kwargs)
 
 
-# configure convenient aliases for output routines
-#
-# TODO: deprecate them, have one name for each.
-error =     _bzr_logger.error
-
-
 _last_mutter_flush_time = None
 
 def mutter(fmt, *args):
