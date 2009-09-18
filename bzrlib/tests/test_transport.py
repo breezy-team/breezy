@@ -81,7 +81,8 @@ class TestTransport(TestCase):
             register_lazy_transport('bar', 'bzrlib.tests.test_transport',
                                     'TestTransport.SampleHandler')
             self.assertEqual([SampleHandler.__module__,
-                              'bzrlib.transport.chroot'],
+                              'bzrlib.transport.chroot',
+                              'bzrlib.transport.pathfilter'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
