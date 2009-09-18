@@ -427,12 +427,12 @@ class BzrServerFactory(object):
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
-    def setUp(self, transport, host, port, inet):
+    def set_up(self, transport, host, port, inet):
         self._make_backing_transport(transport)
         self._make_smart_server(host, port, inet)
         self._change_globals()
 
-    def tearDown(self):
+    def tear_down(self):
         for cleanup in reversed(self.cleanups):
             cleanup()
 
@@ -446,8 +446,8 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     """
     bzr_server = BzrServerFactory()
     try:
-        bzr_server.setUp(transport, host, port, inet)
+        bzr_server.set_up(transport, host, port, inet)
         bzr_server.smart_server.serve()
     finally:
-        bzr_server.tearDown()
+        bzr_server.tear_down()
 
