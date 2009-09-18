@@ -4201,6 +4201,23 @@ class _HTTPSServerFeature(Feature):
 HTTPSServerFeature = _HTTPSServerFeature()
 
 
+class _ParamikoFeature(Feature):
+    """Is paramiko available?"""
+
+    def _probe(self):
+        try:
+            from bzrlib.transport.sftp import SFTPAbsoluteServer
+            return True
+        except errors.ParamikoNotPresent:
+            return False
+
+    def feature_name(self):
+        return "Paramiko"
+
+
+ParamikoFeature = _ParamikoFeature()
+
+
 class _UnicodeFilename(Feature):
     """Does the filesystem support Unicode filenames?"""
 

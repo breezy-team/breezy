@@ -16,11 +16,16 @@
 
 
 from cStringIO import StringIO
+import os
+import subprocess
+import sys
+import threading
 
 import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    tests,
     urlutils,
     )
 from bzrlib.errors import (DependencyNotPresent,
@@ -31,7 +36,7 @@ from bzrlib.errors import (DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import ParamikoFeature, TestCase, TestCaseInTempDir
 from bzrlib.transport import (_clear_protocol_handlers,
                               _CoalescedOffset,
                               ConnectedTransport,
@@ -790,3 +795,87 @@ class TestTransportTrace(TestCase):
         # readv records the supplied offset request
         expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
         self.assertEqual(expected_result, transport._activity)
+
+
+class TestSSHConnections(tests.TestCaseWithTransport):
+
+    def test_bzr_connect_to_bzr_ssh(self):
+        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
+
+        bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
+        """
+        # This test actually causes a bzr instance to be invoked, which is very
+        # expensive: it should be the only such test in the test suite.
+        # A reasonable evolution for this would be to simply check inside
+        # check_channel_exec_request that the command is appropriate, and then
+        # satisfy requests in-process.
+        self.requireFeature(ParamikoFeature)
+        # SFTPFullAbsoluteServer has a get_url method, and doesn't
+        # override the interface (doesn't change self._vendor).
+        # Note that this does encryption, so can be slow.
+        from bzrlib.transport.sftp import SFTPFullAbsoluteServer
+        from bzrlib.tests.stub_sftp import StubServer
+
+        # Start an SSH server
+        self.command_executed = []
+        # XXX: This is horrible -- we define a really dumb SSH server that
+        # executes commands, and manage the hooking up of stdin/out/err to the
+        # SSH channel ourselves.  Surely this has already been implemented
+        # elsewhere?
+        class StubSSHServer(StubServer):
+
+            test = self
+
+            def check_channel_exec_request(self, channel, command):
+                self.test.command_executed.append(command)
+                proc = subprocess.Popen(
+                    command, shell=True, stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                # XXX: horribly inefficient, not to mention ugly.
+                # Start a thread for each of stdin/out/err, and relay bytes from
+                # the subprocess to channel and vice versa.
+                def ferry_bytes(read, write, close):
+                    while True:
+                        bytes = read(1)
+                        if bytes == '':
+                            close()
+                            break
+                        write(bytes)
+
+                file_functions = [
+                    (channel.recv, proc.stdin.write, proc.stdin.close),
+                    (proc.stdout.read, channel.sendall, channel.close),
+                    (proc.stderr.read, channel.sendall_stderr, channel.close)]
+                for read, write, close in file_functions:
+                    t = threading.Thread(
+                        target=ferry_bytes, args=(read, write, close))
+                    t.start()
+
+                return True
+
+        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
+        # We *don't* want to override the default SSH vendor: the detected one
+        # is the one to use.
+        self.start_server(ssh_server)
+        port = ssh_server._listener.port
+
+        if sys.platform == 'win32':
+            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
+        else:
+            bzr_remote_path = self.get_bzr_path()
+        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+
+        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
+        # variable is used to tell bzr what command to run on the remote end.
+        path_to_branch = osutils.abspath('.')
+        if sys.platform == 'win32':
+            path_to_branch = os.path.splitdrive(path_to_branch)[1]
+        url_suffix = '@localhost:%d%s' % (port, path_to_branch)
+        self.permit_url('bzr+ssh://fred' + url_suffix)
+        t = get_transport('bzr+ssh://fred:secret' + url_suffix)
+        t.mkdir('foo')
+
+        self.assertEqual(
+            ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
+            self.command_executed)
