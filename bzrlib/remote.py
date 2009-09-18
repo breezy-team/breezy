@@ -99,6 +99,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = None
+        self._has_working_tree = None
         # 1-shot cache for the call pattern 'create_branch; open_branch' - see
         # create_branch for details.
         self._next_open_branch_result = None
@@ -111,11 +112,36 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             return
 
         path = self._path_for_remote_call(self._client)
+        if medium._is_remote_before((2, 1)):
+            self._rpc_open(path)
+            return
+        try:
+            self._rpc_open_2_1(path)
+            return
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 1))
+            self._rpc_open(path)
+
+    def _rpc_open_2_1(self, path):
+        response = self._call('BzrDir.open_2.1', path)
+        if response == ('no',):
+            raise errors.NotBranchError(path=self.root_transport.base)
+        elif response[0] == 'yes':
+            if response[1] == 'yes':
+                self._has_working_tree = True
+            elif response[1] == 'no':
+                self._has_working_tree = False
+            else:
+                raise errors.UnexpectedSmartServerResponse(response)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _rpc_open(self, path):
         response = self._call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:
             raise errors.UnexpectedSmartServerResponse(response)
         if response == ('no',):
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=self.root_transport.base)
 
     def _ensure_real(self):
         """Ensure that there is a _real_bzrdir set.
@@ -356,8 +382,10 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             raise errors.NoRepositoryPresent(self)
 
     def open_workingtree(self, recommend_upgrade=True):
-        self._ensure_real()
-        if self._real_bzrdir.has_workingtree():
+        if self._has_working_tree is None:
+            self._ensure_real()
+            self._has_working_tree = self._real_bzrdir.has_workingtree()
+        if self._has_working_tree:
             raise errors.NotLocalUrl(self.root_transport)
         else:
             raise errors.NoWorkingTree(self.root_transport.base)

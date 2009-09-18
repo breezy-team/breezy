@@ -509,6 +509,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
+    'BzrDir.open_2.1', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir_2_1')
+request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')
 request_handlers.register_lazy(
