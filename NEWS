@@ -15,6 +15,25 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr+ssh`` and ``bzr`` paths can now be relative to home directories
+  specified in the URL.  Paths starting with a path segment of ``~`` are
+  relative to the home directory of the user running the server, and paths
+  starting with ``~user`` are relative to the home directory of the named
+  user.  For example, for a user "bob" with a home directory of
+  ``/home/bob``, these URLs are all equivalent:
+
+  * ``bzr+ssh://bob@host/~/repo``
+  * ``bzr+ssh://bob@host/~bob/repo``
+  * ``bzr+ssh://bob@host/home/bob/repo``
+
+  If ``bzr serve`` was invoked with a ``--directory`` argument, then no
+  home directories outside that directory will be accessible via this
+  method.
+
+  This is a feature of ``bzr serve``, so pre-2.1 clients will
+  automatically benefit from this feature when ``bzr`` on the server is
+  upgraded.  (Andrew Bennetts, #109143)
+
 * Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
   disable the user, site and core plugin directories.
   (Vincent Ladeuil, #412930, #316192, #145612)
@@ -134,6 +153,12 @@ Testing
 * Test parameterisation now does a shallow copy, not a deep copy of the test
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
+
+* Tests that try to open a bzr dir on an arbitrary transport will now
+  fail unless they have explicitly permitted the transport via
+  ``self.permit_url``. The standard test factories such as ``self.get_url``
+  will permit the urls they provide automatically, so only exceptional
+  tests should need to do this. (Robert Collins)
 
 * The full test suite is expected to pass when the C extensions are not
   present. (Vincent Ladeuil, #430749)
