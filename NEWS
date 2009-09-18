@@ -72,6 +72,8 @@ Improvements
 Documentation
 *************
 
+* Describe the new shell-like test feature. (Vincent Ladeuil)
+
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
 
@@ -98,6 +100,10 @@ Testing
 
 * Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
   be output for every test. Note that this is very verbose! (Robert Collins)
+
+* Shell-like tests can now be written. Code in ``bzrlib/tests/script.py`` ,
+  documentation in ``developers/testing.txt`` for details.
+  (Vincent Ladeuil)
 
 * Test parameterisation now does a shallow copy, not a deep copy of the test
   to be parameterised. This is not expected to break external use of test
