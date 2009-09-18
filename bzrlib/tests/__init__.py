@@ -91,7 +91,7 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import chroot, get_transport
+from bzrlib.transport import get_transport, pathfilter
 import bzrlib.transport
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
@@ -983,12 +983,11 @@ class TestCase(unittest.TestCase):
 
     def _preopen_isolate_transport(self, transport):
         """Check that all transport openings are done in the test work area."""
-        if isinstance(transport, chroot.ChrootTransport):
-            # Unwrap chrooted transports
-            url = transport.server.backing_transport.clone(
-                transport._safe_relpath('.')).base
-        else:
-            url = transport.base
+        while isinstance(transport, pathfilter.PathFilteringTransport):
+            # Unwrap pathfiltered transports
+            transport = transport.server.backing_transport.clone(
+                transport._filter('.'))
+        url = transport.base
         # ReadonlySmartTCPServer_for_testing decorates the backing transport
         # urls it is given by prepending readonly+. This is appropriate as the
         # client shouldn't know that the server is readonly (or not readonly).
