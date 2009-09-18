@@ -16,7 +16,7 @@
 
 """Shell-like test scripts.
 
-See developpers/testing.html for more explanations.
+See developers/testing.html for more explanations.
 """
 
 import doctest
@@ -44,13 +44,16 @@ def split(s):
 def _script_to_commands(text, file_name=None):
     """Turn a script into a list of commands with their associated IOs.
 
-    Each command appears on a line by itself. It can be associated with an
-    input that will feed it and an expected output.
+    Each command appears on a line by itself starting with '$ '. It can be
+    associated with an input that will feed it and an expected output.
+
     Comments starts with '#' until the end of line.
     Empty lines are ignored.
+
     Input and output are full lines terminated by a '\n'.
+
     Input lines start with '<'.
-    Output lines start with '>'.
+    Output lines start with nothing.
     Error lines start with '2>'.
     """
 
