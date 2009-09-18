@@ -1887,7 +1887,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
+        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1907,8 +1907,8 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        old_tree, new_tree, specific_files, extra_trees = \
-                _get_trees_to_diff(file_list, revision, old, new,
+        old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees = \
+                get_trees_and_branches_to_diff(file_list, revision, old, new,
                 apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
