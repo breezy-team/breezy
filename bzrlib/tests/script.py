@@ -158,16 +158,40 @@ def _scan_redirection_options(args):
 
 
 class ScriptRunner(object):
+    """Run a shell-like script from a test.
+    
+    Can be used as:
+
+    from bzrlib.tests import script
+
+    ...
+
+        def test_bug_nnnnn(self):
+            sr = script.ScriptRunner()
+            sr.run_script(self, '''
+            $ bzr init
+            $ bzr do-this
+            # Boom, error
+            ''')
+    """
 
     def __init__(self):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
-    def run_script(self, text, test_case):
-        for cmd, input, output, error in _script_to_commands(text):
-            self.run_command(cmd, input, output, error, test_case)
+    def run_script(self, test_case, text):
+        """Run a shell-like script as a test.
 
-    def run_command(self, cmd, input, output, error, test_case):
+        :param test_case: A TestCase instance that should provide the fail(),
+            assertEqualDiff and _run_bzr_core() methods as well as a 'test_dir'
+            attribute used as a jail root.
+
+        :param text: A shell-like script (see _script_to_commands for syntax).
+        """
+        for cmd, input, output, error in _script_to_commands(text):
+            self.run_command(test_case, cmd, input, output, error)
+
+    def run_command(self, test_case, cmd, input, output, error):
         mname = 'do_' + cmd[0]
         method = getattr(self, mname, None)
         if method is None:
@@ -301,8 +325,11 @@ class ScriptRunner(object):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
+    def _get_jail_root(self, test_case):
+        return test_case.test_dir
+
     def _ensure_in_jail(self, test_case, path):
-        jail_root = test_case.get_jail_root()
+        jail_root = self._get_jail_root(test_case)
         if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
             raise ValueError('%s is not inside %s' % (path, jail_root))
 
@@ -314,7 +341,7 @@ class ScriptRunner(object):
             self._ensure_in_jail(test_case, d)
         else:
             # The test "home" directory is the root of its jail
-            d = test_case.get_jail_root()
+            d = self._get_jail_root(test_case)
         os.chdir(d)
         return 0, None, None
 
@@ -381,14 +408,11 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def get_jail_root(self):
-        raise NotImplementedError(self.get_jail_root)
-
     def run_script(self, script):
-        return self.script_runner.run_script(script, self)
+        return self.script_runner.run_script(self, script)
 
     def run_command(self, cmd, input, output, error):
-        return self.script_runner.run_command(cmd, input, output, error, self)
+        return self.script_runner.run_command(self, cmd, input, output, error)
 
 
 class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
@@ -413,12 +437,9 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
         super(TestCaseWithTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def get_jail_root(self):
-        return self.test_dir
-
     def run_script(self, script):
-        return self.script_runner.run_script(script, self)
+        return self.script_runner.run_script(self, script)
 
     def run_command(self, cmd, input, output, error):
-        return self.script_runner.run_command(cmd, input, output, error, self)
+        return self.script_runner.run_command(self, cmd, input, output, error)
 
