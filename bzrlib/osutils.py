@@ -1828,7 +1828,8 @@ def file_kind_from_stat_mode_thunk(mode):
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
         except ImportError, e:
-            failed_to_load_extension(e)
+            # This is one time where we won't warn that an extension failed to
+            # load. The extension is never available on Windows anyway.
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )

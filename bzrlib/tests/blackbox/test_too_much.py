@@ -112,19 +112,6 @@ class TestCommands(ExternalBase):
         self.run_bzr('revert')
         os.chdir('..')
 
-    def test_main_version(self):
-        """Check output from version command and master option is reasonable"""
-        # output is intentionally passed through to stdout so that we
-        # can see the version being tested
-        output = self.run_bzr('version')[0]
-        self.log('bzr version output:')
-        self.log(output)
-        self.assert_(output.startswith('Bazaar (bzr) '))
-        self.assertNotEqual(output.index('Canonical'), -1)
-        # make sure --version is consistent
-        tmp_output = self.run_bzr('--version')[0]
-        self.assertEquals(output, tmp_output)
-
     def example_branch(test):
         test.run_bzr('init')
         file('hello', 'wt').write('foo')

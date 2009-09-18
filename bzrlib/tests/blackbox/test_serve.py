@@ -47,6 +47,10 @@ from bzrlib.transport import get_transport, remote
 
 class TestBzrServe(TestCaseWithTransport):
 
+    def setUp(self):
+        super(TestBzrServe, self).setUp()
+        self.disable_missing_extensions_warning()
+
     def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""
         # Shutdown the server: the server should shut down when it cannot read
@@ -90,6 +94,7 @@ class TestBzrServe(TestCaseWithTransport):
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
         url = 'bzr://localhost/'
+        self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
         transport = remote.RemoteTransport(url, medium=client_medium)
@@ -110,7 +115,9 @@ class TestBzrServe(TestCaseWithTransport):
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
-        return process,'bzr://localhost:%d/' % port
+        url = 'bzr://localhost:%d/' % port
+        self.permit_url(url)
+        return process, url
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
@@ -165,7 +172,9 @@ class TestBzrServe(TestCaseWithTransport):
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
         """
         try:
-            from bzrlib.transport.sftp import SFTPServer
+            # SFTPFullAbsoluteServer has a get_url method, and doesn't
+            # override the interface (doesn't change self._vendor).
+            from bzrlib.transport.sftp import SFTPFullAbsoluteServer
         except ParamikoNotPresent:
             raise TestSkipped('Paramiko not installed')
         from bzrlib.tests.stub_sftp import StubServer
@@ -211,7 +220,7 @@ class TestBzrServe(TestCaseWithTransport):
 
                 return True
 
-        ssh_server = SFTPServer(StubSSHServer)
+        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
         self.start_server(ssh_server)
@@ -229,8 +238,9 @@ class TestBzrServe(TestCaseWithTransport):
         try:
             if sys.platform == 'win32':
                 path_to_branch = os.path.splitdrive(path_to_branch)[1]
-            branch = Branch.open(
-                'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
+            url_suffix = '@localhost:%d%s' % (port, path_to_branch)
+            self.permit_url('bzr+ssh://fred' + url_suffix)
+            branch = Branch.open('bzr+ssh://fred:secret' + url_suffix)
             self.make_read_requests(branch)
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
