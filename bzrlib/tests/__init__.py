@@ -1802,7 +1802,7 @@ class TestCase(unittest.TestCase):
         if retcode is not None:
             self.assertEquals(retcode, result,
                               message='Unexpected return code')
-        return out, err
+        return result, out, err
 
     def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
                 working_dir=None, error_regexes=[], output_encoding=None):
@@ -1837,7 +1837,7 @@ class TestCase(unittest.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        out, err = self._run_bzr_autosplit(
+        retcode, out, err = self._run_bzr_autosplit(
             args=args,
             retcode=retcode,
             encoding=encoding,
@@ -3772,6 +3772,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
         'bzrlib.tests.test_setup',
