@@ -972,17 +972,14 @@ class TestCase(unittest.TestCase):
         to be used in the test suite.
         """
         path = self.get_source_path()
-        self.disable_directory_isolation()
+        self.record_directory_isolation()
         try:
             try:
-                tree = workingtree.WorkingTree.open(path)
+                workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree):
                 return
         finally:
             self.enable_directory_isolation()
-        self.permit_url(tree.bzrdir.root_transport.base)
-        self.permit_url(tree.branch.bzrdir.root_transport.base)
-        self.permit_url(tree.branch.repository.bzrdir.root_transport.base)
 
     def _preopen_isolate_transport(self, transport):
         """Check that all transport openings are done in the test work area."""
@@ -1005,6 +1002,9 @@ class TestCase(unittest.TestCase):
     def _preopen_isolate_url(self, url):
         if not self._directory_isolation:
             return
+        if self._directory_isolation == 'record':
+            self._bzr_selftest_roots.append(url)
+            return
         # This prevents all transports, including e.g. sftp ones backed on disk
         # from working unless they are explicitly granted permission. We then
         # depend on the code that sets up test transports to check that they are
@@ -1013,6 +1013,13 @@ class TestCase(unittest.TestCase):
         if not osutils.is_inside_any(self._bzr_selftest_roots, url):
             raise errors.BzrError("Attempt to escape test isolation: %r %r"
                 % (url, self._bzr_selftest_roots))
+
+    def record_directory_isolation(self):
+        """Gather accessed directories to permit later access.
+        
+        This is used for tests that access the branch bzr is running from.
+        """
+        self._directory_isolation = "record"
 
     def start_server(self, transport_server, backing_server=None):
         """Start transport_server for this test.
