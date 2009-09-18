@@ -23,7 +23,6 @@ import os
 import sys
 
 from bzrlib import (
-    config,
     tests,
     )
 

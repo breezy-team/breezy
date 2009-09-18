@@ -28,7 +28,6 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
-    config,
     debug,
     errors,
     lockdir,

@@ -25,7 +25,6 @@ import thread
 import threading
 
 from bzrlib import (
-    config,
     errors,
     osutils,
     revision as _mod_revision,
