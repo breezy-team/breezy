@@ -920,12 +920,13 @@ def report_extension_load_failures():
     if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
         return
     # the warnings framework should by default show this only once
-    warnings.warn(
-        "bzr: warning: Failed to load compiled extensions:\n"
-        "    %s\n" 
-        "    Bazaar can run, but performance may be reduced.\n"
-        "    Check Bazaar is correctly installed or set ignore_missing_extensions"
-        % '\n    '.join(_extension_load_failures,))
+    from bzrlib.trace import warning
+    warning(
+        "bzr: warning: some compiled extensions could not be loaded; "
+        "see <https://answers.launchpad.net/bzr/+faq/703>")
+    # we no longer show the specific missing extensions here, because it makes
+    # the message too long and scary - see
+    # https://bugs.launchpad.net/bzr/+bug/430529
 
 
 try:

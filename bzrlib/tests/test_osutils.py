@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    trace,
     win32utils,
     )
 from bzrlib.tests import (
@@ -1824,7 +1825,19 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertEquals(osutils._extension_load_failures[0],
             "No module named _fictional_extension_py")
 
-    def test_report_extension_load_failures(self):
+    def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
         warnings, result = self.callCatchWarnings(osutils.report_extension_load_failures)
-        self.assertLength(1, warnings)
+        # it used to give a Python warning; it no longer does
+        self.assertLength(0, warnings)
+
+    def test_report_extension_load_failures_message(self):
+        log = StringIO()
+        trace.push_log_file(log)
+        self.assertTrue(self._try_loading())
+        osutils.report_extension_load_failures()
+        self.assertContainsRe(
+            log.getvalue(),
+            r"bzr: warning: some compiled extensions could not be loaded; "
+            "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
+            )

@@ -489,7 +489,7 @@ class TestMove(TestCaseWithTransport):
 
     def test_mv_readonly_lightweight_checkout(self):
         branch = self.make_branch('foo')
-        branch = bzrlib.branch.Branch.open('readonly+' + branch.base)
+        branch = bzrlib.branch.Branch.open(self.get_readonly_url('foo'))
         tree = branch.create_checkout('tree', lightweight=True)
         self.build_tree(['tree/path'])
         tree.add('path')

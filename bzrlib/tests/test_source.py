@@ -359,10 +359,13 @@ class TestSource(TestSourceHelper):
                     return True
             return False
         badfiles = []
+        assert_re = re.compile(r'\bassert\b')
         for fname, text in self.get_source_file_contents():
             if not self.is_our_code(fname):
                 continue
-            ast = parser.ast2tuple(parser.suite(''.join(text)))
+            if not assert_re.search(text):
+                continue
+            ast = parser.ast2tuple(parser.suite(text))
             if search(ast):
                 badfiles.append(fname)
         if badfiles:
