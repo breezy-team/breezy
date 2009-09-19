@@ -18,6 +18,7 @@
 """Tests of the bzr serve command."""
 
 import os
+import os.path
 import signal
 import subprocess
 import sys
@@ -25,18 +26,21 @@ import thread
 import threading
 
 from bzrlib import (
-    config,
+    builtins,
     errors,
     osutils,
     revision as _mod_revision,
-    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.smart import client, medium
-from bzrlib.smart.server import SmartTCPServer
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    TestCaseWithMemoryTransport,
+    TestSkipped,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
@@ -90,6 +94,7 @@ class TestBzrServe(TestCaseWithTransport):
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
         url = 'bzr://localhost/'
+        self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
         transport = remote.RemoteTransport(url, medium=client_medium)
@@ -110,7 +115,9 @@ class TestBzrServe(TestCaseWithTransport):
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
-        return process,'bzr://localhost:%d/' % port
+        url = 'bzr://localhost:%d/' % port
+        self.permit_url(url)
+        return process, url
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
@@ -165,7 +172,9 @@ class TestBzrServe(TestCaseWithTransport):
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
         """
         try:
-            from bzrlib.transport.sftp import SFTPServer
+            # SFTPFullAbsoluteServer has a get_url method, and doesn't
+            # override the interface (doesn't change self._vendor).
+            from bzrlib.transport.sftp import SFTPFullAbsoluteServer
         except ParamikoNotPresent:
             raise TestSkipped('Paramiko not installed')
         from bzrlib.tests.stub_sftp import StubServer
@@ -211,7 +220,7 @@ class TestBzrServe(TestCaseWithTransport):
 
                 return True
 
-        ssh_server = SFTPServer(StubSSHServer)
+        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
         # XXX: We *don't* want to override the default SSH vendor, so we set
         # _vendor to what _get_ssh_vendor returns.
         self.start_server(ssh_server)
@@ -229,8 +238,9 @@ class TestBzrServe(TestCaseWithTransport):
         try:
             if sys.platform == 'win32':
                 path_to_branch = os.path.splitdrive(path_to_branch)[1]
-            branch = Branch.open(
-                'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
+            url_suffix = '@localhost:%d%s' % (port, path_to_branch)
+            self.permit_url('bzr+ssh://fred' + url_suffix)
+            branch = Branch.open('bzr+ssh://fred:secret' + url_suffix)
             self.make_read_requests(branch)
             # Check we can perform write operations
             branch.bzrdir.root_transport.mkdir('foo')
@@ -321,4 +331,61 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         client_medium.disconnect()
 
 
+class TestUserdirExpansion(TestCaseWithMemoryTransport):
+
+    def fake_expanduser(self, path):
+        """A simple, environment-independent, function for the duration of this
+        test.
+
+        Paths starting with a path segment of '~user' will expand to start with
+        '/home/user/'.  Every other path will be unchanged.
+        """
+        if path.split('/', 1)[0] == '~user':
+            return '/home/user' + path[len('~user'):]
+        return path
+
+    def make_test_server(self, base_path='/'):
+        """Make and setUp a BzrServerFactory, backed by a memory transport, and
+        creat '/home/user' in that transport.
+        """
+        bzr_server = BzrServerFactory(
+            self.fake_expanduser, lambda t: base_path)
+        mem_transport = self.get_transport()
+        mem_transport.mkdir_multi(['home', 'home/user'])
+        bzr_server.set_up(mem_transport, None, None, inet=True)
+        self.addCleanup(bzr_server.tear_down)
+        return bzr_server
+
+    def test_bzr_serve_expands_userdir(self):
+        bzr_server = self.make_test_server()
+        self.assertTrue(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_bzr_serve_does_not_expand_userdir_outside_base(self):
+        bzr_server = self.make_test_server('/foo')
+        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_get_base_path(self):
+        """cmd_serve will turn the --directory option into a LocalTransport
+        (optionally decorated with 'readonly+').  BzrServerFactory can
+        determine the original --directory from that transport.
+        """
+        # Define a fake 'protocol' to capture the transport that cmd_serve
+        # passes to serve_bzr.
+        def capture_transport(transport, host, port, inet):
+            self.bzr_serve_transport = transport
+        cmd = builtins.cmd_serve()
+        # Read-only
+        cmd.run(directory='/a/b/c', protocol=capture_transport)
+        server_maker = BzrServerFactory()
+        self.assertEqual(
+            'readonly+file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+        # Read-write
+        cmd.run(directory='/a/b/c', protocol=capture_transport,
+            allow_writes=True)
+        server_maker = BzrServerFactory()
+        self.assertEqual('file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
 

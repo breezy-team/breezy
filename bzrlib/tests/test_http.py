@@ -204,7 +204,7 @@ class RecordingServer(object):
     It records the bytes sent to it, and replies with a 200.
     """
 
-    def __init__(self, expect_body_tail=None):
+    def __init__(self, expect_body_tail=None, scheme=''):
         """Constructor.
 
         :type expect_body_tail: str
@@ -215,6 +215,10 @@ class RecordingServer(object):
         self.host = None
         self.port = None
         self.received_bytes = ''
+        self.scheme = scheme
+
+    def get_url(self):
+        return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
     def setUp(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -541,10 +545,10 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
-        server = RecordingServer(expect_body_tail='end-of-body')
+        server = RecordingServer(expect_body_tail='end-of-body',
+            scheme=self._qualified_prefix)
         self.start_server(server)
-        scheme = self._qualified_prefix
-        url = '%s://%s:%s/' % (scheme, server.host, server.port)
+        url = server.get_url()
         http_transport = self._transport(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
@@ -776,7 +780,7 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.port)
 
     def test_send_receive_bytes(self):
-        server = RecordingServer(expect_body_tail='c')
+        server = RecordingServer(expect_body_tail='c', scheme='http')
         self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
