@@ -90,8 +90,10 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is no handler registered for it.
+    # Add chroot and pathfilter directly, because there is no handler
+    # registered for it.
     modules.add('bzrlib.transport.chroot')
+    modules.add('bzrlib.transport.pathfilter')
     result = list(modules)
     result.sort()
     return result

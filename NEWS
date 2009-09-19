@@ -2,18 +2,37 @@
 Bazaar Release Notes
 ####################
 
-
 .. contents:: List of Releases
    :depth: 1
 
-2.1 series (not released yet)
-#############################
+
+2.1.0 series (not released yet)
+###############################
 
 Compatibility Breaks
 ********************
 
 New Features
 ************
+
+* ``bzr+ssh`` and ``bzr`` paths can now be relative to home directories
+  specified in the URL.  Paths starting with a path segment of ``~`` are
+  relative to the home directory of the user running the server, and paths
+  starting with ``~user`` are relative to the home directory of the named
+  user.  For example, for a user "bob" with a home directory of
+  ``/home/bob``, these URLs are all equivalent:
+
+  * ``bzr+ssh://bob@host/~/repo``
+  * ``bzr+ssh://bob@host/~bob/repo``
+  * ``bzr+ssh://bob@host/home/bob/repo``
+
+  If ``bzr serve`` was invoked with a ``--directory`` argument, then no
+  home directories outside that directory will be accessible via this
+  method.
+
+  This is a feature of ``bzr serve``, so pre-2.1 clients will
+  automatically benefit from this feature when ``bzr`` on the server is
+  upgraded.  (Andrew Bennetts, #109143)
 
 * Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
   disable the user, site and core plugin directories.
@@ -71,7 +90,7 @@ Bug Fixes
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
-  
+
 * Prevent some kinds of incomplete data from being committed to a 2a
   repository, such as revisions without inventories or inventories without
   chk_bytes root records.
@@ -93,7 +112,8 @@ Improvements
   running using pure-Python versions, but this may be substantially
   slower.  The warning can be disabled by setting
   ``ignore_missing_extensions = True`` in ``bazaar.conf``.
-  (Martin Pool, #406113)
+  See also <https://answers.launchpad.net/bzr/+faq/703>.
+  (Martin Pool, #406113, #430529)
 
 Documentation
 *************
@@ -135,13 +155,40 @@ Testing
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)
 
+* Tests that try to open a bzr dir on an arbitrary transport will now
+  fail unless they have explicitly permitted the transport via
+  ``self.permit_url``. The standard test factories such as ``self.get_url``
+  will permit the urls they provide automatically, so only exceptional
+  tests should need to do this. (Robert Collins)
+
 * The full test suite is expected to pass when the C extensions are not
   present. (Vincent Ladeuil, #430749)
 
-bzr 2.0rc2
-##########
 
-:2.0rc2: 2009-09-10
+bzr 2.0.1 (Not Released Yet)
+############################
+
+Bug Fixes
+*********
+
+* Make sure that we unlock the tree if we fail to create a TreeTransform
+  object when doing a merge, and there is limbo, or pending-deletions
+  directory.  (Gary van der Merwe, #427773)
+
+
+bzr 2.0.0 (Not Released Yet)
+############################
+
+* Officially branded as 2.0.0 rather than 2.0 to clarify between things
+  that "want to happen on the 2.0.x stable series" versus things that want
+  to "land in 2.0.0". (Changes how bzrlib._format_version_tuple() handles
+  micro = 0.) (John Arbash Meinel)
+
+
+bzr 2.0.0rc2
+############
+
+:2.0.0rc2: 2009-09-10
 
 New Features
 ************
@@ -232,11 +279,11 @@ Documentation
   and Plugins Guide. (Ian Clatworthy)
 
 
-bzr 2.0rc1
-##########
+bzr 2.0.0rc1
+############
 
 :Codename: no worries
-:2.0rc1: 2009-08-26
+:2.0.0rc1: 2009-08-26
 
 This release of Bazaar makes 2a 'brisbane-core' format the
 default.  Most of the work in this release now focuses on bug
