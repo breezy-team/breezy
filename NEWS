@@ -90,7 +90,7 @@ Bug Fixes
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
-  
+
 * Prevent some kinds of incomplete data from being committed to a 2a
   repository, such as revisions without inventories or inventories without
   chk_bytes root records.
@@ -112,7 +112,8 @@ Improvements
   running using pure-Python versions, but this may be substantially
   slower.  The warning can be disabled by setting
   ``ignore_missing_extensions = True`` in ``bazaar.conf``.
-  (Martin Pool, #406113)
+  See also <https://answers.launchpad.net/bzr/+faq/703>.
+  (Martin Pool, #406113, #430529)
 
 Documentation
 *************
