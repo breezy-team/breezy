@@ -2346,7 +2346,9 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
+                                                    suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
