@@ -1196,7 +1196,7 @@ class Merge3Merger(object):
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
         if file_id in tree:
-            return tree.get_file(file_id).readlines()
+            return tree.get_file_lines(file_id)
         else:
             return []
 

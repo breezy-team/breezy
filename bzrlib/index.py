@@ -441,6 +441,8 @@ class GraphIndex(object):
         trailers = 0
         pos = stream.tell()
         lines = stream.read().split('\n')
+        # GZ 2009-09-20: Should really use a try/finally block to ensure close
+        stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in self._keys_by_offset.itervalues():

@@ -458,7 +458,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
-        return self.get_file(file_id, path=path, filtered=filtered).read()
+        f = self.get_file(file_id, path=path, filtered=filtered)
+        try:
+            return f.read()
+        finally:
+            f.close()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
@@ -518,7 +522,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # Now we have the parents of this content
         annotator = self.branch.repository.texts.get_annotator()
-        text = self.get_file(file_id).read()
+        text = self.get_file_text(file_id)
         this_key =(file_id, default_revision)
         annotator.add_special_text(this_key, file_parent_keys, text)
         annotations = [(key[-1], line)
@@ -548,9 +552,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except errors.NoSuchFile:
             pass
         else:
-            for l in merges_file.readlines():
-                revision_id = l.rstrip('\n')
-                parents.append(revision_id)
+            try:
+                for l in merges_file.readlines():
+                    revision_id = l.rstrip('\n')
+                    parents.append(revision_id)
+            finally:
+                merges_file.close()
         return parents
 
     @needs_read_lock
@@ -2765,7 +2772,7 @@ class WorkingTreeFormat(object):
         """Return the format for the working tree object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_workingtree_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)

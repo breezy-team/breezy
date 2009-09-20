@@ -118,7 +118,10 @@ def _read_weave_v5(f, w):
 
     from weave import WeaveFormatError
 
-    lines = iter(f.readlines())
+    try:
+        lines = iter(f.readlines())
+    finally:
+        f.close()
 
     try:
         l = lines.next()

@@ -289,6 +289,9 @@ class HashCache(object):
 
             self._cache[path] = (sha1, fp)
 
+        # GZ 2009-09-20: Should really use a try/finally block to ensure close
+        inf.close()
+
         self.needs_write = False
 
     def _cutoff_time(self):

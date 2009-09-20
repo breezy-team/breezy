@@ -431,6 +431,13 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def _write_config_file(self):
+        f = file(self._get_filename(), "wb")
+        try:
+            self._get_parser().write(f)
+        finally:
+            f.close()
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -471,11 +478,6 @@ class GlobalConfig(IniBasedConfig):
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
-    def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
-        self._get_parser().write(f)
-        f.close()
 
 
 class LocationConfig(IniBasedConfig):
@@ -616,7 +618,7 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        self._write_config_file()
 
 
 class BranchConfig(Config):
@@ -1462,7 +1464,11 @@ class TransportConfig(object):
             return StringIO()
 
     def _get_configobj(self):
-        return ConfigObj(self._get_config_file(), encoding='utf-8')
+        f = self._get_config_file()
+        try:
+            return ConfigObj(f, encoding='utf-8')
+        finally:
+            f.close()
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

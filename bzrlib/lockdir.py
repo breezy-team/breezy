@@ -448,7 +448,10 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_file):
-        return rio.read_stanza(info_file.readlines()).as_dict()
+        try:
+            return rio.read_stanza(info_file.readlines()).as_dict()
+        finally:
+            info_file.close()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.

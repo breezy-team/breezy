@@ -1804,7 +1804,7 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
-            format_string = transport.get(".bzr/branch-format").read()
+            format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
