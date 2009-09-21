@@ -447,16 +447,12 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
         f.close()
-        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        real_base_dir = osutils.realpath(self.test_base_dir)
-        actual = osutils.canonical_relpath(real_base_dir, 'mixedcasename')
+        actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
         self.failUnlessEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
-        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        real_base_dir = osutils.realpath(self.test_base_dir)
-        actual = osutils.canonical_relpath(real_base_dir,
+        actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
         self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
 
