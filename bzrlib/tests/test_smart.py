@@ -52,7 +52,7 @@ from bzrlib.smart.request import (
 from bzrlib.tests import (
     split_suite_by_re,
     )
-from bzrlib.transport import chroot, get_transport
+from bzrlib.transport import chroot, get_transport, local, memory
 
 
 def load_tests(standard_tests, module, loader):
@@ -81,6 +81,7 @@ def load_tests(standard_tests, module, loader):
 class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 
     def setUp(self):
+        self.vfs_transport_factory = memory.MemoryServer
         tests.TestCaseWithTransport.setUp(self)
         self._chroot_server = None
 
@@ -96,7 +97,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
         return t
 
 
-class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
+class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestCaseWithSmartMedium, self).setUp()
@@ -413,7 +414,7 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
         self.assertRaises(errors.FileExists, request.execute, name, 'subdir',
             'False', 'False', 'False', '', '', '', '', 'False')
 
-
+    
 class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_no_branch(self):
@@ -434,6 +435,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
+        self.vfs_transport_factory = local.LocalURLServer
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
         branch = self.make_branch('branch')
@@ -464,6 +466,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
+        self.vfs_transport_factory = local.LocalURLServer
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
         branch = self.make_branch('branch')
