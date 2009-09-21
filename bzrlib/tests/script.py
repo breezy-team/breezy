@@ -349,7 +349,9 @@ class ScriptRunner(object):
             try:
                 os.remove(p)
             except OSError, e:
-                if e.errno == errno.EISDIR:
+                # Various OSes raises different exceptions (linux: EISDIR,
+                #   win32: EACCES, OSX: EPERM) when invoked on a directory
+                if e.errno in (errno.EISDIR, errno.EPERM, errno.EACCES):
                     if recursive:
                         osutils.rmtree(p)
                     else:
