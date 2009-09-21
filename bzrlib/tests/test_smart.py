@@ -414,7 +414,75 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
         self.assertRaises(errors.FileExists, request.execute, name, 'subdir',
             'False', 'False', 'False', '', '', '', '', 'False')
 
+
+class TestSmartServerRequestOpenBzrDir(tests.TestCaseWithMemoryTransport):
     
+    def test_no_directory(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('does-not-exist'))
+
+    def test_empty_directory(self):
+        backing = self.get_transport()
+        backing.mkdir('empty')
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('empty'))
+
+    def test_outside_root_client_path(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing,
+            root_client_path='root')
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('not-root'))
+
+    
+class TestSmartServerRequestOpenBzrDir_2_1(tests.TestCaseWithMemoryTransport):
+    
+    def test_no_directory(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('does-not-exist'))
+
+    def test_empty_directory(self):
+        backing = self.get_transport()
+        backing.mkdir('empty')
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('empty'))
+
+    def test_present_without_workingtree(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.make_bzrdir('.')
+        self.assertEqual(SmartServerResponse(('yes', 'no')),
+            request.execute(''))
+
+    def test_illegal_path(self):
+        # Well-behaved clients should never try this, so it's okay for it to
+        # raise an exception rather than a tidy error.
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing,
+            root_client_path='root')
+        self.assertRaises(errors.PathNotChild, request.execute, 'not-root')
+
+    
+class TestSmartServerRequestOpenBzrDir_2_1_disk(TestCaseWithChrootedTransport):
+
+    def test_present_with_workingtree(self):
+        self.vfs_transport_factory = local.LocalURLServer
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        bd = self.make_bzrdir('.')
+        bd.create_repository()
+        bd.create_branch()
+        bd.create_workingtree()
+        self.assertEqual(SmartServerResponse(('yes', 'yes')),
+            request.execute(''))
+
+
 class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_no_branch(self):

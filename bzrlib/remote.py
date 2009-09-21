@@ -89,7 +89,7 @@ def response_tuple_to_repo_format(response):
 class RemoteBzrDir(BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
-    def __init__(self, transport, format, _client=None):
+    def __init__(self, transport, format, _client=None, _force_probe=False):
         """Construct a RemoteBzrDir.
 
         :param _client: Private parameter for testing. Disables probing and the
@@ -109,8 +109,13 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             self._client = client._SmartClient(medium)
         else:
             self._client = _client
-            return
+            if not _force_probe:
+                return
 
+        self._probe_bzrdir()
+
+    def _probe_bzrdir(self):
+        medium = self._client._medium
         path = self._path_for_remote_call(self._client)
         if medium._is_remote_before((2, 1)):
             self._rpc_open(path)
@@ -381,11 +386,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         else:
             raise errors.NoRepositoryPresent(self)
 
-    def open_workingtree(self, recommend_upgrade=True):
+    def has_workingtree(self):
         if self._has_working_tree is None:
             self._ensure_real()
             self._has_working_tree = self._real_bzrdir.has_workingtree()
-        if self._has_working_tree:
+        return self._has_working_tree
+
+    def open_workingtree(self, recommend_upgrade=True):
+        if self.has_workingtree():
             raise errors.NotLocalUrl(self.root_transport)
         else:
             raise errors.NoWorkingTree(self.root_transport.base)
