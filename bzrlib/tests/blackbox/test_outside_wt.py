@@ -32,7 +32,8 @@ class TestOutsideWT(tests.ChrootedTestCase):
     """Test that bzr gives proper errors outside of a working tree."""
 
     def test_cwd_log(self):
-        tmp_dir = osutils.mkdtemp()
+        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+        tmp_dir = osutils.realpath(osutils.mkdtemp())
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
@@ -54,7 +55,8 @@ class TestOutsideWT(tests.ChrootedTestCase):
         # A directory we can run commands from which we hope is not contained
         # in a bzr tree (though if there is one at or above $TEMPDIR, this is
         # false and may cause test failures).
-        tmp_dir = osutils.mkdtemp()
+        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+        tmp_dir = osutils.realpath(osutils.mkdtemp())
         self.addCleanup(lambda: osutils.rmtree(tmp_dir))
         # We expect a read-to-root attempt to occur.
         self.permit_url('file:///')
