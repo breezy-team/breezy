@@ -1,4 +1,4 @@
-bzr-builddeb (2.2~ubuntu3) UNRELEASED; urgency=low
+bzr-builddeb (2.2~ubuntu3) karmic; urgency=low
 
   [ Jelmer Vernooij ]
   * Automatically use merge mode if there's only a debian/ directory in
