@@ -110,7 +110,7 @@ def run_cleanups(funcs, on_error='log'):
 def do_with_cleanups(func, cleanup_funcs):
     # As correct as Python 2.4 allows.
     try:
-        func()
+        result = func()
     except:
         # We have an exception from func already, so suppress cleanup errors.
         run_cleanups(cleanup_funcs)
@@ -135,5 +135,7 @@ def do_with_cleanups(func, cleanup_funcs):
                 run_cleanup(cleanup)
         if exc_info is not None:
             raise exc_info[0], exc_info[1], exc_info[2]
+        # No error, so we can return the result
+        return result
 
 

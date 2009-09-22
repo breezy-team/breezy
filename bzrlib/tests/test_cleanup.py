@@ -71,14 +71,15 @@ class TestCleanup(TestCase):
 
 
 # do_with_cleanups tests to write:
-#  - runs func
+#  - runs func (& returns result)
 #  - runs cleanups, in order
 #  - error from func propagated with healthy cleanups
 #  - error from func trumps error from cleanups (cleanup errs logged, all
 #    cleanups run)
 #  - healthy func, one error from cleanups => all cleanups run, error
-#    propagated
+#    propagated (& returns func result)
 #  - healthy func, multiple errs from cleanups => all cleanups run, first err
-#    propagated, subsequent logged
+#    propagated, subsequent logged (& returns func result)
 #  - ? what about -Dcleanup, does it influnced do_with_cleanups' behaviour?
+#  - func appending new cleanups to cleanup_funcs
 
