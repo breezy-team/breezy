@@ -3472,6 +3472,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_chk_serializer',
                    'bzrlib.tests.test_chunk_writer',
                    'bzrlib.tests.test_clean_tree',
+                   'bzrlib.tests.test_cleanup',
                    'bzrlib.tests.test_commands',
                    'bzrlib.tests.test_commit',
                    'bzrlib.tests.test_commit_merge',
