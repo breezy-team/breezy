@@ -1,0 +1,39 @@
+=================================
+Главный каталог документов Bazaar
+=================================
+
+Последняя версия этих документов доступа со страницы документации 
+на сайте Bazaar, <http://doc.bazaar-vcs.org/ru/>.
+
+Основная документация
+=====================
+
+.. toctree::
+   :maxdepth: 1
+
+   user-guide/index
+   quick-reference/index
+   mini-tutorial/index
+   tutorials/tutorial
+   tutorials/using_bazaar_with_launchpad
+   tutorials/centralized_workflow
+
+
+Ссылки в сети
+=============
+
+* `Руководство по миграции <http://doc.bazaar-vcs.org/migration/en/>`_
+  |--| для команд переносящих историю с других систем контроля версий
+
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.), 
+  см. также `русскую версию`__ 
+  
+__  http://groups.google.com/group/ru_bzr/web/%D0%B3%D0%BB%D0%BE%D1%81%D1%81%D0%B0%D1%80%D0%B8%D0%B9
+
+* `Часто задаваемые вопросы <https://answers.launchpad.net/bzr>`_ (англ.)
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

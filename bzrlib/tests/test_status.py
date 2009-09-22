@@ -43,7 +43,6 @@ class TestStatus(TestCaseWithTransport):
         self.assertContainsRe(output.getvalue(), 'empty commit')
 
     def make_multiple_pending_tree(self):
-        self.thisFailsStrictLockCheck() # clone?
         config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
         tree = self.make_branch_and_tree('a')
         tree.commit('commit 1', timestamp=1196796819, timezone=0)
@@ -100,7 +99,6 @@ class TestStatus(TestCaseWithTransport):
 
     def test_pending_with_ghosts(self):
         """Test when a pending merge's ancestry includes ghosts."""
-        self.thisFailsStrictLockCheck() # clone?
         config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
         tree = self.make_branch_and_tree('a')
         tree.commit('empty commit')

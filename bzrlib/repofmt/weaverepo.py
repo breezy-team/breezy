@@ -28,6 +28,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     xml5,
+    graph as _mod_graph,
     )
 """)
 from bzrlib import (
@@ -663,6 +664,13 @@ class RevisionTextStore(TextVersionedFiles):
             result[key] = parents
         return result
 
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        keys = self.keys()
+        parent_map = self.get_parent_map(keys)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text, parents = self._load_text_parents(key)
@@ -680,7 +688,7 @@ class RevisionTextStore(TextVersionedFiles):
             path, ext = os.path.splitext(relpath)
             if ext == '.gz':
                 relpath = path
-            if '.sig' not in relpath:
+            if not relpath.endswith('.sig'):
                 relpaths.add(relpath)
         paths = list(relpaths)
         return set([self._mapper.unmap(path) for path in paths])

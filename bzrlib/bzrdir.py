@@ -129,8 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        self.open_repository()._format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -3864,11 +3872,11 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
-    )
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')

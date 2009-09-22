@@ -287,7 +287,6 @@ class TestNonAscii(tests.TestCaseWithTransport):
         #       the files around as much.
         # Note that the tests don't actually fail, but if we don't set this
         # flag, we end up getting "Lock was not Unlocked" warnings
-        self.thisFailsStrictLockCheck() # clone?
 
         dirname = self.info['directory']
         self.run_bzr_decode(['push', dirname])

@@ -36,6 +36,7 @@ from bzrlib import (
     smart,
     tests,
     urlutils,
+    versionedfile,
     )
 from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
@@ -87,8 +88,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
         if self._chroot_server is None:
             backing_transport = tests.TestCaseWithTransport.get_transport(self)
             self._chroot_server = chroot.ChrootServer(backing_transport)
-            self._chroot_server.setUp()
-            self.addCleanup(self._chroot_server.tearDown)
+            self.start_server(self._chroot_server)
         t = get_transport(self._chroot_server.get_url())
         if relpath is not None:
             t = t.clone(relpath)
@@ -111,6 +111,25 @@ class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
     def get_smart_medium(self):
         """Get a smart medium to use in tests."""
         return self.get_transport().get_smart_medium()
+
+
+class TestByteStreamToStream(tests.TestCase):
+
+    def test_repeated_substreams_same_kind_are_one_stream(self):
+        # Make a stream - an iterable of bytestrings.
+        stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
+            None, 'foo')]),('text', [
+            versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
+        fmt = bzrdir.format_registry.get('pack-0.92')().repository_format
+        bytes = smart.repository._stream_to_byte_stream(stream, fmt)
+        streams = []
+        # Iterate the resulting iterable; checking that we get only one stream
+        # out.
+        fmt, stream = smart.repository._byte_stream_to_stream(bytes)
+        for kind, substream in stream:
+            streams.append((kind, list(substream)))
+        self.assertLength(1, streams)
+        self.assertLength(2, streams[0][1])
 
 
 class TestSmartServerResponse(tests.TestCase):
@@ -456,7 +475,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
     def test_stacked_branch(self):
         """Opening a stacked branch does not open the stacked-on branch."""
         trunk = self.make_branch('trunk')
-        feature = self.make_branch('feature', format='1.9')
+        feature = self.make_branch('feature')
         feature.set_stacked_on_url(trunk.base)
         opened_branches = []
         Branch.hooks.install_named_hook('open', opened_branches.append, None)

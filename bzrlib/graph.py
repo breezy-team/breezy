@@ -19,9 +19,9 @@ import time
 from bzrlib import (
     debug,
     errors,
+    osutils,
     revision,
     trace,
-    tsort,
     )
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
@@ -926,6 +926,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
+        from bzrlib import tsort
         sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
@@ -1681,5 +1682,6 @@ def collapse_linear_regions(parent_map):
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph

@@ -145,7 +145,7 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 self.request = request.SmartServerRequestHandler(
                     self._backing_transport, commands=request.request_handlers,
                     root_client_path=self._root_client_path)
-                self.request.dispatch_command(req_args[0], req_args[1:])
+                self.request.args_received(req_args)
                 if self.request.finished_reading:
                     # trivial request
                     self.unused_data = self.in_buffer

@@ -120,6 +120,15 @@ def _get_one_revision(command_name, revisions):
 
 
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
+    """Get a revision tree. Not suitable for commands that change the tree.
+    
+    Specifically, the basis tree in dirstate trees is coupled to the dirstate
+    and doing a commit/uncommit/pull will at best fail due to changing the
+    basis revision data.
+
+    If tree is passed in, it should be already locked, for lifetime management
+    of the trees internal cached state.
+    """
     if branch is None:
         branch = tree.branch
     if revisions is None:
@@ -452,8 +461,8 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            # XXX: What about pending merges ? -- vila 20090629
-            if working.has_changes(working.basis_tree()):
+            if (working.has_changes(working.basis_tree())
+                or len(working.get_parent_ids()) > 1):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
@@ -1167,6 +1176,9 @@ class cmd_branch(Command):
         help='Hard-link working tree files where possible.'),
         Option('no-tree',
             help="Create a branch without a working-tree."),
+        Option('switch',
+            help="Switch the checkout in the current directory "
+                 "to the new branch."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1183,9 +1195,9 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False):
+            use_existing_dir=False, switch=False):
+        from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
-
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if (accelerator_tree is not None and
@@ -1245,6 +1257,12 @@ class cmd_branch(Command):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())
+            if switch:
+                # Switch to the new branch
+                wt, _ = WorkingTree.open_containing('.')
+                _mod_switch.switch(wt.bzrdir, branch)
+                note('Switched to branch: %s',
+                    urlutils.unescape_for_display(branch.base, 'utf-8'))
         finally:
             br_from.unlock()
 
@@ -1655,7 +1673,7 @@ class cmd_init(Command):
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
                 converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
-                title="Branch Format",
+                title="Branch format",
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
@@ -3020,6 +3038,10 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
+        # The API permits a commit with a filter of [] to mean 'select nothing'
+        # but the command line should not do that.
+        if not selected_list:
+            selected_list = None
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
@@ -3318,6 +3340,9 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory,
     typically inside $TMPDIR or /tmp.
 
+    If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
+    into a pdb postmortem session.
+
     :Examples:
         Run only tests relating to 'ignore'::
 
@@ -3360,6 +3385,8 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('lsprof-tests',
+                            help='Generate lsprof output for each test.'),
                      Option('cache-dir', type=str,
                             help='Cache intermediate benchmark output in this '
                                  'directory.'),
@@ -3406,7 +3433,7 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None):
+            parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3446,6 +3473,7 @@ class cmd_selftest(Command):
                               "transport": transport,
                               "test_suite_factory": test_suite_factory,
                               "lsprof_timed": lsprof_timed,
+                              "lsprof_tests": lsprof_tests,
                               "bench_history": benchfile,
                               "matching_tests_first": first,
                               "list_only": list_only,
@@ -3628,13 +3656,14 @@ class cmd_merge(Command):
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
 
-        # die as quickly as possible if there are uncommitted changes
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
+
+        # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree):
+            if tree.has_changes(basis_tree) or len(tree.get_parent_ids()) > 1:
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -5623,12 +5652,12 @@ class cmd_shelve(Command):
             writer = bzrlib.option.diff_writer_registry.get()
         try:
             shelver = Shelver.from_args(writer(sys.stdout), revision, all,
-                                       file_list, message,
-                                       destroy=destroy)
+                file_list, message, destroy=destroy)
             shelver.set_change_editor()
             try:
                 shelver.run()
             finally:
+                shelver.work_tree.unlock()
                 shelver.finalize()
         except errors.UserAbort:
             return 0
@@ -5674,7 +5703,11 @@ class cmd_unshelve(Command):
 
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
-        Unshelver.from_args(shelf_id, action).run()
+        unshelver = Unshelver.from_args(shelf_id, action)
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
 
 
 class cmd_clean_tree(Command):

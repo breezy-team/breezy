@@ -16,15 +16,20 @@
 
 """Tests for WorkingTree.set_root_id"""
 
+import sys
+
 from bzrlib import inventory
+from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestSetRootId(TestCaseWithWorkingTree):
 
     def test_set_and_read_unicode(self):
-        # This write locks the local tree, and then grabs a read lock on a
-        # copy, which is bogus and the test just needs to be rewritten.
+        if sys.platform == "win32":
+            raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This test tests that setting the root doesn't flush, so it
+        # deliberately tests concurrent access that isn't possible on windows.
         self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('a-tree')
         # setting the root id allows it to be read via get_root_id.
