@@ -62,7 +62,12 @@ class SmartServerRequestOpenBzrDir_2_1(SmartServerRequest):
 
         New in 2.1.
         """
-        t = self.transport_from_client_path(path)
+        try:
+            t = self.transport_from_client_path(path)
+        except errors.PathNotChild:
+            # The client is trying to ask about a path that they have no access
+            # to.
+            return SuccessfulSmartServerResponse(('no',))
         try:
             bd = BzrDir.open_from_transport(t)
         except errors.NotBranchError:

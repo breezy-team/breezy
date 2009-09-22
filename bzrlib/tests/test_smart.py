@@ -460,13 +460,12 @@ class TestSmartServerRequestOpenBzrDir_2_1(tests.TestCaseWithMemoryTransport):
         self.assertEqual(SmartServerResponse(('yes', 'no')),
             request.execute(''))
 
-    def test_illegal_path(self):
-        # Well-behaved clients should never try this, so it's okay for it to
-        # raise an exception rather than a tidy error.
+    def test_outside_root_client_path(self):
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing,
             root_client_path='root')
-        self.assertRaises(errors.PathNotChild, request.execute, 'not-root')
+        self.assertEqual(SmartServerResponse(('no',)),
+            request.execute('not-root'))
 
     
 class TestSmartServerRequestOpenBzrDir_2_1_disk(TestCaseWithChrootedTransport):
