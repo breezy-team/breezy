@@ -91,7 +91,7 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import chroot, get_transport
+from bzrlib.transport import get_transport, pathfilter
 import bzrlib.transport
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
@@ -983,12 +983,11 @@ class TestCase(unittest.TestCase):
 
     def _preopen_isolate_transport(self, transport):
         """Check that all transport openings are done in the test work area."""
-        if isinstance(transport, chroot.ChrootTransport):
-            # Unwrap chrooted transports
-            url = transport.server.backing_transport.clone(
-                transport._safe_relpath('.')).base
-        else:
-            url = transport.base
+        while isinstance(transport, pathfilter.PathFilteringTransport):
+            # Unwrap pathfiltered transports
+            transport = transport.server.backing_transport.clone(
+                transport._filter('.'))
+        url = transport.base
         # ReadonlySmartTCPServer_for_testing decorates the backing transport
         # urls it is given by prepending readonly+. This is appropriate as the
         # client shouldn't know that the server is readonly (or not readonly).
@@ -1803,7 +1802,7 @@ class TestCase(unittest.TestCase):
         if retcode is not None:
             self.assertEquals(retcode, result,
                               message='Unexpected return code')
-        return out, err
+        return result, out, err
 
     def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
                 working_dir=None, error_regexes=[], output_encoding=None):
@@ -1838,7 +1837,7 @@ class TestCase(unittest.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        out, err = self._run_bzr_autosplit(
+        retcode, out, err = self._run_bzr_autosplit(
             args=args,
             retcode=retcode,
             encoding=encoding,
@@ -2347,7 +2346,9 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
+                                                    suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -3773,6 +3774,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
         'bzrlib.tests.test_setup',

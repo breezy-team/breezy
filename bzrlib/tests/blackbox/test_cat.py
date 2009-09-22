@@ -22,10 +22,10 @@
 import os
 import sys
 
-from bzrlib.tests import MemoryServer, TestCaseWithTransport
+from bzrlib import tests
 
 
-class TestCat(TestCaseWithTransport):
+class TestCat(tests.TestCaseWithTransport):
 
     def test_cat(self):
         tree = self.make_branch_and_tree('branch')
@@ -184,5 +184,6 @@ class TestCat(TestCaseWithTransport):
         self.assertEqual('contents of README\n', out)
 
     def test_cat_nonexistent_branch(self):
-        self.vfs_transport_factory = MemoryServer
-        self.run_bzr_error(['^bzr: ERROR: Not a branch'], ['cat', self.get_url()])
+        self.vfs_transport_factory = tests.MemoryServer
+        self.run_bzr_error(['^bzr: ERROR: Not a branch'],
+                           ['cat', self.get_url()])

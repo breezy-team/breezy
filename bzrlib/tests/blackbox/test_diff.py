@@ -22,7 +22,6 @@ import os
 import re
 
 from bzrlib import (
-    config,
     tests,
     workingtree,
     )

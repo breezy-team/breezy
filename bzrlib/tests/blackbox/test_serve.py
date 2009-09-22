@@ -18,6 +18,7 @@
 """Tests of the bzr serve command."""
 
 import os
+import os.path
 import signal
 import subprocess
 import sys
@@ -25,17 +26,21 @@ import thread
 import threading
 
 from bzrlib import (
-    config,
+    builtins,
     errors,
     osutils,
     revision as _mod_revision,
-    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
-from bzrlib.smart.server import SmartTCPServer
-from bzrlib.tests import ParamikoFeature, TestCaseWithTransport, TestSkipped
+from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
+from bzrlib.tests import (
+    ParamikoFeature,
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
@@ -235,4 +240,61 @@ class TestCmdServeChrooting(TestCaseWithTransport):
         client_medium.disconnect()
 
 
+class TestUserdirExpansion(TestCaseWithMemoryTransport):
+
+    def fake_expanduser(self, path):
+        """A simple, environment-independent, function for the duration of this
+        test.
+
+        Paths starting with a path segment of '~user' will expand to start with
+        '/home/user/'.  Every other path will be unchanged.
+        """
+        if path.split('/', 1)[0] == '~user':
+            return '/home/user' + path[len('~user'):]
+        return path
+
+    def make_test_server(self, base_path='/'):
+        """Make and setUp a BzrServerFactory, backed by a memory transport, and
+        creat '/home/user' in that transport.
+        """
+        bzr_server = BzrServerFactory(
+            self.fake_expanduser, lambda t: base_path)
+        mem_transport = self.get_transport()
+        mem_transport.mkdir_multi(['home', 'home/user'])
+        bzr_server.set_up(mem_transport, None, None, inet=True)
+        self.addCleanup(bzr_server.tear_down)
+        return bzr_server
+
+    def test_bzr_serve_expands_userdir(self):
+        bzr_server = self.make_test_server()
+        self.assertTrue(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_bzr_serve_does_not_expand_userdir_outside_base(self):
+        bzr_server = self.make_test_server('/foo')
+        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_get_base_path(self):
+        """cmd_serve will turn the --directory option into a LocalTransport
+        (optionally decorated with 'readonly+').  BzrServerFactory can
+        determine the original --directory from that transport.
+        """
+        # Define a fake 'protocol' to capture the transport that cmd_serve
+        # passes to serve_bzr.
+        def capture_transport(transport, host, port, inet):
+            self.bzr_serve_transport = transport
+        cmd = builtins.cmd_serve()
+        # Read-only
+        cmd.run(directory='/a/b/c', protocol=capture_transport)
+        server_maker = BzrServerFactory()
+        self.assertEqual(
+            'readonly+file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+        # Read-write
+        cmd.run(directory='/a/b/c', protocol=capture_transport,
+            allow_writes=True)
+        server_maker = BzrServerFactory()
+        self.assertEqual('file:///a/b/c/', self.bzr_serve_transport.base)
+        self.assertEqual(
+            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
 

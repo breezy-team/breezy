@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    trace,
     win32utils,
     )
 from bzrlib.tests import (
@@ -446,16 +447,12 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
     def test_canonical_relpath_simple(self):
         f = file('MixedCaseName', 'w')
         f.close()
-        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        real_base_dir = osutils.realpath(self.test_base_dir)
-        actual = osutils.canonical_relpath(real_base_dir, 'mixedcasename')
+        actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
         self.failUnlessEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
-        # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
-        real_base_dir = osutils.realpath(self.test_base_dir)
-        actual = osutils.canonical_relpath(real_base_dir,
+        actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
         self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
 
@@ -1824,7 +1821,19 @@ class TestFailedToLoadExtension(tests.TestCase):
         self.assertEquals(osutils._extension_load_failures[0],
             "No module named _fictional_extension_py")
 
-    def test_report_extension_load_failures(self):
+    def test_report_extension_load_failures_no_warning(self):
         self.assertTrue(self._try_loading())
         warnings, result = self.callCatchWarnings(osutils.report_extension_load_failures)
-        self.assertLength(1, warnings)
+        # it used to give a Python warning; it no longer does
+        self.assertLength(0, warnings)
+
+    def test_report_extension_load_failures_message(self):
+        log = StringIO()
+        trace.push_log_file(log)
+        self.assertTrue(self._try_loading())
+        osutils.report_extension_load_failures()
+        self.assertContainsRe(
+            log.getvalue(),
+            r"bzr: warning: some compiled extensions could not be loaded; "
+            "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
+            )
