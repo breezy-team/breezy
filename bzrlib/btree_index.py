@@ -67,18 +67,14 @@ class _BuilderRow(object):
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
-            assert self.spool is None
             self.spool = cStringIO.StringIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
         elif self.nodes == 1:
             # We got bigger than 1 node, switch to a temp file
-            assert self.spool is not None
             spool = tempfile.TemporaryFile(prefix='bzr-index-row-')
             spool.write(self.spool.getvalue())
             self.spool = spool
-        else:
-            assert self.spool is not None
         skipped_bytes = 0
         if not pad and padding:
             del byte_lines[-1]
