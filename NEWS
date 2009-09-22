@@ -3,8 +3,14 @@ Bazaar Release Notes
 ####################
 
 
-bzr 2.0.0 (Not Released Yet)
-############################
+bzr 2.0.0
+#########
+
+:2.0.0: 2009-09-22
+:Codename: Instant Karma
+
+Changes from 2.0.0rc2 to final
+******************************
 
 * Officially branded as 2.0.0 rather than 2.0 to clarify between things
   that "want to happen on the 2.0.x stable series" versus things that want
