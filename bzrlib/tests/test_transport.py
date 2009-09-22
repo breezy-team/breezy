@@ -870,10 +870,12 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # variable is used to tell bzr what command to run on the remote end.
         path_to_branch = osutils.abspath('.')
         if sys.platform == 'win32':
-            path_to_branch = os.path.splitdrive(path_to_branch)[1]
-        url_suffix = '@localhost:%d%s' % (port, path_to_branch)
-        self.permit_url('bzr+ssh://fred' + url_suffix)
-        t = get_transport('bzr+ssh://fred:secret' + url_suffix)
+            # On Windows, we export all drives as '/C:/, etc. So we need to
+            # prefix a '/' to get the right path.
+            path_to_branch = '/' + path_to_branch
+        url = 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch)
+        t = get_transport(url)
+        self.permit_url(t.base)
         t.mkdir('foo')
 
         self.assertEqual(
