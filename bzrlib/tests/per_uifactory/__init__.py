@@ -14,22 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests run per UIFactory.
+"""Tests run per UIFactory."""
 
-Testing UIFactories is a bit interesting because we require they all support a
-common interface, but the way they implement it can vary very widely.  Between
-text, batch-mode, graphical and other potential UIFactories, the requirements
-to set up a factory, to make it respond to requests, and to simulate user
-input can vary a lot.
-"""
-
-# This may seem like a complicated way to test it compared to just having
-# tests for each implementation, but it's supposed to help make sure that all
-# new methods added to the UIFactory interface are tested by default, rather
-# than forgotten.  At least there should be an explicit decision (eg with
-# TestSkipped) that it's not possible to test them automatically.
+# Testing UIFactories is a bit interesting because we require they all support a
+# common interface, but the way they implement it can vary very widely.  Between
+# text, batch-mode, graphical and other potential UIFactories, the requirements
+# to set up a factory, to make it respond to requests, and to simulate user
+# input can vary a lot.
 #
-# For each UIFactory we have a UIFactoryFitting
+# We want tests that therefore allow for the evaluation of the result to vary
+# per implementation, but we want to check that the supported facilities are
+# the same across all UIFactorys, unless they're specifically skipped.
+#
+# Our normal approach is to use test scenarios but that seems to just end up
+# creating test-like objects inside the scenario.  Therefore we fall back to
+# the older method of putting the common tests in a mixin.
+#
+# Plugins that add new UIFactorys can create their own subclasses.
 
 
 from cStringIO import StringIO
@@ -42,27 +43,27 @@ from bzrlib import (
     )
 
 
-class TestUIFactory(tests.TestCase):
+class UIFactoryTestMixin(object):
+    """Common tests for UIFactories.
 
-    def setUp(self):
-        tests.TestCase.setUp(self)
-        self.fitting = self.fitting_class()
+    These are supposed to be expressed with no assumptions about how the
+    UIFactory implements the method, only that it does implement them (or
+    fails cleanly), and that the concrete subclass will make arrangements to
+    build a factory and to examine its behaviour.
 
-    def test_construction(self):
-        factory = self.fitting.make_factory()
+    Note that this is *not* a TestCase, because it can't be directly run, but
+    the concrete subclasses should be.
+    """
 
     def test_note(self):
-        self.fitting.check_note("a note to the user")
+        self.factory.note("a note to the user")
+        self._expect_note("a note to the user")
 
 
-class BaseUIFactoryFitting(object):
+class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
-    pass
-
-
-class TextUIFactoryFitting(BaseUIFactoryFitting):
-
-    def make_factory(self):
+    def setUp(self):
+        super(TestTextUIFactory, self).setUp()
         self.stdin = StringIO()
         self.stdout = StringIO()
         self.stderr = StringIO()
@@ -70,23 +71,6 @@ class TextUIFactoryFitting(BaseUIFactoryFitting):
             self.stderr)
         return self.factory
 
-    def check_note(self, note_text):
-        factory = self.make_factory()
-        factory.note(note_text)
-        # XXX: This should be assertEquals but this isn't a TestCase
-        # self.assertEquals("%s\n" % note_text,
-        #    self.stdout.getvalue())
-
-
-# NB: There's no registry of UIFactories at the moment so we just define the
-# scenarios here.  Plugins that provide custom UIFactories might like to add
-# their factories and suitable fittings.
-scenarios = [
-    ('text', dict(fitting_class=TextUIFactoryFitting))
-    ]
-
-
-def load_tests(base_test_suite, module, loader):
-    to_test_suite = unittest.TestSuite()
-    tests.multiply_tests(base_test_suite, scenarios, to_test_suite)
-    return to_test_suite
+    def _expect_note(self, note_text):
+        self.assertEquals("%s\n" % note_text,
+            self.stdout.getvalue())
