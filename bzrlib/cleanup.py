@@ -28,12 +28,6 @@ look like this::
 Any errors from `cleanup_something` will be logged, but not raised.
 Importantly, any errors from do_something will be propagated.
 
-If a failure in a cleanup function should be reported to a user, then use::
-
-    run_cleanup_reporting_errors(cleanup_something)
-
-This will emit a trace.warning with the error in addition to logging it.
-
 There is also convenience function for running multiple, independent cleanups
 in sequence: run_cleanups.  e.g.::
 
@@ -45,15 +39,19 @@ in sequence: run_cleanups.  e.g.::
 Developers can use the `-Dcleanup` debug flag to cause cleanup errors to be
 reported in the UI as well as logged.
 
-XXX: what about the case where do_something succeeds, but cleanup fails, and
-that matters?
+Note the tradeoff that run_cleanup/run_cleanups makes: errors from
+`do_something` will not be obscured by errors from `cleanup_something`, but
+errors from `cleanup_something` will never reach the user, even if there is not
+error from `do_something`.
 
-XXX: perhaps this:
+If you want to be certain that the first, and only the first, error is raised,
+then use::
 
     do_with_cleanups(do_something, cleanups)
 
-    this can be pedantically correct, at the cost of inconveniencing the
-    callsite.
+This is more inconvenient (because you need to make every try block a
+function), but will ensure that the first error encountered is the one raised,
+while also ensuring all cleanups are run.
 """
 
 
@@ -86,17 +84,17 @@ def run_cleanup(func, *args, **kwargs):
     return True
 
 
-#def run_cleanup_reporting_errors(func, *args, **kwargs):
-#    try:
-#        func(*args, **kwargs)
-#    except KeyboardInterrupt:
-#        raise
-#    except Exception, exc:
-#        trace.mutter('Cleanup failed:')
-#        trace.log_exception_quietly()
-#        trace.warning('Cleanup failed: %s', exc)
-#        return False
-#    return True
+def run_cleanup_reporting_errors(func, *args, **kwargs):
+    try:
+        func(*args, **kwargs)
+    except KeyboardInterrupt:
+        raise
+    except Exception, exc:
+        trace.mutter('Cleanup failed:')
+        trace.log_exception_quietly()
+        trace.warning('Cleanup failed: %s', exc)
+        return False
+    return True
 
 
 def run_cleanups(funcs, on_error='log'):

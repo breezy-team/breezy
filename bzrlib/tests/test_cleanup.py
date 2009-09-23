@@ -77,7 +77,9 @@ class TestRunCleanup(CleanupsTestCase):
         self.assertLogContains('Cleanup failed:.*failing_cleanup goes boom')
 
     def test_cleanup_error_debug_flag(self):
-        """The -Dcleanup debug flag causes cleanup errors to be propagated."""
+        """The -Dcleanup debug flag causes cleanup errors to be reported to the
+        user.
+        """
         log = StringIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
@@ -85,7 +87,6 @@ class TestRunCleanup(CleanupsTestCase):
         self.assertContainsRe(
             log.getvalue(),
             "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
-        
 
     def test_prior_error_cleanup_succeeds(self):
         """Calling run_cleanup from a finally block will not interfere with an
@@ -183,17 +184,43 @@ class TestDoWithCleanups(CleanupsTestCase):
         gone wrong), the first error is propagated, and subsequent errors are
         logged.
         """
-        class ErrorA(Exception): pass
-        class ErrorB(Exception): pass
-        def raise_a():
-            raise ErrorA()
-        def raise_b():
-            raise ErrorB()
+        cleanups = self.make_two_failing_cleanup_funcs()
         self.assertRaises(ErrorA, do_with_cleanups, self.trivial_func,
-            [raise_a, raise_b])
+            cleanups)
         self.assertLogContains('Cleanup failed:.*ErrorB')
         log = self._get_log(keep_log_file=True)
         self.assertFalse('ErrorA' in log)
+
+    def make_two_failing_cleanup_funcs(self):
+        def raise_a():
+            raise ErrorA('Error A')
+        def raise_b():
+            raise ErrorB('Error B')
+        return [raise_a, raise_b]
+
+    def test_multiple_cleanup_failures_debug_flag(self):
+        log = StringIO()
+        trace.push_log_file(log)
+        debug.debug_flags.add('cleanup')
+        cleanups = self.make_two_failing_cleanup_funcs()
+        self.assertRaises(ErrorA, do_with_cleanups, self.trivial_func, cleanups)
+        self.assertContainsRe(
+            log.getvalue(), "bzr: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(1, log.getvalue().count('bzr: warning:'),
+                log.getvalue())
+
+    def test_func_and_cleanup_errors_debug_flag(self):
+        log = StringIO()
+        trace.push_log_file(log)
+        debug.debug_flags.add('cleanup')
+        cleanups = self.make_two_failing_cleanup_funcs()
+        self.assertRaises(ZeroDivisionError, do_with_cleanups,
+            self.failing_func, cleanups)
+        self.assertContainsRe(
+            log.getvalue(), "bzr: warning: Cleanup failed:.*Error A\n")
+        self.assertContainsRe(
+            log.getvalue(), "bzr: warning: Cleanup failed:.*Error B\n")
+        self.assertEqual(2, log.getvalue().count('bzr: warning:'))
 
     def test_func_may_mutate_cleanups(self):
         """The main func may mutate the cleanups before it returns.
@@ -212,3 +239,21 @@ class TestDoWithCleanups(CleanupsTestCase):
         self.assertEqual('result', result)
         self.assertEqual(
             ['func_that_adds_cleanups', 'no_op_cleanup'], self.call_log)
+
+    def test_cleanup_error_debug_flag(self):
+        """The -Dcleanup debug flag causes cleanup errors to be reported to the
+        user.
+        """
+        log = StringIO()
+        trace.push_log_file(log)
+        debug.debug_flags.add('cleanup')
+        self.assertRaises(ZeroDivisionError, do_with_cleanups,
+            self.failing_func, [self.failing_cleanup])
+        self.assertContainsRe(
+            log.getvalue(),
+            "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
+        self.assertEqual(1, log.getvalue().count('bzr: warning:'))
+
+
+class ErrorA(Exception): pass
+class ErrorB(Exception): pass
