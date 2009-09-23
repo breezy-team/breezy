@@ -1128,3 +1128,61 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, unicode)
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
+
+
+class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
+
+    def get_chk_bytes(self):
+        factory = groupcompress.make_pack_factory(True, True, 1)
+        trans = self.get_transport('')
+        return factory(trans)
+
+    def make_dir(self, inv, name, parent_id):
+        inv.add(inv.make_entry('directory', name, parent_id, name + '-id'))
+
+    def make_file(self, inv, name, parent_id, content='content\n'):
+        ie = inv.make_entry('directory', name, parent_id, name + '-id')
+        ie.text_sha1 = osutils.sha_string(content)
+        ie.text_size = len(content)
+        inv.add(ie)
+
+    def make_simple_inventory(self):
+        inv = Inventory('TREE_ROOT')
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        # /                 TREE_ROOT
+        # dir1/             dir1-id
+        #   sub-file1       sub-file1-id
+        #   sub-file2       sub-file2-id
+        #   sub-dir1/       sub-dir1-id
+        #     subsub-file1  subsub-file1-id
+        # dir2/             dir2-id
+        #   sub2-file1      sub2-file1-id
+        # top               top-id
+        self.make_dir(inv, 'dir1', 'TREE_ROOT')
+        self.make_dir(inv, 'dir2', 'TREE_ROOT')
+        self.make_dir(inv, 'sub-dir1', 'dir1-id')
+        self.make_file(inv, 'top', 'TREE_ROOT')
+        self.make_file(inv, 'sub-file1', 'dir1-id')
+        self.make_file(inv, 'sub-file2', 'dir1-id')
+        self.make_file(inv, 'subsub-file1', 'sub-dir1-id')
+        self.make_file(inv, 'sub2-file1', 'dir2-id')
+        chk_bytes = self.get_chk_bytes()
+        return CHKInventory.from_inventory(chk_bytes, inv)
+
+    def test_create_simple_inventory(self):
+        inv = self.make_simple_inventory()
+        layout = []
+        for path, entry in inv.iter_entries_by_dir():
+            layout.append((path, entry.file_id))
+        self.assertEqual([
+            ('', 'TREE_ROOT'),
+            ('dir1', 'dir1-id'),
+            ('dir2', 'dir2-id'),
+            ('top', 'top-id'),
+            ('dir1/sub-dir1', 'sub-dir1-id'),
+            ('dir1/sub-file1', 'sub-file1-id'),
+            ('dir1/sub-file2', 'sub-file2-id'),
+            ('dir1/sub-dir1/subsub-file1', 'subsub-file1-id'),
+            ('dir2/sub2-file1', 'sub2-file1-id'),
+            ], layout)
