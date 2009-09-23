@@ -1176,11 +1176,20 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         self.assertEqual(sorted(expected_fileids),
                          sorted([ie.file_id for ie in inv._getitems(file_ids)]))
 
-    def assertExpand(self, parent_ids, other_ids, inv, file_ids):
-        val_parents, val_other = inv._expand_fileids_to_parents_and_children(
-                                    file_ids)
-        self.assertEqual(set(parent_ids), val_parents)
-        self.assertEqual(set(other_ids), val_other)
+    def assertExpand(self, all_ids, inv, file_ids):
+        (val_all_ids,
+         val_children) = inv._expand_fileids_to_parents_and_children(file_ids)
+        self.assertEqual(set(all_ids), val_all_ids)
+        entries = inv._getitems(val_all_ids)
+        expected_children = {}
+        for entry in entries:
+            s = expected_children.setdefault(entry.parent_id, [])
+            s.append(entry.file_id)
+        val_children = dict((k, sorted(v)) for k, v
+                            in val_children.iteritems())
+        expected_children = dict((k, sorted(v)) for k, v
+                            in expected_children.iteritems())
+        self.assertEqual(expected_children, val_children)
 
     def test_make_simple_inventory(self):
         inv = self.make_simple_inventory()
@@ -1215,16 +1224,16 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
 
     def test_single_file(self):
         inv = self.make_simple_inventory()
-        self.assertExpand(['TREE_ROOT'], ['top-id'], inv, ['top-id'])
+        self.assertExpand(['TREE_ROOT', 'top-id'], inv, ['top-id'])
 
     def test_get_all_parents(self):
         inv = self.make_simple_inventory()
-        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id'], 
-                          ['subsub-file1-id'], inv, ['subsub-file1-id'])
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id',
+                           'subsub-file1-id',
+                          ], inv, ['subsub-file1-id'])
 
     def test_get_children(self):
         inv = self.make_simple_inventory()
-        self.assertExpand(['TREE_ROOT'], 
-                          ['dir1-id', 'sub-dir1-id', 'sub-file1-id',
-                           'sub-file2-id', 'subsub-file1-id',
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id',
+                           'sub-file1-id', 'sub-file2-id', 'subsub-file1-id',
                           ], inv, ['dir1-id'])
