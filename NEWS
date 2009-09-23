@@ -100,7 +100,7 @@ API Changes
 * ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
   subclasses - the same as python's unittest module. (Robert Collins)
 
-* ``bzrlib.trace.log_error``, ``error`` and ``info`` have been removed.
+* ``bzrlib.trace.log_error``, ``error`` and ``info`` have been deprecated.
   (Martin Pool)
 
 Internals
