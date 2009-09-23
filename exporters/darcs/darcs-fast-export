@@ -66,7 +66,9 @@ def get_patchname(patch):
 	s = ""
 	if patch.attributes['inverted'].value == 'True':
 		s = "UNDO: "
-	ret.append(s + patch.getElementsByTagName("name")[0].childNodes[0].data)
+	cs = patch.getElementsByTagName("name")[0].childNodes
+	if cs.length > 0:
+		ret.append(s + cs[0].data)
 	lines = patch.getElementsByTagName("comment")
 	if lines:
 		for i in lines[0].childNodes[0].data.split('\n'):

@@ -78,6 +78,10 @@ third line"
 	_drrec -a -m "remove and rename"
 	darcs mv a b
 	_drrecamend
+	echo c > c
+	darcs add c
+	# empty commit message
+	_drrec -a -m ""
 	cd ..
 }
 
