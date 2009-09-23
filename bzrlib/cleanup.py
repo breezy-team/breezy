@@ -42,8 +42,8 @@ in sequence: run_cleanups.  e.g.::
     finally:
         run_cleanups([cleanup_func_a, cleanup_func_b], ...)
 
-Developers can use the `-Dcleanup` debug flag to always propagate errors from
-cleanup functions.
+Developers can use the `-Dcleanup` debug flag to cause cleanup errors to be
+reported in the UI as well as logged.
 
 XXX: what about the case where do_something succeeds, but cleanup fails, and
 that matters?
@@ -63,9 +63,11 @@ from bzrlib import (
     trace,
     )
 
-def _log_cleanup_error():
+def _log_cleanup_error(exc):
     trace.mutter('Cleanup failed:')
     trace.log_exception_quietly()
+    if 'cleanup' in debug.debug_flags:
+        trace.warning('bzr: warning: Cleanup failed: %s', exc)
 
 
 def run_cleanup(func, *args, **kwargs):
@@ -78,26 +80,23 @@ def run_cleanup(func, *args, **kwargs):
         func(*args, **kwargs)
     except KeyboardInterrupt:
         raise
-    except:
-        _log_cleanup_error()
-        if 'cleanup' in debug.debug_flags:
-            raise
+    except Exception, exc:
+        _log_cleanup_error(exc)
         return False
     return True
 
 
-def run_cleanup_reporting_errors(func, *args, **kwargs):
-    try:
-        func(*args, **kwargs)
-    except KeyboardInterrupt:
-        raise
-    except Exception, e:
-        _log_cleanup_error()
-        trace.warning('Cleanup function %r failed: %s', func, e)
-        if 'cleanup' in debug.debug_flags:
-            raise
-        return False
-    return True
+#def run_cleanup_reporting_errors(func, *args, **kwargs):
+#    try:
+#        func(*args, **kwargs)
+#    except KeyboardInterrupt:
+#        raise
+#    except Exception, exc:
+#        trace.mutter('Cleanup failed:')
+#        trace.log_exception_quietly()
+#        trace.warning('Cleanup failed: %s', exc)
+#        return False
+#    return True
 
 
 def run_cleanups(funcs, on_error='log'):

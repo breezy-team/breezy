@@ -14,12 +14,17 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from cStringIO import StringIO
 import re
 
-from bzrlib.tests import TestCase
 from bzrlib.cleanup import (
     do_with_cleanups,
     run_cleanup,
+    )
+from bzrlib.tests import TestCase
+from bzrlib import (
+    debug,
+    trace,
     )
 
 
@@ -70,6 +75,17 @@ class TestRunCleanup(CleanupsTestCase):
         """
         self.assertFalse(run_cleanup(self.failing_cleanup))
         self.assertLogContains('Cleanup failed:.*failing_cleanup goes boom')
+
+    def test_cleanup_error_debug_flag(self):
+        """The -Dcleanup debug flag causes cleanup errors to be propagated."""
+        log = StringIO()
+        trace.push_log_file(log)
+        debug.debug_flags.add('cleanup')
+        self.assertFalse(run_cleanup(self.failing_cleanup))
+        self.assertContainsRe(
+            log.getvalue(),
+            "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
+        
 
     def test_prior_error_cleanup_succeeds(self):
         """Calling run_cleanup from a finally block will not interfere with an
