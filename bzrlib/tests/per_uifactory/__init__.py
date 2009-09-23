@@ -57,7 +57,12 @@ class UIFactoryTestMixin(object):
 
     def test_note(self):
         self.factory.note("a note to the user")
-        self._expect_note("a note to the user")
+        self._check_note("a note to the user")
+
+    def test_show_error(self):
+        msg = 'an error occurred'
+        self.factory.show_error(msg)
+        self._check_show_error(msg)
 
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
@@ -70,9 +75,14 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
             self.stderr)
 
-    def _expect_note(self, note_text):
+    def _check_note(self, note_text):
         self.assertEquals("%s\n" % note_text,
             self.stdout.getvalue())
+
+    def _check_show_error(self, msg):
+        self.assertEquals("bzr: error: %s\n" % msg,
+            self.stderr.getvalue())
+        self.assertEquals("", self.stdout.getvalue())
 
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
@@ -82,8 +92,11 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
         super(TestSilentUIFactory, self).setUp()
         self.factory = ui.SilentUIFactory()
 
-    def _expect_note(self, note_text):
+    def _check_note(self, note_text):
         # it's just discarded
+        pass
+
+    def _check_show_error(self, msg):
         pass
 
 
@@ -94,5 +107,10 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
         super(TestCannedInputUIFactory, self).setUp()
         self.factory = ui.CannedInputUIFactory([])
 
-    def _expect_note(self, note_text):
+    def _check_note(self, note_text):
         pass
+
+    def _check_show_error(self, msg):
+        pass
+
+

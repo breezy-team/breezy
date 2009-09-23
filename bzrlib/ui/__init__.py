@@ -208,6 +208,22 @@ class UIFactory(object):
         """
         pass
 
+    def show_error(self, msg):
+        """Show an error message (not an exception) to the user.
+        
+        The message should not have an error prefix or trailing newline.  That
+        will be added by the factory if appropriate. 
+        """
+        raise NotImplementedError(self.show_error)
+
+    def show_message(self, msg):
+        """Show a message to the user."""
+        raise NotImplementedError(self.show_message)
+
+    def show_warning(self, msg):
+        """Show a warning to the user."""
+        raise NotImplementedError(self.show_warning)
+
 
 
 class CLIUIFactory(UIFactory):
@@ -317,6 +333,9 @@ class SilentUIFactory(UIFactory):
 
     def get_username(self, prompt, **kwargs):
         return None
+
+    def show_error(self, msg):
+        pass
 
 
 class CannedInputUIFactory(SilentUIFactory):

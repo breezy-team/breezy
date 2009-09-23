@@ -173,6 +173,10 @@ class TextUIFactory(UIFactory):
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
 
+    def show_error(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: error: %s\n" % msg)
+
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
