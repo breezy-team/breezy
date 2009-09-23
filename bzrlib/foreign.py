@@ -284,7 +284,6 @@ class cmd_dpush(Command):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
-        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
 
         if directory is None:
