@@ -58,10 +58,14 @@ XXX: perhaps this:
 
 
 import sys
-from bzrlib import trace
+from bzrlib import (
+    debug,
+    trace,
+    )
 
-#def _report_cleanup_error():
-#    exc_info = sys.exc_info()
+def _log_cleanup_error():
+    trace.mutter('Cleanup failed:')
+    trace.log_exception_quietly()
 
 
 def run_cleanup(func, *args, **kwargs):
@@ -75,8 +79,9 @@ def run_cleanup(func, *args, **kwargs):
     except KeyboardInterrupt:
         raise
     except:
-        trace.mutter('Cleanup failed:')
-        trace.log_exception_quietly()
+        _log_cleanup_error()
+        if 'cleanup' in debug.debug_flags:
+            raise
         return False
     return True
 
@@ -87,9 +92,10 @@ def run_cleanup_reporting_errors(func, *args, **kwargs):
     except KeyboardInterrupt:
         raise
     except Exception, e:
-        trace.mutter('Cleanup failed:')
-        trace.log_exception_quietly()
+        _log_cleanup_error()
         trace.warning('Cleanup function %r failed: %s', func, e)
+        if 'cleanup' in debug.debug_flags:
+            raise
         return False
     return True
 
@@ -107,6 +113,8 @@ def run_cleanups(funcs, on_error='log'):
             seen_error |= run_cleanup_reporting_errors(func)
 
 
+#  - ? what about -Dcleanup, should it influnce do_with_cleanups' behaviour?
+
 def do_with_cleanups(func, cleanup_funcs):
     # As correct as Python 2.4 allows.
     try:
@@ -121,6 +129,8 @@ def do_with_cleanups(func, cleanup_funcs):
         # of them).
         exc_info = None
         for cleanup in cleanup_funcs:
+            # XXX: Hmm, if KeyboardInterrupt arrives at exactly this line, we
+            # won't run all cleanups...
             if exc_info is None:
                 try:
                     cleanup()
