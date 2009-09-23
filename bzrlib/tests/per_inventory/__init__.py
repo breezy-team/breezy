@@ -16,15 +16,29 @@
 
 """Tests for different inventory implementations"""
 
-from bzrlib.tests import multiply_tests
+from bzrlib import (
+    groupcompress,
+    tests,
+    transport,
+    )
 
 def load_tests(basic_tests, module, loader):
     """Generate suite containing all parameterized tests"""
     modules_to_test = [
         'bzrlib.tests.per_inventory.basics',
         ]
-    from bzrlib.inventory import Inventory
-    scenarios = [('Inventory', {'inventory_class':Inventory})]
+    from bzrlib.inventory import Inventory, CHKInventory
+    scenarios = [('Inventory', {'inventory_class': Inventory,
+                                'to_inventory': lambda x: x
+                               }),
+                 ('CHKInventory', {'inventory_class':CHKInventory,
+                                   'to_inventory': CHKInventory.from_inventory
+                                  })]
     # add the tests for the sub modules
-    return multiply_tests(loader.loadTestsFromModuleNames(modules_to_test),
+    return tests.multiply_tests(
+        loader.loadTestsFromModuleNames(modules_to_test),
         scenarios, basic_tests)
+
+
+class TestCaseWithInventory(tests.TestCase):
+
