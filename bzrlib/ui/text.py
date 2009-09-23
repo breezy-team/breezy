@@ -49,9 +49,6 @@ class TextUIFactory(UIFactory):
                  stdout=None,
                  stderr=None):
         """Create a TextUIFactory.
-
-        :param bar_type: The type of progress bar to create.  Deprecated
-            and ignored; a TextProgressView is always used.
         """
         super(TextUIFactory, self).__init__()
         # TODO: there's no good reason not to pass all three streams, maybe we
