@@ -1141,7 +1141,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv.add(inv.make_entry('directory', name, parent_id, name + '-id'))
 
     def make_file(self, inv, name, parent_id, content='content\n'):
-        ie = inv.make_entry('directory', name, parent_id, name + '-id')
+        ie = inv.make_entry('file', name, parent_id, name + '-id')
         ie.text_sha1 = osutils.sha_string(content)
         ie.text_size = len(content)
         inv.add(ie)
@@ -1168,9 +1168,21 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         self.make_file(inv, 'subsub-file1', 'sub-dir1-id')
         self.make_file(inv, 'sub2-file1', 'dir2-id')
         chk_bytes = self.get_chk_bytes()
-        return CHKInventory.from_inventory(chk_bytes, inv)
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
 
-    def test_create_simple_inventory(self):
+    def assert_Getitems(self, expected_fileids, inv, file_ids):
+        self.assertEqual(sorted(expected_fileids),
+                         sorted([ie.file_id for ie in inv._getitems(file_ids)]))
+
+    def assertExpand(self, parent_ids, other_ids, inv, file_ids):
+        val_parents, val_other = inv._expand_fileids_to_parents_and_children(
+                                    file_ids)
+        self.assertEqual(set(parent_ids), val_parents)
+        self.assertEqual(other_ids, val_other)
+
+    def test_make_simple_inventory(self):
         inv = self.make_simple_inventory()
         layout = []
         for path, entry in inv.iter_entries_by_dir():
@@ -1186,3 +1198,26 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
             ('dir1/sub-dir1/subsub-file1', 'subsub-file1-id'),
             ('dir2/sub2-file1', 'sub2-file1-id'),
             ], layout)
+
+    def test__getitems(self):
+        inv = self.make_simple_inventory()
+        # Reading from disk
+        self.assert_Getitems(['dir1-id'], inv, ['dir1-id'])
+        self.assertTrue('dir1-id' in inv._fileid_to_entry_cache)
+        self.assertFalse('sub-file2-id' in inv._fileid_to_entry_cache)
+        # From cache
+        self.assert_Getitems(['dir1-id'], inv, ['dir1-id'])
+        # Mixed
+        self.assert_Getitems(['dir1-id', 'sub-file2-id'], inv,
+                             ['dir1-id', 'sub-file2-id'])
+        self.assertTrue('dir1-id' in inv._fileid_to_entry_cache)
+        self.assertTrue('sub-file2-id' in inv._fileid_to_entry_cache)
+
+    def test_single_file(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT'], ['top-id'], inv, ['top-id'])
+
+    def test_get_all_parents(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id'], 
+                          ['subsub-file1-id'], inv, ['subsub-file1-id'])

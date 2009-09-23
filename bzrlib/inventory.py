@@ -1546,6 +1546,119 @@ class CHKInventory(CommonInventory):
         else:
             raise ValueError("unknown kind %r" % entry.kind)
 
+    def _expand_fileids_to_parents_and_children(self, file_ids):
+        """Give a more wholistic view starting with the given file_ids.
+
+        For any file_id which maps to a directory, we will include all children
+        of that directory. We will also include all directories which are
+        parents of the given file_ids, but we will not include their children.
+
+        eg:
+          /     # TREE_ROOT
+          foo/  # foo-id
+            baz # baz-id
+            frob/ # frob-id
+              fringle # fringle-id
+          bar/  # bar-id
+            bing # bing-id
+
+        if given [foo-id] we will include
+            TREE_ROOT as interesting parents
+        and 
+            foo-id, baz-id, frob-id, fringle-id
+        As interesting ids.
+        """
+        interesting_parents = set([None])
+        # TODO: Pre-pass over the list of fileids to see if anything is already
+        #       deserialized in self._fileid_to_entry_cache
+
+        directories_to_expand = set()
+        children_of_parent_id = {}
+        # It is okay if some of the fileids are missing
+        for entry in self._getitems(file_ids):
+            if entry.kind == 'directory':
+                directories_to_expand.add(entry.file_id)
+            interesting_parents.add(entry.parent_id)
+            children_of_parent_id.setdefault(entry.parent_id, []).append(entry)
+
+        # Now, interesting_parents has all of the direct parents, but not the
+        # parents of those parents. It also may have some duplicates with
+        # specific_fileids
+        remaining_parents = interesting_parents.difference(file_ids)
+        while remaining_parents:
+            next_parents = set()
+            for entry in self._getitems(remaining_parents):
+                next_parents.add(entry.parent_id)
+            # Remove any search tips we've already processed
+            remaining_parents = next_parents.difference(interesting_parents)
+            interesting_parents.update(remaining_parents)
+            # We should probably also .difference(directories_to_expand)
+        interesting_parents.discard(None)
+        return interesting_parents, file_ids
+
+    def filter(self, specific_fileids):
+        """Get an inventory view filtered against a set of file-ids.
+
+        Children of directories and parents are included.
+
+        The result may or may not reference the underlying inventory
+        so it should be treated as immutable.
+        """
+        interesting_parents = set()
+        # TODO: Pre-pass over the list of fileids to see if anything is already
+        #       deserialized in self._fileid_to_entry_cache
+
+        directories_to_expand = set()
+        children_of_parent_id = {}
+        # It is okay if some of the fileids are missing
+        bytes_to_entry = self._bytes_to_entry
+        for file_id, value in self.id_to_entry.iteritems(specific_fileids): 
+            entry = bytes_to_entry(bytes)
+            if entry.kind == 'directory':
+                directories_to_expand.add(file_id)
+            interesting_parents.add(entry.parent_id)
+            children_of_parent_id.setdefault(entry.parent_id, []).append(entry)
+        # Now, interesting_parents has all of the direct parents, but not the
+        # parents of those parents. It also may have some duplicates with
+        # specific_fileids
+        remaining_parents = interesting_parents.difference(specific_fileids)
+        while remaining_parents:
+            next_parents = set()
+            for file_id, value in self.id_to_entry.iteritems(remaining_parents):
+                entry = bytes_to_entry(bytes)
+                next_parents.add(entry.parent_id)
+            # Remove any search tips we've already processed
+            remaining_parents = next_parents.difference(interesting_parents)
+
+        # So at this point, we know all the specific_fileids that are
+        # directories, and we know all of the parent ids which need to be
+        # included, but not recursed
+        for fileid in specific_fileids:
+            ie = self.id_to_entry
+            try:
+                interesting_parents.update(self.get_idpath(fileid))
+            except errors.NoSuchId:
+                # This fileid is not in the inventory - that's ok
+                pass
+        entries = self.iter_entries()
+        # TODO: ???
+        if self.root is None:
+            return Inventory(root_id=None)
+        other = Inventory(entries.next()[1].file_id)
+        other.root.revision = self.root.revision
+        other.revision_id = self.revision_id
+        directories_to_expand = set()
+        for path, entry in entries:
+            file_id = entry.file_id
+            if (file_id in specific_fileids
+                or entry.parent_id in directories_to_expand):
+                if entry.kind == 'directory':
+                    directories_to_expand.add(file_id)
+            elif file_id not in interesting_parents:
+                continue
+            other.add(entry.copy())
+        return other
+
     @staticmethod
     def _bytes_to_utf8name_key(bytes):
         """Get the file_id, revision_id key out of bytes."""
@@ -1884,6 +1997,27 @@ class CHKInventory(CommonInventory):
         except StopIteration:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id)
+
+    def _getitems(self, file_ids):
+        """Similar to __getitem__, but lets you query for multiple.
+        
+        The returned order is undefined. And currently if an item doesn't
+        exist, it isn't included in the output.
+        """
+        result = []
+        remaining = []
+        for file_id in file_ids:
+            entry = self._fileid_to_entry_cache.get(file_id, None)
+            if entry is None:
+                remaining.append(file_id)
+            else:
+                result.append(entry)
+        file_keys = [(f,) for f in remaining]
+        for file_key, value in self.id_to_entry.iteritems(file_keys):
+            entry = self._bytes_to_entry(value)
+            result.append(entry)
+            self._fileid_to_entry_cache[entry.file_id] = entry
+        return result
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
