@@ -130,6 +130,8 @@ API Changes
 * ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
   subclasses - the same as python's unittest module. (Robert Collins)
 
+* Remove deprecated ``CLIUIFactory``.  (Martin Pool)
+
 Internals
 *********
 

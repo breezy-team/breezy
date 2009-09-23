@@ -42,7 +42,6 @@ from bzrlib.tests.test_progress import (
     )
 from bzrlib.ui import (
     CannedInputUIFactory,
-    CLIUIFactory,
     SilentUIFactory,
     UIFactory,
     make_ui_for_terminal,
@@ -299,15 +298,6 @@ class UITests(tests.TestCase):
             self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
-
-
-class CLIUITests(TestCase):
-
-    def test_cli_factory_deprecated(self):
-        uif = self.applyDeprecated(deprecated_in((1, 18, 0)),
-            CLIUIFactory,
-            StringIO(), StringIO(), StringIO())
-        self.assertIsInstance(uif, UIFactory)
 
 
 class SilentUITests(TestCase):
