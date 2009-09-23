@@ -22,18 +22,18 @@ messages or progress to the user, and with gathering different types of input.
 Several levels are supported, and you can also register new factories such as
 for a GUI.
 
-UIFactory
+bzrlib.ui.UIFactory
     Semi-abstract base class
 
-SilentUIFactory
+bzrlib.ui.SilentUIFactory
     Produces no output and cannot take any input; useful for programs using
     bzrlib in batch mode or for programs such as loggerhead.
 
-CannedInputUIFactory
+bzrlib.ui.CannedInputUIFactory
     For use in testing; the input values to be returned are provided 
     at construction.
 
-TextUIFactory
+bzrlib.ui.text.TextUIFactory
     Standard text command-line interface, with stdin, stdout, stderr.
     May make more or less advanced use of them, eg in drawing progress bars,
     depending on the detected capabilities of the terminal.
