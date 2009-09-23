@@ -48,7 +48,12 @@ class TestRunCleanup(CleanupsTestCase):
         self.assertTrue(run_cleanup(self.no_op_cleanup))
         self.assertEqual(['no_op_cleanup'], self.call_log)
 
-#    def test_cleanup_with_args_kwargs(self):
+    def test_cleanup_with_args_kwargs(self):
+        def func_taking_args_kwargs(*args, **kwargs):
+            self.call_log.append(('func', args, kwargs))
+        run_cleanup(func_taking_args_kwargs, 'an arg', kwarg='foo')
+        self.assertEqual(
+            [('func', ('an arg',), {'kwarg': 'foo'})], self.call_log)
 
     def test_cleanup_error(self):
         """An error from the cleanup function is logged by run_cleanup, but not
