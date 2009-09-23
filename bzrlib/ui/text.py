@@ -177,6 +177,13 @@ class TextUIFactory(UIFactory):
         self.clear_term()
         self.stderr.write("bzr: error: %s\n" % msg)
 
+    def show_message(self, msg):
+        self.note(msg)
+
+    def show_warning(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: warning: %s\n" % msg)
+
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """

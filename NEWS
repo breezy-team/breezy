@@ -130,6 +130,10 @@ API Changes
 * ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
   subclasses - the same as python's unittest module. (Robert Collins)
 
+* ``UIFactory`` now has new ``show_error``, ``show_message`` and
+  ``show_warning`` methods, which can be hooked by non-text UIs.  
+  (Martin Pool)
+
 Internals
 *********
 

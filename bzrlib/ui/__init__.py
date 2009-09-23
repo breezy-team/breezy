@@ -337,6 +337,12 @@ class SilentUIFactory(UIFactory):
     def show_error(self, msg):
         pass
 
+    def show_message(self, msg):
+        pass
+
+    def show_warning(self, msg):
+        pass
+
 
 class CannedInputUIFactory(SilentUIFactory):
     """A silent UI that return canned input."""

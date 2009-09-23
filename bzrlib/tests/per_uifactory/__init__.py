@@ -64,6 +64,16 @@ class UIFactoryTestMixin(object):
         self.factory.show_error(msg)
         self._check_show_error(msg)
 
+    def test_show_message(self):
+        msg = 'a message'
+        self.factory.show_message(msg)
+        self._check_show_message(msg)
+
+    def test_show_warning(self):
+        msg = 'a warning'
+        self.factory.show_warning(msg)
+        self._check_show_warning(msg)
+
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
@@ -84,6 +94,16 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
             self.stderr.getvalue())
         self.assertEquals("", self.stdout.getvalue())
 
+    def _check_show_message(self, msg):
+        self.assertEquals("%s\n" % msg,
+            self.stdout.getvalue())
+        self.assertEquals("", self.stderr.getvalue())
+
+    def _check_show_warning(self, msg):
+        self.assertEquals("bzr: warning: %s\n" % msg,
+            self.stderr.getvalue())
+        self.assertEquals("", self.stdout.getvalue())
+
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, therefore tests for output expect nothing
@@ -99,6 +119,12 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     def _check_show_error(self, msg):
         pass
 
+    def _check_show_message(self, msg):
+        pass
+
+    def _check_show_warning(self, msg):
+        pass
+
 
 class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, reads input from variables
@@ -111,6 +137,12 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
         pass
 
     def _check_show_error(self, msg):
+        pass
+
+    def _check_show_message(self, msg):
+        pass
+
+    def _check_show_warning(self, msg):
         pass
 
 
