@@ -1568,18 +1568,20 @@ class CHKInventory(CommonInventory):
             foo-id, baz-id, frob-id, fringle-id
         As interesting ids.
         """
+        # When we hit the TREE_ROOT, we'll get an interesting parent of None,
+        # but we don't actually want to recurse into that
         interesting_parents = set([None])
         # TODO: Pre-pass over the list of fileids to see if anything is already
         #       deserialized in self._fileid_to_entry_cache
 
         directories_to_expand = set()
-        children_of_parent_id = {}
+        # children_of_parent_id = {}
         # It is okay if some of the fileids are missing
         for entry in self._getitems(file_ids):
             if entry.kind == 'directory':
                 directories_to_expand.add(entry.file_id)
             interesting_parents.add(entry.parent_id)
-            children_of_parent_id.setdefault(entry.parent_id, []).append(entry)
+            #children_of_parent_id.setdefault(entry.parent_id, []).append(entry)
 
         # Now, interesting_parents has all of the direct parents, but not the
         # parents of those parents. It also may have some duplicates with
@@ -1589,12 +1591,26 @@ class CHKInventory(CommonInventory):
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
+                #children_of_parent_id.setdefault(entry.parent_id, []).append(entry)
             # Remove any search tips we've already processed
             remaining_parents = next_parents.difference(interesting_parents)
             interesting_parents.update(remaining_parents)
             # We should probably also .difference(directories_to_expand)
         interesting_parents.discard(None)
-        return interesting_parents, file_ids
+        result_file_ids = set(file_ids)
+        while directories_to_expand:
+            # Expand directories by looking in the
+            # parent_id_basename_to_file_id map
+            keys = [(f,) for f in directories_to_expand]
+            directories_to_expand = set()
+            items = self.parent_id_basename_to_file_id.iteritems(keys)
+            next_file_ids = set([item[1] for item in items])
+            next_file_ids = next_file_ids.difference(result_file_ids)
+            result_file_ids.update(next_file_ids)
+            for entry in self._getitems(next_file_ids):
+                if entry.kind == 'directory':
+                    directories_to_expand.add(entry.file_id)
+        return interesting_parents, result_file_ids
 
     def filter(self, specific_fileids):
         """Get an inventory view filtered against a set of file-ids.

@@ -1180,7 +1180,7 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         val_parents, val_other = inv._expand_fileids_to_parents_and_children(
                                     file_ids)
         self.assertEqual(set(parent_ids), val_parents)
-        self.assertEqual(other_ids, val_other)
+        self.assertEqual(set(other_ids), val_other)
 
     def test_make_simple_inventory(self):
         inv = self.make_simple_inventory()
@@ -1221,3 +1221,10 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv = self.make_simple_inventory()
         self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id'], 
                           ['subsub-file1-id'], inv, ['subsub-file1-id'])
+
+    def test_get_children(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT'], 
+                          ['dir1-id', 'sub-dir1-id', 'sub-file1-id',
+                           'sub-file2-id', 'subsub-file1-id',
+                          ], inv, ['dir1-id'])
