@@ -69,8 +69,30 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         self.stderr = StringIO()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
             self.stderr)
-        return self.factory
 
     def _expect_note(self, note_text):
         self.assertEquals("%s\n" % note_text,
             self.stdout.getvalue())
+
+
+class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
+    # discards output, therefore tests for output expect nothing
+
+    def setUp(self):
+        super(TestSilentUIFactory, self).setUp()
+        self.factory = ui.SilentUIFactory()
+
+    def _expect_note(self, note_text):
+        # it's just discarded
+        pass
+
+
+class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
+    # discards output, reads input from variables
+
+    def setUp(self):
+        super(TestCannedInputUIFactory, self).setUp()
+        self.factory = ui.CannedInputUIFactory([])
+
+    def _expect_note(self, note_text):
+        pass
