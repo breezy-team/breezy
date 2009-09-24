@@ -332,3 +332,10 @@ class TestInventoryFiltering(TestInventory):
             ('src/sub/a', 'a-id'),
             ('src/zz.c', 'zzc-id'),
             ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])
+
+    def test_inv_filter_entry_not_present(self):
+        inv = self.prepare_inv_with_nested_dirs()
+        new_inv = inv.filter(['not-present-id'])
+        self.assertEqual([
+            ('', 'tree-root'),
+            ], [(path, ie.file_id) for path, ie in new_inv.iter_entries()])

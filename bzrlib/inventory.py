@@ -1647,10 +1647,17 @@ class CHKInventory(CommonInventory):
         other = Inventory(self.root_id)
         other.root.revision = self.root.revision
         other.revision_id = self.revision_id
-        if not interesting: # empty filter
+        if not interesting or not parent_to_children:
+            # empty filter, or filtering entrys that don't exist
+            # (if even 1 existed, then we would have populated
+            # parent_to_children with at least the tree root.)
             return other
         cache = self._fileid_to_entry_cache
-        remaining_children = collections.deque(parent_to_children[self.root_id])
+        try:
+            remaining_children = collections.deque(parent_to_children[self.root_id])
+        except:
+            import pdb; pdb.set_trace()
+            raise
         while remaining_children:
             file_id = remaining_children.popleft()
             ie = cache[file_id]
