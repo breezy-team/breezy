@@ -131,6 +131,7 @@ class BzrBackend(Backend):
             return repo.fetch_objects(determine_wants, graph_walker, None, progress)
 
         wants = determine_wants(self.get_refs())
+        graph_walker.reset()
         repo.lock_read()
         store = BazaarObjectStore(repo)
         have = store.find_common_revisions(graph_walker)

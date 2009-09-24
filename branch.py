@@ -105,6 +105,18 @@ class LocalGitTagDict(tag.BasicTags):
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
+class DictTagDict(LocalGitTagDict):
+
+
+    def __init__(self, branch, tags):
+        super(DictTagDict, self).__init__(branch)
+        self._tags = tags
+
+    def get_tag_dict(self):
+        return self._tags
+
+
+
 class GitBranchFormat(branch.BranchFormat):
 
     def get_format_description(self):
@@ -124,15 +136,23 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, bzrdir, repository, name, lockfiles):
+    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
         self.repository = repository
         self._format = GitBranchFormat()
         self.control_files = lockfiles
         self.bzrdir = bzrdir
         super(GitBranch, self).__init__(repository.get_mapping())
+        if tagsdict is not None:
+            self.tags = DictTagDict(self, tagsdict)
         self.name = name
         self._head = None
         self.base = bzrdir.transport.base
+
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        return get_rich_root_format()
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -203,14 +223,6 @@ class GitBranch(ForeignBranch):
  
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
-
-    def _get_checkout_format(self):
-        """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repository uses weaves.
-        """
-        format = self.repository.bzrdir.checkout_metadir()
-        format.set_branch_format(self._format)
-        return format
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
@@ -524,7 +536,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        result.old_revid = self.target.last_revision()
+        try:
+            result.old_revid = self.target.last_revision()
+        except NoSuchRef:
+            result.old_revid = revision.NULL_REVISION
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches

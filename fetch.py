@@ -33,6 +33,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.errors import (
+    BzrError,
     NoSuchId,
     )
 from bzrlib.inventory import (
@@ -162,9 +163,15 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     return (invdelta, shamap)
 
 
-def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
-    revision_id, parent_invs, shagitmap, lookup_object):
-    raise NotImplementedError(import_git_submodule)
+class SubmodulesNotSupported(BzrError):
+
+    _fmt = """Submodules can not yet be imported (requires nested tree support in Bazaar)."""
+    internal = False
+
+
+def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie, 
+    parent_id, revision_id, parent_invs, shagitmap, lookup_object):
+    raise SubmodulesNotSupported()
 
 
 def remove_disappeared_children(path, base_children, existing_children):

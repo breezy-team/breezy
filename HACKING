@@ -1,6 +1,6 @@
 Coding style
 ------------
-Dulwich tries to follow PEP-8 where possible. docstrings should use 
+bzr-git tries to follow PEP-8 where possible. docstrings should use 
 restructuredText.
 
 Testing

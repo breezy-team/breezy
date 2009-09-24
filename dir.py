@@ -18,6 +18,7 @@
 
 from bzrlib import (
     bzrdir,
+    errors as bzr_errors,
     lockable_files,
     urlutils,
     )
@@ -26,11 +27,7 @@ LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
     LocalGitBzrDirFormat,
-    branch,
-    errors,
     get_rich_root_format,
-    repository,
-    workingtree,
     )
 
 
@@ -81,7 +78,11 @@ class GitDir(bzrdir.BzrDir):
 class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
 
-    _gitrepository_class = repository.LocalGitRepository
+    def _get_gitrepository_class(self):
+        from bzrlib.plugins.git.repository import LocalGitRepository
+        return LocalGitRepository
+
+    _gitrepository_class = property(_get_gitrepository_class)
 
     def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
@@ -102,7 +103,7 @@ class LocalGitDir(GitDir):
             return self.transport
         if isinstance(branch_format, LocalGitBzrDirFormat):
             return self.transport
-        raise errors.bzr_errors.IncompatibleFormat(branch_format, self._format)
+        raise bzr_errors.IncompatibleFormat(branch_format, self._format)
 
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
@@ -110,7 +111,8 @@ class LocalGitDir(GitDir):
     def open_branch(self, ignore_fallbacks=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
-        return branch.LocalGitBranch(self, repo, "HEAD", self._lockfiles)
+        from bzrlib.plugins.git.branch import LocalGitBranch
+        return LocalGitBranch(self, repo, "HEAD", self._lockfiles)
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
@@ -118,10 +120,11 @@ class LocalGitDir(GitDir):
 
     def open_workingtree(self, recommend_upgrade=True):
         if not self._git.bare and self._git.has_index():
-            return workingtree.GitWorkingTree(self, self.open_repository(), 
+            from bzrlib.plugins.git.workingtree import GitWorkingTree
+            return GitWorkingTree(self, self.open_repository(), 
                                                   self.open_branch())
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
-        raise errors.bzr_errors.NoWorkingTree(loc)
+        raise bzr_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
         return self.open_repository()
@@ -135,12 +138,12 @@ class LocalGitDir(GitDir):
             return (self.root_transport.abspath(".git"),
                     self.root_transport.abspath(".git.backup"))
         else:
-            raise errors.bzr_errors.BzrError("Unable to backup bare repositories")
+            raise bzr_errors.BzrError("Unable to backup bare repositories")
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
         if self._git.bare:
-            raise errors.bzr_errors.BzrError("Can't create working tree in a bare repo")
+            raise bzr_errors.BzrError("Can't create working tree in a bare repo")
         from dulwich.index import write_index
         write_index(self.root_transport.abspath(".git/index"), [])
         return self.open_workingtree()

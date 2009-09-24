@@ -81,10 +81,10 @@ def lazy_check_versions():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
-        raise ImportError("bzr-git: Please install dulwich, https://launchpad.net/dulwich")
+        raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < dulwich_minimum_version:
-            raise ImportError("bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
+            raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
 
 bzrdir.format_registry.register_lazy('git', 
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
@@ -117,6 +117,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         """Open this directory.
 
         """
+        lazy_check_versions()
         import dulwich
         # we dont grok readonly - git isn't integrated with transport.
         url = transport.base
@@ -144,6 +145,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         if not transport.has(".git") and not transport.has("objects"):
             raise bzr_errors.NotBranchError(path=transport.base)
 
+        lazy_check_versions()
         import dulwich
         format = klass()
         try:
@@ -167,6 +169,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 "Can't create Git Repositories/branches on "
                 "non-local transports")
 
+        lazy_check_versions()
         from dulwich.repo import Repo
         Repo.create(transport.local_abspath(".").encode(osutils._fs_enc)) 
         return self.open(transport)
@@ -257,15 +260,11 @@ if rio_hooks is not None:
     rio_hooks.install_named_hook('revision', update_stanza, None)
 
 
-try:
-    from bzrlib.transport import transport_server_registry
-except ImportError:
-    pass
-else:
-    transport_server_registry.register_lazy('git',
-        'bzrlib.plugins.git.server', 
-        'serve_git',
-        'Git Smart server protocol over TCP. (default port: 9418)')
+from bzrlib.transport import transport_server_registry
+transport_server_registry.register_lazy('git',
+    'bzrlib.plugins.git.server', 
+    'serve_git',
+    'Git Smart server protocol over TCP. (default port: 9418)')
 
 
 from bzrlib.repository import network_format_registry as repository_network_format_registry
