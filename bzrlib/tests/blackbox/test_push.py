@@ -592,9 +592,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])

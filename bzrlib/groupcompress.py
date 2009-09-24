@@ -2066,6 +2066,7 @@ try:
         decode_base128_int,
         )
     GroupCompressor = PyrexGroupCompressor
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     GroupCompressor = PythonGroupCompressor
 

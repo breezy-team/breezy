@@ -292,15 +292,6 @@ class SmartServerRequestHandler(object):
         # cannot read after this.
         self.finished_reading = True
 
-    def dispatch_command(self, cmd, args):
-        """Deprecated compatibility method.""" # XXX XXX
-        try:
-            command = self._commands.get(cmd)
-        except LookupError:
-            raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport, self._root_client_path)
-        self._run_handler_code(self._command.execute, args, {})
-
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
 
@@ -343,7 +334,8 @@ class SmartServerRequestHandler(object):
             command = self._commands.get(cmd)
         except LookupError:
             raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport)
+        self._command = command(
+            self._backing_transport, self._root_client_path)
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):

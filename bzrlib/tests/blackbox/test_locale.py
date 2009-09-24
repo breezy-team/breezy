@@ -19,17 +19,19 @@
 import os
 import sys
 
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib import (
+    tests,
+    )
 
 
-class TestLocale(TestCaseWithTransport):
+class TestLocale(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLocale, self).setUp()
 
         if sys.platform in ('win32',):
-            raise TestSkipped('Windows does not respond to the LANG'
-                              ' env variable')
+            raise tests.TestSkipped('Windows does not respond to the LANG'
+                                    ' env variable')
 
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
@@ -41,6 +43,7 @@ class TestLocale(TestCaseWithTransport):
         self.tree = tree
 
     def test_log_C(self):
+        self.disable_missing_extensions_warning()
         out, err = self.run_bzr_subprocess(
             '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',

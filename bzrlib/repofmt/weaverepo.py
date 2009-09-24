@@ -688,7 +688,7 @@ class RevisionTextStore(TextVersionedFiles):
             path, ext = os.path.splitext(relpath)
             if ext == '.gz':
                 relpath = path
-            if '.sig' not in relpath:
+            if not relpath.endswith('.sig'):
                 relpaths.add(relpath)
         paths = list(relpaths)
         return set([self._mapper.unmap(path) for path in paths])

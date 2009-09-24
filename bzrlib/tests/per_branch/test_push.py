@@ -394,8 +394,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Make two empty branches, 'empty' and 'target'.
         self.empty_branch = self.make_branch('empty')
         self.make_branch('target')

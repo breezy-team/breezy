@@ -133,8 +133,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         """Get the server instance for the secondary transport."""
         if self.__secondary_server is None:
             self.__secondary_server = self.create_transport_secondary_server()
-            self.__secondary_server.setUp()
-            self.addCleanup(self.__secondary_server.tearDown)
+            self.start_server(self.__secondary_server)
         return self.__secondary_server
 
 

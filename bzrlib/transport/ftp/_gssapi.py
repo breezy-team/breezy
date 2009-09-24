@@ -25,7 +25,7 @@ from bzrlib import (
     config,
     errors,
     )
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 from bzrlib.transport.ftp import FtpTransport
 from bzrlib.transport import register_transport_proto, register_transport
 
@@ -81,7 +81,7 @@ class GSSAPIFtp(ftplib.FTP):
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
-            info("Authenticated as %s" % kerberos.authGSSClientUserName(
+            trace.note("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
 
             # Monkey patch ftplib
