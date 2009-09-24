@@ -474,6 +474,57 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirOpen(TestRemote):
+
+    def make_fake_client_and_transport(self, path='quack'):
+        transport = MemoryTransport()
+        transport.mkdir(path)
+        transport = transport.clone(path)
+        client = FakeClient(transport.base)
+        return client, transport
+
+    def test_absent(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('no',))
+        self.assertRaises(errors.NotBranchError, RemoteBzrDir, transport,
+                remote.RemoteBzrDirFormat(), _client=client, _force_probe=True)
+        self.assertFinished(client)
+
+    def test_present_without_workingtree(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'no'))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFalse(bd.has_workingtree())
+        self.assertRaises(errors.NoWorkingTree, bd.open_workingtree)
+        self.assertFinished(client)
+
+    def test_present_with_workingtree(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'yes'))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertTrue(bd.has_workingtree())
+        self.assertRaises(errors.NotLocalUrl, bd.open_workingtree)
+        self.assertFinished(client)
+
+    def test_backwards_compat(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
+        client.add_expected_call(
+            'BzrDir.open', ('quack/',), 'success', ('yes',))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFinished(client)
+
+
 class TestBzrDirOpenBranch(TestRemote):
 
     def test_backwards_compat(self):

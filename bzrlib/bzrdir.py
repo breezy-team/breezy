@@ -1537,6 +1537,10 @@ class BzrDir5(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
@@ -1558,6 +1562,10 @@ class BzrDir6(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
@@ -1682,6 +1690,22 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def has_workingtree(self):
+        """Tell if this bzrdir contains a working tree.
+
+        This will still raise an exception if the bzrdir has a workingtree that
+        is remote & inaccessible.
+
+        Note: if you're going to open the working tree, you should just go
+        ahead and try, and not ask permission first.
+        """
+        from bzrlib.workingtree import WorkingTreeFormat
+        try:
+            WorkingTreeFormat.find_format(self)
+        except errors.NoWorkingTree:
+            return False
+        return True
 
     def needs_format_conversion(self, format=None):
         """See BzrDir.needs_format_conversion()."""
