@@ -991,35 +991,6 @@ class CHKInventoryRepository(KnitPackRepository):
         finally:
             pb.finished()
 
-    def get_deltas_for_revisions(self, revisions, specific_fileids=None):
-        """Produce a generator of revision deltas.
-
-        Note that the input is a sequence of REVISIONS, not revision_ids.
-        Trees will be held in memory until the generator exits.
-        Each delta is relative to the revision's lefthand predecessor.
-
-        :param specific_fileids: if not None, the result is filtered
-          so that only those file-ids, their parents and their
-          children are included.
-        """
-        # Get the revision-ids of interest
-        required_trees = set()
-        for revision in revisions:
-            required_trees.add(revision.revision_id)
-            required_trees.update(revision.parent_ids[:1])
-
-        trees = dict((t.get_revision_id(), t) for
-            t in self.revision_trees(required_trees))
-
-        # Calculate the deltas
-        for revision in revisions:
-            if not revision.parent_ids:
-                old_tree = self.revision_tree(_mod_revision.NULL_REVISION)
-            else:
-                old_tree = trees[revision.parent_ids[0]]
-            yield trees[revision.revision_id].changes_from(old_tree)
-
-
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)
         return packer.pack(pb)
