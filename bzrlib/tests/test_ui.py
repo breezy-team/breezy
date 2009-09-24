@@ -158,7 +158,7 @@ class UITests(tests.TestCase):
             stdout=stdout)
         pb = ui_factory.nested_progress_bar()
         try:
-            result = self.applyDeprecated(deprecated_in((1, 17, 0)),
+            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
                 pb.note,
                 't')
             self.assertEqual(None, result)
