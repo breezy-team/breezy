@@ -1537,6 +1537,10 @@ class BzrDir5(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
@@ -1558,6 +1562,10 @@ class BzrDir6(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
