@@ -1254,7 +1254,10 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         self.make_file(inv, 'subsub-file1', 'sub-dir1-id')
         self.make_file(inv, 'sub2-file1', 'dir2-id')
         chk_bytes = self.get_chk_bytes()
-        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        #  use a small maximum_size to force internal paging structures
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv,
+                        maximum_size=100,
+                        search_key_name='hash-255-way')
         bytes = ''.join(chk_inv.to_lines())
         return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
 
@@ -1323,3 +1326,23 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id',
                            'sub-file1-id', 'sub-file2-id', 'subsub-file1-id',
                           ], inv, ['dir1-id'])
+
+    def test_from_root(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'dir2-id', 'sub-dir1-id',
+                           'sub-file1-id', 'sub-file2-id', 'sub2-file1-id',
+                           'subsub-file1-id', 'top-id'], inv, ['TREE_ROOT'])
+
+    def test_top_level_file(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT', 'top-id'], inv, ['top-id'])
+
+    def test_subsub_file(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id',
+                           'subsub-file1-id'], inv, ['subsub-file1-id'])
+
+    def test_sub_and_root(self):
+        inv = self.make_simple_inventory()
+        self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id', 'top-id',
+                           'subsub-file1-id'], inv, ['top-id', 'subsub-file1-id'])

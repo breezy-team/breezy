@@ -1576,9 +1576,7 @@ class CHKInventory(CommonInventory):
             foo-id, baz-id, frob-id, fringle-id
         As interesting ids.
         """
-        # When we hit the TREE_ROOT, we'll get an interesting parent of None,
-        # but we don't actually want to recurse into that
-        interesting = set([None])
+        interesting = set()
         # TODO: Pre-pass over the list of fileids to see if anything is already
         #       deserialized in self._fileid_to_entry_cache
 
@@ -1596,7 +1594,13 @@ class CHKInventory(CommonInventory):
         # parents of those parents. It also may have some duplicates with
         # specific_fileids
         remaining_parents = interesting.difference(file_ids)
+        # When we hit the TREE_ROOT, we'll get an interesting parent of None,
+        # but we don't actually want to recurse into that
+        interesting.add(None) # this will auto-filter it in the loop
+        remaining_parents.discard(None) 
         while remaining_parents:
+            if None in remaining_parents:
+                import pdb; pdb.set_trace()
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
@@ -1606,8 +1610,8 @@ class CHKInventory(CommonInventory):
             remaining_parents = next_parents.difference(interesting)
             interesting.update(remaining_parents)
             # We should probably also .difference(directories_to_expand)
-        interesting.discard(None)
         interesting.update(file_ids)
+        interesting.discard(None)
         while directories_to_expand:
             # Expand directories by looking in the
             # parent_id_basename_to_file_id map
@@ -1636,9 +1640,6 @@ class CHKInventory(CommonInventory):
          parent_to_children) = self._expand_fileids_to_parents_and_children(
                                 specific_fileids)
         entries = self.iter_entries()
-        # TODO: ???
-        # if self.root is None:
-        return Inventory(root_id=None)
         other = Inventory(entries.next()[1].file_id)
         other.root.revision = self.root.revision
         other.revision_id = self.revision_id
