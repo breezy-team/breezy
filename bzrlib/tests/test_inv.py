@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,14 @@
 
 from bzrlib import (
     chk_map,
+    groupcompress,
     bzrdir,
     errors,
     inventory,
     osutils,
     repository,
     revision,
+    tests,
     )
 from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
     InventoryDirectory, InventoryEntry, TreeReference)
@@ -650,17 +652,12 @@ class TestDescribeChanges(TestCase):
         self.assertEqual(expected_change, change)
 
 
-class TestCHKInventory(TestCaseWithTransport):
+class TestCHKInventory(tests.TestCaseWithMemoryTransport):
 
     def get_chk_bytes(self):
-        # The easiest way to get a CHK store is a development6 repository and
-        # then work with the chk_bytes attribute directly.
-        repo = self.make_repository(".", format="development6-rich-root")
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        return repo.chk_bytes
+        factory = groupcompress.make_pack_factory(True, True, 1)
+        trans = self.get_transport('')
+        return factory(trans)
 
     def read_bytes(self, chk_bytes, key):
         stream = chk_bytes.get_record_stream([key], 'unordered', True)
