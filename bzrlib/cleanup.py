@@ -41,8 +41,10 @@ reported in the UI as well as logged.
 
 Note the tradeoff that run_cleanup/run_cleanups makes: errors from
 `do_something` will not be obscured by errors from `cleanup_something`, but
-errors from `cleanup_something` will never reach the user, even if there is not
-error from `do_something`.
+errors from `cleanup_something` will never reach the user, even if there is no
+error from `do_something`.  So run_cleanup is good to use when a failure of
+internal housekeeping (e.g. failure to finish a progress bar) is unimportant to
+a user.
 
 If you want to be certain that the first, and only the first, error is raised,
 then use::
@@ -111,6 +113,30 @@ def run_cleanups(funcs, on_error='log'):
 
 
 def do_with_cleanups(func, cleanup_funcs):
+    """Run `func`, then call all the cleanup_funcs.
+
+    All the cleanup_funcs are guaranteed to be run.  The first exception raised
+    by func or any of the cleanup_funcs is the one that will be propagted by
+    this function (subsequent errors are caught and logged).
+
+    Conceptually similar to::
+
+        try:
+            return func()
+        finally:
+            for cleanup in cleanup_funcs:
+                cleanup()
+
+    It avoids several problems with using try/finally directly:
+     * an exception from func will not be obscured by a subsequent exception
+       from a cleanup.
+     * an exception from a cleanup will not prevent other cleanups from
+       running (but the first exception encountered is still the one
+       propagated).
+
+    Unike `run_cleanup`, `do_with_cleanups` can propagate an exception from a
+    cleanup, but only if there is no exception from func.
+    """
     # As correct as Python 2.4 allows.
     try:
         result = func()
@@ -125,12 +151,12 @@ def do_with_cleanups(func, cleanup_funcs):
         exc_info = None
         for cleanup in cleanup_funcs:
             # XXX: Hmm, if KeyboardInterrupt arrives at exactly this line, we
-            # won't run all cleanups...
+            # won't run all cleanups... perhaps we should temporarily install a
+            # SIGINT handler?
             if exc_info is None:
                 try:
                     cleanup()
                 except:
-                    # XXX: should this never swallow KeyboardInterrupt, etc?
                     # This is the first cleanup to fail, so remember its
                     # details.
                     exc_info = sys.exc_info()
