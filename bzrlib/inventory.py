@@ -1197,6 +1197,14 @@ class Inventory(CommonInventory):
             raise errors.InconsistentDelta("<deleted>", parent_id,
                 "The file id was deleted but its children were not deleted.")
 
+    def create_by_apply_delta(self, inventory_delta, new_revision_id,
+                              propagate_caches=False):
+        """See CHKInventory.create_by_apply_delta()"""
+        new_inv = self.copy()
+        new_inv.apply_delta(inventory_delta)
+        new_inv.revision_id = new_revision_id
+        return new_inv
+
     def _set_root(self, ie):
         self.root = ie
         self._byid = {self.root.file_id: self.root}
