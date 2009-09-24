@@ -98,7 +98,7 @@ def run_cleanup_reporting_errors(func, *args, **kwargs):
 
 
 def run_cleanups(funcs, on_error='log'):
-    """
+    """Run a series of cleanup functions.
 
     :param errors: One of 'log', 'warn first', 'warn all'
     """
@@ -109,8 +109,6 @@ def run_cleanups(funcs, on_error='log'):
         else:
             seen_error |= run_cleanup_reporting_errors(func)
 
-
-#  - ? what about -Dcleanup, should it influnce do_with_cleanups' behaviour?
 
 def do_with_cleanups(func, cleanup_funcs):
     # As correct as Python 2.4 allows.
