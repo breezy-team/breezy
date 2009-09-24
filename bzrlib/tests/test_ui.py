@@ -184,7 +184,7 @@ class UITests(tests.TestCase):
         try:
             # Create a progress update that isn't throttled
             pb.update('x', 1, 1)
-            result = self.applyDeprecated(deprecated_in((1, 17, 0)),
+            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
                 pb.note, 't')
             self.assertEqual(None, result)
             self.assertEqual("t\n", stdout.getvalue())
