@@ -126,6 +126,9 @@ Documentation
 API Changes
 ***********
 
+* ``ProgressTask.note`` is deprecated.
+  (Martin Pool)
+
 * ``bzrlib.user_encoding`` has been removed; use
   ``bzrlib.osutils.get_user_encoding`` instead.  (Martin Pool)
 
