@@ -1639,14 +1639,29 @@ class CHKInventory(CommonInventory):
         (interesting,
          parent_to_children) = self._expand_fileids_to_parents_and_children(
                                 specific_fileids)
-        entries = self.iter_entries()
-        other = Inventory(entries.next()[1].file_id)
+        # There is some overlap here, but we assume that all interesting items
+        # are in the _fileid_to_entry_cache because we had to read them to
+        # determine if they were a dir we wanted to recurse, or just a file
+        # This should give us all the entries we'll want to add, so start
+        # adding
+        other = Inventory(self.root_id)
         other.root.revision = self.root.revision
         other.revision_id = self.revision_id
-        for path, entry in entries:
-            file_id = entry.file_id
-            if file_id in interesting:
-                other.add(entry.copy())
+        if not interesting: # empty filter
+            return other
+        cache = self._fileid_to_entry_cache
+        remaining_children = collections.deque(parent_to_children[self.root_id])
+        while remaining_children:
+            file_id = remaining_children.popleft()
+            ie = cache[file_id]
+            if ie.kind == 'directory':
+                ie = ie.copy() # We create a copy to depopulate the .children attribute
+            # TODO: depending on the uses of 'other' we should probably alwyas
+            #       '.copy()' to prevent someone from mutating other and
+            #       invaliding our internal cache
+            other.add(ie)
+            if file_id in parent_to_children:
+                remaining_children.extend(parent_to_children[file_id])
         return other
 
     @staticmethod
