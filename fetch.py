@@ -341,8 +341,10 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             basis_id = rev.parent_ids[0]
         except IndexError:
             basis_id = NULL_REVISION
+            base_inv = None
         rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-                  inv_delta, rev.revision_id, rev.parent_ids)
+                  inv_delta, rev.revision_id, rev.parent_ids,
+                  base_inv)
         parent_invs_cache[rev.revision_id] = inv
         repo.add_revision(rev.revision_id, rev)
         if "verify" in debug.debug_flags:
