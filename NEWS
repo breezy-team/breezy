@@ -118,6 +118,8 @@ Improvements
 Documentation
 *************
 
+* Describe the new shell-like test feature. (Vincent Ladeuil)
+
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
 
@@ -153,6 +155,10 @@ Testing
 
 * Setting ``BZR_TEST_PDB=1`` when running selftest will cause a pdb
   post_mortem to be triggered when a test failure occurs. (Robert Collins)
+
+* Shell-like tests can now be written. Code in ``bzrlib/tests/script.py`` ,
+  documentation in ``developers/testing.txt`` for details.
+  (Vincent Ladeuil)
 
 * Test parameterisation now does a shallow copy, not a deep copy of the test
   to be parameterised. This is not expected to break external use of test
