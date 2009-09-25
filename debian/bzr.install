@@ -1,6 +1,6 @@
 contrib/bash/bzr.simple			etc/bash_completion.d/
 contrib/bash/bzr	etc/bash_completion.d/
 doc/default.css			usr/share/doc/bzr/html
-doc/_static/en/quick-reference/bzr-quick-reference.pdf	usr/share/doc/bzr/html/en/quick-reference
-doc/_static/en/quick-reference/bzr-quick-reference.png	usr/share/doc/bzr/html/en/quick-reference
-doc/_static/en/quick-reference/bzr-quick-reference.svg	usr/share/doc/bzr/html/en/quick-reference
+doc/en/_static/en/bzr-en-quick-reference.pdf	usr/share/doc/bzr/html/en/quick-reference
+doc/en/_static/en/bzr-en-quick-reference.png	usr/share/doc/bzr/html/en/quick-reference
+doc/en/_static/en/bzr-en-quick-reference.svg	usr/share/doc/bzr/html/en/quick-reference
