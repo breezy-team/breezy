@@ -173,6 +173,9 @@ Testing
   will permit the urls they provide automatically, so only exceptional
   tests should need to do this. (Robert Collins)
 
+* The break-in test no longer cares about clean shutdown of the child,
+  instead it is happy if the debugger starts up. (Robert  Collins)
+
 * The full test suite is expected to pass when the C extensions are not
   present. (Vincent Ladeuil, #430749)
 
