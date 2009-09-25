@@ -19,7 +19,7 @@
 #
 
 from bzrlib import errors
-from bzrlib.trace import info
+from bzrlib.trace import note
 
 import apt_pkg
 
@@ -61,7 +61,7 @@ class VcsDirectory(object):
             raise errors.InvalidURL(path=url,
                     extra='version %s not found' % version)
         
-        info("Retrieving Vcs locating from %s Debian version %s", name, version)
+        note("Retrieving Vcs locating from %s Debian version %s", name, version)
 
         if "Bzr" in urls[version]:
             return urls[version]["Bzr"]
@@ -70,7 +70,7 @@ class VcsDirectory(object):
             try:
                 import bzrlib.plugins.svn
             except ImportError:
-                info("This package uses subversion. If you would like to "
+                note("This package uses subversion. If you would like to "
                         "access it with bzr then please install bzr-svn "
                         "and re-run the command.")
             else:
@@ -80,7 +80,7 @@ class VcsDirectory(object):
             try:
                 import bzrlib.plugins.git
             except ImportError:
-                info("This package uses git. If you would like to "
+                note("This package uses git. If you would like to "
                         "access it with bzr then please install bzr-git "
                         "and re-run the command.")
             else:
@@ -90,7 +90,7 @@ class VcsDirectory(object):
             try:
                 import bzrlib.plugins.hg
             except ImportError:
-                info("This package uses hg. If you would like to "
+                note("This package uses hg. If you would like to "
                         "access it with bzr then please install bzr-hg"
                         "and re-run the command.")
             else:

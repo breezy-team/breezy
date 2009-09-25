@@ -59,7 +59,7 @@ from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import warning, info, mutter
+from bzrlib.trace import warning, mutter, note
 from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import (
     get_transport,
@@ -1728,7 +1728,7 @@ class DistributionBranch(object):
             finally:
                 tree.unlock()
             command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
-            info(" ".join(command))
+            note(" ".join(command))
             proc = Popen(command, stdout=PIPE, cwd=dest)
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
