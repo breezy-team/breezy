@@ -260,7 +260,7 @@ def upgrade_repository(repository, foreign_repository, new_mapping,
                                                     allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
-                trace.info("%s -> %s" % (revid, plan[revid][0]))
+                trace.note("%s -> %s" % (revid, plan[revid][0]))
         rebase(repository, plan, replay_snapshot)
         return revid_renames
     finally:

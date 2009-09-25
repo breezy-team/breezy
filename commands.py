@@ -33,7 +33,7 @@ from bzrlib.option import (
     Option,
     )
 from bzrlib.trace import (
-    info,
+    note,
     warning,
     )
 
@@ -110,7 +110,7 @@ class cmd_rebase(Command):
                 upstream_location = "."
             else:
                 upstream_location = wt.branch.get_parent()
-                info("Rebasing on %s" % upstream_location)
+                note("Rebasing on %s" % upstream_location)
         upstream = Branch.open_containing(upstream_location)[0]
         upstream_repository = upstream.repository
         upstream_revision = upstream.last_revision()
@@ -187,9 +187,9 @@ class cmd_rebase(Command):
 
             if verbose:
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
-                info('%d revisions will be rebased:' % len(todo))
+                note('%d revisions will be rebased:' % len(todo))
                 for revid in todo:
-                    info("%s" % revid)
+                    note("%s" % revid)
 
             # Check for changes in the working tree.
             if (not pending_merges and 
@@ -308,9 +308,9 @@ class cmd_rebase_todo(Command):
                 raise BzrCommandError("No rebase in progress")
             currentrevid = read_active_rebase_revid(wt)
             if currentrevid is not None:
-                info("Currently replaying: %s" % currentrevid)
+                note("Currently replaying: %s" % currentrevid)
             for revid in rebase_todo(wt.branch.repository, replace_map):
-                info("%s -> %s" % (revid, replace_map[revid][0]))
+                note("%s -> %s" % (revid, replace_map[revid][0]))
         finally:
             wt.unlock()
 
@@ -429,7 +429,7 @@ class cmd_foreign_mapping_upgrade(Command):
                                      allow_changes=True, verbose=verbose)
 
         if renames == {}:
-            info("Nothing to do.")
+            note("Nothing to do.")
 
         if idmap_file is not None:
             f = open(idmap_file, 'w')
