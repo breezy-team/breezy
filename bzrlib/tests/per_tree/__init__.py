@@ -201,6 +201,21 @@ class TestCaseWithTree(TestCaseWithBzrDir):
         tt.apply()
         return self._convert_tree(tree, converter)
 
+    def get_tree_no_parents_abc_content_7(self, tree, converter=None):
+        """return a test tree with a, b/, d/e contents.
+
+        This variation adds a dir 'd' ('d-id'), renames b to d/e.
+        """
+        self._make_abc_tree(tree)
+        self.build_tree(['d/'], transport=tree.bzrdir.root_transport)
+        tree.add(['d'], ['d-id'])
+        tt = transform.TreeTransform(tree)
+        trans_id = tt.trans_id_tree_path('b')
+        parent_trans_id = tt.trans_id_tree_path('d')
+        tt.adjust_path('e', parent_trans_id, trans_id)
+        tt.apply()
+        return self._convert_tree(tree, converter)
+
     def get_tree_with_subdirs_and_all_content_types(self):
         """Return a test tree with subdirs and all content types.
         See get_tree_with_subdirs_and_all_supported_content_types for details.

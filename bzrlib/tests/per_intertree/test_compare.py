@@ -37,8 +37,6 @@ from bzrlib.tests.per_intertree import TestCaseWithTwoTrees
 #        -> that is, when the renamed parent is not processed by the function.
 # TODO: test items are only emitted once when a specific_files list names a dir
 #       whose parent is now a child.
-# TODO: test specific_files when the target tree has a file and the source a
-#       dir with children, same id and same path.
 # TODO: test comparisons between trees with different root ids. mbp 20070301
 #
 # TODO: More comparisons between trees with subtrees in different states.
@@ -217,8 +215,24 @@ class TestCompare(TestCaseWithTwoTrees):
         d = self.intertree_class(tree1, tree2).compare(
             specific_files=['a', 'b/c'])
         self.assertEqual(
-            [('a', 'a-id', 'file'), ('b/c', 'c-id', 'file')],
+            [('a', 'a-id', 'file'),  (u'b', 'b-id', 'directory'),
+             ('b/c', 'c-id', 'file')],
             d.added)
+        self.assertEqual([], d.modified)
+        self.assertEqual([], d.removed)
+        self.assertEqual([], d.renamed)
+        self.assertEqual([], d.unchanged)
+
+    def test_empty_to_abc_content_c_only(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_no_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        d = self.intertree_class(tree1, tree2).compare(
+            specific_files=['b/c'])
+        self.assertEqual(
+            [(u'b', 'b-id', 'directory'), ('b/c', 'c-id', 'file')], d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
         self.assertEqual([], d.renamed)
@@ -233,7 +247,7 @@ class TestCompare(TestCaseWithTwoTrees):
         tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
         d = self.intertree_class(tree1, tree2).compare(specific_files=['b'])
         self.assertEqual(
-            [('b', 'b-id', 'directory'),('b/c', 'c-id', 'file')],
+            [('b', 'b-id', 'directory'), ('b/c', 'c-id', 'file')],
             d.added)
         self.assertEqual([], d.modified)
         self.assertEqual([], d.removed)
@@ -350,6 +364,38 @@ class TestCompare(TestCaseWithTwoTrees):
 class TestIterChanges(TestCaseWithTwoTrees):
     """Test the comparison iterator"""
 
+    def assertEqualIterChanges(self, left_changes, right_changes):
+        """Assert that left_changes == right_changes.
+
+        :param left_changes: A list of the output from iter_changes.
+        :param right_changes: A list of the output from iter_changes.
+        """
+        left_changes = sorted(left_changes)
+        right_changes = sorted(right_changes)
+        if left_changes == right_changes:
+            return
+        # setify to get item by item differences, but we can only do this
+        # when all the ids are unique on both sides.
+        left_dict = dict((item[0], item) for item in left_changes)
+        right_dict = dict((item[0], item) for item in right_changes)
+        if (len(left_dict) != len(left_changes) or
+            len(right_dict) != len(right_changes)):
+            # Can't do a direct comparison. We could do a sequence diff, but
+            # for now just do a regular assertEqual for now.
+            self.assertEqual(left_changes, right_changes)
+        keys = set(left_dict).union(set(right_dict))
+        different = []
+        same = []
+        for key in keys:
+            left_item = left_dict.get(key)
+            right_item = right_dict.get(key)
+            if left_item == right_item:
+                same.append(str(left_item))
+            else:
+                different.append(" %s\n %s" % (left_item, right_item))
+        self.fail("iter_changes output different. Unchanged items:\n" +
+            "\n".join(same) + "\nChanged items:\n" + "\n".join(different))
+
     def do_iter_changes(self, tree1, tree2, **extra_args):
         """Helper to run iter_changes from tree1 to tree2.
 
@@ -379,12 +425,14 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 # Neither tree can be used
                 return
         tree1.lock_read()
-        tree2.lock_read()
         try:
-            return tree2.has_changes(tree1)
+            tree2.lock_read()
+            try:
+                return tree2.has_changes(tree1)
+            finally:
+                tree2.unlock()
         finally:
             tree1.unlock()
-            tree2.unlock()
 
     def mutable_trees_to_locked_test_trees(self, tree1, tree2):
         """Convert the working trees into test trees.
@@ -572,10 +620,13 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         self.assertEqual(
-            [self.added(tree2, 'a-id')],
+            sorted([self.added(tree2, 'root-id'),
+             self.added(tree2, 'a-id'),
+             self.deleted(tree1, 'empty-root-id')]),
             self.do_iter_changes(tree1, tree2, specific_files=['a']))
 
-    def test_abc_content_to_empty_to_abc_content_a_only(self):
+    def test_abc_content_to_empty_a_only(self):
+        # For deletes we don't need to pickup parents.
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_abc_content(tree1)
@@ -585,13 +636,26 @@ class TestIterChanges(TestCaseWithTwoTrees):
             [self.deleted(tree1, 'a-id')],
             self.do_iter_changes(tree1, tree2, specific_files=['a']))
 
+    def test_abc_content_to_empty_b_only(self):
+        # When b stops being a directory we have to pick up b/c as well.
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_tree_no_parents_no_content(tree2)
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        self.assertEqual(
+            [self.deleted(tree1, 'b-id'), self.deleted(tree1, 'c-id')],
+            self.do_iter_changes(tree1, tree2, specific_files=['b']))
+
     def test_empty_to_abc_content_a_and_c_only(self):
         tree1 = self.make_branch_and_tree('1')
         tree2 = self.make_to_branch_and_tree('2')
         tree1 = self.get_tree_no_parents_no_content(tree1)
         tree2 = self.get_tree_no_parents_abc_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        expected_result = [self.added(tree2, 'a-id'), self.added(tree2, 'c-id')]
+        expected_result = sorted([self.added(tree2, 'root-id'),
+            self.added(tree2, 'a-id'), self.added(tree2, 'b-id'),
+            self.added(tree2, 'c-id'), self.deleted(tree1, 'empty-root-id')])
         self.assertEqual(expected_result,
             self.do_iter_changes(tree1, tree2, specific_files=['a', 'b/c']))
 
@@ -601,17 +665,10 @@ class TestIterChanges(TestCaseWithTwoTrees):
         tree1 = self.get_tree_no_parents_abc_content(tree1)
         tree2 = self.get_tree_no_parents_no_content(tree2)
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
-        def deleted(file_id):
-            entry = tree1.inventory[file_id]
-            path = tree1.id2path(file_id)
-            return (file_id, (path, None), True, (True, False),
-                    (entry.parent_id, None),
-                    (entry.name, None), (entry.kind, None),
-                    (entry.executable, None))
         expected_results = sorted([
             self.added(tree2, 'empty-root-id'),
-            deleted('root-id'), deleted('a-id'),
-            deleted('b-id'), deleted('c-id')])
+            self.deleted(tree1, 'root-id'), self.deleted(tree1, 'a-id'),
+            self.deleted(tree1, 'b-id'), self.deleted(tree1, 'c-id')])
         self.assertEqual(
             expected_results,
             self.do_iter_changes(tree1, tree2))
@@ -678,6 +735,206 @@ class TestIterChanges(TestCaseWithTwoTrees):
                            (root_id, root_id), ('a', 'd'), ('file', 'file'),
                            (False, False))],
                          self.do_iter_changes(tree1, tree2))
+
+    def test_specific_content_modification_grabs_parents(self):
+        # WHen the only direct change to a specified file is a content change,
+        # and its in a reparented subtree, the parents are grabbed.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('changing', 'parent-id')
+        tree1.mkdir('changing/unchanging', 'mid-id')
+        tree1.add(['changing/unchanging/file'], ['file-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('file-id', 'a file')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('changed', 'parent-id')
+        tree2.mkdir('changed/unchanging', 'mid-id')
+        tree2.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('file-id', 'changed content')
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        # parent-id has changed, as has file-id
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'parent-id', False),
+             self.renamed(tree1, tree2, 'file-id', True)],
+             self.do_iter_changes(tree1, tree2,
+             specific_files=['changed/unchanging/file']))
+
+    def test_specific_content_modification_grabs_parents_root_changes(self):
+        # WHen the only direct change to a specified file is a content change,
+        # and its in a reparented subtree, the parents are grabbed, even if
+        # that includes the root.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.set_root_id('old')
+        tree1.mkdir('changed', 'parent-id')
+        tree1.mkdir('changed/unchanging', 'mid-id')
+        tree1.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('file-id', 'a file')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id('new')
+        tree2.mkdir('changed', 'parent-id')
+        tree2.mkdir('changed/unchanging', 'mid-id')
+        tree2.add(['changed/unchanging/file'], ['file-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('file-id', 'changed content')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # old is gone, new is added, parent-id has changed(reparented), as has
+        # file-id(content)
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'parent-id', False),
+             self.added(tree2, 'new'),
+             self.deleted(tree1, 'old'),
+             self.renamed(tree1, tree2, 'file-id', True)],
+             self.do_iter_changes(tree1, tree2,
+             specific_files=['changed/unchanging/file']))
+
+    def test_specific_with_rename_under_new_dir_reports_new_dir(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content_7(tree2)
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        # d(d-id) is new, e is b-id renamed. 
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'b-id', False),
+             self.added(tree2, 'd-id')],
+             self.do_iter_changes(tree1, tree2, specific_files=['d/e']))
+
+    def test_specific_with_rename_under_dir_under_new_dir_reports_new_dir(self):
+        tree1 = self.make_branch_and_tree('1')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree1 = self.get_tree_no_parents_abc_content(tree1)
+        tree2 = self.get_tree_no_parents_abc_content_7(tree2)
+        tree2.rename_one('a', 'd/e/a')
+        tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        # d is new, d/e is b-id renamed, d/e/a is a-id renamed 
+        root_id = tree1.path2id('')
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, 'b-id', False),
+             self.added(tree2, 'd-id'),
+             self.renamed(tree1, tree2, 'a-id', False)],
+             self.do_iter_changes(tree1, tree2, specific_files=['d/e/a']))
+
+    def test_specific_old_parent_same_path_new_parent(self):
+        # when a parent is new at its path, if the path was used in the source
+        # it must be emitted as a change.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.add(['a'], ['a-id'], ['file'])
+        tree1.put_file_bytes_non_atomic('a-id', 'a file')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('a', 'b-id')
+        tree2.add(['a/c'], ['c-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('c-id', 'another file')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # a-id is gone, b-id and c-id are added.
+        self.assertEqualIterChanges(
+            [self.deleted(tree1, 'a-id'),
+             self.added(tree2, 'b-id'),
+             self.added(tree2, 'c-id')],
+             self.do_iter_changes(tree1, tree2, specific_files=['a/c']))
+
+    def test_specific_old_parent_becomes_file(self):
+        # When an old parent included because of a path conflict becomes a
+        # non-directory, its children have to be all included in the delta.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('a', 'a-old-id')
+        tree1.mkdir('a/reparented', 'reparented-id')
+        tree1.mkdir('a/deleted', 'deleted-id')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('a', 'a-new-id')
+        tree2.mkdir('a/reparented', 'reparented-id')
+        tree2.add(['b'], ['a-old-id'], ['file'])
+        tree2.put_file_bytes_non_atomic('a-old-id', '')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # a-old-id is kind-changed, a-new-id is added, reparented-id is renamed,
+        # deleted-id is gone
+        self.assertEqualIterChanges(
+            [self.kind_changed(tree1, tree2, 'a-old-id'),
+             self.added(tree2, 'a-new-id'),
+             self.renamed(tree1, tree2, 'reparented-id', False),
+             self.deleted(tree1, 'deleted-id')],
+             self.do_iter_changes(tree1, tree2,
+                specific_files=['a/reparented']))
+
+    def test_specific_old_parent_is_deleted(self):
+        # When an old parent included because of a path conflict is removed,
+        # its children have to be all included in the delta.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('a', 'a-old-id')
+        tree1.mkdir('a/reparented', 'reparented-id')
+        tree1.mkdir('a/deleted', 'deleted-id')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('a', 'a-new-id')
+        tree2.mkdir('a/reparented', 'reparented-id')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # a-old-id is gone, a-new-id is added, reparented-id is renamed,
+        # deleted-id is gone
+        self.assertEqualIterChanges(
+            [self.deleted(tree1, 'a-old-id'),
+             self.added(tree2, 'a-new-id'),
+             self.renamed(tree1, tree2, 'reparented-id', False),
+             self.deleted(tree1, 'deleted-id')],
+             self.do_iter_changes(tree1, tree2,
+                specific_files=['a/reparented']))
+
+    def test_specific_old_parent_child_collides_with_unselected_new(self):
+        # When the child of an old parent because of a path conflict becomes a
+        # path conflict with some unselected item in the source, that item also
+        # needs to be included (because otherwise the output of applying the
+        # delta to the source would have two items at that path).
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('a', 'a-old-id')
+        tree1.mkdir('a/reparented', 'reparented-id')
+        tree1.mkdir('collides', 'collides-id')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('a', 'a-new-id')
+        tree2.mkdir('a/selected', 'selected-id')
+        tree2.mkdir('collides', 'reparented-id')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # a-old-id is one, a-new-id is added, reparented-id is renamed,
+        # collides-id is gone, selected-id is new.
+        self.assertEqualIterChanges(
+            [self.deleted(tree1, 'a-old-id'),
+             self.added(tree2, 'a-new-id'),
+             self.renamed(tree1, tree2, 'reparented-id', False),
+             self.deleted(tree1, 'collides-id'),
+             self.added(tree2, 'selected-id')],
+             self.do_iter_changes(tree1, tree2,
+                specific_files=['a/selected']))
+
+    def test_specific_old_parent_child_dir_stops_being_dir(self):
+        # When the child of an old parent also stops being a directory, its
+        # children must also be included. This test checks that downward
+        # recursion is done appropriately by starting at a child of the root of
+        # a deleted subtree (a/reparented), and checking that a sibling
+        # directory (a/deleted) has its children included in the delta.
+        tree1 = self.make_branch_and_tree('1')
+        tree1.mkdir('a', 'a-old-id')
+        tree1.mkdir('a/reparented', 'reparented-id-1')
+        tree1.mkdir('a/deleted', 'deleted-id-1')
+        tree1.mkdir('a/deleted/reparented', 'reparented-id-2')
+        tree1.mkdir('a/deleted/deleted', 'deleted-id-2')
+        tree2 = self.make_to_branch_and_tree('2')
+        tree2.set_root_id(tree1.get_root_id())
+        tree2.mkdir('a', 'a-new-id')
+        tree2.mkdir('a/reparented', 'reparented-id-1')
+        tree2.mkdir('reparented', 'reparented-id-2')
+        tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
+        # a-old-id is gone, a-new-id is added, reparented-id-1, -2 are renamed,
+        # deleted-id-1 and -2 are gone.
+        self.assertEqualIterChanges(
+            [self.deleted(tree1, 'a-old-id'),
+             self.added(tree2, 'a-new-id'),
+             self.renamed(tree1, tree2, 'reparented-id-1', False),
+             self.renamed(tree1, tree2, 'reparented-id-2', False),
+             self.deleted(tree1, 'deleted-id-1'),
+             self.deleted(tree1, 'deleted-id-2')],
+             self.do_iter_changes(tree1, tree2,
+                specific_files=['a/reparented']))
 
     def test_file_rename_and_meta_modification(self):
         tree1 = self.make_branch_and_tree('1')
@@ -1148,15 +1405,16 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         tree1, tree2 = self.mutable_trees_to_locked_test_trees(tree1, tree2)
         # We should notice that 'b' and all its children are deleted
-        expected = sorted([
+        expected = [
             self.content_changed(tree2, 'a-id'),
             self.content_changed(tree2, 'g-id'),
             self.deleted(tree1, 'b-id'),
             self.deleted(tree1, 'c-id'),
             self.deleted(tree1, 'd-id'),
             self.deleted(tree1, 'e-id'),
-            ])
-        self.assertEqual(expected, self.do_iter_changes(tree1, tree2))
+            ]
+        self.assertEqualIterChanges(expected,
+            self.do_iter_changes(tree1, tree2))
         self.check_has_changes(True, tree1, tree2)
 
     def test_added_unicode(self):
@@ -1273,9 +1531,9 @@ class TestIterChanges(TestCaseWithTwoTrees):
 
         self.assertEqual([self.renamed(tree1, tree2, rename_id, False)],
                          self.do_iter_changes(tree1, tree2))
-        self.assertEqual([self.renamed(tree1, tree2, rename_id, False)],
-                         self.do_iter_changes(tree1, tree2,
-                                              specific_files=[u'\u03b1']))
+        self.assertEqualIterChanges(
+            [self.renamed(tree1, tree2, rename_id, False)],
+            self.do_iter_changes(tree1, tree2, specific_files=[u'\u03b1']))
         self.check_has_changes(True, tree1, tree2)
 
     def test_unchanged_unicode(self):
@@ -1323,9 +1581,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
             self.unchanged(tree1, subfile_id),
             ])
         self.assertEqual(expected,
-                         self.do_iter_changes(tree1, tree2,
-                                              specific_files=[u'\u03b1'],
-                                              include_unchanged=True))
+            self.do_iter_changes(tree1, tree2, specific_files=[u'\u03b1'],
+                include_unchanged=True))
 
     def test_unknown_unicode(self):
         tree1 = self.make_branch_and_tree('tree1')

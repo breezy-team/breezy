@@ -226,13 +226,21 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._recordTestStartTime()
 
     def startTests(self):
+        import platform
+        if getattr(sys, 'frozen', None) is None:
+            bzr_path = osutils.realpath(sys.argv[0])
+        else:
+            bzr_path = sys.executable
         self.stream.write(
-            'testing: %s\n' % (osutils.realpath(sys.argv[0]),))
+            'testing: %s\n' % (bzr_path,))
         self.stream.write(
-            '   %s (%s python%s)\n' % (
-                    bzrlib.__path__[0],
+            '   %s\n' % (
+                    bzrlib.__path__[0],))
+        self.stream.write(
+            '   bzr-%s python-%s %s\n' % (
                     bzrlib.version_string,
                     bzrlib._format_version_tuple(sys.version_info),
+                    platform.platform(aliased=1),
                     ))
         self.stream.write('\n')
 
@@ -814,7 +822,6 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
-        # Track locks - needs to be called before _clear_debug_flags.
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
@@ -843,6 +850,8 @@ class TestCase(unittest.TestCase):
         self._preserved_debug_flags = set(debug.debug_flags)
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
+        if 'disable_lock_checks' not in selftest_debug_flags:
+            debug.debug_flags.add('strict_locks')
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -870,11 +879,9 @@ class TestCase(unittest.TestCase):
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
-        # once we have fixed all the current lock problems, we can change the
-        # following code to always check for mismatched locks, but only do
-        # traceback showing with -Dlock (self._lock_check_thorough is True).
-        # For now, because the test suite will fail, we only assert that lock
-        # matching has occured with -Dlock.
+        # We always check for mismatched locks. If a mismatch is found, we
+        # fail unless -Edisable_lock_checks is supplied to selftest, in which
+        # case we just print a warning.
         # unhook:
         acquired_locks = [lock for action, lock in self._lock_actions
                           if action == 'acquired']
@@ -899,7 +906,11 @@ class TestCase(unittest.TestCase):
     def _track_locks(self):
         """Track lock activity during tests."""
         self._lock_actions = []
-        self._lock_check_thorough = 'lock' not in debug.debug_flags
+        if 'disable_lock_checks' in selftest_debug_flags:
+            self._lock_check_thorough = False
+        else:
+            self._lock_check_thorough = True
+            
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -1320,6 +1331,19 @@ class TestCase(unittest.TestCase):
     def setKeepLogfile(self):
         """Make the logfile not be deleted when _finishLogFile is called."""
         self._keep_log_file = True
+
+    def thisFailsStrictLockCheck(self):
+        """It is known that this test would fail with -Dstrict_locks.
+
+        By default, all tests are run with strict lock checking unless
+        -Edisable_lock_checks is supplied. However there are some tests which
+        we know fail strict locks at this point that have not been fixed.
+        They should call this function to disable the strict checking.
+
+        This should be used sparingly, it is much better to fix the locking
+        issues rather than papering over the problem by calling this function.
+        """
+        debug.debug_flags.discard('strict_locks')
 
     def addCleanup(self, callable, *args, **kwargs):
         """Arrange to run a callable when this case is torn down.
@@ -1938,6 +1962,16 @@ class TestCase(unittest.TestCase):
         sio.encoding = output_encoding
         return sio
 
+    def disable_verb(self, verb):
+        """Disable a smart server verb for one test."""
+        from bzrlib.smart import request
+        request_handlers = request.request_handlers
+        orig_method = request_handlers.get(verb)
+        request_handlers.remove(verb)
+        def restoreVerb():
+            request_handlers.register(verb, orig_method)
+        self.addCleanup(restoreVerb)
+
 
 class CapturedCall(object):
     """A helper for capturing smart server calls for easy debug analysis."""
@@ -2310,7 +2344,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def _getTestDirPrefix(self):
         # create a directory within the top level test directory
-        if sys.platform == 'win32':
+        if sys.platform in ('win32', 'cygwin'):
             name_prefix = re.sub('[<>*=+",:;_/\\-]', '_', self.id())
             # windows is likely to have path-length limits so use a short name
             name_prefix = name_prefix[-30:]
@@ -2764,8 +2798,11 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
         decorators.append(filter_tests(pattern))
     if suite_decorators:
         decorators.extend(suite_decorators)
-    # tell the result object how many tests will be running:
-    decorators.append(CountingDecorator)
+    # tell the result object how many tests will be running: (except if
+    # --parallel=fork is being used. Robert said he will provide a better
+    # progress design later -- vila 20090817)
+    if fork_decorator not in decorators:
+        decorators.append(CountingDecorator)
     for decorator in decorators:
         suite = decorator(suite)
     result = runner.run(suite)
@@ -3145,6 +3182,13 @@ class BZRTransformingResult(unittest.TestResult):
 
 
 # Controlled by "bzr selftest -E=..." option
+# Currently supported:
+#   -Eallow_debug           Will no longer clear debug.debug_flags() so it
+#                           preserves any flags supplied at the command line.
+#   -Edisable_lock_checks   Turns errors in mismatched locks into simple prints
+#                           rather than failing tests. And no longer raise
+#                           LockContention when fctnl locks are not being used
+#                           with proper exclusion rules.
 selftest_debug_flags = set()
 
 
@@ -3163,6 +3207,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              starting_with=None,
              runner_class=None,
              suite_decorators=None,
+             stream=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -3185,10 +3230,18 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
             keep_only = None
         else:
             keep_only = load_test_id_list(load_list)
+        if starting_with:
+            starting_with = [test_prefix_alias_registry.resolve_alias(start)
+                             for start in starting_with]
         if test_suite_factory is None:
+            # Reduce loading time by loading modules based on the starting_with
+            # patterns.
             suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
+        if starting_with:
+            # But always filter as requested.
+            suite = filter_suite_by_id_startswith(suite, starting_with)
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure,
                      transport=transport,
@@ -3201,6 +3254,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      strict=strict,
                      runner_class=runner_class,
                      suite_decorators=suite_decorators,
+                     stream=stream,
                      )
     finally:
         default_transport = old_transport
@@ -3386,9 +3440,11 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_lock',
                    'bzrlib.tests.per_transport',
                    'bzrlib.tests.per_tree',
+                   'bzrlib.tests.per_pack_repository',
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_versionedfile',
                    'bzrlib.tests.per_workingtree',
                    'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
@@ -3422,6 +3478,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_counted_lock',
+                   'bzrlib.tests.test_crash',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_debug',
@@ -3460,6 +3517,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_knit',
                    'bzrlib.tests.test_lazy_import',
                    'bzrlib.tests.test_lazy_regex',
+                   'bzrlib.tests.test_lock',
                    'bzrlib.tests.test_lockable_files',
                    'bzrlib.tests.test_lockdir',
                    'bzrlib.tests.test_log',
@@ -3480,7 +3538,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_osutils',
                    'bzrlib.tests.test_osutils_encodings',
                    'bzrlib.tests.test_pack',
-                   'bzrlib.tests.test_pack_repository',
                    'bzrlib.tests.test_patch',
                    'bzrlib.tests.test_patches',
                    'bzrlib.tests.test_permissions',
@@ -3540,7 +3597,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
-                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -3555,8 +3611,6 @@ def test_suite(keep_only=None, starting_with=None):
     if keep_only is not None:
         id_filter = TestIdList(keep_only)
     if starting_with:
-        starting_with = [test_prefix_alias_registry.resolve_alias(start)
-                         for start in starting_with]
         # We take precedence over keep_only because *at loading time* using
         # both options means we will load less tests for the same final result.
         def interesting_module(name):
@@ -3636,9 +3690,6 @@ def test_suite(keep_only=None, starting_with=None):
                 sys.getdefaultencoding())
             reload(sys)
             sys.setdefaultencoding(default_encoding)
-
-    if starting_with:
-        suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
@@ -3773,13 +3824,11 @@ def _rmtree_temp_dir(dirname):
     try:
         osutils.rmtree(dirname)
     except OSError, e:
-        if sys.platform == 'win32' and e.errno == errno.EACCES:
-            sys.stderr.write('Permission denied: '
-                             'unable to remove testing dir '
-                             '%s\n%s'
-                             % (os.path.basename(dirname), e))
-        else:
-            raise
+        # We don't want to fail here because some useful display will be lost
+        # otherwise. Polluting the tmp dir is bad, but not giving all the
+        # possible info to the test runner is even worse.
+        sys.stderr.write('Unable to remove testing dir %s\n%s'
+                         % (os.path.basename(dirname), e))
 
 
 class Feature(object):

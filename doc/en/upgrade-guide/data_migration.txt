@@ -34,7 +34,7 @@ before and after runing **upgrade**.
 
 For detailed help on these commands, see the `Bazaar User Reference`_.
 
-.. _Bazaar User Reference: ../user-reference/bzr_man.html
+.. _Bazaar User Reference: ../user-reference/index.html
 
 
 Communicating with your community

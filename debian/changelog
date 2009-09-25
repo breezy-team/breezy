@@ -1,3 +1,9 @@
+bzr (2.0.0-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- John Francesco Ferlito <johnf@inodes.org>  Fri, 25 Sep 2009 13:28:28 +1000
+
 bzr (1.18-1) unstable; urgency=low
 
   [ James Westby ]
