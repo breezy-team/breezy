@@ -183,13 +183,38 @@ bzr 2.0.1 (Not Released Yet)
 Bug Fixes
 *********
 
+* Improve the time for ``bzr log DIR`` for 2a format repositories.
+  We had been using the same code path as for <2a formats, which required
+  iterating over all objects in all revisions.
+  (John Arbash Meinel, #374730)
+
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
 
 
-bzr 2.0.0 (Not Released Yet)
-############################
+bzr 2.0.0
+#########
+
+:2.0.0: 2009-09-22
+:Codename: Instant Karma
+
+This release of Bazaar makes the 2a (previously 'brisbane-core') format
+the default when new branches or repositories are created.  This format is
+substantially smaller and faster for many operations.  Most of the work in
+this release focuses on bug fixes and stabilization, covering both 2a and
+previous formats.  (See the Upgrade Guide for information on migrating
+existing projects.)
+
+This release also improves the documentation content and presentation,
+including adding Windows HtmlHelp manuals.
+
+The Bazaar team decided that 2.0 will be a long-term supported release,
+with bugfix-only 2.0.x releases based on it, continuing for at least six
+months or until the following stable release.
+
+Changes from 2.0.0rc2 to final
+******************************
 
 * Officially branded as 2.0.0 rather than 2.0 to clarify between things
   that "want to happen on the 2.0.x stable series" versus things that want
@@ -296,14 +321,6 @@ bzr 2.0.0rc1
 
 :Codename: no worries
 :2.0.0rc1: 2009-08-26
-
-This release of Bazaar makes 2a 'brisbane-core' format the
-default.  Most of the work in this release now focuses on bug
-fixes and stabilization, covering both 2a and previous formats.
-
-The Bazaar team decided that 2.0 will be a long-term supported
-release, with bugfix-only releases based on it, continuing for at
-least six months or until the following stable release.
 
 Compatibility Breaks
 ********************
