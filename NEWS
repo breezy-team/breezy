@@ -15,6 +15,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Bazaar can now send mail through Apple OS X Mail.app. 
+  (Brian de Alwis)
+
 * ``bzr+ssh`` and ``bzr`` paths can now be relative to home directories
   specified in the URL.  Paths starting with a path segment of ``~`` are
   relative to the home directory of the user running the server, and paths
