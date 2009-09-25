@@ -25,6 +25,7 @@ from bzrlib import (
     symbol_versioning,
     tree,
     )
+from bzrlib.decorators import cleanup_method
 
 
 class RevisionTree(tree.Tree):
@@ -180,6 +181,7 @@ class RevisionTree(tree.Tree):
         return '<%s instance at %x, rev_id=%r>' % (
             self.__class__.__name__, id(self), self._revision_id)
 
+    @cleanup_method
     def unlock(self):
         self._repository.unlock()
 

@@ -30,6 +30,7 @@ import os
 from bzrlib import (
     errors,
     )
+from bzrlib.decorators import cleanup_method
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -129,6 +130,7 @@ class ProgressTask(object):
     def tick(self):
         self.update(self.msg)
 
+    @cleanup_method
     def finished(self):
         if self.progress_view:
             self.progress_view.task_finished(self)
@@ -235,6 +237,7 @@ class _BaseProgressBar(object):
         # next update should not throttle
         self.last_update = now - self.MIN_PAUSE - 1
 
+    @cleanup_method
     def finished(self):
         """Return this bar to its progress stack."""
         self.clear()
