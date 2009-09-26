@@ -5,11 +5,14 @@
   * Cope with ghosts a bit better during "bzr dpush".
     (Jelmer Vernooij)
 
-  * Better error message when Dulwich is missing. (#427276)
+  * Better error message when Dulwich is missing. (#427276, Jelmer Vernooij)
 
-  * Support checkouts. (#427310)
+  * Support checkouts. (#427310, Jelmer Vernooij)
   
-  * Don't break "bzr info -v" when Dulwich is not installed. (#429394)
+  * Don't break "bzr info -v" when Dulwich is not installed. (#429394, 
+															  Jelmer Vernooij)
+
+  * Mark as compatible with Bazaar 2.1. (Jelmer Vernooij)
 
  FEATURES
 
