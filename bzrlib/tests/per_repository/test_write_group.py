@@ -77,25 +77,6 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.commit_write_group()
         repo.unlock()
 
-    def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
-        """
-        from bzrlib import trace
-        captured = []
-        orig_log_exception_quietly = trace.log_exception_quietly
-        try:
-            def capture():
-                orig_log_exception_quietly()
-                captured.append(sys.exc_info())
-            trace.log_exception_quietly = capture
-            func(*args, **kwargs)
-        finally:
-            trace.log_exception_quietly = orig_log_exception_quietly
-        self.assertLength(1, captured)
-        err = captured[0][1]
-        self.assertIsInstance(err, exception_class)
-        return err
-
     def test_unlock_in_write_group(self):
         repo = self.make_repository('.')
         repo.lock_write()
