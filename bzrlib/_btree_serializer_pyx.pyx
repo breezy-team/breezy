@@ -234,6 +234,7 @@ cdef class BTreeLeafParser:
             loop_counter = 0
             while loop_counter < self.ref_list_length:
                 ref_list = []
+                ref_list_extend = ref_list.extend
                 # extract a reference list
                 loop_counter = loop_counter + 1
                 if last < self._start:
@@ -262,9 +263,10 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
-                    PyList_Append(ref_list, self.extract_key(temp_ptr))
-                # ref_list = _keys_type_c.Keys(self.key_length, *ref_list)
-                ref_list = tuple(ref_list)
+                    # PyList_Append(ref_list, self.extract_key(temp_ptr))
+                    ref_list_extend(self.extract_key(temp_ptr))
+                # ref_list = tuple(ref_list)
+                ref_list = _keys_type_c.Keys(self.key_length, *ref_list)
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
