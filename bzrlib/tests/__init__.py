@@ -4251,6 +4251,28 @@ class _UTF8Filesystem(Feature):
 UTF8Filesystem = _UTF8Filesystem()
 
 
+class _BreakinFeature(Feature):
+    """Does this platform support the breakin feature?"""
+
+    def _probe(self):
+        from bzrlib import breakin
+        if breakin.determine_signal() is None:
+            return False
+        if sys.platform == 'win32':
+            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
+            # We trigger SIGBREAK via a Console api so we need ctypes to
+            # access the function
+            if not have_ctypes:
+                return False
+        return True
+
+    def feature_name(self):
+        return "SIGQUIT or SIGBREAK w/ctypes on win32"
+
+
+BreakinFeature = _BreakinFeature()
+
+
 class _CaseInsCasePresFilenameFeature(Feature):
     """Is the file-system case insensitive, but case-preserving?"""
 
