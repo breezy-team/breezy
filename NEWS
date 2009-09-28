@@ -2,6 +2,37 @@
 Bazaar Release Notes
 ####################
 
+2.0 series (not released)
+#########################
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
+  filename will issue a warning and skip over those files.
+  (Robert Collins, #3918)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
 bzr 2.0.1
 ##########
 
