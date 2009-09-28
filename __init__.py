@@ -39,6 +39,15 @@ If you need to re-upload the whole working tree for some reason, you can:
 
     bzr upload --full sftp://user@host/location/on/webserver
 
+This command only works on the revision beening uploaded is a decendent of the
+revision that was previously uploaded, and that they are hence from branches
+that have not diverged. Branches are considered diverged if the destination
+branch's most recent commit is one that has not been merged (directly or
+indirectly) by the source branch.
+
+If branches have diverged, you can use 'bzr upload --overwrite' to replace
+the other branch completely, discarding its unmerged changes.
+
 
 Automatically Uploading
 -----------------------
@@ -492,6 +501,7 @@ class cmd_upload(commands.Command):
     takes_options = [
         'revision',
         'remember',
+        'overwrite',
         option.Option('full', 'Upload the full working tree.'),
         option.Option('quiet', 'Do not output what is being done.',
                        short_name='q'),
@@ -507,7 +517,7 @@ class cmd_upload(commands.Command):
        ]
 
     def run(self, location=None, full=False, revision=None, remember=None,
-            directory=None, quiet=False, auto=None
+            directory=None, quiet=False, auto=None, overwrite=False
             ):
         if directory is None:
             directory = u'.'
@@ -518,57 +528,73 @@ class cmd_upload(commands.Command):
 
         (wt, branch,
          relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-
+        
         if wt:
-            changes = wt.changes_from(wt.basis_tree())
-
-            if revision is None and  changes.has_changed():
-                raise errors.UncommittedChanges(wt)
-
-        if location is None:
-            stored_loc = get_upload_location(branch)
-            if stored_loc is None:
-                raise errors.BzrCommandError('No upload location'
-                                             ' known or specified.')
-            else:
-                # FIXME: Not currently tested
-                display_url = urlutils.unescape_for_display(stored_loc,
-                        self.outf.encoding)
-                self.outf.write("Using saved location: %s\n" % display_url)
-                location = stored_loc
-
-        to_transport = transport.get_transport(location)
-
-        # Check that we are not uploading to a existing working tree.
+            wt.lock_read()
+        else:
+            branch.lock_read()
         try:
-            to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
-            has_wt = to_bzr_dir.has_workingtree()
-        except errors.NotBranchError:
-            has_wt = False
-        except errors.NotLocalUrl:
-            # The exception raised is a bit weird... but that's life.
-            has_wt = True
-
-        if has_wt:
-            raise CannotUploadToWorkingTreeError(url=location)
-
-        if revision is None:
-            rev_id = branch.last_revision()
-        else:
-            if len(revision) != 1:
-                raise errors.BzrCommandError(
-                    'bzr upload --revision takes exactly 1 argument')
-            rev_id = revision[0].in_history(branch).rev_id
-
-        tree = branch.repository.revision_tree(rev_id)
-
-        uploader = BzrUploader(branch, to_transport, self.outf, tree,
-                               rev_id, quiet=quiet)
-
-        if full:
-            uploader.upload_full_tree()
-        else:
-            uploader.upload_tree()
+            if wt:
+                changes = wt.changes_from(wt.basis_tree())
+    
+                if revision is None and  changes.has_changed():
+                    raise errors.UncommittedChanges(wt)
+    
+            if location is None:
+                stored_loc = get_upload_location(branch)
+                if stored_loc is None:
+                    raise errors.BzrCommandError('No upload location'
+                                                 ' known or specified.')
+                else:
+                    # FIXME: Not currently tested
+                    display_url = urlutils.unescape_for_display(stored_loc,
+                            self.outf.encoding)
+                    self.outf.write("Using saved location: %s\n" % display_url)
+                    location = stored_loc
+    
+            to_transport = transport.get_transport(location)
+    
+            # Check that we are not uploading to a existing working tree.
+            try:
+                to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
+                has_wt = to_bzr_dir.has_workingtree()
+            except errors.NotBranchError:
+                has_wt = False
+            except errors.NotLocalUrl:
+                # The exception raised is a bit weird... but that's life.
+                has_wt = True
+    
+            if has_wt:
+                raise CannotUploadToWorkingTreeError(url=location)
+    
+            if revision is None:
+                rev_id = branch.last_revision()
+            else:
+                if len(revision) != 1:
+                    raise errors.BzrCommandError(
+                        'bzr upload --revision takes exactly 1 argument')
+                rev_id = revision[0].in_history(branch).rev_id
+    
+            tree = branch.repository.revision_tree(rev_id)
+    
+            uploader = BzrUploader(branch, to_transport, self.outf, tree,
+                                   rev_id, quiet=quiet)
+            
+            if not overwrite:
+                prev_uploaded_rev_id = uploader.get_uploaded_revid()
+                graph = branch.repository.get_graph()
+                if not graph.is_ancestor(prev_uploaded_rev_id, rev_id):
+                    raise DivergedError(rev_id, prev_uploaded_rev_id)
+    
+            if full:
+                uploader.upload_full_tree()
+            else:
+                uploader.upload_tree()
+        finally:
+            if wt:
+                wt.unlock()
+            else:
+                branch.unlock()
 
         # We uploaded successfully, remember it
         if get_upload_location(branch) is None or remember:
@@ -592,6 +618,17 @@ if hasattr(branch.Branch.hooks, "install_named_hook"):
 else:
     auto_hook_available = False
 
+class DivergedError(errors.BzrError):
+
+    _fmt = ("The revision upload to this location is from a branch that is "
+            "diverged from this branch: %(upload_revid) \n")
+    
+    # We should probably tell the user to use merge on the diverged branch,
+    # but how do we explan which branch they need to merge from!
+
+    def __init__(self, revid, upload_revid):
+        self.revid = revid
+        self.upload_revid = upload_revid
 
 def load_tests(basic_tests, module, loader):
     # This module shouldn't define any tests but I don't know how to report

@@ -44,7 +44,7 @@ from bzrlib.plugins.upload import (
     cmd_upload,
     get_upload_auto,
     CannotUploadToWorkingTreeError,
-    BzrUploader,
+    DivergedError,
     )
 
 
@@ -641,7 +641,7 @@ class TestUploadDiverged(tests.TestCaseWithTransport,
     
     def test_cant_upload_diverged(self):
         diverged_tree = self.create_diverged_tree_and_upload_location()
-        self.assertRaises(errors.DivergedBranches, self.do_incremental_upload,
+        self.assertRaises(DivergedError, self.do_incremental_upload,
                           directory=diverged_tree.basedir)
         self.assertUploadRevid('rev2a')
 
