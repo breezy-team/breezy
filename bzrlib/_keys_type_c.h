@@ -25,6 +25,8 @@
 #  endif
 #endif
 
+#define KEY_HAS_HASH 1
+
 /* This defines a single variable-width key.
  * It is basically the same as a tuple, but
  * 1) Lighter weight in memory
@@ -36,7 +38,9 @@
  */
 typedef struct {
     PyObject_VAR_HEAD
+#if KEY_HAS_HASH
     long hash;
+#endif
     PyStringObject *key_bits[1];
 } Key;
 extern PyTypeObject Key_Type;

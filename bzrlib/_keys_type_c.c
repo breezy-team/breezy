@@ -88,7 +88,9 @@ Key_New(Py_ssize_t size)
         return NULL;
     }
     memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
+#if KEY_HAS_HASH
     key->hash = -1;
+#endif
     return (PyObject *)key;
 }
 
@@ -119,7 +121,9 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
+#if KEY_HAS_HASH
     self->hash = -1;
+#endif
     self->ob_size = len;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
@@ -162,9 +166,11 @@ Key_hash(Key *self)
     hashfunc string_hash;
 	long mult = 1000003L;
 
+#if KEY_HAS_HASH
     if (self->hash != -1) {
         return self->hash;
     }
+#endif
 	x = 0x345678L;
 	p = self->key_bits;
     string_hash = PyString_Type.tp_hash;
@@ -183,12 +189,14 @@ Key_hash(Key *self)
 	x += 97531L;
 	if (x == -1)
 		x = -2;
+#if KEY_HAS_HASH
     if (self->hash != -1) {
         if (self->hash != x) {
             fprintf(stderr, "hash changed: %d => %d\n", self->hash, x);
         }
     }
     self->hash = x;
+#endif
 	return x;
 }
 
