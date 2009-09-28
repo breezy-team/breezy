@@ -243,15 +243,19 @@ class BzrUploader(object):
         self.quiet = quiet
         self._pending_deletions = []
         self._pending_renames = []
+        self._uploaded_revid = None
 
     def set_uploaded_revid(self, rev_id):
         # XXX: Add tests for concurrent updates, etc.
         revid_path = get_upload_revid_location(self.branch)
         self.to_transport.put_bytes(revid_path, rev_id)
+        self._uploaded_revid = rev_id
 
     def get_uploaded_revid(self):
-        revid_path = get_upload_revid_location(self.branch)
-        return self.to_transport.get_bytes(revid_path)
+        if self._uploaded_revid is None:
+            revid_path = get_upload_revid_location(self.branch)
+            self._uploaded_revid = self.to_transport.get_bytes(revid_path)
+        return self._uploaded_revid
 
     def upload_file(self, relpath, id, mode=None):
         if mode is None:
