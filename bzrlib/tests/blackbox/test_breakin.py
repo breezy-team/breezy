@@ -166,7 +166,7 @@ class TestBreakin(tests.TestCase):
         dead, sig = self._wait_for_process(proc.pid, count=3)
         if not dead:
             # The process didn't finish, let's kill it.
-            dead, sig = self._wait_for_process(proc.pid, 'kill', count=1)
+            dead, sig = self._wait_for_process(proc.pid, 'kill', count=10)
             if not dead:
                 # process isn't gone, user will have to hunt it down and kill
                 # it.
