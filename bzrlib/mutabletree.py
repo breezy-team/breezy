@@ -23,6 +23,7 @@ See MutableTree for more details.
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import os
+import re
 
 from bzrlib import (
     add,
@@ -427,6 +428,7 @@ class MutableTree(tree.Tree):
                 dirs_to_add.append((path, None))
             prev_dir = path.raw_path
 
+        illegalpath_re = re.compile(r'[\r\n]')
         # dirs_to_add is initialised to a list of directories, but as we scan
         # directories we append files to it.
         # XXX: We should determine kind of files when we scan them rather than
@@ -442,6 +444,9 @@ class MutableTree(tree.Tree):
 
             if not InventoryEntry.versionable_kind(kind):
                 warning("skipping %s (can't add file of kind '%s')", abspath, kind)
+                continue
+            if illegalpath_re.search(directory.raw_path):
+                warning("skipping %r (contains \\n or \\r)" % abspath)
                 continue
 
             if parent_ie is not None:
