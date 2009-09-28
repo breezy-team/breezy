@@ -153,6 +153,7 @@ from bzrlib import (
     osutils,
     urlutils,
     workingtree,
+    revision
     )
 """)
 
@@ -254,7 +255,11 @@ class BzrUploader(object):
     def get_uploaded_revid(self):
         if self._uploaded_revid is None:
             revid_path = get_upload_revid_location(self.branch)
-            self._uploaded_revid = self.to_transport.get_bytes(revid_path)
+            try:
+                self._uploaded_revid = self.to_transport.get_bytes(revid_path)
+            except errors.NoSuchFile:
+                # We have not upload to here.
+                self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
 
     def upload_file(self, relpath, id, mode=None):
@@ -392,9 +397,9 @@ class BzrUploader(object):
     def upload_tree(self):
         # If we can't find the revid file on the remote location, upload the
         # full tree instead
-        try:
-            rev_id = self.get_uploaded_revid()
-        except errors.NoSuchFile:
+        rev_id = self.get_uploaded_revid()
+        
+        if rev_id == revision.NULL_REVISION:
             if not self.quiet:
                 self.outf.write('No uploaded revision id found,'
                                 ' switching to full upload\n')
