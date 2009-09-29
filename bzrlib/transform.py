@@ -859,8 +859,8 @@ class TreeTransformBase(object):
     def get_preview_tree(self):
         """Return a tree representing the result of the transform.
 
-        This tree only supports the subset of Tree functionality required
-        by show_diff_trees.  It must only be compared to tt._tree.
+        The tree is a snapshot, and altering the TreeTransform will invalidate
+        it.
         """
         return _PreviewTree(self)
 
