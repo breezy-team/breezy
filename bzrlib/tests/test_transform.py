@@ -2651,11 +2651,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(work_tree.unlock)
         preview = TransformPreview(work_tree)
         self.addCleanup(preview.finalize)
-        preview_tree = preview.get_preview_tree()
         file_trans_id = preview.trans_id_file_id('file-id')
         preview.delete_contents(file_trans_id)
         preview.create_file('a\nb\n', file_trans_id)
         pb = progress.DummyProgress()
+        preview_tree = preview.get_preview_tree()
         merger = Merger.from_revision_ids(pb, preview_tree,
                                           child_tree.branch.last_revision(),
                                           other_branch=child_tree.branch,
