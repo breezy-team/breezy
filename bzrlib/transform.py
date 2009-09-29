@@ -1635,15 +1635,12 @@ class _PreviewTree(tree.Tree):
         self._all_children_cache = {}
         self._path2trans_id_cache = {}
         self._final_name_cache = {}
-
-    def _changes(self, file_id):
-        for changes in self._transform.iter_changes():
-            if changes[0] == file_id:
-                return changes
+        self._iter_changes_cache = dict((c[0], c) for c in
+                                        self._transform.iter_changes())
 
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
-        changes = self._changes(file_id)
+        changes = self._iter_changes_cache.get(file_id)
         # changes[2] is true if the file content changed.  See
         # InterTree.iter_changes.
         return (changes is not None and changes[2])
@@ -1990,7 +1987,7 @@ class _PreviewTree(tree.Tree):
 
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        changes = self._changes(file_id)
+        changes = self._iter_changes_cache.get(file_id)
         if changes is None:
             get_old = True
         else:
