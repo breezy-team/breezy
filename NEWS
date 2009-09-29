@@ -96,6 +96,9 @@ Bug Fixes
   chk_bytes root records.
   (Andrew Bennetts, #423506)
 
+* PreviewTree behaves correctly when get_file_mtime is invoked on an unmodified
+  file. (Aaron Bentley, #251532)
+
 * Registry objects should not use iteritems() when asked to use items().
   (Vincent Ladeuil, #430510)
 
