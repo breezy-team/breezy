@@ -61,6 +61,9 @@ class Key(object):
     def as_tuple(self):
         return self._tuple
 
+    def intern(self):
+        return _intern.setdefault(self, self)
+
 
 
 def Keys(width, *args):

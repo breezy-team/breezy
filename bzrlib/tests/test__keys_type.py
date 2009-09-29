@@ -357,3 +357,21 @@ class TestKeysType(tests.TestCase):
         self.assertIsNot(key, key2)
 
         refcount = sys.getrefcount(key)
+        self.assertEqual(2, refcount)
+
+        # TODO: Eventually the C version will diverge from the python version
+        #       here. Namely, it will follow the String route, and interning()
+        #       a string will not make it immortal. Instead it will remove
+        #       itself from the intern dict when all other references are
+        #       removed.
+        #       Further, the intern dict may become a custom type rather than a
+        #       pure 'dict'.
+        key3 = key.intern()
+        self.assertIs(key, key3)
+        self.assertTrue(key in self.module._intern)
+        self.assertEqual(key, self.module._intern[key])
+        del key3
+        self.assertEqual(4, sys.getrefcount(key))
+        key2 = key2.intern()
+        self.assertEqual(5, sys.getrefcount(key))
+        self.assertIs(key, key2)
