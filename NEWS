@@ -18,6 +18,10 @@ Bug Fixes
   filename will issue a warning and skip over those files.
   (Robert Collins, #3918)
 
+* bzr will attempt to authenticate with SSH servers that support
+  ``keyboard-interactive`` auth but not ``password`` auth when using
+  Paramiko.   (Andrew Bennetts, #433846)
+
 Improvements
 ************
 
