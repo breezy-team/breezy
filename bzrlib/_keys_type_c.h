@@ -25,7 +25,7 @@
 #  endif
 #endif
 
-#define KEY_HAS_HASH 1
+#define KEY_HAS_HASH 0
 
 /* This defines a single variable-width key.
  * It is basically the same as a tuple, but
@@ -64,6 +64,13 @@ typedef struct {
 /* Forward declaration */
 extern PyTypeObject Keys_Type;
 
+typedef struct {
+    PyObject_VAR_HEAD
+    Key *table[1];
+} KeyIntern;
+extern PyTypeObject Key_Type;
+
 #define Key_SET_ITEM(key, offset, val) \
     ((((Key*)key)->key_bits[offset]) = (PyStringObject *)val)
 #define Key_GET_ITEM(key, offset) (((Key*)key)->key_bits[offset])
+

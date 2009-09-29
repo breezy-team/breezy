@@ -22,6 +22,7 @@ import sys
 from bzrlib import (
     _keys_type_py,
     errors,
+    osutils,
     tests,
     )
 
@@ -60,6 +61,21 @@ class _CompiledKeysType(tests.Feature):
 CompiledKeysType = _CompiledKeysType()
 
 
+class _Meliae(tests.Feature):
+
+    def _probe(self):
+        try:
+            from meliae import scanner
+        except ImportError:
+            return False
+        return True
+
+    def feature_name(self):
+        return "Meliae - python memory debugger"
+
+Meliae = _Meliae()
+
+
 class TestKeyType(tests.TestCase):
 
     def test_create(self):
@@ -76,16 +92,10 @@ class TestKeyType(tests.TestCase):
         
     def test_as_tuple(self):
         k = self.module.Key('foo')
-        if getattr(k, 'as_tuple', None) is None:
-            t = k
-        else:
-            t = k.as_tuple()
+        t = k.as_tuple()
         self.assertEqual(('foo',), t)
         k = self.module.Key('foo', 'bar')
-        if getattr(k, 'as_tuple', None) is None:
-            t = k
-        else:
-            t = k.as_tuple()
+        t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
 
     def test_len(self):
@@ -208,13 +218,17 @@ class TestKeyType(tests.TestCase):
         # amount of referenced memory. Unfortunately gc.get_referents() first
         # checks the IS_GC flag before it traverses anything. So there isn't a
         # way to expose it that I can see.
-        try:
-            from meliae import scanner
-        except ImportError:
-            return
+        self.requireFeature(Meliae)
+        from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.Key(*strs)
-        self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
+        if isinstance(k, _keys_type_py.Key):
+            # The python version references objects slightly different than the
+            # compiled version
+            self.assertEqual([k._tuple, _keys_type_py.Key],
+                             scanner.get_referents(k))
+        else:
+            self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
 
 
 class TestKeysType(tests.TestCase):
@@ -323,10 +337,8 @@ class TestKeysType(tests.TestCase):
         # amount of referenced memory. Unfortunately gc.get_referents() first
         # checks the IS_GC flag before it traverses anything. So there isn't a
         # way to expose it that I can see.
-        try:
-            from meliae import scanner
-        except ImportError:
-            return
+        self.requireFeature(Meliae)
+        from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.Keys(2, *strs)
         if type(k) == tuple:
@@ -334,3 +346,14 @@ class TestKeysType(tests.TestCase):
                              sorted(scanner.get_referents(k)))
         else:
             self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
+
+    def test_intern(self):
+        unique_str1 = 'unique str ' + osutils.rand_chars(20)
+        unique_str2 = 'unique str ' + osutils.rand_chars(20)
+        key = self.module.Key(unique_str1, unique_str2)
+        self.assertFalse(key in self.module._intern)
+        key2 = self.module.Key(unique_str1, unique_str2)
+        self.assertEqual(key, key2)
+        self.assertIsNot(key, key2)
+
+        refcount = sys.getrefcount(key)

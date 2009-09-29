@@ -36,6 +36,9 @@
 
 
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
+static PyObject *key_intern = NULL;
+
+
 
 
 #define Key_CheckExact(op) (Py_TYPE(op) == &Key_Type)
@@ -59,7 +62,41 @@ Key_as_tuple(Key *self)
     return tpl;
 }
 
+
 static char Key_as_tuple_doc[] = "as_tuple() => tuple";
+
+static Key *
+Key_intern(Key *self)
+{
+    PyObject *unique_key = NULL;
+
+    if (key_intern == NULL) {
+        return self;
+    }
+    unique_key = PyDict_GetItem((PyObject *)key_intern, (PyObject *)self);
+    if (unique_key) {
+        // An entry already existed, return it, instead of self
+        Py_INCREF(unique_key);
+        return (Key *)unique_key;
+    }
+    // An entry did not exist, make 'self' the unique item
+    if (PyDict_SetItem(key_intern, (PyObject *)self, (PyObject *)self) < 0) {
+        // Suppress an error
+        PyErr_Clear();
+        return self;
+    }
+    // self was added to the dict, return it.
+    Py_INCREF(self);
+    return self;
+}
+
+static char Key_intern_doc[] = "intern() => unique Key\n"
+    "Return a 'canonical' Key object.\n"
+    "Similar to intern() for strings, this makes sure there\n"
+    "is only one Key object for a given value\n."
+    "Common usage is:\n"
+    "  key = Key('foo', 'bar').intern()\n";
+
 
 static void
 Key_dealloc(Key *self)
@@ -396,6 +433,7 @@ static char Key_doc[] =
 
 static PyMethodDef Key_methods[] = {
     {"as_tuple", (PyCFunction)Key_as_tuple, METH_NOARGS, Key_as_tuple_doc},
+    {"intern", (PyCFunction)Key_intern, METH_NOARGS, Key_intern_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -805,6 +843,73 @@ static PyTypeObject Keys_Type = {
     Keys_new,                                    /* tp_new */
 };
 
+
+static char KeyIntern_doc[] = "";
+
+static PyMethodDef KeyIntern_methods[] = {
+    // {"as_tuple", (PyCFunction)Keys_as_tuple, METH_NOARGS, Keys_as_tuple_doc},
+    {NULL, NULL} /* sentinel */
+};
+
+static PySequenceMethods KeyIntern_as_sequence = {
+    0, //(lenfunc)Keys_length,           /* sq_length */
+    0,                              /* sq_concat */
+    0,                              /* sq_repeat */
+    0, //(ssizeargfunc)Keys_item,        /* sq_item */
+    0,                              /* sq_slice */
+    0,                              /* sq_ass_item */
+    0,                              /* sq_ass_slice */
+    0,                              /* sq_contains */
+};
+
+static PyTypeObject KeyIntern_Type = {
+    PyObject_HEAD_INIT(NULL)
+    0,                                           /* ob_size */
+    "KeyIntern",                                 /* tp_name */
+    sizeof(KeyIntern) - sizeof(Key *),           /* tp_basicsize */
+    sizeof(Key *),                               /* tp_itemsize */
+    0, //(destructor)Keys_dealloc,               /* tp_dealloc */
+    0,                                           /* tp_print */
+    0,                                           /* tp_getattr */
+    0,                                           /* tp_setattr */
+    0,                                           /* tp_compare */
+    // TODO: implement repr() and possibly str()
+    0, //(reprfunc)Keys_repr,                         /* tp_repr */
+    0,                                           /* tp_as_number */
+    &KeyIntern_as_sequence,                      /* tp_as_sequence */
+    0,                                           /* tp_as_mapping */
+    0, //(hashfunc)Keys_hash,                         /* tp_hash */
+    0,                                           /* tp_call */
+    0,                                           /* tp_str */
+    PyObject_GenericGetAttr,                     /* tp_getattro */
+    0,                                           /* tp_setattro */
+    0,                                           /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
+    0, // Keys_doc,                                    /* tp_doc */
+    /* See Key_traverse for why we have this, even though we aren't GC */
+    0, //(traverseproc)Keys_traverse,                 /* tp_traverse */
+    0,                                           /* tp_clear */
+    // TODO: implement richcompare, we should probably be able to compare vs an
+    //       tuple, as well as versus another Keys object.
+    0, //Keys_richcompare,                            /* tp_richcompare */
+    0,                                           /* tp_weaklistoffset */
+    // We could implement this as returning tuples of keys...
+    0,                                           /* tp_iter */
+    0,                                           /* tp_iternext */
+    KeyIntern_methods,                           /* tp_methods */
+    0,                                           /* tp_members */
+    0,                                           /* tp_getset */
+    0,                                           /* tp_base */
+    0,                                           /* tp_dict */
+    0,                                           /* tp_descr_get */
+    0,                                           /* tp_descr_set */
+    0,                                           /* tp_dictoffset */
+    0,                                           /* tp_init */
+    0,                                           /* tp_alloc */
+    0, //Keys_new,                                    /* tp_new */
+};
+
+
 static PyMethodDef keys_type_c_methods[] = {
 //    {"unique_lcs_c", py_unique_lcs, METH_VARARGS},
 //    {"recurse_matches_c", py_recurse_matches, METH_VARARGS},
@@ -821,6 +926,8 @@ init_keys_type_c(void)
         return;
     if (PyType_Ready(&Keys_Type) < 0)
         return;
+    if (PyType_Ready(&KeyIntern_Type) < 0)
+        return;
 
     m = Py_InitModule3("_keys_type_c", keys_type_c_methods,
                        "C implementation of a Keys structure");
@@ -831,4 +938,12 @@ init_keys_type_c(void)
     PyModule_AddObject(m, "Key", (PyObject *)&Key_Type);
     Py_INCREF(&Keys_Type);
     PyModule_AddObject(m, "Keys", (PyObject *)&Keys_Type);
+    // Py_INCREF(&KeyIntern_Type);
+    // PyModule_AddObject(m, "KeyIntern", (PyObject *)&KeyIntern_Type);
+    // key_intern = PyObject_NewVar(KeyIntern, &KeyIntern_Type, 10);
+    key_intern = PyDict_New();
+    if (key_intern != NULL) {
+        Py_INCREF(key_intern);
+        PyModule_AddObject(m, "_intern", key_intern);
+    }
 }

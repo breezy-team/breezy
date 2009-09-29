@@ -21,15 +21,46 @@ strings.
 """
 
 
-def Key(*args):
-    """Implemented as just returning a tuple of the arguments supplied."""
-    for bit in args:
-        if not isinstance(bit, str):
-            raise TypeError('key bits must be strings')
-    num_keys = len(args)
-    if num_keys <= 0 or num_keys > 256:
-        raise ValueError('must have 1 => 256 key bits')
-    return args
+class Key(object):
+    """A Key type, similar to a tuple of strings."""
+
+    __slots__ = ('_tuple',)
+
+    def __init__(self, *args):
+        """Create a new 'Key'"""
+        for bit in args:
+            if not isinstance(bit, str):
+                raise TypeError('key bits must be strings')
+        num_keys = len(args)
+        if num_keys <= 0 or num_keys > 256:
+            raise ValueError('must have 1 => 256 key bits')
+        self._tuple = args
+
+    def __repr__(self):
+        return repr(self._tuple)
+
+    def __hash__(self):
+        return hash(self._tuple)
+
+    def __eq__(self, other):
+        if isinstance(other, Key):
+            return self._tuple == other._tuple
+        if isinstance(other, tuple):
+            return other == self._tuple
+        return NotImplemented
+
+    def __len__(self):
+        return len(self._tuple)
+
+    def __cmp__(self, other):
+        return cmp(self._tuple, other)
+
+    def __getitem__(self, idx):
+        return self._tuple[idx]
+
+    def as_tuple(self):
+        return self._tuple
+
 
 
 def Keys(width, *args):
@@ -51,3 +82,6 @@ def Keys(width, *args):
                 raise TypeError('key bits must be strings')
         result.append(key)
     return tuple(result)
+
+
+_intern = {}
