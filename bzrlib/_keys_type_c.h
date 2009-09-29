@@ -26,6 +26,17 @@
 #endif
 
 #define KEY_HAS_HASH 0
+/* Caching the hash adds memory, but allows us to save a little time during
+ * lookups. TIMEIT hash(key) shows it as
+ *  0.108usec w/ hash
+ *  0.160usec w/o hash
+ * Note that the entries themselves are strings, which already cache their
+ * hashes. So while there is a 1.5:1 difference in the time for hash(), it is
+ * already a function which is quite fast. Probably the only reason we might
+ * want to do so, is if we implement a KeyIntern dict that assumes it is
+ * available, and can then drop the 'hash' value from the item pointers. Then
+ * again, if Key_hash() is fast enough, we may not even care about that.
+ */
 
 /* This defines a single variable-width key.
  * It is basically the same as a tuple, but
