@@ -106,6 +106,17 @@ class Merger(object):
         self._is_criss_cross = None
         self._lca_trees = None
 
+    def cache_trees_with_revision_ids(self, trees):
+        """Cache any tree in trees if it has a revision_id."""
+        for maybe_tree in trees:
+            if maybe_tree is None:
+                continue
+            try:
+                rev_id = maybe_tree.get_revision_id()
+            except AttributeError:
+                continue
+            self._cached_trees[rev_id] = maybe_tree
+
     @property
     def revision_graph(self):
         if self._revision_graph is None:
@@ -602,19 +613,21 @@ class Merge3Merger(object):
         self.this_tree.lock_tree_write()
         self.base_tree.lock_read()
         self.other_tree.lock_read()
-        self.tt = TreeTransform(self.this_tree, self.pb)
         try:
-            self.pp.next_phase()
-            self._compute_transform()
-            self.pp.next_phase()
-            results = self.tt.apply(no_conflicts=True)
-            self.write_modified(results)
+            self.tt = TreeTransform(self.this_tree, self.pb)
             try:
-                self.this_tree.add_conflicts(self.cooked_conflicts)
-            except UnsupportedOperation:
-                pass
+                self.pp.next_phase()
+                self._compute_transform()
+                self.pp.next_phase()
+                results = self.tt.apply(no_conflicts=True)
+                self.write_modified(results)
+                try:
+                    self.this_tree.add_conflicts(self.cooked_conflicts)
+                except UnsupportedOperation:
+                    pass
+            finally:
+                self.tt.finalize()
         finally:
-            self.tt.finalize()
             self.other_tree.unlock()
             self.base_tree.unlock()
             self.this_tree.unlock()
@@ -1520,6 +1533,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     get_revision_id = getattr(base_tree, 'get_revision_id', None)
     if get_revision_id is None:
         get_revision_id = base_tree.last_revision
+    merger.cache_trees_with_revision_ids([other_tree, base_tree, this_tree])
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 

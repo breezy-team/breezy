@@ -253,6 +253,22 @@ class TestPush(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
 
+    def test_push_smart_incremental_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id1 = t.commit(allow_pointless=True, message='first commit')
+        rev_id2 = t.commit(allow_pointless=True, message='second commit')
+        self.run_bzr(
+            ['push', self.get_url('to-one'), '-r1'], working_dir='from')
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
         # we push there over the smart server are stacked and their
@@ -576,9 +592,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])

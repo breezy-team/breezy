@@ -1916,6 +1916,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
@@ -1927,6 +1928,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         e = self.assertRaises(ValueError, tt.commit, branch,
                           'my message', ['rev1b-id'])
         self.assertEqual('Cannot supply merge parents for first commit.',
@@ -1957,6 +1959,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt.new_file('file', tt.root, 'contents', 'file-id')
         tt.commit(branch, 'message', strict=True)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         trans_id = tt.trans_id_file_id('file-id')
         tt.delete_contents(trans_id)
         tt.create_file('contents', trans_id)

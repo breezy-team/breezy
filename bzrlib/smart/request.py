@@ -292,15 +292,6 @@ class SmartServerRequestHandler(object):
         # cannot read after this.
         self.finished_reading = True
 
-    def dispatch_command(self, cmd, args):
-        """Deprecated compatibility method.""" # XXX XXX
-        try:
-            command = self._commands.get(cmd)
-        except LookupError:
-            raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport, self._root_client_path)
-        self._run_handler_code(self._command.execute, args, {})
-
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
 
@@ -343,7 +334,8 @@ class SmartServerRequestHandler(object):
             command = self._commands.get(cmd)
         except LookupError:
             raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport)
+        self._command = command(
+            self._backing_transport, self._root_client_path)
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
@@ -364,6 +356,9 @@ def _translate_error(err):
         return ('FileExists', err.path)
     elif isinstance(err, errors.DirectoryNotEmpty):
         return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.IncompatibleRepositories):
+        return ('IncompatibleRepositories', str(err.source), str(err.target),
+            str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
@@ -505,6 +500,8 @@ request_handlers.register_lazy(
     'SmartServerRequestBzrDirInitializeEx')
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
+request_handlers.register_lazy(
+    'BzrDir.open_2.1', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir_2_1')
 request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')

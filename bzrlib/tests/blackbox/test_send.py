@@ -280,10 +280,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = tests.MemoryServer
+        location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)

@@ -216,12 +216,19 @@ class TestMove(TestCICPBase):
 
 
 class TestMisc(TestCICPBase):
+
     def test_status(self):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
 
-        self.check_output('added:\n  CamelCaseParent/CamelCase\n  lowercaseparent/lowercase\n',
-                          'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+        self.check_output(
+            """added:
+  CamelCaseParent/
+  CamelCaseParent/CamelCase
+  lowercaseparent/
+  lowercaseparent/lowercase
+""",
+            'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
 
     def test_ci(self):
         wt = self._make_mixed_case_tree()
