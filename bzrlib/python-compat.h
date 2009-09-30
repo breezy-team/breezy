@@ -73,4 +73,9 @@
 #define  snprintf  _snprintf
 #endif
 
+/* Introduced in Python 2.6 */
+#ifndef Py_TYPE
+#  define Py_TYPE(o) ((o)->ob_type)
+#endif
+
 #endif /* _BZR_PYTHON_COMPAT_H */

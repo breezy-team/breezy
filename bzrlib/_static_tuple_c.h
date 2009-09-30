@@ -17,15 +17,15 @@
 
 #include <Python.h>
 
-#if !defined(KeysAPI_FUNC)
+#if !defined(StaticTupleAPI_FUNC)
 #  if defined(_WIN32)
-#    define KeysAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
+#    define StaticTupleAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
 #  else
-#    define KeysAPI_FUNC(RTYPE) RTYPE
+#    define StaticTupleAPI_FUNC(RTYPE) RTYPE
 #  endif
 #endif
 
-#define KEY_HAS_HASH 0
+#define STATIC_TUPLE_HAS_HASH 0
 /* Caching the hash adds memory, but allows us to save a little time during
  * lookups. TIMEIT hash(key) shows it as
  *  0.108usec w/ hash
@@ -48,7 +48,7 @@
  * than N objects.
  */
 
-#define KEY_INTERNED_FLAG 0x01
+#define STATIC_TUPLE_INTERNED_FLAG 0x01
 typedef struct {
     PyObject_HEAD
     unsigned char size;
@@ -57,39 +57,26 @@ typedef struct {
     unsigned char _unused1;
     // Note that on 64-bit, we actually have 4-more unused bytes
     // because key_bits will always be aligned to a 64-bit boundary
-#if KEY_HAS_HASH
+#if STATIC_TUPLE_HAS_HASH
     long hash;
 #endif
-    PyStringObject *key_bits[1];
-} Key;
-extern PyTypeObject Key_Type;
+    PyObject *key_bits[1];
+} StaticTuple;
+extern PyTypeObject StaticTuple_Type;
 
-/* Do we need a PyAPI_FUNC sort of wrapper? */
-KeysAPI_FUNC(PyObject *) Key_New(Py_ssize_t size);
-
-/* Because of object alignment, it seems that using unsigned char doesn't make
- * things any smaller than using an 'int'... :(
- * Perhaps we should use the high bits for extra flags?
+/* TODO: we need to change this into an api table, look at the python extension
+ *       docs.
  */
-typedef struct {
-    PyObject_HEAD
-    // unsigned char key_width;
-    // unsigned char num_keys;
-    // unsigned char flags; /* not used yet */
-    unsigned int info; /* Broken down into 4 1-byte fields */
-    PyStringObject *key_bits[1]; /* key_width * num_keys entries */
-} Keys;
-
-/* Forward declaration */
-extern PyTypeObject Keys_Type;
+StaticTupleAPI_FUNC(PyObject *) StaticTuple_New(Py_ssize_t size);
 
 typedef struct {
     PyObject_VAR_HEAD
-    Key *table[1];
+    PyObject *table[1];
 } KeyIntern;
-// extern PyTypeObject Key_Type;
+extern PyTypeObject StaticTuple_Type;
 
-#define Key_SET_ITEM(key, offset, val) \
-    ((((Key*)key)->key_bits[offset]) = (PyStringObject *)val)
-#define Key_GET_ITEM(key, offset) (((Key*)key)->key_bits[offset])
+#define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
+#define StaticTuple_SET_ITEM(key, offset, val) \
+    ((((StaticTuple*)(key))->key_bits[(offset)]) = ((PyObject *)(val))
+#define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->key_bits[offset])
 

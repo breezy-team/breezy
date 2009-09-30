@@ -102,7 +102,7 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     Py_DECREF_ptr(py_str)
     return result
 
-from bzrlib import _keys_type_c
+# from bzrlib import _keys_type_c
 
 
 cdef class BTreeLeafParser:

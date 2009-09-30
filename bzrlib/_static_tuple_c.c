@@ -19,7 +19,7 @@
  * linkage.
  */
 #if defined(_WIN32)
-#  define KeysAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
+#  define StaticTupleAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
 #endif
 
 #include "_static_tuple_c.h"
@@ -35,22 +35,19 @@
 #endif
 
 
-static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 static PyObject *_interned_keys = NULL;
 
 
 static inline int
-_Key_is_interned(Key *self)
+_StaticTuple_is_interned(StaticTuple *self)
 {
-    return self->flags & KEY_INTERNED_FLAG;
+    return self->flags & STATIC_TUPLE_INTERNED_FLAG;
 }
 
 
 
-#define Key_CheckExact(op) (Py_TYPE(op) == &Key_Type)
-
 static PyObject *
-Key_as_tuple(Key *self)
+StaticTuple_as_tuple(StaticTuple *self)
 {
     PyObject *tpl = NULL, *obj = NULL;
     int i, len;
@@ -70,17 +67,17 @@ Key_as_tuple(Key *self)
 }
 
 
-static char Key_as_tuple_doc[] = "as_tuple() => tuple";
+static char StaticTuple_as_tuple_doc[] = "as_tuple() => tuple";
 
-static Key *
-Key_intern(Key *self)
+static StaticTuple *
+StaticTuple_intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
 
     if (_interned_keys == NULL) {
         return self;
     }
-    if (_Key_is_interned(self)) {
+    if (_StaticTuple_is_interned(self)) {
         // Already interned
         Py_INCREF(self);
         return self;
@@ -89,7 +86,7 @@ Key_intern(Key *self)
     if (unique_key) {
         // An entry already existed, return it, instead of self
         Py_INCREF(unique_key);
-        return (Key *)unique_key;
+        return (StaticTuple *)unique_key;
     }
     // An entry did not exist, make 'self' the unique item
     if (PyDict_SetItem(_interned_keys, (PyObject *)self, (PyObject *)self) < 0) {
@@ -99,31 +96,31 @@ Key_intern(Key *self)
     }
     // self was added to the dict, return it.
     Py_INCREF(self);
-    self->flags |= KEY_INTERNED_FLAG;
-    // The two references in the dict do not count, so that the Key object
+    self->flags |= STATIC_TUPLE_INTERNED_FLAG;
+    // The two references in the dict do not count, so that the StaticTuple object
     // does not become immortal just because it was interned.
     Py_REFCNT(self) -= 2;
     return self;
 }
 
-static char Key_intern_doc[] = "intern() => unique Key\n"
-    "Return a 'canonical' Key object.\n"
+static char StaticTuple_intern_doc[] = "intern() => unique StaticTuple\n"
+    "Return a 'canonical' StaticTuple object.\n"
     "Similar to intern() for strings, this makes sure there\n"
-    "is only one Key object for a given value\n."
+    "is only one StaticTuple object for a given value\n."
     "Common usage is:\n"
-    "  key = Key('foo', 'bar').intern()\n";
+    "  key = StaticTuple('foo', 'bar').intern()\n";
 
 
 static void
-Key_dealloc(Key *self)
+StaticTuple_dealloc(StaticTuple *self)
 {
     int i, len;
 
-    if (_Key_is_interned(self)) {
+    if (_StaticTuple_is_interned(self)) {
         /* revive dead object temporarily for DelItem */
         Py_REFCNT(self) = 3;
         if (PyDict_DelItem(_interned_keys, (PyObject *)self) != 0) {
-            Py_FatalError("deletion of interned Key failed");
+            Py_FatalError("deletion of interned StaticTuple failed");
         }
     }
     len = self->size;
@@ -136,9 +133,9 @@ Key_dealloc(Key *self)
 
 /* Similar to PyTuple_New() */
 PyObject *
-Key_New(Py_ssize_t size)
+StaticTuple_New(Py_ssize_t size)
 {
-    Key *key;
+    StaticTuple *key;
     if (size < 0) {
         PyErr_BadInternalCall();
         return NULL;
@@ -151,7 +148,7 @@ Key_New(Py_ssize_t size)
      * As such we do the alloc, and then have to clean up anything it does
      * incorrectly.
      */
-    key = PyObject_NewVar(Key, &Key_Type, size);
+    key = PyObject_NewVar(StaticTuple, &StaticTuple_Type, size);
     if (key == NULL) {
         return NULL;
     }
@@ -160,7 +157,7 @@ Key_New(Py_ssize_t size)
     key->_unused0 = 0;
     key->_unused1 = 0;
     memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
-#if KEY_HAS_HASH
+#if STATIC_TUPLE_HAS_HASH
     key->hash = -1;
 #endif
     return (PyObject *)key;
@@ -168,14 +165,14 @@ Key_New(Py_ssize_t size)
 
 
 static PyObject *
-Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
-    Key *self;
+    StaticTuple *self;
     PyObject *obj = NULL;
     Py_ssize_t i, len = 0;
 
-    if (type != &Key_Type) {
-        PyErr_SetString(PyExc_TypeError, "we only support creating Key");
+    if (type != &StaticTuple_Type) {
+        PyErr_SetString(PyExc_TypeError, "we only support creating StaticTuple");
         return NULL;
     }
     if (!PyTuple_CheckExact(args)) {
@@ -185,11 +182,11 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     len = PyTuple_GET_SIZE(args);
     if (len <= 0 || len > 256) {
         /* Too big or too small */
-        PyErr_SetString(PyExc_ValueError, "Key.__init__(...)"
+        PyErr_SetString(PyExc_ValueError, "StaticTuple.__init__(...)"
             " takes from 1 to 256 key bits");
         return NULL;
     }
-    self = (Key *)(type->tp_alloc(type, len));
+    self = (StaticTuple *)(type->tp_alloc(type, len));
     if (self == NULL) {
         return NULL;
     }
@@ -197,30 +194,30 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self->flags = 0;
     self->_unused0 = 0;
     self->_unused1 = 0;
-#if KEY_HAS_HASH
+#if STATIC_TUPLE_HAS_HASH
     self->hash = -1;
 #endif
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
         if (!PyString_CheckExact(obj)) {
-            PyErr_SetString(PyExc_TypeError, "Key.__init__(...)"
+            PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
                 " requires that all key bits are strings.");
             /* TODO: What is the proper way to dealloc ? */
             type->tp_dealloc((PyObject *)self);
             return NULL;
         }
         Py_INCREF(obj);
-        self->key_bits[i] = (PyStringObject *)obj;
+        self->key_bits[i] = obj;
     }
     return (PyObject *)self;
 }
 
 static PyObject *
-Key_repr(Key *self)
+StaticTuple_repr(StaticTuple *self)
 {
     PyObject *as_tuple, *result;
 
-    as_tuple = Key_as_tuple(self);
+    as_tuple = StaticTuple_as_tuple(self);
     if (as_tuple == NULL) {
         return NULL;
     }
@@ -230,18 +227,18 @@ Key_repr(Key *self)
 }
 
 static long
-Key_hash(Key *self)
+StaticTuple_hash(StaticTuple *self)
 {
     /* adapted from tuplehash(), is the specific hash value considered
      * 'stable'?
      */
 	register long x, y;
 	Py_ssize_t len = self->size;
-	PyStringObject **p;
-    hashfunc string_hash;
+	PyObject **p;
+    // hashfunc string_hash;
 	long mult = 1000003L;
 
-#if KEY_HAS_HASH
+#if STATIC_TUPLE_HAS_HASH
     if (self->hash != -1) {
         return self->hash;
     }
@@ -260,7 +257,7 @@ Key_hash(Key *self)
 	x += 97531L;
 	if (x == -1)
 		x = -2;
-#if KEY_HAS_HASH
+#if STATIC_TUPLE_HAS_HASH
     if (self->hash != -1) {
         if (self->hash != x) {
             fprintf(stderr, "hash changed: %d => %d\n", self->hash, x);
@@ -272,12 +269,12 @@ Key_hash(Key *self)
 }
 
 static PyObject *
-Key_richcompare_to_tuple(Key *v, PyObject *wt, int op)
+StaticTuple_richcompare_to_tuple(StaticTuple *v, PyObject *wt, int op)
 {
     PyObject *vt;
     PyObject *result = NULL;
     
-    vt = Key_as_tuple((Key *)v);
+    vt = StaticTuple_as_tuple((StaticTuple *)v);
     if (vt == NULL) {
         goto Done;
     }
@@ -295,19 +292,19 @@ Done:
 
 
 static PyObject *
-Key_richcompare(PyObject *v, PyObject *w, int op)
+StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
 {
-    Key *vk, *wk;
+    StaticTuple *vk, *wk;
     Py_ssize_t vlen, wlen, min_len, i;
     richcmpfunc string_richcompare;
 
-    if (!Key_CheckExact(v)) {
+    if (!StaticTuple_CheckExact(v)) {
         /* This has never triggered */
         fprintf(stderr, "self is tuple\n");
         Py_INCREF(Py_NotImplemented);
         return Py_NotImplemented;
     }
-    vk = (Key *)v;
+    vk = (StaticTuple *)v;
     if (PyTuple_Check(w)) {
         /* One of v or w is a tuple, so we go the 'slow' route and cast up to
          * tuples to compare.
@@ -316,10 +313,10 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
          *       We probably want to optimize comparing self to other when
          *       other is a tuple.
          */
-        return Key_richcompare_to_tuple(vk, w, op);
+        return StaticTuple_richcompare_to_tuple(vk, w, op);
     }
-    if (!Key_CheckExact(w)) {
-        /* Both are not Key objects, and they aren't Tuple objects or the
+    if (!StaticTuple_CheckExact(w)) {
+        /* Both are not StaticTuple objects, and they aren't Tuple objects or the
          * previous path would have been taken. We don't support comparing with
          * anything else.
          */
@@ -327,7 +324,7 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
          Py_INCREF(Py_NotImplemented);
          return Py_NotImplemented;
     }
-    /* Now we know that we have 2 Key objects, so let's compare them.
+    /* Now we know that we have 2 StaticTuple objects, so let's compare them.
      * This code is somewhat borrowed from tuplerichcompare, except we know our
      * objects are strings, so we get to cheat a bit.
      */
@@ -342,7 +339,7 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
             return Py_False;
 		}
     }
-    wk = (Key*)w;
+    wk = (StaticTuple*)w;
 
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code
@@ -417,16 +414,16 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
 
 
 static Py_ssize_t
-Key_length(Key *self)
+StaticTuple_length(StaticTuple *self)
 {
     return self->size;
 }
 
 
 static PyObject *
-Key__is_interned(Key *self)
+StaticTuple__is_interned(StaticTuple *self)
 {
-    if (_Key_is_interned(self)) {
+    if (_StaticTuple_is_interned(self)) {
         Py_INCREF(Py_True);
         return Py_True;
     }
@@ -434,16 +431,16 @@ Key__is_interned(Key *self)
     return Py_False;
 }
 
-static char Key__is_interned_doc[] = "_is_interned() => True/False\n"
+static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
     "Check to see if this key has been interned.\n";
 
 
 static PyObject *
-Key_item(Key *self, Py_ssize_t offset)
+StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
 {
     PyObject *obj;
     if (offset < 0 || offset >= self->size) {
-        PyErr_SetString(PyExc_IndexError, "Key index out of range");
+        PyErr_SetString(PyExc_IndexError, "StaticTuple index out of range");
         return NULL;
     }
     obj = (PyObject *)self->key_bits[offset];
@@ -452,11 +449,11 @@ Key_item(Key *self, Py_ssize_t offset)
 }
 
 static PyObject *
-Key_slice(Key *self, Py_ssize_t ilow, Py_ssize_t ihigh)
+StaticTuple_slice(StaticTuple *self, Py_ssize_t ilow, Py_ssize_t ihigh)
 {
     PyObject *as_tuple, *result;
 
-    as_tuple = Key_as_tuple(self);
+    as_tuple = StaticTuple_as_tuple(self);
     if (as_tuple == NULL) {
         return NULL;
     }
@@ -466,7 +463,7 @@ Key_slice(Key *self, Py_ssize_t ilow, Py_ssize_t ihigh)
 }
 
 static int
-Key_traverse(Key *self, visitproc visit, void *arg)
+StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
 {
     Py_ssize_t i;
     for (i = Py_SIZE(self); --i >= 0;) {
@@ -475,70 +472,70 @@ Key_traverse(Key *self, visitproc visit, void *arg)
     return 0;
 }
 
-static char Key_doc[] =
-    "C implementation of a Key structure."
-    "\n This is used as Key(key_bit_1, key_bit_2, key_bit_3, ...)"
+static char StaticTuple_doc[] =
+    "C implementation of a StaticTuple structure."
+    "\n This is used as StaticTuple(key_bit_1, key_bit_2, key_bit_3, ...)"
     "\n This is similar to tuple, just less flexible in what it"
     "\n supports, but also lighter memory consumption.";
 
-static PyMethodDef Key_methods[] = {
-    {"as_tuple", (PyCFunction)Key_as_tuple, METH_NOARGS, Key_as_tuple_doc},
-    {"intern", (PyCFunction)Key_intern, METH_NOARGS, Key_intern_doc},
-    {"_is_interned", (PyCFunction)Key__is_interned, METH_NOARGS,
-     Key__is_interned_doc},
+static PyMethodDef StaticTuple_methods[] = {
+    {"as_tuple", (PyCFunction)StaticTuple_as_tuple, METH_NOARGS, StaticTuple_as_tuple_doc},
+    {"intern", (PyCFunction)StaticTuple_intern, METH_NOARGS, StaticTuple_intern_doc},
+    {"_is_interned", (PyCFunction)StaticTuple__is_interned, METH_NOARGS,
+     StaticTuple__is_interned_doc},
     {NULL, NULL} /* sentinel */
 };
 
-static PySequenceMethods Key_as_sequence = {
-    (lenfunc)Key_length,            /* sq_length */
+static PySequenceMethods StaticTuple_as_sequence = {
+    (lenfunc)StaticTuple_length,            /* sq_length */
     0,                              /* sq_concat */
     0,                              /* sq_repeat */
-    (ssizeargfunc)Key_item,         /* sq_item */
-    (ssizessizeargfunc)Key_slice,   /* sq_slice */
+    (ssizeargfunc)StaticTuple_item,         /* sq_item */
+    (ssizessizeargfunc)StaticTuple_slice,   /* sq_slice */
     0,                              /* sq_ass_item */
     0,                              /* sq_ass_slice */
     0,                              /* sq_contains */
 };
 
 
-PyTypeObject Key_Type = {
+PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
-    "Key",                                       /* tp_name */
-    sizeof(Key) - sizeof(PyStringObject *),      /* tp_basicsize */
+    "StaticTuple",                                       /* tp_name */
+    sizeof(StaticTuple) - sizeof(PyStringObject *),      /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
-    (destructor)Key_dealloc,                     /* tp_dealloc */
+    (destructor)StaticTuple_dealloc,                     /* tp_dealloc */
     0,                                           /* tp_print */
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
-    (reprfunc)Key_repr,                          /* tp_repr */
+    (reprfunc)StaticTuple_repr,                          /* tp_repr */
     0,                                           /* tp_as_number */
-    &Key_as_sequence,                            /* tp_as_sequence */
+    &StaticTuple_as_sequence,                            /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
-    (hashfunc)Key_hash,                          /* tp_hash */
+    (hashfunc)StaticTuple_hash,                          /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
     PyObject_GenericGetAttr,                     /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
-    Key_doc,                                     /* tp_doc */
+    StaticTuple_doc,                                     /* tp_doc */
     /* gc.get_referents checks the IS_GC flag before it calls tp_traverse
      * And we don't include this object in the garbage collector because we
      * know it doesn't create cycles. However, 'meliae' will follow
      * tp_traverse, even if the object isn't GC, and we want that.
      */
-    (traverseproc)Key_traverse,                  /* tp_traverse */
+    (traverseproc)StaticTuple_traverse,                  /* tp_traverse */
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
-    //       tuple, as well as versus another Keys object.
-    Key_richcompare,                             /* tp_richcompare */
+    //       tuple, as well as versus another StaticTuples object.
+    StaticTuple_richcompare,                             /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
     // We could implement this as returning tuples of keys...
     0,                                           /* tp_iter */
     0,                                           /* tp_iternext */
-    Key_methods,                                 /* tp_methods */
+    StaticTuple_methods,                                 /* tp_methods */
     0,                                           /* tp_members */
     0,                                           /* tp_getset */
     0,                                           /* tp_base */
@@ -548,352 +545,7 @@ PyTypeObject Key_Type = {
     0,                                           /* tp_dictoffset */
     0,                                           /* tp_init */
     0,                                           /* tp_alloc */
-    Key_new,                                     /* tp_new */
-};
-
-static inline void
-Keys_set_info(Keys *self, int key_width,
-                          int num_keys, int flags)
-{
-    self->info = ((unsigned int)key_width)
-                 | (((unsigned int) num_keys) << 8)
-                 | (((unsigned int) flags) << 24);
-}
-
-static inline int 
-Keys_get_key_width(Keys *self)
-{
-    return (int)(self->info & 0xFF);
-}
-
-static inline int 
-Keys_get_num_keys(Keys *self)
-{
-    return (int)((self->info >> 8) & 0xFF);
-}
-
-static inline int 
-Keys_get_flags(Keys *self)
-{
-    return (int)((self->info >> 24) & 0xFF);
-}
-
-#define Keys_CheckExact(op) (Py_TYPE(op) == &Keys_Type)
-
-static void
-Keys_dealloc(Keys *self)
-{
-    int num_keys;
-    num_keys = Keys_get_num_keys(self);
-    /* Do we want to use the Py_TRASHCAN_SAFE_BEGIN/END operations? */
-    if (num_keys > 0) {
-        /* tuple deallocs from the end to the beginning. Not sure why, but
-         * we'll do the same here.
-         */
-        int i;
-        for(i = num_keys - 1; i >= 0; --i) {
-            Py_XDECREF(self->key_bits[i]);
-        }
-    }
-    Py_TYPE(self)->tp_free((PyObject *)self);
-}
-
-
-static PyObject *
-Keys_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
-{
-    Py_ssize_t num_args;
-    Py_ssize_t i;
-    long key_width;
-    long num_keys;
-    long num_key_bits;
-    long flags = 0; /* Not used */
-    PyObject *obj= NULL;
-    Keys *self;
-
-    if (type != &Keys_Type) {
-        PyErr_SetString(PyExc_TypeError, "we only support creating Keys");
-        return NULL;
-    }
-    if (!PyTuple_CheckExact(args)) {
-        PyErr_SetString(PyExc_TypeError, "args must be a tuple");
-        return NULL;
-    }
-    num_args = PyTuple_GET_SIZE(args);
-    if (num_args < 1) {
-        PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...)"
-            " takes at least two arguments.");
-        return NULL;
-    }
-    key_width = PyInt_AsLong(PyTuple_GET_ITEM(args, 0));
-    if (key_width == -1 && PyErr_Occurred()) {
-        return NULL;
-    }
-    if (key_width <= 0) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...)"
-            " width should be a positive integer.");
-        return NULL;
-    }
-    if (key_width > 256) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...)"
-            " width must be <= 256");
-        return NULL;
-    }
-    /* First arg is the key width, the rest are the actual key items */
-    num_key_bits = num_args - 1;
-    num_keys = num_key_bits / key_width;
-    if (num_keys * key_width != num_key_bits) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), was"
-            " supplied a number of key bits that was not an even multiple"
-            " of the key width.");
-        return NULL;
-    }
-    if (num_keys > 256) {
-        PyErr_SetString(PyExc_ValueError, "Keys.__init__(width, ...), was"
-            " supplied more than 256 keys");
-        return NULL;
-    }
-    self = (Keys *)(type->tp_alloc(type, num_key_bits));
-    if (self == NULL) {
-        return NULL;
-    }
-    // self->key_width = (unsigned char)key_width;
-    // self->num_keys = (unsigned char)num_keys;
-    Keys_set_info(self, key_width, num_keys, flags);
-    for (i = 0; i < num_key_bits; i++) {
-        obj = PyTuple_GET_ITEM(args, i + 1);
-        if (!PyString_CheckExact(obj)) {
-            PyErr_SetString(PyExc_TypeError, "Keys.__init__(width, ...)"
-                " requires that all key bits are strings.");
-            /* TODO: What is the proper way to dealloc ? */
-            type->tp_dealloc((PyObject *)self);
-            return NULL;
-        }
-        Py_INCREF(obj);
-        self->key_bits[i] = (PyStringObject *)obj;
-    }
-    return (PyObject *)self;
-}
-
-static PyObject *
-Keys_as_tuple(Keys *self)
-{
-    PyObject *as_tuple = NULL;
-    PyObject *a_key = NULL;
-    Py_ssize_t i;
-    int num_keys;
-
-    num_keys = Keys_get_num_keys(self);
-    as_tuple = PyTuple_New(num_keys);
-    if (as_tuple == NULL) {
-        return NULL;
-    }
-    for (i = 0; i < num_keys; ++i) {
-        a_key = Keys_item(self, i);
-        if (a_key == NULL) {
-            goto Err;
-        }
-        PyTuple_SET_ITEM(as_tuple, i, a_key);
-    }
-    return as_tuple;
-Err:
-    Py_XDECREF(as_tuple);
-    return NULL;
-}
-
-static long
-Keys_hash(Keys *self)
-{
-    PyObject *as_tuple = NULL;
-    long hash = -1;
-
-    as_tuple = Keys_as_tuple(self);
-    if (as_tuple == NULL) {
-        return -1;
-    }
-    hash = PyTuple_Type.tp_hash(as_tuple);
-    Py_DECREF(as_tuple);
-    return hash;
-}
-
-static PyObject *
-Keys_richcompare(PyObject *v, PyObject *w, int op)
-{
-    PyObject *vt, *wt;
-    PyObject *vt_to_decref = NULL, *wt_to_decref = NULL;
-    PyObject *result = NULL;
-
-    if (Keys_CheckExact(v)) {
-        vt = Keys_as_tuple((Keys *)v);
-        if (vt == NULL) {
-            goto Done;
-        }
-        vt_to_decref = vt;
-    } else if (PyTuple_Check(v)) {
-        vt = v;
-        vt_to_decref = NULL;
-    } else {
-        Py_INCREF(Py_NotImplemented);
-        result = Py_NotImplemented;
-        goto Done;
-    }
-    if (Keys_CheckExact(w)) {
-        wt = Keys_as_tuple((Keys *)w);
-        if (wt == NULL) {
-            goto Done;
-        }
-        wt_to_decref = wt;
-    } else if (PyTuple_Check(w)) {
-        wt = w;
-        wt_to_decref = NULL;
-    } else {
-        Py_INCREF(Py_NotImplemented);
-        result = Py_NotImplemented;
-        goto Done;
-    }
-    /* Now we have 2 tuples to compare, do it */
-    result = PyTuple_Type.tp_richcompare(vt, wt, op);
-Done:
-    Py_XDECREF(vt_to_decref);
-    Py_XDECREF(wt_to_decref);
-    return result;
-}
-    
-static PyObject *
-Keys_repr(Keys *self)
-{
-    PyObject *as_tpl;
-    PyObject *result;
-
-    as_tpl = Keys_as_tuple(self);
-    if (as_tpl == NULL) {
-        return NULL;
-    }
-    result = PyObject_Repr(as_tpl);
-    Py_DECREF(as_tpl);
-    return result;
-}
-
-static int
-Keys_traverse(Keys *self, visitproc visit, void *arg)
-{
-    Py_ssize_t i, num_key_bits;
-    num_key_bits = Keys_get_key_width(self) * Keys_get_num_keys(self);
-    for (i = num_key_bits; --i >= 0;) {
-        Py_VISIT(self->key_bits[i]);
-    }
-    return 0;
-}
-
-static char Keys_doc[] =
-    "C implementation of a Keys structure."
-    "\n This is used as Keys(width, key_bit_1, key_bit_2, key_bit_3, ...)"
-    "\n For example, to do a single entry, you would do:"
-    "\n  Keys(1, 'foo')"
-    "\n For a file-key style entry you would do:"
-    "\n  Keys(2, 'file-id', 'revision-id')"
-    "\n For a parents list of file keys you would do:"
-    "\n  Keys(2, 'file-id', 'rev-id1', 'file-id', 'rev-id2')";
-
-
-static Py_ssize_t
-Keys_length(Keys *self)
-{
-    return (Py_ssize_t)Keys_get_num_keys(self);
-}
-
-
-static PyObject *
-Keys_item(Keys *self, Py_ssize_t offset)
-{
-    long start, i;
-    int key_width;
-    PyObject *obj;
-    Key *key;
-
-    if (offset < 0 || offset >= Keys_get_num_keys(self)) {
-        PyErr_SetString(PyExc_IndexError, "Keys index out of range");
-        return NULL;
-    }
-    key_width = Keys_get_key_width(self);
-    key = (Key *)Key_New(key_width);
-    if (!key) {
-        /* Malloc failure */
-        return NULL;
-    }
-    start = offset * key_width;
-    for (i = 0; i < key_width; ++i) {
-        obj = (PyObject *)self->key_bits[start + i];
-        Py_INCREF(obj);
-        key->key_bits[i] = (PyStringObject *)obj;
-    }
-    return (PyObject *)key;
-}
-
-
-static char Keys_as_tuple_doc[] = "as_tuple() => tuple";
-
-static PyMethodDef Keys_methods[] = {
-    {"as_tuple", (PyCFunction)Keys_as_tuple, METH_NOARGS, Keys_as_tuple_doc},
-    {NULL, NULL} /* sentinel */
-};
-
-static PySequenceMethods Keys_as_sequence = {
-    (lenfunc)Keys_length,           /* sq_length */
-    0,                              /* sq_concat */
-    0,                              /* sq_repeat */
-    (ssizeargfunc)Keys_item,        /* sq_item */
-    0,                              /* sq_slice */
-    0,                              /* sq_ass_item */
-    0,                              /* sq_ass_slice */
-    0,                              /* sq_contains */
-};
-
-PyTypeObject Keys_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                           /* ob_size */
-    "Keys",                                      /* tp_name */
-    sizeof(Keys) - sizeof(PyStringObject *),     /* tp_basicsize */
-    sizeof(PyObject *),                          /* tp_itemsize */
-    (destructor)Keys_dealloc,                    /* tp_dealloc */
-    0,                                           /* tp_print */
-    0,                                           /* tp_getattr */
-    0,                                           /* tp_setattr */
-    0,                                           /* tp_compare */
-    // TODO: implement repr() and possibly str()
-    (reprfunc)Keys_repr,                         /* tp_repr */
-    0,                                           /* tp_as_number */
-    &Keys_as_sequence,                           /* tp_as_sequence */
-    0,                                           /* tp_as_mapping */
-    (hashfunc)Keys_hash,                         /* tp_hash */
-    0,                                           /* tp_call */
-    0,                                           /* tp_str */
-    PyObject_GenericGetAttr,                     /* tp_getattro */
-    0,                                           /* tp_setattro */
-    0,                                           /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
-    Keys_doc,                                    /* tp_doc */
-    /* See Key_traverse for why we have this, even though we aren't GC */
-    (traverseproc)Keys_traverse,                 /* tp_traverse */
-    0,                                           /* tp_clear */
-    // TODO: implement richcompare, we should probably be able to compare vs an
-    //       tuple, as well as versus another Keys object.
-    Keys_richcompare,                            /* tp_richcompare */
-    0,                                           /* tp_weaklistoffset */
-    // We could implement this as returning tuples of keys...
-    0,                                           /* tp_iter */
-    0,                                           /* tp_iternext */
-    Keys_methods,                                /* tp_methods */
-    0,                                           /* tp_members */
-    0,                                           /* tp_getset */
-    0,                                           /* tp_base */
-    0,                                           /* tp_dict */
-    0,                                           /* tp_descr_get */
-    0,                                           /* tp_descr_set */
-    0,                                           /* tp_dictoffset */
-    0,                                           /* tp_init */
-    0,                                           /* tp_alloc */
-    Keys_new,                                    /* tp_new */
+    StaticTuple_new,                                     /* tp_new */
 };
 
 
@@ -904,66 +556,66 @@ static PyMethodDef KeyIntern_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
-static PySequenceMethods KeyIntern_as_sequence = {
-    0, //(lenfunc)Keys_length,           /* sq_length */
-    0,                              /* sq_concat */
-    0,                              /* sq_repeat */
-    0, //(ssizeargfunc)Keys_item,        /* sq_item */
-    0,                              /* sq_slice */
-    0,                              /* sq_ass_item */
-    0,                              /* sq_ass_slice */
-    0,                              /* sq_contains */
-};
+// static PySequenceMethods KeyIntern_as_sequence = {
+//     0, //(lenfunc)Keys_length,           /* sq_length */
+//     0,                              /* sq_concat */
+//     0,                              /* sq_repeat */
+//     0, //(ssizeargfunc)Keys_item,        /* sq_item */
+//     0,                              /* sq_slice */
+//     0,                              /* sq_ass_item */
+//     0,                              /* sq_ass_slice */
+//     0,                              /* sq_contains */
+// };
 
-static PyTypeObject KeyIntern_Type = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                           /* ob_size */
-    "KeyIntern",                                 /* tp_name */
-    sizeof(KeyIntern) - sizeof(Key *),           /* tp_basicsize */
-    sizeof(Key *),                               /* tp_itemsize */
-    0, //(destructor)Keys_dealloc,               /* tp_dealloc */
-    0,                                           /* tp_print */
-    0,                                           /* tp_getattr */
-    0,                                           /* tp_setattr */
-    0,                                           /* tp_compare */
-    // TODO: implement repr() and possibly str()
-    0, //(reprfunc)Keys_repr,                         /* tp_repr */
-    0,                                           /* tp_as_number */
-    &KeyIntern_as_sequence,                      /* tp_as_sequence */
-    0,                                           /* tp_as_mapping */
-    0, //(hashfunc)Keys_hash,                         /* tp_hash */
-    0,                                           /* tp_call */
-    0,                                           /* tp_str */
-    PyObject_GenericGetAttr,                     /* tp_getattro */
-    0,                                           /* tp_setattro */
-    0,                                           /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
-    0, // Keys_doc,                                    /* tp_doc */
-    /* See Key_traverse for why we have this, even though we aren't GC */
-    0, //(traverseproc)Keys_traverse,                 /* tp_traverse */
-    0,                                           /* tp_clear */
-    // TODO: implement richcompare, we should probably be able to compare vs an
-    //       tuple, as well as versus another Keys object.
-    0, //Keys_richcompare,                            /* tp_richcompare */
-    0,                                           /* tp_weaklistoffset */
-    // We could implement this as returning tuples of keys...
-    0,                                           /* tp_iter */
-    0,                                           /* tp_iternext */
-    KeyIntern_methods,                           /* tp_methods */
-    0,                                           /* tp_members */
-    0,                                           /* tp_getset */
-    0,                                           /* tp_base */
-    0,                                           /* tp_dict */
-    0,                                           /* tp_descr_get */
-    0,                                           /* tp_descr_set */
-    0,                                           /* tp_dictoffset */
-    0,                                           /* tp_init */
-    0,                                           /* tp_alloc */
-    0, //Keys_new,                                    /* tp_new */
-};
+// static PyTypeObject KeyIntern_Type = {
+//     PyObject_HEAD_INIT(NULL)
+//     0,                                           /* ob_size */
+//     "KeyIntern",                                 /* tp_name */
+//     sizeof(KeyIntern) - sizeof(Key *),           /* tp_basicsize */
+//     sizeof(Key *),                               /* tp_itemsize */
+//     0, //(destructor)Keys_dealloc,               /* tp_dealloc */
+//     0,                                           /* tp_print */
+//     0,                                           /* tp_getattr */
+//     0,                                           /* tp_setattr */
+//     0,                                           /* tp_compare */
+//     // TODO: implement repr() and possibly str()
+//     0, //(reprfunc)Keys_repr,                         /* tp_repr */
+//     0,                                           /* tp_as_number */
+//     &KeyIntern_as_sequence,                      /* tp_as_sequence */
+//     0,                                           /* tp_as_mapping */
+//     0, //(hashfunc)Keys_hash,                         /* tp_hash */
+//     0,                                           /* tp_call */
+//     0,                                           /* tp_str */
+//     PyObject_GenericGetAttr,                     /* tp_getattro */
+//     0,                                           /* tp_setattro */
+//     0,                                           /* tp_as_buffer */
+//     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
+//     0, // Keys_doc,                                    /* tp_doc */
+//     /* See Key_traverse for why we have this, even though we aren't GC */
+//     0, //(traverseproc)Keys_traverse,                 /* tp_traverse */
+//     0,                                           /* tp_clear */
+//     // TODO: implement richcompare, we should probably be able to compare vs an
+//     //       tuple, as well as versus another Keys object.
+//     0, //Keys_richcompare,                            /* tp_richcompare */
+//     0,                                           /* tp_weaklistoffset */
+//     // We could implement this as returning tuples of keys...
+//     0,                                           /* tp_iter */
+//     0,                                           /* tp_iternext */
+//     KeyIntern_methods,                           /* tp_methods */
+//     0,                                           /* tp_members */
+//     0,                                           /* tp_getset */
+//     0,                                           /* tp_base */
+//     0,                                           /* tp_dict */
+//     0,                                           /* tp_descr_get */
+//     0,                                           /* tp_descr_set */
+//     0,                                           /* tp_dictoffset */
+//     0,                                           /* tp_init */
+//     0,                                           /* tp_alloc */
+//     0, //Keys_new,                                    /* tp_new */
+// };
 
 
-static PyMethodDef keys_type_c_methods[] = {
+static PyMethodDef static_tuple_c_methods[] = {
 //    {"unique_lcs_c", py_unique_lcs, METH_VARARGS},
 //    {"recurse_matches_c", py_recurse_matches, METH_VARARGS},
     {NULL, NULL}
@@ -975,22 +627,18 @@ init_static_tuple_c(void)
 {
     PyObject* m;
 
-    if (PyType_Ready(&Key_Type) < 0)
+    if (PyType_Ready(&StaticTuple_Type) < 0)
         return;
-    if (PyType_Ready(&Keys_Type) < 0)
-        return;
-    if (PyType_Ready(&KeyIntern_Type) < 0)
-        return;
+    //if (PyType_Ready(&KeyIntern_Type) < 0)
+    //    return;
 
-    m = Py_InitModule3("_static_tuple_c", keys_type_c_methods,
-                       "C implementation of a Keys structure");
+    m = Py_InitModule3("_static_tuple_c", static_tuple_c_methods,
+                       "C implementation of a StaticTuple structure");
     if (m == NULL)
       return;
 
-    Py_INCREF(&Key_Type);
-    PyModule_AddObject(m, "Key", (PyObject *)&Key_Type);
-    Py_INCREF(&Keys_Type);
-    PyModule_AddObject(m, "Keys", (PyObject *)&Keys_Type);
+    Py_INCREF(&StaticTuple_Type);
+    PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
     // Py_INCREF(&KeyIntern_Type);
     // PyModule_AddObject(m, "KeyIntern", (PyObject *)&KeyIntern_Type);
     // _interned_keys = PyObject_NewVar(KeyIntern, &KeyIntern_Type, 10);
