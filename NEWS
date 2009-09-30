@@ -22,6 +22,14 @@ Bug Fixes
   ``keyboard-interactive`` auth but not ``password`` auth when using
   Paramiko.   (Andrew Bennetts, #433846)
 
+* Operations that set a full inventory in the working tree will now
+  go via the apply_inventory_delta code path which is simpler and
+  easier to understand than dirstates set_state_from_inventory method.
+  This may have a small performance impact on operations built on
+  _write_inventory, but such operations are already doing full tree
+  scans, so no radical performance change should be observed.
+  (Robert Collins, #403322)
+
 Improvements
 ************
 
