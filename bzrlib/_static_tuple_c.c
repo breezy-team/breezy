@@ -18,9 +18,7 @@
 /* Must be defined before importing _static_tuple_c.h so that we get the right
  * linkage.
  */
-#if defined(_WIN32)
-#  define StaticTupleAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
-#endif
+#define STATIC_TUPLE_MODULE
 
 #include "_static_tuple_c.h"
 
@@ -134,7 +132,7 @@ StaticTuple_dealloc(StaticTuple *self)
 
 
 /* Similar to PyTuple_New() */
-PyObject *
+static PyObject *
 StaticTuple_New(Py_ssize_t size)
 {
     StaticTuple *key;
@@ -679,33 +677,21 @@ static PyMethodDef static_tuple_c_methods[] = {
 };
 
 
-PyMODINIT_FUNC
-init_static_tuple_c(void)
+static void
+setup_interned_keys(PyObject *m)
 {
-    PyObject* m;
-    StaticTuple *key;
-
-    if (PyType_Ready(&StaticTuple_Type) < 0)
-        return;
-    //if (PyType_Ready(&KeyIntern_Type) < 0)
-    //    return;
-
-    m = Py_InitModule3("_static_tuple_c", static_tuple_c_methods,
-                       "C implementation of a StaticTuple structure");
-    if (m == NULL)
-      return;
-
-    Py_INCREF(&StaticTuple_Type);
-    PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    // Py_INCREF(&KeyIntern_Type);
-    // PyModule_AddObject(m, "KeyIntern", (PyObject *)&KeyIntern_Type);
-    // _interned_keys = PyObject_NewVar(KeyIntern, &KeyIntern_Type, 10);
     _interned_keys = PyDict_New();
     if (_interned_keys != NULL) {
         Py_INCREF(_interned_keys);
         PyModule_AddObject(m, "_interned_keys", _interned_keys);
     }
+}
 
+
+static void
+setup_empty_tuple(PyObject *m)
+{
+    StaticTuple *key;
     // We need to create the empty tuple
     key = PyObject_NewVar(StaticTuple, &StaticTuple_Type, 0);
     if (key == NULL) {
@@ -724,4 +710,42 @@ init_static_tuple_c(void)
     Py_INCREF(_empty_tuple); // Never dies
     Py_INCREF(_empty_tuple); // for the module
     PyModule_AddObject(m, "_empty_tuple", (PyObject *)_empty_tuple);
+}
+
+
+static void
+setup_c_api(PyObject *m)
+{
+    static void *StaticTuple_API[StaticTuple_API_pointers];
+    PyObject *c_api_object;
+
+    StaticTuple_API[StaticTuple_New_NUM] = (void *)StaticTuple_New;
+    StaticTuple_API[StaticTuple_intern_NUM] = (void *)StaticTuple_intern;
+    c_api_object = PyCObject_FromVoidPtr((void *)StaticTuple_API, NULL);
+    if (c_api_object != NULL) {
+        PyModule_AddObject(m, "_C_API", c_api_object);
+    }
+}
+
+
+PyMODINIT_FUNC
+init_static_tuple_c(void)
+{
+    PyObject* m;
+
+    if (PyType_Ready(&StaticTuple_Type) < 0)
+        return;
+    //if (PyType_Ready(&KeyIntern_Type) < 0)
+    //    return;
+
+    m = Py_InitModule3("_static_tuple_c", static_tuple_c_methods,
+                       "C implementation of a StaticTuple structure");
+    if (m == NULL)
+      return;
+
+    Py_INCREF(&StaticTuple_Type);
+    PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
+    setup_interned_keys(m);
+    setup_empty_tuple(m);
+    setup_c_api(m);
 }

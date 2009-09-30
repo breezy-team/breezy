@@ -55,13 +55,19 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
 
-## cdef extern from "_keys_type_c.h":
-##     cdef struct Key:
-##         pass
-##     object Key_New(Py_ssize_t)
-##     # Steals a reference and Val must be a PyStringObject, no checking is done
-##     void Key_SET_ITEM(object key, Py_ssize_t offset, object val)
-##     object Key_GET_ITEM(object key, Py_ssize_t offset)
+cdef extern from "_static_tuple_c.h":
+    cdef struct StaticTuple:
+        pass
+    void **StaticTuple_API
+    int import_static_tuple()
+    # ctypedef object (*st_new_type)(Py_ssize_t)
+    # st_new_type st_new
+
+    object StaticTuple_New(Py_ssize_t)
+    object StaticTuple_intern(object)
+    # Steals a reference and Val must be a PyStringObject, no checking is done
+    void StaticTuple_SET_ITEM(object key, Py_ssize_t offset, object val)
+    object StaticTuple_GET_ITEM(object key, Py_ssize_t offset)
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -103,8 +109,11 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     return result
 
 from bzrlib import _static_tuple_c
-cdef object StaticTuple
-StaticTuple = _static_tuple_c.StaticTuple
+# This sets up the StaticTuple C_API functionality
+if import_static_tuple() == -1 or StaticTuple_API == NULL:
+    raise ImportError('failed to import_static_tuple()')
+cdef object _ST
+_ST = _static_tuple_c.StaticTuple
 
 
 cdef class BTreeLeafParser:
@@ -145,6 +154,9 @@ cdef class BTreeLeafParser:
         self._cur_str = NULL
         self._end_str = NULL
         self._header_found = 0
+        # keys are tuples
+        if StaticTuple_API == NULL:
+            raise ImportError('failed to import_static_tuple()')
 
     cdef extract_key(self, char * last):
         """Extract a key.
@@ -154,8 +166,8 @@ cdef class BTreeLeafParser:
         """
         cdef char *temp_ptr
         cdef int loop_counter
-        # keys are tuples
-        key = PyTuple_New(self.key_length)# PyTuple_New(self.key_length)
+        
+        key = StaticTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
             temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
@@ -170,18 +182,15 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            # TODO: Consider using PyIntern_FromString, the only caveat is that
-            # it assumes a NULL-terminated string, so we have to check if
-            # temp_ptr[0] == c'\0' or some other char.
             key_element = safe_interned_string_from_size(self._start,
                                                          temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
             # PyTuple_SET_ITEM(key, loop_counter, key_element)
-            PyTuple_SET_ITEM(key, loop_counter, key_element)
+            StaticTuple_SET_ITEM(key, loop_counter, key_element)
         # return _keys_type_c.Key(*key)
-        return StaticTuple(*key).intern()
+        return StaticTuple_intern(key)
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""
@@ -265,18 +274,18 @@ cdef class BTreeLeafParser:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = StaticTuple(*ref_list).intern()
+                ref_list = _ST(*ref_list).intern()
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
-            ref_lists = StaticTuple(*ref_lists)
-            node_value = StaticTuple(value, ref_lists)
+            ref_lists = _ST(*ref_lists)
+            node_value = _ST(value, ref_lists)
         else:
             if last != self._start:
                 # unexpected reference data present
                 return -1
-            node_value = StaticTuple(value, StaticTuple())
-        PyList_Append(self.keys, StaticTuple(key, node_value))
+            node_value = _ST(value, _ST())
+        PyList_Append(self.keys, _ST(key, node_value))
         return 0
 
     def parse(self):

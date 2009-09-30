@@ -365,3 +365,8 @@ class TestStaticTuple(tests.TestCase):
         # This old entry in _interned_keys should be gone
         self.assertFalse(key in self.module._interned_keys)
         self.assertFalse(key._is_interned())
+
+    def test__c_has_C_API(self):
+        if self.module is _static_tuple_py:
+            return
+        self.assertIsNot(None, self.module._C_API)

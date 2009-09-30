@@ -15,15 +15,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
+#ifndef _STATIC_TUPLE_H_
+#define _STATIC_TUPLE_H_
 #include <Python.h>
-
-#if !defined(StaticTupleAPI_FUNC)
-#  if defined(_WIN32)
-#    define StaticTupleAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
-#  else
-#    define StaticTupleAPI_FUNC(RTYPE) RTYPE
-#  endif
-#endif
 
 #define STATIC_TUPLE_HAS_HASH 0
 /* Caching the hash adds memory, but allows us to save a little time during
@@ -66,11 +60,6 @@ typedef struct {
 } StaticTuple;
 extern PyTypeObject StaticTuple_Type;
 
-/* TODO: we need to change this into an api table, look at the python extension
- *       docs.
- */
-StaticTupleAPI_FUNC(PyObject *) StaticTuple_New(Py_ssize_t size);
-
 typedef struct {
     PyObject_VAR_HEAD
     PyObject *table[1];
@@ -79,6 +68,57 @@ extern PyTypeObject StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 #define StaticTuple_SET_ITEM(key, offset, val) \
-    ((((StaticTuple*)(key))->key_bits[(offset)]) = ((PyObject *)(val))
+    ((((StaticTuple*)(key))->key_bits[(offset)]) = ((PyObject *)(val)))
 #define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->key_bits[offset])
 
+
+/* C API Functions */
+#define StaticTuple_New_NUM 0
+#define StaticTuple_intern_NUM 1
+
+/* Total number of C API Pointers */
+#define StaticTuple_API_pointers 2
+
+#ifdef STATIC_TUPLE_MODULE
+/* Used when compiling _static_tuple_c.c */
+
+static PyObject * StaticTuple_New(Py_ssize_t);
+static StaticTuple * StaticTuple_intern(StaticTuple *self);
+
+#else
+/* Used by foriegn callers */
+static void **StaticTuple_API;
+
+static PyObject *(*StaticTuple_New)(Py_ssize_t);
+static PyObject *(*StaticTuple_intern)(PyObject *);
+
+/* Return -1 and set exception on error, 0 on success */
+static int
+import_static_tuple(void)
+{
+    PyObject *module = PyImport_ImportModule("bzrlib._static_tuple_c");
+    PyObject *c_api_object;
+
+    if (module == NULL) {
+        fprintf(stderr, "Failed to find module _static_tuple_c.\n");
+        return -1;
+    }
+    c_api_object = PyObject_GetAttrString(module, "_C_API");
+    if (c_api_object == NULL) {
+        fprintf(stderr, "Failed to find _static_tuple_c._C_API.\n");
+        return -1;
+    }
+    if (!PyCObject_Check(c_api_object)) {
+        fprintf(stderr, "_static_tuple_c._C_API not a CObject.\n");
+        Py_DECREF(c_api_object);
+        return -1;
+    }
+    StaticTuple_API = (void **)PyCObject_AsVoidPtr(c_api_object);
+    StaticTuple_New = StaticTuple_API[StaticTuple_New_NUM];
+    StaticTuple_intern = StaticTuple_API[StaticTuple_intern_NUM];
+    Py_DECREF(c_api_object);
+    return 0;
+}
+
+#endif
+#endif // _STATIC_TUPLE_H_
