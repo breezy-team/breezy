@@ -1268,8 +1268,10 @@ class DirStateWorkingTree(WorkingTree3):
             raise AssertionError("attempting to write an inventory when the "
                 "dirstate is dirty will lose pending changes")
         had_inventory = self._inventory is not None
-        # Note that self.inventory may be inv, or may have been modified. So we
-        # reconstruct a clean inventory from the dirstate,
+        # Setting self._inventory = None forces the dirstate to regenerate the
+        # working inventory. We do this because self.inventory may be inv, or
+        # may have been modified, and either case would prevent a clean delta
+        # being created.
         self._inventory = None
         # generate a delta,
         delta = inv._make_delta(self.inventory)
