@@ -52,6 +52,9 @@ Bug Fixes
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
 
+* Retrieving file text or mtime from a _PreviewTree has good performance when
+  there are many changes.  (Aaron Bentley)
+
 
 bzr 2.0.0
 #########
