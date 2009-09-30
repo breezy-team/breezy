@@ -248,12 +248,8 @@ Key_hash(Key *self)
 #endif
 	x = 0x345678L;
 	p = self->key_bits;
-    string_hash = PyString_Type.tp_hash;
 	while (--len >= 0) {
-        y = (*p)->ob_shash;
-        if (y == -1) { /* not computed yet */
-            y = string_hash((PyObject *)(*p));
-        }
+        y = Py_TYPE(*p)->tp_hash(*p);
 		if (y == -1) /* failure */
 			return -1;
 		x = (x ^ y) * mult;
