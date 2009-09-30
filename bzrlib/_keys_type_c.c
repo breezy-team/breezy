@@ -39,6 +39,12 @@ static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
 static PyObject *key_intern = NULL;
 
 
+static inline int
+Key_size(Key *self)
+{
+    return self->info & KEY_SIZE_MASK;
+}
+
 
 
 #define Key_CheckExact(op) (Py_TYPE(op) == &Key_Type)
@@ -47,14 +53,15 @@ static PyObject *
 Key_as_tuple(Key *self)
 {
     PyObject *tpl = NULL, *obj = NULL;
-    Py_ssize_t i;
+    int i, len;
 
-    tpl = PyTuple_New(self->ob_size);
+    len = Key_size(self);
+    tpl = PyTuple_New(len);
     if (!tpl) {
         /* Malloc failure */
         return NULL;
     }
-    for (i = 0; i < self->ob_size; ++i) {
+    for (i = 0; i < len; ++i) {
         obj = (PyObject *)self->key_bits[i];
         Py_INCREF(obj);
         PyTuple_SET_ITEM(tpl, i, obj);
@@ -101,9 +108,10 @@ static char Key_intern_doc[] = "intern() => unique Key\n"
 static void
 Key_dealloc(Key *self)
 {
-    Py_ssize_t i;
+    int i, len;
 
-    for (i = 0; i < self->ob_size; ++i) {
+    len = Key_size(self);
+    for (i = 0; i < len; ++i) {
         Py_XDECREF(self->key_bits[i]);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
@@ -120,10 +128,18 @@ Key_New(Py_ssize_t size)
         return NULL;
     }
 
+    /* Note that we use PyObject_NewVar because we want to allocate a variable
+     * width entry. However we *aren't* truly a PyVarObject because we don't
+     * use a long for ob_size. Instead we use a plain 'size' that is an int,
+     * and will be overloaded with flags in the future.
+     * As such we do the alloc, and then have to clean up anything it does
+     * incorrectly.
+     */
     key = PyObject_NewVar(Key, &Key_Type, size);
     if (key == NULL) {
         return NULL;
     }
+    key->info = size & KEY_SIZE_MASK;
     memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
 #if KEY_HAS_HASH
     key->hash = -1;
@@ -158,10 +174,10 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
+    self->info = ((int)len) & KEY_SIZE_MASK;
 #if KEY_HAS_HASH
     self->hash = -1;
 #endif
-    self->ob_size = len;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
         if (!PyString_CheckExact(obj)) {
@@ -198,7 +214,7 @@ Key_hash(Key *self)
      * 'stable'?
      */
 	register long x, y;
-	Py_ssize_t len = self->ob_size;
+	Py_ssize_t len = Key_size(self);
 	PyStringObject **p;
     hashfunc string_hash;
 	long mult = 1000003L;
@@ -313,8 +329,8 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code
      */
-    vlen = vk->ob_size;
-    wlen = wk->ob_size;
+    vlen = Key_size(vk);
+    wlen = Key_size(wk);
 	min_len = (vlen < wlen) ? vlen : wlen;
     string_richcompare = PyString_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
@@ -385,14 +401,14 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
 static Py_ssize_t
 Key_length(Key *self)
 {
-    return self->ob_size;
+    return Key_size(self);
 }
 
 static PyObject *
 Key_item(Key *self, Py_ssize_t offset)
 {
     PyObject *obj;
-    if (offset < 0 || offset >= self->ob_size) {
+    if (offset < 0 || offset >= Key_size(self)) {
         PyErr_SetString(PyExc_IndexError, "Key index out of range");
         return NULL;
     }

@@ -47,8 +47,13 @@
  * the Key objects so that you have 1 python object overhead for N Keys, rather
  * than N objects.
  */
+
+#define KEY_SIZE_MASK     0x000000FF
+#define KEY_INTERNED_FLAG 0x00000100
 typedef struct {
-    PyObject_VAR_HEAD
+    PyObject_HEAD
+    int info; // size is in the lowest byte (0 -> 256)
+              // flags is next
 #if KEY_HAS_HASH
     long hash;
 #endif
