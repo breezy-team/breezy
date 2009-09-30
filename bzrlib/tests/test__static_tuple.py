@@ -272,6 +272,10 @@ class TestStaticTuple(tests.TestCase):
         else:
             self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
 
+    def test_empty_is_singleton(self):
+        key = self.module.StaticTuple()
+        self.assertIs(key, self.module._empty_tuple)
+
     def test_intern(self):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)

@@ -26,6 +26,11 @@ class StaticTuple(object):
 
     __slots__ = ('_tuple',)
 
+    def __new__(cls, *args):
+        if not args and _empty_tuple is not None:
+            return _empty_tuple
+        return super(StaticTuple, cls).__new__(cls, *args)
+
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""
         for bit in args:
@@ -65,4 +70,6 @@ class StaticTuple(object):
         return _interned_keys.setdefault(self, self)
 
 
+_empty_tuple = None
+_empty_tuple = StaticTuple()
 _interned_keys = {}

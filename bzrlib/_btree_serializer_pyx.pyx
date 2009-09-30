@@ -275,8 +275,8 @@ cdef class BTreeLeafParser:
             if last != self._start:
                 # unexpected reference data present
                 return -1
-            node_value = (value, ())
-        PyList_Append(self.keys, (key, node_value))
+            node_value = StaticTuple(value, StaticTuple())
+        PyList_Append(self.keys, StaticTuple(key, node_value))
         return 0
 
     def parse(self):

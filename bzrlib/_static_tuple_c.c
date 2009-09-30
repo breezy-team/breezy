@@ -35,6 +35,8 @@
 #endif
 
 
+/* The one and only StaticTuple with no values */
+static StaticTuple *_empty_tuple = NULL;
 static PyObject *_interned_keys = NULL;
 
 
@@ -141,6 +143,11 @@ StaticTuple_New(Py_ssize_t size)
         return NULL;
     }
 
+    if (size == 0) {
+        assert(_empty_tuple != NULL);
+        Py_INCREF(_empty_tuple);
+        return (PyObject *)_empty_tuple;
+    }
     /* Note that we use PyObject_NewVar because we want to allocate a variable
      * width entry. However we *aren't* truly a PyVarObject because we don't
      * use a long for ob_size. Instead we use a plain 'size' that is an int,
@@ -186,17 +193,10 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             " takes from 0 to 255 key bits");
         return NULL;
     }
-    self = (StaticTuple *)(type->tp_alloc(type, len));
+    self = (StaticTuple *)StaticTuple_New(len);
     if (self == NULL) {
         return NULL;
     }
-    self->size = len;
-    self->flags = 0;
-    self->_unused0 = 0;
-    self->_unused1 = 0;
-#if STATIC_TUPLE_HAS_HASH
-    self->hash = -1;
-#endif
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
         if (!PyString_CheckExact(obj) && !StaticTuple_CheckExact(obj)) {
@@ -654,6 +654,7 @@ PyMODINIT_FUNC
 init_static_tuple_c(void)
 {
     PyObject* m;
+    StaticTuple *key;
 
     if (PyType_Ready(&StaticTuple_Type) < 0)
         return;
@@ -675,4 +676,22 @@ init_static_tuple_c(void)
         Py_INCREF(_interned_keys);
         PyModule_AddObject(m, "_interned_keys", _interned_keys);
     }
+
+    // We need to create the empty tuple
+    key = PyObject_NewVar(StaticTuple, &StaticTuple_Type, 0);
+    if (key == NULL) {
+        return;
+    }
+    key->size = 0;
+    key->flags = 0;
+    key->_unused0 = 0;
+    key->_unused1 = 0;
+#if STATIC_TUPLE_HAS_HASH
+    key->hash = -1;
+#endif
+    _empty_tuple = StaticTuple_intern(key);
+    assert(_empty_tuple == key);
+    Py_INCREF(_empty_tuple); // Never dies
+    Py_INCREF(_empty_tuple); // for the module
+    PyModule_AddObject(m, "_empty_tuple", (PyObject *)_empty_tuple);
 }
