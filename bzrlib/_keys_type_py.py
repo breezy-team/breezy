@@ -62,7 +62,7 @@ class Key(object):
         return self._tuple
 
     def intern(self):
-        return _intern.setdefault(self, self)
+        return _interned_keys.setdefault(self, self)
 
 
 
@@ -87,4 +87,4 @@ def Keys(width, *args):
     return tuple(result)
 
 
-_intern = {}
+_interned_keys = {}

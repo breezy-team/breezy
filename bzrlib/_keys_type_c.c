@@ -36,13 +36,19 @@
 
 
 static PyObject *Keys_item(Keys *self, Py_ssize_t offset);
-static PyObject *key_intern = NULL;
+static PyObject *_interned_keys = NULL;
 
 
 static inline int
-Key_size(Key *self)
+_Key_size(Key *self)
 {
     return self->info & KEY_SIZE_MASK;
+}
+
+static inline int
+_Key_is_interned(Key *self)
+{
+    return self->info & KEY_INTERNED_FLAG;
 }
 
 
@@ -55,7 +61,7 @@ Key_as_tuple(Key *self)
     PyObject *tpl = NULL, *obj = NULL;
     int i, len;
 
-    len = Key_size(self);
+    len = _Key_size(self);
     tpl = PyTuple_New(len);
     if (!tpl) {
         /* Malloc failure */
@@ -77,23 +83,32 @@ Key_intern(Key *self)
 {
     PyObject *unique_key = NULL;
 
-    if (key_intern == NULL) {
+    if (_interned_keys == NULL) {
         return self;
     }
-    unique_key = PyDict_GetItem((PyObject *)key_intern, (PyObject *)self);
+    if (_Key_is_interned(self)) {
+        // Already interned
+        Py_INCREF(self);
+        return self;
+    }
+    unique_key = PyDict_GetItem((PyObject *)_interned_keys, (PyObject *)self);
     if (unique_key) {
         // An entry already existed, return it, instead of self
         Py_INCREF(unique_key);
         return (Key *)unique_key;
     }
     // An entry did not exist, make 'self' the unique item
-    if (PyDict_SetItem(key_intern, (PyObject *)self, (PyObject *)self) < 0) {
+    if (PyDict_SetItem(_interned_keys, (PyObject *)self, (PyObject *)self) < 0) {
         // Suppress an error
         PyErr_Clear();
         return self;
     }
     // self was added to the dict, return it.
     Py_INCREF(self);
+    self->info |= KEY_INTERNED_FLAG;
+    // The two references in the dict do not count, so that the Key object
+    // does not become immortal just because it was interned.
+    Py_REFCNT(self) -= 2;
     return self;
 }
 
@@ -110,7 +125,14 @@ Key_dealloc(Key *self)
 {
     int i, len;
 
-    len = Key_size(self);
+    if (_Key_is_interned(self)) {
+        /* revive dead object temporarily for DelItem */
+        Py_REFCNT(self) = 3;
+        if (PyDict_DelItem(_interned_keys, (PyObject *)self) != 0) {
+            Py_FatalError("deletion of interned Key failed");
+        }
+    }
+    len = _Key_size(self);
     for (i = 0; i < len; ++i) {
         Py_XDECREF(self->key_bits[i]);
     }
@@ -214,7 +236,7 @@ Key_hash(Key *self)
      * 'stable'?
      */
 	register long x, y;
-	Py_ssize_t len = Key_size(self);
+	Py_ssize_t len = _Key_size(self);
 	PyStringObject **p;
     hashfunc string_hash;
 	long mult = 1000003L;
@@ -329,8 +351,8 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code
      */
-    vlen = Key_size(vk);
-    wlen = Key_size(wk);
+    vlen = _Key_size(vk);
+    wlen = _Key_size(wk);
 	min_len = (vlen < wlen) ? vlen : wlen;
     string_richcompare = PyString_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
@@ -401,14 +423,30 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
 static Py_ssize_t
 Key_length(Key *self)
 {
-    return Key_size(self);
+    return _Key_size(self);
 }
+
+
+static PyObject *
+Key__is_interned(Key *self)
+{
+    if (_Key_is_interned(self)) {
+        Py_INCREF(Py_True);
+        return Py_True;
+    }
+    Py_INCREF(Py_False);
+    return Py_False;
+}
+
+static char Key__is_interned_doc[] = "_is_interned() => True/False\n"
+    "Check to see if this key has been interned.\n";
+
 
 static PyObject *
 Key_item(Key *self, Py_ssize_t offset)
 {
     PyObject *obj;
-    if (offset < 0 || offset >= Key_size(self)) {
+    if (offset < 0 || offset >= _Key_size(self)) {
         PyErr_SetString(PyExc_IndexError, "Key index out of range");
         return NULL;
     }
@@ -450,6 +488,8 @@ static char Key_doc[] =
 static PyMethodDef Key_methods[] = {
     {"as_tuple", (PyCFunction)Key_as_tuple, METH_NOARGS, Key_as_tuple_doc},
     {"intern", (PyCFunction)Key_intern, METH_NOARGS, Key_intern_doc},
+    {"_is_interned", (PyCFunction)Key__is_interned, METH_NOARGS,
+     Key__is_interned_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -956,10 +996,10 @@ init_keys_type_c(void)
     PyModule_AddObject(m, "Keys", (PyObject *)&Keys_Type);
     // Py_INCREF(&KeyIntern_Type);
     // PyModule_AddObject(m, "KeyIntern", (PyObject *)&KeyIntern_Type);
-    // key_intern = PyObject_NewVar(KeyIntern, &KeyIntern_Type, 10);
-    key_intern = PyDict_New();
-    if (key_intern != NULL) {
-        Py_INCREF(key_intern);
-        PyModule_AddObject(m, "_intern", key_intern);
+    // _interned_keys = PyObject_NewVar(KeyIntern, &KeyIntern_Type, 10);
+    _interned_keys = PyDict_New();
+    if (_interned_keys != NULL) {
+        Py_INCREF(_interned_keys);
+        PyModule_AddObject(m, "_interned_keys", _interned_keys);
     }
 }
