@@ -388,3 +388,23 @@ class TestKeysType(tests.TestCase):
         # We have one more ref in 'key2' but otherwise no extra refs
         self.assertEqual(3, sys.getrefcount(key))
         self.assertIs(key, key2)
+
+    def test__c_keys_are_not_immortal(self):
+        if self.module is _keys_type_py:
+            return # Not applicable
+        unique_str1 = 'unique str ' + osutils.rand_chars(20)
+        unique_str2 = 'unique str ' + osutils.rand_chars(20)
+        key = self.module.Key(unique_str1, unique_str2)
+        self.assertFalse(key in self.module._interned_keys)
+        self.assertEqual(2, sys.getrefcount(key))
+        key = key.intern()
+        self.assertEqual(2, sys.getrefcount(key))
+        self.assertTrue(key in self.module._interned_keys)
+        self.assertTrue(key._is_interned())
+        del key
+        # Create a new entry, which would point to the same location
+        key = self.module.Key(unique_str1, unique_str2)
+        self.assertEqual(2, sys.getrefcount(key))
+        # This old entry in _interned_keys should be gone
+        self.assertFalse(key in self.module._interned_keys)
+        self.assertFalse(key._is_interned())
