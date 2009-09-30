@@ -56,8 +56,6 @@ cdef extern from "string.h":
     int strncmp(char *s1, char *s2, size_t n)
 
 cdef extern from "_static_tuple_c.h":
-    cdef struct StaticTuple:
-        pass
     void **StaticTuple_API
     int import_static_tuple()
     # ctypedef object (*st_new_type)(Py_ssize_t)
@@ -112,8 +110,8 @@ from bzrlib import _static_tuple_c
 # This sets up the StaticTuple C_API functionality
 if import_static_tuple() == -1 or StaticTuple_API == NULL:
     raise ImportError('failed to import_static_tuple()')
-cdef object _ST
-_ST = _static_tuple_c.StaticTuple
+cdef object StaticTuple
+StaticTuple = _static_tuple_c.StaticTuple
 
 
 cdef class BTreeLeafParser:
@@ -182,15 +180,19 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            key_element = safe_interned_string_from_size(self._start,
+            if ((temp_ptr - self._start) == 45
+                and strncmp(self._start, 'sha1:', 5) == 0):
+                key_element = safe_string_from_size(self._start,
+                                                    temp_ptr - self._start)
+            else:
+                key_element = safe_interned_string_from_size(self._start,
                                                          temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
-            # PyTuple_SET_ITEM(key, loop_counter, key_element)
             StaticTuple_SET_ITEM(key, loop_counter, key_element)
-        # return _keys_type_c.Key(*key)
-        return StaticTuple_intern(key)
+        key = StaticTuple_intern(key)
+        return key
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""
@@ -274,18 +276,18 @@ cdef class BTreeLeafParser:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = _ST(*ref_list).intern()
+                ref_list = StaticTuple_intern(StaticTuple(*ref_list))
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
-            ref_lists = _ST(*ref_lists)
-            node_value = _ST(value, ref_lists)
+            ref_lists = StaticTuple(*ref_lists)
+            node_value = StaticTuple(value, ref_lists)
         else:
             if last != self._start:
                 # unexpected reference data present
                 return -1
-            node_value = _ST(value, _ST())
-        PyList_Append(self.keys, _ST(key, node_value))
+            node_value = StaticTuple(value, StaticTuple())
+        PyList_Append(self.keys, StaticTuple(key, node_value))
         return 0
 
     def parse(self):
