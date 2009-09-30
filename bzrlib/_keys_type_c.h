@@ -48,12 +48,15 @@
  * than N objects.
  */
 
-#define KEY_SIZE_MASK     0x000000FF
-#define KEY_INTERNED_FLAG 0x00000100
+#define KEY_INTERNED_FLAG 0x01
 typedef struct {
     PyObject_HEAD
-    int info; // size is in the lowest byte (0 -> 256)
-              // flags is next
+    unsigned char size;
+    unsigned char flags;
+    unsigned char _unused0;
+    unsigned char _unused1;
+    // Note that on 64-bit, we actually have 4-more unused bytes
+    // because key_bits will always be aligned to a 64-bit boundary
 #if KEY_HAS_HASH
     long hash;
 #endif

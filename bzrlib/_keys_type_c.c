@@ -40,15 +40,9 @@ static PyObject *_interned_keys = NULL;
 
 
 static inline int
-_Key_size(Key *self)
-{
-    return self->info & KEY_SIZE_MASK;
-}
-
-static inline int
 _Key_is_interned(Key *self)
 {
-    return self->info & KEY_INTERNED_FLAG;
+    return self->flags & KEY_INTERNED_FLAG;
 }
 
 
@@ -61,7 +55,7 @@ Key_as_tuple(Key *self)
     PyObject *tpl = NULL, *obj = NULL;
     int i, len;
 
-    len = _Key_size(self);
+    len = self->size;
     tpl = PyTuple_New(len);
     if (!tpl) {
         /* Malloc failure */
@@ -105,7 +99,7 @@ Key_intern(Key *self)
     }
     // self was added to the dict, return it.
     Py_INCREF(self);
-    self->info |= KEY_INTERNED_FLAG;
+    self->flags |= KEY_INTERNED_FLAG;
     // The two references in the dict do not count, so that the Key object
     // does not become immortal just because it was interned.
     Py_REFCNT(self) -= 2;
@@ -132,7 +126,7 @@ Key_dealloc(Key *self)
             Py_FatalError("deletion of interned Key failed");
         }
     }
-    len = _Key_size(self);
+    len = self->size;
     for (i = 0; i < len; ++i) {
         Py_XDECREF(self->key_bits[i]);
     }
@@ -161,7 +155,10 @@ Key_New(Py_ssize_t size)
     if (key == NULL) {
         return NULL;
     }
-    key->info = size & KEY_SIZE_MASK;
+    key->size = size;
+    key->flags = 0;
+    key->_unused0 = 0;
+    key->_unused1 = 0;
     memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
 #if KEY_HAS_HASH
     key->hash = -1;
@@ -196,7 +193,10 @@ Key_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
-    self->info = ((int)len) & KEY_SIZE_MASK;
+    self->size = len;
+    self->flags = 0;
+    self->_unused0 = 0;
+    self->_unused1 = 0;
 #if KEY_HAS_HASH
     self->hash = -1;
 #endif
@@ -236,7 +236,7 @@ Key_hash(Key *self)
      * 'stable'?
      */
 	register long x, y;
-	Py_ssize_t len = _Key_size(self);
+	Py_ssize_t len = self->size;
 	PyStringObject **p;
     hashfunc string_hash;
 	long mult = 1000003L;
@@ -351,8 +351,8 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code
      */
-    vlen = _Key_size(vk);
-    wlen = _Key_size(wk);
+    vlen = vk->size;
+    wlen = wk->size;
 	min_len = (vlen < wlen) ? vlen : wlen;
     string_richcompare = PyString_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
@@ -423,7 +423,7 @@ Key_richcompare(PyObject *v, PyObject *w, int op)
 static Py_ssize_t
 Key_length(Key *self)
 {
-    return _Key_size(self);
+    return self->size;
 }
 
 
@@ -446,7 +446,7 @@ static PyObject *
 Key_item(Key *self, Py_ssize_t offset)
 {
     PyObject *obj;
-    if (offset < 0 || offset >= _Key_size(self)) {
+    if (offset < 0 || offset >= self->size) {
         PyErr_SetString(PyExc_IndexError, "Key index out of range");
         return NULL;
     }
