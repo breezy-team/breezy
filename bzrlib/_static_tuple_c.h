@@ -49,6 +49,8 @@
  */
 
 #define STATIC_TUPLE_INTERNED_FLAG 0x01
+#define STATIC_TUPLE_ALL_STRING    0x02
+#define STATIC_TUPLE_DID_HASH      0x04
 typedef struct {
     PyObject_HEAD
     unsigned char size;

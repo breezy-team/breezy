@@ -177,6 +177,7 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     StaticTuple *self;
     PyObject *obj = NULL;
     Py_ssize_t i, len = 0;
+    int is_all_str;
 
     if (type != &StaticTuple_Type) {
         PyErr_SetString(PyExc_TypeError, "we only support creating StaticTuple");
@@ -197,17 +198,24 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
+    is_all_str = 1;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
-        if (!PyString_CheckExact(obj) && !StaticTuple_CheckExact(obj)) {
-            PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
-                " requires that all key bits are strings or StaticTuple.");
-            /* TODO: What is the proper way to dealloc ? */
-            type->tp_dealloc((PyObject *)self);
-            return NULL;
+        if (!PyString_CheckExact(obj)) {
+            is_all_str = 0;
+            if (!StaticTuple_CheckExact(obj)) {
+                PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
+                    " requires that all key bits are strings or StaticTuple.");
+                /* TODO: What is the proper way to dealloc ? */
+                type->tp_dealloc((PyObject *)self);
+                return NULL;
+            }
         }
         Py_INCREF(obj);
         self->key_bits[i] = obj;
+    }
+    if (is_all_str) {
+        self->flags |= STATIC_TUPLE_ALL_STRING;
     }
     return (PyObject *)self;
 }
@@ -235,7 +243,6 @@ StaticTuple_hash(StaticTuple *self)
 	register long x, y;
 	Py_ssize_t len = self->size;
 	PyObject **p;
-    // hashfunc string_hash;
 	long mult = 1000003L;
 
 #if STATIC_TUPLE_HAS_HASH
@@ -245,15 +252,30 @@ StaticTuple_hash(StaticTuple *self)
 #endif
 	x = 0x345678L;
 	p = self->key_bits;
-	while (--len >= 0) {
-        y = Py_TYPE(*p)->tp_hash(*p);
-		if (y == -1) /* failure */
-			return -1;
-		x = (x ^ y) * mult;
-		/* the cast might truncate len; that doesn't change hash stability */
-		mult += (long)(82520L + len + len);
-        p++;
-	}
+    if (self->flags & STATIC_TUPLE_ALL_STRING
+        && self->flags & STATIC_TUPLE_DID_HASH) {
+        /* If we know that we only reference strings, and we've already
+         * computed the hash one time before, then we know all the strings will
+         * have valid hash entries, and we can just compute, no branching
+         * logic.
+         */
+        while (--len >= 0) {
+            y = ((PyStringObject*)(*p))->ob_shash;
+            x = (x ^ y) * mult;
+            /* the cast might truncate len; that doesn't change hash stability */
+            mult += (long)(82520L + len + len);
+            p++;
+        }
+    } else {
+        while (--len >= 0) {
+            y = PyObject_Hash(*p++);
+            if (y == -1) /* failure */
+                return -1;
+            x = (x ^ y) * mult;
+            /* the cast might truncate len; that doesn't change hash stability */
+            mult += (long)(82520L + len + len);
+        }
+    }
 	x += 97531L;
 	if (x == -1)
 		x = -2;
@@ -265,6 +287,7 @@ StaticTuple_hash(StaticTuple *self)
     }
     self->hash = x;
 #endif
+    self->flags |= STATIC_TUPLE_DID_HASH;
 	return x;
 }
 
@@ -500,7 +523,7 @@ static int
 StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
 {
     Py_ssize_t i;
-    for (i = Py_SIZE(self); --i >= 0;) {
+    for (i = self->size; --i >= 0;) {
         Py_VISIT(self->key_bits[i]);
     }
     return 0;
@@ -689,7 +712,8 @@ init_static_tuple_c(void)
         return;
     }
     key->size = 0;
-    key->flags = 0;
+    /* This is all strings, because it has no entries */
+    key->flags = STATIC_TUPLE_ALL_STRING;
     key->_unused0 = 0;
     key->_unused1 = 0;
 #if STATIC_TUPLE_HAS_HASH
