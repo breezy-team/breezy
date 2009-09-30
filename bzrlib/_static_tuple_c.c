@@ -304,12 +304,15 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
          * might trigger if '__op__' is defined but '__rop__' is not, sort of
          * case. Such as "None == StaticTuple()"
          */
-        fprintf(stderr, "self is tuple\n");
+        fprintf(stderr, "self is not StaticTuple\n");
         Py_INCREF(Py_NotImplemented);
         return Py_NotImplemented;
     }
     vk = (StaticTuple *)v;
-    if (PyTuple_Check(w)) {
+    if (StaticTuple_CheckExact(w)) {
+        /* The most common case */
+        wk = (StaticTuple*)w;
+    } else if (PyTuple_Check(w)) {
         /* One of v or w is a tuple, so we go the 'slow' route and cast up to
          * tuples to compare.
          */
@@ -318,22 +321,26 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
          *       other is a tuple.
          */
         return StaticTuple_richcompare_to_tuple(vk, w, op);
-    }
-    /* TODO: Py_None is one of the other common cases here, we should probably
-     *       directly support it.
-     */
-    if (!StaticTuple_CheckExact(w)) {
-        /* Both are not StaticTuple objects, and they aren't Tuple objects or the
-         * previous path would have been taken. We don't support comparing with
-         * anything else.
+    } else if (w == Py_None) {
+        // None is always less than the object
+		switch (op) {
+		case Py_NE:case Py_GT:case Py_GE:
+            Py_INCREF(Py_True);
+            return Py_True;
+        case Py_EQ:case Py_LT:case Py_LE:
+            Py_INCREF(Py_False);
+            return Py_False;
+		}
+    } else {
+        /* We don't special case this comparison, we just let python handle
+         * it.
          */
-         fprintf(stderr, "not comparing to key: %s\n", Py_TYPE(w)->tp_name);
          Py_INCREF(Py_NotImplemented);
          return Py_NotImplemented;
     }
     /* Now we know that we have 2 StaticTuple objects, so let's compare them.
      * This code is somewhat borrowed from tuplerichcompare, except we know our
-     * objects are limited in scope, so we cheat a bit.
+     * objects are limited in scope, so we can inline some comparisons.
      */
     if (v == w) {
         /* Identical pointers, we can shortcut this easily. */
@@ -346,7 +353,6 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return Py_False;
 		}
     }
-    wk = (StaticTuple*)w;
 
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code

@@ -29,7 +29,7 @@ class StaticTuple(object):
     def __new__(cls, *args):
         if not args and _empty_tuple is not None:
             return _empty_tuple
-        return super(StaticTuple, cls).__new__(cls, *args)
+        return object.__new__(cls)
 
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""

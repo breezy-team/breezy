@@ -187,6 +187,14 @@ class TestStaticTuple(tests.TestCase):
         self.assertTrue(k_small <= k_big)
         self.assertTrue(k_small < k_big)
 
+    def test_compare_vs_none(self):
+        k1 = self.module.StaticTuple('baz', 'bing')
+        self.assertCompareDifferent(None, k1)
+        self.assertCompareDifferent(10, k1)
+        # Comparison with a string is poorly-defined, I seem to get failures
+        # regardless of which one comes first...
+        # self.assertCompareDifferent('baz', k1)
+
     def test_compare_all_different_same_width(self):
         k1 = self.module.StaticTuple('baz', 'bing')
         k2 = self.module.StaticTuple('foo', 'bar')
@@ -264,17 +272,37 @@ class TestStaticTuple(tests.TestCase):
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.StaticTuple(*strs)
-        if isinstance(k, _static_tuple_py.StaticTuple):
+        if self.module is _static_tuple_py:
             # The python version references objects slightly different than the
             # compiled version
             self.assertEqual([k._tuple, _static_tuple_py.StaticTuple],
                              scanner.get_referents(k))
+            self.assertEqual(sorted(strs),
+                             sorted(scanner.get_referents(k._tuple)))
         else:
             self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
+
+    def test_nested_referents(self):
+        self.requireFeature(Meliae)
 
     def test_empty_is_singleton(self):
         key = self.module.StaticTuple()
         self.assertIs(key, self.module._empty_tuple)
+        from meliae import scanner
+        strs = ['foo', 'bar', 'baz', 'bing']
+        k1 = self.module.StaticTuple(*strs[:2])
+        k2 = self.module.StaticTuple(*strs[2:])
+        k3 = self.module.StaticTuple(k1, k2)
+        if self.module is _static_tuple_py:
+            # The python version references objects slightly different than the
+            # compiled version
+            self.assertEqual([k3._tuple, _static_tuple_py.StaticTuple],
+                             scanner.get_referents(k3))
+            self.assertEqual(sorted([k1, k2]),
+                             sorted(scanner.get_referents(k3._tuple)))
+        else:
+            self.assertEqual(sorted([k1, k2]),
+                             sorted(scanner.get_referents(k3)))
 
     def test_intern(self):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
