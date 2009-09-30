@@ -83,10 +83,11 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo', 'bar')
 
     def test_create_bad_args(self):
-        self.assertRaises(ValueError, self.module.StaticTuple)
-        lots_of_args = ['a']*300
+        args_256 = ['a']*256
         # too many args
-        self.assertRaises(ValueError, self.module.StaticTuple, *lots_of_args)
+        self.assertRaises(ValueError, self.module.StaticTuple, *args_256)
+        args_300 = ['a']*300
+        self.assertRaises(ValueError, self.module.StaticTuple, *args_300)
         # not a string
         self.assertRaises(TypeError, self.module.StaticTuple, 10)
         
@@ -99,12 +100,24 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual(('foo', 'bar'), t)
 
     def test_len(self):
+        k = self.module.StaticTuple()
+        self.assertEqual(0, len(k))
         k = self.module.StaticTuple('foo')
         self.assertEqual(1, len(k))
         k = self.module.StaticTuple('foo', 'bar')
         self.assertEqual(2, len(k))
         k = self.module.StaticTuple('foo', 'bar', 'b', 'b', 'b', 'b', 'b')
         self.assertEqual(7, len(k))
+        args = ['foo']*255
+        k = self.module.StaticTuple(*args)
+        self.assertEqual(255, len(k))
+
+    def test_hold_other_static_tuples(self):
+        k = self.module.StaticTuple('foo', 'bar')
+        k2 = self.module.StaticTuple(k, k)
+        self.assertEqual(2, len(k2))
+        self.assertIs(k, k2[0])
+        self.assertIs(k, k2[1])
 
     def test_getitem(self):
         k = self.module.StaticTuple('foo', 'bar', 'b', 'b', 'b', 'b', 'z')
@@ -145,16 +158,26 @@ class TestStaticTuple(tests.TestCase):
     def test_compare_same_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareEqual(k1, k1)
+        k2 = self.module.StaticTuple(k1, k1)
+        self.assertCompareEqual(k2, k2)
 
     def test_compare_equivalent_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
         k2 = self.module.StaticTuple('foo', 'bar')
+        self.assertCompareEqual(k1, k2)
+        k3 = self.module.StaticTuple(k1, k2)
+        k4 = self.module.StaticTuple(k2, k1)
         self.assertCompareEqual(k1, k2)
 
     def test_compare_similar_obj(self):
         k1 = self.module.StaticTuple('foo' + ' bar', 'bar' + ' baz')
         k2 = self.module.StaticTuple('fo' + 'o bar', 'ba' + 'r baz')
         self.assertCompareEqual(k1, k2)
+        k3 = self.module.StaticTuple('foo ' + 'bar', 'bar ' + 'baz')
+        k4 = self.module.StaticTuple('f' + 'oo bar', 'b' + 'ar baz')
+        k5 = self.module.StaticTuple(k1, k2)
+        k6 = self.module.StaticTuple(k3, k4)
+        self.assertCompareEqual(k5, k6)
 
     def assertCompareDifferent(self, k_small, k_big):
         self.assertFalse(k_small == k_big)
@@ -168,16 +191,25 @@ class TestStaticTuple(tests.TestCase):
         k1 = self.module.StaticTuple('baz', 'bing')
         k2 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareDifferent(k1, k2)
+        k3 = self.module.StaticTuple(k1, k2)
+        k4 = self.module.StaticTuple(k2, k1)
+        self.assertCompareDifferent(k3, k4)
 
     def test_compare_some_different(self):
         k1 = self.module.StaticTuple('foo', 'bar')
         k2 = self.module.StaticTuple('foo', 'zzz')
         self.assertCompareDifferent(k1, k2)
+        k3 = self.module.StaticTuple(k1, k1)
+        k4 = self.module.StaticTuple(k1, k2)
+        self.assertCompareDifferent(k3, k4)
 
     def test_compare_diff_width(self):
         k1 = self.module.StaticTuple('foo')
         k2 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareDifferent(k1, k2)
+        k3 = self.module.StaticTuple(k1)
+        k4 = self.module.StaticTuple(k1, k2)
+        self.assertCompareDifferent(k3, k4)
 
     def test_compare_to_tuples(self):
         k1 = self.module.StaticTuple('foo')
@@ -195,6 +227,12 @@ class TestStaticTuple(tests.TestCase):
         self.assertCompareDifferent(('baz', 'bing'), k2)
         self.assertCompareDifferent(('foo', 10), k2)
 
+        k3 = self.module.StaticTuple(k1, k2)
+        self.assertCompareEqual(k3, (('foo',), ('foo', 'bar')))
+        self.assertCompareEqual((('foo',), ('foo', 'bar')), k3)
+        self.assertCompareEqual(k3, (k1, ('foo', 'bar')))
+        self.assertCompareEqual((k1, ('foo', 'bar')), k3)
+
     def test_hash(self):
         k = self.module.StaticTuple('foo')
         self.assertEqual(hash(k), hash(('foo',)))
@@ -207,6 +245,10 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual('foo', x[as_tuple])
         x[as_tuple] = 'bar'
         self.assertEqual({as_tuple: 'bar'}, x)
+
+        k2 = self.module.StaticTuple(k)
+        as_tuple2 = (('foo', 'bar', 'baz', 'bing'),)
+        self.assertEqual(hash(k2), hash(as_tuple2))
 
     def test_slice(self):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')

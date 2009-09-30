@@ -29,10 +29,10 @@ class StaticTuple(object):
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""
         for bit in args:
-            if not isinstance(bit, str):
-                raise TypeError('key bits must be strings')
+            if not isinstance(bit, str) and not isinstance(bit, StaticTuple):
+                raise TypeError('key bits must be strings or StaticTuple')
         num_keys = len(args)
-        if num_keys <= 0 or num_keys > 256:
+        if num_keys < 0 or num_keys > 255:
             raise ValueError('must have 1 => 256 key bits')
         self._tuple = args
 

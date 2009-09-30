@@ -156,7 +156,7 @@ StaticTuple_New(Py_ssize_t size)
     key->flags = 0;
     key->_unused0 = 0;
     key->_unused1 = 0;
-    memset(key->key_bits, 0, sizeof(PyStringObject *) * size);
+    memset(key->key_bits, 0, sizeof(PyObject *) * size);
 #if STATIC_TUPLE_HAS_HASH
     key->hash = -1;
 #endif
@@ -180,10 +180,10 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     len = PyTuple_GET_SIZE(args);
-    if (len <= 0 || len > 256) {
+    if (len < 0 || len > 255) {
         /* Too big or too small */
         PyErr_SetString(PyExc_ValueError, "StaticTuple.__init__(...)"
-            " takes from 1 to 256 key bits");
+            " takes from 0 to 255 key bits");
         return NULL;
     }
     self = (StaticTuple *)(type->tp_alloc(type, len));
@@ -199,9 +199,9 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 #endif
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
-        if (!PyString_CheckExact(obj)) {
+        if (!PyString_CheckExact(obj) && !StaticTuple_CheckExact(obj)) {
             PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
-                " requires that all key bits are strings.");
+                " requires that all key bits are strings or StaticTuple.");
             /* TODO: What is the proper way to dealloc ? */
             type->tp_dealloc((PyObject *)self);
             return NULL;
@@ -296,10 +296,14 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
 {
     StaticTuple *vk, *wk;
     Py_ssize_t vlen, wlen, min_len, i;
+    PyObject *v_obj, *w_obj;
     richcmpfunc string_richcompare;
 
     if (!StaticTuple_CheckExact(v)) {
-        /* This has never triggered */
+        /* This has never triggered, according to python-dev it seems this
+         * might trigger if '__op__' is defined but '__rop__' is not, sort of
+         * case. Such as "None == StaticTuple()"
+         */
         fprintf(stderr, "self is tuple\n");
         Py_INCREF(Py_NotImplemented);
         return Py_NotImplemented;
@@ -315,6 +319,9 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
          */
         return StaticTuple_richcompare_to_tuple(vk, w, op);
     }
+    /* TODO: Py_None is one of the other common cases here, we should probably
+     *       directly support it.
+     */
     if (!StaticTuple_CheckExact(w)) {
         /* Both are not StaticTuple objects, and they aren't Tuple objects or the
          * previous path would have been taken. We don't support comparing with
@@ -326,7 +333,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
     }
     /* Now we know that we have 2 StaticTuple objects, so let's compare them.
      * This code is somewhat borrowed from tuplerichcompare, except we know our
-     * objects are strings, so we get to cheat a bit.
+     * objects are limited in scope, so we cheat a bit.
      */
     if (v == w) {
         /* Identical pointers, we can shortcut this easily. */
@@ -349,12 +356,22 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
 	min_len = (vlen < wlen) ? vlen : wlen;
     string_richcompare = PyString_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
-        PyObject *result;
-        result = string_richcompare((PyObject *)vk->key_bits[i],
-                                    (PyObject *)wk->key_bits[i],
-                                    Py_EQ);
+        PyObject *result = NULL;
+        v_obj = StaticTuple_GET_ITEM(vk, i);
+        w_obj = StaticTuple_GET_ITEM(wk, i);
+        if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj)) {
+            result = string_richcompare(v_obj, w_obj, Py_EQ);
+        } else if (StaticTuple_CheckExact(v_obj) &&
+                   StaticTuple_CheckExact(w_obj))
+        {
+            /* Both are StaticTuple types, so recurse */
+            result = StaticTuple_richcompare(v_obj, w_obj, Py_EQ);
+        } else {
+            /* Not the same type, obviously they won't compare equal */
+            break;
+        }
         if (result == NULL) {
-            return NULL; /* Seems to be an error */
+            return NULL; /* There seems to be an error */
         }
         if (result == Py_NotImplemented) {
             PyErr_BadInternalCall();
@@ -362,7 +379,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return NULL;
         }
         if (result == Py_False) {
-            /* These strings are not identical
+            /* This entry is not identical
              * Shortcut for Py_EQ
              */
             if (op == Py_EQ) {
@@ -372,8 +389,8 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             break;
         }
         if (result != Py_True) {
-            /* We don't know *what* string_richcompare is returning, but it
-             * isn't correct.
+            /* We don't know *what* richcompare is returning, but it
+             * isn't something we recognize
              */
             PyErr_BadInternalCall();
             Py_DECREF(result);
@@ -382,7 +399,9 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         Py_DECREF(result);
     }
 	if (i >= vlen || i >= wlen) {
-		/* No more items to compare -- compare sizes */
+        /* We walked off one of the lists, but everything compared equal so
+         * far. Just compare the size.
+         */
 		int cmp;
 		PyObject *res;
 		switch (op) {
@@ -407,9 +426,18 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         return Py_True;
     }
     /* It is some other comparison, go ahead and do the real check. */
-    return string_richcompare((PyObject *)vk->key_bits[i],
-                              (PyObject *)wk->key_bits[i],
-                              op);
+    if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj))
+    {
+        return string_richcompare(v_obj, w_obj, op);
+    } else if (StaticTuple_CheckExact(v_obj) &&
+               StaticTuple_CheckExact(w_obj))
+    {
+        /* Both are StaticTuple types, so recurse */
+        return StaticTuple_richcompare(v_obj, w_obj, op);
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
 }
 
 
@@ -501,41 +529,41 @@ static PySequenceMethods StaticTuple_as_sequence = {
 PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
-    "StaticTuple",                                       /* tp_name */
-    sizeof(StaticTuple) - sizeof(PyStringObject *),      /* tp_basicsize */
+    "StaticTuple",                               /* tp_name */
+    sizeof(StaticTuple) - sizeof(PyObject *),    /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
-    (destructor)StaticTuple_dealloc,                     /* tp_dealloc */
+    (destructor)StaticTuple_dealloc,             /* tp_dealloc */
     0,                                           /* tp_print */
     0,                                           /* tp_getattr */
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
-    (reprfunc)StaticTuple_repr,                          /* tp_repr */
+    (reprfunc)StaticTuple_repr,                  /* tp_repr */
     0,                                           /* tp_as_number */
-    &StaticTuple_as_sequence,                            /* tp_as_sequence */
+    &StaticTuple_as_sequence,                    /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
-    (hashfunc)StaticTuple_hash,                          /* tp_hash */
+    (hashfunc)StaticTuple_hash,                  /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
     PyObject_GenericGetAttr,                     /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
-    StaticTuple_doc,                                     /* tp_doc */
+    StaticTuple_doc,                             /* tp_doc */
     /* gc.get_referents checks the IS_GC flag before it calls tp_traverse
      * And we don't include this object in the garbage collector because we
      * know it doesn't create cycles. However, 'meliae' will follow
      * tp_traverse, even if the object isn't GC, and we want that.
      */
-    (traverseproc)StaticTuple_traverse,                  /* tp_traverse */
+    (traverseproc)StaticTuple_traverse,          /* tp_traverse */
     0,                                           /* tp_clear */
     // TODO: implement richcompare, we should probably be able to compare vs an
     //       tuple, as well as versus another StaticTuples object.
-    StaticTuple_richcompare,                             /* tp_richcompare */
+    StaticTuple_richcompare,                     /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
     // We could implement this as returning tuples of keys...
     0,                                           /* tp_iter */
     0,                                           /* tp_iternext */
-    StaticTuple_methods,                                 /* tp_methods */
+    StaticTuple_methods,                         /* tp_methods */
     0,                                           /* tp_members */
     0,                                           /* tp_getset */
     0,                                           /* tp_base */
@@ -545,7 +573,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_dictoffset */
     0,                                           /* tp_init */
     0,                                           /* tp_alloc */
-    StaticTuple_new,                                     /* tp_new */
+    StaticTuple_new,                             /* tp_new */
 };
 
 
