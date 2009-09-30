@@ -84,7 +84,7 @@ typedef struct {
     PyObject_VAR_HEAD
     Key *table[1];
 } KeyIntern;
-extern PyTypeObject Key_Type;
+// extern PyTypeObject Key_Type;
 
 #define Key_SET_ITEM(key, offset, val) \
     ((((Key*)key)->key_bits[offset]) = (PyStringObject *)val)

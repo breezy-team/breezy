@@ -504,7 +504,8 @@ static PySequenceMethods Key_as_sequence = {
     0,                              /* sq_contains */
 };
 
-static PyTypeObject Key_Type = {
+
+PyTypeObject Key_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "Key",                                       /* tp_name */
@@ -852,7 +853,7 @@ static PySequenceMethods Keys_as_sequence = {
     0,                              /* sq_contains */
 };
 
-static PyTypeObject Keys_Type = {
+PyTypeObject Keys_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "Keys",                                      /* tp_name */
