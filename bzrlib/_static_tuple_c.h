@@ -64,7 +64,7 @@ typedef struct {
     PyObject_VAR_HEAD
     PyObject *table[1];
 } KeyIntern;
-extern PyTypeObject StaticTuple_Type;
+// extern PyTypeObject StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 #define StaticTuple_SET_ITEM(key, offset, val) \
@@ -75,9 +75,10 @@ extern PyTypeObject StaticTuple_Type;
 /* C API Functions */
 #define StaticTuple_New_NUM 0
 #define StaticTuple_intern_NUM 1
+#define StaticTuple_CheckExact_NUM 2
 
 /* Total number of C API Pointers */
-#define StaticTuple_API_pointers 2
+#define StaticTuple_API_pointers 3
 
 #ifdef STATIC_TUPLE_MODULE
 /* Used when compiling _static_tuple_c.c */
@@ -91,6 +92,9 @@ static void **StaticTuple_API;
 
 static PyObject *(*StaticTuple_New)(Py_ssize_t);
 static PyObject *(*StaticTuple_intern)(PyObject *);
+#undef StaticTuple_CheckExact
+static int (*StaticTuple_CheckExact)(PyObject *);
+
 
 /* Return -1 and set exception on error, 0 on success */
 static int
@@ -116,6 +120,7 @@ import_static_tuple(void)
     StaticTuple_API = (void **)PyCObject_AsVoidPtr(c_api_object);
     StaticTuple_New = StaticTuple_API[StaticTuple_New_NUM];
     StaticTuple_intern = StaticTuple_API[StaticTuple_intern_NUM];
+    StaticTuple_CheckExact = StaticTuple_API[StaticTuple_CheckExact_NUM];
     Py_DECREF(c_api_object);
     return 0;
 }

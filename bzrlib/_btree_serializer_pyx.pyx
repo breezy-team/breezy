@@ -38,6 +38,8 @@ cdef extern from "Python.h":
     Py_ssize_t PyString_Size(object p)
     Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *)
     char * PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *)
+    char * PyString_AS_STRING(object)
+    Py_ssize_t PyString_GET_SIZE(object)
     int PyString_AsStringAndSize_ptr(PyObject *, char **buf, Py_ssize_t *len)
     void PyString_InternInPlace(PyObject **)
     int PyTuple_CheckExact(object t)
@@ -66,6 +68,7 @@ cdef extern from "_static_tuple_c.h":
     # Steals a reference and Val must be a PyStringObject, no checking is done
     void StaticTuple_SET_ITEM(object key, Py_ssize_t offset, object val)
     object StaticTuple_GET_ITEM(object key, Py_ssize_t offset)
+    int StaticTuple_CheckExact(object)
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -322,7 +325,6 @@ def _flatten_node(node, reference_lists):
     cdef Py_ssize_t flat_len
     cdef Py_ssize_t key_len
     cdef Py_ssize_t node_len
-    cdef PyObject * val
     cdef char * value
     cdef Py_ssize_t value_len
     cdef char * out
@@ -331,13 +333,12 @@ def _flatten_node(node, reference_lists):
     cdef int first_ref_list
     cdef int first_reference
     cdef int i
-    cdef PyObject *ref_bit
     cdef Py_ssize_t ref_bit_len
 
-    if not PyTuple_CheckExact(node):
-        raise TypeError('We expected a tuple() for node not: %s'
+    if not PyTuple_CheckExact(node) and not StaticTuple_CheckExact(node):
+        raise TypeError('We expected a tuple() or StaticTuple() for node not: %s'
             % type(node))
-    node_len = PyTuple_GET_SIZE(node)
+    node_len = len(node)
     have_reference_lists = reference_lists
     if have_reference_lists:
         if node_len != 4:
@@ -347,7 +348,7 @@ def _flatten_node(node, reference_lists):
         raise ValueError('Without ref_lists, we need at least 3 entries not: %s'
             % len(node))
     # I don't expect that we can do faster than string.join()
-    string_key = '\0'.join(<object>PyTuple_GET_ITEM_ptr_object(node, 1))
+    string_key = '\0'.join(node[1])# <object>PyTuple_GET_ITEM_ptr_object(node, 1))
 
     # TODO: instead of using string joins, precompute the final string length,
     #       and then malloc a single string and copy everything in.
@@ -364,7 +365,7 @@ def _flatten_node(node, reference_lists):
     refs_len = 0
     if have_reference_lists:
         # Figure out how many bytes it will take to store the references
-        ref_lists = <object>PyTuple_GET_ITEM_ptr_object(node, 3)
+        ref_lists = node[3]# <object>PyTuple_GET_ITEM_ptr_object(node, 3)
         next_len = len(ref_lists) # TODO: use a Py function
         if next_len > 0:
             # If there are no nodes, we don't need to do any work
@@ -378,31 +379,32 @@ def _flatten_node(node, reference_lists):
                     # references
                     refs_len = refs_len + (next_len - 1)
                     for reference in ref_list:
-                        if not PyTuple_CheckExact(reference):
+                        if (not PyTuple_CheckExact(reference)
+                            and not StaticTuple_CheckExact(reference)):
                             raise TypeError(
                                 'We expect references to be tuples not: %s'
                                 % type(reference))
-                        next_len = PyTuple_GET_SIZE(reference)
+                        next_len = len(reference)
                         if next_len > 0:
                             # We will need (len - 1) '\x00' characters to
                             # separate the reference key
                             refs_len = refs_len + (next_len - 1)
                             for i from 0 <= i < next_len:
-                                ref_bit = PyTuple_GET_ITEM_ptr_object(reference, i)
-                                if not PyString_CheckExact_ptr(ref_bit):
+                                ref_bit = reference[i]
+                                if not PyString_CheckExact(ref_bit):
                                     raise TypeError('We expect reference bits'
                                         ' to be strings not: %s'
                                         % type(<object>ref_bit))
-                                refs_len = refs_len + PyString_GET_SIZE_ptr(ref_bit)
+                                refs_len = refs_len + PyString_GET_SIZE(ref_bit)
 
     # So we have the (key NULL refs NULL value LF)
     key_len = PyString_Size(string_key)
-    val = PyTuple_GET_ITEM_ptr_object(node, 2)
-    if not PyString_CheckExact_ptr(val):
+    val = node[2] # PyTuple_GET_ITEM_ptr_object(node, 2)
+    if not PyString_CheckExact(val):
         raise TypeError('Expected a plain str for value not: %s'
-                        % type(<object>val))
-    value = PyString_AS_STRING_ptr(val)
-    value_len = PyString_GET_SIZE_ptr(val)
+                        % type(val))
+    value = PyString_AS_STRING(val)
+    value_len = PyString_GET_SIZE(val)
     flat_len = (key_len + 1 + refs_len + 1 + value_len + 1)
     line = PyString_FromStringAndSize(NULL, flat_len)
     # Get a pointer to the new buffer
@@ -424,14 +426,14 @@ def _flatten_node(node, reference_lists):
                     out[0] = c'\r'
                     out = out + 1
                 first_reference = 0
-                next_len = PyTuple_GET_SIZE(reference)
+                next_len = len(reference)
                 for i from 0 <= i < next_len:
                     if i != 0:
                         out[0] = c'\x00'
                         out = out + 1
-                    ref_bit = PyTuple_GET_ITEM_ptr_object(reference, i)
-                    ref_bit_len = PyString_GET_SIZE_ptr(ref_bit)
-                    memcpy(out, PyString_AS_STRING_ptr(ref_bit), ref_bit_len)
+                    ref_bit = reference[i] #PyTuple_GET_ITEM_ptr_object(reference, i)
+                    ref_bit_len = PyString_GET_SIZE(ref_bit)
+                    memcpy(out, PyString_AS_STRING(ref_bit), ref_bit_len)
                     out = out + ref_bit_len
     out[0] = c'\0'
     out = out  + 1

@@ -831,13 +831,13 @@ class TestMap(TestCaseWithStore):
         # 'ab' and 'ac' nodes
         chkmap.map(('aad',), 'v')
         self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
-        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['ac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['ab'], (tuple, chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['ac'], (tuple, chk_map._key_type))
         # Unmapping 'acd' can notice that 'aa' is an InternalNode and not have
         # to map in 'ab'
         chkmap.unmap(('acd',))
         self.assertIsInstance(chkmap._root_node._items['aa'], InternalNode)
-        self.assertIsInstance(chkmap._root_node._items['ab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['ab'], (tuple, chk_map._key_type))
 
     def test_unmap_without_fitting_doesnt_page_in(self):
         store = self.get_chk_bytes()
@@ -860,8 +860,9 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaf',), 'v')
         # At this point, the previous nodes should not be paged in, but the
         # newly added nodes would be
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple, chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
@@ -869,8 +870,8 @@ class TestMap(TestCaseWithStore):
         # Now unmapping one of the new nodes will use only the already-paged-in
         # nodes to determine that we don't need to do more.
         chkmap.unmap(('aaf',))
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple, chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple, chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
@@ -897,9 +898,12 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aad',), 'v')
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aac'], (tuple,
+        chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         # Unmapping the new node will check the existing nodes to see if they
         # would fit.
@@ -937,9 +941,12 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aad',), 'v')
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aac'], (tuple,
+        chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         # Now clear the page cache, and only include 2 of the children in the
         # cache
@@ -954,7 +961,8 @@ class TestMap(TestCaseWithStore):
         # Unmapping the new node will check the nodes from the page cache
         # first, and not have to read in 'aaa'
         chkmap.unmap(('aad',))
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aac'], LeafNode)
 
@@ -974,9 +982,12 @@ class TestMap(TestCaseWithStore):
         chkmap.map(('aaf',), 'val')
         # At this point, the previous nodes should not be paged in, but the
         # newly added node would be
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aac'], (tuple,
+        chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aad'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
@@ -984,9 +995,12 @@ class TestMap(TestCaseWithStore):
         # Unmapping a new node will see the other nodes that are already in
         # memory, and not need to page in anything else
         chkmap.unmap(('aad',))
-        self.assertIsInstance(chkmap._root_node._items['aaa'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aab'], tuple)
-        self.assertIsInstance(chkmap._root_node._items['aac'], tuple)
+        self.assertIsInstance(chkmap._root_node._items['aaa'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aab'], (tuple,
+        chk_map._key_type))
+        self.assertIsInstance(chkmap._root_node._items['aac'], (tuple,
+        chk_map._key_type))
         self.assertIsInstance(chkmap._root_node._items['aae'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aaf'], LeafNode)
 
@@ -1031,8 +1045,8 @@ class TestMap(TestCaseWithStore):
             {('a',): 'content here', ('b',): 'more content'},
             chk_bytes=basis._store, maximum_size=10)
         list(target.iter_changes(basis))
-        self.assertIsInstance(target._root_node, tuple)
-        self.assertIsInstance(basis._root_node, tuple)
+        self.assertIsInstance(target._root_node, (tuple, chk_map._key_type))
+        self.assertIsInstance(basis._root_node, (tuple, chk_map._key_type))
 
     def test_iter_changes_ab_ab_changed_values_shown(self):
         basis = self._get_map({('a',): 'content here', ('b',): 'more content'},
@@ -1932,7 +1946,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) == tuple]))
+                if type(value) in (tuple, chk_map._key_type)]))
         # now, mapping to k3 should add a k3 leaf
         prefix, nodes = node.map(None, ('k3',), 'quux')
         self.assertEqual("k", prefix)
@@ -1971,7 +1985,7 @@ class TestInternalNode(TestCaseWithStore):
         # Ensure test validity: nothing paged in below the root.
         self.assertEqual(2,
             len([value for value in node._items.values()
-                if type(value) == tuple]))
+                if type(value) in (tuple, chk_map._key_type)]))
         # now, mapping to k23 causes k22 ('k2' in node) to split into k22 and
         # k23, which for simplicity in the current implementation generates
         # a new internal node between node, and k22/k23.

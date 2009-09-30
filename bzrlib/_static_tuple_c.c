@@ -712,6 +712,11 @@ setup_empty_tuple(PyObject *m)
     PyModule_AddObject(m, "_empty_tuple", (PyObject *)_empty_tuple);
 }
 
+static int
+_StaticTuple_CheckExact(PyObject *obj)
+{
+    return StaticTuple_CheckExact(obj);
+}
 
 static void
 setup_c_api(PyObject *m)
@@ -721,6 +726,8 @@ setup_c_api(PyObject *m)
 
     StaticTuple_API[StaticTuple_New_NUM] = (void *)StaticTuple_New;
     StaticTuple_API[StaticTuple_intern_NUM] = (void *)StaticTuple_intern;
+    StaticTuple_API[StaticTuple_CheckExact_NUM] = 
+        (void*)_StaticTuple_CheckExact; 
     c_api_object = PyCObject_FromVoidPtr((void *)StaticTuple_API, NULL);
     if (c_api_object != NULL) {
         PyModule_AddObject(m, "_C_API", c_api_object);
