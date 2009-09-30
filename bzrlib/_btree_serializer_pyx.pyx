@@ -102,7 +102,9 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     Py_DECREF_ptr(py_str)
     return result
 
-# from bzrlib import _keys_type_c
+from bzrlib import _static_tuple_c
+cdef object StaticTuple
+StaticTuple = _static_tuple_c.StaticTuple
 
 
 cdef class BTreeLeafParser:
@@ -179,7 +181,7 @@ cdef class BTreeLeafParser:
             # PyTuple_SET_ITEM(key, loop_counter, key_element)
             PyTuple_SET_ITEM(key, loop_counter, key_element)
         # return _keys_type_c.Key(*key)
-        return key
+        return StaticTuple(*key).intern()
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""
@@ -263,12 +265,12 @@ cdef class BTreeLeafParser:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = tuple(ref_list)
+                ref_list = StaticTuple(*ref_list).intern()
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
-            ref_lists = tuple(ref_lists)
-            node_value = (value, ref_lists)
+            ref_lists = StaticTuple(*ref_lists)
+            node_value = StaticTuple(value, ref_lists)
         else:
             if last != self._start:
                 # unexpected reference data present
