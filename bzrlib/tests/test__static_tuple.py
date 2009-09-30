@@ -20,7 +20,7 @@ import gc
 import sys
 
 from bzrlib import (
-    _keys_type_py,
+    _static_tuple_py,
     errors,
     osutils,
     tests,
@@ -30,12 +30,12 @@ from bzrlib import (
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
     scenarios = [
-        ('python', {'module': _keys_type_py}),
+        ('python', {'module': _static_tuple_py}),
     ]
     suite = loader.suiteClass()
     if CompiledKeysType.available():
-        from bzrlib import _keys_type_c
-        scenarios.append(('C', {'module': _keys_type_c}))
+        from bzrlib import _static_tuple_c
+        scenarios.append(('C', {'module': _static_tuple_c}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
@@ -50,13 +50,13 @@ class _CompiledKeysType(tests.Feature):
 
     def _probe(self):
         try:
-            import bzrlib._keys_type_c
+            import bzrlib._static_tuple_c
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._keys_type_c'
+        return 'bzrlib._static_tuple_c'
 
 CompiledKeysType = _CompiledKeysType()
 
@@ -222,10 +222,10 @@ class TestKeyType(tests.TestCase):
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.Key(*strs)
-        if isinstance(k, _keys_type_py.Key):
+        if isinstance(k, _static_tuple_py.Key):
             # The python version references objects slightly different than the
             # compiled version
-            self.assertEqual([k._tuple, _keys_type_py.Key],
+            self.assertEqual([k._tuple, _static_tuple_py.Key],
                              scanner.get_referents(k))
         else:
             self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
@@ -363,7 +363,7 @@ class TestKeysType(tests.TestCase):
         self.assertIs(key, key2)
 
     def test__c_intern_handles_refcount(self):
-        if self.module is _keys_type_py:
+        if self.module is _static_tuple_py:
             return # Not applicable
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
@@ -390,7 +390,7 @@ class TestKeysType(tests.TestCase):
         self.assertIs(key, key2)
 
     def test__c_keys_are_not_immortal(self):
-        if self.module is _keys_type_py:
+        if self.module is _static_tuple_py:
             return # Not applicable
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)

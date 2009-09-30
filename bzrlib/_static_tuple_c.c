@@ -15,14 +15,14 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-/* Must be defined before importing _keys_type_c.h so that we get the right
+/* Must be defined before importing _static_tuple_c.h so that we get the right
  * linkage.
  */
 #if defined(_WIN32)
 #  define KeysAPI_FUNC(RTYPE) __declspec(dllexport) RTYPE
 #endif
 
-#include "_keys_type_c.h"
+#include "_static_tuple_c.h"
 
 #include "python-compat.h"
 
@@ -971,7 +971,7 @@ static PyMethodDef keys_type_c_methods[] = {
 
 
 PyMODINIT_FUNC
-init_keys_type_c(void)
+init_static_tuple_c(void)
 {
     PyObject* m;
 
@@ -982,7 +982,7 @@ init_keys_type_c(void)
     if (PyType_Ready(&KeyIntern_Type) < 0)
         return;
 
-    m = Py_InitModule3("_keys_type_c", keys_type_c_methods,
+    m = Py_InitModule3("_static_tuple_c", keys_type_c_methods,
                        "C implementation of a Keys structure");
     if (m == NULL)
       return;

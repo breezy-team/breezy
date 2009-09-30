@@ -294,11 +294,9 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
-ext_modules.append(Extension('bzrlib._keys_type_c',
-                             ['bzrlib/_keys_type_c.c']))
-add_pyrex_extension('bzrlib._btree_serializer_pyx',
-                    libraries=['_keys_type_c'])
-ext_modules[-1].library_dirs.append('build/temp.win32-2.6/Release/bzrlib')
+ext_modules.append(Extension('bzrlib._static_tuple_c',
+                             ['bzrlib/_static_tuple_c.c']))
+add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:

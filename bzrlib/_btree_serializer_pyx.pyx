@@ -55,13 +55,13 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
 
-cdef extern from "_keys_type_c.h":
-    cdef struct Key:
-        pass
-    object Key_New(Py_ssize_t)
-    # Steals a reference and Val must be a PyStringObject, no checking is done
-    void Key_SET_ITEM(object key, Py_ssize_t offset, object val)
-    object Key_GET_ITEM(object key, Py_ssize_t offset)
+## cdef extern from "_keys_type_c.h":
+##     cdef struct Key:
+##         pass
+##     object Key_New(Py_ssize_t)
+##     # Steals a reference and Val must be a PyStringObject, no checking is done
+##     void Key_SET_ITEM(object key, Py_ssize_t offset, object val)
+##     object Key_GET_ITEM(object key, Py_ssize_t offset)
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -153,7 +153,7 @@ cdef class BTreeLeafParser:
         cdef char *temp_ptr
         cdef int loop_counter
         # keys are tuples
-        key = Key_New(self.key_length)# PyTuple_New(self.key_length)
+        key = PyTuple_New(self.key_length)# PyTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
             temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
@@ -177,9 +177,9 @@ cdef class BTreeLeafParser:
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
             # PyTuple_SET_ITEM(key, loop_counter, key_element)
-            Key_SET_ITEM(key, loop_counter, key_element)
+            PyTuple_SET_ITEM(key, loop_counter, key_element)
         # return _keys_type_c.Key(*key)
-        return key.intern()
+        return key
 
     cdef int process_line(self) except -1:
         """Process a line in the bytes."""
