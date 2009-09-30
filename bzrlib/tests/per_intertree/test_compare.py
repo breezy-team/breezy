@@ -978,9 +978,8 @@ class TestIterChanges(TestCaseWithTwoTrees):
                 "Cannot represent a FIFO in this case %s" % self.id())
         try:
             self.do_iter_changes(tree1, tree2)
-        except errors.BzrError:
-            self.assertRaises(errors.BadFileKindError, self.do_iter_changes,
-                tree1, tree2)
+        except errors.BadFileKindError:
+            pass
 
     def test_missing_in_target(self):
         """Test with the target files versioned but absent from disk."""
