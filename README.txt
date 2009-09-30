@@ -9,7 +9,8 @@ presses the completion key (usually tab).
 It can be used either as a bzr plugin or directly.
 
 ----------------------------------------
-1. Installing as a plugin
+ Installing as a plugin
+----------------------------------------
 
 You only need to do this if you want to use the script as a bzr
 plugin.  Otherwise simply grab the bashcomp.py and place it wherever
@@ -21,7 +22,8 @@ you want.
 
 
 ----------------------------------------
-2. Using as a plugin
+ Using as a plugin
+----------------------------------------
 
 This is the preferred method of generating initializing the
 completion, as it will ensure proper bzr initialization.
@@ -30,7 +32,8 @@ completion, as it will ensure proper bzr initialization.
 
 
 ----------------------------------------
-3. Using as a script
+ Using as a script
+----------------------------------------
 
 As an alternative, if bzrlib is available to python scripts, the
 following invocation should yield the same results without requiring
@@ -39,7 +42,22 @@ you to add a plugin. Might have some issues, though.
   eval "`./bashcomp.py`"
 
 ----------------------------------------
-4. License
+ Design concept
+----------------------------------------
+
+The plugin (or script) is designed to generate a completion function
+containing all the required information about the possible
+completions. This is usually only done once when bash
+initializes. After that, no more invocations of bzr are required. This
+makes the function much faster than a possible implementation talking
+to bzr for each and every completion. On the other hand, this has the
+effect that updates to bzr or its plugins won't show up in the
+completions immediately, but only after the completion function has
+been regenerated.
+
+----------------------------------------
+ License
+----------------------------------------
 
 As this is built upon a bash completion script originally included in
 the bzr source tree, and as the bzr sources are covered by the GPL 2,
@@ -50,14 +68,16 @@ those who contributed code to this plugin, be it for bash or for
 python.
 
 ----------------------------------------
-5. History
+ History
+----------------------------------------
 
 The plugin was created by Martin von Gagern in 2009, building on a
 static completion function of very limited scope distributed together
 with bzr.
 
 ----------------------------------------
-6. References
+ References
+----------------------------------------
 
 https://launchpad.net/bzr-bash-completion
 http://bazaar-vcs.org/
