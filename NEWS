@@ -22,6 +22,9 @@ Bug Fixes
   ``keyboard-interactive`` auth but not ``password`` auth when using
   Paramiko.   (Andrew Bennetts, #433846)
 
+* When a file kind becomes unversionable after being added, a sensible
+  error will be shown instead of a traceback. (Robert Collins, #438569)
+
 Improvements
 ************
 

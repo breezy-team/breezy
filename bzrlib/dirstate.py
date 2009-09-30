@@ -3328,7 +3328,9 @@ class ProcessEntryPython(object):
                         content_change = False
                     target_exec = False
                 else:
-                    raise Exception, "unknown kind %s" % path_info[2]
+                    if path is None:
+                        path = pathjoin(old_dirname, old_basename)
+                    raise errors.BadFileKindError(path, path_info[2])
             if source_minikind == 'd':
                 if path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
