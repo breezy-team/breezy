@@ -24,6 +24,8 @@ __all__ = ['needs_read_lock',
 
 import sys
 
+from bzrlib import trace
+
 
 def _get_parameters(func):
     """Recreate the parameters for a function using introspection.
@@ -202,6 +204,22 @@ def _fast_needs_write_lock(unbound):
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__
     return write_locked
+
+
+def only_raises(*errors):
+    def decorator(unbound):
+        def wrapped(*args, **kwargs):
+            try:
+                return unbound(*args, **kwargs)
+            except errors:
+                raise
+            except:
+                trace.mutter('Error suppressed by only_raises:')
+                trace.log_exception_quietly()
+        wrapped.__doc__ = unbound.__doc__
+        wrapped.__name__ = unbound.__name__
+        return wrapped
+    return decorator
 
 
 # Default is more functionality, 'bzr' the commandline will request fast

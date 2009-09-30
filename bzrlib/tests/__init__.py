@@ -1002,6 +1002,25 @@ class TestCase(unittest.TestCase):
             self.fail("Incorrect length: wanted %d, got %d for %r" % (
                 length, len(obj_with_len), obj_with_len))
 
+    def assertLogsError(self, exception_class, func, *args, **kwargs):
+        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """
+        from bzrlib import trace
+        captured = []
+        orig_log_exception_quietly = trace.log_exception_quietly
+        try:
+            def capture():
+                orig_log_exception_quietly()
+                captured.append(sys.exc_info())
+            trace.log_exception_quietly = capture
+            func(*args, **kwargs)
+        finally:
+            trace.log_exception_quietly = orig_log_exception_quietly
+        self.assertLength(1, captured)
+        err = captured[0][1]
+        self.assertIsInstance(err, exception_class)
+        return err
+
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
         self.assertTrue(val > 0, 'expected a positive value, but got %s' % val)
