@@ -1324,7 +1324,7 @@ class DirState(object):
                 key = (dirname_utf8, basename, file_id)
                 minikind = DirState._kind_to_minikind[inv_entry.kind]
                 if minikind == 't':
-                    fingerprint = inv_entry.reference_revision
+                    fingerprint = inv_entry.reference_revision or ''
                 else:
                     fingerprint = ''
                 insertions[file_id] = (key, minikind, inv_entry.executable,
