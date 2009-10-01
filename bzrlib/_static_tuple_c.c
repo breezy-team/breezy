@@ -21,6 +21,7 @@
 #define STATIC_TUPLE_MODULE
 
 #include "_static_tuple_c.h"
+#include "_export_c_api.h"
 
 #include "python-compat.h"
 
@@ -714,35 +715,6 @@ static int
 _StaticTuple_CheckExact(PyObject *obj)
 {
     return StaticTuple_CheckExact(obj);
-}
-
-static int _export_function(PyObject *module, char *funcname,
-                            void *func, char *signature)
-{
-    PyObject *d = NULL;
-    PyObject *c_obj = NULL;
-
-    d = PyObject_GetAttrString(module, _C_API_NAME);
-    if (!d) {
-        PyErr_Clear();
-        d = PyDict_New();
-        if (!d)
-            goto bad;
-        Py_INCREF(d);
-        if (PyModule_AddObject(module, _C_API_NAME, d) < 0)
-            goto bad;
-    }
-    c_obj = PyCObject_FromVoidPtrAndDesc(func, signature, 0);
-    if (!c_obj)
-        goto bad;
-    if (PyDict_SetItemString(d, funcname, c_obj) < 0)
-        goto bad;
-    Py_DECREF(d);
-    return 0;
-bad:
-    Py_XDECREF(c_obj);
-    Py_XDECREF(d);
-    return -1;
 }
 
 static void
