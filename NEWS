@@ -14,7 +14,8 @@
 
   * Mark as compatible with Bazaar 2.1. (Jelmer Vernooij)
 
-  * Fix fetching of remote repositories on Windows. (Jelmer Vernooij, #382125)
+  * Fix fetching of remote repositories on Windows. (INADA Naoki,
+													 Jelmer Vernooij, #382125)
 
   * Ignore directories in WorkingTree.extras(). (Jelmer Vernooij, #373902)
 
