@@ -65,6 +65,7 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
+    PackData,
     )
 import os
 import tempfile
@@ -200,6 +201,12 @@ class TemporaryPackIterator(Pack):
     def __init__(self, path, resolve_ext_ref):
         super(TemporaryPackIterator, self).__init__(path)
         self.resolve_ext_ref = resolve_ext_ref
+
+    @property
+    def data(self):
+        if self._data is None:
+            self._data = PackData(self._data_path)
+        return self._data
 
     @property
     def index(self):

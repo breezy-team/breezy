@@ -14,6 +14,8 @@
 
   * Mark as compatible with Bazaar 2.1. (Jelmer Vernooij)
 
+  * Fix fetching of remote repositories on Windows. (Jelmer Vernooij, #382125)
+
  FEATURES
 
   * New "git" format supported by "bzr send". All revisions 
