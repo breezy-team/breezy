@@ -59,8 +59,8 @@ cdef extern from "string.h":
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
-from _static_tuple_c cimport StaticTuple, StaticTuple_API,\
-    import_static_tuple, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
+from _static_tuple_c cimport StaticTuple, \
+    import_static_tuple_c, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
     StaticTuple_intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
@@ -106,10 +106,7 @@ from bzrlib import _static_tuple_c
 cdef object _ST
 _ST = _static_tuple_c.StaticTuple
 # This sets up the StaticTuple C_API functionality
-if import_static_tuple() == -1:
-    raise ImportError('failed to import_static_tuple()')
-if StaticTuple_API == NULL:
-    raise ImportError('StaticTuple_API failed to be initialized.')
+import_static_tuple_c()
 
 
 cdef class BTreeLeafParser:
@@ -151,8 +148,6 @@ cdef class BTreeLeafParser:
         self._end_str = NULL
         self._header_found = 0
         # keys are tuples
-        if StaticTuple_API == NULL:
-            raise ImportError('failed to import_static_tuple()')
 
     cdef extract_key(self, char * last):
         """Extract a key.

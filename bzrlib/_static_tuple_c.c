@@ -73,6 +73,8 @@ static StaticTuple *
 StaticTuple_intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
+    fprintf(stderr, "In StaticTuple_intern @%x @%x\n", StaticTuple_intern,
+    &StaticTuple_intern);
 
     if (_interned_tuples == NULL) {
         Py_INCREF(self);
@@ -138,6 +140,7 @@ static StaticTuple *
 StaticTuple_New(Py_ssize_t size)
 {
     StaticTuple *stuple;
+    fprintf(stderr, "in StaticTuple_New @%x  ", &StaticTuple_New);
     if (size < 0) {
         PyErr_BadInternalCall();
         return NULL;
@@ -147,6 +150,7 @@ StaticTuple_New(Py_ssize_t size)
         Py_INCREF(_empty_tuple);
         return _empty_tuple;
     }
+    fprintf(stderr, "Creating new StaticTuple with size %d\n", size);
     /* Note that we use PyObject_NewVar because we want to allocate a variable
      * width entry. However we *aren't* truly a PyVarObject because we don't
      * use a long for ob_size. Instead we use a plain 'size' that is an int,
@@ -716,20 +720,47 @@ _StaticTuple_CheckExact(PyObject *obj)
     return StaticTuple_CheckExact(obj);
 }
 
+static int _export_function(PyObject *module, char *funcname,
+                            void *func, char *signature)
+{
+    PyObject *d = NULL;
+    PyObject *c_obj = NULL;
+
+    d = PyObject_GetAttrString(module, _C_API_NAME);
+    if (!d) {
+        PyErr_Clear();
+        d = PyDict_New();
+        if (!d)
+            goto bad;
+        Py_INCREF(d);
+        if (PyModule_AddObject(module, _C_API_NAME, d) < 0)
+            goto bad;
+    }
+    c_obj = PyCObject_FromVoidPtrAndDesc(func, signature, 0);
+    if (!c_obj)
+        goto bad;
+    if (PyDict_SetItemString(d, funcname, c_obj) < 0)
+        goto bad;
+    fprintf(stderr, "Exported %s@%x\n", funcname, func);
+    Py_DECREF(d);
+    return 0;
+bad:
+    fprintf(stderr, "Failed to export %s@%x\n", funcname, func);
+    Py_XDECREF(c_obj);
+    Py_XDECREF(d);
+    return -1;
+}
+
 static void
 setup_c_api(PyObject *m)
 {
-    static void *StaticTuple_API[StaticTuple_API_pointers];
-    PyObject *c_api_object;
-
-    StaticTuple_API[StaticTuple_New_NUM] = (void *)StaticTuple_New;
-    StaticTuple_API[StaticTuple_intern_NUM] = (void *)StaticTuple_intern;
-    StaticTuple_API[StaticTuple_CheckExact_NUM] = 
-        (void*)_StaticTuple_CheckExact; 
-    c_api_object = PyCObject_FromVoidPtr((void *)StaticTuple_API, NULL);
-    if (c_api_object != NULL) {
-        PyModule_AddObject(m, "_C_API", c_api_object);
-    }
+    fprintf(stderr, "exporting %s\n", _C_API_NAME);
+    _export_function(m, "StaticTuple_New", StaticTuple_New,
+        "StaticTuple *(Py_ssize_t)");
+    _export_function(m, "StaticTuple_intern", StaticTuple_intern,
+        "StaticTuple *(StaticTuple *)");
+    _export_function(m, "_StaticTuple_CheckExact", _StaticTuple_CheckExact,
+        "int(PyObject *)");
 }
 
 

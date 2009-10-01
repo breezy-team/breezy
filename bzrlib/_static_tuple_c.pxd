@@ -32,8 +32,7 @@ cdef extern from "_static_tuple_c.h":
         # cdef unsigned char _unused1
         cdef PyObject *items[0]
 
-    void **StaticTuple_API
-    int import_static_tuple()
+    int import_static_tuple_c() except -1
     # ctypedef object (*st_new_type)(Py_ssize_t)
     # st_new_type st_new
     int STATIC_TUPLE_ALL_STRING

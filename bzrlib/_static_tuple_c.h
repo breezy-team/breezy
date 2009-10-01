@@ -18,6 +18,7 @@
 #ifndef _STATIC_TUPLE_H_
 #define _STATIC_TUPLE_H_
 #include <Python.h>
+#include <string.h>
 
 #define STATIC_TUPLE_HAS_HASH 0
 /* Caching the hash adds memory, but allows us to save a little time during
@@ -64,7 +65,6 @@ typedef struct {
     PyObject_VAR_HEAD
     PyObject *table[0];
 } KeyIntern;
-// extern PyTypeObject StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 #define StaticTuple_SET_ITEM(key, offset, val) \
@@ -72,13 +72,7 @@ typedef struct {
 #define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->items[offset])
 
 
-/* C API Functions */
-#define StaticTuple_New_NUM 0
-#define StaticTuple_intern_NUM 1
-#define StaticTuple_CheckExact_NUM 2
-
-/* Total number of C API Pointers */
-#define StaticTuple_API_pointers 3
+static const char *_C_API_NAME = "_C_API";
 
 #ifdef STATIC_TUPLE_MODULE
 /* Used when compiling _static_tuple_c.c */
@@ -87,43 +81,112 @@ static StaticTuple * StaticTuple_New(Py_ssize_t);
 static StaticTuple * StaticTuple_intern(StaticTuple *self);
 
 #else
-/* Used by foriegn callers */
-static void **StaticTuple_API;
+/* Used as the foreign api */
 
 static StaticTuple *(*StaticTuple_New)(Py_ssize_t);
 static StaticTuple *(*StaticTuple_intern)(StaticTuple *);
-#undef StaticTuple_CheckExact
-static int (*StaticTuple_CheckExact)(PyObject *);
+static PyTypeObject *_p_StaticTuple_Type;
+
+#define StaticTuple_CheckExact(op) (Py_TYPE(op) == _p_StaticTuple_Type)
+static int (*_StaticTuple_CheckExact)(PyObject *);
+
+
+static int _import_function(PyObject *module, char *funcname,
+                            void **f, char *signature)
+{
+    PyObject *d = NULL;
+    PyObject *c_obj = NULL;
+    char *desc = NULL;
+
+    d = PyObject_GetAttrString(module, _C_API_NAME);
+    if (!d) {
+        // PyObject_GetAttrString sets an appropriate exception
+        goto bad;
+    }
+    c_obj = PyDict_GetItemString(d, funcname);
+    if (!c_obj) {
+        // PyDict_GetItemString does not set an exception
+        PyErr_Format(PyExc_AttributeError,
+            "Module %s did not export a function named %s\n",
+            PyModule_GetName(module), funcname);
+        goto bad;
+    }
+    desc = (char *)PyCObject_GetDesc(c_obj);
+    if (!desc || strcmp(desc, signature) != 0) {
+        if (desc == NULL) {
+            desc = "<null>";
+        }
+        PyErr_Format(PyExc_TypeError,
+            "C function %s.%s has wrong signature (expected %s, got %s)",
+                PyModule_GetName(module), funcname, signature, desc);
+        goto bad;
+    }
+    *f = PyCObject_AsVoidPtr(c_obj);
+    fprintf(stderr, "Imported function %s @%x\n", funcname, *f);
+    Py_DECREF(d);
+    return 0;
+bad:
+    fprintf(stderr, "Returning -1\n");
+    Py_XDECREF(d);
+    return -1;
+}
+
+
+static PyTypeObject *
+_import_type(PyObject *module, char *class_name)
+{
+    PyObject *type = NULL;
+
+    type = PyObject_GetAttrString(module, class_name);
+    if (!type) {
+        goto bad;
+    }
+    if (!PyType_Check(type)) {
+        PyErr_Format(PyExc_TypeError,
+            "%s.%s is not a type object",
+            PyModule_GetName(module), class_name);
+        goto bad;
+    }
+    return (PyTypeObject *)type;
+bad:
+    Py_XDECREF(type);
+    return NULL;
+}
 
 
 /* Return -1 and set exception on error, 0 on success */
 static int
-import_static_tuple(void)
+import_static_tuple_c(void)
 {
-    PyObject *module = PyImport_ImportModule("bzrlib._static_tuple_c");
-    PyObject *c_api_object;
-
-    if (module == NULL) {
-        fprintf(stderr, "Failed to find module _static_tuple_c.\n");
-        return -1;
+    /* This is modeled after the implementation in Pyrex, which uses a
+     * dictionary and descriptors, rather than using plain offsets into a
+     * void ** array.
+     */
+    PyObject *module = NULL;
+    
+    module = PyImport_ImportModule("bzrlib._static_tuple_c");
+    if (!module) goto bad;
+    if (_import_function(module, "StaticTuple_New", (void **)&StaticTuple_New,
+                         "StaticTuple *(Py_ssize_t)") < 0)
+        goto bad;
+    if (_import_function(module, "StaticTuple_intern",
+                         (void **)&StaticTuple_intern,
+                         "StaticTuple *(StaticTuple *)") < 0)
+        goto bad;
+    if (_import_function(module, "_StaticTuple_CheckExact",
+                         (void **)&_StaticTuple_CheckExact,
+                         "int(PyObject *)") < 0)
+        goto bad;
+    _p_StaticTuple_Type = _import_type(module, "StaticTuple");
+    if (!_p_StaticTuple_Type) {
+        goto bad;
     }
-    c_api_object = PyObject_GetAttrString(module, "_C_API");
-    if (c_api_object == NULL) {
-        fprintf(stderr, "Failed to find _static_tuple_c._C_API.\n");
-        return -1;
-    }
-    if (!PyCObject_Check(c_api_object)) {
-        fprintf(stderr, "_static_tuple_c._C_API not a CObject.\n");
-        Py_DECREF(c_api_object);
-        return -1;
-    }
-    StaticTuple_API = (void **)PyCObject_AsVoidPtr(c_api_object);
-    StaticTuple_New = StaticTuple_API[StaticTuple_New_NUM];
-    StaticTuple_intern = StaticTuple_API[StaticTuple_intern_NUM];
-    StaticTuple_CheckExact = StaticTuple_API[StaticTuple_CheckExact_NUM];
-    Py_DECREF(c_api_object);
+    Py_DECREF(module); 
     return 0;
+bad:
+    Py_XDECREF(module);
+    return -1;
 }
 
-#endif
-#endif // _STATIC_TUPLE_H_
+#endif // !STATIC_TUPLE_MODULE
+#endif // !_STATIC_TUPLE_H_
