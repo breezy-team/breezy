@@ -166,6 +166,9 @@ Testing
   documentation in ``developers/testing.txt`` for details.
   (Vincent Ladeuil)
 
+* Stop showing the number of tests due to missing features in the test
+  progress bar.  (Martin Pool)
+
 * Test parameterisation now does a shallow copy, not a deep copy of the test
   to be parameterised. This is not expected to break external use of test
   parameterisation, and is substantially faster. (Robert Collins)

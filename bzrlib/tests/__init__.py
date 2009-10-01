@@ -496,8 +496,8 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d err' % self.error_count
         if self.failure_count:
             a += ', %d fail' % self.failure_count
-        if self.unsupported:
-            a += ', %d missing' % len(self.unsupported)
+        # if self.unsupported:
+        #     a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
