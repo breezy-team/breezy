@@ -1,4 +1,5 @@
 from bzrlib.commands import Command, register_command
+from bzrlib.option import Option
 
 class cmd_bash_completion(Command):
     """Generate a shell function for bash command line completion.
@@ -10,9 +11,15 @@ class cmd_bash_completion(Command):
     Commonly used like this:
         eval "`bzr bash-completion`"
     """
-    def run(self):
+
+    takes_options = [
+        Option("function-name", short_name="f", type=str, argname="name",
+               help="Name of the created autocompletion bash function (default: _bzr)"),
+        ]
+
+    def run(self, **kwargs):
         import sys
         from bashcomp import bash_completion_function
-        bash_completion_function(sys.stdout)
+        bash_completion_function(sys.stdout, **kwargs)
 
 register_command(cmd_bash_completion)

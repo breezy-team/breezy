@@ -16,7 +16,7 @@ template="""\
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
 
-_bzr ()
+%(function_name)s ()
 {
 	local cur cmds cmdOpts opt helpCmds optBase i
 
@@ -75,10 +75,10 @@ _bzr ()
 
 	return 0
 }
-complete -F _bzr -o default bzr
+complete -F %(function_name)s -o default bzr
 """
 
-def bash_completion_function(out):
+def bash_completion_function(out, function_name="_bzr"):
     aliases = []
     cases = ""
     optaliases = {}
@@ -123,7 +123,9 @@ def bash_completion_function(out):
         optalt += "\t\t\t;;\n"
     out.write(template % {"cmds": " ".join(aliases),
                           "cases": cases,
-                          "optalt": optalt})
+                          "optalt": optalt,
+                          "function_name": function_name,
+                          })
 
 if __name__ == '__main__':
 
