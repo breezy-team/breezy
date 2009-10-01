@@ -122,11 +122,9 @@ static int _import_function(PyObject *module, char *funcname,
         goto bad;
     }
     *f = PyCObject_AsVoidPtr(c_obj);
-    fprintf(stderr, "Imported function %s @%x\n", funcname, *f);
     Py_DECREF(d);
     return 0;
 bad:
-    fprintf(stderr, "Returning -1\n");
     Py_XDECREF(d);
     return -1;
 }

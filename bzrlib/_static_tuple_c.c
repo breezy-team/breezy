@@ -73,8 +73,6 @@ static StaticTuple *
 StaticTuple_intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
-    fprintf(stderr, "In StaticTuple_intern @%x @%x\n", StaticTuple_intern,
-    &StaticTuple_intern);
 
     if (_interned_tuples == NULL) {
         Py_INCREF(self);
@@ -140,7 +138,6 @@ static StaticTuple *
 StaticTuple_New(Py_ssize_t size)
 {
     StaticTuple *stuple;
-    fprintf(stderr, "in StaticTuple_New @%x  ", &StaticTuple_New);
     if (size < 0) {
         PyErr_BadInternalCall();
         return NULL;
@@ -150,7 +147,6 @@ StaticTuple_New(Py_ssize_t size)
         Py_INCREF(_empty_tuple);
         return _empty_tuple;
     }
-    fprintf(stderr, "Creating new StaticTuple with size %d\n", size);
     /* Note that we use PyObject_NewVar because we want to allocate a variable
      * width entry. However we *aren't* truly a PyVarObject because we don't
      * use a long for ob_size. Instead we use a plain 'size' that is an int,
@@ -741,11 +737,9 @@ static int _export_function(PyObject *module, char *funcname,
         goto bad;
     if (PyDict_SetItemString(d, funcname, c_obj) < 0)
         goto bad;
-    fprintf(stderr, "Exported %s@%x\n", funcname, func);
     Py_DECREF(d);
     return 0;
 bad:
-    fprintf(stderr, "Failed to export %s@%x\n", funcname, func);
     Py_XDECREF(c_obj);
     Py_XDECREF(d);
     return -1;
@@ -754,7 +748,6 @@ bad:
 static void
 setup_c_api(PyObject *m)
 {
-    fprintf(stderr, "exporting %s\n", _C_API_NAME);
     _export_function(m, "StaticTuple_New", StaticTuple_New,
         "StaticTuple *(Py_ssize_t)");
     _export_function(m, "StaticTuple_intern", StaticTuple_intern,
