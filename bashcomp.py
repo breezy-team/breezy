@@ -16,6 +16,7 @@ template="""\
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
 
+shopt -s extglob progcomp
 %(function_name)s ()
 {
 	local cur cmds cmdOpts opt helpCmds optBase i
