@@ -16,6 +16,11 @@ template="""\
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
 
+if shopt -q extglob; then
+	_tmp_unset_extglob=""
+else
+	_tmp_unset_extglob="shopt -u extglob"
+fi
 shopt -s extglob progcomp
 %(function_name)s ()
 {
@@ -77,6 +82,8 @@ shopt -s extglob progcomp
 	return 0
 }
 complete -F %(function_name)s -o default bzr
+$_tmp_unset_extglob
+unset _tmp_unset_extglob
 """
 
 def bash_completion_function(out, function_name="_bzr"):
