@@ -3,7 +3,7 @@
 from bzrlib import plugin
 from bzrlib import commands
 
-template="""\
+head="""\
 # Programmable completion for the Bazaar-NG bzr command under bash. Source
 # this file (or on some systems add it to ~/.bash_completion and start a new
 # shell) and bash's completion mechanism will know all about bzr's options!
@@ -22,6 +22,8 @@ else
 	_tmp_unset_extglob="shopt -u extglob"
 fi
 shopt -s extglob progcomp
+"""
+fun="""\
 %(function_name)s ()
 {
 	local cur cmds cmdOpts opt helpCmds optBase i
@@ -81,12 +83,14 @@ shopt -s extglob progcomp
 
 	return 0
 }
+"""
+tail="""\
 complete -F %(function_name)s -o default bzr
 $_tmp_unset_extglob
 unset _tmp_unset_extglob
 """
 
-def bash_completion_function(out, function_name="_bzr"):
+def bash_completion_function(out, function_name="_bzr", function_only=False):
     aliases = []
     cases = ""
     optaliases = {}
@@ -129,6 +133,10 @@ def bash_completion_function(out, function_name="_bzr"):
             if opt1 != opt2:
                 optalt += "\t\t\tcmdOpts=${cmdOpts/ " + opt2 + " / }\n"
         optalt += "\t\t\t;;\n"
+    if function_only:
+        template = fun
+    else:
+        template = head + fun + tail
     out.write(template % {"cmds": " ".join(aliases),
                           "cases": cases,
                           "optalt": optalt,
