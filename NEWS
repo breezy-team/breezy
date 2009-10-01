@@ -30,6 +30,9 @@ Bug Fixes
   but such operations are already doing full tree scans, so no radical
   performance change should be observed. (Robert Collins, #403322)
 
+* When a file kind becomes unversionable after being added, a sensible
+  error will be shown instead of a traceback. (Robert Collins, #438569)
+
 Improvements
 ************
 
