@@ -14,8 +14,7 @@ class cmd_bash_completion(Command):
 
     takes_options = [
         Option("function-name", short_name="f", type=str, argname="name",
-               help="Name of the created autocompletion bash function"
-                    " (default: _bzr)"),
+               help="Name of the generated function (default: _bzr)"),
         Option("function-only", short_name="o", type=None,
                help="Generate only the shell function, don't enable it"),
         ]
