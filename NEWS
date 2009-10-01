@@ -16,6 +16,8 @@
 
   * Fix fetching of remote repositories on Windows. (Jelmer Vernooij, #382125)
 
+  * Ignore directories in WorkingTree.extras(). (Jelmer Vernooij, #373902)
+
  FEATURES
 
   * New "git" format supported by "bzr send". All revisions 

@@ -78,6 +78,19 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.views = self._make_views()
         self._detect_case_handling()
 
+    def extras(self):
+        """Yield all unversioned files in this WorkingTree.
+        """
+        for (relroot, top), entries in osutils.walkdirs(self.basedir, ""):
+            if self.bzrdir.is_control_filename(relroot):
+                continue
+            for (relpath, basename, kind, lstat, path_from_top) in entries:
+                if self.bzrdir.is_control_filename(basename):
+                    continue
+                if not self.inventory.has_filename(relpath) and kind in ('file', 'symlink'):
+                    yield relpath
+
+
     def unlock(self):
         # non-implementation specific cleanup
         self._cleanup()
