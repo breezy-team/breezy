@@ -183,7 +183,8 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            if ((temp_ptr - self._start) == 45
+            if (self.key_length == 1 
+                and (temp_ptr - self._start) == 45
                 and strncmp(self._start, 'sha1:', 5) == 0):
                 key_element = safe_string_from_size(self._start,
                                                     temp_ptr - self._start)
