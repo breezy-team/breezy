@@ -52,24 +52,24 @@ typedef struct {
     unsigned char _unused0;
     unsigned char _unused1;
     // Note that on 64-bit, we actually have 4-more unused bytes
-    // because key_bits will always be aligned to a 64-bit boundary
+    // because items will always be aligned to a 64-bit boundary
 #if STATIC_TUPLE_HAS_HASH
     long hash;
 #endif
-    PyObject *key_bits[1];
+    PyObject *items[0];
 } StaticTuple;
 extern PyTypeObject StaticTuple_Type;
 
 typedef struct {
     PyObject_VAR_HEAD
-    PyObject *table[1];
+    PyObject *table[0];
 } KeyIntern;
 // extern PyTypeObject StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 #define StaticTuple_SET_ITEM(key, offset, val) \
-    ((((StaticTuple*)(key))->key_bits[(offset)]) = ((PyObject *)(val)))
-#define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->key_bits[offset])
+    ((((StaticTuple*)(key))->items[(offset)]) = ((PyObject *)(val)))
+#define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->items[offset])
 
 
 /* C API Functions */
@@ -83,15 +83,15 @@ typedef struct {
 #ifdef STATIC_TUPLE_MODULE
 /* Used when compiling _static_tuple_c.c */
 
-static PyObject * StaticTuple_New(Py_ssize_t);
+static StaticTuple * StaticTuple_New(Py_ssize_t);
 static StaticTuple * StaticTuple_intern(StaticTuple *self);
 
 #else
 /* Used by foriegn callers */
 static void **StaticTuple_API;
 
-static PyObject *(*StaticTuple_New)(Py_ssize_t);
-static PyObject *(*StaticTuple_intern)(PyObject *);
+static StaticTuple *(*StaticTuple_New)(Py_ssize_t);
+static StaticTuple *(*StaticTuple_intern)(StaticTuple *);
 #undef StaticTuple_CheckExact
 static int (*StaticTuple_CheckExact)(PyObject *);
 

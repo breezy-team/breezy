@@ -35,7 +35,7 @@
 
 /* The one and only StaticTuple with no values */
 static StaticTuple *_empty_tuple = NULL;
-static PyObject *_interned_keys = NULL;
+static PyObject *_interned_tuples = NULL;
 
 
 static inline int
@@ -59,7 +59,7 @@ StaticTuple_as_tuple(StaticTuple *self)
         return NULL;
     }
     for (i = 0; i < len; ++i) {
-        obj = (PyObject *)self->key_bits[i];
+        obj = (PyObject *)self->items[i];
         Py_INCREF(obj);
         PyTuple_SET_ITEM(tpl, i, obj);
     }
@@ -74,7 +74,8 @@ StaticTuple_intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
 
-    if (_interned_keys == NULL) {
+    if (_interned_tuples == NULL) {
+        Py_INCREF(self);
         return self;
     }
     if (_StaticTuple_is_interned(self)) {
@@ -82,16 +83,17 @@ StaticTuple_intern(StaticTuple *self)
         Py_INCREF(self);
         return self;
     }
-    unique_key = PyDict_GetItem((PyObject *)_interned_keys, (PyObject *)self);
+    unique_key = PyDict_GetItem((PyObject *)_interned_tuples, (PyObject *)self);
     if (unique_key) {
         // An entry already existed, return it, instead of self
         Py_INCREF(unique_key);
         return (StaticTuple *)unique_key;
     }
     // An entry did not exist, make 'self' the unique item
-    if (PyDict_SetItem(_interned_keys, (PyObject *)self, (PyObject *)self) < 0) {
+    if (PyDict_SetItem(_interned_tuples, (PyObject *)self, (PyObject *)self) < 0) {
         // Suppress an error
         PyErr_Clear();
+        Py_INCREF(self);
         return self;
     }
     // self was added to the dict, return it.
@@ -119,32 +121,31 @@ StaticTuple_dealloc(StaticTuple *self)
     if (_StaticTuple_is_interned(self)) {
         /* revive dead object temporarily for DelItem */
         Py_REFCNT(self) = 3;
-        if (PyDict_DelItem(_interned_keys, (PyObject *)self) != 0) {
+        if (PyDict_DelItem(_interned_tuples, (PyObject *)self) != 0) {
             Py_FatalError("deletion of interned StaticTuple failed");
         }
     }
     len = self->size;
     for (i = 0; i < len; ++i) {
-        Py_XDECREF(self->key_bits[i]);
+        Py_XDECREF(self->items[i]);
     }
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 
 /* Similar to PyTuple_New() */
-static PyObject *
+static StaticTuple *
 StaticTuple_New(Py_ssize_t size)
 {
-    StaticTuple *key;
+    StaticTuple *stuple;
     if (size < 0) {
         PyErr_BadInternalCall();
         return NULL;
     }
 
-    if (size == 0) {
-        assert(_empty_tuple != NULL);
+    if (size == 0 && _empty_tuple != NULL) {
         Py_INCREF(_empty_tuple);
-        return (PyObject *)_empty_tuple;
+        return _empty_tuple;
     }
     /* Note that we use PyObject_NewVar because we want to allocate a variable
      * width entry. However we *aren't* truly a PyVarObject because we don't
@@ -153,19 +154,21 @@ StaticTuple_New(Py_ssize_t size)
      * As such we do the alloc, and then have to clean up anything it does
      * incorrectly.
      */
-    key = PyObject_NewVar(StaticTuple, &StaticTuple_Type, size);
-    if (key == NULL) {
+    stuple = PyObject_NewVar(StaticTuple, &StaticTuple_Type, size);
+    if (stuple == NULL) {
         return NULL;
     }
-    key->size = size;
-    key->flags = 0;
-    key->_unused0 = 0;
-    key->_unused1 = 0;
-    memset(key->key_bits, 0, sizeof(PyObject *) * size);
+    stuple->size = size;
+    stuple->flags = 0;
+    stuple->_unused0 = 0;
+    stuple->_unused1 = 0;
+    if (size > 0) {
+        memset(stuple->items, 0, sizeof(PyObject *) * size);
+    }
 #if STATIC_TUPLE_HAS_HASH
-    key->hash = -1;
+    stuple->hash = -1;
 #endif
-    return (PyObject *)key;
+    return stuple;
 }
 
 
@@ -210,7 +213,7 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             }
         }
         Py_INCREF(obj);
-        self->key_bits[i] = obj;
+        self->items[i] = obj;
     }
     if (is_all_str) {
         self->flags |= STATIC_TUPLE_ALL_STRING;
@@ -249,7 +252,7 @@ StaticTuple_hash(StaticTuple *self)
     }
 #endif
 	x = 0x345678L;
-	p = self->key_bits;
+	p = self->items;
     if (self->flags & STATIC_TUPLE_ALL_STRING
         && self->flags & STATIC_TUPLE_DID_HASH) {
         /* If we know that we only reference strings, and we've already
@@ -498,7 +501,7 @@ StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
         PyErr_SetString(PyExc_IndexError, "StaticTuple index out of range");
         return NULL;
     }
-    obj = (PyObject *)self->key_bits[offset];
+    obj = (PyObject *)self->items[offset];
     Py_INCREF(obj);
     return obj;
 }
@@ -522,7 +525,7 @@ StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
 {
     Py_ssize_t i;
     for (i = self->size; --i >= 0;) {
-        Py_VISIT(self->key_bits[i]);
+        Py_VISIT(self->items[i]);
     }
     return 0;
 }
@@ -557,7 +560,7 @@ PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
     "StaticTuple",                               /* tp_name */
-    sizeof(StaticTuple) - sizeof(PyObject *),    /* tp_basicsize */
+    sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */
     0,                                           /* tp_print */
@@ -678,12 +681,12 @@ static PyMethodDef static_tuple_c_methods[] = {
 
 
 static void
-setup_interned_keys(PyObject *m)
+setup_interned_tuples(PyObject *m)
 {
-    _interned_keys = PyDict_New();
-    if (_interned_keys != NULL) {
-        Py_INCREF(_interned_keys);
-        PyModule_AddObject(m, "_interned_keys", _interned_keys);
+    _interned_tuples = PyDict_New();
+    if (_interned_tuples != NULL) {
+        Py_INCREF(_interned_tuples);
+        PyModule_AddObject(m, "_interned_tuples", _interned_tuples);
     }
 }
 
@@ -691,24 +694,19 @@ setup_interned_keys(PyObject *m)
 static void
 setup_empty_tuple(PyObject *m)
 {
-    StaticTuple *key;
-    // We need to create the empty tuple
-    key = PyObject_NewVar(StaticTuple, &StaticTuple_Type, 0);
-    if (key == NULL) {
-        return;
+    StaticTuple *stuple;
+    if (_interned_tuples == NULL) {
+        fprintf(stderr, "You need to call setup_interned_tuples() before"
+                " setup_empty_tuple, because we intern it.\n");
     }
-    key->size = 0;
-    /* This is all strings, because it has no entries */
-    key->flags = STATIC_TUPLE_ALL_STRING;
-    key->_unused0 = 0;
-    key->_unused1 = 0;
-#if STATIC_TUPLE_HAS_HASH
-    key->hash = -1;
-#endif
-    _empty_tuple = StaticTuple_intern(key);
-    assert(_empty_tuple == key);
-    Py_INCREF(_empty_tuple); // Never dies
-    Py_INCREF(_empty_tuple); // for the module
+    // We need to create the empty tuple
+    stuple = (StaticTuple *)StaticTuple_New(0);
+    stuple->flags = STATIC_TUPLE_ALL_STRING;
+    _empty_tuple = StaticTuple_intern(stuple);
+    assert(_empty_tuple == stuple);
+    // At this point, refcnt is 2: 1 from New(), and 1 from the return from
+    // intern(). We will keep 1 for the _empty_tuple global, and use the other
+    // for the module reference.
     PyModule_AddObject(m, "_empty_tuple", (PyObject *)_empty_tuple);
 }
 
@@ -752,7 +750,7 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    setup_interned_keys(m);
+    setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);
 }

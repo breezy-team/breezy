@@ -59,25 +59,17 @@ cdef extern from "zlib.h":
 
     uLong crc32(uLong crc, Bytef *buf, uInt len)
 
-cdef extern from "_static_tuple_c.h":
-    void **StaticTuple_API
-    int import_static_tuple()
-
-    object StaticTuple_New(Py_ssize_t)
-    object StaticTuple_intern(object)
-    # Steals a reference and val must be a String or StaticTuple, no checking
-    # is done
-    void StaticTuple_SET_ITEM(object key, Py_ssize_t offset, object val)
-    object StaticTuple_GET_ITEM(object key, Py_ssize_t offset)
-    int StaticTuple_CheckExact(object)
+# It seems we need to import the definitions so that the pyrex compiler has
+# local names to access them.
+from _static_tuple_c cimport StaticTuple, StaticTuple_API,\
+    import_static_tuple, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
+    StaticTuple_intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 from bzrlib import _static_tuple_c
 # This sets up the StaticTuple C_API functionality
 if import_static_tuple() == -1 or StaticTuple_API == NULL:
     raise ImportError('failed to import_static_tuple()')
-cdef object StaticTuple
-StaticTuple = _static_tuple_c.StaticTuple
 
 cdef object _LeafNode
 _LeafNode = None
@@ -219,6 +211,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *prefix, *value_start, *prefix_tail
     cdef char *next_null, *last_null, *line_start
     cdef char *c_entry, *entry_start
+    cdef StaticTuple entry_bits
 
     if _LeafNode is None:
         from bzrlib import chk_map

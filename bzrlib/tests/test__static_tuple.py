@@ -308,14 +308,14 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_keys)
+        self.assertFalse(key in self.module._interned_tuples)
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertEqual(key, key2)
         self.assertIsNot(key, key2)
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_keys)
-        self.assertEqual(key, self.module._interned_keys[key])
+        self.assertTrue(key in self.module._interned_tuples)
+        self.assertEqual(key, self.module._interned_tuples[key])
         key2 = key2.intern()
         self.assertIs(key, key2)
 
@@ -325,7 +325,7 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_keys)
+        self.assertFalse(key in self.module._interned_tuples)
         self.assertFalse(key._is_interned())
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertEqual(key, key2)
@@ -335,8 +335,8 @@ class TestStaticTuple(tests.TestCase):
 
         key3 = key.intern()
         self.assertIs(key, key3)
-        self.assertTrue(key in self.module._interned_keys)
-        self.assertEqual(key, self.module._interned_keys[key])
+        self.assertTrue(key in self.module._interned_tuples)
+        self.assertEqual(key, self.module._interned_tuples[key])
         del key3
         # We should not increase the refcount just via 'intern'
         self.assertEqual(2, sys.getrefcount(key))
@@ -352,18 +352,18 @@ class TestStaticTuple(tests.TestCase):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertFalse(key in self.module._interned_keys)
+        self.assertFalse(key in self.module._interned_tuples)
         self.assertEqual(2, sys.getrefcount(key))
         key = key.intern()
         self.assertEqual(2, sys.getrefcount(key))
-        self.assertTrue(key in self.module._interned_keys)
+        self.assertTrue(key in self.module._interned_tuples)
         self.assertTrue(key._is_interned())
         del key
         # Create a new entry, which would point to the same location
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertEqual(2, sys.getrefcount(key))
-        # This old entry in _interned_keys should be gone
-        self.assertFalse(key in self.module._interned_keys)
+        # This old entry in _interned_tuples should be gone
+        self.assertFalse(key in self.module._interned_tuples)
         self.assertFalse(key._is_interned())
 
     def test__c_has_C_API(self):

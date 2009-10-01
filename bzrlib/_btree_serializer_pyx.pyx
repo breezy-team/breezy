@@ -57,18 +57,11 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
 
-cdef extern from "_static_tuple_c.h":
-    void **StaticTuple_API
-    int import_static_tuple()
-    # ctypedef object (*st_new_type)(Py_ssize_t)
-    # st_new_type st_new
-
-    object StaticTuple_New(Py_ssize_t)
-    object StaticTuple_intern(object)
-    # Steals a reference and Val must be a PyStringObject, no checking is done
-    void StaticTuple_SET_ITEM(object key, Py_ssize_t offset, object val)
-    object StaticTuple_GET_ITEM(object key, Py_ssize_t offset)
-    int StaticTuple_CheckExact(object)
+# It seems we need to import the definitions so that the pyrex compiler has
+# local names to access them.
+from _static_tuple_c cimport StaticTuple, StaticTuple_API,\
+    import_static_tuple, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
+    StaticTuple_intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -110,11 +103,13 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     return result
 
 from bzrlib import _static_tuple_c
+cdef object _ST
+_ST = _static_tuple_c.StaticTuple
 # This sets up the StaticTuple C_API functionality
-if import_static_tuple() == -1 or StaticTuple_API == NULL:
+if import_static_tuple() == -1:
     raise ImportError('failed to import_static_tuple()')
-cdef object StaticTuple
-StaticTuple = _static_tuple_c.StaticTuple
+if StaticTuple_API == NULL:
+    raise ImportError('StaticTuple_API failed to be initialized.')
 
 
 cdef class BTreeLeafParser:
@@ -167,6 +162,7 @@ cdef class BTreeLeafParser:
         """
         cdef char *temp_ptr
         cdef int loop_counter
+        cdef StaticTuple key
         
         key = StaticTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
@@ -195,6 +191,7 @@ cdef class BTreeLeafParser:
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
             StaticTuple_SET_ITEM(key, loop_counter, key_element)
+        # key->flags = key->flags | STATIC_TUPLE_ALL_STRING
         key = StaticTuple_intern(key)
         return key
 

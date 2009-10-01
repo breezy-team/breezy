@@ -67,9 +67,9 @@ class StaticTuple(object):
         return self._tuple
 
     def intern(self):
-        return _interned_keys.setdefault(self, self)
+        return _interned_tuples.setdefault(self, self)
 
 
 _empty_tuple = None
 _empty_tuple = StaticTuple()
-_interned_keys = {}
+_interned_tuples = {}
