@@ -283,3 +283,24 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertFillState(0, obj.fill, 0x3ff, obj)
         # but there should be fewer than 1/5th dummy entries
         self.assertTrue(obj.fill < 1024 / 5)
+
+    def test__iter__(self):
+        obj = _module.StaticTupleInterner()
+        k1 = StaticTuple('1')
+        k2 = StaticTuple('1', '2')
+        k3 = StaticTuple('3', '4')
+        obj.add(k1)
+        obj.add(k2)
+        obj.add(k3)
+        all = set()
+        for key in obj:
+            all.add(key)
+        self.assertEqual(sorted([k1, k2, k3]), sorted(all))
+        iterator = iter(obj)
+        iterator.next()
+        obj.add(StaticTuple('foo'))
+        # Set changed size
+        self.assertRaises(RuntimeError, iterator.next)
+        # And even removing an item still causes it to fail
+        del obj[k2]
+        self.assertRaises(RuntimeError, iterator.next)

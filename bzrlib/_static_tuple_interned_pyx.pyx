@@ -312,6 +312,59 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         if not exists:
             raise KeyError('Key %s not present' % (key,))
 
+    def __iter__(self):
+        return _StaticTupleInterner_iterator(self)
+
+
+cdef class _StaticTupleInterner_iterator:
+    """Iterator over the StaticTupleInterner structure."""
+
+    cdef Py_ssize_t pos
+    cdef StaticTupleInterner table
+    cdef Py_ssize_t used # track if things have been mutated while iterating
+    cdef Py_ssize_t len # number of entries left
+
+    def __init__(self, obj):
+        self.table = obj
+        self.pos = 0
+        self.used = self.table.used
+        self.len = self.table.used
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        cdef Py_ssize_t mask, i
+        cdef PyObject **table
+
+        if self.table is None:
+            raise StopIteration
+        if self.table.used != self.used:
+            # Force this exception to continue to be raised
+            self.used = -1
+            raise RuntimeError("Set size changed during iteration")
+        i = self.pos
+        mask = self.table.mask
+        table = self.table.table
+        assert i >= 0
+        while i <= mask and (table[i] == NULL or table[i] == _dummy):
+            i += 1
+        self.pos = i + 1
+        if i > mask:
+            # we walked to the end
+            self.table = None
+            raise StopIteration
+        # We must have found one
+        key = <object>(table[i])
+        self.len -= 1
+        return key
+
+    def __length_hint__(self):
+        if self.table is not None and self.used == self.table.used:
+            return self.len
+        return 0
+    
+
 
 cdef api StaticTupleInterner StaticTupleInterner_New():
     """Create a new StaticTupleInterner object."""
