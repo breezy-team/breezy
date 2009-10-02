@@ -31,6 +31,7 @@ from bzrlib.tests import (
     blackbox,
     test_foreign,
     )
+from bzrlib.tests.blackbox import test_push
 
 
 def load_tests(standard_tests, module, loader):
@@ -139,36 +140,21 @@ class TestDpush(blackbox.ExternalBase):
 
 class TestDpushStrictMixin(object):
 
-    def make_local_branch_and_tree(self):
-        self.tree = self.make_branch_and_tree('local')
-        self.build_tree_contents([('local/file', 'initial')])
-        self.tree.add('file')
-        self.tree.commit('adding file', rev_id='added')
-        self.build_tree_contents([('local/file', 'modified')])
-        self.tree.commit('modify file', rev_id='modified')
-
     def make_foreign_branch(self, relpath='to'):
         # Create an empty branch where we will be able to push
         self.foreign = self.make_branch(
             relpath, format=test_foreign.DummyForeignVcsDirFormat())
 
-    def set_config_dpush_strict(self, value):
+    def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
         # should do)
         conf = self.tree.branch.get_config()
         conf.set_user_option('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
-    _default_wd = 'local'
-    _default_errors = ['Working tree ".*/local/" has uncommitted '
-                       'changes \(See bzr status\)\.',]
-    _default_dpushed_revid = 'modified'
+    _default_pushed_revid = False # Doesn't aplly for dpush
 
-    def assertDpushFails(self, args):
-        self.run_bzr_error(self._default_errors, self._default_command + args,
-                           working_dir=self._default_wd, retcode=3)
-
-    def assertDpushSucceeds(self, args, pushed_revid=None):
+    def assertPushSucceeds(self, args, pushed_revid=None):
         self.run_bzr(self._default_command + args,
                      working_dir=self._default_wd)
         if pushed_revid is None:
@@ -182,98 +168,25 @@ class TestDpushStrictMixin(object):
 
 
 
-class TestDpushStrictWithoutChanges(tests.TestCaseWithTransport,
-                                    TestDpushStrictMixin):
+class TestDpushStrictWithoutChanges(TestDpushStrictMixin,
+                                    test_push.TestPushStrictWithoutChanges):
 
     def setUp(self):
         super(TestDpushStrictWithoutChanges, self).setUp()
         test_foreign.register_dummy_foreign_for_test(self)
-        self.make_local_branch_and_tree()
         self.make_foreign_branch()
 
-    def test_dpush_default(self):
-        self.assertDpushSucceeds([])
 
-    def test_dpush_strict(self):
-        self.assertDpushSucceeds(['--strict'])
-
-    def test_dpush_no_strict(self):
-        self.assertDpushSucceeds(['--no-strict'])
-
-    def test_dpush_config_var_strict(self):
-        self.set_config_dpush_strict('true')
-        self.assertDpushSucceeds([])
-
-    def test_dpush_config_var_no_strict(self):
-        self.set_config_dpush_strict('false')
-        self.assertDpushSucceeds([])
-
-
-class TestDpushStrictWithChanges(tests.TestCaseWithTransport,
-                                 TestDpushStrictMixin):
+class TestDpushStrictWithChanges(TestDpushStrictMixin,
+                                 test_push.TestPushStrictWithChanges):
 
     _changes_type = None # Set by load_tests
 
     def setUp(self):
         super(TestDpushStrictWithChanges, self).setUp()
         test_foreign.register_dummy_foreign_for_test(self)
-        # Apply the changes defined in load_tests: one of _uncommitted_changes,
-        # _pending_merges or _out_of_sync_trees
-        getattr(self, self._changes_type)()
         self.make_foreign_branch()
 
-    def _uncommitted_changes(self):
-        self.make_local_branch_and_tree()
-        # Make a change without committing it
-        self.build_tree_contents([('local/file', 'in progress')])
+    def test_push_with_revision(self):
+        raise tests.TestNotApplicable('dpush does not handle --revision')
 
-    def _pending_merges(self):
-        self.make_local_branch_and_tree()
-        # Create 'other' branch containing a new file
-        other_bzrdir = self.tree.bzrdir.sprout('other')
-        other_tree = other_bzrdir.open_workingtree()
-        self.build_tree_contents([('other/other-file', 'other')])
-        other_tree.add('other-file')
-        other_tree.commit('other commit', rev_id='other')
-        # Merge and revert, leaving a pending merge
-        self.tree.merge_from_branch(other_tree.branch)
-        self.tree.revert(filenames=['other-file'], backups=False)
-
-    def _out_of_sync_trees(self):
-        self.make_local_branch_and_tree()
-        self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
-        # Make a change and commit it
-        self.build_tree_contents([('local/file', 'modified in local')])
-        self.tree.commit('modify file', rev_id='modified-in-local')
-        # Exercise commands from the checkout directory
-        self._default_wd = 'checkout'
-        self._default_errors = ["Working tree is out of date, please run"
-                                " 'bzr update'\.",]
-        self._default_dpushed_revid = 'modified-in-local'
-
-    def test_dpush_default(self):
-        self.assertDpushFails([])
-
-    def test_dpush_no_strict(self):
-        self.assertDpushSucceeds(['--no-strict'])
-
-    def test_dpush_strict_with_changes(self):
-        self.assertDpushFails(['--strict'])
-
-    def test_dpush_respect_config_var_strict(self):
-        self.set_config_dpush_strict('true')
-        self.assertDpushFails([])
-
-    def test_dpush_bogus_config_var_ignored(self):
-        self.set_config_dpush_strict("I don't want you to be strict")
-        self.assertDpushFails([])
-
-    def test_dpush_no_strict_command_line_override_config(self):
-        self.set_config_dpush_strict('yES')
-        self.assertDpushFails([])
-        self.assertDpushSucceeds(['--no-strict'])
-
-    def test_dpush_strict_command_line_override_config(self):
-        self.set_config_dpush_strict('oFF')
-        self.assertDpushFails(['--strict'])
-        self.assertDpushSucceeds([])
