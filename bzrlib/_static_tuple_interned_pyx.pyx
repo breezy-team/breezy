@@ -480,8 +480,7 @@ cdef api bint StaticTupleInterner_Contains(object self, object key) except -1:
     return key in true_self
 
 
-cdef api int StaticTupleInterner_Discard(StaticTupleInterner self,
-                                         object key) except -1:
+cdef api int StaticTupleInterner_Discard(object self, object key) except -1:
     """Remove the object referenced at location 'key'.
 
     :param self: The StaticTupleInterner being modified

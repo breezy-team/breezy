@@ -338,6 +338,7 @@ class TestStaticTuple(tests.TestCase):
         self.assertIs(key, key3)
         self.assertTrue(key in self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
+        self.assertEqual(3, sys.getrefcount(key))
         del key3
         # We should not increase the refcount just via 'intern'
         self.assertEqual(2, sys.getrefcount(key))

@@ -22,6 +22,7 @@
 
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
+#include "_static_tuple_interned_pyx_api.h"
 
 #include "python-compat.h"
 
@@ -84,25 +85,23 @@ StaticTuple_Intern(StaticTuple *self)
         Py_INCREF(self);
         return self;
     }
-    unique_key = PyDict_GetItem((PyObject *)_interned_tuples, (PyObject *)self);
-    if (unique_key) {
-        // An entry already existed, return it, instead of self
-        Py_INCREF(unique_key);
-        return (StaticTuple *)unique_key;
-    }
-    // An entry did not exist, make 'self' the unique item
-    if (PyDict_SetItem(_interned_tuples, (PyObject *)self, (PyObject *)self) < 0) {
-        // Suppress an error
+    /* StaticTupleInterner_Add returns whatever object is present at self
+     * or the new object if it needs to add it.
+     */
+    unique_key = StaticTupleInterner_Add(_interned_tuples, (PyObject *)self);
+    if (!unique_key) {
+        // Suppress any error and just return the object
         PyErr_Clear();
-        Py_INCREF(self);
         return self;
     }
-    // self was added to the dict, return it.
-    Py_INCREF(self);
+    if (unique_key != (PyObject *)self) {
+        // There was already a key at that location
+        return (StaticTuple *)unique_key;
+    }
     self->flags |= STATIC_TUPLE_INTERNED_FLAG;
     // The two references in the dict do not count, so that the StaticTuple object
     // does not become immortal just because it was interned.
-    Py_REFCNT(self) -= 2;
+    Py_REFCNT(self) -= 1;
     return self;
 }
 
@@ -121,10 +120,9 @@ StaticTuple_dealloc(StaticTuple *self)
 
     if (_StaticTuple_is_interned(self)) {
         /* revive dead object temporarily for DelItem */
-        Py_REFCNT(self) = 3;
-        if (PyDict_DelItem(_interned_tuples, (PyObject *)self) != 0) {
+        // Py_REFCNT(self) = 2;
+        if (StaticTupleInterner_Discard(_interned_tuples, (PyObject*)self) != 1)
             Py_FatalError("deletion of interned StaticTuple failed");
-        }
     }
     len = self->size;
     for (i = 0; i < len; ++i) {
@@ -690,7 +688,7 @@ static PyMethodDef static_tuple_c_methods[] = {
 static void
 setup_interned_tuples(PyObject *m)
 {
-    _interned_tuples = PyDict_New();
+    _interned_tuples = (PyObject *)StaticTupleInterner_New();
     if (_interned_tuples != NULL) {
         Py_INCREF(_interned_tuples);
         PyModule_AddObject(m, "_interned_tuples", _interned_tuples);
@@ -742,8 +740,6 @@ init_static_tuple_c(void)
 
     if (PyType_Ready(&StaticTuple_Type) < 0)
         return;
-    //if (PyType_Ready(&KeyIntern_Type) < 0)
-    //    return;
 
     m = Py_InitModule3("_static_tuple_c", static_tuple_c_methods,
                        "C implementation of a StaticTuple structure");
@@ -752,6 +748,7 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
+    import_bzrlib___static_tuple_interned_pyx();
     setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);
