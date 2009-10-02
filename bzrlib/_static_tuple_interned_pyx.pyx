@@ -203,9 +203,9 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         # We rolled over our signed size field
         if new_size <= 0:
             raise MemoryError()
-        if new_size == (self.mask + 1):
-            # Nothing to do
-            return new_size
+        # Even if min_used == self.mask + 1, and we aren't changing the actual
+        # size, we will still run the algorithm so that dummy entries are
+        # removed
         # TODO: Test this
         # if new_size < self.used:
         #     raise RuntimeError('cannot shrink StaticTupleInterner to something'
@@ -288,8 +288,19 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         self.used -= 1
         Py_DECREF(slot[0])
         slot[0] = _dummy
+        # PySet uses the heuristic: If more than 1/5 are dummies, then resize
+        #                           them away
+        #   if ((so->fill - so->used) * 5 < so->mask)
+        # However, we are planning on using this as an interning structure, in
+        # which we will be putting a lot of objects. And we expect that large
+        # groups of them are going to have the same lifetime.
+        # Dummy entries hurt a little bit because they cause the lookup to keep
+        # searching, but resizing is also rather expensive
+        # For now, we'll just use their algorithm, but we may want to revisit
+        # it
+        if ((self.fill - self.used) * 5 > self.mask):
+            self._resize(self.used * 2)
         return 1
-
 
     def __delitem__(self, key):
         """Remove the given item from the dict.

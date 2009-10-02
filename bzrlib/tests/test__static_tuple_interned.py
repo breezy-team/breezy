@@ -245,22 +245,26 @@ class TestStaticTupleInterned(tests.TestCase):
         del obj[k2]
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(1024, obj._resize(500))
+        # Doesn't change the size, but does change the content
+        self.assertFillState(2, 2, 0x3ff, obj)
+        obj.add(k2)
+        del obj[k3]
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(4096, obj._resize(4095))
         self.assertFillState(2, 2, 0xfff, obj)
         self.assertIn(k1, obj)
-        self.assertNotIn(k2, obj)
-        self.assertIn(k3, obj)
+        self.assertIn(k2, obj)
+        self.assertNotIn(k3, obj)
         obj.add(k2)
         self.assertIn(k2, obj)
         del obj[k2]
         self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
-        self.assertFillState(2, 3, 0xfff, obj)
+        self.assertFillState(1, 2, 0xfff, obj)
         self.assertEqual(2048, obj._resize(1024))
-        self.assertFillState(2, 2, 0x7ff, obj)
+        self.assertFillState(1, 1, 0x7ff, obj)
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
 
-    def test_add_lots_of_items(self):
+    def test_add_and_remove_lots_of_items(self):
         obj = _module.StaticTupleInterner()
         chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
         for i in chars:
@@ -269,3 +273,13 @@ class TestStaticTupleInterned(tests.TestCase):
                 obj.add(k)
         num = len(chars)*len(chars)
         self.assertFillState(num, num, 0x1fff, obj)
+        # Now delete all of the entries and it should shrink again
+        for i in chars:
+            for j in chars:
+                k = StaticTuple(i, j)
+                obj.discard(k)
+        # It should be back to 1024 wide mask, though there may still be some
+        # dummy values in there
+        self.assertFillState(0, obj.fill, 0x3ff, obj)
+        # but there should be fewer than 1/5th dummy entries
+        self.assertTrue(obj.fill < 1024 / 5)
