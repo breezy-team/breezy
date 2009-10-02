@@ -22,6 +22,10 @@ Bug Fixes
   ``keyboard-interactive`` auth but not ``password`` auth when using
   Paramiko.   (Andrew Bennetts, #433846)
 
+* Fixed fetches from a stacked branch on a smart server that were failing
+  with some combinations of remote and local formats.  This was causing
+  "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
+
 * Occasional IndexError on renamed files have been fixed. Operations that
   set a full inventory in the working tree will now go via the
   apply_inventory_delta code path which is simpler and easier to

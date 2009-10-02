@@ -1887,7 +1887,7 @@ class RemoteStreamSource(repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.serialiser = self.to_format._serializer
+        self.serialiser = self.from_repository._format._serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not
