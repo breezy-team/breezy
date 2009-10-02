@@ -165,7 +165,6 @@ def crawl_revisions(pool, repos_path):
     youngest_rev = svn_fs_youngest_rev(fs_obj, pool)
 
 
-    first_rev = 1
     if final_rev == 0:
         final_rev = youngest_rev
     for rev in xrange(first_rev, final_rev + 1):
@@ -178,6 +177,8 @@ if __name__ == '__main__':
     parser.set_usage(usage)
     parser.add_option('-f', '--final-rev', help='Final revision to import', 
                       dest='final_rev', metavar='FINAL_REV', type='int')
+    parser.add_option('-r', '--first-rev', help='First revision to import', 
+                      dest='first_rev', metavar='FIRST_REV', type='int')
     parser.add_option('-t', '--trunk-path', help="Path in repo to /trunk, may be `regex:/cvs/(trunk)/proj1/(.*)`\nFirst group is used as branchname, second to match files",
                       dest='trunk_path', metavar='TRUNK_PATH')
     parser.add_option('-b', '--branches-path', help='Path in repo to /branches',
@@ -194,6 +195,8 @@ if __name__ == '__main__':
         tags_path = options.tags_path
     if options.final_rev != None:
         final_rev = options.final_rev
+    if options.first_rev != None:
+        first_rev = options.first_rev
 
     MATCHER = Matcher.getMatcher(trunk_path)
     sys.stderr.write("%s\n" % MATCHER)
