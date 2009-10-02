@@ -517,3 +517,33 @@ cdef api Py_ssize_t StaticTupleInterner_Size(object self) except -1:
     cdef StaticTupleInterner true_self = self
     _check_self_not_none(self)
     return true_self.used
+
+
+# TODO: this should probably have direct tests, since it isn't used by __iter__
+cdef api int StaticTupleInterner_Next(object self, Py_ssize_t *pos,
+                                      PyObject **key):
+    """Walk over items in a StaticTupleInterner.
+
+    :param pos: should be initialized to 0 by the caller, and will be updated
+        by this function
+    :param key: Will return a borrowed reference to key
+    :return: 0 if nothing left, 1 if we are returning a new value
+    """
+    cdef Py_ssize_t i, mask
+    cdef StaticTupleInterner true_self = self
+    cdef PyObject **table
+    _check_self_not_none(self)
+    i = pos[0]
+    if (i < 0):
+        return 0
+    mask = true_self.mask
+    table= true_self.table
+    while (i <= mask and (table[i] == NULL or table[i] == _dummy)):
+        i += 1
+    pos[0] = i + 1
+    if (i > mask):
+        return 0 # All done
+    if (key != NULL):
+        key[0] = table[i]
+    return 1
+

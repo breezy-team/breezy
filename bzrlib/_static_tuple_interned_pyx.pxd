@@ -38,3 +38,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     cpdef int discard(self, key) except -1
     cdef int _insert_clean(self, PyObject *key) except -1
     cpdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
+
+# TODO: might want to export the C api here, though it is all available from
+#       the class object...
+cdef api object StaticTupleInterner_Add(object self, object key)
