@@ -71,7 +71,7 @@ StaticTuple_as_tuple(StaticTuple *self)
 static char StaticTuple_as_tuple_doc[] = "as_tuple() => tuple";
 
 static StaticTuple *
-StaticTuple_intern(StaticTuple *self)
+StaticTuple_Intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
 
@@ -106,7 +106,7 @@ StaticTuple_intern(StaticTuple *self)
     return self;
 }
 
-static char StaticTuple_intern_doc[] = "intern() => unique StaticTuple\n"
+static char StaticTuple_Intern_doc[] = "intern() => unique StaticTuple\n"
     "Return a 'canonical' StaticTuple object.\n"
     "Similar to intern() for strings, this makes sure there\n"
     "is only one StaticTuple object for a given value\n."
@@ -545,7 +545,7 @@ static char StaticTuple_doc[] =
 
 static PyMethodDef StaticTuple_methods[] = {
     {"as_tuple", (PyCFunction)StaticTuple_as_tuple, METH_NOARGS, StaticTuple_as_tuple_doc},
-    {"intern", (PyCFunction)StaticTuple_intern, METH_NOARGS, StaticTuple_intern_doc},
+    {"intern", (PyCFunction)StaticTuple_Intern, METH_NOARGS, StaticTuple_Intern_doc},
     {"_is_interned", (PyCFunction)StaticTuple__is_interned, METH_NOARGS,
      StaticTuple__is_interned_doc},
     {NULL, NULL} /* sentinel */
@@ -709,7 +709,7 @@ setup_empty_tuple(PyObject *m)
     // We need to create the empty tuple
     stuple = (StaticTuple *)StaticTuple_New(0);
     stuple->flags = STATIC_TUPLE_ALL_STRING;
-    _empty_tuple = StaticTuple_intern(stuple);
+    _empty_tuple = StaticTuple_Intern(stuple);
     assert(_empty_tuple == stuple);
     // At this point, refcnt is 2: 1 from New(), and 1 from the return from
     // intern(). We will keep 1 for the _empty_tuple global, and use the other
@@ -728,7 +728,7 @@ setup_c_api(PyObject *m)
 {
     _export_function(m, "StaticTuple_New", StaticTuple_New,
         "StaticTuple *(Py_ssize_t)");
-    _export_function(m, "StaticTuple_intern", StaticTuple_intern,
+    _export_function(m, "StaticTuple_Intern", StaticTuple_Intern,
         "StaticTuple *(StaticTuple *)");
     _export_function(m, "_StaticTuple_CheckExact", _StaticTuple_CheckExact,
         "int(PyObject *)");

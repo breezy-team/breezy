@@ -38,7 +38,7 @@ cdef extern from "_static_tuple_c.h":
     int STATIC_TUPLE_ALL_STRING
 
     StaticTuple StaticTuple_New(Py_ssize_t)
-    StaticTuple StaticTuple_intern(StaticTuple)
+    StaticTuple StaticTuple_Intern(StaticTuple)
     # Steals a reference and Val must be a PyStringObject, no checking is done
     void StaticTuple_SET_ITEM(StaticTuple key, Py_ssize_t offset, object val)
     object StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)

@@ -61,7 +61,7 @@ cdef extern from "string.h":
 # local names to access them.
 from _static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
-    StaticTuple_intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -187,7 +187,7 @@ cdef class BTreeLeafParser:
             Py_INCREF(key_element)
             StaticTuple_SET_ITEM(key, loop_counter, key_element)
         # key->flags = key->flags | STATIC_TUPLE_ALL_STRING
-        key = StaticTuple_intern(key)
+        key = StaticTuple_Intern(key)
         return key
 
     cdef int process_line(self) except -1:
@@ -272,7 +272,7 @@ cdef class BTreeLeafParser:
                         # key runs to the end
                         temp_ptr = ref_ptr
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = StaticTuple_intern(StaticTuple(*ref_list))
+                ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
                 PyList_Append(ref_lists, ref_list)
                 # prepare for the next reference list
                 self._start = next_start

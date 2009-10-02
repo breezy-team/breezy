@@ -75,7 +75,7 @@ typedef struct {
 /* Used when compiling _static_tuple_c.c */
 
 static StaticTuple * StaticTuple_New(Py_ssize_t);
-static StaticTuple * StaticTuple_intern(StaticTuple *self);
+static StaticTuple * StaticTuple_Intern(StaticTuple *self);
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 
 #else
@@ -84,7 +84,7 @@ static StaticTuple * StaticTuple_intern(StaticTuple *self);
 #include "_import_c_api.h"
 
 static StaticTuple *(*StaticTuple_New)(Py_ssize_t);
-static StaticTuple *(*StaticTuple_intern)(StaticTuple *);
+static StaticTuple *(*StaticTuple_Intern)(StaticTuple *);
 static PyTypeObject *_p_StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == _p_StaticTuple_Type)
@@ -98,7 +98,7 @@ import_static_tuple_c(void)
     struct function_description functions[] = {
         {"StaticTuple_New", (void **)&StaticTuple_New,
             "StaticTuple *(Py_ssize_t)"},
-        {"StaticTuple_intern", (void **)&StaticTuple_intern,
+        {"StaticTuple_Intern", (void **)&StaticTuple_Intern,
             "StaticTuple *(StaticTuple *)"},
         {"_StaticTuple_CheckExact", (void **)&_StaticTuple_CheckExact,
             "int(PyObject *)"},

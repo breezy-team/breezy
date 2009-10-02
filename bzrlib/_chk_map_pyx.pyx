@@ -63,7 +63,7 @@ cdef extern from "zlib.h":
 # local names to access them.
 from _static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
-    StaticTuple_intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 from bzrlib import _static_tuple_c
@@ -323,7 +323,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             raise AssertionError(
                 'Incorrect number of elements (%d vs %d)'
                 % (len(entry_bits)+1, width + 1))
-        entry_bits = StaticTuple_intern(entry_bits)
+        entry_bits = StaticTuple_Intern(entry_bits)
         PyDict_SetItem(items, entry_bits, value)
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
