@@ -297,6 +297,7 @@ ext_modules.append(Extension('bzrlib._patiencediff_c',
 ext_modules.append(Extension('bzrlib._static_tuple_c',
                              ['bzrlib/_static_tuple_c.c']))
 add_pyrex_extension('bzrlib._btree_serializer_pyx')
+add_pyrex_extension('bzrlib._static_tuple_interned_pyx')
 
 
 if unavailable_files:
