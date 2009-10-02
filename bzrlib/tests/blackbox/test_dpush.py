@@ -140,10 +140,11 @@ class TestDpush(blackbox.ExternalBase):
 
 class TestDpushStrictMixin(object):
 
-    def make_foreign_branch(self, relpath='to'):
+    def setUp(self):
+        test_foreign.register_dummy_foreign_for_test(self)
         # Create an empty branch where we will be able to push
         self.foreign = self.make_branch(
-            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+            'to', format=test_foreign.DummyForeignVcsDirFormat())
 
     def set_config_push_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -172,9 +173,8 @@ class TestDpushStrictWithoutChanges(TestDpushStrictMixin,
                                     test_push.TestPushStrictWithoutChanges):
 
     def setUp(self):
-        super(TestDpushStrictWithoutChanges, self).setUp()
-        test_foreign.register_dummy_foreign_for_test(self)
-        self.make_foreign_branch()
+        test_push.TestPushStrictWithoutChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
 
 
 class TestDpushStrictWithChanges(TestDpushStrictMixin,
@@ -183,9 +183,8 @@ class TestDpushStrictWithChanges(TestDpushStrictMixin,
     _changes_type = None # Set by load_tests
 
     def setUp(self):
-        super(TestDpushStrictWithChanges, self).setUp()
-        test_foreign.register_dummy_foreign_for_test(self)
-        self.make_foreign_branch()
+        test_push.TestPushStrictWithChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
 
     def test_push_with_revision(self):
         raise tests.TestNotApplicable('dpush does not handle --revision')
