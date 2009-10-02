@@ -20,48 +20,44 @@
 
 import os
 
-from bzrlib.branch import (
-    Branch,
-    InterBranch,
-    )
-from bzrlib.bzrdir import (
-    BzrDirFormat,
-    )
-from bzrlib.foreign import (
-    ForeignBranch,
-    ForeignRepository,
-    )
-from bzrlib.repository import (
-    Repository,
-    )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
+from bzrlib import (
+    branch,
+    bzrdir,
+    foreign,
+    tests,
     )
 from bzrlib.tests.test_foreign import (
     DummyForeignVcsDirFormat,
     InterToDummyVcsBranch,
     )
+from bzrlib.tests import (
+    blackbox,
+    test_foreign,
+    )
 
-
-class TestDpush(ExternalBase):
+class TestDpush(blackbox.ExternalBase):
 
     def setUp(self):
-        BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-        InterBranch.register_optimiser(InterToDummyVcsBranch)
+        bzrdir.BzrDirFormat.register_control_format(
+            test_foreign.DummyForeignVcsDirFormat)
+        branch.InterBranch.register_optimiser(
+            test_foreign.InterToDummyVcsBranch)
         self.addCleanup(self.unregister_format)
         super(TestDpush, self).setUp()
 
     def unregister_format(self):
         try:
-            BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
+            bzrdir.BzrDirFormat.unregister_control_format(
+                test_foreign.DummyForeignVcsDirFormat)
         except ValueError:
             pass
-        InterBranch.unregister_optimiser(InterToDummyVcsBranch)
+        branch.InterBranch.unregister_optimiser(
+            test_foreign.InterToDummyVcsBranch)
 
     def make_dummy_builder(self, relpath):
-        builder = self.make_branch_builder(relpath, 
-                format=DummyForeignVcsDirFormat())
-        builder.build_snapshot('revid', None, 
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
             [('add', ('', 'TREE_ROOT', 'directory', None)),
              ('add', ('foo', 'fooid', 'file', 'bar'))])
         return builder
@@ -85,9 +81,9 @@ class TestDpush(ExternalBase):
         self.check_output("", "status dc")
 
     def test_dpush_new(self):
-        branch = self.make_dummy_builder('d').get_branch()
+        b = self.make_dummy_builder('d').get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
@@ -98,9 +94,9 @@ class TestDpush(ExternalBase):
         self.check_output("", "status dc")
 
     def test_dpush_wt_diff(self):
-        branch = self.make_dummy_builder('d').get_branch()
+        b = self.make_dummy_builder('d').get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
@@ -114,9 +110,9 @@ class TestDpush(ExternalBase):
     def test_diverged(self):
         builder = self.make_dummy_builder('d')
 
-        branch = builder.get_branch()
+        b = builder.get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         dc_tree = dc.open_workingtree()
 
         self.build_tree_contents([("dc/foo", "bar")])
