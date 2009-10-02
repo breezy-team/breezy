@@ -1923,7 +1923,7 @@ class RemoteStreamSource(repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.serialiser = self.to_format._serializer
+        self.from_serialiser = self.from_repository._format._serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not
@@ -1946,7 +1946,8 @@ class RemoteStreamSource(repository.StreamSource):
     def missing_parents_rev_handler(self, substream):
         for content in substream:
             revision_bytes = content.get_bytes_as('fulltext')
-            revision = self.serialiser.read_revision_from_string(revision_bytes)
+            revision = self.from_serialiser.read_revision_from_string(
+                revision_bytes)
             self.seen_revs.add(content.key[-1])
             self.referenced_revs.update(revision.parent_ids)
             yield content
