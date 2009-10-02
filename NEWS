@@ -49,6 +49,10 @@ Bug Fixes
   sent a signal to the bzr process specifically, for example by typing
   ``kill -QUIT PID`` in another shell.  (Martin Pool, #341535)
 
+* ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
+  filename will issue a warning and skip over those files.
+  (Robert Collins, #3918)
+
 * ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
@@ -59,6 +63,10 @@ Bug Fixes
 * ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
   merges are present in the working tree.
   (Vincent Ladeuil, #426344)
+
+* bzr will attempt to authenticate with SSH servers that support
+  ``keyboard-interactive`` auth but not ``password`` auth when using
+  Paramiko.   (Andrew Bennetts, #433846)
 
 * Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
   traceback.  (Martin Pool, #109115)
@@ -84,12 +92,24 @@ Bug Fixes
   is a fairly well packed repository (not as good as 'bzr pack' but
   good-enough.) (Robert Collins, John Arbash Meinel, #402652)
 
+* Fixed fetches from a stacked branch on a smart server that were failing
+  with some combinations of remote and local formats.  This was causing
+  "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
+
 * Network streams now decode adjacent records of the same type into a
   single stream, reducing layering churn. (Robert Collins)
 
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
+
+* Occasional IndexError on renamed files have been fixed. Operations that
+  set a full inventory in the working tree will now go via the
+  apply_inventory_delta code path which is simpler and easier to
+  understand than dirstates set_state_from_inventory method. This may
+  have a small performance impact on operations built on _write_inventory,
+  but such operations are already doing full tree scans, so no radical
+  performance change should be observed. (Robert Collins, #403322)
 
 * Prevent some kinds of incomplete data from being committed to a 2a
   repository, such as revisions without inventories or inventories without
@@ -105,6 +125,9 @@ Bug Fixes
 * Weave based repositories couldn't be cloned when committers were using
   domains or user ids embedding '.sig'. Now they can.
   (Matthew Fuller, Vincent Ladeuil, #430868)
+
+* When a file kind becomes unversionable after being added, a sensible
+  error will be shown instead of a traceback. (Robert Collins, #438569)
 
 Improvements
 ************
@@ -192,6 +215,18 @@ bzr 2.0.1 (Not Released Yet)
 Bug Fixes
 *********
 
+* ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
+  filename will issue a warning and skip over those files.
+  (Robert Collins, #3918)
+
+* bzr will attempt to authenticate with SSH servers that support
+  ``keyboard-interactive`` auth but not ``password`` auth when using
+  Paramiko.   (Andrew Bennetts, #433846)
+
+* Fixed fetches from a stacked branch on a smart server that were failing
+  with some combinations of remote and local formats.  This was causing
+  "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
+
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
   iterating over all objects in all revisions.
@@ -200,6 +235,20 @@ Bug Fixes
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
+
+* Occasional IndexError on renamed files have been fixed. Operations that
+  set a full inventory in the working tree will now go via the
+  apply_inventory_delta code path which is simpler and easier to
+  understand than dirstates set_state_from_inventory method. This may
+  have a small performance impact on operations built on _write_inventory,
+  but such operations are already doing full tree scans, so no radical
+  performance change should be observed. (Robert Collins, #403322)
+
+* When a file kind becomes unversionable after being added, a sensible
+  error will be shown instead of a traceback. (Robert Collins, #438569)
+
+* Retrieving file text or mtime from a _PreviewTree has good performance when
+  there are many changes.  (Aaron Bentley)
 
 
 bzr 2.0.0
