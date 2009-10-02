@@ -123,9 +123,9 @@ def export_revision(rev, repo, fs, pool):
 
     # Do the recursive crawl.
     if props.has_key('svn:author'):
-        author = "%s <%s@localhost>" % (props['svn:author'], props['svn:author'])
+        author = "%s <%s@users.sourceforge.net>" % (props['svn:author'], props['svn:author'])
     else:
-        author = 'nobody <nobody@localhost>'
+        author = 'nobody <nobody@users.sourceforge.net>'
 
     if len(file_changes) == 0:
         svn_pool_destroy(revpool)
