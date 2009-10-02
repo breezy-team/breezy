@@ -18,9 +18,6 @@
 
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
-    ctypedef struct PyTypeObject
-    ctypedef struct PyObject:
-        PyTypeObject *ob_type
     ctypedef long (*hashfunc)(PyObject*)
     ctypedef PyObject *(*richcmpfunc)(PyObject *, PyObject *, int)
     int Py_EQ
@@ -31,11 +28,12 @@ cdef extern from "Python.h":
     ctypedef struct PyTypeObject:
         hashfunc tp_hash
         richcmpfunc tp_richcompare
+
+    PyTypeObject *Py_TYPE(PyObject *)
         
     void *PyMem_Malloc(size_t nbytes)
     void PyMem_Free(void *)
     void memset(void *, int, size_t)
-
 
 cdef object _dummy_obj
 cdef PyObject *_dummy
@@ -49,10 +47,10 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
 
     if this == other:
         return 1
-    other_hash = other.ob_type.tp_hash(other)
+    other_hash = Py_TYPE(other).tp_hash(other)
     if other_hash != this_hash:
         return 0
-    res = this.ob_type.tp_richcompare(this, other, Py_EQ)
+    res = Py_TYPE(this).tp_richcompare(this, other, Py_EQ)
     if res == Py_True:
         Py_DECREF(res)
         return 1
@@ -62,7 +60,7 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
     # required, and Py_NotImplemented => not equal
     if res == Py_NotImplemented:
         Py_DECREF(res)
-        res = other.ob_type.tp_richcompare(other, this, Py_EQ)
+        res = Py_TYPE(other).tp_richcompare(other, this, Py_EQ)
     if res == Py_True:
         Py_DECREF(res)
         return 1
@@ -85,14 +83,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     As such, it uses 1/3rd the amount of memory to store a pointer to the
     interned object.
     """
-
-    cdef readonly Py_ssize_t used    # active
-    cdef readonly Py_ssize_t fill    # active + dummy
-    cdef readonly Py_ssize_t mask    # Table contains (mask+1) slots, a power
-                                     # of 2
-    cdef PyObject **table   # Pyrex/Cython doesn't support arrays to 'object'
-                            # so we manage it manually
-
+    # Attributes are defined in the .pxd file
     DEF DEFAULT_SIZE=1024
     DEF PERTURB_SHIFT=5
 
@@ -141,7 +132,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
             return False
         return True
 
-    cdef PyObject *_get(self, object key):
+    cdef PyObject *_get(self, object key) except? NULL:
         """Return the object (or nothing) define at the given location."""
         cdef PyObject **slot
 
