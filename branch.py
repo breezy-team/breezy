@@ -89,7 +89,11 @@ class LocalGitTagDict(tag.BasicTags):
     def get_tag_dict(self):
         ret = {}
         for k,v in self.repository._git.refs.as_dict("refs/tags").iteritems():
-            obj = self.repository._git.get_object(v)
+            try:
+                obj = self.repository._git.get_object(v)
+            except KeyError:
+                mutter("Tag %s points at unknown object %s, ignoring", v, obj)
+                continue
             while isinstance(obj, Tag):
                 v = obj.object[1]
                 obj = self.repository._git.get_object(v)
