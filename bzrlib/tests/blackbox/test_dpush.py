@@ -25,34 +25,44 @@ from bzrlib import (
     bzrdir,
     foreign,
     tests,
-    )
-from bzrlib.tests.test_foreign import (
-    DummyForeignVcsDirFormat,
-    InterToDummyVcsBranch,
+    workingtree,
     )
 from bzrlib.tests import (
     blackbox,
     test_foreign,
     )
+from bzrlib.tests.blackbox import test_push
+
+
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the dpush command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestDpushStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_changes_type= '_uncommitted_changes')),
+        ('pending-merges',
+         dict(_changes_type= '_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type= '_out_of_sync_trees')),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
 
 class TestDpush(blackbox.ExternalBase):
 
     def setUp(self):
-        bzrdir.BzrDirFormat.register_control_format(
-            test_foreign.DummyForeignVcsDirFormat)
-        branch.InterBranch.register_optimiser(
-            test_foreign.InterToDummyVcsBranch)
-        self.addCleanup(self.unregister_format)
         super(TestDpush, self).setUp()
-
-    def unregister_format(self):
-        try:
-            bzrdir.BzrDirFormat.unregister_control_format(
-                test_foreign.DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        branch.InterBranch.unregister_optimiser(
-            test_foreign.InterToDummyVcsBranch)
+        test_foreign.register_dummy_foreign_for_test(self)
 
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(
@@ -103,8 +113,10 @@ class TestDpush(blackbox.ExternalBase):
         newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
-        self.check_output("", "dpush -d dc d")
+        self.check_output("", "dpush -d dc d --no-strict")
         self.assertFileEqual("blaaaal", "dc/foofile")
+        # if the dummy vcs wasn't that dummy we could uncomment the line below
+        # self.assertFileEqual("blaaaa", "d/foofile")
         self.check_output('modified:\n  foofile\n', "status dc")
 
     def test_diverged(self):
@@ -124,3 +136,56 @@ class TestDpush(blackbox.ExternalBase):
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
         self.assertEquals(output, "")
         self.assertContainsRe(error, "have diverged")
+
+
+class TestDpushStrictMixin(object):
+
+    def setUp(self):
+        test_foreign.register_dummy_foreign_for_test(self)
+        # Create an empty branch where we will be able to push
+        self.foreign = self.make_branch(
+            'to', format=test_foreign.DummyForeignVcsDirFormat())
+
+    def set_config_push_strict(self, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = self.tree.branch.get_config()
+        conf.set_user_option('dpush_strict', value)
+
+    _default_command = ['dpush', '../to']
+    _default_pushed_revid = False # Doesn't aplly for dpush
+
+    def assertPushSucceeds(self, args, pushed_revid=None):
+        self.run_bzr(self._default_command + args,
+                     working_dir=self._default_wd)
+        if pushed_revid is None:
+            # dpush change the revids, so we need to get back to it
+            branch_from = branch.Branch.open(self._default_wd)
+            pushed_revid = branch_from.last_revision()
+        branch_to = branch.Branch.open('to')
+        repo_to = branch_to.repository
+        self.assertTrue(repo_to.has_revision(pushed_revid))
+        self.assertEqual(branch_to.last_revision(), pushed_revid)
+
+
+
+class TestDpushStrictWithoutChanges(TestDpushStrictMixin,
+                                    test_push.TestPushStrictWithoutChanges):
+
+    def setUp(self):
+        test_push.TestPushStrictWithoutChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
+
+
+class TestDpushStrictWithChanges(TestDpushStrictMixin,
+                                 test_push.TestPushStrictWithChanges):
+
+    _changes_type = None # Set by load_tests
+
+    def setUp(self):
+        test_push.TestPushStrictWithChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
+
+    def test_push_with_revision(self):
+        raise tests.TestNotApplicable('dpush does not handle --revision')
+

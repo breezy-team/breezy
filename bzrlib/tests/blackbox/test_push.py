@@ -695,6 +695,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
+        # Apply the changes defined in load_tests: one of _uncommitted_changes,
+        # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
 
     def _uncommitted_changes(self):
