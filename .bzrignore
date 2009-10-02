@@ -52,6 +52,8 @@ bzrlib/_known_graph_pyx.c
 bzrlib/_readdir_pyx.c
 bzrlib/_rio_pyx.c
 bzrlib/_static_tuple_interned_pyx.c
+bzrlib/_static_tuple_interned_pyx.h
+bzrlib/_static_tuple_interned_pyx_api.h
 bzrlib/_walkdirs_win32.c
 doc/en/release-notes/NEWS.txt
 doc/en/developer-guide/HACKING.txt

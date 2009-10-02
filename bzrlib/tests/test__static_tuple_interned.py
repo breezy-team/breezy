@@ -16,6 +16,8 @@
 
 """Tests for the StaticTupleInterned type."""
 
+import sys
+
 from bzrlib import (
     # _static_tuple_py,
     errors,
@@ -65,13 +67,28 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertTrue(obj not in container,
             'We found %s in %s' % (obj, container))
 
+    def assertFillState(self, used, fill, mask, obj):
+        self.assertEqual((used, fill, mask), (obj.used, obj.fill, obj.mask))
+
+    def assertRefcount(self, count, obj):
+        """Assert that the refcount for obj is what we expect.
+
+        Note that this automatically adjusts for the fact that calling
+        assertRefcount actually creates a new pointer, as does calling
+        sys.getrefcount. So pass the expected value *before* the call.
+        """
+        # I don't understand why it is count+3 here, but it seems to be
+        # correct. If I check in the calling function, with:
+        # self.assertEqual(count+1, sys.getrefcount(obj))
+        # Then it works fine. Something about passing it to assertRefcount is
+        # actually double-incrementing (and decrementing) the refcount
+        self.assertEqual(count+3, sys.getrefcount(obj))
+
     def test_initial(self):
         obj = _module.StaticTupleInterner()
         self.assertEqual(0, len(obj))
         st = StaticTuple('foo', 'bar')
-        self.assertEqual(0, obj.used)
-        self.assertEqual(0, obj.fill)
-        self.assertEqual(0x3ff, obj.mask) # 1024 - 1
+        self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
         # The tuple hash function is rather good at entropy. For all integers
@@ -103,7 +120,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual((643, '<null>'), obj._test_lookup(k2))
         self.assertEqual((643, '<null>'), obj._test_lookup(k3))
         self.assertEqual((643, '<null>'), obj._test_lookup(k4))
-        obj[k1] = k1
+        obj.add(k1)
         self.assertIn(k1, obj)
         self.assertNotIn(k2, obj)
         self.assertNotIn(k3, obj)
@@ -113,7 +130,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual((787, '<null>'), obj._test_lookup(k3))
         self.assertEqual((787, '<null>'), obj._test_lookup(k4))
         self.assertIs(k1, obj[k1])
-        obj[k2] = k2
+        obj.add(k2)
         self.assertIs(k2, obj[k2])
         self.assertEqual((643, k1), obj._test_lookup(k1))
         self.assertEqual((787, k2), obj._test_lookup(k2))
@@ -126,7 +143,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual((787, k2), obj._test_lookup(('f', '4')))
         self.assertEqual((660, '<null>'), obj._test_lookup(('p', 'r')))
         self.assertEqual((180, '<null>'), obj._test_lookup(('q', '1')))
-        obj[k3] = k3
+        obj.add(k3)
         self.assertIs(k3, obj[k3])
         self.assertIn(k1, obj)
         self.assertIn(k2, obj)
@@ -142,3 +159,77 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertIn(k2, obj)
         self.assertIn(k3, obj)
         self.assertNotIn(k4, obj)
+
+    def test_add(self):
+        obj = _module.StaticTupleInterner()
+        self.assertFillState(0, 0, 0x3ff, obj)
+        k1 = StaticTuple('foo')
+        self.assertRefcount(1, k1)
+        self.assertIs(k1, obj.add(k1))
+        self.assertFillState(1, 1, 0x3ff, obj)
+        self.assertRefcount(2, k1)
+        ktest = obj[k1]
+        self.assertRefcount(3, k1)
+        self.assertIs(k1, ktest)
+        del ktest
+        self.assertRefcount(2, k1)
+        k2 = StaticTuple('foo')
+        self.assertRefcount(1, k2)
+        self.assertIsNot(k1, k2)
+        # doesn't add anything, so the counters shouldn't be adjusted
+        self.assertIs(k1, obj.add(k2))
+        self.assertFillState(1, 1, 0x3ff, obj)
+        self.assertRefcount(2, k1) # not changed
+        self.assertRefcount(1, k2) # not incremented
+        self.assertIs(k1, obj[k1])
+        self.assertIs(k1, obj[k2])
+        self.assertRefcount(2, k1)
+        self.assertRefcount(1, k2)
+        # Deleting an entry should remove the fill, but not the used
+        del obj[k1]
+        self.assertFillState(0, 1, 0x3ff, obj)
+        self.assertRefcount(1, k1)
+        k3 = StaticTuple('bar')
+        self.assertRefcount(1, k3)
+        self.assertIs(k3, obj.add(k3))
+        self.assertFillState(1, 2, 0x3ff, obj)
+        self.assertRefcount(2, k3)
+        self.assertIs(k2, obj.add(k2))
+        self.assertFillState(2, 2, 0x3ff, obj)
+        self.assertRefcount(1, k1)
+        self.assertRefcount(2, k2)
+        self.assertRefcount(2, k3)
+
+    def test_discard(self):
+        obj = _module.StaticTupleInterner()
+        k1 = StaticTuple('foo')
+        k2 = StaticTuple('foo')
+        k3 = StaticTuple('bar')
+        self.assertRefcount(1, k1)
+        self.assertRefcount(1, k2)
+        self.assertRefcount(1, k3)
+        obj.add(k1)
+        self.assertRefcount(2, k1)
+        self.assertEqual(0, obj.discard(k3))
+        self.assertRefcount(1, k3)
+        obj.add(k3)
+        self.assertRefcount(2, k3)
+        self.assertEqual(1, obj.discard(k3))
+        self.assertRefcount(1, k3)
+
+    def test__delitem__(self):
+        obj = _module.StaticTupleInterner()
+        k1 = StaticTuple('foo')
+        k2 = StaticTuple('foo')
+        k3 = StaticTuple('bar')
+        self.assertRefcount(1, k1)
+        self.assertRefcount(1, k2)
+        self.assertRefcount(1, k3)
+        obj.add(k1)
+        self.assertRefcount(2, k1)
+        self.assertRaises(KeyError, obj.__delitem__, k3)
+        self.assertRefcount(1, k3)
+        obj.add(k3)
+        self.assertRefcount(2, k3)
+        del obj[k3]
+        self.assertRefcount(1, k3)
