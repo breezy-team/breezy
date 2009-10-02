@@ -68,4 +68,34 @@ bad:
     return -1;
 }
 
+/* Note:
+ *  It feels like more could be done here. Specifically, if you look at
+ *  _static_tuple_c.h you can see some boilerplate where we have:
+ * #ifdef STATIC_TUPLE_MODULE  // are we exporting or importing
+ * static RETVAL FUNCNAME PROTO;
+ * #else
+ * static RETVAL (*FUNCNAME) PROTO;
+ * #endif
+ * 
+ * And then in _static_tuple_c.c we have
+ * int setup_c_api()
+ * {
+ *   _export_function(module, #FUNCNAME, FUNCNAME, #PROTO);
+ * }
+ *
+ * And then in _static_tuple_c.h import_##MODULE
+ * struct function_definition functions[] = {
+ *   {#FUNCNAME, (void **)&FUNCNAME, #RETVAL #PROTO},
+ *   ...
+ *   {NULL}};
+ *
+ * And some similar stuff for types. However, this would mean that we would
+ * need a way for the C preprocessor to build up a list of definitions to be
+ * generated, and then expand that list at the appropriate time.
+ * I would guess there would be a way to do this, but probably not without a
+ * lot of magic, and the end result probably wouldn't be very pretty to
+ * maintain. Perhaps python's dynamic nature has left me jaded about writing
+ * boilerplate....
+ */
+
 #endif // _EXPORT_C_API_H_
