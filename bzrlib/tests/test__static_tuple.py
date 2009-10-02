@@ -286,9 +286,10 @@ class TestStaticTuple(tests.TestCase):
         self.requireFeature(Meliae)
 
     def test_empty_is_singleton(self):
+        self.requireFeature(Meliae)
+        from meliae import scanner
         key = self.module.StaticTuple()
         self.assertIs(key, self.module._empty_tuple)
-        from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
         k1 = self.module.StaticTuple(*strs[:2])
         k2 = self.module.StaticTuple(*strs[2:])
