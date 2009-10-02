@@ -2305,7 +2305,7 @@ def make_entry(kind, name, parent_id, file_id=None):
     try:
         factory = entry_factory[kind]
     except KeyError:
-        raise BzrError("unknown kind %r" % kind)
+        raise errors.BadFileKindError(name, kind)
     return factory(file_id, name, parent_id)
 
 
