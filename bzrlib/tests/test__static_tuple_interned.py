@@ -233,3 +233,39 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(2, k3)
         del obj[k3]
         self.assertRefcount(1, k3)
+
+    def test__resize(self):
+        obj = _module.StaticTupleInterner()
+        k1 = StaticTuple('foo')
+        k2 = StaticTuple('bar')
+        k3 = StaticTuple('baz')
+        obj.add(k1)
+        obj.add(k2)
+        obj.add(k3)
+        del obj[k2]
+        self.assertFillState(2, 3, 0x3ff, obj)
+        self.assertEqual(1024, obj._resize(500))
+        self.assertFillState(2, 3, 0x3ff, obj)
+        self.assertEqual(4096, obj._resize(4095))
+        self.assertFillState(2, 2, 0xfff, obj)
+        self.assertIn(k1, obj)
+        self.assertNotIn(k2, obj)
+        self.assertIn(k3, obj)
+        obj.add(k2)
+        self.assertIn(k2, obj)
+        del obj[k2]
+        self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
+        self.assertFillState(2, 3, 0xfff, obj)
+        self.assertEqual(2048, obj._resize(1024))
+        self.assertFillState(2, 2, 0x7ff, obj)
+        self.assertEqual((591, '<null>'), obj._test_lookup(k2))
+
+    def test_add_lots_of_items(self):
+        obj = _module.StaticTupleInterner()
+        chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
+        for i in chars:
+            for j in chars:
+                k = StaticTuple(i, j)
+                obj.add(k)
+        num = len(chars)*len(chars)
+        self.assertFillState(num, num, 0x1fff, obj)

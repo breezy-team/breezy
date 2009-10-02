@@ -36,3 +36,5 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     cdef PyObject *_get(self, object key) except? NULL
     cpdef object add(self, key)
     cpdef int discard(self, key) except -1
+    cdef int _insert_clean(self, PyObject *key) except -1
+    cpdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1

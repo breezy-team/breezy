@@ -100,7 +100,8 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         self.fill = 0
         n_bytes = sizeof(PyObject*) * size;
         self.table = <PyObject **>PyMem_Malloc(n_bytes)
-        # TODO: Raise MemoryError if malloc fails
+        if self.table == NULL:
+            raise MemoryError()
         memset(self.table, 0, n_bytes)
 
     def __dealloc__(self):
@@ -155,6 +156,88 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     #     assert key == value
     #     self._add(key)
 
+    cdef int _insert_clean(self, PyObject *key) except -1:
+        """Insert a key into self.table.
+
+        This is only meant to be used during times like '_resize',
+        as it makes a lot of assuptions about keys not already being present,
+        and there being no dummy entries.
+        """
+        cdef size_t i, perturb, mask
+        cdef long the_hash
+        cdef PyObject **table, **entry
+
+        mask = self.mask
+        table = self.table
+
+        the_hash = Py_TYPE(key).tp_hash(key)
+        i = the_hash & mask
+        entry = &table[i]
+        perturb = the_hash
+        # Because we know that we made all items unique before, we can just
+        # iterate as long as the target location is not empty, we don't have to
+        # do any comparison, etc.
+        while entry[0] != NULL:
+            i = (i << 2) + i + perturb + 1
+            entry = &table[i & mask]
+            perturb >>= PERTURB_SHIFT
+        entry[0] = key
+        self.fill += 1
+        self.used += 1
+
+    cpdef Py_ssize_t _resize(self, Py_ssize_t min_used) except -1:
+        """Resize the internal table.
+
+        The final table will be big enough to hold at least min_used entries.
+        We will copy the data from the existing table over, leaving out dummy
+        entries.
+
+        :return: The new size of the internal table
+        """
+        cdef Py_ssize_t new_size, n_bytes, remaining
+        cdef PyObject **new_table, **old_table, **entry
+
+        new_size = DEFAULT_SIZE
+        while new_size <= min_used and new_size > 0:
+            new_size = new_size << 1
+        # We rolled over our signed size field
+        if new_size <= 0:
+            raise MemoryError()
+        if new_size == (self.mask + 1):
+            # Nothing to do
+            return new_size
+        # TODO: Test this
+        # if new_size < self.used:
+        #     raise RuntimeError('cannot shrink StaticTupleInterner to something'
+        #                        ' smaller than the number of used slots.')
+        n_bytes = sizeof(PyObject*) * new_size;
+        new_table = <PyObject **>PyMem_Malloc(n_bytes)
+        if new_table == NULL:
+            raise MemoryError()
+
+        old_table = self.table
+        self.table = new_table
+        memset(self.table, 0, n_bytes)
+        self.mask = new_size - 1
+        self.used = 0
+        remaining = self.fill
+        self.fill = 0
+
+        # Moving everything to the other table is refcount neutral, so we don't
+        # worry about it.
+        entry = old_table
+        while remaining > 0:
+            if entry[0] == NULL: # unused slot
+                pass 
+            elif entry[0] == _dummy: # dummy slot
+                remaining -= 1
+            else: # active slot
+                remaining -= 1
+                self._insert_clean(entry[0])
+            entry += 1
+        PyMem_Free(old_table)
+        return new_size
+
     cpdef object add(self, key):
         """Similar to set.add(), start tracking this key.
         
@@ -163,7 +246,10 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         dict.setdefault() functionality.)
         """
         cdef PyObject **slot, *py_key
+        cdef int added = 0
 
+        # We need at least one empty slot
+        assert self.used < self.mask
         slot = _lookup(self, key)
         py_key = <PyObject *>key
         if (slot[0] == NULL):
@@ -171,13 +257,23 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
             self.fill += 1
             self.used += 1
             slot[0] = py_key
+            added = 1
         elif (slot[0] == _dummy):
             Py_INCREF(py_key)
             self.used += 1
             slot[0] = py_key
+            added = 1
         # No else: clause. If _lookup returns a pointer to
         # a live object, then we already have a value at this location.
-        return <object>(slot[0])
+        retval = <object>(slot[0])
+        # PySet and PyDict use a 2-3rds full algorithm, we'll follow suit
+        if added and (self.fill * 3) >= ((self.mask + 1) * 2):
+            # However, we always work for a load factor of 2:1
+            self._resize(self.used * 2)
+        # Even if we resized and ended up moving retval into a different slot,
+        # it is still the value that is held at the slot equivalent to 'key',
+        # so we can still return it
+        return retval
 
     cpdef int discard(self, key) except -1:
         """Remove key from the dict, whether it exists or not.
