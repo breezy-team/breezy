@@ -255,6 +255,17 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
                 hardlink=hardlink, stacked=stacked, source_branch=source_branch)
 
 
+def register_dummy_foreign_for_test(testcase):
+    bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
+    testcase.addCleanup(bzrdir.BzrDirFormat.unregister_control_format,
+                        DummyForeignVcsDirFormat)
+    # We need to register the optimiser to make the dummy appears really
+    # different from a regular bzr repository.
+    branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
+    testcase.addCleanup(branch.InterBranch.unregister_optimiser,
+                        InterToDummyVcsBranch)
+
+
 class ForeignVcsRegistryTests(tests.TestCase):
     """Tests for the ForeignVcsRegistry class."""
 
@@ -316,18 +327,8 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
     """Very basic test for DummyForeignVcs."""
 
     def setUp(self):
-        bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-        branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
-        self.addCleanup(self.unregister)
         super(DummyForeignVcsTests, self).setUp()
-
-    def unregister(self):
-        try:
-            bzrdir.BzrDirFormat.unregister_control_format(
-                DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        branch.InterBranch.unregister_optimiser(InterToDummyVcsBranch)
+        register_dummy_foreign_for_test(self)
 
     def test_create(self):
         """Test we can create dummies."""
