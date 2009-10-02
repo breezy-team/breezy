@@ -125,8 +125,10 @@ class TestDpush(blackbox.ExternalBase):
         newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
-        self.check_output("", "dpush -d dc d")
+        self.check_output("", "dpush -d dc d --no-strict")
         self.assertFileEqual("blaaaal", "dc/foofile")
+        # if the dummy vcs wasn't that dummy we could uncomment the line below
+        # self.assertFileEqual("blaaaa", "d/foofile")
         self.check_output('modified:\n  foofile\n', "status dc")
 
     def test_diverged(self):

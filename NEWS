@@ -53,6 +53,11 @@ Bug Fixes
   longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
   (Robert Collins, #416732)
 
+* ``bzr dpush`` now aborts if uncommitted changes (including pending merges)
+  are present in the working tree. The configuration option ``dpush_strict``
+  can be used to set the default for this behavior.
+  (Vincent Ladeuil,  #438158)
+
 * ``bzr info -v`` on a 2a format still claimed that it was a "Development
   format" (John Arbash Meinel, #424392)
 
