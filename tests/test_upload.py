@@ -622,6 +622,10 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
 class TestUploadDiverged(tests.TestCaseWithTransport,
                          UploadUtilsMixin):
     
+    def setUp(self):
+        super(TestUploadDiverged, self).setUp()
+        self.diverged_tree = self.create_diverged_tree_and_upload_location()
+    
     def create_diverged_tree_and_upload_location(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1', rev_id='rev1')
@@ -634,19 +638,17 @@ class TestUploadDiverged(tests.TestCaseWithTransport,
         self.do_full_upload(directory=tree_a.basedir)
         return tree_b
 
-    def assertUploadRevid(self, revid):
+    def assertRevidUploaded(self, revid):
         t = self.get_transport(self.upload_dir)
         uploaded_revid = t.get_bytes('.bzr-upload.revid')
         self.assertEqual(revid, uploaded_revid)
     
     def test_cant_upload_diverged(self):
-        diverged_tree = self.create_diverged_tree_and_upload_location()
         self.assertRaises(DivergedError, self.do_incremental_upload,
-                          directory=diverged_tree.basedir)
-        self.assertUploadRevid('rev2a')
+                          directory=self.diverged_tree.basedir)
+        self.assertRevidUploaded('rev2a')
 
     def test_upload_diverged_with_overwrite(self):
-        diverged_tree = self.create_diverged_tree_and_upload_location()
-        self.do_incremental_upload(directory=diverged_tree.basedir,
+        self.do_incremental_upload(directory=self.diverged_tree.basedir,
                                    overwrite=True)
-        self.assertUploadRevid('rev2b')
+        self.assertRevidUploaded('rev2b')
