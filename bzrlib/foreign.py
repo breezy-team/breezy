@@ -271,16 +271,22 @@ class cmd_dpush(Command):
     """
     hidden = True
     takes_args = ['location?']
-    takes_options = ['remember', Option('directory',
-            help='Branch to push from, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
-            Option('no-rebase', help="Do not rebase after push.")]
+    takes_options = [
+        'remember',
+        Option('directory',
+               help='Branch to push from, '
+               'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
+        Option('no-rebase', help="Do not rebase after push."),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree, --no-strict disables the check.'),
+        ]
 
-    def run(self, location=None, remember=False, directory=None, 
-            no_rebase=False):
+    def run(self, location=None, remember=False, directory=None,
+            no_rebase=False, strict=None):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
