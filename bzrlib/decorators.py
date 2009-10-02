@@ -207,6 +207,15 @@ def _fast_needs_write_lock(unbound):
 
 
 def only_raises(*errors):
+    """Make a decorator that will only allow the given error classes to be
+    raised.  All other errors will be logged and then discarded.
+
+    Typical use is something like::
+
+        @only_raises(LockNotHeld, LockBroken)
+        def unlock(self):
+            # etc
+    """
     def decorator(unbound):
         def wrapped(*args, **kwargs):
             try:
