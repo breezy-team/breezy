@@ -60,21 +60,8 @@ def load_tests(standard_tests, module, loader):
 class TestDpush(blackbox.ExternalBase):
 
     def setUp(self):
-        bzrdir.BzrDirFormat.register_control_format(
-            test_foreign.DummyForeignVcsDirFormat)
-        branch.InterBranch.register_optimiser(
-            test_foreign.InterToDummyVcsBranch)
-        self.addCleanup(self.unregister_format)
         super(TestDpush, self).setUp()
-
-    def unregister_format(self):
-        try:
-            bzrdir.BzrDirFormat.unregister_control_format(
-                test_foreign.DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        branch.InterBranch.unregister_optimiser(
-            test_foreign.InterToDummyVcsBranch)
+        test_foreign.register_dummy_foreign_for_test(self)
 
     def make_dummy_builder(self, relpath):
         builder = self.make_branch_builder(
@@ -152,24 +139,6 @@ class TestDpush(blackbox.ExternalBase):
 
 class TestDpushStrictMixin(object):
 
-    # FIXME: setUp and unregister_format needs to be dedupe from TestDpush
-    # (made into functions in test_foreign ?).
-    def setUp(self):
-        bzrdir.BzrDirFormat.register_control_format(
-            test_foreign.DummyForeignVcsDirFormat)
-        branch.InterBranch.register_optimiser(
-            test_foreign.InterToDummyVcsBranch)
-        self.addCleanup(self.unregister_format)
-
-    def unregister_format(self):
-        try:
-            bzrdir.BzrDirFormat.unregister_control_format(
-                test_foreign.DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        branch.InterBranch.unregister_optimiser(
-            test_foreign.InterToDummyVcsBranch)
-
     def make_local_branch_and_tree(self):
         self.tree = self.make_branch_and_tree('local')
         self.build_tree_contents([('local/file', 'initial')])
@@ -218,7 +187,7 @@ class TestDpushStrictWithoutChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestDpushStrictWithoutChanges, self).setUp()
-        TestDpushStrictMixin.setUp(self)
+        test_foreign.register_dummy_foreign_for_test(self)
         self.make_local_branch_and_tree()
         self.make_foreign_branch()
 
@@ -247,7 +216,7 @@ class TestDpushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestDpushStrictWithChanges, self).setUp()
-        TestDpushStrictMixin.setUp(self)
+        test_foreign.register_dummy_foreign_for_test(self)
         # Apply the changes defined in load_tests: one of _uncommitted_changes,
         # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
