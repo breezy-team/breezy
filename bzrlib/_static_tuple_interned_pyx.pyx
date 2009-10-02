@@ -96,6 +96,10 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     DEF DEFAULT_SIZE=1024
     DEF PERTURB_SHIFT=5
 
+    # Note that most of the members on this class are just thunks over to the C
+    # api. However, this provides a nice Python/Pyrex api, as well as making it
+    # easy to test the C api from pure python.
+
     def __init__(self):
         cdef Py_ssize_t size, n_bytes
 
@@ -119,7 +123,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     def _test_lookup(self, key):
         cdef PyObject **slot
 
-        slot = _StaticTupleInterner_Lookup(self, key, hash(key))
+        slot = _lookup(self, key)
         if slot[0] == NULL:
             res = '<null>'
         elif slot[0] == _dummy:
@@ -129,41 +133,75 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         return <int>(slot - self.table), res
 
     def __contains__(self, key):
+        """Is key present in this StaticTupleInterner."""
         cdef PyObject **slot
 
-        slot = _StaticTupleInterner_Lookup(self, key, hash(key))
+        slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
             return False
         return True
 
+    cdef PyObject *_get(self, object key):
+        """Return the object (or nothing) define at the given location."""
+        cdef PyObject **slot
+
+        slot = _lookup(self, key)
+        if slot[0] == NULL or slot[0] == _dummy:
+            return NULL
+        return slot[0]
+
     def __getitem__(self, key):
         """Return a stored item that is equivalent to key."""
-        cdef PyObject **slot
-        slot = _StaticTupleInterner_Lookup(self, key, hash(key))
-        if slot[0] == NULL or slot[0] == _dummy:
+        cdef PyObject *py_val
+
+        py_val = self._get(key)
+        if py_val == NULL:
             raise KeyError("Key %s is not present" % key)
-        val = <object>(slot[0])
+        val = <object>(py_val)
         return val
 
     # def __setitem__(self, key, value):
     #     assert key == value
     #     self._add(key)
 
-    def add(self, key):
+    cpdef object add(self, key):
         """Similar to set.add(), start tracking this key.
         
         There is one small difference, which is that we return the object that
         is stored at the given location. (which is closer to the
         dict.setdefault() functionality.)
         """
-        return StaticTupleInterner_Add(self, key)
+        cdef PyObject **slot, *py_key
 
-    def discard(self, key):
+        slot = _lookup(self, key)
+        py_key = <PyObject *>key
+        if (slot[0] == NULL):
+            Py_INCREF(py_key)
+            self.fill += 1
+            self.used += 1
+            slot[0] = py_key
+        elif (slot[0] == _dummy):
+            Py_INCREF(py_key)
+            self.used += 1
+            slot[0] = py_key
+        # No else: clause. If _lookup returns a pointer to
+        # a live object, then we already have a value at this location.
+        return <object>(slot[0])
+
+    cpdef int discard(self, key) except -1:
         """Remove key from the dict, whether it exists or not.
 
         :return: 0 if the item did not exist, 1 if it did
         """
-        return StaticTupleInterner_Discard(self, key)
+        cdef PyObject **slot, *py_key
+
+        slot = _lookup(self, key)
+        if slot[0] == NULL or slot[0] == _dummy:
+            return 0
+        self.used -= 1
+        Py_DECREF(slot[0])
+        slot[0] = _dummy
+        return 1
 
 
     def __delitem__(self, key):
@@ -172,13 +210,30 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         Raise a KeyError if the key was not present.
         """
         cdef int exists
-        exists = StaticTupleInterner_Discard(self, key)
+        exists = self.discard(key)
         if not exists:
             raise KeyError('Key %s not present' % (key,))
 
 
-cdef api inline PyObject **_StaticTupleInterner_Lookup(
-            StaticTupleInterner self, key, long hash) except NULL:
+cdef api StaticTupleInterner StaticTupleInterner_New():
+    """Create a new StaticTupleInterner object."""
+    return StaticTupleInterner()
+
+
+cdef inline int _check_self_not_none(object self) except -1:
+    """Check that the parameter is not None.
+
+    Pyrex/Cython will do type checking, but only to ensure that an object is
+    either the right type or None. You can say "object foo not None" for pure
+    python functions, but not for C functions.
+    So this is just a helper for all the apis that need to do the check.
+    """
+    if self is None:
+        raise TypeError('self must not be None')
+
+
+cdef inline PyObject **_lookup(StaticTupleInterner self,
+                               object key) except NULL:
     """Find the slot where 'key' would fit.
 
     This is the same as a dicts 'lookup' function.
@@ -188,14 +243,18 @@ cdef api inline PyObject **_StaticTupleInterner_Lookup(
     :return: The location in self.table where key should be put
         should never be NULL, but may reference a NULL (PyObject*)
     """
+    # This is the heart of most functions, which is why it is pulled out as an
+    # cdef inline function.
     cdef size_t i, perturb
     cdef Py_ssize_t mask
+    cdef long key_hash
     cdef long this_hash
     cdef PyObject **table, **cur, **free_slot, *py_key
 
+    key_hash = hash(key)
     mask = self.mask
     table = self.table
-    i = hash & mask
+    i = key_hash & mask
     cur = &table[i]
     py_key = <PyObject *>key
     if cur[0] == NULL:
@@ -206,12 +265,12 @@ cdef api inline PyObject **_StaticTupleInterner_Lookup(
     if cur[0] == _dummy:
         free_slot = cur
     else:
-        if _is_equal(py_key, hash, cur[0]):
+        if _is_equal(py_key, key_hash, cur[0]):
             # Both py_key and cur[0] belong in this slot, return it
             return cur
         free_slot = NULL
     # size_t is unsigned, hash is signed...
-    perturb = hash
+    perturb = key_hash
     while True:
         i = (i << 2) + i + perturb + 1
         cur = &table[i & mask]
@@ -221,7 +280,7 @@ cdef api inline PyObject **_StaticTupleInterner_Lookup(
             else:
                 return cur
         if (cur[0] == py_key # exact match
-            or _is_equal(py_key, hash, cur[0])): # Equivalent match
+            or _is_equal(py_key, key_hash, cur[0])): # Equivalent match
             return cur
         if (cur[0] == _dummy and free_slot == NULL):
             free_slot = cur
@@ -229,7 +288,24 @@ cdef api inline PyObject **_StaticTupleInterner_Lookup(
     raise AssertionError('should never get here')
 
 
-cdef api object StaticTupleInterner_Add(StaticTupleInterner self, object key):
+cdef api PyObject **_StaticTupleInterner_Lookup(object self,
+                                                object key) except NULL:
+    """Find the slot where 'key' would fit.
+
+    This is the same as a dicts 'lookup' function. This is a private
+    api because mutating what you get without maintaing the other invariants
+    is a 'bad thing'.
+
+    :param key: An object we are looking up
+    :param hash: The hash for key
+    :return: The location in self.table where key should be put
+        should never be NULL, but may reference a NULL (PyObject*)
+    """
+    _check_self_not_none(self)
+    return _lookup(self, key)
+
+
+cdef api object StaticTupleInterner_Add(object self, object key):
     """Add a key to the StaticTupleInterner (set).
 
     :param self: The StaticTupleInterner to add the key to.
@@ -239,22 +315,18 @@ cdef api object StaticTupleInterner_Add(StaticTupleInterner self, object key):
         This may be the same object, or it may be an equivalent object.
         (consider dict.setdefault(key, key))
     """
-    cdef PyObject **slot, *py_key
+    cdef StaticTupleInterner true_self
+    _check_self_not_none(self)
+    true_self = self
+    return true_self.add(key)
+    
 
-    slot = _StaticTupleInterner_Lookup(self, key, hash(key))
-    py_key = <PyObject *>key
-    if (slot[0] == NULL):
-        Py_INCREF(py_key)
-        self.fill += 1
-        self.used += 1
-        slot[0] = py_key
-    elif (slot[0] == _dummy):
-        Py_INCREF(py_key)
-        self.used += 1
-        slot[0] = py_key
-    # No else: clause. If _StaticTupleInterner_Lookup returns a pointer to
-    # a live object, then we already have a value at this location.
-    return <object>(slot[0])
+cdef api bint StaticTupleInterner_Contains(object self, object key) except -1:
+    """Is key present in self?"""
+    cdef StaticTupleInterner true_self
+    _check_self_not_none(self)
+    true_self = self
+    return key in true_self
 
 
 cdef api int StaticTupleInterner_Discard(StaticTupleInterner self,
@@ -266,12 +338,31 @@ cdef api int StaticTupleInterner_Discard(StaticTupleInterner self,
     :return: 1 if there was an object present, 0 if there was not, and -1 on
         error.
     """
-    cdef PyObject **slot, *py_key
+    cdef StaticTupleInterner true_self
+    _check_self_not_none(self)
+    true_self = self
+    return true_self.discard(key)
 
-    slot = _StaticTupleInterner_Lookup(self, key, hash(key))
-    if slot[0] == NULL or slot[0] == _dummy:
-        return 0
-    self.used -= 1
-    Py_DECREF(slot[0])
-    slot[0] = _dummy
-    return 1
+
+cdef api PyObject *StaticTupleInterner_Get(StaticTupleInterner self,
+                                           object key) except? NULL:
+    """Get a pointer to the object present at location 'key'.
+
+    This returns an object which is equal to key which was previously added to
+    self. This returns a borrowed reference, as it may also return NULL if no
+    value is present at that location.
+
+    :param key: The value we are looking for
+    :return: The object present at that location
+    """
+    cdef StaticTupleInterner true_self
+    _check_self_not_none(self)
+    true_self = self
+    return true_self._get(key)
+
+
+cdef api Py_ssize_t StaticTupleInterner_Size(object self) except -1:
+    """Get the number of active entries in 'self'"""
+    cdef StaticTupleInterner true_self = self
+    _check_self_not_none(self)
+    return true_self.used
