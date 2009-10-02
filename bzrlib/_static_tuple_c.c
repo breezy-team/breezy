@@ -378,9 +378,15 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return Py_False;
 		}
     }
+    /* TODO: if STATIC_TUPLE_INTERNED_FLAG is set on both objects and they are
+     *       not the same pointer, then we know they aren't the same object
+     *       without having to do sub-by-sub comparison.
+     */
 
     /* It will be rare that we compare tuples of different lengths, so we don't
      * start by optimizing the length comparision, same as the tuple code
+     * TODO: Interning may change this, because we'll be comparing lots of
+     *       different StaticTuple objects in the intern dict
      */
     vlen = vk->size;
     wlen = wk->size;
