@@ -183,6 +183,9 @@ class GitWorkingTree(workingtree.WorkingTree):
                 return None
             raise
 
+    def revision_tree(self, revid):
+        return self.repository.revision_tree(revid)
+
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
