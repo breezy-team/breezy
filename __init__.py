@@ -621,7 +621,7 @@ else:
 class DivergedError(errors.BzrError):
 
     _fmt = ("The revision upload to this location is from a branch that is "
-            "diverged from this branch: %(upload_revid) \n")
+            "diverged from this branch: %(upload_revid)s")
     
     # We should probably tell the user to use merge on the diverged branch,
     # but how do we explan which branch they need to merge from!
