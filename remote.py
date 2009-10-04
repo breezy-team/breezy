@@ -224,8 +224,12 @@ class TemporaryPackIterator(Pack):
         return self._idx
 
     def __del__(self):
-        os.remove(self._data_path)
-        os.remove(self._idx_path)
+        if self._idx:
+            self._idx.close()
+            os.remove(self._idx_path)
+        if self._data:
+            self._data.close()
+            os.remove(self._data_path)
 
 
 class RemoteGitRepository(GitRepository):
