@@ -75,7 +75,7 @@ class cmd_git_import(Command):
         except NotBranchError:
             target_bzrdir = BzrDir.create(dest_location, format=format)
         try:
-            target_repo = target_bzrdir.open_repository()
+            target_repo = target_bzrdir.find_repository()
         except NoRepositoryPresent:
             target_repo = target_bzrdir.create_repository(shared=True)
 

@@ -134,8 +134,13 @@ class LocalGitRepository(GitRepository):
                 parent_map[revision_id] = ()
                 continue
             hexsha, mapping = self.lookup_git_revid(revision_id)
-            commit  = self._git.commit(hexsha)
+            try:
+                commit = self._git.commit(hexsha)
+            except KeyError:
+                continue
             if commit is None:
+                # Older versions of Dulwich used to return None rather than 
+                # raise KeyError.
                 continue
             else:
                 parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
