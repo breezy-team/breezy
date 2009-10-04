@@ -1,5 +1,9 @@
 0.4.3	UNRELEASED
 
+ BUG FIXES
+
+  * Fix warning about unclosed files on Windows. (#441978, INADA Naoki)
+
 0.4.2	2009-10-01
 
  BUG FIXES
