@@ -194,6 +194,10 @@ Testing
   documentation in ``developers/testing.txt`` for details.
   (Vincent Ladeuil)
 
+* Some tests could end up with the same id, that was dormant for
+  a long time.
+  (Vincent Ladeuil, #442980)
+
 * Stop showing the number of tests due to missing features in the test
   progress bar.  (Martin Pool)
 
