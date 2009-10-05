@@ -180,8 +180,7 @@ class FTPTestServer(transport.Server):
         self._port = self._ftp_server.socket.getsockname()[1]
         self._ftpd_starting = threading.Lock()
         self._ftpd_starting.acquire() # So it can be released by the server
-        self._ftpd_thread = threading.Thread(
-                target=self._run_server,)
+        self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
