@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
-from bzrlib import plugin
-from bzrlib import commands
+from bzrlib import plugin, commands, option
 
 head="""\
 # Programmable completion for the Bazaar-NG bzr command under bash. Source
@@ -65,6 +64,19 @@ $_tmp_unset_extglob
 unset _tmp_unset_extglob
 """
 
+def wrap_container(list, parser):
+    def tweaked_add_option(*opts, **attrs):
+        list.extend(opts)
+    parser.add_option = tweaked_add_option
+    return parser
+
+def wrap_parser(list, parser):
+    orig_add_option_group = parser.add_option_group
+    def tweaked_add_option_group(*opts, **attrs):
+        return wrap_container(list, orig_add_option_group(*opts, **attrs))
+    parser.add_option_group = tweaked_add_option_group
+    return wrap_container(list, parser)
+
 def bash_completion_function(out, function_name="_bzr", function_only=False):
     aliases = []
     cases = ""
@@ -84,11 +96,12 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
         switches = []
         for optname in sorted(cmd.options()):
             opt = opts[optname]
-            for (name, short_name, optname, help) in opt.iter_switches():
-                if short_name is not None:
-                    switches.append("-" + short_name)
-                if name is not None:
-                    switches.append("--" + name)
+            optswitches = []
+            parser = option.get_optparser({optname: opt})
+            parser = wrap_parser(optswitches, parser)
+            optswitches[:] = []
+            opt.add_option(parser, opt.short_name())
+            switches.extend(optswitches)
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
         cases += "\t\t;;\n"
     if function_only:
