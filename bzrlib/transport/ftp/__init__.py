@@ -25,17 +25,13 @@ active, in which case aftp:// will be your friend.
 """
 
 from cStringIO import StringIO
-import errno
 import ftplib
 import getpass
 import os
-import os.path
-import urlparse
 import random
 import socket
 import stat
 import time
-from warnings import warn
 
 from bzrlib import (
     config,
@@ -51,8 +47,6 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     )
-from bzrlib.transport.local import LocalURLServer
-import bzrlib.ui
 
 
 register_urlparse_netloc_protocol('aftp')
@@ -99,8 +93,9 @@ class FtpTransport(ConnectedTransport):
             self.is_active = True
         else:
             self.is_active = False
-        
-        # Most modern FTP servers support the APPE command. If ours doesn't, we (re)set this flag accordingly later.
+
+        # Most modern FTP servers support the APPE command. If ours doesn't, we
+        # (re)set this flag accordingly later.
         self._has_append = True
 
     def _get_FTP(self):
@@ -390,8 +385,6 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
-        text = f.read()
-        
         abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
@@ -401,13 +394,13 @@ class FtpTransport(ConnectedTransport):
 
         if self._has_append:
             mutter("FTP appe to %s", abspath)
-            self._try_append(relpath, text, mode)
+            self._try_append(relpath, f, mode)
         else:
-            self._fallback_append(relpath, text, mode)
+            self._fallback_append(relpath, f, mode)
 
         return result
 
-    def _try_append(self, relpath, text, mode=None, retries=0):
+    def _try_append(self, relpath, fp, mode=None, retries=0):
         """Try repeatedly to append the given text to the file at relpath.
 
         This is a recursive function. On errors, it will be called until the
@@ -417,37 +410,37 @@ class FtpTransport(ConnectedTransport):
             abspath = self._remote_path(relpath)
             mutter("FTP appe (try %d) to %s", retries, abspath)
             ftp = self._get_FTP()
-            cmd = "APPE %s" % abspath
-            conn = ftp.transfercmd(cmd)
-            conn.sendall(text)
-            conn.close()
+            starting_at = fp.tell()
+            ftp.storbinary("APPE %s" % abspath, fp)
             self._setmode(relpath, mode)
-            ftp.getresp()
         except ftplib.error_perm, e:
             # Check whether the command is not supported (reply code 502)
             if str(e).startswith('502 '):
-                warning("FTP server does not support file appending natively. " \
+                warning(
+                    "FTP server does not support file appending natively. "
                     "Performance may be severely degraded! (%s)", e)
                 self._has_append = False
-                self._fallback_append(relpath, text, mode)
+                fp.seek(starting_at)
+                self._fallback_append(relpath, fp, mode)
             else:
                 self._translate_perm_error(e, abspath, extra='error appending',
                     unknown_exc=errors.NoSuchFile)
-            
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise errors.TransportError("FTP temporary error during APPEND %s." \
-                        "Aborting." % abspath, orig_error=e)
+                raise errors.TransportError(
+                    "FTP temporary error during APPEND %s. Aborting."
+                    % abspath, orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
-                self._try_append(relpath, text, mode, retries+1)
+                fp.seek(starting_at)
+                self._try_append(relpath, fp, mode, retries+1)
 
-    def _fallback_append(self, relpath, text, mode = None):
+    def _fallback_append(self, relpath, fp, mode = None):
         remote = self.get(relpath)
-        remote.seek(0, 2)
-        remote.write(text)
-        remote.seek(0, 0)
+        remote.seek(0, os.SEEK_END)
+        osutils.pumpfile(fp, remote)
+        remote.seek(0)
         return self.put_file(relpath, remote, mode)
 
     def _setmode(self, relpath, mode):

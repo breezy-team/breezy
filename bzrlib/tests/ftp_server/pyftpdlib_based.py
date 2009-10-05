@@ -202,7 +202,11 @@ class FTPTestServer(transport.Server):
         self._ftpd_running = True
         self._ftpd_starting.release()
         while self._ftpd_running:
-            self._ftp_server.serve_forever(timeout=0.1, count=1)
+            try:
+                self._ftp_server.serve_forever(timeout=0.1, count=1)
+            except select.error, e:
+                if e.args[0] != errno.EBADF:
+                    raise
         self._ftp_server.close_all(ignore_all=True)
 
     def add_user(self, user, password):
