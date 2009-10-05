@@ -28,6 +28,11 @@ New Features
   defaults to '.bzr-upload.revid'.
   (Vincent Ladeuil, #423331)
 
+* Upload now checks that the revision we are uploading is a descendent
+  from the revision that was uploaded, and hence that the branchs that
+  they were uploaded from have not diverged. This can be ignored by passing
+  the --overwrite option. (Gary van der Merwe)
+
 
 Bug Fixes
 *********
