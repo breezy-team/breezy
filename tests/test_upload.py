@@ -31,10 +31,13 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.smart import server as smart_server
-
 from bzrlib.tests import (
     per_branch,
     per_transport,
+    )
+from bzrlib.transport import (
+    ftp,
+    sftp,
     )
 
 
@@ -52,9 +55,8 @@ def get_transport_scenarios():
     # Keep only the interesting ones for upload
     for name, d in basis:
         t_class = d['transport_class']
-        if t_class.__module__ in ('bzrlib.transport.ftp',
-                                'bzrlib.transport.sftp'):
-           result.append((name, d))
+        if t_class in (ftp.FtpTransport, sftp.SFTPTransport):
+            result.append((name, d))
     try:
         import bzrlib.plugins.local_test_server
         from bzrlib.plugins.local_test_server import test_server
@@ -599,6 +601,10 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         self.add_file('hello', 'foo')
 
         remote_branch_url = self.get_url(self.remote_branch_dir)
+        if self.transport_server is sftp.SFTPHomeDirServer:
+            # FIXME: Some policy search ends up above the user home directory
+            # and are seen as attemps to escape test isolation
+            raise tests.KnownFailure('Escaping test isolation')
         self.run_bzr(['push', remote_branch_url,
                       '--directory', self.branch_dir])
         return remote_branch_url
