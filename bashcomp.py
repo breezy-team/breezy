@@ -54,31 +54,6 @@ fun="""\
 		;;
 	esac
 
-	cmdOpts=" $cmdOpts "
-
-	# take out options already given
-	for (( i=2; i<=$COMP_CWORD-1; ++i )) ; do
-		opt=${COMP_WORDS[$i]}
-
-		case $opt in
-		--*)    optBase=${opt/=*/} ;;
-		-*)     optBase=${opt:0:2} ;;
-		esac
-
-		cmdOpts=" $cmdOpts "
-		cmdOpts=${cmdOpts/ ${optBase} / }
-
-		# take out some alternatives
-		case $optBase in
-%(optalt)s\
-		esac
-
-		# skip next option if this one requires a parameter
-		if [[ $opt == @($optsParam) ]] ; then
-			((++i))
-		fi
-	done
-
 	COMPREPLY=( $( compgen -W "$cmdOpts" -- $cur ) )
 
 	return 0
@@ -93,7 +68,6 @@ unset _tmp_unset_extglob
 def bash_completion_function(out, function_name="_bzr", function_only=False):
     aliases = []
     cases = ""
-    optaliases = {}
     reqarg = {}
     for name in sorted(commands.all_command_names()):
         cmd = commands.get_cmd_object(name)
@@ -107,39 +81,22 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
         if plugin is not None:
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
-        optnames = []
+        switches = []
         for optname in sorted(cmd.options()):
             opt = opts[optname]
-            optset = set()
             for (name, short_name, optname, help) in opt.iter_switches():
                 if short_name is not None:
-                    optset.add("-" + short_name)
+                    switches.append("-" + short_name)
                 if name is not None:
-                    optset.add("--" + name)
-            for optname in optset:
-                if optname not in optaliases:
-                    optaliases[optname] = optset
-                else:
-                    optaliases[optname] &= optset
-            optnames.extend(sorted(optset))
-        cases += "\t\tcmdOpts='" + " ".join(optnames) + "'\n\t\t;;\n"
-    optalt = ""
-    for opt1 in sorted(optaliases):
-        optset = optaliases[opt1]
-        if len(optset) == 1:
-            continue
-        optalt += "\t\t" + opt1 + ")\n"
-        for opt2 in sorted(optset):
-            if opt1 != opt2:
-                optalt += "\t\t\tcmdOpts=${cmdOpts/ " + opt2 + " / }\n"
-        optalt += "\t\t\t;;\n"
+                    switches.append("--" + name)
+        cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
+        cases += "\t\t;;\n"
     if function_only:
         template = fun
     else:
         template = head + fun + tail
     out.write(template % {"cmds": " ".join(aliases),
                           "cases": cases,
-                          "optalt": optalt,
                           "function_name": function_name,
                           })
 
