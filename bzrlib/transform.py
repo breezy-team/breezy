@@ -859,8 +859,8 @@ class TreeTransformBase(object):
     def get_preview_tree(self):
         """Return a tree representing the result of the transform.
 
-        This tree only supports the subset of Tree functionality required
-        by show_diff_trees.  It must only be compared to tt._tree.
+        The tree is a snapshot, and altering the TreeTransform will invalidate
+        it.
         """
         return _PreviewTree(self)
 
@@ -1635,15 +1635,12 @@ class _PreviewTree(tree.Tree):
         self._all_children_cache = {}
         self._path2trans_id_cache = {}
         self._final_name_cache = {}
-
-    def _changes(self, file_id):
-        for changes in self._transform.iter_changes():
-            if changes[0] == file_id:
-                return changes
+        self._iter_changes_cache = dict((c[0], c) for c in
+                                        self._transform.iter_changes())
 
     def _content_change(self, file_id):
         """Return True if the content of this file changed"""
-        changes = self._changes(file_id)
+        changes = self._iter_changes_cache.get(file_id)
         # changes[2] is true if the file content changed.  See
         # InterTree.iter_changes.
         return (changes is not None and changes[2])
@@ -1884,7 +1881,7 @@ class _PreviewTree(tree.Tree):
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime"""
         if not self._content_change(file_id):
-            return self._transform._tree.get_file_mtime(file_id, path)
+            return self._transform._tree.get_file_mtime(file_id)
         return self._stat_limbo_file(file_id).st_mtime
 
     def _file_size(self, entry, stat_value):
@@ -1990,7 +1987,7 @@ class _PreviewTree(tree.Tree):
 
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
-        changes = self._changes(file_id)
+        changes = self._iter_changes_cache.get(file_id)
         if changes is None:
             get_old = True
         else:

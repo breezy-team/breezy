@@ -172,5 +172,5 @@ Advanced layouts
 ----------------
 
 If you wish, you can put together your own layout based on how **you** like
-things organized. See `Advanced shared repository layouts`_ for examples
-and inspiration.
+things organized. See `Advanced shared repository layouts
+<shared_repository_layouts.html>`_ for examples and inspiration.

@@ -22,9 +22,10 @@
 import os
 import sys
 
-from bzrlib.tests.blackbox import TestCaseWithTransport
+from bzrlib import tests
 
-class TestCat(TestCaseWithTransport):
+
+class TestCat(tests.TestCaseWithTransport):
 
     def test_cat(self):
         tree = self.make_branch_and_tree('branch')
@@ -68,6 +69,7 @@ class TestCat(TestCaseWithTransport):
 
     def test_cat_different_id(self):
         """'cat' works with old and new files"""
+        self.disable_missing_extensions_warning()
         tree = self.make_branch_and_tree('.')
         # the files are named after their path in the revision and
         # current trees later in the test case
@@ -182,8 +184,6 @@ class TestCat(TestCaseWithTransport):
         self.assertEqual('contents of README\n', out)
 
     def test_cat_nonexistent_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist"
-        else:
-            location = "/i/do/not/exist"
-        self.run_bzr_error(['^bzr: ERROR: Not a branch'], ['cat', location])
+        self.vfs_transport_factory = tests.MemoryServer
+        self.run_bzr_error(['^bzr: ERROR: Not a branch'],
+                           ['cat', self.get_url()])

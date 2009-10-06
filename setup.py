@@ -414,6 +414,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
+    includes.append('win32event')  # for qsubprocess stuff
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
@@ -547,7 +548,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2007",
+                                     copyright = "(c) Canonical Ltd, 2005-2009",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )

@@ -2,8 +2,6 @@
 Bazaar en cinco minutos
 =======================
 
-.. contents:: Contenidos
-
 Introducción
 ============
 

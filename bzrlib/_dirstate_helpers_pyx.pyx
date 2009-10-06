@@ -1202,7 +1202,9 @@ cdef class ProcessEntryC:
                         content_change = 0
                     target_exec = False
                 else:
-                    raise Exception, "unknown kind %s" % path_info[2]
+                    if path is None:
+                        path = self.pathjoin(old_dirname, old_basename)
+                    raise errors.BadFileKindError(path, path_info[2])
             if source_minikind == c'd':
                 if path is None:
                     old_path = path = self.pathjoin(old_dirname, old_basename)

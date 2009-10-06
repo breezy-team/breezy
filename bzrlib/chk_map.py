@@ -1641,7 +1641,8 @@ try:
         _deserialise_internal_node,
         _key_type,
         )
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
         _search_key_16,
         _search_key_255,

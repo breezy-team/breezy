@@ -29,7 +29,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, MemoryServer
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -40,10 +40,8 @@ class TestInfo(ExternalBase):
         self._repo_strings = "2a or development-subtree"
 
     def test_info_non_existing(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = MemoryServer
+        location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)

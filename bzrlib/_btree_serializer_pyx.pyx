@@ -209,14 +209,13 @@ cdef class BTreeLeafParser:
             # And the next string is right after it
             self._cur_str = last + 1
             # The last character is right before the '\n'
-            last = last
 
         if last == self._start:
             # parsed it all.
             return 0
         if last < self._start:
             # Unexpected error condition - fail
-            return -1
+            raise AssertionError("last < self._start")
         if 0 == self._header_found:
             # The first line in a leaf node is the header "type=leaf\n"
             if strncmp("type=leaf", self._start, last - self._start) == 0:
@@ -225,14 +224,13 @@ cdef class BTreeLeafParser:
             else:
                 raise AssertionError('Node did not start with "type=leaf": %r'
                     % (safe_string_from_size(self._start, last - self._start)))
-                return -1
 
         key = self.extract_key(last)
         # find the value area
         temp_ptr = <char*>_my_memrchr(self._start, c'\0', last - self._start)
         if temp_ptr == NULL:
             # Invalid line
-            return -1
+            raise AssertionError("Failed to find the value area")
         else:
             # capture the value string
             value = safe_string_from_size(temp_ptr + 1, last - temp_ptr - 1)
@@ -246,15 +244,15 @@ cdef class BTreeLeafParser:
                 # extract a reference list
                 loop_counter = loop_counter + 1
                 if last < self._start:
-                    return -1
+                    raise AssertionError("last < self._start")
                 # find the next reference list end point:
                 temp_ptr = <char*>memchr(self._start, c'\t', last - self._start)
                 if temp_ptr == NULL:
                     # Only valid for the last list
                     if loop_counter != self.ref_list_length:
                         # Invalid line
-                        return -1
-                        raise AssertionError("invalid key")
+                        raise AssertionError(
+                            "invalid key, loop_counter != self.ref_list_length")
                     else:
                         # scan to the end of the ref list area
                         ref_ptr = last
@@ -281,7 +279,7 @@ cdef class BTreeLeafParser:
         else:
             if last != self._start:
                 # unexpected reference data present
-                return -1
+                raise AssertionError("unexpected reference data present")
             node_value = StaticTuple(value, StaticTuple())
         PyList_Append(self.keys, StaticTuple(key, node_value))
         return 0

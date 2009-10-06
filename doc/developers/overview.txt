@@ -12,16 +12,9 @@ to the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The current version of this document is available in the file
-``doc/developers/overview.txt`` in the source tree, and from 
-<http://doc.bazaar-vcs.org/bzr.dev/>.
+``doc/developers/overview.txt`` in the source tree, and available online 
+within the developer documentation, <http://doc.bazaar-vcs.org/developers/>.
 
-See also:
-
- * `Bazaar Developer Documentation Catalog <index.html>`_.
- * `Bazaar Developer Guide <../en/developer-guide/HACKING.html>`_
-   (particularly the *Coding Style Guidelines* section.)
-
-.. contents::
 
 Essential Domain Classes
 ########################

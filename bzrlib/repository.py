@@ -4084,7 +4084,7 @@ class CopyConverter(object):
             converted.unlock()
         self.step('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
-        self.pb.note('repository converted')
+        ui.ui_factory.note('repository converted')
 
     def step(self, message):
         """Update the pb by a step."""

@@ -19,6 +19,7 @@ import time
 from bzrlib import (
     debug,
     errors,
+    osutils,
     revision,
     trace,
     )
@@ -1681,5 +1682,6 @@ def collapse_linear_regions(parent_map):
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph
