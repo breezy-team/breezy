@@ -201,9 +201,14 @@ go to the release
    signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this.
 
-#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
+#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
+   signature.
 
-#. Announce on the `Bazaar home page <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+   This page is edited via the lp:bzr-website branch. (Changes
+   pushed to this branch are refreshed by a cron job on escudero.)
+
+#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
 
 #. Check that the documentation for this release is available in
    <http://doc.bazaar-vcs.org>.  It should be automatically build when the
