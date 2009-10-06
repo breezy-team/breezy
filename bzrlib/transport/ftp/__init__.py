@@ -108,6 +108,8 @@ class FtpTransport(ConnectedTransport):
             self._set_connection(connection, credentials)
         return connection
 
+    connection_class = ftplib.FTP
+
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
 
@@ -133,13 +135,9 @@ class FtpTransport(ConnectedTransport):
                ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
-            connection = ftplib.FTP()
+            connection = self.connection_class()
             connection.connect(host=self._host, port=self._port)
-            if user and user != 'anonymous' and \
-                    password is None: # '' is a valid password
-                password = auth.get_password('ftp', self._host, user,
-                                             port=self._port)
-            connection.login(user=user, passwd=password)
+            self._login(connection, auth, user, password)
             connection.set_pasv(not self.is_active)
             # binary mode is the default
             connection.voidcmd('TYPE I')
@@ -151,6 +149,13 @@ class FtpTransport(ConnectedTransport):
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
+
+    def _login(self, connection, auth, user, password):
+        # '' is a valid password
+        if user and user != 'anonymous' and password is None:
+            password = auth.get_password('ftp', self._host,
+                                         user, port=self._port)
+        connection.login(user=user, passwd=password)
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""
@@ -385,6 +390,7 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
+        text = f.read()
         abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
@@ -394,13 +400,13 @@ class FtpTransport(ConnectedTransport):
 
         if self._has_append:
             mutter("FTP appe to %s", abspath)
-            self._try_append(relpath, f, mode)
+            self._try_append(relpath, text, mode)
         else:
-            self._fallback_append(relpath, f, mode)
+            self._fallback_append(relpath, text, mode)
 
         return result
 
-    def _try_append(self, relpath, fp, mode=None, retries=0):
+    def _try_append(self, relpath, text, mode=None, retries=0):
         """Try repeatedly to append the given text to the file at relpath.
 
         This is a recursive function. On errors, it will be called until the
@@ -410,18 +416,19 @@ class FtpTransport(ConnectedTransport):
             abspath = self._remote_path(relpath)
             mutter("FTP appe (try %d) to %s", retries, abspath)
             ftp = self._get_FTP()
-            starting_at = fp.tell()
-            ftp.storbinary("APPE %s" % abspath, fp)
+            cmd = "APPE %s" % abspath
+            conn = ftp.transfercmd(cmd)
+            conn.sendall(text)
+            conn.close()
             self._setmode(relpath, mode)
+            ftp.getresp()
         except ftplib.error_perm, e:
             # Check whether the command is not supported (reply code 502)
             if str(e).startswith('502 '):
-                warning(
-                    "FTP server does not support file appending natively. "
-                    "Performance may be severely degraded! (%s)", e)
+                warning("FTP server does not support file appending natively. "
+                        "Performance may be severely degraded! (%s)", e)
                 self._has_append = False
-                fp.seek(starting_at)
-                self._fallback_append(relpath, fp, mode)
+                self._fallback_append(relpath, text, mode)
             else:
                 self._translate_perm_error(e, abspath, extra='error appending',
                     unknown_exc=errors.NoSuchFile)
@@ -433,13 +440,12 @@ class FtpTransport(ConnectedTransport):
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
-                fp.seek(starting_at)
-                self._try_append(relpath, fp, mode, retries+1)
+                self._try_append(relpath, text, mode, retries+1)
 
-    def _fallback_append(self, relpath, fp, mode = None):
+    def _fallback_append(self, relpath, text, mode = None):
         remote = self.get(relpath)
         remote.seek(0, os.SEEK_END)
-        osutils.pumpfile(fp, remote)
+        remote.write(text)
         remote.seek(0)
         return self.put_file(relpath, remote, mode)
 

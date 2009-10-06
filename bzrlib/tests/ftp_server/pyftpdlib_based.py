@@ -84,7 +84,7 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
         line = self.fs.fs2ftp(path)
         if self.fs.isfile(self.fs.realpath(path)):
             why = "Not a directory: %s" % line
-            self.log('FAIL SIZE "%s". %s.' % (line, why))
+            self.log('FAIL NLST "%s". %s.' % (line, why))
             self.respond("550 %s."  %why)
         else:
             ftpserver.FTPHandler.ftp_NLST(self, path)

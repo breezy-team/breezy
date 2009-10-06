@@ -101,8 +101,9 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
-* ftp APPE command was not cleanly handled in all cases and buffered too
-  much too. (Vincent Ladeuil, #443041)
+* ftp transports were built differently when the kerberos python module was
+  present leading to obscure failures related to ASCII/BINARY modes.
+  (Vincent Ladeuil, #443041)
 
 * Network streams now decode adjacent records of the same type into a
   single stream, reducing layering churn. (Robert Collins)
