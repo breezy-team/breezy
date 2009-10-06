@@ -37,6 +37,10 @@ New Features
   automatically benefit from this feature when ``bzr`` on the server is
   upgraded.  (Andrew Bennetts, #109143)
 
+* Extensions can now be compiled if either Cython or Pyrex is available.
+  Currently Pyrex is preferred, but that may change in the future.
+  (Arkanes)
+
 * Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
   disable the user, site and core plugin directories.
   (Vincent Ladeuil, #412930, #316192, #145612)
