@@ -673,6 +673,19 @@ what can be done inside them.
     may not catch every case but it's still useful sometimes.
 
 
+Cleanup methods
+===============
+
+Often when something has failed later code, including cleanups invoked
+from ``finally`` blocks, will fail too.  These secondary failures are
+generally uninteresting compared to the original exception.  So use the
+``only_raises`` decorator (from ``bzrlib.decorators``) for methods that
+are typically called in ``finally`` blocks, such as ``unlock`` methods.
+For example, ``@only_raises(LockNotHeld, LockBroken)``.  All errors that
+are unlikely to be a knock-on failure from an previous failure should be
+allowed.
+
+
 Factories
 =========
 
