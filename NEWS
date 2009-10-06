@@ -26,6 +26,12 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
+* Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
+  at the root of a drive. ``osutils._cicp_canonical_relpath`` always
+  assumed that ``abspath()`` returned a path that did not have a trailing
+  ``/``, but that is not true when working at the root of the filesystem.
+  (John Arbash Meinel, Jason Spashett, #322807)
+
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
   iterating over all objects in all revisions.

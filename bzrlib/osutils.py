@@ -1083,6 +1083,12 @@ def _cicp_canonical_relpath(base, path):
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
+        try:
+            next_entries = _listdir(current)
+        except OSError: # enoent
+            # current doesn't match, so just append the non-existing bits
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
         for look in _listdir(current):
             if lbit == look.lower():
                 current = pathjoin(current, look)
@@ -1093,7 +1099,7 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base)+1:]
+    return current[len(abs_base):].lstrip('/')
 
 # XXX - TODO - we need better detection/integration of case-insensitive
 # file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
