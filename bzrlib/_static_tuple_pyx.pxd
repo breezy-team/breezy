@@ -21,8 +21,25 @@ cdef extern from "Python.h":
         pass
 
 
-from bzrlib._static_tuple_type_c cimport StaticTuple, StaticTuple_SET_ITEM, \
-    StaticTuple_GET_ITEM, STATIC_TUPLE_INTERNED_FLAG, STATIC_TUPLE_ALL_STRING
+cdef extern from "_static_tuple_pyx_macros.h":
+    # Steals a reference and Val must be a PyStringObject, no checking is done
+    void StaticTuple_SET_ITEM(object key, Py_ssize_t offset, object val)
+    object StaticTuple_GET_ITEM(object key, Py_ssize_t offset)
+    int STATIC_TUPLE_INTERNED_FLAG
+    int STATIC_TUPLE_ALL_STRING
+
+
+cdef public api class StaticTuple [object StaticTuple, type StaticTuple_Type]:
+    cdef unsigned char size
+    cdef unsigned char flags
+    cdef unsigned char _unused0
+    cdef unsigned char _unused1
+    cdef PyObject *items[0]
+
+cdef api StaticTuple StaticTuple_New(Py_ssize_t)
+cdef api StaticTuple StaticTuple_Intern(StaticTuple)
+cdef api int StaticTuple_CheckExact(object)
+
 
 cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
                                            type StaticTupleInterner_type]:
@@ -39,11 +56,8 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     cpdef int discard(self, key) except -1
     cdef int _insert_clean(self, PyObject *key) except -1
     cpdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
-# TODO: might want to export the C api here, though it is all available from
-#       the class object...
-cdef api object StaticTupleInterner_Add(object self, object key)
 
-cdef api StaticTuple StaticTuple_New(Py_ssize_t)
-cdef api StaticTuple StaticTuple_Intern(StaticTuple)
-cdef api int StaticTuple_CheckExact(object)
+# TODO: might want to export more of the C api here, though it is all available
+#       from the class object...
+cdef api object StaticTupleInterner_Add(object self, object key)
 

@@ -31,6 +31,7 @@ cdef extern from "Python.h":
         hashfunc tp_hash
         richcmpfunc tp_richcompare
 
+    int PyString_CheckExact(object)
     PyTypeObject *Py_TYPE(PyObject *)
     PyVarObject * _PyObject_NewVar(PyTypeObject *, Py_ssize_t) except NULL
         
@@ -68,6 +69,36 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
         return 1
     Py_DECREF(res)
     return 0
+
+
+cdef public api class StaticTuple [object StaticTuple, type StaticTuple_Type]:
+    """A tuple-like object that is only allowed to reference constat data."""
+
+    def __new__(cls, *args, **kwargs):
+        cdef StaticTuple mynew
+        cdef Py_ssize_t i, size
+        cdef PyObject *tmp
+
+        print cls, args, kwargs
+        size = len(args)
+        mynew = StaticTuple_New(size)
+        for i from 0 <= i < size:
+            obj = args[i]
+            if (not PyString_CheckExact(obj)):
+                if (not StaticTuple_CheckExact(obj)):
+                    raise TypeError("StaticTuple.__init__(...) requires"
+                        " that all key bits are strings or StaticTuple.")
+            tmp = <PyObject *>obj
+            Py_INCREF(tmp)
+            mynew.items[i] = tmp
+            # StaticTuple_SET_ITEM(mynew, i, tmp)
+        # return mynew
+
+    def __init__(self):
+        pass
+
+    def intern(self):
+        pass
 
 
 cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
@@ -565,6 +596,8 @@ cdef api StaticTuple StaticTuple_New(Py_ssize_t size):
 
     if size < 0:
         raise ValueError('size must be > 0')
+    if size > 255:
+        raise ValueError('size must be <= 255')
 
     if (size == 0 and _empty_tuple is not None):
         return _empty_tuple

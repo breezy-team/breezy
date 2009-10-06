@@ -59,9 +59,9 @@ cdef extern from "string.h":
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
-from _static_tuple_pyx cimport StaticTuple, \
-    STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+# from _static_tuple_pyx cimport StaticTuple, \
+#     StaticTuple_New, \
+#     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 # TODO: Find some way to import this from _dirstate_helpers
