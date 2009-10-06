@@ -157,9 +157,6 @@ Documentation
 API Changes
 ***********
 
-* ``ProgressTask.note`` is deprecated.
-  (Martin Pool)
-
 * ``bzrlib.user_encoding`` has been removed; use
   ``bzrlib.osutils.get_user_encoding`` instead.  (Martin Pool)
 
@@ -167,6 +164,17 @@ API Changes
   subclasses - the same as python's unittest module. (Robert Collins)
 
 * ``bzrlib.trace.log_error``, ``error`` and ``info`` have been deprecated.
+  (Martin Pool)
+
+* ``MutableTree.has_changes()`` does not require a tree parameter anymore. It
+  now defaults to comparing to the basis tree. It now checks for pending
+  merges too.  ``Merger.check_basis`` has been deprecated and replaced by the
+  corresponding has_changes() calls. ``Merge.compare_basis``,
+  ``Merger.file_revisions`` and ``Merger.ensure_revision_trees`` have also
+  been deprecated.
+  (Vincent Ladeuil, #440631)
+
+* ``ProgressTask.note`` is deprecated.
   (Martin Pool)
 
 Internals
