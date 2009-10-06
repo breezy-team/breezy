@@ -17,8 +17,6 @@
 
 #ifndef _STATIC_TUPLE_H_
 #define _STATIC_TUPLE_H_
-#include <Python.h>
-#include <string.h>
 
 #define STATIC_TUPLE_HAS_HASH 0
 /* Caching the hash adds memory, but allows us to save a little time during
@@ -61,54 +59,9 @@ typedef struct {
 } StaticTuple;
 extern PyTypeObject StaticTuple_Type;
 
-typedef struct {
-    PyObject_VAR_HEAD
-    PyObject *table[0];
-} KeyIntern;
-
+#define _StaticTuple_CheckExact(obj) (Py_TYPE(obj) == &StaticTuple_Type)
 #define StaticTuple_SET_ITEM(key, offset, val) \
     ((((StaticTuple*)(key))->items[(offset)]) = ((PyObject *)(val)))
 #define StaticTuple_GET_ITEM(key, offset) (((StaticTuple*)key)->items[offset])
 
-
-#ifdef STATIC_TUPLE_MODULE
-/* Used when compiling _static_tuple_c.c */
-
-static StaticTuple * StaticTuple_New(Py_ssize_t);
-static StaticTuple * StaticTuple_Intern(StaticTuple *self);
-#define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
-
-#else
-/* Used as the foreign api */
-
-#include "_import_c_api.h"
-
-static StaticTuple *(*StaticTuple_New)(Py_ssize_t);
-static StaticTuple *(*StaticTuple_Intern)(StaticTuple *);
-static PyTypeObject *_p_StaticTuple_Type;
-
-#define StaticTuple_CheckExact(op) (Py_TYPE(op) == _p_StaticTuple_Type)
-static int (*_StaticTuple_CheckExact)(PyObject *);
-
-
-/* Return -1 and set exception on error, 0 on success */
-static int
-import_static_tuple_c(void)
-{
-    struct function_description functions[] = {
-        {"StaticTuple_New", (void **)&StaticTuple_New,
-            "StaticTuple *(Py_ssize_t)"},
-        {"StaticTuple_Intern", (void **)&StaticTuple_Intern,
-            "StaticTuple *(StaticTuple *)"},
-        {"_StaticTuple_CheckExact", (void **)&_StaticTuple_CheckExact,
-            "int(PyObject *)"},
-        {NULL}};
-    struct type_description types[] = {
-        {"StaticTuple", &_p_StaticTuple_Type},
-        {NULL}};
-    return _import_extension_module("bzrlib._static_tuple_c",
-        functions, types);
-}
-
-#endif // !STATIC_TUPLE_MODULE
 #endif // !_STATIC_TUPLE_H_

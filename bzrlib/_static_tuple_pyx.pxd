@@ -16,12 +16,13 @@
 
 """Interface definition of a class to intern StaticTuple objects."""
 
-cdef extern from "python-compat.h":
-    ctypedef long Py_ssize_t
-
 cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
+
+
+from bzrlib._static_tuple_type_c cimport StaticTuple, StaticTuple_SET_ITEM, \
+    StaticTuple_GET_ITEM, STATIC_TUPLE_INTERNED_FLAG, STATIC_TUPLE_ALL_STRING
 
 cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
                                            type StaticTupleInterner_type]:
@@ -38,7 +39,11 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     cpdef int discard(self, key) except -1
     cdef int _insert_clean(self, PyObject *key) except -1
     cpdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
-
 # TODO: might want to export the C api here, though it is all available from
 #       the class object...
 cdef api object StaticTupleInterner_Add(object self, object key)
+
+cdef api StaticTuple StaticTuple_New(Py_ssize_t)
+cdef api StaticTuple StaticTuple_Intern(StaticTuple)
+cdef api int StaticTuple_CheckExact(object)
+
