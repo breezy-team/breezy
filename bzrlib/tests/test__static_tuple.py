@@ -327,7 +327,6 @@ class TestStaticTuple(tests.TestCase):
     def test__c_intern_handles_refcount(self):
         if self.module is _static_tuple_py:
             return # Not applicable
-        print
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
