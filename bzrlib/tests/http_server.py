@@ -317,27 +317,55 @@ class TestingHTTPServerMixin:
         # the tests cases.
         self.test_case_server = test_case_server
         self._home_dir = test_case_server._home_dir
+        self.serving = False
+        self.is_shut_down = threading.Event()
 
-    def tearDown(self):
-         """Called to clean-up the server.
+    def serve(self):
+        self.serving = True
+        self.is_shut_down.clear()
+        while self.serving:
+            try:
+                # Really a connection but the python framework is generic and
+                # call them requests
+                self.handle_request()
+            except socket.timeout:
+                pass
+            except (socket.error, select.error), e:
+               if e[0] == errno.EBADF:
+                   # Starting with python-2.6, handle_request may raise socket
+                   # or select exceptions when the server is shut down as we
+                   # do.
+                   pass
+               else:
+                   raise
+        # Let's close the listening socket
+        self.server_close()
+        self.is_shut_down.set()
 
-         Since the server may be (surely is, even) in a blocking listen, we
-         shutdown its socket before closing it.
-         """
-         # The server is listening for a last connection, let's give it:
-         try:
-             fake_conn = socket.create_connection(self.server_address)
-             fake_conn.close()
-         except socket.error, e:
-             # But ignore connection errors as the point is to unblock the
-             # server thread, it may happen that it's not blocked or even not
-             # started (when something went wrong during test case setup
-             # leading to self.setUp() *not* being called but self.tearDown()
-             # still being called)
-             pass
+    def shutdown(self):
+        """Stops the serve() loop.
+
+        Blocks until the loop has finished. This must be called while serve()
+        is running in another thread, or it will deadlock.
+        """
+        if not self.serving:
+            return
+        self.serving = False
+        # The server is listening for a last connection, let's give it:
+        try:
+            fake_conn = socket.create_connection(self.server_address)
+            fake_conn.close()
+        except socket.error, e:
+            # But ignore connection errors as the point is to unblock the
+            # server thread, it may happen that it's not blocked or even not
+            # started (when something went wrong during test case setup
+            # leading to self.setUp() *not* being called but self.tearDown()
+            # still being called)
+            pass
+        self.is_shut_down.wait()
 
 
-class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
+class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class,
                  test_case_server):
@@ -346,8 +374,9 @@ class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
                                         request_handler_class)
 
 
-class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
-                                 TestingHTTPServerMixin):
+class TestingThreadingHTTPServer(TestingHTTPServerMixin,
+                                 SocketServer.ThreadingTCPServer,
+                                 ):
     """A threading HTTP test server for HTTP 1.1.
 
     Since tests can initiate several concurrent connections to the same http
@@ -445,18 +474,18 @@ class HttpServer(transport.Server):
                 raise httplib.UnknownProtocol(proto_vers)
             else:
                 self._httpd = self.create_httpd(serv_cls, rhandler)
-            host, self.port = self._httpd.socket.getsockname()
+            # Ensure we get the right port
+            host, self.port = self._httpd.server_address
         return self._httpd
 
     def _http_start(self):
         """Server thread main entry point. """
-        self._http_running = False
+        server = None
         try:
             try:
-                httpd = self._get_httpd()
+                server = self._get_httpd()
                 self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
                                                        self.host, self.port)
-                self._http_running = True
             except:
                 # Whatever goes wrong, we save the exception for the main
                 # thread. Note that since we are running in a thread, no signal
@@ -469,24 +498,8 @@ class HttpServer(transport.Server):
 
         # From now on, exceptions are taken care of by the
         # SocketServer.BaseServer or the request handler.
-        while self._http_running:
-            try:
-                # Really an HTTP connection but the python framework is generic
-                # and call them requests
-                httpd.handle_request()
-            except socket.timeout:
-                pass
-            except (socket.error, select.error), e:
-               if e[0] == errno.EBADF:
-                   # Starting with python-2.6, handle_request may raise socket
-                   # or select exceptions when the server is shut down (as we
-                   # do).
-                   pass
-               else:
-                   raise
-        if self._httpd is not None:
-            # Let the server properly close the listening socket
-            self._httpd.server_close()
+        if server is not None:
+            server.serve()
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -543,7 +556,7 @@ class HttpServer(transport.Server):
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._http_running = False
-        self._httpd.tearDown()
+        self._httpd.shutdown()
         self._http_thread.join()
 
     def get_url(self):
