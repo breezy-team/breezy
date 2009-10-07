@@ -177,7 +177,6 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     StaticTuple *self;
     PyObject *obj = NULL;
     Py_ssize_t i, len = 0;
-    int is_all_str;
 
     if (type != &StaticTuple_Type) {
         PyErr_SetString(PyExc_TypeError, "we only support creating StaticTuple");
@@ -198,11 +197,9 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (self == NULL) {
         return NULL;
     }
-    is_all_str = 1;
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
         if (!PyString_CheckExact(obj)) {
-            is_all_str = 0;
             if (!StaticTuple_CheckExact(obj)) {
                 PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
                     " requires that all key bits are strings or StaticTuple.");
@@ -213,9 +210,6 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         }
         Py_INCREF(obj);
         self->items[i] = obj;
-    }
-    if (is_all_str) {
-        self->flags |= STATIC_TUPLE_ALL_STRING;
     }
     return (PyObject *)self;
 }
@@ -252,29 +246,16 @@ StaticTuple_hash(StaticTuple *self)
 #endif
 	x = 0x345678L;
 	p = self->items;
-    if (self->flags & STATIC_TUPLE_ALL_STRING
-        && self->flags & STATIC_TUPLE_DID_HASH) {
-        /* If we know that we only reference strings, and we've already
-         * computed the hash one time before, then we know all the strings will
-         * have valid hash entries, and we can just compute, no branching
-         * logic.
-         */
-        while (--len >= 0) {
-            y = ((PyStringObject*)(*p))->ob_shash;
-            x = (x ^ y) * mult;
-            /* the cast might truncate len; that doesn't change hash stability */
-            mult += (long)(82520L + len + len);
-            p++;
-        }
-    } else {
-        while (--len >= 0) {
-            y = PyObject_Hash(*p++);
-            if (y == -1) /* failure */
-                return -1;
-            x = (x ^ y) * mult;
-            /* the cast might truncate len; that doesn't change hash stability */
-            mult += (long)(82520L + len + len);
-        }
+    // TODO: We could set specific flags if we know that, for example, all the
+    //       keys are strings. I haven't seen a real-world benefit to that yet,
+    //       though.
+    while (--len >= 0) {
+        y = PyObject_Hash(*p++);
+        if (y == -1) /* failure */
+            return -1;
+        x = (x ^ y) * mult;
+        /* the cast might truncate len; that doesn't change hash stability */
+        mult += (long)(82520L + len + len);
     }
 	x += 97531L;
 	if (x == -1)
@@ -287,7 +268,6 @@ StaticTuple_hash(StaticTuple *self)
     }
     self->hash = x;
 #endif
-    self->flags |= STATIC_TUPLE_DID_HASH;
 	return x;
 }
 
@@ -638,7 +618,6 @@ setup_empty_tuple(PyObject *m)
     }
     // We need to create the empty tuple
     stuple = (StaticTuple *)StaticTuple_New(0);
-    stuple->flags = STATIC_TUPLE_ALL_STRING;
     _empty_tuple = StaticTuple_Intern(stuple);
     assert(_empty_tuple == stuple);
     // At this point, refcnt is 2: 1 from New(), and 1 from the return from

@@ -62,11 +62,10 @@ cdef extern from "zlib.h":
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
 from _static_tuple_c cimport StaticTuple,\
-    import_static_tuple_c, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
+    import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
-from bzrlib import _static_tuple_c
 # This sets up the StaticTuple C_API functionality
 if import_static_tuple_c() != 0:
     raise ImportError('der borken')

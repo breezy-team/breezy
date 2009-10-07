@@ -28,26 +28,24 @@
  * Note that the entries themselves are strings, which already cache their
  * hashes. So while there is a 1.5:1 difference in the time for hash(), it is
  * already a function which is quite fast. Probably the only reason we might
- * want to do so, is if we implement a KeyIntern dict that assumes it is
- * available, and can then drop the 'hash' value from the item pointers. Then
- * again, if Key_hash() is fast enough, we may not even care about that.
+ * want to do so, is if we customized SimpleSet to the point that the item
+ * pointers were exactly certain types, and then accessed table[i]->hash
+ * directly. So far StaticTuple_hash() is fast enough to not warrant the memory
+ * difference.
  */
 
 /* This defines a single variable-width key.
  * It is basically the same as a tuple, but
  * 1) Lighter weight in memory
- * 2) Only supports strings.
- * It is mostly used as a helper. Note that Keys() is a similar structure for
- * lists of Key objects. Its main advantage, though, is that it inlines all of
- * the Key objects so that you have 1 python object overhead for N Keys, rather
- * than N objects.
+ * 2) Only supports strings or other static types (that don't reference other
+ *    objects.)
  */
 
 #define STATIC_TUPLE_INTERNED_FLAG 0x01
-#define STATIC_TUPLE_ALL_STRING    0x02
-#define STATIC_TUPLE_DID_HASH      0x04
 typedef struct {
     PyObject_HEAD
+    // We could go with unsigned short here, and support 64k width tuples
+    // without any memory impact, might be worthwhile
     unsigned char size;
     unsigned char flags;
     unsigned char _unused0;

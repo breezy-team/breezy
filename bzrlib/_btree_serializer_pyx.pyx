@@ -60,7 +60,7 @@ cdef extern from "string.h":
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
 from _static_tuple_c cimport StaticTuple, \
-    import_static_tuple_c, STATIC_TUPLE_ALL_STRING, StaticTuple_New, \
+    import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
@@ -186,7 +186,6 @@ cdef class BTreeLeafParser:
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
             StaticTuple_SET_ITEM(key, loop_counter, key_element)
-        # key->flags = key->flags | STATIC_TUPLE_ALL_STRING
         key = StaticTuple_Intern(key)
         return key
 
