@@ -28,6 +28,7 @@ from bzrlib.plugins.git.inventory import (
     GitInventory,
     )
 from bzrlib.plugins.git.mapping import (
+    mode_is_executable,
     mode_kind,
     )
 
@@ -84,6 +85,50 @@ def tree_delta_from_git_changes(changes, mapping, specific_file=None,
     return ret
 
 
+def changes_from_git_changes(changes, mapping, specific_file=None, 
+                                require_versioned=False):
+    """Create a iter_changes-like generator from a git stream.
+    
+    source and target are iterators over tuples with: 
+        (filename, sha, mode)
+    """
+    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        path = (oldpath, newpath)
+        if oldpath is None:
+            fileid = mapping.generate_file_id(newpath)
+            oldexe = None
+            oldkind = None
+            oldname = None
+            oldparent = None
+        else:
+            oldexe = mode_is_executable(oldmode)
+            oldkind = mode_kind(oldmode)
+            try:
+                (oldparentpath, oldname) = oldpath.rsplit("/", 1)
+            except ValueError:
+                oldparent = None
+                oldname = oldpath
+            else:
+                oldparent = mapping.generate_file_id(oldparentpath)
+            fileid = mapping.generate_file_id(oldpath)
+        if newpath is None:
+            newexe = None
+            newkind = None
+            newname = None
+            newparent = None
+        else:
+            newexe = mode_is_executable(newmode)
+            newkind = mode_kind(newmode)
+            try:
+                newparentpath, newname = newpath.rsplit("/", 1)
+            except ValueError:
+                newparent = None
+                newname = newpath
+            else:
+                newparent = mapping.generate_file_id(newparentpath)
+        yield fileid, (oldpath, newpath), (oldsha != newsha), (oldpath is not None, newpath is not None), (oldparent, newparent), (oldname, newname), (oldkind, newkind), (oldexe, newexe)
+
+
 class InterGitRevisionTrees(tree.InterTree):
     """InterTree that works between two git revision trees."""
 
@@ -100,6 +145,16 @@ class InterGitRevisionTrees(tree.InterTree):
         changes = self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged)
         return tree_delta_from_git_changes(changes, self.target.mapping, 
+            specific_file=specific_files)
+
+    def iter_changes(self, include_unchanged=False, specific_files=None,
+        pb=None, extra_trees=[], require_versioned=True, want_unversioned=False):
+        if self.source._repository._git.object_store != self.target._repository._git.object_store:
+            raise AssertionError
+        changes = self.source._repository._git.object_store.tree_changes(
+            self.source.tree, self.target.tree, 
+            want_unchanged=include_unchanged)
+        return changes_from_git_changes(changes, self.target.mapping, 
             specific_file=specific_files)
 
 
