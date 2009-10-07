@@ -236,7 +236,7 @@ cdef class BTreeLeafParser:
             # shrink the references end point
             last = temp_ptr
         if self.ref_list_length:
-            ref_lists = []
+            ref_lists = StaticTuple_New(self.ref_list_length)
             loop_counter = 0
             while loop_counter < self.ref_list_length:
                 ref_list = []
@@ -268,12 +268,13 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
+                                        
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
                 ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
-                PyList_Append(ref_lists, ref_list)
+                Py_INCREF(ref_list)
+                StaticTuple_SET_ITEM(ref_lists, loop_counter - 1, ref_list)
                 # prepare for the next reference list
                 self._start = next_start
-            ref_lists = StaticTuple(*ref_lists)
             node_value = StaticTuple(value, ref_lists)
         else:
             if last != self._start:

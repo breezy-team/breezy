@@ -20,6 +20,8 @@ cdef extern from "Python.h":
     ctypedef unsigned long size_t
     ctypedef long (*hashfunc)(PyObject*)
     ctypedef PyObject *(*richcmpfunc)(PyObject *, PyObject *, int)
+    ctypedef int (*visitproc)(PyObject *, void *)
+    ctypedef int (*traverseproc)(PyObject *, visitproc, void *)
     int Py_EQ
     PyObject *Py_True
     PyObject *Py_NotImplemented
@@ -28,6 +30,7 @@ cdef extern from "Python.h":
     ctypedef struct PyTypeObject:
         hashfunc tp_hash
         richcmpfunc tp_richcompare
+        traverseproc tp_traverse
 
     PyTypeObject *Py_TYPE(PyObject *)
         
@@ -111,6 +114,10 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     property mask:
         def __get__(self):
             return self._mask
+
+    def _memory_size(self):
+        """Return the number of bytes of memory consumed by this class."""
+        return sizeof(self) + (sizeof(PyObject*)*(self._mask + 1))
 
     def __len__(self):
         return self._used
@@ -451,8 +458,7 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
     raise AssertionError('should never get here')
 
 
-cdef api PyObject **_SimpleSet_Lookup(object self,
-                                                object key) except NULL:
+cdef api PyObject **_SimpleSet_Lookup(object self, object key) except NULL:
     """Find the slot where 'key' would fit.
 
     This is the same as a dicts 'lookup' function. This is a private
@@ -515,8 +521,7 @@ cdef api Py_ssize_t SimpleSet_Size(object self) except -1:
 
 
 # TODO: this should probably have direct tests, since it isn't used by __iter__
-cdef api int SimpleSet_Next(object self, Py_ssize_t *pos,
-                                      PyObject **key):
+cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
     """Walk over items in a SimpleSet.
 
     :param pos: should be initialized to 0 by the caller, and will be updated
@@ -542,3 +547,26 @@ cdef api int SimpleSet_Next(object self, Py_ssize_t *pos,
         key[0] = table[i]
     return 1
 
+
+cdef int SimpleSet_traverse(SimpleSet self, visitproc visit, void *arg):
+    """This is an implementation of 'tp_traverse' that hits the whole table.
+
+    Cython/Pyrex don't seem to let you define a tp_traverse, and they only
+    define one for you if you have an 'object' attribute. Since they don't
+    support C arrays of objects, we access the PyObject * directly.
+    """
+    cdef Py_ssize_t pos
+    cdef PyObject *next_key
+    cdef int ret
+
+    pos = 0
+    while SimpleSet_Next(self, &pos, &next_key):
+        ret = visit(next_key, arg)
+        if ret:
+            return ret
+
+    return 0;
+
+# It is a little bit ugly to do this, but it works, and means that Meliae can
+# dump the total memory consumed by all child objects.
+(<PyTypeObject *>SimpleSet).tp_traverse = <traverseproc>SimpleSet_traverse
