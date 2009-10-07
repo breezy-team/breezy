@@ -85,8 +85,6 @@ class GitWorkingTree(workingtree.WorkingTree):
             if self.bzrdir.is_control_filename(dirpath[len(self.basedir):].strip("/")):
                 continue
             for filename in filenames:
-                if self.bzrdir.is_control_filename(filename):
-                    continue
                 relpath = os.path.join(dirpath[len(self.basedir):].strip("/"), filename)
                 if not relpath in self.index:
                     yield relpath
@@ -187,15 +185,64 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
-    def iter_changes(self, from_tree, include_unchanged=False,
-                     specific_files=None, pb=None, extra_trees=None,
-                     require_versioned=True, want_unversioned=False):
-        intertree = tree.InterTree.get(from_tree, self)
-        return intertree.iter_changes(include_unchanged, specific_files, pb,
-            extra_trees, require_versioned, want_unversioned=want_unversioned)
-
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     def get_format_description(self):
         return "Git Working Tree"
+
+
+def tree_delta_from_git_changes(changes, mapping, specific_file=None, 
+                                require_versioned=False):
+    """Create a TreeDelta from two git trees.
+    
+    source and target are iterators over tuples with: 
+        (filename, sha, mode)
+    """
+    from bzrlib import delta
+    from bzrlib.plugins.git.mapping import mode_kind
+    ret = delta.TreeDelta()
+    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if oldpath is None:
+            ret.added.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
+        elif newpath is None:
+            ret.removed.append((oldpath, mapping.generate_file_id(oldpath), mode_kind(oldmode)))
+        elif oldpath != newpath:
+            ret.renamed.append((oldpath, newpath, mapping.generate_file_id(oldpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+        elif mode_kind(oldmode) != mode_kind(newmode):
+            ret.kind_changed.append((newpath, mapping.generate_file_id(newpath), mode_kind(oldmode), mode_kind(newmode)))
+        elif oldsha != newsha or oldmode != newmode:
+            ret.modified.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+        else:
+            ret.unchanged.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
+    return ret
+
+
+class InterIndexGitTree(tree.InterTree):
+    """InterTree that works between a Git revision tree and an index."""
+
+    def __init__(self, source, target):
+        super(InterIndexGitTree, self).__init__(source, target)
+        self._index = target.index
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        from bzrlib.plugins.git.repository import GitRevisionTree
+        return (isinstance(source, GitRevisionTree) and 
+                isinstance(target, GitWorkingTree))
+
+    def compare(self, want_unchanged=False, specific_files=None,
+                extra_trees=None, require_versioned=False, include_root=False,
+                want_unversioned=False):
+        changes = self._index.changes_from_tree(
+            self.source._repository._git.object_store, self.source.tree, 
+            want_unchanged=want_unchanged)
+        ret = tree_delta_from_git_changes(changes, self.target.mapping, 
+            specific_file=specific_files, require_versioned=require_versioned)
+        if want_unversioned:
+            for e in self.target.extras():
+                ret.unversioned.append((e, None, osutils.file_kind(self.target.abspath(e))))
+        return ret
+
+
+tree.InterTree.register_optimiser(InterIndexGitTree)
