@@ -67,8 +67,7 @@ from _static_tuple_c cimport StaticTuple,\
 
 
 # This sets up the StaticTuple C_API functionality
-if import_static_tuple_c() != 0:
-    raise ImportError('der borken')
+import_static_tuple_c()
 
 cdef object _LeafNode
 _LeafNode = None
