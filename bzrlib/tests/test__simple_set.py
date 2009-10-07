@@ -19,7 +19,6 @@
 import sys
 
 from bzrlib import (
-    # _static_tuple_py,
     errors,
     osutils,
     tests,
@@ -29,7 +28,7 @@ from bzrlib.tests import (
     test__static_tuple,
     )
 try:
-    from bzrlib import _static_tuple_interned_pyx as _module
+    from bzrlib import _simple_set_pyx as _module
 except ImportError:
     _module = None
 try:
@@ -39,7 +38,7 @@ except ImportError:
 
 
 # Even though this is an extension, we don't permute the tests for a python
-# version. As the plain python version is just a dict.
+# version. As the plain python version is just a dict or set
 
 class _CompiledStaticTupleInterned(tests.Feature):
 
@@ -49,7 +48,7 @@ class _CompiledStaticTupleInterned(tests.Feature):
         return True
 
     def feature_name(self):
-        return 'bzrlib._static_tuple_interned_pyx'
+        return 'bzrlib._simple_set_pyx'
 
 CompiledStaticTupleInterned = _CompiledStaticTupleInterned()
 
@@ -85,7 +84,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual(count+3, sys.getrefcount(obj))
 
     def test_initial(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         self.assertEqual(0, len(obj))
         st = StaticTuple('foo', 'bar')
         self.assertFillState(0, 0, 0x3ff, obj)
@@ -99,7 +98,7 @@ class TestStaticTupleInterned(tests.TestCase):
         #  ('a', 'a'), ('f', '4'), ('p', 'r'), ('q', '1'), ('F', 'T'),
         #  ('Q', 'Q'), ('V', 'd'), ('7', 'C')
         # all collide @ 643
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         offset, val = obj._test_lookup(StaticTuple('a', 'a'))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
@@ -111,7 +110,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual('<null>', val)
 
     def test_get_set_del_with_collisions(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         k1 = StaticTuple('a', 'a')
         k2 = StaticTuple('f', '4') # collides
         k3 = StaticTuple('p', 'r')
@@ -161,7 +160,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertNotIn(k4, obj)
 
     def test_add(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         self.assertFillState(0, 0, 0x3ff, obj)
         k1 = StaticTuple('foo')
         self.assertRefcount(1, k1)
@@ -201,7 +200,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(2, k3)
 
     def test_discard(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         k1 = StaticTuple('foo')
         k2 = StaticTuple('foo')
         k3 = StaticTuple('bar')
@@ -218,7 +217,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(1, k3)
 
     def test__delitem__(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         k1 = StaticTuple('foo')
         k2 = StaticTuple('foo')
         k3 = StaticTuple('bar')
@@ -235,7 +234,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(1, k3)
 
     def test__resize(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         k1 = StaticTuple('foo')
         k2 = StaticTuple('bar')
         k3 = StaticTuple('baz')
@@ -265,7 +264,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
 
     def test_add_and_remove_lots_of_items(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
         for i in chars:
             for j in chars:
@@ -285,7 +284,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertTrue(obj.fill < 1024 / 5)
 
     def test__iter__(self):
-        obj = _module.StaticTupleInterner()
+        obj = _module.SimpleSet()
         k1 = StaticTuple('1')
         k2 = StaticTuple('1', '2')
         k3 = StaticTuple('3', '4')

@@ -14,7 +14,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Interface definition of a class to intern StaticTuple objects."""
+"""Interface definition of a class like PySet but without caching the hash.
+
+This is generally useful when you want to 'intern' objects, etc. Note that this
+differs from Set in that we:
+  1) Don't have all of the .intersection, .difference, etc functions
+  2) Do return the object from the set via queries
+     eg. SimpleSet.add(key) => saved_key and SimpleSet[key] => saved_key
+"""
 
 cdef extern from "python-compat.h":
     ctypedef long Py_ssize_t
@@ -23,8 +30,18 @@ cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
 
-cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
-                                           type StaticTupleInterner_type]:
+cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
+    """A class similar to PySet, but with simpler implementation.
+
+    The main advantage is that this class uses only 2N memory to store N
+    objects rather than 4N memory. The main trade-off is that we do not cache
+    the hash value of saved objects. As such, it is assumed that computing the
+    hash will be cheap (such as strings or tuples of strings, etc.)
+
+    This also differs in that you can get back the objects that are stored
+    (like a dict), but we also don't implement the complete list of 'set'
+    operations (difference, intersection, etc).
+    """
 
     cdef readonly Py_ssize_t used    # active
     cdef readonly Py_ssize_t fill    # active + dummy
@@ -41,4 +58,4 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
 
 # TODO: might want to export the C api here, though it is all available from
 #       the class object...
-cdef api object StaticTupleInterner_Add(object self, object key)
+cdef api object SimpleSet_Add(object self, object key)

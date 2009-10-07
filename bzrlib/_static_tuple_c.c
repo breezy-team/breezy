@@ -22,7 +22,7 @@
 
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
-#include "_static_tuple_interned_pyx_api.h"
+#include "_simple_set_pyx_api.h"
 
 #include "python-compat.h"
 
@@ -85,10 +85,10 @@ StaticTuple_Intern(StaticTuple *self)
         Py_INCREF(self);
         return self;
     }
-    /* StaticTupleInterner_Add returns whatever object is present at self
+    /* SimpleSet_Add returns whatever object is present at self
      * or the new object if it needs to add it.
      */
-    unique_key = StaticTupleInterner_Add(_interned_tuples, (PyObject *)self);
+    unique_key = SimpleSet_Add(_interned_tuples, (PyObject *)self);
     if (!unique_key) {
         // Suppress any error and just return the object
         PyErr_Clear();
@@ -121,7 +121,7 @@ StaticTuple_dealloc(StaticTuple *self)
     if (_StaticTuple_is_interned(self)) {
         /* revive dead object temporarily for DelItem */
         // Py_REFCNT(self) = 2;
-        if (StaticTupleInterner_Discard(_interned_tuples, (PyObject*)self) != 1)
+        if (SimpleSet_Discard(_interned_tuples, (PyObject*)self) != 1)
             Py_FatalError("deletion of interned StaticTuple failed");
     }
     len = self->size;
@@ -591,11 +591,11 @@ PyTypeObject StaticTuple_Type = {
      */
     (traverseproc)StaticTuple_traverse,          /* tp_traverse */
     0,                                           /* tp_clear */
-    // TODO: implement richcompare, we should probably be able to compare vs an
-    //       tuple, as well as versus another StaticTuples object.
     StaticTuple_richcompare,                     /* tp_richcompare */
     0,                                           /* tp_weaklistoffset */
-    // We could implement this as returning tuples of keys...
+    // without implementing tp_iter, Python will fall back to PySequence*
+    // which seems to work ok, we may need something faster/lighter in the
+    // future.
     0,                                           /* tp_iter */
     0,                                           /* tp_iternext */
     StaticTuple_methods,                         /* tp_methods */
@@ -612,75 +612,7 @@ PyTypeObject StaticTuple_Type = {
 };
 
 
-static char KeyIntern_doc[] = "";
-
-static PyMethodDef KeyIntern_methods[] = {
-    // {"as_tuple", (PyCFunction)Keys_as_tuple, METH_NOARGS, Keys_as_tuple_doc},
-    {NULL, NULL} /* sentinel */
-};
-
-// static PySequenceMethods KeyIntern_as_sequence = {
-//     0, //(lenfunc)Keys_length,           /* sq_length */
-//     0,                              /* sq_concat */
-//     0,                              /* sq_repeat */
-//     0, //(ssizeargfunc)Keys_item,        /* sq_item */
-//     0,                              /* sq_slice */
-//     0,                              /* sq_ass_item */
-//     0,                              /* sq_ass_slice */
-//     0,                              /* sq_contains */
-// };
-
-// static PyTypeObject KeyIntern_Type = {
-//     PyObject_HEAD_INIT(NULL)
-//     0,                                           /* ob_size */
-//     "KeyIntern",                                 /* tp_name */
-//     sizeof(KeyIntern) - sizeof(Key *),           /* tp_basicsize */
-//     sizeof(Key *),                               /* tp_itemsize */
-//     0, //(destructor)Keys_dealloc,               /* tp_dealloc */
-//     0,                                           /* tp_print */
-//     0,                                           /* tp_getattr */
-//     0,                                           /* tp_setattr */
-//     0,                                           /* tp_compare */
-//     // TODO: implement repr() and possibly str()
-//     0, //(reprfunc)Keys_repr,                         /* tp_repr */
-//     0,                                           /* tp_as_number */
-//     &KeyIntern_as_sequence,                      /* tp_as_sequence */
-//     0,                                           /* tp_as_mapping */
-//     0, //(hashfunc)Keys_hash,                         /* tp_hash */
-//     0,                                           /* tp_call */
-//     0,                                           /* tp_str */
-//     PyObject_GenericGetAttr,                     /* tp_getattro */
-//     0,                                           /* tp_setattro */
-//     0,                                           /* tp_as_buffer */
-//     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
-//     0, // Keys_doc,                                    /* tp_doc */
-//     /* See Key_traverse for why we have this, even though we aren't GC */
-//     0, //(traverseproc)Keys_traverse,                 /* tp_traverse */
-//     0,                                           /* tp_clear */
-//     // TODO: implement richcompare, we should probably be able to compare vs an
-//     //       tuple, as well as versus another Keys object.
-//     0, //Keys_richcompare,                            /* tp_richcompare */
-//     0,                                           /* tp_weaklistoffset */
-//     // We could implement this as returning tuples of keys...
-//     0,                                           /* tp_iter */
-//     0,                                           /* tp_iternext */
-//     KeyIntern_methods,                           /* tp_methods */
-//     0,                                           /* tp_members */
-//     0,                                           /* tp_getset */
-//     0,                                           /* tp_base */
-//     0,                                           /* tp_dict */
-//     0,                                           /* tp_descr_get */
-//     0,                                           /* tp_descr_set */
-//     0,                                           /* tp_dictoffset */
-//     0,                                           /* tp_init */
-//     0,                                           /* tp_alloc */
-//     0, //Keys_new,                                    /* tp_new */
-// };
-
-
 static PyMethodDef static_tuple_c_methods[] = {
-//    {"unique_lcs_c", py_unique_lcs, METH_VARARGS},
-//    {"recurse_matches_c", py_recurse_matches, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -688,7 +620,7 @@ static PyMethodDef static_tuple_c_methods[] = {
 static void
 setup_interned_tuples(PyObject *m)
 {
-    _interned_tuples = (PyObject *)StaticTupleInterner_New();
+    _interned_tuples = (PyObject *)SimpleSet_New();
     if (_interned_tuples != NULL) {
         Py_INCREF(_interned_tuples);
         PyModule_AddObject(m, "_interned_tuples", _interned_tuples);
@@ -748,7 +680,7 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    import_bzrlib___static_tuple_interned_pyx();
+    import_bzrlib___simple_set_pyx();
     setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);

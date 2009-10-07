@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Definition of a class that is used to intern StaticTuple objects."""
+"""Definition of a class that is similar to Set with some small changes."""
 
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
@@ -54,10 +54,6 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
     if res == Py_True:
         Py_DECREF(res)
         return 1
-    # Only handled for now because we are testing with stuff like tuples versus
-    # StaticTuple objects. If we decide to limit StaticTupleInterner to
-    # strictly only allowing StaticTuple objects, then this is no longer
-    # required, and Py_NotImplemented => not equal
     if res == Py_NotImplemented:
         Py_DECREF(res)
         res = Py_TYPE(other).tp_richcompare(other, this, Py_EQ)
@@ -68,9 +64,8 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
     return 0
 
 
-cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
-                                           type StaticTupleInterner_type]:
-    """This class tracks the canonical forms for StaticTuples.
+cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
+    """This class can be used to track canonical forms for objects.
 
     It is similar in function to the interned dictionary that is used by
     strings. However:
@@ -86,10 +81,6 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
     # Attributes are defined in the .pxd file
     DEF DEFAULT_SIZE=1024
     DEF PERTURB_SHIFT=5
-
-    # Note that most of the members on this class are just thunks over to the C
-    # api. However, this provides a nice Python/Pyrex api, as well as making it
-    # easy to test the C api from pure python.
 
     def __init__(self):
         cdef Py_ssize_t size, n_bytes
@@ -125,7 +116,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         return <int>(slot - self.table), res
 
     def __contains__(self, key):
-        """Is key present in this StaticTupleInterner."""
+        """Is key present in this SimpleSet."""
         cdef PyObject **slot
 
         slot = _lookup(self, key)
@@ -151,10 +142,6 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
             raise KeyError("Key %s is not present" % key)
         val = <object>(py_val)
         return val
-
-    # def __setitem__(self, key, value):
-    #     assert key == value
-    #     self._add(key)
 
     cdef int _insert_clean(self, PyObject *key) except -1:
         """Insert a key into self.table.
@@ -208,7 +195,7 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
         # removed
         # TODO: Test this
         # if new_size < self.used:
-        #     raise RuntimeError('cannot shrink StaticTupleInterner to something'
+        #     raise RuntimeError('cannot shrink SimpleSet to something'
         #                        ' smaller than the number of used slots.')
         n_bytes = sizeof(PyObject*) * new_size;
         new_table = <PyObject **>PyMem_Malloc(n_bytes)
@@ -313,22 +300,22 @@ cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
             raise KeyError('Key %s not present' % (key,))
 
     def __iter__(self):
-        return _StaticTupleInterner_iterator(self)
+        return _SimpleSet_iterator(self)
 
 
-cdef class _StaticTupleInterner_iterator:
-    """Iterator over the StaticTupleInterner structure."""
+cdef class _SimpleSet_iterator:
+    """Iterator over the SimpleSet structure."""
 
     cdef Py_ssize_t pos
-    cdef StaticTupleInterner table
+    cdef SimpleSet set
     cdef Py_ssize_t used # track if things have been mutated while iterating
     cdef Py_ssize_t len # number of entries left
 
     def __init__(self, obj):
-        self.table = obj
+        self.set = obj
         self.pos = 0
-        self.used = self.table.used
-        self.len = self.table.used
+        self.used = self.set.used
+        self.len = self.set.used
 
     def __iter__(self):
         return self
@@ -337,22 +324,22 @@ cdef class _StaticTupleInterner_iterator:
         cdef Py_ssize_t mask, i
         cdef PyObject **table
 
-        if self.table is None:
+        if self.set is None:
             raise StopIteration
-        if self.table.used != self.used:
+        if self.set.used != self.used:
             # Force this exception to continue to be raised
             self.used = -1
             raise RuntimeError("Set size changed during iteration")
         i = self.pos
-        mask = self.table.mask
-        table = self.table.table
+        mask = self.set.mask
+        table = self.set.table
         assert i >= 0
         while i <= mask and (table[i] == NULL or table[i] == _dummy):
             i += 1
         self.pos = i + 1
         if i > mask:
             # we walked to the end
-            self.table = None
+            self.set = None
             raise StopIteration
         # We must have found one
         key = <object>(table[i])
@@ -360,15 +347,15 @@ cdef class _StaticTupleInterner_iterator:
         return key
 
     def __length_hint__(self):
-        if self.table is not None and self.used == self.table.used:
+        if self.set is not None and self.used == self.set.used:
             return self.len
         return 0
     
 
 
-cdef api StaticTupleInterner StaticTupleInterner_New():
-    """Create a new StaticTupleInterner object."""
-    return StaticTupleInterner()
+cdef api SimpleSet SimpleSet_New():
+    """Create a new SimpleSet object."""
+    return SimpleSet()
 
 
 cdef inline int _check_self_not_none(object self) except -1:
@@ -383,7 +370,7 @@ cdef inline int _check_self_not_none(object self) except -1:
         raise TypeError('self must not be None')
 
 
-cdef inline PyObject **_lookup(StaticTupleInterner self,
+cdef inline PyObject **_lookup(SimpleSet self,
                                object key) except NULL:
     """Find the slot where 'key' would fit.
 
@@ -439,7 +426,7 @@ cdef inline PyObject **_lookup(StaticTupleInterner self,
     raise AssertionError('should never get here')
 
 
-cdef api PyObject **_StaticTupleInterner_Lookup(object self,
+cdef api PyObject **_SimpleSet_Lookup(object self,
                                                 object key) except NULL:
     """Find the slot where 'key' would fit.
 
@@ -456,45 +443,45 @@ cdef api PyObject **_StaticTupleInterner_Lookup(object self,
     return _lookup(self, key)
 
 
-cdef api object StaticTupleInterner_Add(object self, object key):
-    """Add a key to the StaticTupleInterner (set).
+cdef api object SimpleSet_Add(object self, object key):
+    """Add a key to the SimpleSet (set).
 
-    :param self: The StaticTupleInterner to add the key to.
+    :param self: The SimpleSet to add the key to.
     :param key: The key to be added. If the key is already present,
         self will not be modified
     :return: The current key stored at the location defined by 'key'.
         This may be the same object, or it may be an equivalent object.
         (consider dict.setdefault(key, key))
     """
-    cdef StaticTupleInterner true_self
+    cdef SimpleSet true_self
     _check_self_not_none(self)
     true_self = self
     return true_self.add(key)
     
 
-cdef api bint StaticTupleInterner_Contains(object self, object key) except -1:
+cdef api bint SimpleSet_Contains(object self, object key) except -1:
     """Is key present in self?"""
-    cdef StaticTupleInterner true_self
+    cdef SimpleSet true_self
     _check_self_not_none(self)
     true_self = self
     return key in true_self
 
 
-cdef api int StaticTupleInterner_Discard(object self, object key) except -1:
+cdef api int SimpleSet_Discard(object self, object key) except -1:
     """Remove the object referenced at location 'key'.
 
-    :param self: The StaticTupleInterner being modified
+    :param self: The SimpleSet being modified
     :param key: The key we are checking on
     :return: 1 if there was an object present, 0 if there was not, and -1 on
         error.
     """
-    cdef StaticTupleInterner true_self
+    cdef SimpleSet true_self
     _check_self_not_none(self)
     true_self = self
     return true_self.discard(key)
 
 
-cdef api PyObject *StaticTupleInterner_Get(StaticTupleInterner self,
+cdef api PyObject *SimpleSet_Get(SimpleSet self,
                                            object key) except? NULL:
     """Get a pointer to the object present at location 'key'.
 
@@ -505,23 +492,23 @@ cdef api PyObject *StaticTupleInterner_Get(StaticTupleInterner self,
     :param key: The value we are looking for
     :return: The object present at that location
     """
-    cdef StaticTupleInterner true_self
+    cdef SimpleSet true_self
     _check_self_not_none(self)
     true_self = self
     return true_self._get(key)
 
 
-cdef api Py_ssize_t StaticTupleInterner_Size(object self) except -1:
+cdef api Py_ssize_t SimpleSet_Size(object self) except -1:
     """Get the number of active entries in 'self'"""
-    cdef StaticTupleInterner true_self = self
+    cdef SimpleSet true_self = self
     _check_self_not_none(self)
     return true_self.used
 
 
 # TODO: this should probably have direct tests, since it isn't used by __iter__
-cdef api int StaticTupleInterner_Next(object self, Py_ssize_t *pos,
+cdef api int SimpleSet_Next(object self, Py_ssize_t *pos,
                                       PyObject **key):
-    """Walk over items in a StaticTupleInterner.
+    """Walk over items in a SimpleSet.
 
     :param pos: should be initialized to 0 by the caller, and will be updated
         by this function
@@ -529,7 +516,7 @@ cdef api int StaticTupleInterner_Next(object self, Py_ssize_t *pos,
     :return: 0 if nothing left, 1 if we are returning a new value
     """
     cdef Py_ssize_t i, mask
-    cdef StaticTupleInterner true_self = self
+    cdef SimpleSet true_self = self
     cdef PyObject **table
     _check_self_not_none(self)
     i = pos[0]
