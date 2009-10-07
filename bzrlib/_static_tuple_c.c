@@ -76,12 +76,7 @@ StaticTuple_Intern(StaticTuple *self)
 {
     PyObject *unique_key = NULL;
 
-    if (_interned_tuples == NULL) {
-        Py_INCREF(self);
-        return self;
-    }
-    if (_StaticTuple_is_interned(self)) {
-        // Already interned
+    if (_interned_tuples == NULL || _StaticTuple_is_interned(self)) {
         Py_INCREF(self);
         return self;
     }
@@ -92,6 +87,7 @@ StaticTuple_Intern(StaticTuple *self)
     if (!unique_key) {
         // Suppress any error and just return the object
         PyErr_Clear();
+        Py_INCREF(self);
         return self;
     }
     if (unique_key != (PyObject *)self) {
@@ -119,10 +115,11 @@ StaticTuple_dealloc(StaticTuple *self)
     int i, len;
 
     if (_StaticTuple_is_interned(self)) {
-        /* revive dead object temporarily for DelItem */
-        // Py_REFCNT(self) = 2;
+        /* revive dead object temporarily for Discard */
+        Py_REFCNT(self) = 2;
         if (SimpleSet_Discard(_interned_tuples, (PyObject*)self) != 1)
             Py_FatalError("deletion of interned StaticTuple failed");
+        self->flags &= ~STATIC_TUPLE_INTERNED_FLAG;
     }
     len = self->size;
     for (i = 0; i < len; ++i) {
@@ -664,7 +661,10 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    import_bzrlib___simple_set_pyx();
+    if (import_bzrlib___simple_set_pyx() == -1) {
+        // We failed to set up, stop early
+        return;
+    }
     setup_interned_tuples(m);
     setup_empty_tuple(m);
     setup_c_api(m);

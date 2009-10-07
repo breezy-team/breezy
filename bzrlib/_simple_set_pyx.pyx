@@ -41,7 +41,7 @@ _dummy_obj = object()
 _dummy = <PyObject *>_dummy_obj
 
 
-cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
+cdef int _is_equal(PyObject *this, long this_hash, PyObject *other):
     cdef long other_hash
     cdef PyObject *res
 
@@ -86,22 +86,34 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         cdef Py_ssize_t size, n_bytes
 
         size = DEFAULT_SIZE
-        self.mask = size - 1
-        self.used = 0
-        self.fill = 0
+        self._mask = size - 1
+        self._used = 0
+        self._fill = 0
         n_bytes = sizeof(PyObject*) * size;
-        self.table = <PyObject **>PyMem_Malloc(n_bytes)
-        if self.table == NULL:
+        self._table = <PyObject **>PyMem_Malloc(n_bytes)
+        if self._table == NULL:
             raise MemoryError()
-        memset(self.table, 0, n_bytes)
+        memset(self._table, 0, n_bytes)
 
     def __dealloc__(self):
-        if self.table != NULL:
-            PyMem_Free(self.table)
-            self.table = NULL
+        if self._table != NULL:
+            PyMem_Free(self._table)
+            self._table = NULL
+
+    property used:
+        def __get__(self):
+            return self._used
+
+    property fill:
+        def __get__(self):
+            return self._fill
+
+    property mask:
+        def __get__(self):
+            return self._mask
 
     def __len__(self):
-        return self.used
+        return self._used
 
     def _test_lookup(self, key):
         cdef PyObject **slot
@@ -113,7 +125,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             res = '<dummy>'
         else:
             res = <object>slot[0]
-        return <int>(slot - self.table), res
+        return <int>(slot - self._table), res
 
     def __contains__(self, key):
         """Is key present in this SimpleSet."""
@@ -154,8 +166,8 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         cdef long the_hash
         cdef PyObject **table, **entry
 
-        mask = self.mask
-        table = self.table
+        mask = self._mask
+        table = self._table
 
         the_hash = Py_TYPE(key).tp_hash(key)
         i = the_hash & mask
@@ -169,10 +181,14 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             entry = &table[i & mask]
             perturb >>= PERTURB_SHIFT
         entry[0] = key
-        self.fill += 1
-        self.used += 1
+        self._fill += 1
+        self._used += 1
 
-    cpdef Py_ssize_t _resize(self, Py_ssize_t min_used) except -1:
+    def _py_resize(self, min_used):
+        """Do not use this directly, it is only exposed for testing."""
+        return self._resize(min_used)
+
+    cdef Py_ssize_t _resize(self, Py_ssize_t min_used) except -1:
         """Resize the internal table.
 
         The final table will be big enough to hold at least min_used entries.
@@ -190,11 +206,11 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         # We rolled over our signed size field
         if new_size <= 0:
             raise MemoryError()
-        # Even if min_used == self.mask + 1, and we aren't changing the actual
+        # Even if min_used == self._mask + 1, and we aren't changing the actual
         # size, we will still run the algorithm so that dummy entries are
         # removed
         # TODO: Test this
-        # if new_size < self.used:
+        # if new_size < self._used:
         #     raise RuntimeError('cannot shrink SimpleSet to something'
         #                        ' smaller than the number of used slots.')
         n_bytes = sizeof(PyObject*) * new_size;
@@ -202,13 +218,13 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         if new_table == NULL:
             raise MemoryError()
 
-        old_table = self.table
-        self.table = new_table
-        memset(self.table, 0, n_bytes)
-        self.mask = new_size - 1
-        self.used = 0
-        remaining = self.fill
-        self.fill = 0
+        old_table = self._table
+        self._table = new_table
+        memset(self._table, 0, n_bytes)
+        self._mask = new_size - 1
+        self._used = 0
+        remaining = self._fill
+        self._fill = 0
 
         # Moving everything to the other table is refcount neutral, so we don't
         # worry about it.
@@ -225,59 +241,66 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         PyMem_Free(old_table)
         return new_size
 
-    cpdef object add(self, key):
+    def add(self, key):
         """Similar to set.add(), start tracking this key.
         
         There is one small difference, which is that we return the object that
         is stored at the given location. (which is closer to the
         dict.setdefault() functionality.)
         """
-        cdef PyObject **slot, *py_key
-        cdef int added = 0
+        return self._add(key)
 
+    cdef object _add(self, key):
+        cdef PyObject **slot, *py_key
+        cdef int added
+
+        added = 0
         # We need at least one empty slot
-        assert self.used < self.mask
+        assert self._used < self._mask
         slot = _lookup(self, key)
         py_key = <PyObject *>key
         if (slot[0] == NULL):
             Py_INCREF(py_key)
-            self.fill += 1
-            self.used += 1
+            self._fill += 1
+            self._used += 1
             slot[0] = py_key
             added = 1
         elif (slot[0] == _dummy):
             Py_INCREF(py_key)
-            self.used += 1
+            self._used += 1
             slot[0] = py_key
             added = 1
         # No else: clause. If _lookup returns a pointer to
         # a live object, then we already have a value at this location.
         retval = <object>(slot[0])
         # PySet and PyDict use a 2-3rds full algorithm, we'll follow suit
-        if added and (self.fill * 3) >= ((self.mask + 1) * 2):
+        if added and (self._fill * 3) >= ((self._mask + 1) * 2):
             # However, we always work for a load factor of 2:1
-            self._resize(self.used * 2)
+            self._resize(self._used * 2)
         # Even if we resized and ended up moving retval into a different slot,
         # it is still the value that is held at the slot equivalent to 'key',
         # so we can still return it
         return retval
 
-    cpdef int discard(self, key) except -1:
+    def discard(self, key):
         """Remove key from the dict, whether it exists or not.
 
         :return: 0 if the item did not exist, 1 if it did
         """
+        return self._discard(key)
+
+    cdef int _discard(self, key) except -1:
         cdef PyObject **slot, *py_key
 
         slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
             return 0
-        self.used -= 1
+        self._used -= 1
         Py_DECREF(slot[0])
         slot[0] = _dummy
         # PySet uses the heuristic: If more than 1/5 are dummies, then resize
         #                           them away
-        #   if ((so->fill - so->used) * 5 < so->mask)
+        #   if ((so->_fill - so->_used) * 5 < so->mask)
         # However, we are planning on using this as an interning structure, in
         # which we will be putting a lot of objects. And we expect that large
         # groups of them are going to have the same lifetime.
@@ -285,8 +308,8 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         # searching, but resizing is also rather expensive
         # For now, we'll just use their algorithm, but we may want to revisit
         # it
-        if ((self.fill - self.used) * 5 > self.mask):
-            self._resize(self.used * 2)
+        if ((self._fill - self._used) * 5 > self._mask):
+            self._resize(self._used * 2)
         return 1
 
     def __delitem__(self, key):
@@ -295,7 +318,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         Raise a KeyError if the key was not present.
         """
         cdef int exists
-        exists = self.discard(key)
+        exists = self._discard(key)
         if not exists:
             raise KeyError('Key %s not present' % (key,))
 
@@ -308,14 +331,14 @@ cdef class _SimpleSet_iterator:
 
     cdef Py_ssize_t pos
     cdef SimpleSet set
-    cdef Py_ssize_t used # track if things have been mutated while iterating
+    cdef Py_ssize_t _used # track if things have been mutated while iterating
     cdef Py_ssize_t len # number of entries left
 
     def __init__(self, obj):
         self.set = obj
         self.pos = 0
-        self.used = self.set.used
-        self.len = self.set.used
+        self._used = self.set._used
+        self.len = self.set._used
 
     def __iter__(self):
         return self
@@ -326,13 +349,13 @@ cdef class _SimpleSet_iterator:
 
         if self.set is None:
             raise StopIteration
-        if self.set.used != self.used:
+        if self.set._used != self._used:
             # Force this exception to continue to be raised
-            self.used = -1
+            self._used = -1
             raise RuntimeError("Set size changed during iteration")
         i = self.pos
-        mask = self.set.mask
-        table = self.set.table
+        mask = self.set._mask
+        table = self.set._table
         assert i >= 0
         while i <= mask and (table[i] == NULL or table[i] == _dummy):
             i += 1
@@ -347,7 +370,7 @@ cdef class _SimpleSet_iterator:
         return key
 
     def __length_hint__(self):
-        if self.set is not None and self.used == self.set.used:
+        if self.set is not None and self._used == self.set._used:
             return self.len
         return 0
     
@@ -358,7 +381,7 @@ cdef api SimpleSet SimpleSet_New():
     return SimpleSet()
 
 
-cdef inline int _check_self_not_none(object self) except -1:
+cdef SimpleSet _check_self(object self):
     """Check that the parameter is not None.
 
     Pyrex/Cython will do type checking, but only to ensure that an object is
@@ -366,12 +389,14 @@ cdef inline int _check_self_not_none(object self) except -1:
     python functions, but not for C functions.
     So this is just a helper for all the apis that need to do the check.
     """
+    cdef SimpleSet true_self
     if self is None:
         raise TypeError('self must not be None')
+    true_self = self
+    return true_self
 
 
-cdef inline PyObject **_lookup(SimpleSet self,
-                               object key) except NULL:
+cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
     """Find the slot where 'key' would fit.
 
     This is the same as a dicts 'lookup' function.
@@ -390,8 +415,8 @@ cdef inline PyObject **_lookup(SimpleSet self,
     cdef PyObject **table, **cur, **free_slot, *py_key
 
     key_hash = hash(key)
-    mask = self.mask
-    table = self.table
+    mask = self._mask
+    table = self._table
     i = key_hash & mask
     cur = &table[i]
     py_key = <PyObject *>key
@@ -436,11 +461,10 @@ cdef api PyObject **_SimpleSet_Lookup(object self,
 
     :param key: An object we are looking up
     :param hash: The hash for key
-    :return: The location in self.table where key should be put
+    :return: The location in self._table where key should be put
         should never be NULL, but may reference a NULL (PyObject*)
     """
-    _check_self_not_none(self)
-    return _lookup(self, key)
+    return _lookup(_check_self(self), key)
 
 
 cdef api object SimpleSet_Add(object self, object key):
@@ -453,18 +477,12 @@ cdef api object SimpleSet_Add(object self, object key):
         This may be the same object, or it may be an equivalent object.
         (consider dict.setdefault(key, key))
     """
-    cdef SimpleSet true_self
-    _check_self_not_none(self)
-    true_self = self
-    return true_self.add(key)
+    return _check_self(self)._add(key)
     
 
-cdef api bint SimpleSet_Contains(object self, object key) except -1:
+cdef api int SimpleSet_Contains(object self, object key) except -1:
     """Is key present in self?"""
-    cdef SimpleSet true_self
-    _check_self_not_none(self)
-    true_self = self
-    return key in true_self
+    return (key in _check_self(self))
 
 
 cdef api int SimpleSet_Discard(object self, object key) except -1:
@@ -475,14 +493,10 @@ cdef api int SimpleSet_Discard(object self, object key) except -1:
     :return: 1 if there was an object present, 0 if there was not, and -1 on
         error.
     """
-    cdef SimpleSet true_self
-    _check_self_not_none(self)
-    true_self = self
-    return true_self.discard(key)
+    return _check_self(self)._discard(key)
 
 
-cdef api PyObject *SimpleSet_Get(SimpleSet self,
-                                           object key) except? NULL:
+cdef api PyObject *SimpleSet_Get(SimpleSet self, object key) except? NULL:
     """Get a pointer to the object present at location 'key'.
 
     This returns an object which is equal to key which was previously added to
@@ -492,17 +506,12 @@ cdef api PyObject *SimpleSet_Get(SimpleSet self,
     :param key: The value we are looking for
     :return: The object present at that location
     """
-    cdef SimpleSet true_self
-    _check_self_not_none(self)
-    true_self = self
-    return true_self._get(key)
+    return _check_self(self)._get(key)
 
 
 cdef api Py_ssize_t SimpleSet_Size(object self) except -1:
     """Get the number of active entries in 'self'"""
-    cdef SimpleSet true_self = self
-    _check_self_not_none(self)
-    return true_self.used
+    return _check_self(self)._used
 
 
 # TODO: this should probably have direct tests, since it isn't used by __iter__
@@ -516,14 +525,14 @@ cdef api int SimpleSet_Next(object self, Py_ssize_t *pos,
     :return: 0 if nothing left, 1 if we are returning a new value
     """
     cdef Py_ssize_t i, mask
-    cdef SimpleSet true_self = self
+    cdef SimpleSet true_self
     cdef PyObject **table
-    _check_self_not_none(self)
+    true_self = _check_self(self)
     i = pos[0]
     if (i < 0):
         return 0
-    mask = true_self.mask
-    table= true_self.table
+    mask = true_self._mask
+    table= true_self._table
     while (i <= mask and (table[i] == NULL or table[i] == _dummy)):
         i += 1
     pos[0] = i + 1

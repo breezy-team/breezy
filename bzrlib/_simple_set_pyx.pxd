@@ -23,9 +23,6 @@ differs from Set in that we:
      eg. SimpleSet.add(key) => saved_key and SimpleSet[key] => saved_key
 """
 
-cdef extern from "python-compat.h":
-    ctypedef long Py_ssize_t
-
 cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
@@ -43,19 +40,20 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     operations (difference, intersection, etc).
     """
 
-    cdef readonly Py_ssize_t used    # active
-    cdef readonly Py_ssize_t fill    # active + dummy
-    cdef readonly Py_ssize_t mask    # Table contains (mask+1) slots, a power
+    cdef Py_ssize_t _used   # active
+    cdef Py_ssize_t _fill   # active + dummy
+    cdef Py_ssize_t _mask   # Table contains (mask+1) slots, a power
                                      # of 2
-    cdef PyObject **table   # Pyrex/Cython doesn't support arrays to 'object'
+    cdef PyObject **_table  # Pyrex/Cython doesn't support arrays to 'object'
                             # so we manage it manually
 
     cdef PyObject *_get(self, object key) except? NULL
-    cpdef object add(self, key)
-    cpdef int discard(self, key) except -1
+    cdef object _add(self, key)
+    cdef int _discard(self, key) except -1
     cdef int _insert_clean(self, PyObject *key) except -1
-    cpdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
+    cdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
 
 # TODO: might want to export the C api here, though it is all available from
 #       the class object...
 cdef api object SimpleSet_Add(object self, object key)
+cdef api SimpleSet SimpleSet_New()

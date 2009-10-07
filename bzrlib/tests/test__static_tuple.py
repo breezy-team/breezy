@@ -78,6 +78,20 @@ Meliae = _Meliae()
 
 class TestStaticTuple(tests.TestCase):
 
+    def assertRefcount(self, count, obj):
+        """Assert that the refcount for obj is what we expect.
+
+        Note that this automatically adjusts for the fact that calling
+        assertRefcount actually creates a new pointer, as does calling
+        sys.getrefcount. So pass the expected value *before* the call.
+        """
+        # I don't understand why it is getrefcount()-3 here, but it seems to be
+        # correct. If I check in the calling function, with:
+        # self.assertEqual(count, sys.getrefcount(obj)-1)
+        # Then it works fine. Something about passing it to assertRefcount is
+        # actually double-incrementing (and decrementing) the refcount
+        self.assertEqual(count, sys.getrefcount(obj)-3)
+
     def test_create(self):
         k = self.module.StaticTuple('foo')
         k = self.module.StaticTuple('foo', 'bar')
@@ -129,19 +143,19 @@ class TestStaticTuple(tests.TestCase):
 
     def test_refcount(self):
         f = 'fo' + 'oo'
-        num_refs = sys.getrefcount(f)
+        num_refs = sys.getrefcount(f) - 1 #sys.getrefcount() adds one
         k = self.module.StaticTuple(f)
-        self.assertEqual(num_refs + 1, sys.getrefcount(f))
+        self.assertRefcount(num_refs + 1, f)
         b = k[0]
-        self.assertEqual(num_refs + 2, sys.getrefcount(f))
+        self.assertRefcount(num_refs + 2, f)
         b = k[0]
-        self.assertEqual(num_refs + 2, sys.getrefcount(f))
+        self.assertRefcount(num_refs + 2, f)
         c = k[0]
-        self.assertEqual(num_refs + 3, sys.getrefcount(f))
+        self.assertRefcount(num_refs + 3, f)
         del b, c
-        self.assertEqual(num_refs + 1, sys.getrefcount(f))
+        self.assertRefcount(num_refs + 1, f)
         del k
-        self.assertEqual(num_refs, sys.getrefcount(f))
+        self.assertRefcount(num_refs, f)
 
     def test__repr__(self):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
@@ -313,30 +327,38 @@ class TestStaticTuple(tests.TestCase):
     def test__c_intern_handles_refcount(self):
         if self.module is _static_tuple_py:
             return # Not applicable
+        print
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
+        self.assertRefcount(1, key)
         self.assertFalse(key in self.module._interned_tuples)
         self.assertFalse(key._is_interned())
         key2 = self.module.StaticTuple(unique_str1, unique_str2)
+        self.assertRefcount(1, key)
+        self.assertRefcount(1, key2)
         self.assertEqual(key, key2)
         self.assertIsNot(key, key2)
-        refcount = sys.getrefcount(key)
-        self.assertEqual(2, refcount)
 
         key3 = key.intern()
         self.assertIs(key, key3)
         self.assertTrue(key in self.module._interned_tuples)
         self.assertEqual(key, self.module._interned_tuples[key])
-        self.assertEqual(3, sys.getrefcount(key))
+        # key and key3, but we 'hide' the one in _interned_tuples
+        self.assertRefcount(2, key)
         del key3
-        # We should not increase the refcount just via 'intern'
-        self.assertEqual(2, sys.getrefcount(key))
+        self.assertRefcount(1, key)
         self.assertTrue(key._is_interned())
-        key2 = key2.intern()
-        # We have one more ref in 'key2' but otherwise no extra refs
-        self.assertEqual(3, sys.getrefcount(key))
-        self.assertIs(key, key2)
+        self.assertRefcount(1, key2)
+        key3 = key2.intern()
+        # key3 now points to key as well, and *not* to key2
+        self.assertRefcount(2, key)
+        self.assertRefcount(1, key2)
+        self.assertIs(key, key3)
+        self.assertIsNot(key3, key2)
+        del key2
+        del key3
+        self.assertRefcount(1, key)
 
     def test__c_keys_are_not_immortal(self):
         if self.module is _static_tuple_py:
@@ -345,15 +367,15 @@ class TestStaticTuple(tests.TestCase):
         unique_str2 = 'unique str ' + osutils.rand_chars(20)
         key = self.module.StaticTuple(unique_str1, unique_str2)
         self.assertFalse(key in self.module._interned_tuples)
-        self.assertEqual(2, sys.getrefcount(key))
+        self.assertRefcount(1, key)
         key = key.intern()
-        self.assertEqual(2, sys.getrefcount(key))
+        self.assertRefcount(1, key)
         self.assertTrue(key in self.module._interned_tuples)
         self.assertTrue(key._is_interned())
         del key
         # Create a new entry, which would point to the same location
         key = self.module.StaticTuple(unique_str1, unique_str2)
-        self.assertEqual(2, sys.getrefcount(key))
+        self.assertRefcount(1, key)
         # This old entry in _interned_tuples should be gone
         self.assertFalse(key in self.module._interned_tuples)
         self.assertFalse(key._is_interned())

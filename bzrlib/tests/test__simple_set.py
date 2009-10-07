@@ -243,13 +243,13 @@ class TestStaticTupleInterned(tests.TestCase):
         obj.add(k3)
         del obj[k2]
         self.assertFillState(2, 3, 0x3ff, obj)
-        self.assertEqual(1024, obj._resize(500))
+        self.assertEqual(1024, obj._py_resize(500))
         # Doesn't change the size, but does change the content
         self.assertFillState(2, 2, 0x3ff, obj)
         obj.add(k2)
         del obj[k3]
         self.assertFillState(2, 3, 0x3ff, obj)
-        self.assertEqual(4096, obj._resize(4095))
+        self.assertEqual(4096, obj._py_resize(4095))
         self.assertFillState(2, 2, 0xfff, obj)
         self.assertIn(k1, obj)
         self.assertIn(k2, obj)
@@ -259,7 +259,7 @@ class TestStaticTupleInterned(tests.TestCase):
         del obj[k2]
         self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
         self.assertFillState(1, 2, 0xfff, obj)
-        self.assertEqual(2048, obj._resize(1024))
+        self.assertEqual(2048, obj._py_resize(1024))
         self.assertFillState(1, 1, 0x7ff, obj)
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
 
