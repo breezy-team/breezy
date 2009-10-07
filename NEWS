@@ -9,7 +9,13 @@
  PERFORMANCE
 
   * Improve performance of WorkingTree.extras() by not looking up the 
-    SHA1, kind and stat data of each file.
+    SHA1, kind and stat data of each file. (Jelmer Vernooij)
+
+  * Provide custom InterTree for faster deltas between git working trees 
+    and revision trees. (Jelmer Vernooij)
+
+  * Provide custom InterTree for faster deltas between git revision trees.
+    (Jelmer Vernooij)
 
 0.4.2	2009-10-01
 
