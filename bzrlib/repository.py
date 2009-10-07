@@ -50,6 +50,7 @@ from bzrlib.testament import Testament
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -856,7 +857,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(object):
+class Repository(_RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1309,7 +1310,6 @@ class Repository(object):
         self._fallback_repositories = []
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
-        self._prev_lock = None
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1382,9 +1382,7 @@ class Repository(object):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
-                note('%r was write locked again', self)
-            self._prev_lock = 'w'
+            self._debug_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1395,9 +1393,7 @@ class Repository(object):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
-            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
-                note('%r was read locked again', self)
-            self._prev_lock = 'r'
+            self._debug_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()

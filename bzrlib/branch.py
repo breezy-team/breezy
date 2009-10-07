@@ -49,6 +49,7 @@ from bzrlib.tag import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -2079,7 +2080,7 @@ network_format_registry.register(
     _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
-class BzrBranch(Branch):
+class BzrBranch(Branch, _RelockDebugMixin):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -2111,7 +2112,6 @@ class BzrBranch(Branch):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
-        self._prev_lock = None
         Branch.__init__(self)
 
     def __str__(self):
@@ -2132,10 +2132,8 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
-        if 'relock' in debug.debug_flags:
-            if not self.is_locked() and self._prev_lock == 'w':
-                note('%r was write locked again', self)
-            self._prev_lock = 'w'
+        if not self.is_locked():
+            self._note_lock('w')
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
@@ -2151,10 +2149,8 @@ class BzrBranch(Branch):
             raise
 
     def lock_read(self):
-        if 'relock' in debug.debug_flags:
-            if not self.is_locked() and self._prev_lock == 'r':
-                note('%r was read locked again', self)
-            self._prev_lock = 'r'
+        if not self.is_locked():
+            self._note_lock('r')
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
