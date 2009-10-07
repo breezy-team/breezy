@@ -252,7 +252,42 @@ class GitIndexInventory(inventory.Inventory):
         self.basis_inv = basis_inventory
         self.mapping = mapping
         self.index = index
+        self._contents_read = False
 
+    def has_id(self, file_id):
+        try:
+            self.id2path(file_id)
+            return True
+        except errors.NoSuchId:
+            return False
+
+    def has_filename(self, path):
+        if path in self.index:
+            return True
+        self._read_contents()
+        return super(GitIndexInventory, self).has_filename(path)
+
+    def id2path(self, file_id):
+        path = self.mapping.parse_file_id(file_id)
+        if path in self.index:
+            return path
+        self._read_contents()
+        return super(GitIndexInventory, self).id2path(file_id)
+
+    def path2id(self, path):
+        if path in self.index:
+            return self.mapping.generate_file_id(path)
+        self._read_contents()
+        return super(GitIndexInventory, self).path2id(path)
+
+    def __getitem__(self, file_id):
+        self._read_contents()
+        return super(GitIndexInventory, self).__getitem__(file_id)
+
+    def _read_contents(self):
+        if self._contents_read:
+            return
+        self._contents_read = True
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (path, value) in enumerate(self.index.iteritems()):
@@ -288,7 +323,7 @@ class GitIndexInventory(inventory.Inventory):
 
     def add_parents(self, path):
         dirname, _ = osutils.split(path)
-        file_id = self.path2id(dirname)
+        file_id = super(GitIndexInventory, self).path2id(dirname)
         if file_id is None:
             if dirname == "":
                 parent_fid = None
