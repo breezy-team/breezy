@@ -26,6 +26,9 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
+* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
+  on branches via a smart server.  (Andrew Bennetts, #389413)
+
 * Occasional IndexError on renamed files have been fixed. Operations that
   set a full inventory in the working tree will now go via the
   apply_inventory_delta code path which is simpler and easier to
