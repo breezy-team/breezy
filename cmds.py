@@ -426,8 +426,11 @@ class cmd_builddeb(Command):
                         'dpkg-architecture -qDEB_BUILD_ARCH')
                     if status > 0:
                         raise BzrCommandError("Could not find the build architecture")
+                non_epoch_version = changelog.version.upstream_version
+                if changelog.version.debian_version is not None:
+                    non_epoch_version += "-%s" % changelog.version.debian_version
                 changes = "%s_%s_%s.changes" % (changelog.package,
-                        str(changelog.version), arch)
+                        non_epoch_version, arch)
                 changes_path = os.path.join(build_dir, changes)
                 if not os.path.exists(changes_path):
                     if result_dir is not None:
