@@ -188,6 +188,11 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    @needs_read_lock
+    def conflicts(self):
+        # FIXME:
+        return []
+
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
