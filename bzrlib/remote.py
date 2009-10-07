@@ -651,6 +651,7 @@ class RemoteRepository(_RpcHelper):
         self._lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        self._prev_lock = None
         # Cache of revision parents; misses are cached during read locks, and
         # write locks when no _real_repository has been set.
         self._unstacked_provider = graph.CachingParentsProvider(
@@ -949,6 +950,9 @@ class RemoteRepository(_RpcHelper):
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             self._lock_mode = 'r'
             self._lock_count = 1
             self._unstacked_provider.enable_cache(cache_misses=True)
@@ -974,6 +978,9 @@ class RemoteRepository(_RpcHelper):
 
     def lock_write(self, token=None, _skip_rpc=False):
         if not self._lock_mode:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             if _skip_rpc:
                 if self._lock_token is not None:
                     if token != self._lock_token:
@@ -2131,6 +2138,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
         self._repo_lock_token = None
         self._lock_count = 0
         self._leave_lock = False
+        self._prev_lock = None
         # Setup a format: note that we cannot call _ensure_real until all the
         # attributes above are set: This code cannot be moved higher up in this
         # function.
@@ -2318,6 +2326,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def lock_read(self):
         self.repository.lock_read()
         if not self._lock_mode:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             self._lock_mode = 'r'
             self._lock_count = 1
             if self._real_branch is not None:
@@ -2343,6 +2354,9 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def lock_write(self, token=None):
         if not self._lock_mode:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             # Lock the branch and repo in one remote call.
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens

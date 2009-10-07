@@ -2111,6 +2111,7 @@ class BzrBranch(Branch):
         self.control_files = _control_files
         self._transport = _control_files._transport
         self.repository = _repository
+        self._prev_lock = None
         Branch.__init__(self)
 
     def __str__(self):
@@ -2131,6 +2132,10 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
+        if 'relock' in debug.debug_flags:
+            if not self.is_locked() and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
@@ -2146,6 +2151,10 @@ class BzrBranch(Branch):
             raise
 
     def lock_read(self):
+        if 'relock' in debug.debug_flags:
+            if not self.is_locked() and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
