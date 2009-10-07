@@ -145,7 +145,7 @@ class TestStaticTuple(tests.TestCase):
 
     def test__repr__(self):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
-        self.assertEqual("('foo', 'bar', 'baz', 'bing')", repr(k))
+        self.assertEqual("StaticTuple('foo', 'bar', 'baz', 'bing')", repr(k))
 
     def assertCompareEqual(self, k1, k2):
         self.assertTrue(k1 == k2)

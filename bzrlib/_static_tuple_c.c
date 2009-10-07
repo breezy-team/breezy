@@ -217,14 +217,19 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static PyObject *
 StaticTuple_repr(StaticTuple *self)
 {
-    PyObject *as_tuple, *result;
+    PyObject *as_tuple, *tuple_repr, *result;
 
     as_tuple = StaticTuple_as_tuple(self);
     if (as_tuple == NULL) {
         return NULL;
     }
-    result = PyObject_Repr(as_tuple);
+    tuple_repr = PyObject_Repr(as_tuple);
     Py_DECREF(as_tuple);
+    if (tuple_repr == NULL) {
+        return NULL;
+    }
+    result = PyString_FromFormat("%s%s", Py_TYPE(self)->tp_name,
+                                         PyString_AsString(tuple_repr));
     return result;
 }
 
