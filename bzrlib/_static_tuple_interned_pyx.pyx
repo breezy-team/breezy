@@ -25,15 +25,11 @@ cdef extern from "Python.h":
     PyObject *Py_NotImplemented
     void Py_INCREF(PyObject *)
     void Py_DECREF(PyObject *)
-    ctypedef struct PyVarObject:
-        pass
     ctypedef struct PyTypeObject:
         hashfunc tp_hash
         richcmpfunc tp_richcompare
 
-    int PyString_CheckExact(object)
     PyTypeObject *Py_TYPE(PyObject *)
-    PyVarObject * _PyObject_NewVar(PyTypeObject *, Py_ssize_t) except NULL
         
     void *PyMem_Malloc(size_t nbytes)
     void PyMem_Free(void *)
@@ -43,6 +39,7 @@ cdef object _dummy_obj
 cdef PyObject *_dummy
 _dummy_obj = object()
 _dummy = <PyObject *>_dummy_obj
+
 
 cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
     cdef long other_hash
@@ -69,36 +66,6 @@ cdef inline int _is_equal(PyObject *this, long this_hash, PyObject *other):
         return 1
     Py_DECREF(res)
     return 0
-
-
-cdef public api class StaticTuple [object StaticTuple, type StaticTuple_Type]:
-    """A tuple-like object that is only allowed to reference constat data."""
-
-    def __new__(cls, *args, **kwargs):
-        cdef StaticTuple mynew
-        cdef Py_ssize_t i, size
-        cdef PyObject *tmp
-
-        print cls, args, kwargs
-        size = len(args)
-        mynew = StaticTuple_New(size)
-        for i from 0 <= i < size:
-            obj = args[i]
-            if (not PyString_CheckExact(obj)):
-                if (not StaticTuple_CheckExact(obj)):
-                    raise TypeError("StaticTuple.__init__(...) requires"
-                        " that all key bits are strings or StaticTuple.")
-            tmp = <PyObject *>obj
-            Py_INCREF(tmp)
-            mynew.items[i] = tmp
-            # StaticTuple_SET_ITEM(mynew, i, tmp)
-        # return mynew
-
-    def __init__(self):
-        pass
-
-    def intern(self):
-        pass
 
 
 cdef public api class StaticTupleInterner [object StaticTupleInternerObject,
@@ -578,79 +545,4 @@ cdef api int StaticTupleInterner_Next(object self, Py_ssize_t *pos,
     if (key != NULL):
         key[0] = table[i]
     return 1
-
-
-cdef StaticTuple _empty_tuple
-def _get_empty_tuple():
-    """Return the 'empty tuple'
-
-    This is the singleton StaticTuple that has no content.
-    """
-    return _empty_tuple
-
-
-cdef api StaticTuple StaticTuple_New(Py_ssize_t size):
-    """Create a new StaticTuple object with the number of slots specified."""
-    cdef PyObject *tmp
-    cdef StaticTuple stuple
-
-    if size < 0:
-        raise ValueError('size must be > 0')
-    if size > 255:
-        raise ValueError('size must be <= 255')
-
-    if (size == 0 and _empty_tuple is not None):
-        return _empty_tuple
-    # Note that we use PyObject_NewVar because we want to allocate a variable
-    # width entry. However we *aren't* truly a PyVarObject because we don't
-    # use a long for ob_size. Instead we use a plain 'size' that is an int,
-    # and will be overloaded with flags in the future.
-    # As such we do the alloc, and then have to clean up anything it does
-    # incorrectly. Consider switching to PyObject_MALLOC directly
-    tmp = <PyObject *>_PyObject_NewVar(<PyTypeObject*>StaticTuple, size)
-    stuple = <StaticTuple>tmp
-    Py_DECREF(tmp) # The cast to <StaticTuple> causes an INCREF
-    stuple.size = size;
-    stuple.flags = 0;
-    stuple._unused0 = 0
-    stuple._unused1 = 0
-    if size > 0:
-        memset(stuple.items, 0, sizeof(PyObject *) * size)
-    return stuple
-
-cdef api int StaticTuple_CheckExact(object s):
-    return isinstance(s, StaticTuple)
-
-
-cdef api StaticTupleInterner _interned_tuples
-def _get_interned_tuples():
-    """Get a copy of the _interned_tuples object.
-
-    Note that this object should *never* be mutated. Doing so could cause
-    segfaults, etc.
-    """
-    return _interned_tuples
-
-
-cdef api StaticTuple StaticTuple_Intern(StaticTuple self):
-    if _interned_tuples is None:
-        return self
-    if self.flags & STATIC_TUPLE_INTERNED_FLAG:
-        return self
-    # StaticTupleInterner_Add returns whatever object is present at self
-    # or the new object if it needs to add it.
-    # 
-    unique_key = _interned_tuples.add(self)
-    if unique_key is not self:
-        # There was already a key here, just return it
-        return unique_key
-    # This is now interned, mark it as such, and adjust the refcount
-    self.flags |= STATIC_TUPLE_INTERNED_FLAG
-    Py_DECREF(<PyObject *>self)
-    return self
-
-
-_interned_tuples = StaticTupleInterner()
-_empty_tuple = _interned_tuples.add(StaticTuple())
-_empty_tuple.flags |= STATIC_TUPLE_ALL_STRING
 

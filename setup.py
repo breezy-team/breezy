@@ -291,13 +291,13 @@ else:
         add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
     z_lib = 'z'
+add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
-# ext_modules.append(Extension('bzrlib._static_tuple_type_c',
-#                              ['bzrlib/_static_tuple_type_c.c']))
-add_pyrex_extension('bzrlib._static_tuple_pyx')
-# add_pyrex_extension('bzrlib._btree_serializer_pyx')
-# add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
+add_pyrex_extension('bzrlib._static_tuple_interned_pyx')
+ext_modules.append(Extension('bzrlib._static_tuple_c',
+                             ['bzrlib/_static_tuple_c.c']))
+add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:

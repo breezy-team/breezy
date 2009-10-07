@@ -40,8 +40,7 @@ from bzrlib import (
     debug,
     errors,
     )
-import bzrlib._static_tuple_pyx
-from bzrlib._static_tuple_type_c import StaticTuple
+from bzrlib._static_tuple_c import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
