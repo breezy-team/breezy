@@ -610,7 +610,7 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
     """Whatever request comes in, close the connection"""
 
-    def handle_one_request(self):
+    def _handle_one_request(self):
         """Handle a single HTTP request, by abruptly closing the connection"""
         self.close_connection = 1
 
@@ -1907,7 +1907,7 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     line.
     """
 
-    def handle_one_request(self):
+    def _handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
         headers = self.MessageClass(self.rfile, 0)
@@ -2097,7 +2097,7 @@ lalala whatever as long as itsssss
 '''
         t = self.get_transport()
         # We must send a single line of body bytes, see
-        # PredefinedRequestHandler.handle_one_request
+        # PredefinedRequestHandler._handle_one_request
         code, f = t._post('abc def end-of-body\n')
         self.assertEqual('lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()

@@ -77,7 +77,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         connection early to avoid polluting the test results.
         """
         try:
-            SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
+            self._handle_one_request()
         except socket.error, e:
             # Any socket error should close the connection, but some errors are
             # due to the client closing early and we don't want to pollute test
@@ -87,6 +87,9 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
                                      errno.ECONNABORTED, errno.EBADF)):
                 raise
+
+    def _handle_one_request(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.handle_one_request(self)
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -365,6 +368,28 @@ class TestingHTTPServerMixin:
         self.is_shut_down.wait()
 
 
+    def shutdown_client(self, client_socket):
+        """Properly shutdown a client socket.
+
+        Under some circumstances (as in bug #383920), we need to force the
+        shutdown as python delays it until gc occur otherwise and the client
+        may hang.
+
+        This should be called only when no other thread is trying to use the
+        socket.
+        """
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            client_socket.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
+
+
 class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -393,23 +418,26 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         # process. This is prophylactic as we should not leave the threads
         # lying around.
         self.daemon_threads = True
+        # We collect the sockets used by the clients to we can close them when
+        # shutting down
+        self.clients = []
 
     def process_request_thread(self, request, client_address):
-        SocketServer.ThreadingTCPServer.process_request_thread(
-            self, request, client_address)
-        # Under some circumstances (as in bug #383920), we need to force the
-        # shutdown as python delays it until gc occur otherwise and the client
-        # may hang.
+        self.clients.append((request, threading.current_thread()))
         try:
-            # The request process has been completed, the thread is about to
-            # die, let's shutdown the socket if we can.
-            request.shutdown(socket.SHUT_RDWR)
-        except (socket.error, select.error), e:
-            if e[0] in (errno.EBADF, errno.ENOTCONN):
-                # Right, the socket is already down
-                pass
-            else:
-                raise
+            SocketServer.ThreadingTCPServer.process_request_thread(
+                self, request, client_address)
+        except Exception, e:
+            import pdb; pdb.set_trace()
+
+        self.shutdown_client(request)
+
+    def shutdown(self):
+        TestingHTTPServerMixin.shutdown(self)
+        # Let's close all our pending clients too
+        for c, t in self.clients:
+            self.shutdown_client(c)
+            t.join()
 
 
 class HttpServer(transport.Server):
