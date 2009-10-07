@@ -438,6 +438,7 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         for c, t in self.clients:
             self.shutdown_client(c)
             t.join()
+            del t
 
 
 class HttpServer(transport.Server):
@@ -586,6 +587,8 @@ class HttpServer(transport.Server):
         self._http_running = False
         self._httpd.shutdown()
         self._http_thread.join()
+        del self._http_thread
+        self._http_thread = None
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
