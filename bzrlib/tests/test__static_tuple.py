@@ -273,37 +273,27 @@ class TestStaticTuple(tests.TestCase):
         strs = ['foo', 'bar', 'baz', 'bing']
         k = self.module.StaticTuple(*strs)
         if self.module is _static_tuple_py:
-            # The python version references objects slightly different than the
-            # compiled version
-            self.assertEqual([k._tuple, _static_tuple_py.StaticTuple],
-                             scanner.get_referents(k))
-            self.assertEqual(sorted(strs),
-                             sorted(scanner.get_referents(k._tuple)))
+            refs = strs + [self.module.StaticTuple]
         else:
-            self.assertEqual(sorted(strs), sorted(scanner.get_referents(k)))
+            refs = strs
+        self.assertEqual(sorted(refs), sorted(scanner.get_referents(k)))
 
     def test_nested_referents(self):
         self.requireFeature(Meliae)
-
-    def test_empty_is_singleton(self):
-        self.requireFeature(Meliae)
         from meliae import scanner
-        key = self.module.StaticTuple()
-        self.assertIs(key, self.module._empty_tuple)
         strs = ['foo', 'bar', 'baz', 'bing']
         k1 = self.module.StaticTuple(*strs[:2])
         k2 = self.module.StaticTuple(*strs[2:])
         k3 = self.module.StaticTuple(k1, k2)
+        refs = [k1, k2]
         if self.module is _static_tuple_py:
-            # The python version references objects slightly different than the
-            # compiled version
-            self.assertEqual([k3._tuple, _static_tuple_py.StaticTuple],
-                             scanner.get_referents(k3))
-            self.assertEqual(sorted([k1, k2]),
-                             sorted(scanner.get_referents(k3._tuple)))
-        else:
-            self.assertEqual(sorted([k1, k2]),
-                             sorted(scanner.get_referents(k3)))
+            refs.append(self.module.StaticTuple)
+        self.assertEqual(sorted(refs),
+                         sorted(scanner.get_referents(k3)))
+
+    def test_empty_is_singleton(self):
+        key = self.module.StaticTuple()
+        self.assertIs(key, self.module._empty_tuple)
 
     def test_intern(self):
         unique_str1 = 'unique str ' + osutils.rand_chars(20)
