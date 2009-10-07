@@ -203,6 +203,9 @@ Internals
 Testing
 *******
 
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
+
 * Passing ``--lsprof-tests -v`` to bzr selftest will cause lsprof output to
   be output for every test. Note that this is very verbose! (Robert Collins)
 

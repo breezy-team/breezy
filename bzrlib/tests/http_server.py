@@ -324,34 +324,17 @@ class TestingHTTPServerMixin:
          Since the server may be (surely is, even) in a blocking listen, we
          shutdown its socket before closing it.
          """
-         # Note that is this executed as part of the implicit tear down in the
-         # main thread while the server runs in its own thread. The clean way
-         # to tear down the server is to instruct him to stop accepting
-         # connections and wait for the current connection(s) to end
-         # naturally. To end the connection naturally, the http transports
-         # should close their socket when they do not need to talk to the
-         # server anymore. This happens naturally during the garbage collection
-         # phase of the test transport objetcs (the server clients), so we
-         # don't have to worry about them.  So, for the server, we must tear
-         # down here, from the main thread, when the test have ended.  Note
-         # that since the server is in a blocking operation and since python
-         # use select internally, shutting down the socket is reliable and
-         # relatively clean.
+         # The server is listening for a last connection, let's give it:
          try:
-             self.socket.shutdown(socket.SHUT_RDWR)
+             fake_conn = socket.create_connection(self.server_address)
+             fake_conn.close()
          except socket.error, e:
-             # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
-             # windows (occurs before the first connection attempt
-             # vila--20071230)
-
-             # 'Socket is not connected' can also occur on OSX, with a
-             # "regular" ENOTCONN (when something went wrong during test case
-             # setup leading to self.setUp() *not* being called but
-             # self.tearDown() still being called -- vila20081106
-             if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
-                 raise
-         # Let the server properly close the socket
-         self.server_close()
+             # But ignore connection errors as the point is to unblock the
+             # server thread, it may happen that it's not blocked or even not
+             # started (when something went wrong during test case setup
+             # leading to self.setUp() *not* being called but self.tearDown()
+             # still being called)
+             pass
 
 
 class TestingHTTPServer(SocketServer.TCPServer, TestingHTTPServerMixin):
@@ -501,6 +484,9 @@ class HttpServer(transport.Server):
                    pass
                else:
                    raise
+        if self._httpd is not None:
+            # Let the server properly close the listening socket
+            self._httpd.server_close()
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -527,10 +513,10 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server, local.LocalURLServer)):
             raise AssertionError(
-                "HTTPServer currently assumes local transport, got %s" % \
+                "HTTPServer currently assumes local transport, got %s" %
                 backing_transport_server)
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
@@ -556,11 +542,9 @@ class HttpServer(transport.Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._httpd.tearDown()
         self._http_running = False
-        # We don't need to 'self._http_thread.join()' here since the thread is
-        # a daemonic one and will be garbage collected anyway. Joining just
-        # slows us down for no added benefit.
+        self._httpd.tearDown()
+        self._http_thread.join()
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
