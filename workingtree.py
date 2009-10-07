@@ -81,13 +81,14 @@ class GitWorkingTree(workingtree.WorkingTree):
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
-        for (relroot, top), entries in osutils.walkdirs(self.basedir, ""):
-            if self.bzrdir.is_control_filename(relroot):
+        for (dirpath, dirnames, filenames) in os.walk(self.basedir):
+            if self.bzrdir.is_control_filename(dirpath[len(self.basedir):].strip("/")):
                 continue
-            for (relpath, basename, kind, lstat, path_from_top) in entries:
-                if self.bzrdir.is_control_filename(basename):
+            for filename in filenames:
+                if self.bzrdir.is_control_filename(filename):
                     continue
-                if not self.inventory.has_filename(relpath) and kind in ('file', 'symlink'):
+                relpath = os.path.join(dirpath[len(self.basedir):].strip("/"), filename)
+                if not relpath in self.index:
                     yield relpath
 
 
@@ -189,7 +190,6 @@ class GitWorkingTree(workingtree.WorkingTree):
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
-
         intertree = tree.InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)

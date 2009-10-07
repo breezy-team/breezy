@@ -6,6 +6,11 @@
 
   * Support creating working tree for existing repository. (Jelmer Vernooij)
 
+ PERFORMANCE
+
+  * Improve performance of WorkingTree.extras() by not looking up the 
+    SHA1, kind and stat data of each file.
+
 0.4.2	2009-10-01
 
  BUG FIXES
