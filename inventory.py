@@ -253,6 +253,12 @@ class GitIndexInventory(inventory.Inventory):
         self.mapping = mapping
         self.index = index
         self._contents_read = False
+        self.root = self.add_path("", 'directory', 
+            self.mapping.generate_file_id(""), None)
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        self._read_contents()
+        return super(GitIndexInventory, self).iter_entries_by_dir(specific_file_ids=specific_file_ids, yield_parents=yield_parents)
 
     def has_id(self, file_id):
         try:
