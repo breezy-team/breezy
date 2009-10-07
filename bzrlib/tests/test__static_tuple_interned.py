@@ -35,7 +35,7 @@ except ImportError:
 try:
     from bzrlib._static_tuple_c import StaticTuple
 except ImportError:
-    pass
+    from bzrlib._static_tuple_py import StaticTuple
 
 
 # Even though this is an extension, we don't permute the tests for a python
