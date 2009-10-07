@@ -194,7 +194,7 @@ class CHKMap(object):
             for key, value in sorted(node._items.iteritems()):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append('      %r %r' % (key, value))
+                result.append('      %r %r' % (tuple(key), value))
         return result
 
     @classmethod
