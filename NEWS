@@ -4,6 +4,8 @@
 
   * Fix warning about unclosed files on Windows. (#441978, INADA Naoki)
 
+  * Support creating working tree for existing repository. (Jelmer Vernooij)
+
 0.4.2	2009-10-01
 
  BUG FIXES

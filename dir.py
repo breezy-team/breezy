@@ -145,5 +145,11 @@ class LocalGitDir(GitDir):
         if self._git.bare:
             raise bzr_errors.BzrError("Can't create working tree in a bare repo")
         from dulwich.index import write_index
-        write_index(self.root_transport.abspath(".git/index"), [])
+        from dulwich.pack import SHA1Writer
+        f = open(self.transport.local_abspath("index"), 'w+')
+        try:
+            f = SHA1Writer(f)
+            write_index(f, [])
+        finally:
+            f.close()
         return self.open_workingtree()
