@@ -34,13 +34,14 @@ from bzrlib.foreign import (
 from bzrlib.plugins.git.commit import (
     GitCommitBuilder,
     )
-from bzrlib.plugins.git.inventory import (
-    GitInventory,
-    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     foreign_git,
     mapping_registry,
+    )
+from bzrlib.plugins.git.tree import (
+    GitRevisionTree,
+    InterGitRevisionTrees,
     )
 from bzrlib.plugins.git.versionedfiles import (
     GitRevisions,
@@ -224,34 +225,6 @@ class LocalGitRepository(GitRepository):
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
         progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
-
-
-class GitRevisionTree(revisiontree.RevisionTree):
-
-    def __init__(self, repository, revision_id):
-        self._revision_id = revision_id
-        self._repository = repository
-        store = repository._git.object_store
-        assert isinstance(revision_id, str)
-        git_id, self.mapping = repository.lookup_git_revid(revision_id)
-        try:
-            commit = store[git_id]
-        except KeyError, r:
-            raise errors.NoSuchRevision(repository, revision_id)
-        self.tree = commit.tree
-        self._inventory = GitInventory(self.tree, self.mapping, store, 
-                                       revision_id)
-
-    def get_revision_id(self):
-        return self._revision_id
-
-    def get_file_text(self, file_id, path=None):
-        if path is not None:
-            entry = self._inventory._get_ie(path)
-        else:
-            entry = self._inventory[file_id]
-        if entry.kind == 'directory': return ""
-        return entry.object.data
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):

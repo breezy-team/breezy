@@ -47,6 +47,9 @@ from bzrlib.decorators import (
 from bzrlib.plugins.git.inventory import (
     GitIndexInventory,
     )
+from bzrlib.plugins.git.tree import (
+    tree_delta_from_git_changes,
+    )
 
 
 IGNORE_FILENAME = ".gitignore"
@@ -190,32 +193,6 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     def get_format_description(self):
         return "Git Working Tree"
-
-
-def tree_delta_from_git_changes(changes, mapping, specific_file=None, 
-                                require_versioned=False):
-    """Create a TreeDelta from two git trees.
-    
-    source and target are iterators over tuples with: 
-        (filename, sha, mode)
-    """
-    from bzrlib import delta
-    from bzrlib.plugins.git.mapping import mode_kind
-    ret = delta.TreeDelta()
-    for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
-        if oldpath is None:
-            ret.added.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
-        elif newpath is None:
-            ret.removed.append((oldpath, mapping.generate_file_id(oldpath), mode_kind(oldmode)))
-        elif oldpath != newpath:
-            ret.renamed.append((oldpath, newpath, mapping.generate_file_id(oldpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
-        elif mode_kind(oldmode) != mode_kind(newmode):
-            ret.kind_changed.append((newpath, mapping.generate_file_id(newpath), mode_kind(oldmode), mode_kind(newmode)))
-        elif oldsha != newsha or oldmode != newmode:
-            ret.modified.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
-        else:
-            ret.unchanged.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
-    return ret
 
 
 class InterIndexGitTree(tree.InterTree):
