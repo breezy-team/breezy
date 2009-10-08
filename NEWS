@@ -14,6 +14,9 @@ New Features
 Bug Fixes
 *********
 
+* Avoid "NoneType has no attribute st_mode" error when files disappear
+  from a directory while it's being read.  (Martin Pool, #446033)
+
 * ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
   filename will issue a warning and skip over those files.
   (Robert Collins, #3918)
