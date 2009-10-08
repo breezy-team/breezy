@@ -202,6 +202,10 @@ API Changes
 Internals
 *********
 
+* Added ``-Drelock`` debug flag.  It will ``note`` a message every time a
+  repository or branch object is unlocked then relocked the same way.
+  (Andrew Bennetts)
+  
 * ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
   mallocs while parsing the index (approx 3=>1 mallocs per key read).
   This results in a 10% speedup while reading an index.

@@ -50,6 +50,7 @@ from bzrlib.testament import Testament
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -856,7 +857,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(object):
+class Repository(_RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1381,6 +1382,7 @@ class Repository(object):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
+            self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1391,6 +1393,7 @@ class Repository(object):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
+            self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()

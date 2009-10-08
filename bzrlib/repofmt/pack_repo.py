@@ -73,6 +73,7 @@ from bzrlib.repository import (
     )
 from bzrlib.trace import (
     mutter,
+    note,
     warning,
     )
 
@@ -2300,6 +2301,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -2312,6 +2316,9 @@ class KnitPackRepository(KnitRepository):
         else:
             self.control_files.lock_read()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
