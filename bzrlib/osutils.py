@@ -1085,11 +1085,12 @@ def _cicp_canonical_relpath(base, path):
         lbit = bit.lower()
         try:
             next_entries = _listdir(current)
-        except OSError: # enoent
-            # current doesn't match, so just append the non-existing bits
+        except OSError: # enoent, eperm, etc
+            # We can't find this in the filesystem, so just append the
+            # remaining bits.
             current = pathjoin(current, bit, *list(bit_iter))
             break
-        for look in _listdir(current):
+        for look in next_entries:
             if lbit == look.lower():
                 current = pathjoin(current, look)
                 break
