@@ -481,12 +481,15 @@ class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
         self.assertRelpath('MixedCaseParent/not_child', base,
                            'MixedCaseParent/not_child')
 
-    def test_at_root(self):
-        # This path probably does not exist
+    def test_at_slash(self):
         # We can't test this on Windows, because it has a 'MIN_ABS_PATHLENGTH'
         # check...
-        # self.assertRelpath('foo', '/', '/foo')
+        if osutils.MIN_ABS_PATHLENGTH > 1:
+            return TestSkipped('relpath requires %d chars'
+                               % osutils.MIN_ABS_PATHLENGTH)
+        self.assertRelpath('foo', '/', '/foo')
 
+    def test_at_root(self):
         # see bug #322807
         # The specific issue is that when at the root of a drive, 'abspath'
         # returns "C:/" or just "/". However, the code assumes that abspath
