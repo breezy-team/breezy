@@ -1382,7 +1382,7 @@ class Repository(_RelockDebugMixin):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
-            self._debug_lock('w')
+            self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1393,7 +1393,7 @@ class Repository(_RelockDebugMixin):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
-            self._debug_lock('r')
+            self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
