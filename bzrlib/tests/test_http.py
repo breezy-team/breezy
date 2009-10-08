@@ -252,11 +252,26 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
+    def connect_socket(self):
+        msg = "getaddrinfo returns an empty list"
+        for res in socket.getaddrinfo(self.host, self.port):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, msg:
+                if sock is not None:
+                    sock.close()
+        raise socket.error, msg
+
     def tearDown(self):
         try:
             # Issue a fake connection to wake up the server and allow it to
             # finish quickly
-            fake_conn = socket.create_connection((self.host, self.port))
+            fake_conn = self.connect_socket()
             fake_conn.close()
         except socket.error:
             # We might have already closed it.  We don't care.

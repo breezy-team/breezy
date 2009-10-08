@@ -443,7 +443,7 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         self.clients = []
 
     def process_request_thread(self, request, client_address):
-        self.clients.append((request, threading.current_thread()))
+        self.clients.append((request, threading.currentThread()))
         try:
             SocketServer.ThreadingTCPServer.process_request_thread(
                 self, request, client_address)
