@@ -3670,7 +3670,6 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test__known_graph',
         'bzrlib.tests.test__rio',
         'bzrlib.tests.test__simple_set',
-        'bzrlib.tests.test__static_tuple',
         'bzrlib.tests.test__walkdirs_win32',
         'bzrlib.tests.test_ancestry',
         'bzrlib.tests.test_annotate',
