@@ -958,7 +958,7 @@ class CommonInventory(object):
         descend(self.root, u'')
         return accum
 
-    def path2id(self, name):
+    def path2id(self, relpath):
         """Walk down through directories to return entry of last component.
 
         names may be either a list of path components, or a single
@@ -969,10 +969,10 @@ class CommonInventory(object):
 
         Returns None IFF the path is not found.
         """
-        if isinstance(name, basestring):
-            name = osutils.splitpath(name)
-
-        # mutter("lookup path %r" % name)
+        if isinstance(relpath, basestring):
+            names = osutils.splitpath(relpath)
+        else:
+            names = relpath
 
         try:
             parent = self.root
@@ -981,7 +981,7 @@ class CommonInventory(object):
             return None
         if parent is None:
             return None
-        for f in name:
+        for f in names:
             try:
                 children = getattr(parent, 'children', None)
                 if children is None:
@@ -2170,35 +2170,41 @@ class CHKInventory(CommonInventory):
             delta.append((old_path, new_path, file_id, entry))
         return delta
 
-    def path2id(self, name):
+    def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(name, None)
+        result = self._path_to_fileid_cache.get(relpath, None)
         if result is not None:
             return result
-        if isinstance(name, basestring):
-            names = osutils.splitpath(name)
+        if isinstance(relpath, basestring):
+            names = osutils.splitpath(relpath)
         else:
-            names = name
+            names = relpath
         current_id = self.root_id
         if current_id is None:
             return None
         parent_id_index = self.parent_id_basename_to_file_id
+        cur_path = None
         for basename in names:
-            # TODO: Cache each path we figure out in this function.
+            if cur_path is None:
+                cur_path = basename
+            else:
+                cur_path = cur_path + '/' + basename
             basename_utf8 = basename.encode('utf8')
-            key_filter = [(current_id, basename_utf8)]
-            file_id = None
-            for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-                key_filter=key_filter):
-                if parent_id != current_id or name_utf8 != basename_utf8:
-                    raise errors.BzrError("corrupt inventory lookup! "
-                        "%r %r %r %r" % (parent_id, current_id, name_utf8,
-                        basename_utf8))
+            file_id = self._path_to_fileid_cache.get(cur_path, None)
             if file_id is None:
-                return None
+                key_filter = [(current_id, basename_utf8)]
+                items = parent_id_index.iteritems(key_filter)
+                for (parent_id, name_utf8), file_id in items:
+                    if parent_id != current_id or name_utf8 != basename_utf8:
+                        raise errors.BzrError("corrupt inventory lookup! "
+                            "%r %r %r %r" % (parent_id, current_id, name_utf8,
+                            basename_utf8))
+                if file_id is None:
+                    return None
+                else:
+                    self._path_to_fileid_cache[cur_path] = file_id
             current_id = file_id
-        self._path_to_fileid_cache[name] = current_id
         return current_id
 
     def to_lines(self):
