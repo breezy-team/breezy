@@ -84,7 +84,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # don't need a specific exception for now - this is
         # really to be sure it's used right, not for signalling
         # semantic information.
-        self.assertRaises(errors.BzrError, repo.unlock)
+        self.assertLogsError(errors.BzrError, repo.unlock)
         # after this error occurs, the repository is unlocked, and the write
         # group is gone.  you've had your chance, and you blew it. ;-)
         self.assertFalse(repo.is_locked())

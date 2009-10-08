@@ -112,6 +112,7 @@ from bzrlib import (
     lock,
     )
 import bzrlib.config
+from bzrlib.decorators import only_raises
 from bzrlib.errors import (
         DirectoryNotEmpty,
         FileExists,
@@ -286,6 +287,7 @@ class LockDir(lock.Lock):
                                             info_bytes)
         return tmpname
 
+    @only_raises(LockNotHeld, LockBroken)
     def unlock(self):
         """Release a held lock
         """

@@ -46,7 +46,7 @@ from bzrlib.tag import (
     )
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
 from bzrlib.lock import _RelockDebugMixin
@@ -2165,6 +2165,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 self.repository.unlock()
             raise
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         try:
             self.control_files.unlock()

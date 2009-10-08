@@ -33,7 +33,7 @@ from bzrlib import (
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
@@ -1084,6 +1084,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
@@ -2387,6 +2388,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             return
         raise errors.UnexpectedSmartServerResponse(response)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         try:
             self._lock_count -= 1

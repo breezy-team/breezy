@@ -157,6 +157,13 @@ Improvements
   See also <https://answers.launchpad.net/bzr/+faq/703>.
   (Martin Pool, #406113, #430529)
 
+* Secondary errors that occur during Branch.unlock and Repository.unlock
+  no longer obscure the original error.  These methods now use a new
+  decorator, ``only_raises``.  This fixes many causes of
+  ``TooManyConcurrentRequests`` and similar errors.
+  (Andrew Bennetts, #429747)
+
+
 Documentation
 *************
 
