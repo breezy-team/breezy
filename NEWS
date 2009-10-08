@@ -26,6 +26,9 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
+* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
+  on branches via a smart server.  (Andrew Bennetts, #389413)
+
 * Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
   at the root of a drive. ``osutils._cicp_canonical_relpath`` always
   assumed that ``abspath()`` returned a path that did not have a trailing
@@ -60,6 +63,8 @@ Improvements
 
 Documentation
 *************
+
+* Improved README. (Ian Clatworthy)
 
 * Improved upgrade documentation for Launchpad branches.
   (Barry Warsaw)
