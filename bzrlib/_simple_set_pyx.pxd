@@ -27,6 +27,7 @@ cdef extern from "Python.h":
     ctypedef struct PyObject:
         pass
 
+
 cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     """A class similar to PySet, but with simpler implementation.
 
@@ -53,7 +54,14 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     cdef int _insert_clean(self, PyObject *key) except -1
     cdef Py_ssize_t _resize(self, Py_ssize_t min_unused) except -1
 
+
 # TODO: might want to export the C api here, though it is all available from
 #       the class object...
 cdef api object SimpleSet_Add(object self, object key)
 cdef api SimpleSet SimpleSet_New()
+cdef api object SimpleSet_Add(object self, object key)
+cdef api int SimpleSet_Contains(object self, object key) except -1
+cdef api int SimpleSet_Discard(object self, object key) except -1
+cdef api PyObject *SimpleSet_Get(SimpleSet self, object key) except? NULL
+cdef api Py_ssize_t SimpleSet_Size(object self) except -1
+cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key)

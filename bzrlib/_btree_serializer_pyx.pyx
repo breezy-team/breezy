@@ -104,8 +104,6 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     return result
 
 from bzrlib import _static_tuple_c
-cdef object _ST
-_ST = _static_tuple_c.StaticTuple
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()
 
@@ -159,7 +157,7 @@ cdef class BTreeLeafParser:
         cdef char *temp_ptr
         cdef int loop_counter
         cdef StaticTuple key
-        
+
         key = StaticTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
@@ -175,13 +173,7 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            if (self.key_length == 1 
-                and (temp_ptr - self._start) == 45
-                and strncmp(self._start, 'sha1:', 5) == 0):
-                key_element = safe_string_from_size(self._start,
-                                                    temp_ptr - self._start)
-            else:
-                key_element = safe_interned_string_from_size(self._start,
+            key_element = safe_interned_string_from_size(self._start,
                                                          temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
@@ -197,7 +189,6 @@ cdef class BTreeLeafParser:
         cdef char *ref_ptr
         cdef char *next_start
         cdef int loop_counter
-        cdef Py_ssize_t str_len
 
         self._start = self._cur_str
         # Find the next newline
@@ -233,20 +224,8 @@ cdef class BTreeLeafParser:
             # Invalid line
             raise AssertionError("Failed to find the value area")
         else:
-            # Because of how conversions were done, we ended up with *lots* of
-            # values that are identical. These are all of the 0-length nodes
-            # that are referred to by the TREE_ROOT (and likely some other
-            # directory nodes.) For example, bzr has 25k references to
-            # something like '12607215 328306 0 0', which ends up consuming 1MB
-            # of memory, just for those strings.
-            str_len = last - temp_ptr - 1
-            if (str_len > 4
-                and strncmp(" 0 0", last - 4, 4) == 0):
-                # This drops peak mem for bzr.dev from 87.4MB => 86.2MB
-                # For Launchpad 236MB => 232MB
-                value = safe_interned_string_from_size(temp_ptr + 1, str_len)
-            else:
-                value = safe_string_from_size(temp_ptr + 1, str_len)
+            # capture the value string
+            value = safe_string_from_size(temp_ptr + 1, last - temp_ptr - 1)
             # shrink the references end point
             last = temp_ptr
 
@@ -283,7 +262,7 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
-                                        
+
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
                 ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
                 Py_INCREF(ref_list)

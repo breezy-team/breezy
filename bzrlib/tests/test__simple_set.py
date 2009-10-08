@@ -24,39 +24,32 @@ from bzrlib import (
     tests,
     )
 
-from bzrlib.tests import (
-    test__static_tuple,
-    )
 try:
-    from bzrlib import _simple_set_pyx as _module
+    from bzrlib import _simple_set_pyx
 except ImportError:
-    _module = None
-try:
-    from bzrlib._static_tuple_c import StaticTuple
-except ImportError:
-    from bzrlib._static_tuple_py import StaticTuple
+    _simple_set_pyx = None
 
 
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 
-class _CompiledStaticTupleInterned(tests.Feature):
+class _CompiledSimpleSet(tests.Feature):
 
     def _probe(self):
-        if _module is None:
+        if _simple_set_pyx is None:
             return False
         return True
 
     def feature_name(self):
         return 'bzrlib._simple_set_pyx'
 
-CompiledStaticTupleInterned = _CompiledStaticTupleInterned()
+CompiledSimpleSet = _CompiledSimpleSet()
 
 
-class TestStaticTupleInterned(tests.TestCase):
+class TestSimpleSet(tests.TestCase):
 
-    _test_needs_features = [CompiledStaticTupleInterned, 
-                            test__static_tuple.CompiledStaticTuple]
+    _test_needs_features = [CompiledSimpleSet]
+    module = _simple_set_pyx
 
     def assertIn(self, obj, container):
         self.assertTrue(obj in container,
@@ -76,17 +69,15 @@ class TestStaticTupleInterned(tests.TestCase):
         assertRefcount actually creates a new pointer, as does calling
         sys.getrefcount. So pass the expected value *before* the call.
         """
-        # I don't understand why it is count+3 here, but it seems to be
-        # correct. If I check in the calling function, with:
-        # self.assertEqual(count+1, sys.getrefcount(obj))
-        # Then it works fine. Something about passing it to assertRefcount is
-        # actually double-incrementing (and decrementing) the refcount
-        self.assertEqual(count+3, sys.getrefcount(obj))
+        # I'm not sure why the offset is 3, but I've check that in the caller,
+        # an offset of 1 works, which is expected. Not sure why assertRefcount
+        # is incrementing/decrementing 2 times
+        self.assertEqual(count, sys.getrefcount(obj)-3)
 
     def test_initial(self):
-        obj = _module.SimpleSet()
+        obj = self.module.SimpleSet()
         self.assertEqual(0, len(obj))
-        st = StaticTuple('foo', 'bar')
+        st = ('foo', 'bar')
         self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
@@ -98,23 +89,23 @@ class TestStaticTupleInterned(tests.TestCase):
         #  ('a', 'a'), ('f', '4'), ('p', 'r'), ('q', '1'), ('F', 'T'),
         #  ('Q', 'Q'), ('V', 'd'), ('7', 'C')
         # all collide @ 643
-        obj = _module.SimpleSet()
-        offset, val = obj._test_lookup(StaticTuple('a', 'a'))
+        obj = self.module.SimpleSet()
+        offset, val = obj._test_lookup(('a', 'a'))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(StaticTuple('f', '4'))
+        offset, val = obj._test_lookup(('f', '4'))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(StaticTuple('p', 'r'))
+        offset, val = obj._test_lookup(('p', 'r'))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
 
     def test_get_set_del_with_collisions(self):
-        obj = _module.SimpleSet()
-        k1 = StaticTuple('a', 'a')
-        k2 = StaticTuple('f', '4') # collides
-        k3 = StaticTuple('p', 'r')
-        k4 = StaticTuple('q', '1')
+        obj = self.module.SimpleSet()
+        k1 = ('a', 'a')
+        k2 = ('f', '4') # collides
+        k3 = ('p', 'r')
+        k4 = ('q', '1')
         self.assertEqual((643, '<null>'), obj._test_lookup(k1))
         self.assertEqual((643, '<null>'), obj._test_lookup(k2))
         self.assertEqual((643, '<null>'), obj._test_lookup(k3))
@@ -160,9 +151,12 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertNotIn(k4, obj)
 
     def test_add(self):
-        obj = _module.SimpleSet()
+        obj = self.module.SimpleSet()
         self.assertFillState(0, 0, 0x3ff, obj)
-        k1 = StaticTuple('foo')
+        # We use this clumsy notation, because otherwise the refcounts are off.
+        # I'm guessing the python compiler sees it is a static tuple, and adds
+        # it to the function variables, or somesuch
+        k1 = tuple(['foo'])
         self.assertRefcount(1, k1)
         self.assertIs(k1, obj.add(k1))
         self.assertFillState(1, 1, 0x3ff, obj)
@@ -172,7 +166,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertIs(k1, ktest)
         del ktest
         self.assertRefcount(2, k1)
-        k2 = StaticTuple('foo')
+        k2 = tuple(['foo'])
         self.assertRefcount(1, k2)
         self.assertIsNot(k1, k2)
         # doesn't add anything, so the counters shouldn't be adjusted
@@ -188,7 +182,7 @@ class TestStaticTupleInterned(tests.TestCase):
         del obj[k1]
         self.assertFillState(0, 1, 0x3ff, obj)
         self.assertRefcount(1, k1)
-        k3 = StaticTuple('bar')
+        k3 = tuple(['bar'])
         self.assertRefcount(1, k3)
         self.assertIs(k3, obj.add(k3))
         self.assertFillState(1, 2, 0x3ff, obj)
@@ -200,10 +194,10 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(2, k3)
 
     def test_discard(self):
-        obj = _module.SimpleSet()
-        k1 = StaticTuple('foo')
-        k2 = StaticTuple('foo')
-        k3 = StaticTuple('bar')
+        obj = self.module.SimpleSet()
+        k1 = tuple(['foo'])
+        k2 = tuple(['foo'])
+        k3 = tuple(['bar'])
         self.assertRefcount(1, k1)
         self.assertRefcount(1, k2)
         self.assertRefcount(1, k3)
@@ -217,10 +211,10 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(1, k3)
 
     def test__delitem__(self):
-        obj = _module.SimpleSet()
-        k1 = StaticTuple('foo')
-        k2 = StaticTuple('foo')
-        k3 = StaticTuple('bar')
+        obj = self.module.SimpleSet()
+        k1 = tuple(['foo'])
+        k2 = tuple(['foo'])
+        k3 = tuple(['bar'])
         self.assertRefcount(1, k1)
         self.assertRefcount(1, k2)
         self.assertRefcount(1, k3)
@@ -234,10 +228,10 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertRefcount(1, k3)
 
     def test__resize(self):
-        obj = _module.SimpleSet()
-        k1 = StaticTuple('foo')
-        k2 = StaticTuple('bar')
-        k3 = StaticTuple('baz')
+        obj = self.module.SimpleSet()
+        k1 = ('foo',)
+        k2 = ('bar',)
+        k3 = ('baz',)
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
@@ -264,18 +258,18 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
 
     def test_add_and_remove_lots_of_items(self):
-        obj = _module.SimpleSet()
+        obj = self.module.SimpleSet()
         chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890'
         for i in chars:
             for j in chars:
-                k = StaticTuple(i, j)
+                k = (i, j)
                 obj.add(k)
         num = len(chars)*len(chars)
         self.assertFillState(num, num, 0x1fff, obj)
         # Now delete all of the entries and it should shrink again
         for i in chars:
             for j in chars:
-                k = StaticTuple(i, j)
+                k = (i, j)
                 obj.discard(k)
         # It should be back to 1024 wide mask, though there may still be some
         # dummy values in there
@@ -284,10 +278,10 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertTrue(obj.fill < 1024 / 5)
 
     def test__iter__(self):
-        obj = _module.SimpleSet()
-        k1 = StaticTuple('1')
-        k2 = StaticTuple('1', '2')
-        k3 = StaticTuple('3', '4')
+        obj = self.module.SimpleSet()
+        k1 = ('1',)
+        k2 = ('1', '2')
+        k3 = ('3', '4')
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
@@ -297,7 +291,7 @@ class TestStaticTupleInterned(tests.TestCase):
         self.assertEqual(sorted([k1, k2, k3]), sorted(all))
         iterator = iter(obj)
         iterator.next()
-        obj.add(StaticTuple('foo'))
+        obj.add(('foo',))
         # Set changed size
         self.assertRaises(RuntimeError, iterator.next)
         # And even removing an item still causes it to fail

@@ -38,6 +38,7 @@ cdef extern from "Python.h":
     void PyMem_Free(void *)
     void memset(void *, int, size_t)
 
+
 cdef object _dummy_obj
 cdef PyObject *_dummy
 _dummy_obj = object()
