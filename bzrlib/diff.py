@@ -278,7 +278,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 
 def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
-    apply_view=True):
+                                   apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of

@@ -1388,14 +1388,14 @@ class TestDiffFromTool(TestCaseWithTransport):
 
 
 class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
-    
+
     def test_basic(self):
         tree = self.make_branch_and_tree('tree')
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = \
             get_trees_and_branches_to_diff(['tree'], None, None, None)
-        
+
         self.assertIsInstance(old_tree, RevisionTree)
         #print dir (old_tree)
         self.assertEqual(_mod_revision.NULL_REVISION, old_tree.get_revision_id())
@@ -1412,14 +1412,14 @@ class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
         tree.commit('old tree', timestamp=0, rev_id="old-id")
         self.build_tree_contents([('tree/file', 'newcontent')])
         tree.commit('new tree', timestamp=0, rev_id="new-id")
-        
+
         revisions = [RevisionSpec.from_string('1'),
                      RevisionSpec.from_string('2')]
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = \
             get_trees_and_branches_to_diff(['tree'], revisions, None, None)
-        
+
         self.assertIsInstance(old_tree, RevisionTree)
         self.assertEqual("old-id", old_tree.get_revision_id())
         self.assertIsInstance(new_tree, RevisionTree)
