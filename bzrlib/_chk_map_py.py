@@ -156,5 +156,3 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._search_prefix = common_prefix
     return result
 
-
-_key_type = tuple

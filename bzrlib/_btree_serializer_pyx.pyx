@@ -104,8 +104,6 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     return result
 
 from bzrlib import _static_tuple_c
-cdef object _ST
-_ST = _static_tuple_c.StaticTuple
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()
 
@@ -159,7 +157,7 @@ cdef class BTreeLeafParser:
         cdef char *temp_ptr
         cdef int loop_counter
         cdef StaticTuple key
-        
+
         key = StaticTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
@@ -175,7 +173,7 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            if (self.key_length == 1 
+            if (self.key_length == 1
                 and (temp_ptr - self._start) == 45
                 and strncmp(self._start, 'sha1:', 5) == 0):
                 key_element = safe_string_from_size(self._start,
@@ -283,7 +281,7 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
-                                        
+
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
                 ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
                 Py_INCREF(ref_list)
