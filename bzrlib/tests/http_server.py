@@ -323,6 +323,12 @@ class TestingHTTPServerMixin:
         self.serving = False
         self.is_shut_down = threading.Event()
 
+    def server_bind(self):
+        # The following has been fixed in 2.5 so we need to provide it for
+        # older python versions.
+        if sys.version < (2, 5):
+            self.server_address = self.socket.getsockname()
+
     def serve(self):
         self.serving = True
         self.is_shut_down.clear()
@@ -415,8 +421,7 @@ class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
 
     def server_bind(self):
         SocketServer.TCPServer.server_bind(self)
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
+        TestingHTTPServerMixin.server_bind(self)
 
 
 class TestingThreadingHTTPServer(TestingHTTPServerMixin,
@@ -462,8 +467,7 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
 
     def server_bind(self):
         SocketServer.ThreadingTCPServer.server_bind(self)
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
+        TestingHTTPServerMixin.server_bind(self)
 
 
 class HttpServer(transport.Server):
