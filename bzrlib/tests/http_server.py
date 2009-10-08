@@ -345,6 +345,21 @@ class TestingHTTPServerMixin:
         self.server_close()
         self.is_shut_down.set()
 
+    def connect_socket(self):
+        msg = "getaddrinfo returns an empty list"
+        for res in socket.getaddrinfo(*self.server_address):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, msg:
+                if sock is not None:
+                    sock.close()
+        raise socket.error, msg
+
     def shutdown(self):
         """Stops the serve() loop.
 
@@ -356,7 +371,7 @@ class TestingHTTPServerMixin:
         self.serving = False
         # The server is listening for a last connection, let's give it:
         try:
-            fake_conn = socket.create_connection(self.server_address)
+            fake_conn = self.connect_socket()
             fake_conn.close()
         except socket.error, e:
             # But ignore connection errors as the point is to unblock the
@@ -397,6 +412,11 @@ class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
         TestingHTTPServerMixin.__init__(self, test_case_server)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
+
+    def server_bind(self):
+        SocketServer.TCPServer.server_bind(self)
+        if sys.version < (2, 5):
+            self.server_address = self.socket.getsockname()
 
 
 class TestingThreadingHTTPServer(TestingHTTPServerMixin,
@@ -439,6 +459,11 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
             self.shutdown_client(c)
             t.join()
             del t
+
+    def server_bind(self):
+        SocketServer.ThreadingTCPServer.server_bind(self)
+        if sys.version < (2, 5):
+            self.server_address = self.socket.getsockname()
 
 
 class HttpServer(transport.Server):
