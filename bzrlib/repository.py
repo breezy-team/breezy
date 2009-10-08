@@ -49,7 +49,7 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -1720,6 +1720,7 @@ class Repository(object):
         self.start_write_group()
         return result
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if (self.control_files._lock_count == 1 and
             self.control_files._lock_mode == 'w'):

@@ -54,7 +54,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.decorators import needs_write_lock
+from bzrlib.decorators import needs_write_lock, only_raises
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
@@ -2345,6 +2345,7 @@ class KnitPackRepository(KnitRepository):
         packer = ReconcilePacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
