@@ -30,10 +30,7 @@ import time
 import urllib
 import urlparse
 
-from bzrlib import (
-    transport,
-    osutils,
-    )
+from bzrlib import transport
 from bzrlib.transport import local
 
 
@@ -345,6 +342,21 @@ class TestingHTTPServerMixin:
         self.server_close()
         self.is_shut_down.set()
 
+    def connect_socket(self):
+        msg = "getaddrinfo returns an empty list"
+        for res in socket.getaddrinfo(*self.server_address):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, msg:
+                if sock is not None:
+                    sock.close()
+        raise socket.error, msg
+
     def shutdown(self):
         """Stops the serve() loop.
 
@@ -356,7 +368,7 @@ class TestingHTTPServerMixin:
         self.serving = False
         # The server is listening for a last connection, let's give it:
         try:
-            fake_conn = osutils.connect_socket(self.server_address)
+            fake_conn = self.connect_socket()
             fake_conn.close()
         except socket.error, e:
             # But ignore connection errors as the point is to unblock the

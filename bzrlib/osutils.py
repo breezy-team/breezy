@@ -1952,34 +1952,3 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
-
-if sys.version_info < (2, 6):
-    def connect_socket(address):
-        import socket
-        """Connect to *address* and return the socket object.
-
-        Convenience function.  Connect to *address* (a 2-tuple ``(host,
-        port)``) and return the socket object.
-
-        Heavily inspired from the python 2.6 socket.create_connection()
-        function.
-        """
-
-        msg = "getaddrinfo returns an empty list"
-        host, port = address
-        for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.connect(sa)
-                return sock
-
-            except socket.error, msg:
-                if sock is not None:
-                    sock.close()
-
-        raise socket.error, msg
-else:
-    import socket
-    connect_socket = socket.create_connection
