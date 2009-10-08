@@ -79,6 +79,7 @@ cdef void* _my_memrchr(void *s, int c, size_t n):
         pos = pos - 1
     return NULL
 
+
 # TODO: Import this from _dirstate_helpers when it is merged
 cdef object safe_string_from_size(char *s, Py_ssize_t size):
     if size < 0:
@@ -196,6 +197,7 @@ cdef class BTreeLeafParser:
         cdef char *ref_ptr
         cdef char *next_start
         cdef int loop_counter
+        cdef Py_ssize_t str_len
 
         self._start = self._cur_str
         # Find the next newline
@@ -231,10 +233,23 @@ cdef class BTreeLeafParser:
             # Invalid line
             raise AssertionError("Failed to find the value area")
         else:
-            # capture the value string
-            value = safe_string_from_size(temp_ptr + 1, last - temp_ptr - 1)
+            # Because of how conversions were done, we ended up with *lots* of
+            # values that are identical. These are all of the 0-length nodes
+            # that are referred to by the TREE_ROOT (and likely some other
+            # directory nodes.) For example, bzr has 25k references to
+            # something like '12607215 328306 0 0', which ends up consuming 1MB
+            # of memory, just for those strings.
+            str_len = last - temp_ptr - 1
+            if (str_len > 4
+                and strncmp(" 0 0", last - 4, 4) == 0):
+                # This drops peak mem for bzr.dev from 87.4MB => 86.2MB
+                # For Launchpad 236MB => 232MB
+                value = safe_interned_string_from_size(temp_ptr + 1, str_len)
+            else:
+                value = safe_string_from_size(temp_ptr + 1, str_len)
             # shrink the references end point
             last = temp_ptr
+
         if self.ref_list_length:
             ref_lists = StaticTuple_New(self.ref_list_length)
             loop_counter = 0
