@@ -1106,6 +1106,7 @@ class SFTPServer(Server):
         """See bzrlib.transport.Server.tearDown."""
         self._listener.stop()
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
+        self._listener.join()
 
     def get_bogus_url(self):
         """See bzrlib.transport.Server.get_bogus_url."""
