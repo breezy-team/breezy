@@ -252,6 +252,8 @@ class FTPTestServer(transport.Server):
         self._async_thread = threading.Thread(
                 target=FTPTestServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':10000})
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread started: %s' % (self._async_thread.ident,)
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
@@ -260,6 +262,8 @@ class FTPTestServer(transport.Server):
         self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread  joined: %s' % (self._async_thread.ident,)
 
     @staticmethod
     def _asyncore_loop_ignore_EBADF(*args, **kwargs):

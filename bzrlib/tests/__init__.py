@@ -98,7 +98,6 @@ from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
 from bzrlib.tests import TestUtil
-from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
@@ -856,7 +855,8 @@ class TestCase(unittest.TestCase):
         # going away but leak one) but it seems less likely than the actual
         # false positives (the test see threads going away and does not leak).
         if leaked_threads > 0:
-            print '%s is leaking, active is now %d' % (self.id(), active)
+            if 'threads' in selftest_debug_flags:
+                print '%s is leaking, active is now %d' % (self.id(), active)
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
@@ -2734,9 +2734,10 @@ class ChrootedTestCase(TestCaseWithTransport):
     """
 
     def setUp(self):
+        from bzrlib.tests import http_server
         super(ChrootedTestCase, self).setUp()
         if not self.vfs_transport_factory == MemoryServer:
-            self.transport_readonly_server = HttpServer
+            self.transport_readonly_server = http_server.HttpServer
 
 
 def condition_id_re(pattern):
@@ -3420,6 +3421,8 @@ class ProfileResult(ForwardingResult):
 #                           rather than failing tests. And no longer raise
 #                           LockContention when fctnl locks are not being used
 #                           with proper exclusion rules.
+#   -Ethreads               Will display thread indent at creation/join time to
+#                           help track thread leaks
 selftest_debug_flags = set()
 
 

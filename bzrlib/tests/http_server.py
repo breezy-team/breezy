@@ -30,7 +30,10 @@ import time
 import urllib
 import urlparse
 
-from bzrlib import transport
+from bzrlib import (
+    tests,
+    transport,
+    )
 from bzrlib.transport import local
 
 
@@ -601,6 +604,8 @@ class HttpServer(transport.Server):
         self._http_thread.setDaemon(True)
         self._http_exception = None
         self._http_thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread started: %s' % (self._http_thread.ident,)
 
         # Wait for the server thread to start (i.e release the lock)
         self._http_starting.acquire()
@@ -617,6 +622,8 @@ class HttpServer(transport.Server):
         self._http_running = False
         self._httpd.shutdown()
         self._http_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread  joined: %s' % (self._http_thread.ident,)
         del self._http_thread
         self._http_thread = None
 

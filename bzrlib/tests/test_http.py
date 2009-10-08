@@ -228,6 +228,8 @@ class RecordingServer(object):
         self._thread = threading.Thread(target=self._accept_read_and_reply)
         self._thread.setDaemon(True)
         self._thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread started: %s' % (self._thread.ident,)
         self._ready.wait()
 
     def _accept_read_and_reply(self):
@@ -279,6 +281,8 @@ class RecordingServer(object):
         self.host = None
         self.port = None
         self._thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread  joined: %s' % (self._thread.ident,)
         del self._thread
         self.thread = None
 
