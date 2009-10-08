@@ -620,12 +620,10 @@ Module Imports
 Naming
 ======
 
-Functions, methods or members that are "private" to bzrlib are given
+Functions, methods or members that are relatively private are given
 a leading underscore prefix.  Names without a leading underscore are
 public not just across modules but to programmers using bzrlib as an
-API. As a consequence, a leading underscore is appropriate for names
-exposed across modules but that are not to be exposed to bzrlib API
-programmers.
+API. 
 
 We prefer class names to be concatenated capital words (``TestCase``)
 and variables, methods and functions to be lowercase words joined by
@@ -860,8 +858,8 @@ Core Topics
 Evolving Interfaces
 ===================
 
-We have a commitment to 6 months API stability - any supported symbol in a
-release of bzr MUST NOT be altered in any way that would result in
+We don't change APIs in stable branches: any supported symbol in a stable
+release of bzr must not be altered in any way that would result in
 breaking existing code that uses it. That means that method names,
 parameter ordering, parameter names, variable and attribute names etc must
 not be changed without leaving a 'deprecated forwarder' behind. This even
@@ -872,6 +870,9 @@ way, you need to change its name as well. For instance, if I add an optional key
 parameter to branch.commit - that's fine. On the other hand, if I add a
 keyword parameter to branch.commit which is a *required* transaction
 object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+
+  (Actually, that may break code that provides a new implementation of
+  ``commit`` and doesn't expect to receive the parameter.)
 
 When renaming such supported API's, be sure to leave a deprecated_method (or
 _function or ...) behind which forwards to the new API. See the

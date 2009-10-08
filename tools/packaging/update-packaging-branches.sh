@@ -9,12 +9,20 @@ if [ -z "$UBUNTU_RELEASES" ]; then
 fi
 
 for DISTRO in $UBUNTU_RELEASES; do
-    if [ -d "packaging-$DISTRO" ] ; then
-        echo "Updating packaging-$DISTRO"
-        bzr update packaging-$DISTRO
+    if [ -d "$PACKAGE-$DISTRO" ] ; then
+        echo "Updating $PACKAGE-$DISTRO"
+        bzr update $PACKAGE-$DISTRO
+        if [ "$PACKAGE" = "bzr-svn" ] ; then
+            cd $PACKAGE-$DISTRO
+            bzr merge http://bzr.debian.org/pkg-bazaar/bzr-svn/unstable/
+            cd ..
+        fi
     else
-        echo "Checking out lp:~bzr/bzr/packaging-$DISTRO"
-        bzr co lp:~bzr/bzr/packaging-$DISTRO
+        SRC="lp:~bzr/$PACKAGE/packaging-$DISTRO"
+        if [ "$PACKAGE" = "bzr-svn" ] ; then
+            SRC="lp:~bzr/$PACKAGE/beta-ppa-$DISTRO"
+        fi
+        echo "Checking out $SRC"
+        bzr co $SRC $PACKAGE-$DISTRO
     fi
 done
-

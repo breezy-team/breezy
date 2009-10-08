@@ -17,6 +17,7 @@
 
 """B+Tree indices"""
 
+import cStringIO
 from bisect import bisect_right
 import math
 import tempfile
@@ -60,14 +61,20 @@ class _BuilderRow(object):
     def __init__(self):
         """Create a _BuilderRow."""
         self.nodes = 0
-        self.spool = tempfile.TemporaryFile()
+        self.spool = None# tempfile.TemporaryFile(prefix='bzr-index-row-')
         self.writer = None
 
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
+            self.spool = cStringIO.StringIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
+        elif self.nodes == 1:
+            # We got bigger than 1 node, switch to a temp file
+            spool = tempfile.TemporaryFile(prefix='bzr-index-row-')
+            spool.write(self.spool.getvalue())
+            self.spool = spool
         skipped_bytes = 0
         if not pad and padding:
             del byte_lines[-1]
@@ -182,11 +189,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
              backing_pos) = self._spill_mem_keys_and_combine()
         else:
             new_backing_file, size = self._spill_mem_keys_without_combining()
-        dir_path, base_name = osutils.split(new_backing_file.name)
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport(dir_path),
-                                      base_name, size)
+        new_backing = BTreeGraphIndex(get_transport('.'), '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
         if self._combine_backing_indices:
@@ -379,13 +384,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
         lines.append(_OPTION_LEN + str(key_count) + '\n')
         row_lengths = [row.nodes for row in rows]
         lines.append(_OPTION_ROW_LENGTHS + ','.join(map(str, row_lengths)) + '\n')
+        if row_lengths and row_lengths[-1] > 1:
+            result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
+        else:
+            result = cStringIO.StringIO()
         result.writelines(lines)
         position = sum(map(len, lines))
         root_row = True
@@ -1526,5 +1534,6 @@ class BTreeGraphIndex(object):
 
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

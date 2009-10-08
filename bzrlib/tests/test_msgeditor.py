@@ -93,7 +93,7 @@ added:
         tree3.commit('Feature Y, based on initial X work.',
                      timestamp=1233285960, timezone=0)
         tree.merge_from_branch(tree2.branch)
-        tree.merge_from_branch(tree3.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
         return tree
 
     def test_commit_template_pending_merges(self):
