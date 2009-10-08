@@ -172,6 +172,7 @@ class SmartTCPServer(object):
             None, handler.serve, name=thread_name)
         connection_thread.setDaemon(True)
         connection_thread.start()
+        return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
@@ -246,6 +247,9 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         SmartTCPServer.__init__(self, None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
+        # We collect the sockets/threads used by the clients so we can
+        # close/join them when shutting down
+        self.clients = []
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
@@ -279,8 +283,41 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread(self.thread_name_suffix)
 
+    def serve_conn(self, conn, thread_name_suffix):
+        conn_thread = super(SmartTCPServer_for_testing, self).serve_conn(
+            conn, thread_name_suffix)
+        self.clients.append((conn, conn_thread))
+        return conn_thread
+
+    def shutdown_client(self, client_socket):
+        """Properly shutdown a client socket.
+
+        Under some circumstances (as in bug #383920), we need to force the
+        shutdown as python delays it until gc occur otherwise and the client
+        may hang.
+
+        This should be called only when no other thread is trying to use the
+        socket.
+        """
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            client_socket.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
+
     def tearDown(self):
         self.stop_background_thread()
+        # Let's close all our pending clients too
+        for sock, thread in self.clients:
+            self.shutdown_client(sock)
+            thread.join()
+            del thread
+        self.clients = []
         self.chroot_server.tearDown()
 
     def get_url(self):

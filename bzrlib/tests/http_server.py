@@ -332,12 +332,14 @@ class TestingHTTPServerMixin:
     def serve(self):
         self.serving = True
         self.is_shut_down.clear()
+        self.socket.settimeout(1)
         while self.serving:
             try:
                 # Really a connection but the python framework is generic and
                 # call them requests
                 self.handle_request()
             except socket.timeout:
+                # So we can check if we're asked to stop
                 pass
             except (socket.error, select.error), e:
                if e[0] == errno.EBADF:
@@ -443,27 +445,26 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         # process. This is prophylactic as we should not leave the threads
         # lying around.
         self.daemon_threads = True
-        # We collect the sockets used by the clients to we can close them when
-        # shutting down
+        # We collect the sockets/threads used by the clients so we can
+        # close/join them when shutting down
         self.clients = []
 
     def process_request_thread(self, request, client_address):
         self.clients.append((request, threading.currentThread()))
-        try:
-            SocketServer.ThreadingTCPServer.process_request_thread(
-                self, request, client_address)
-        except Exception, e:
-            import pdb; pdb.set_trace()
-
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Shutdown the socket as soon as possible, the thread will be joined
+        # later if needed during server shutdown thread.
         self.shutdown_client(request)
 
     def shutdown(self):
         TestingHTTPServerMixin.shutdown(self)
         # Let's close all our pending clients too
-        for c, t in self.clients:
-            self.shutdown_client(c)
-            t.join()
-            del t
+        for sock, thread in self.clients:
+            self.shutdown_client(sock)
+            thread.join()
+            del thread
+        self.clients = []
 
     def server_bind(self):
         SocketServer.ThreadingTCPServer.server_bind(self)
