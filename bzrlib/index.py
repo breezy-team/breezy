@@ -40,7 +40,6 @@ from bzrlib import (
     debug,
     errors,
     )
-from bzrlib._static_tuple_c import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -103,7 +102,7 @@ class GraphIndexBuilder(object):
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
-        if type(key) not in (tuple, StaticTuple):
+        if type(key) != tuple:
             raise errors.BadIndexKey(key)
         if self._key_length != len(key):
             raise errors.BadIndexKey(key)

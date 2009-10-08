@@ -38,8 +38,6 @@ cdef extern from "Python.h":
     Py_ssize_t PyString_Size(object p)
     Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *)
     char * PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *)
-    char * PyString_AS_STRING(object)
-    Py_ssize_t PyString_GET_SIZE(object)
     int PyString_AsStringAndSize_ptr(PyObject *, char **buf, Py_ssize_t *len)
     void PyString_InternInPlace(PyObject **)
     int PyTuple_CheckExact(object t)
@@ -57,12 +55,6 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
 
-# It seems we need to import the definitions so that the pyrex compiler has
-# local names to access them.
-from _static_tuple_c cimport StaticTuple, \
-    import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
-
 
 # TODO: Find some way to import this from _dirstate_helpers
 cdef void* _my_memrchr(void *s, int c, size_t n):
@@ -78,7 +70,6 @@ cdef void* _my_memrchr(void *s, int c, size_t n):
             return <void*>pos
         pos = pos - 1
     return NULL
-
 
 # TODO: Import this from _dirstate_helpers when it is merged
 cdef object safe_string_from_size(char *s, Py_ssize_t size):
@@ -102,12 +93,6 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     # DECREF it to avoid geting immortal strings
     Py_DECREF_ptr(py_str)
     return result
-
-from bzrlib import _static_tuple_c
-cdef object _ST
-_ST = _static_tuple_c.StaticTuple
-# This sets up the StaticTuple C_API functionality
-import_static_tuple_c()
 
 
 cdef class BTreeLeafParser:
@@ -148,7 +133,6 @@ cdef class BTreeLeafParser:
         self._cur_str = NULL
         self._end_str = NULL
         self._header_found = 0
-        # keys are tuples
 
     cdef extract_key(self, char * last):
         """Extract a key.
@@ -158,9 +142,8 @@ cdef class BTreeLeafParser:
         """
         cdef char *temp_ptr
         cdef int loop_counter
-        cdef StaticTuple key
-        
-        key = StaticTuple_New(self.key_length)
+        # keys are tuples
+        key = PyTuple_New(self.key_length)
         for loop_counter from 0 <= loop_counter < self.key_length:
             # grab a key segment
             temp_ptr = <char*>memchr(self._start, c'\0', last - self._start)
@@ -175,19 +158,15 @@ cdef class BTreeLeafParser:
                                                    last - self._start)))
                     raise AssertionError(failure_string)
             # capture the key string
-            if (self.key_length == 1 
-                and (temp_ptr - self._start) == 45
-                and strncmp(self._start, 'sha1:', 5) == 0):
-                key_element = safe_string_from_size(self._start,
-                                                    temp_ptr - self._start)
-            else:
-                key_element = safe_interned_string_from_size(self._start,
+            # TODO: Consider using PyIntern_FromString, the only caveat is that
+            # it assumes a NULL-terminated string, so we have to check if
+            # temp_ptr[0] == c'\0' or some other char.
+            key_element = safe_interned_string_from_size(self._start,
                                                          temp_ptr - self._start)
             # advance our pointer
             self._start = temp_ptr + 1
             Py_INCREF(key_element)
-            StaticTuple_SET_ITEM(key, loop_counter, key_element)
-        key = StaticTuple_Intern(key)
+            PyTuple_SET_ITEM(key, loop_counter, key_element)
         return key
 
     cdef int process_line(self) except -1:
@@ -197,7 +176,6 @@ cdef class BTreeLeafParser:
         cdef char *ref_ptr
         cdef char *next_start
         cdef int loop_counter
-        cdef Py_ssize_t str_len
 
         self._start = self._cur_str
         # Find the next newline
@@ -233,25 +211,12 @@ cdef class BTreeLeafParser:
             # Invalid line
             raise AssertionError("Failed to find the value area")
         else:
-            # Because of how conversions were done, we ended up with *lots* of
-            # values that are identical. These are all of the 0-length nodes
-            # that are referred to by the TREE_ROOT (and likely some other
-            # directory nodes.) For example, bzr has 25k references to
-            # something like '12607215 328306 0 0', which ends up consuming 1MB
-            # of memory, just for those strings.
-            str_len = last - temp_ptr - 1
-            if (str_len > 4
-                and strncmp(" 0 0", last - 4, 4) == 0):
-                # This drops peak mem for bzr.dev from 87.4MB => 86.2MB
-                # For Launchpad 236MB => 232MB
-                value = safe_interned_string_from_size(temp_ptr + 1, str_len)
-            else:
-                value = safe_string_from_size(temp_ptr + 1, str_len)
+            # capture the value string
+            value = safe_string_from_size(temp_ptr + 1, last - temp_ptr - 1)
             # shrink the references end point
             last = temp_ptr
-
         if self.ref_list_length:
-            ref_lists = StaticTuple_New(self.ref_list_length)
+            ref_lists = []
             loop_counter = 0
             while loop_counter < self.ref_list_length:
                 ref_list = []
@@ -283,20 +248,18 @@ cdef class BTreeLeafParser:
                     if temp_ptr == NULL:
                         # key runs to the end
                         temp_ptr = ref_ptr
-                                        
                     PyList_Append(ref_list, self.extract_key(temp_ptr))
-                ref_list = StaticTuple_Intern(StaticTuple(*ref_list))
-                Py_INCREF(ref_list)
-                StaticTuple_SET_ITEM(ref_lists, loop_counter - 1, ref_list)
+                PyList_Append(ref_lists, tuple(ref_list))
                 # prepare for the next reference list
                 self._start = next_start
-            node_value = StaticTuple(value, ref_lists)
+            ref_lists = tuple(ref_lists)
+            node_value = (value, ref_lists)
         else:
             if last != self._start:
                 # unexpected reference data present
                 raise AssertionError("unexpected reference data present")
-            node_value = StaticTuple(value, StaticTuple())
-        PyList_Append(self.keys, StaticTuple(key, node_value))
+            node_value = (value, ())
+        PyList_Append(self.keys, (key, node_value))
         return 0
 
     def parse(self):
@@ -331,6 +294,7 @@ def _flatten_node(node, reference_lists):
     cdef Py_ssize_t flat_len
     cdef Py_ssize_t key_len
     cdef Py_ssize_t node_len
+    cdef PyObject * val
     cdef char * value
     cdef Py_ssize_t value_len
     cdef char * out
@@ -339,12 +303,13 @@ def _flatten_node(node, reference_lists):
     cdef int first_ref_list
     cdef int first_reference
     cdef int i
+    cdef PyObject *ref_bit
     cdef Py_ssize_t ref_bit_len
 
-    if not PyTuple_CheckExact(node) and not StaticTuple_CheckExact(node):
-        raise TypeError('We expected a tuple() or StaticTuple() for node not: %s'
+    if not PyTuple_CheckExact(node):
+        raise TypeError('We expected a tuple() for node not: %s'
             % type(node))
-    node_len = len(node)
+    node_len = PyTuple_GET_SIZE(node)
     have_reference_lists = reference_lists
     if have_reference_lists:
         if node_len != 4:
@@ -354,7 +319,7 @@ def _flatten_node(node, reference_lists):
         raise ValueError('Without ref_lists, we need at least 3 entries not: %s'
             % len(node))
     # I don't expect that we can do faster than string.join()
-    string_key = '\0'.join(node[1])# <object>PyTuple_GET_ITEM_ptr_object(node, 1))
+    string_key = '\0'.join(<object>PyTuple_GET_ITEM_ptr_object(node, 1))
 
     # TODO: instead of using string joins, precompute the final string length,
     #       and then malloc a single string and copy everything in.
@@ -371,7 +336,7 @@ def _flatten_node(node, reference_lists):
     refs_len = 0
     if have_reference_lists:
         # Figure out how many bytes it will take to store the references
-        ref_lists = node[3]# <object>PyTuple_GET_ITEM_ptr_object(node, 3)
+        ref_lists = <object>PyTuple_GET_ITEM_ptr_object(node, 3)
         next_len = len(ref_lists) # TODO: use a Py function
         if next_len > 0:
             # If there are no nodes, we don't need to do any work
@@ -385,32 +350,31 @@ def _flatten_node(node, reference_lists):
                     # references
                     refs_len = refs_len + (next_len - 1)
                     for reference in ref_list:
-                        if (not PyTuple_CheckExact(reference)
-                            and not StaticTuple_CheckExact(reference)):
+                        if not PyTuple_CheckExact(reference):
                             raise TypeError(
                                 'We expect references to be tuples not: %s'
                                 % type(reference))
-                        next_len = len(reference)
+                        next_len = PyTuple_GET_SIZE(reference)
                         if next_len > 0:
                             # We will need (len - 1) '\x00' characters to
                             # separate the reference key
                             refs_len = refs_len + (next_len - 1)
                             for i from 0 <= i < next_len:
-                                ref_bit = reference[i]
-                                if not PyString_CheckExact(ref_bit):
+                                ref_bit = PyTuple_GET_ITEM_ptr_object(reference, i)
+                                if not PyString_CheckExact_ptr(ref_bit):
                                     raise TypeError('We expect reference bits'
                                         ' to be strings not: %s'
                                         % type(<object>ref_bit))
-                                refs_len = refs_len + PyString_GET_SIZE(ref_bit)
+                                refs_len = refs_len + PyString_GET_SIZE_ptr(ref_bit)
 
     # So we have the (key NULL refs NULL value LF)
     key_len = PyString_Size(string_key)
-    val = node[2] # PyTuple_GET_ITEM_ptr_object(node, 2)
-    if not PyString_CheckExact(val):
+    val = PyTuple_GET_ITEM_ptr_object(node, 2)
+    if not PyString_CheckExact_ptr(val):
         raise TypeError('Expected a plain str for value not: %s'
-                        % type(val))
-    value = PyString_AS_STRING(val)
-    value_len = PyString_GET_SIZE(val)
+                        % type(<object>val))
+    value = PyString_AS_STRING_ptr(val)
+    value_len = PyString_GET_SIZE_ptr(val)
     flat_len = (key_len + 1 + refs_len + 1 + value_len + 1)
     line = PyString_FromStringAndSize(NULL, flat_len)
     # Get a pointer to the new buffer
@@ -432,14 +396,14 @@ def _flatten_node(node, reference_lists):
                     out[0] = c'\r'
                     out = out + 1
                 first_reference = 0
-                next_len = len(reference)
+                next_len = PyTuple_GET_SIZE(reference)
                 for i from 0 <= i < next_len:
                     if i != 0:
                         out[0] = c'\x00'
                         out = out + 1
-                    ref_bit = reference[i] #PyTuple_GET_ITEM_ptr_object(reference, i)
-                    ref_bit_len = PyString_GET_SIZE(ref_bit)
-                    memcpy(out, PyString_AS_STRING(ref_bit), ref_bit_len)
+                    ref_bit = PyTuple_GET_ITEM_ptr_object(reference, i)
+                    ref_bit_len = PyString_GET_SIZE_ptr(ref_bit)
+                    memcpy(out, PyString_AS_STRING_ptr(ref_bit), ref_bit_len)
                     out = out + ref_bit_len
     out[0] = c'\0'
     out = out  + 1
