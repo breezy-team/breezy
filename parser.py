@@ -504,7 +504,7 @@ class ImportParser(LineBasedParser):
         """
         match = _WHO_AND_WHEN_RE.search(s)
         if match:
-            datestr = match.group(3)
+            datestr = match.group(3).lstrip()
             if self.date_parser is None:
                 # auto-detect the date format
                 if len(datestr.split(' ')) == 2:
@@ -514,7 +514,11 @@ class ImportParser(LineBasedParser):
                 else:
                     format = 'rfc2822'
                 self.date_parser = dates.DATE_PARSERS_BY_NAME[format]
-            when = self.date_parser(datestr, self.lineno)
+            try:
+                when = self.date_parser(datestr, self.lineno)
+            except ValueError:
+                print "failed to parse datestr '%s'" % (datestr,)
+                raise
         else:
             match = _WHO_RE.search(s)
             if accept_just_who and match:
