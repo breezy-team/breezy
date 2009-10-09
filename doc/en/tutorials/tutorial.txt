@@ -11,8 +11,6 @@
 Bazaar Tutorial
 ===============
 
-Current for bzr-0.91, 2007-08
-
 
 Introduction
 ============
@@ -24,8 +22,8 @@ decentralized revision control, then please start at "How DRCS is
 different." Otherwise, get some coffee or tea, get comfortable and get
 ready to catch up. 
 
-The Purposes of Revision Control
-================================
+The purpose of revision control
+===============================
 
 Odds are that you have worked on some sort of textual data -- the sources
 to a program, web sites or the config files that Unix system
@@ -57,8 +55,8 @@ the web template to close the table" and "Added sftp suppport. Fixes #595"
 We keep these logs so that if later there is some sort of problem with
 sftp, we can figure out when the problem probably happened. 
 
-How DRCS is Different
----------------------
+How DRCS is different
+=====================
 
 Many Revision Control Systems (RCS) are stored on servers. If one wants to
 work on the code stored within an RCS, then one needs to connect to the
@@ -282,6 +280,7 @@ such a prefix.
 As a shortcut, ``bzr diff -p1`` produces a form that works with the 
 command ``patch -p1``.
 
+
 Committing changes
 ==================
 
@@ -308,7 +307,7 @@ review the diff to make sure they did what they said they did.  (This file
 can also be useful when you pick up your work after a break.)
 
 Message from an editor
-======================
+----------------------
 
 If you use neither the ``-m`` nor the ``-F`` option then bzr will open an
 editor for you to enter a message.  The editor to run is controlled by
@@ -355,8 +354,12 @@ revert command reverts the whole tree; if file or directory names are
 given then only those ones will be affected. ``bzr revert`` also clears the
 list of pending merges revisions.
 
+
 Ignoring files
 ==============
+
+The .bzrignore file
+-------------------
 
 Many source trees contain some files that do not need to be versioned,
 such as editor backups, object or bytecode files, and built programs.  You
@@ -400,7 +403,7 @@ of the branch see the same patterns::
     % bzr commit -m "Add ignore patterns"
 
 
-Global Ignores
+Global ignores
 --------------
 
 There are some ignored files which are not project specific, but more user
@@ -573,6 +576,7 @@ the following three methods:
 * You can also copy the files around manually, by sending a tarball, or using
   rsync, or other related file transfer methods.  This is usually less safe
   than using ``push``, but may be faster or easier in some situations.
+
 
 Moving changes between trees 
 ============================

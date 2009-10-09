@@ -1,0 +1,39 @@
+Bazaar Development Processes
+============================
+
+.. toctree::
+   :hidden:
+
+   cycle
+   releasing
+   ppa
+   profiling
+   ec2
+   bug-handling
+
+
+* `The Bazaar Development Cycle <cycle.html>`_ |--| The monthly
+  development cycle and how to run it.
+  
+* `Releasing Bazaar <releasing.html>`_ |--| 
+  Checklist to make a release of Bazaar.
+
+* `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
+
+* `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
+  your changes to Bazaar integrated into a release.
+
+* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
+  bzr code and visualize the results.
+
+* `EC2 resources <ec2.html>`_ |--| A team resource for 
+  Windows packaging and testing, and Ubuntu testing.
+
+* `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug 
+  tracker.
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

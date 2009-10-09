@@ -3,7 +3,8 @@ Releasing Bazaar
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the 
-`overall development cycle <cycle.html>`_, but it's the most complex part.
+`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
+but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
 
@@ -81,7 +82,7 @@ Preparing the tree for release
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/latest/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
@@ -200,9 +201,14 @@ go to the release
    signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this.
 
-#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
+#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
+   signature.
 
-#. Announce on the `Bazaar home page <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+   This page is edited via the lp:bzr-website branch. (Changes
+   pushed to this branch are refreshed by a cron job on escudero.)
+
+#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
 
 #. Check that the documentation for this release is available in
    <http://doc.bazaar-vcs.org>.  It should be automatically build when the
