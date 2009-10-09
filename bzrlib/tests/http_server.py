@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    errors,
     tests,
     transport,
     )
@@ -335,7 +336,10 @@ class TestingHTTPServerMixin:
     def serve(self):
         self.serving = True
         self.is_shut_down.clear()
+        # Ensure that we will not stay blocked in listen()
         self.socket.settimeout(1)
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Starting %r' % (self.server_address,)
         while self.serving:
             try:
                 # Really a connection but the python framework is generic and
@@ -352,6 +356,8 @@ class TestingHTTPServerMixin:
                    pass
                else:
                    raise
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Closing  %r' % (self.server_address,)
         # Let's close the listening socket
         self.server_close()
         self.is_shut_down.set()
@@ -619,9 +625,15 @@ class HttpServer(transport.Server):
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._http_running = False
         self._httpd.shutdown()
-        self._http_thread.join()
+        self._http_thread.join(5.0)
+        if self._http_thread.is_alive():
+            # The timeout expired without joining the thread, the server thread
+            # is therefore stucked and that's a failure as far as the test is
+            # concerned, we used to hang here, but that wasn't very productive.
+            raise AssertionError('http server at %r hanged'
+                                 % (self._httpd.server_address,))
+
         if 'threads' in tests.selftest_debug_flags:
             print 'Thread  joined: %s' % (self._http_thread.ident,)
         del self._http_thread
