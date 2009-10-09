@@ -2,8 +2,11 @@
 Bazaar Release Notes
 ####################
 
-2.0.1 (not released)
-####################
+.. contents:: List of Releases
+   :depth: 1
+
+bzr 2.0.1 (not released)
+########################
 
 Compatibility Breaks
 ********************
@@ -54,6 +57,11 @@ Bug Fixes
 
 * Retrieving file text or mtime from a _PreviewTree has good performance when
   there are many changes.  (Aaron Bentley)
+
+* The CHK index pages now use an unlimited cache size. With a limited
+  cache and a large project, the random access of chk pages could cause us
+  to download the entire cix file many times.
+  (John Arbash Meinel, #402623)
 
 * When a file kind becomes unversionable after being added, a sensible
   error will be shown instead of a traceback. (Robert Collins, #438569)
