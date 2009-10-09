@@ -40,11 +40,36 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     (like a dict), but we also don't implement the complete list of 'set'
     operations (difference, intersection, etc).
     """
+    # Data structure definition:
+    #   This is a basic hash table using open addressing.
+    #       http://en.wikipedia.org/wiki/Open_addressing
+    #   Basically that means we keep an array of pointers to Python objects
+    #   (called a table). Each location in the array is called a 'slot'.
+    #
+    #   An empty slot holds a NULL pointer, a slot where there was an item
+    #   which was then deleted will hold a pointer to _dummy, and a filled slot
+    #   points at the actual object which fills that slot.
+    #
+    #   The table is always a power of two, and the default location where an
+    #   object is inserted is at hash(object) & (table_size - 1)
+    #
+    #   If there is a collision, then we search for another location. The
+    #   specific algorithm is in _lookup. We search until we:
+    #       find the object
+    #       find an equivalent object (by tp_richcompare(obj1, obj2, Py_EQ))
+    #       find a NULL slot
+    #
+    #   When an object is deleted, we set its slot to _dummy. this way we don't
+    #   have to track whether there was a collision, and find the corresponding
+    #   keys. (The collision resolution algorithm makes that nearly impossible
+    #   anyway, because it depends on the upper bits of the hash.)
+    #   The main effect of this, is that if we find _dummy, then we can insert
+    #   an object there, but we have to keep searching until we find NULL to
+    #   know that the object is not present elsewhere.
 
     cdef Py_ssize_t _used   # active
     cdef Py_ssize_t _fill   # active + dummy
-    cdef Py_ssize_t _mask   # Table contains (mask+1) slots, a power
-                                     # of 2
+    cdef Py_ssize_t _mask   # Table contains (mask+1) slots, a power of 2
     cdef PyObject **_table  # Pyrex/Cython doesn't support arrays to 'object'
                             # so we manage it manually
 

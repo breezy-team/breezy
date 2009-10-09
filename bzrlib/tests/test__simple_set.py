@@ -140,7 +140,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertIn(k3, obj)
         self.assertNotIn(k4, obj)
 
-        del obj[k1]
+        obj.discard(k1)
         self.assertEqual((643, '<dummy>'), obj._test_lookup(k1))
         self.assertEqual((787, k2), obj._test_lookup(k2))
         self.assertEqual((660, k3), obj._test_lookup(k3))
@@ -179,7 +179,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertRefcount(2, k1)
         self.assertRefcount(1, k2)
         # Deleting an entry should remove the fill, but not the used
-        del obj[k1]
+        obj.discard(k1)
         self.assertFillState(0, 1, 0x3ff, obj)
         self.assertRefcount(1, k1)
         k3 = tuple(['bar'])
@@ -210,23 +210,6 @@ class TestSimpleSet(tests.TestCase):
         self.assertEqual(1, obj.discard(k3))
         self.assertRefcount(1, k3)
 
-    def test__delitem__(self):
-        obj = self.module.SimpleSet()
-        k1 = tuple(['foo'])
-        k2 = tuple(['foo'])
-        k3 = tuple(['bar'])
-        self.assertRefcount(1, k1)
-        self.assertRefcount(1, k2)
-        self.assertRefcount(1, k3)
-        obj.add(k1)
-        self.assertRefcount(2, k1)
-        self.assertRaises(KeyError, obj.__delitem__, k3)
-        self.assertRefcount(1, k3)
-        obj.add(k3)
-        self.assertRefcount(2, k3)
-        del obj[k3]
-        self.assertRefcount(1, k3)
-
     def test__resize(self):
         obj = self.module.SimpleSet()
         k1 = ('foo',)
@@ -235,13 +218,13 @@ class TestSimpleSet(tests.TestCase):
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
-        del obj[k2]
+        obj.discard(k2)
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(1024, obj._py_resize(500))
         # Doesn't change the size, but does change the content
         self.assertFillState(2, 2, 0x3ff, obj)
         obj.add(k2)
-        del obj[k3]
+        obj.discard(k3)
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(4096, obj._py_resize(4095))
         self.assertFillState(2, 2, 0xfff, obj)
@@ -250,7 +233,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertNotIn(k3, obj)
         obj.add(k2)
         self.assertIn(k2, obj)
-        del obj[k2]
+        obj.discard(k2)
         self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
         self.assertFillState(1, 2, 0xfff, obj)
         self.assertEqual(2048, obj._py_resize(1024))
@@ -295,5 +278,5 @@ class TestSimpleSet(tests.TestCase):
         # Set changed size
         self.assertRaises(RuntimeError, iterator.next)
         # And even removing an item still causes it to fail
-        del obj[k2]
+        obj.discard(k2)
         self.assertRaises(RuntimeError, iterator.next)
