@@ -57,7 +57,6 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
 
 # TODO: might want to export the C api here, though it is all available from
 #       the class object...
-cdef api object SimpleSet_Add(object self, object key)
 cdef api SimpleSet SimpleSet_New()
 cdef api object SimpleSet_Add(object self, object key)
 cdef api int SimpleSet_Contains(object self, object key) except -1
