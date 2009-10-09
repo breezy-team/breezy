@@ -30,6 +30,24 @@ except ImportError:
     _simple_set_pyx = None
 
 
+class _Hashable(object):
+    """A simple object which has a fixed hash value.
+
+    We could have used an 'int', but it turns out that Int objects don't
+    implement tp_richcompare...
+    """
+
+    def __init__(self, the_hash):
+        self.hash = the_hash
+
+    def __hash__(self):
+        return self.hash
+
+    def __eq__(self, other):
+        if not isinstance(other, _Hashable):
+            return NotImplemented
+        return other.hash == self.hash
+
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 
@@ -81,31 +99,31 @@ class TestSimpleSet(tests.TestCase):
         self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
-        # The tuple hash function is rather good at entropy. For all integers
-        # 0=>1023, hash((i,)) & 1023 maps to a unique output, and hash((i,j))
-        # maps to all 1024 fields evenly.
-        # However, hash((c,d))& 1023 for characters has an uneven distribution
-        # of collisions, for example:
-        #  ('a', 'a'), ('f', '4'), ('p', 'r'), ('q', '1'), ('F', 'T'),
-        #  ('Q', 'Q'), ('V', 'd'), ('7', 'C')
-        # all collide @ 643
+        # These are carefully chosen integers to force hash collisions in the
+        # algorithm, based on the initial set size of 1024
         obj = self.module.SimpleSet()
-        offset, val = obj._test_lookup(('a', 'a'))
+        offset, val = obj._test_lookup(_Hashable(643))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(('f', '4'))
+        offset, val = obj._test_lookup(_Hashable(643 + 1024))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(('p', 'r'))
+        offset, val = obj._test_lookup(_Hashable(643 + 1024*50))
         self.assertEqual(643, offset)
         self.assertEqual('<null>', val)
 
     def test_get_set_del_with_collisions(self):
         obj = self.module.SimpleSet()
-        k1 = ('a', 'a')
-        k2 = ('f', '4') # collides
-        k3 = ('p', 'r')
-        k4 = ('q', '1')
+
+        h1 = 643
+        h2 = 643 + 1024
+        h3 = 643 + 1024*50
+        h4 = 643 + 1024*25
+
+        k1 = _Hashable(h1)
+        k2 = _Hashable(h2)
+        k3 = _Hashable(h3)
+        k4 = _Hashable(h4)
         self.assertEqual((643, '<null>'), obj._test_lookup(k1))
         self.assertEqual((643, '<null>'), obj._test_lookup(k2))
         self.assertEqual((643, '<null>'), obj._test_lookup(k3))
@@ -124,15 +142,15 @@ class TestSimpleSet(tests.TestCase):
         self.assertIs(k2, obj[k2])
         self.assertEqual((643, k1), obj._test_lookup(k1))
         self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((660, '<null>'), obj._test_lookup(k3))
+        self.assertEqual((436, '<null>'), obj._test_lookup(k3))
         # Even though k4 collides for the first couple of iterations, the hash
         # perturbation uses the full width hash (not just the masked value), so
         # it now diverges
-        self.assertEqual((180, '<null>'), obj._test_lookup(k4))
-        self.assertEqual((643, k1), obj._test_lookup(('a', 'a')))
-        self.assertEqual((787, k2), obj._test_lookup(('f', '4')))
-        self.assertEqual((660, '<null>'), obj._test_lookup(('p', 'r')))
-        self.assertEqual((180, '<null>'), obj._test_lookup(('q', '1')))
+        self.assertEqual((660, '<null>'), obj._test_lookup(k4))
+        self.assertEqual((643, k1), obj._test_lookup(_Hashable(h1)))
+        self.assertEqual((787, k2), obj._test_lookup(_Hashable(h2)))
+        self.assertEqual((436, '<null>'), obj._test_lookup(_Hashable(h3)))
+        self.assertEqual((660, '<null>'), obj._test_lookup(_Hashable(h4)))
         obj.add(k3)
         self.assertIs(k3, obj[k3])
         self.assertIn(k1, obj)
@@ -143,7 +161,7 @@ class TestSimpleSet(tests.TestCase):
         obj.discard(k1)
         self.assertEqual((643, '<dummy>'), obj._test_lookup(k1))
         self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((660, k3), obj._test_lookup(k3))
+        self.assertEqual((436, k3), obj._test_lookup(k3))
         self.assertEqual((643, '<dummy>'), obj._test_lookup(k4))
         self.assertNotIn(k1, obj)
         self.assertIn(k2, obj)
