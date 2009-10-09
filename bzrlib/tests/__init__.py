@@ -713,11 +713,6 @@ class UnavailableFeature(Exception):
     The feature should be used to construct the exception.
     """
 
-
-class CommandFailed(Exception):
-    pass
-
-
 class StringIOWrapper(object):
     """A wrapper around cStringIO which just adds an encoding attribute.
 
