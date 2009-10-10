@@ -25,6 +25,7 @@ import bzrlib
 from bzrlib import (
     branch as _mod_branch,
     diff as _mod_diff,
+    errors,
     merge_directive,
     osutils,
     revision as _mod_revision,
@@ -148,8 +149,12 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
             None, public_branch, message)
 
 
-def send_git(branch, revision_id, submit_branch, public_branch,
-              no_patch, no_bundle, message, base_revision_id):
+def send_git(branch, revision_id, submit_branch, public_branch, no_patch, 
+             no_bundle, message, base_revision_id):
+    if no_patch:
+        raise errors.BzrCommandError("no patch not supported for git-am style patches")
+    if no_bundle:
+        raise errors.BzrCommandError("no bundle not supported for git-am style patches")
     return GitMergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
