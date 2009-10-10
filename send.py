@@ -41,13 +41,16 @@ from bzrlib.plugins.git.object_store import (
     )
 
 from cStringIO import StringIO
+from dulwich import (
+    __version__ as dulwich_version,
+    )
 from dulwich.objects import (
     Blob,
     )
 
 
-version_tail = "bzr %s, bzr-git %d.%d.%d" % (
-    (bzrlib.__version__, ) + bzr_git_version_info[:3])
+version_tail = "bzr %s, bzr-git %d.%d.%d, dulwich %d.%d.%d" % (
+    (bzrlib.__version__, ) + bzr_git_version_info[:3] + dulwich_version[:3])
 
 
 class GitDiffTree(_mod_diff.DiffTree):
@@ -78,12 +81,12 @@ class GitDiffTree(_mod_diff.DiffTree):
             newpath_encoded = get_encoded_path(paths[1])
             old_present = (kind[0] is not None and versioned[0])
             if old_present is not None:
-                old_contents = self.old_tree.get_file(file_id).readlines()
+                old_contents = Blob.from_string(self.old_tree.get_file(file_id).read())
             else:
                 old_contents = None
             new_present = (kind[1] is not None and versioned[1])
             if new_present is not None:
-                new_contents = self.new_tree.get_file(file_id).readlines()
+                new_contents = Blob.from_string(self.new_tree.get_file(file_id).read())
             else:
                 new_contents = None
             renamed = (parent[0], name[0]) != (parent[1], name[1])
@@ -92,8 +95,8 @@ class GitDiffTree(_mod_diff.DiffTree):
             new_mode = self._get_file_mode(self.new_tree, newpath_encoded,
                                            kind[1], executable[1])
             write_blob_diff(self.to_file, 
-                (oldpath_encoded, old_mode, Blob.from_string(old_contents)), 
-                (newpath_encoded, new_mode, Blob.from_string(new_contents)))
+                (oldpath_encoded, old_mode, old_contents), 
+                (newpath_encoded, new_mode, new_contents))
             has_changes = (changed_content or renamed)
         return has_changes
 
