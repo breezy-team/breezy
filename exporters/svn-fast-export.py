@@ -11,6 +11,7 @@
 trunk_path = '/trunk/'
 branches_path = '/branches/'
 tags_path = '/tags/'
+address = 'localhost'
 
 first_rev = 1
 final_rev = 0
@@ -123,7 +124,7 @@ def export_revision(rev, repo, fs, pool):
 
     # Do the recursive crawl.
     if props.has_key('svn:author'):
-        author = "%s <%s@users.sourceforge.net>" % (props['svn:author'], props['svn:author'])
+        author = "%s <%s@%s>" % (props['svn:author'], props['svn:author'], address)
     else:
         author = 'nobody <nobody@users.sourceforge.net>'
 
@@ -185,6 +186,8 @@ if __name__ == '__main__':
                       dest='branches_path', metavar='BRANCHES_PATH')
     parser.add_option('-T', '--tags-path', help='Path in repo to /tags',
                       dest='tags_path', metavar='TAGS_PATH')
+    parser.add_option('-a', '--address', help='Domain to put on users for their mail address', 
+                      dest='address', metavar='hostname', type='string')
     (options, args) = parser.parse_args()
 
     if options.trunk_path != None:
@@ -197,6 +200,8 @@ if __name__ == '__main__':
         final_rev = options.final_rev
     if options.first_rev != None:
         first_rev = options.first_rev
+    if options.address != None:
+        address = options.address
 
     MATCHER = Matcher.getMatcher(trunk_path)
     sys.stderr.write("%s\n" % MATCHER)
