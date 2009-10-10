@@ -461,8 +461,7 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            # XXX: What about pending merges ? -- vila 20090629
-            if working.has_changes(working.basis_tree()):
+            if (working.has_changes()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
@@ -1109,8 +1108,7 @@ class cmd_push(Command):
         else:
             revision_id = None
         if strict and tree is not None and revision_id is None:
-            if (tree.has_changes(tree.basis_tree())
-                or len(tree.get_parent_ids()) > 1):
+            if (tree.has_changes()):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -1673,7 +1671,7 @@ class cmd_init(Command):
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
                 converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
-                title="Branch Format",
+                title="Branch format",
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
@@ -3340,6 +3338,9 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory,
     typically inside $TMPDIR or /tmp.
 
+    If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
+    into a pdb postmortem session.
+
     :Examples:
         Run only tests relating to 'ignore'::
 
@@ -3653,13 +3654,14 @@ class cmd_merge(Command):
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
 
-        # die as quickly as possible if there are uncommitted changes
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
+
+        # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree):
+            if tree.has_changes():
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -3716,7 +3718,10 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(False)
+            if merger.this_basis is None:
+                raise errors.BzrCommandError(
+                    "This branch has no commits."
+                    " (perhaps you would prefer 'bzr pull')")
             if preview:
                 return self._do_preview(merger, cleanups)
             elif interactive:
@@ -4965,9 +4970,10 @@ class cmd_send(Command):
 
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mutt", and
-    "thunderbird"; generic options are "default", "editor", "emacsclient",
-    "mapi", and "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
+    Mail.app), "mutt", and "thunderbird"; generic options are "default",
+    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
+    supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration

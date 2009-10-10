@@ -239,31 +239,38 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertTrue(large_pack_name in pack_names)
 
     def test_commit_write_group_returns_new_pack_names(self):
+        # This test doesn't need real disk.
+        self.vfs_transport_factory = tests.MemoryServer
         format = self.get_format()
-        tree = self.make_branch_and_tree('foo', format=format)
-        tree.commit('first post')
-        repo = tree.branch.repository
+        repo = self.make_repository('foo', format=format)
         repo.lock_write()
         try:
-            repo.start_write_group()
-            try:
-                inv = inventory.Inventory(revision_id="A")
-                inv.root.revision = "A"
-                repo.texts.add_lines((inv.root.file_id, "A"), [], [])
-                rev = _mod_revision.Revision(timestamp=0, timezone=None,
-                    committer="Foo Bar <foo@example.com>", message="Message",
-                    revision_id="A")
-                rev.parent_ids = ()
-                repo.add_revision("A", rev, inv=inv)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                old_names = repo._pack_collection._names.keys()
-                result = repo.commit_write_group()
-                cur_names = repo._pack_collection._names.keys()
-                new_names = list(set(cur_names) - set(old_names))
-                self.assertEqual(new_names, result)
+            # All current pack repository styles autopack at 10 revisions; and
+            # autopack as well as regular commit write group needs to return
+            # the new pack name. Looping is a little ugly, but we don't have a
+            # clean way to test both the autopack logic and the normal code
+            # path without doing this loop.
+            for pos in range(10):
+                revid = str(pos)
+                repo.start_write_group()
+                try:
+                    inv = inventory.Inventory(revision_id=revid)
+                    inv.root.revision = revid
+                    repo.texts.add_lines((inv.root.file_id, revid), [], [])
+                    rev = _mod_revision.Revision(timestamp=0, timezone=None,
+                        committer="Foo Bar <foo@example.com>", message="Message",
+                        revision_id=revid)
+                    rev.parent_ids = ()
+                    repo.add_revision(revid, rev, inv=inv)
+                except:
+                    repo.abort_write_group()
+                    raise
+                else:
+                    old_names = repo._pack_collection._names.keys()
+                    result = repo.commit_write_group()
+                    cur_names = repo._pack_collection._names.keys()
+                    new_names = list(set(cur_names) - set(old_names))
+                    self.assertEqual(new_names, result)
         finally:
             repo.unlock()
 
@@ -964,7 +971,7 @@ class TestKeyDependencies(TestCaseWithTransport):
             ('add', ('', 'root-id', 'directory', None))])
         builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
         builder.finish_series()
-        repo = self.make_repository('target')
+        repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -1002,8 +1009,19 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
-                                                             'unordered', True)
+            # Copy all texts, inventories, and chks so that nothing is missing
+            # for revision B-id.
+            for vf_name in ['texts', 'chk_bytes', 'inventories']:
+                source_vf = getattr(source_repo, vf_name, None)
+                if source_vf is None:
+                    continue
+                target_vf = getattr(target_repo, vf_name)
+                stream = source_vf.get_record_stream(
+                    source_vf.keys(), 'unordered', True)
+                target_vf.insert_record_stream(stream)
+            # Copy just revision B-id
+            stream = source_repo.revisions.get_record_stream(
+                [('B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
             self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))

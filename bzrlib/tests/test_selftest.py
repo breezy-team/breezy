@@ -38,6 +38,7 @@ from bzrlib import (
     repository,
     symbol_versioning,
     tests,
+    transport,
     workingtree,
     )
 from bzrlib.repofmt import (
@@ -576,19 +577,6 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                          self.get_transport().get_bytes(
                             'dir/.bzr/repository/format'))
 
-    def test_safety_net(self):
-        """No test should modify the safety .bzr directory.
-
-        We just test that the _check_safety_net private method raises
-        AssertionError, it's easier than building a test suite with the same
-        test.
-        """
-        # Oops, a commit in the current directory (i.e. without local .bzr
-        # directory) will crawl up the hierarchy to find a .bzr directory.
-        self.run_bzr(['commit', '-mfoo', '--unchanged'])
-        # But we have a safety net in place.
-        self.assertRaises(AssertionError, self._check_safety_net)
-
     def test_dangling_locks_cause_failures(self):
         class TestDanglingLock(tests.TestCaseWithMemoryTransport):
             def test_function(self):
@@ -739,7 +727,19 @@ class TestTestResult(tests.TestCase):
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
 
+    def _patch_get_bzr_source_tree(self):
+        # Reading from the actual source tree breaks isolation, but we don't
+        # want to assume that thats *all* that would happen.
+        def _get_bzr_source_tree():
+            return None
+        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
+        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
+        def restore():
+            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
+        self.addCleanup(restore)
+
     def test_assigned_benchmark_file_stores_date(self):
+        self._patch_get_bzr_source_tree()
         output = StringIO()
         result = bzrlib.tests.TextTestResult(self._log_file,
                                         descriptions=0,
@@ -753,6 +753,7 @@ class TestTestResult(tests.TestCase):
         self.assertContainsRe(output_string, "--date [0-9.]+")
 
     def test_benchhistory_records_test_times(self):
+        self._patch_get_bzr_source_tree()
         result_stream = StringIO()
         result = bzrlib.tests.TextTestResult(
             self._log_file,
@@ -1165,11 +1166,24 @@ class TestRunner(tests.TestCase):
             ],
             lines[-3:])
 
+    def _patch_get_bzr_source_tree(self):
+        # Reading from the actual source tree breaks isolation, but we don't
+        # want to assume that thats *all* that would happen.
+        self._get_source_tree_calls = []
+        def _get_bzr_source_tree():
+            self._get_source_tree_calls.append("called")
+            return None
+        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
+        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
+        def restore():
+            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
+        self.addCleanup(restore)
+
     def test_bench_history(self):
-        # tests that the running the benchmark produces a history file
-        # containing a timestamp and the revision id of the bzrlib source which
-        # was tested.
-        workingtree = _get_bzr_source_tree()
+        # tests that the running the benchmark passes bench_history into
+        # the test result object. We can tell that happens if
+        # _get_bzr_source_tree is called.
+        self._patch_get_bzr_source_tree()
         test = TestRunner('dummy_test')
         output = StringIO()
         runner = tests.TextTestRunner(stream=self._log_file,
@@ -1177,9 +1191,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, test)
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
-        if workingtree is not None:
-            revision_id = workingtree.get_parent_ids()[0]
-            self.assertEndsWith(output_string.rstrip(), revision_id)
+        self.assertLength(1, self._get_source_tree_calls)
 
     def assertLogDeleted(self, test):
         log = test._get_log()
@@ -1493,6 +1505,7 @@ class TestTestCase(tests.TestCase):
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
+        self.addCleanup(osutils.delete_any, outer_test._log_file_name)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
     def method_that_times_a_bit_twice(self):
@@ -1546,6 +1559,23 @@ class TestTestCase(tests.TestCase):
     def test_knownFailure(self):
         """Self.knownFailure() should raise a KnownFailure exception."""
         self.assertRaises(tests.KnownFailure, self.knownFailure, "A Failure")
+
+    def test_open_bzrdir_safe_roots(self):
+        # even a memory transport should fail to open when its url isn't 
+        # permitted.
+        # Manually set one up (TestCase doesn't and shouldn't provide magic
+        # machinery)
+        transport_server = MemoryServer()
+        transport_server.setUp()
+        self.addCleanup(transport_server.tearDown)
+        t = transport.get_transport(transport_server.get_url())
+        bzrdir.BzrDir.create(t.base)
+        self.assertRaises(errors.BzrError,
+            bzrdir.BzrDir.open_from_transport, t)
+        # But if we declare this as safe, we can open the bzrdir.
+        self.permit_url(t.base)
+        self._bzr_selftest_roots.append(t.base)
+        bzrdir.BzrDir.open_from_transport(t)
 
     def test_requireFeature_available(self):
         """self.requireFeature(available) is a no-op."""
@@ -1618,6 +1648,14 @@ class TestTestCase(tests.TestCase):
             ('stopTest', test),
             ],
             result.calls)
+
+    def test_start_server_registers_url(self):
+        transport_server = MemoryServer()
+        # A little strict, but unlikely to be changed soon.
+        self.assertEqual([], self._bzr_selftest_roots)
+        self.start_server(transport_server)
+        self.assertSubset([transport_server.get_url()],
+            self._bzr_selftest_roots)
 
     def test_assert_list_raises_on_generator(self):
         def generator_which_will_raise():
@@ -1721,6 +1759,21 @@ class TestExtraAssertions(tests.TestCase):
     def test_assertEndsWith(self):
         self.assertEndsWith('foo', 'oo')
         self.assertRaises(AssertionError, self.assertEndsWith, 'o', 'oo')
+
+    def test_assertEqualDiff(self):
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '', '\n')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '+' applies to the second string
+                          'first string is missing a final newline.\n+ \n')
+        e = self.assertRaises(AssertionError,
+                              self.assertEqualDiff, '\n', '')
+        self.assertEquals(str(e),
+                          # Don't blink ! The '-' applies to the second string
+                          'second string is missing a final newline.\n- \n')
+
+
+class TestDeprecations(tests.TestCase):
 
     def test_applyDeprecated_not_deprecated(self):
         sample_object = ApplyDeprecatedHelper()
@@ -1990,30 +2043,32 @@ class TestRunBzr(tests.TestCase):
 
         Attempts to run bzr from inside this class don't actually run it.
 
-        We test how run_bzr actually invokes bzr in another location.
-        Here we only need to test that it is run_bzr passes the right
-        parameters to run_bzr.
+        We test how run_bzr actually invokes bzr in another location.  Here we
+        only need to test that it passes the right parameters to run_bzr.
         """
         self.argv = list(argv)
         self.retcode = retcode
         self.encoding = encoding
         self.stdin = stdin
         self.working_dir = working_dir
-        return self.out, self.err
+        return self.retcode, self.out, self.err
 
     def test_run_bzr_error(self):
         self.out = "It sure does!\n"
         out, err = self.run_bzr_error(['^$'], ['rocks'], retcode=34)
         self.assertEqual(['rocks'], self.argv)
         self.assertEqual(34, self.retcode)
-        self.assertEqual(out, 'It sure does!\n')
+        self.assertEqual('It sure does!\n', out)
+        self.assertEquals(out, self.out)
+        self.assertEqual('', err)
+        self.assertEquals(err, self.err)
 
     def test_run_bzr_error_regexes(self):
         self.out = ''
         self.err = "bzr: ERROR: foobarbaz is not versioned"
         out, err = self.run_bzr_error(
-                ["bzr: ERROR: foobarbaz is not versioned"],
-                ['file-id', 'foobarbaz'])
+            ["bzr: ERROR: foobarbaz is not versioned"],
+            ['file-id', 'foobarbaz'])
 
     def test_encoding(self):
         """Test that run_bzr passes encoding to _run_bzr_core"""
@@ -2353,6 +2408,7 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         """finish_bzr_subprocess raises self.failureException if the retcode is
         not the expected one.
         """
+        self.disable_missing_extensions_warning()
         process = self.start_bzr_subprocess(['wait-until-signalled'],
                                             skip_if_plan_to_signal=True)
         self.assertEqual('running\n', process.stdout.readline())
@@ -2616,7 +2672,12 @@ class TestBlackboxSupport(tests.TestCase):
         # Running bzr in blackbox mode, normal/expected/user errors should be
         # caught in the regular way and turned into an error message plus exit
         # code.
-        out, err = self.run_bzr(["log", "/nonexistantpath"], retcode=3)
+        transport_server = MemoryServer()
+        transport_server.setUp()
+        self.addCleanup(transport_server.tearDown)
+        url = transport_server.get_url()
+        self.permit_url(url)
+        out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
         self.assertEqual(out, '')
         self.assertContainsRe(err,
             'bzr: ERROR: Not a branch: ".*nonexistantpath/".\n')
@@ -2797,7 +2858,7 @@ class TestTestSuite(tests.TestCase):
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
-             '.test_abspath(LocalURLServer)'),
+             '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
             # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',

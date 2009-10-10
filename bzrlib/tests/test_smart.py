@@ -36,6 +36,7 @@ from bzrlib import (
     smart,
     tests,
     urlutils,
+    versionedfile,
     )
 from bzrlib.branch import Branch, BranchReferenceFormat
 import bzrlib.smart.branch
@@ -51,7 +52,7 @@ from bzrlib.smart.request import (
 from bzrlib.tests import (
     split_suite_by_re,
     )
-from bzrlib.transport import chroot, get_transport
+from bzrlib.transport import chroot, get_transport, local, memory
 
 
 def load_tests(standard_tests, module, loader):
@@ -80,6 +81,7 @@ def load_tests(standard_tests, module, loader):
 class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 
     def setUp(self):
+        self.vfs_transport_factory = memory.MemoryServer
         tests.TestCaseWithTransport.setUp(self)
         self._chroot_server = None
 
@@ -94,7 +96,7 @@ class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
         return t
 
 
-class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
+class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestCaseWithSmartMedium, self).setUp()
@@ -110,6 +112,25 @@ class TestCaseWithSmartMedium(tests.TestCaseWithTransport):
     def get_smart_medium(self):
         """Get a smart medium to use in tests."""
         return self.get_transport().get_smart_medium()
+
+
+class TestByteStreamToStream(tests.TestCase):
+
+    def test_repeated_substreams_same_kind_are_one_stream(self):
+        # Make a stream - an iterable of bytestrings.
+        stream = [('text', [versionedfile.FulltextContentFactory(('k1',), None,
+            None, 'foo')]),('text', [
+            versionedfile.FulltextContentFactory(('k2',), None, None, 'bar')])]
+        fmt = bzrdir.format_registry.get('pack-0.92')().repository_format
+        bytes = smart.repository._stream_to_byte_stream(stream, fmt)
+        streams = []
+        # Iterate the resulting iterable; checking that we get only one stream
+        # out.
+        fmt, stream = smart.repository._byte_stream_to_stream(bytes)
+        for kind, substream in stream:
+            streams.append((kind, list(substream)))
+        self.assertLength(1, streams)
+        self.assertLength(2, streams[0][1])
 
 
 class TestSmartServerResponse(tests.TestCase):
@@ -393,6 +414,73 @@ class TestSmartServerRequestBzrDirInitializeEx(tests.TestCaseWithMemoryTransport
             'False', 'False', 'False', '', '', '', '', 'False')
 
 
+class TestSmartServerRequestOpenBzrDir(tests.TestCaseWithMemoryTransport):
+    
+    def test_no_directory(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('does-not-exist'))
+
+    def test_empty_directory(self):
+        backing = self.get_transport()
+        backing.mkdir('empty')
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('empty'))
+
+    def test_outside_root_client_path(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir(backing,
+            root_client_path='root')
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('not-root'))
+
+    
+class TestSmartServerRequestOpenBzrDir_2_1(tests.TestCaseWithMemoryTransport):
+    
+    def test_no_directory(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('does-not-exist'))
+
+    def test_empty_directory(self):
+        backing = self.get_transport()
+        backing.mkdir('empty')
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.assertEqual(SmartServerResponse(('no', )),
+            request.execute('empty'))
+
+    def test_present_without_workingtree(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        self.make_bzrdir('.')
+        self.assertEqual(SmartServerResponse(('yes', 'no')),
+            request.execute(''))
+
+    def test_outside_root_client_path(self):
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing,
+            root_client_path='root')
+        self.assertEqual(SmartServerResponse(('no',)),
+            request.execute('not-root'))
+
+    
+class TestSmartServerRequestOpenBzrDir_2_1_disk(TestCaseWithChrootedTransport):
+
+    def test_present_with_workingtree(self):
+        self.vfs_transport_factory = local.LocalURLServer
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBzrDir_2_1(backing)
+        bd = self.make_bzrdir('.')
+        bd.create_repository()
+        bd.create_branch()
+        bd.create_workingtree()
+        self.assertEqual(SmartServerResponse(('yes', 'yes')),
+            request.execute(''))
+
+
 class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_no_branch(self):
@@ -413,6 +501,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
+        self.vfs_transport_factory = local.LocalURLServer
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
         branch = self.make_branch('branch')
@@ -443,6 +532,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
+        self.vfs_transport_factory = local.LocalURLServer
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
         branch = self.make_branch('branch')

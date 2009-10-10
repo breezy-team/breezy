@@ -167,7 +167,13 @@ from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
-    from Pyrex.Distutils import build_ext
+    try:
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print "No Pyrex, trying Cython..."
+        from Cython.Distutils import build_ext
+        from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -180,7 +186,6 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    from Pyrex.Compiler.Version import version as pyrex_version
 
 
 class build_ext_if_possible(build_ext):
@@ -411,6 +416,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
+    includes.append('win32event')  # for qsubprocess stuff
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
@@ -544,7 +550,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2007",
+                                     copyright = "(c) Canonical Ltd, 2005-2009",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )

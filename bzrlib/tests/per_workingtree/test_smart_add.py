@@ -51,6 +51,18 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEqual([('', 'V', 'directory'), ('a', 'V', 'file')],
                          files)
 
+    def assertFilenameSkipped(self, filename):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/'+filename])
+        tree.smart_add(['tree'])
+        self.assertEqual(None, tree.path2id(filename))
+
+    def test_path_containing_newline_skips(self):
+        self.assertFilenameSkipped('a\nb')
+
+    def test_path_containing_carriagereturn_skips(self):
+        self.assertFilenameSkipped('a\rb')
+
     def test_save_false(self):
         """Dry-run add doesn't permanently affect the tree."""
         wt = self.make_branch_and_tree('.')

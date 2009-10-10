@@ -33,6 +33,7 @@ else:
 
 from bzrlib.transport import (
     ConnectedTransport,
+    get_transport,
     register_transport,
     register_urlparse_netloc_protocol,
     unregister_transport,
@@ -106,6 +107,16 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         self.addCleanup(unregister)
         super(TestCaseWithConnectionHookedTransport, self).setUp()
         self.reset_connections()
+        # Add the 'hooked' url to the permitted url list.
+        # XXX: See TestCase.start_server. This whole module shouldn't need to
+        # exist - a bug has been filed on that. once its cleanedup/removed, the
+        # standard test support code will work and permit the server url
+        # correctly.
+        url = self.get_url()
+        t = get_transport(url)
+        if t.base.endswith('work/'):
+            t = t.clone('../..')
+        self.permit_url(t.base)
 
     def get_url(self, relpath=None):
         super_self = super(TestCaseWithConnectionHookedTransport, self)

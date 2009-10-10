@@ -84,7 +84,7 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
         line = self.fs.fs2ftp(path)
         if self.fs.isfile(self.fs.realpath(path)):
             why = "Not a directory: %s" % line
-            self.log('FAIL SIZE "%s". %s.' % (line, why))
+            self.log('FAIL NLST "%s". %s.' % (line, why))
             self.respond("550 %s."  %why)
         else:
             ftpserver.FTPHandler.ftp_NLST(self, path)
@@ -180,8 +180,7 @@ class FTPTestServer(transport.Server):
         self._port = self._ftp_server.socket.getsockname()[1]
         self._ftpd_starting = threading.Lock()
         self._ftpd_starting.acquire() # So it can be released by the server
-        self._ftpd_thread = threading.Thread(
-                target=self._run_server,)
+        self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
@@ -202,7 +201,11 @@ class FTPTestServer(transport.Server):
         self._ftpd_running = True
         self._ftpd_starting.release()
         while self._ftpd_running:
-            self._ftp_server.serve_forever(timeout=0.1, count=1)
+            try:
+                self._ftp_server.serve_forever(timeout=0.1, count=1)
+            except select.error, e:
+                if e.args[0] != errno.EBADF:
+                    raise
         self._ftp_server.close_all(ignore_all=True)
 
     def add_user(self, user, password):
