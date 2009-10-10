@@ -18,3 +18,26 @@
 """Tests specific to foreign branch implementations.
 
 """
+
+from bzrlib import (
+    foreign,
+    tests,
+    )
+
+
+def vcs_scenarios():
+    for name, vcs in foreign.foreign_vcs_registry.iteritems():
+        yield (name, {
+            "branch_factory": None, # FIXME
+            "branch_format": None   # FIXME
+            })
+
+
+def load_tests(standard_tests, module, loader):
+    per_vcs_mod_names = [
+        'branch',
+        ]
+    sub_tests = loader.loadTestsFromModuleNames(
+        ['bzrlib.tests.per_foreign_vcs.test_' + name
+         for name in per_vcs_mod_names])
+    return tests.multiply_tests(sub_tests, vcs_scenarios(), standard_tests)

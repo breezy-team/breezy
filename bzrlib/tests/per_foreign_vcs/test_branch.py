@@ -24,63 +24,84 @@ from bzrlib.errors import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
+from bzrlib.tests import (
+    TestCase,
+    )
 
 
-class ForeignBranchTests(object):
+class ForeignBranchFactory(object):
+    """Factory of branches for ForeignBranchTests."""
+
+    def make_empty_branch(self):
+        """Create an empty branch with no commits in it."""
+        raise NotImplementedError(self.make_empty_branch)
+
+
+class ForeignBranchTests(TestCase):
     """Basic tests for foreign branch implementations.
     
     These tests mainly make sure that the implementation covers the required 
     bits of the API and returns reasonable values. 
     """
-    branch = None # Set to a ForeignBranch instance by adapter
+    branch_factory = None # Set to an instance of ForeignBranchFactory by scenario
 
     def test_set_parent(self):
         """Test that setting the parent works."""
-        self.branch.set_parent("foobar")
+        branch = self.branch_factory.make_empty_branch()
+        branch.set_parent("foobar")
 
     def test_break_lock(self):
         """Test that break_lock() works, even if it is a no-op."""
-        self.branch.break_lock()
+        branch = self.branch_factory.make_empty_branch()
+        branch.break_lock()
 
     def test_set_push_location(self):
         """Test that setting the push location works."""
-        self.branch.set_push_location("http://bar/bloe")
+        branch = self.branch_factory.make_empty_branch()
+        branch.set_push_location("http://bar/bloe")
 
     def test_repr_type(self):
-        self.assertIsInstance(repr(self.branch), str)
+        branch = self.branch_factory.make_empty_branch()
+        self.assertIsInstance(repr(branch), str)
 
     def test_get_parent(self):
         """Test that getting the parent location works, and returns None."""
         # TODO: Allow this to be non-None when foreign branches add support 
         #       for storing this URL.
-        self.assertIs(None, self.branch.get_parent())
+        branch = self.branch_factory.make_empty_branch()
+        self.assertIs(None, branch.get_parent())
 
     def test_get_push_location(self):
         """Test that getting the push location works, and returns None."""
         # TODO: Allow this to be non-None when foreign branches add support 
         #       for storing this URL.
-        self.assertIs(None, self.branch.get_push_location())
+        branch = self.branch_factory.make_empty_branch()
+        self.assertIs(None, branch.get_push_location())
 
     def test_check(self):
         """See if a basic check works."""
-        result = self.branch.check()
-        self.assertEqual(self.branch, result.branch) 
+        branch = self.branch_factory.make_empty_branch()
+        result = branch.check()
+        self.assertEqual(branch, result.branch) 
 
     def test_attributes(self):
         """Check that various required attributes are present."""
-        self.assertIsNot(None, getattr(self.branch, "repository", None))
-        self.assertIsNot(None, getattr(self.branch, "mapping", None))
-        self.assertIsNot(None, getattr(self.branch, "_format", None))
-        self.assertIsNot(None, getattr(self.branch, "base", None))
+        branch = self.branch_factory.make_empty_branch()
+        self.assertIsNot(None, getattr(branch, "repository", None))
+        self.assertIsNot(None, getattr(branch, "mapping", None))
+        self.assertIsNot(None, getattr(branch, "_format", None))
+        self.assertIsNot(None, getattr(branch, "base", None))
 
     def test__get_nick(self):
         """Make sure _get_nick is implemented and returns a string."""
-        self.assertIsInstance(self.branch._get_nick(local=False), str)
-        self.assertIsInstance(self.branch._get_nick(local=True), str)
+        branch = self.branch_factory.make_empty_branch()
+        self.assertIsInstance(branch._get_nick(local=False), str)
+        self.assertIsInstance(branch._get_nick(local=True), str)
 
     def test_null_revid_revno(self):
         """null: should return revno 0."""
-        self.assertEquals(0, self.branch.revision_id_to_revno(NULL_REVISION))
+        branch = self.branch_factory.make_empty_branch()
+        self.assertEquals(0, branch.revision_id_to_revno(NULL_REVISION))
 
     def test_get_stacked_on_url(self):
         """Test that get_stacked_on_url() behaves as expected.
@@ -88,23 +109,25 @@ class ForeignBranchTests(object):
         Inter-Format stacking doesn't work yet, so all foreign implementations
         should raise UnstackableBranchFormat at the moment.
         """
+        branch = self.branch_factory.make_empty_branch()
         self.assertRaises(UnstackableBranchFormat, 
-                          self.branch.get_stacked_on_url)
+                          branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
-        self.assertFalse(self.branch.get_physical_lock_status())
+        branch = self.branch_factory.make_empty_branch()
+        self.assertFalse(branch.get_physical_lock_status())
 
-    def test_last_revision(self):
-        (revno, revid) = self.branch.last_revision_info()
-        self.assertIsInstance(revno, int)
-        self.assertIsInstance(revid, str)
-        self.assertEquals(revno, self.branch.revision_id_to_revno(revid))
-        self.assertEquals(revid, self.branch.last_revision())
+    def test_last_revision_empty_branch(self):
+        branch = self.branch_factory.make_empty_branch()
+        self.assertEquals(NULL_REVISION, branch.last_revision())
+        self.assertEquals(0, branch.revno())
+        self.assertEquals((0, NULL_REVISION), branch.last_revision_info())
 
 
-class ForeignBranchFormatTests(object):
+class ForeignBranchFormatTests(TestCase):
     """Basic tests for foreign branch format objects."""
-    format = None # Set to a BranchFormat instance by adapter
+
+    branch_format = None # Set to a BranchFormat instance by adapter
 
     def test_initialize(self):
         """Test this format is not initializable.
@@ -112,12 +135,12 @@ class ForeignBranchFormatTests(object):
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
-        self.assertRaises(NotImplementedError, self.format.initialize, None)
+        self.assertRaises(NotImplementedError, self.branch_format.initialize, None)
 
     def test_get_format_description_type(self):
-        self.assertIsInstance(self.format.get_format_description(), str)
+        self.assertIsInstance(self.branch_format.get_format_description(), str)
 
     def test_network_name(self):
-        self.assertIsInstance(self.format.network_name(), str)
+        self.assertIsInstance(self.branch_format.network_name(), str)
 
 

@@ -36,7 +36,7 @@ from bzrlib import (
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
