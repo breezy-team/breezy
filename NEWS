@@ -148,6 +148,10 @@ Bug Fixes
 Improvements
 ************
 
+* Revision specifiers can now be given in a more DWIM form, without
+  needing explicit prefixes for specifiers like tags or revision id's.
+  See ``bzr help revisionspec`` for full details.  (Matthew Fuller)
+
 * Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
   compiled extensions can't be loaded.  This typically indicates a
   packaging or installation problem.  In this case Bazaar will keep
@@ -476,10 +480,6 @@ Bug Fixes
 
 Improvements
 ************
-
-* Revision specifiers can now be given in a more DWIM form, without
-  needing explicit prefixes for specifiers like tags or revision id's.
-  See ``bzr help revisionspec`` for full details.  (Matthew Fuller)
 
 * A better description of the platform is shown in crash tracebacks, ``bzr
   --version`` and ``bzr selftest``.
