@@ -165,6 +165,17 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertRaises(errors.InvalidRevisionSpec,
                           self.get_in_history, 'footag')
 
+    def test_dwim_spec_tag_that_looks_like_revno(self):
+        # Test that we slip past revno with things that look like revnos,
+        # but aren't.  Tags are convenient for testing this since we can
+        # make them look however we want.
+        self.tree.branch.tags.set_tag('3', 'r2')
+        self.assertAsRevisionId('r2', '3')
+        self.build_tree(['tree/b'])
+        self.tree.add(['b'])
+        self.tree.commit('b', rev_id='r3')
+        self.assertAsRevisionId('r3', '3')
+
     def test_dwim_spec_date(self):
         self.assertAsRevisionId('r1', 'today')
 
