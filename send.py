@@ -53,28 +53,13 @@ version_tail = "bzr %s, bzr-git %d.%d.%d" % (
 class GitDiffTree(_mod_diff.DiffTree):
     """Provides a text representation between two trees, formatted for svn."""
 
-    def __init__(self, old_tree, new_tree, to_file, path_encoding='utf-8',
-                 diff_text=None, extra_factories=None):
-        super(GitDiffTree, self).__init__(old_tree, new_tree, to_file,
-            path_encoding, diff_text, extra_factories)
-
-    def _write_contents_diff(self, old_path, old_mode, old_contents, new_path,
-                             new_mode, new_contents):
-        from dulwich.patch import _blob_id, write_diff_file_header
-        old_rev = _blob_id(old_contents)
-        new_rev = _blob_id(new_contents)
-        write_diff_file_header(self.to_file, 
-            (old_path, old_mode, old_rev), (new_path, new_mode, new_rev))
-        _mod_diff.internal_diff(old_path, old_contents,
-                                new_path, new_contents,
-                                self.to_file)
-
     def _get_file_mode(self, tree, path, kind, executable):
         if path is None:
             return None
         return object_mode(kind, executable)
 
     def _show_diff(self, specific_files, extra_trees):
+        from dulwich.patch import write_blob_diff
         iterator = self.new_tree.iter_changes(self.old_tree,
             specific_files=specific_files, extra_trees=extra_trees,
             require_versioned=True)
@@ -106,8 +91,9 @@ class GitDiffTree(_mod_diff.DiffTree):
                                            kind[0], executable[0])
             new_mode = self._get_file_mode(self.new_tree, newpath_encoded,
                                            kind[1], executable[1])
-            self._write_contents_diff(oldpath_encoded, old_mode, old_contents, 
-                                      newpath_encoded, new_mode, new_contents)
+            write_blob_diff(self.to_file, 
+                (oldpath_encoded, old_mode, Blob.from_string(old_contents)), 
+                (newpath_encoded, new_mode, Blob.from_string(new_contents)))
             has_changes = (changed_content or renamed)
         return has_changes
 
