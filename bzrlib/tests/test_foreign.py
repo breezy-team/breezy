@@ -20,27 +20,14 @@
 
 from bzrlib import (
     branch,
+    bzrdir,
     errors,
     foreign,
     lockable_files,
     lockdir,
+    revision,
+    tests,
     trace,
-    )
-from bzrlib.bzrdir import (
-    BzrDir,
-    BzrDirFormat,
-    BzrDirMeta1,
-    BzrDirMetaFormat1,
-    format_registry,
-    )
-from bzrlib.inventory import Inventory
-from bzrlib.revision import (
-    NULL_REVISION,
-    Revision,
-    )
-from bzrlib.tests import (
-    TestCase,
-    TestCaseWithTransport,
     )
 
 # This is the dummy foreign revision control system, used 
@@ -136,7 +123,7 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
                     (str(rev.timestamp), str(rev.timezone), 
                         str(self.target.revno())))
                 parent_revno, parent_revid= self.target.last_revision_info()
-                if parent_revid == NULL_REVISION:
+                if parent_revid == revision.NULL_REVISION:
                     parent_revids = []
                 else:
                     parent_revids = [parent_revid]
@@ -192,7 +179,7 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
             raise errors.NotBranchError(path=transport.base)
 
 
-class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
+class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     """BzrDirFormat for the dummy foreign VCS."""
 
     @classmethod
@@ -239,7 +226,7 @@ class DummyForeignVcsDirFormat(BzrDirMetaFormat1):
         return DummyForeignVcsDir(transport, self)
 
 
-class DummyForeignVcsDir(BzrDirMeta1):
+class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
     def __init__(self, _transport, _format):
         self._format = _format
@@ -254,7 +241,7 @@ class DummyForeignVcsDir(BzrDirMeta1):
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
-        return format_registry.make_bzrdir("default")
+        return bzrdir.format_registry.make_bzrdir("default")
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
@@ -268,7 +255,18 @@ class DummyForeignVcsDir(BzrDirMeta1):
                 hardlink=hardlink, stacked=stacked, source_branch=source_branch)
 
 
-class ForeignVcsRegistryTests(TestCase):
+def register_dummy_foreign_for_test(testcase):
+    bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
+    testcase.addCleanup(bzrdir.BzrDirFormat.unregister_control_format,
+                        DummyForeignVcsDirFormat)
+    # We need to register the optimiser to make the dummy appears really
+    # different from a regular bzr repository.
+    branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
+    testcase.addCleanup(branch.InterBranch.unregister_optimiser,
+                        InterToDummyVcsBranch)
+
+
+class ForeignVcsRegistryTests(tests.TestCase):
     """Tests for the ForeignVcsRegistry class."""
 
     def test_parse_revision_id_no_dash(self):
@@ -289,7 +287,7 @@ class ForeignVcsRegistryTests(TestCase):
                           reg.parse_revision_id("dummy-v1:some-foreign-revid"))
 
 
-class ForeignRevisionTests(TestCase):
+class ForeignRevisionTests(tests.TestCase):
     """Tests for the ForeignRevision class."""
 
     def test_create(self):
@@ -301,7 +299,7 @@ class ForeignRevisionTests(TestCase):
         self.assertEquals(mapp, rev.mapping)
 
 
-class WorkingTreeFileUpdateTests(TestCaseWithTransport):
+class WorkingTreeFileUpdateTests(tests.TestCaseWithTransport):
     """Tests for update_workingtree_fileids()."""
 
     def test_update_workingtree(self):
@@ -320,31 +318,22 @@ class WorkingTreeFileUpdateTests(TestCaseWithTransport):
         foreign.update_workingtree_fileids(wt, target_basis)
         wt.lock_read()
         try:
-            self.assertEquals([root_id, "bla-b"], list(wt.inventory))
+            self.assertEquals(set([root_id, "bla-b"]), set(wt.inventory))
         finally:
             wt.unlock()
 
 
-class DummyForeignVcsTests(TestCaseWithTransport):
+class DummyForeignVcsTests(tests.TestCaseWithTransport):
     """Very basic test for DummyForeignVcs."""
 
     def setUp(self):
-        BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-        branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
-        self.addCleanup(self.unregister)
         super(DummyForeignVcsTests, self).setUp()
-
-    def unregister(self):
-        try:
-            BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        branch.InterBranch.unregister_optimiser(InterToDummyVcsBranch)
+        register_dummy_foreign_for_test(self)
 
     def test_create(self):
         """Test we can create dummies."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        dir = BzrDir.open("d")
+        dir = bzrdir.BzrDir.open("d")
         self.assertEquals("A Dummy VCS Dir", dir._format.get_format_string())
         dir.open_repository()
         dir.open_branch()
@@ -353,17 +342,18 @@ class DummyForeignVcsTests(TestCaseWithTransport):
     def test_sprout(self):
         """Test we can clone dummies and that the format is not preserved."""
         self.make_branch_and_tree("d", format=DummyForeignVcsDirFormat())
-        dir = BzrDir.open("d")
+        dir = bzrdir.BzrDir.open("d")
         newdir = dir.sprout("e")
-        self.assertNotEquals("A Dummy VCS Dir", newdir._format.get_format_string())
+        self.assertNotEquals("A Dummy VCS Dir",
+                             newdir._format.get_format_string())
 
     def test_lossy_push_empty(self):
         source_tree = self.make_branch_and_tree("source")
         target_tree = self.make_branch_and_tree("target", 
             format=DummyForeignVcsDirFormat())
         pushresult = source_tree.branch.lossy_push(target_tree.branch)
-        self.assertEquals(NULL_REVISION, pushresult.old_revid)
-        self.assertEquals(NULL_REVISION, pushresult.new_revid)
+        self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)
+        self.assertEquals(revision.NULL_REVISION, pushresult.new_revid)
         self.assertEquals({}, pushresult.revidmap)
 
     def test_lossy_push_simple(self):
@@ -378,7 +368,7 @@ class DummyForeignVcsTests(TestCaseWithTransport):
             pushresult = source_tree.branch.lossy_push(target_tree.branch)
         finally:
             target_tree.branch.unlock()
-        self.assertEquals(NULL_REVISION, pushresult.old_revid)
+        self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)
         self.assertEquals({revid1:target_tree.branch.last_revision()}, 
                            pushresult.revidmap)
         self.assertEquals(pushresult.revidmap[revid1], pushresult.new_revid)

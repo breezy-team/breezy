@@ -54,7 +54,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.decorators import needs_write_lock
+from bzrlib.decorators import needs_write_lock, only_raises
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
@@ -73,6 +73,7 @@ from bzrlib.repository import (
     )
 from bzrlib.trace import (
     mutter,
+    note,
     warning,
     )
 
@@ -2063,6 +2064,16 @@ class RepositoryPackCollection(object):
             self._remove_pack_indices(resumed_pack)
         del self._resumed_packs[:]
 
+    def _check_new_inventories(self):
+        """Detect missing inventories in this write group.
+
+        :returns: list of strs, summarising any problems found.  If the list is
+            empty no problems were found.
+        """
+        # The base implementation does no checks.  GCRepositoryPackCollection
+        # overrides this.
+        return []
+        
     def _commit_write_group(self):
         all_missing = set()
         for prefix, versioned_file in (
@@ -2077,14 +2088,19 @@ class RepositoryPackCollection(object):
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
                  % (self.repo, sorted(all_missing)))
+        problems = self._check_new_inventories()
+        if problems:
+            problems_summary = '\n'.join(problems)
+            raise errors.BzrCheckError(
+                "Cannot add revision(s) to repository: " + problems_summary)
         self._remove_pack_indices(self._new_pack)
-        should_autopack = False
+        any_new_content = False
         if self._new_pack.data_inserted():
             # get all the data to disk and read to use
             self._new_pack.finish()
             self.allocate(self._new_pack)
             self._new_pack = None
-            should_autopack = True
+            any_new_content = True
         else:
             self._new_pack.abort()
             self._new_pack = None
@@ -2095,13 +2111,15 @@ class RepositoryPackCollection(object):
             self._remove_pack_from_memory(resumed_pack)
             resumed_pack.finish()
             self.allocate(resumed_pack)
-            should_autopack = True
+            any_new_content = True
         del self._resumed_packs[:]
-        if should_autopack:
-            if not self.autopack():
+        if any_new_content:
+            result = self.autopack()
+            if not result:
                 # when autopack takes no steps, the names list is still
                 # unsaved.
                 return self._save_pack_names()
+            return result
         return []
 
     def _suspend_write_group(self):
@@ -2222,7 +2240,7 @@ class KnitPackRepository(KnitRepository):
                     % (self._format, self.bzrdir.transport.base))
 
     def _abort_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
+        self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
 
     def _get_source(self, to_format):
@@ -2242,13 +2260,14 @@ class KnitPackRepository(KnitRepository):
         self._pack_collection._start_write_group()
 
     def _commit_write_group(self):
-        self.revisions._index._key_dependencies.refs.clear()
-        return self._pack_collection._commit_write_group()
+        hint = self._pack_collection._commit_write_group()
+        self.revisions._index._key_dependencies.clear()
+        return hint
 
     def suspend_write_group(self):
         # XXX check self._write_group is self.get_transaction()?
         tokens = self._pack_collection._suspend_write_group()
-        self.revisions._index._key_dependencies.refs.clear()
+        self.revisions._index._key_dependencies.clear()
         self._write_group = None
         return tokens
 
@@ -2282,6 +2301,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -2294,6 +2316,9 @@ class KnitPackRepository(KnitRepository):
         else:
             self.control_files.lock_read()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -2327,6 +2352,7 @@ class KnitPackRepository(KnitRepository):
         packer = ReconcilePacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()

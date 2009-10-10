@@ -134,7 +134,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_without_tree(self):
         # bzr push from a branch that does not have a checkout should work.
-        self.thisFailsStrictLockCheck()
         b = self.make_branch('.')
         out, err = self.run_bzr('push pushed-location')
         self.assertEqual('', out)
@@ -146,7 +145,6 @@ class TestPush(tests.TestCaseWithTransport):
         # bzr push of a branch with revisions to a new location
         # should print the number of revisions equal to the length of the
         # local branch.
-        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         t.add('file')
@@ -157,7 +155,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_only_pushes_history(self):
         # Knit branches should only push the history for the current revision.
-        self.thisFailsStrictLockCheck()
         format = bzrdir.BzrDirMetaFormat1()
         format.repository_format = knitrepo.RepositoryFormatKnit1()
         shared_repo = self.make_repository('repo', format=format, shared=True)
@@ -195,7 +192,6 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertTrue(pushed_repo.has_revision('b-1'))
 
     def test_push_funky_id(self):
-        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/filename'])
         t.add('filename', 'funky-chars<>%&;"\'')
@@ -203,7 +199,6 @@ class TestPush(tests.TestCaseWithTransport):
         self.run_bzr('push -d tree new-tree')
 
     def test_push_dash_d(self):
-        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('from')
         t.commit(allow_pointless=True,
                 message='first commit')
@@ -258,6 +253,22 @@ class TestPush(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
 
+    def test_push_smart_incremental_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id1 = t.commit(allow_pointless=True, message='first commit')
+        rev_id2 = t.commit(allow_pointless=True, message='second commit')
+        self.run_bzr(
+            ['push', self.get_url('to-one'), '-r1'], working_dir='from')
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
         # we push there over the smart server are stacked and their
@@ -292,7 +303,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_create_prefix(self):
         """'bzr push --create-prefix' will create leading directories."""
-        self.thisFailsStrictLockCheck()
         tree = self.create_simple_tree()
 
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
@@ -309,7 +319,6 @@ class TestPush(tests.TestCaseWithTransport):
 
         By default, 'bzr push' will not use an existing, non-versioned dir.
         """
-        self.thisFailsStrictLockCheck()
         tree = self.create_simple_tree()
         self.build_tree(['target/'])
 
@@ -358,7 +367,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_with_revisionspec(self):
         """We should be able to push a revision older than the tip."""
-        self.thisFailsStrictLockCheck()
         tree_from = self.make_branch_and_tree('from')
         tree_from.commit("One.", rev_id="from-1")
         tree_from.commit("Two.", rev_id="from-2")
@@ -400,7 +408,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_new_branch_stacked_on(self):
         """Pushing a new branch with --stacked-on creates a stacked branch."""
-        self.thisFailsStrictLockCheck()
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # we publish branch_tree with a reference to the mainline.
         out, err = self.run_bzr(['push', '--stacked-on', trunk_tree.branch.base,
@@ -413,7 +420,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_new_branch_stacked_uses_parent_when_no_public_url(self):
         """When the parent has no public url the parent is used as-is."""
-        self.thisFailsStrictLockCheck()
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # now we do a stacked push, which should determine the public location
         # for us.
@@ -427,7 +433,6 @@ class TestPush(tests.TestCaseWithTransport):
 
     def test_push_new_branch_stacked_uses_parent_public(self):
         """Pushing a new branch with --stacked creates a stacked branch."""
-        self.thisFailsStrictLockCheck()
         trunk_tree, branch_tree = self.create_trunk_and_feature_branch()
         # the trunk is published on a web server
         self.transport_readonly_server = http_server.HttpServer
@@ -512,7 +517,6 @@ class TestPush(tests.TestCaseWithTransport):
         out, err = self.run_bzr('push -d repo/local remote -r 3')
 
     def test_push_verbose_shows_log(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('source')
         tree.commit('rev1')
         out, err = self.run_bzr('push -v -d source target')
@@ -526,7 +530,6 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertNotContainsRe(out, 'rev1')
 
     def test_push_from_subdir(self):
-        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/dir/', 'tree/dir/file'])
         t.add('dir', 'dir/file')
@@ -589,9 +592,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -670,24 +671,19 @@ class TestPushStrictWithoutChanges(tests.TestCaseWithTransport,
         self.make_local_branch_and_tree()
 
     def test_push_default(self):
-        self.thisFailsStrictLockCheck()
         self.assertPushSucceeds([])
 
     def test_push_strict(self):
-        self.thisFailsStrictLockCheck()
         self.assertPushSucceeds(['--strict'])
 
     def test_push_no_strict(self):
-        self.thisFailsStrictLockCheck()
         self.assertPushSucceeds(['--no-strict'])
 
     def test_push_config_var_strict(self):
-        self.thisFailsStrictLockCheck()
         self.set_config_push_strict('true')
         self.assertPushSucceeds([])
 
     def test_push_config_var_no_strict(self):
-        self.thisFailsStrictLockCheck()
         self.set_config_push_strict('false')
         self.assertPushSucceeds([])
 
@@ -699,6 +695,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
+        # Apply the changes defined in load_tests: one of _uncommitted_changes,
+        # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
 
     def _uncommitted_changes(self):
@@ -734,11 +732,9 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushFails([])
 
     def test_push_with_revision(self):
-        self.thisFailsStrictLockCheck()
         self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
 
     def test_push_no_strict(self):
-        self.thisFailsStrictLockCheck()
         self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_with_changes(self):
@@ -753,13 +749,11 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushFails([])
 
     def test_push_no_strict_command_line_override_config(self):
-        self.thisFailsStrictLockCheck()
         self.set_config_push_strict('yES')
         self.assertPushFails([])
         self.assertPushSucceeds(['--no-strict'])
 
     def test_push_strict_command_line_override_config(self):
-        self.thisFailsStrictLockCheck()
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])

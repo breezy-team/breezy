@@ -29,7 +29,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, MemoryServer
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -37,17 +37,11 @@ class TestInfo(ExternalBase):
 
     def setUp(self):
         ExternalBase.setUp(self)
-        self._repo_strings = (
-            "1.6 or 1.6.1-rich-root "
-            "or 1.9 or 1.9-rich-root "
-            "or dirstate or dirstate-tags or "
-            "pack-0.92 or rich-root or rich-root-pack")
+        self._repo_strings = "2a or development-subtree"
 
     def test_info_non_existing(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = MemoryServer
+        location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -291,7 +285,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -453,7 +447,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -586,7 +580,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -617,14 +611,14 @@ Repository:
         # Out of date checkout
         out, err = self.run_bzr('info -v tree/checkout')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -656,14 +650,14 @@ Repository:
         tree3.add('b')
         out, err = self.run_bzr('info tree/checkout --verbose')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -705,7 +699,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -1131,7 +1125,7 @@ more info
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
         format = {True: self._repo_strings,
-                  False: 'dirstate'}[light_checkout]
+                  False: 'unnamed'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()
         if repo_locked or branch_locked or tree_locked:
@@ -1332,6 +1326,10 @@ Repository:
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
             raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This test tests old (all-in-one, OS lock using) behaviour which
+        # simply cannot work on windows (and is indeed why we changed our
+        # design. As such, don't try to remove the thisFailsStrictLockCheck
+        # call here.
         self.thisFailsStrictLockCheck()
 
         tree = self.make_branch_and_tree('branch',

@@ -120,6 +120,15 @@ def _get_one_revision(command_name, revisions):
 
 
 def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
+    """Get a revision tree. Not suitable for commands that change the tree.
+    
+    Specifically, the basis tree in dirstate trees is coupled to the dirstate
+    and doing a commit/uncommit/pull will at best fail due to changing the
+    basis revision data.
+
+    If tree is passed in, it should be already locked, for lifetime management
+    of the trees internal cached state.
+    """
     if branch is None:
         branch = tree.branch
     if revisions is None:
@@ -452,8 +461,7 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            # XXX: What about pending merges ? -- vila 20090629
-            if working.has_changes(working.basis_tree()):
+            if (working.has_changes()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
@@ -1100,8 +1108,7 @@ class cmd_push(Command):
         else:
             revision_id = None
         if strict and tree is not None and revision_id is None:
-            if (tree.has_changes(tree.basis_tree())
-                or len(tree.get_parent_ids()) > 1):
+            if (tree.has_changes()):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -1167,6 +1174,9 @@ class cmd_branch(Command):
         help='Hard-link working tree files where possible.'),
         Option('no-tree',
             help="Create a branch without a working-tree."),
+        Option('switch',
+            help="Switch the checkout in the current directory "
+                 "to the new branch."),
         Option('stacked',
             help='Create a stacked branch referring to the source branch. '
                 'The new branch will depend on the availability of the source '
@@ -1183,9 +1193,9 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False):
+            use_existing_dir=False, switch=False):
+        from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
-
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if (accelerator_tree is not None and
@@ -1245,6 +1255,12 @@ class cmd_branch(Command):
             except (errors.NotStacked, errors.UnstackableBranchFormat,
                 errors.UnstackableRepositoryFormat), e:
                 note('Branched %d revision(s).' % branch.revno())
+            if switch:
+                # Switch to the new branch
+                wt, _ = WorkingTree.open_containing('.')
+                _mod_switch.switch(wt.bzrdir, branch)
+                note('Switched to branch: %s',
+                    urlutils.unescape_for_display(branch.base, 'utf-8'))
         finally:
             br_from.unlock()
 
@@ -1655,7 +1671,7 @@ class cmd_init(Command):
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
                 converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
-                title="Branch Format",
+                title="Branch format",
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
@@ -1869,7 +1885,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
+        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1889,9 +1905,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        old_tree, new_tree, specific_files, extra_trees = \
-                _get_trees_to_diff(file_list, revision, old, new,
-                apply_view=True)
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = get_trees_and_branches_to_diff(
+            file_list, revision, old, new, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -3020,6 +3037,10 @@ class cmd_commit(Command):
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
 
+        # The API permits a commit with a filter of [] to mean 'select nothing'
+        # but the command line should not do that.
+        if not selected_list:
+            selected_list = None
         try:
             tree.commit(message_callback=get_message,
                         specific_files=selected_list,
@@ -3318,6 +3339,9 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory,
     typically inside $TMPDIR or /tmp.
 
+    If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
+    into a pdb postmortem session.
+
     :Examples:
         Run only tests relating to 'ignore'::
 
@@ -3360,6 +3384,8 @@ class cmd_selftest(Command):
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
+                     Option('lsprof-tests',
+                            help='Generate lsprof output for each test.'),
                      Option('cache-dir', type=str,
                             help='Cache intermediate benchmark output in this '
                                  'directory.'),
@@ -3406,7 +3432,7 @@ class cmd_selftest(Command):
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
-            parallel=None):
+            parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
         import bzrlib.benchmarks as benchmarks
         from bzrlib.benchmarks import tree_creator
@@ -3446,6 +3472,7 @@ class cmd_selftest(Command):
                               "transport": transport,
                               "test_suite_factory": test_suite_factory,
                               "lsprof_timed": lsprof_timed,
+                              "lsprof_tests": lsprof_tests,
                               "bench_history": benchfile,
                               "matching_tests_first": first,
                               "list_only": list_only,
@@ -3628,13 +3655,14 @@ class cmd_merge(Command):
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
 
-        # die as quickly as possible if there are uncommitted changes
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
+
+        # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree):
+            if tree.has_changes():
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -3691,7 +3719,10 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(False)
+            if merger.this_basis is None:
+                raise errors.BzrCommandError(
+                    "This branch has no commits."
+                    " (perhaps you would prefer 'bzr pull')")
             if preview:
                 return self._do_preview(merger, cleanups)
             elif interactive:
@@ -4940,9 +4971,10 @@ class cmd_send(Command):
 
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mutt", and
-    "thunderbird"; generic options are "default", "editor", "emacsclient",
-    "mapi", and "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
+    Mail.app), "mutt", and "thunderbird"; generic options are "default",
+    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
+    supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -5622,8 +5654,12 @@ class cmd_shelve(Command):
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
         try:
-            Shelver.from_args(writer(sys.stdout), revision, all, file_list,
-                              message, destroy=destroy).run()
+            shelver = Shelver.from_args(writer(sys.stdout), revision, all,
+                file_list, message, destroy=destroy)
+            try:
+                shelver.run()
+            finally:
+                shelver.work_tree.unlock()
         except errors.UserAbort:
             return 0
 
@@ -5668,7 +5704,11 @@ class cmd_unshelve(Command):
 
     def run(self, shelf_id=None, action='apply'):
         from bzrlib.shelf_ui import Unshelver
-        Unshelver.from_args(shelf_id, action).run()
+        unshelver = Unshelver.from_args(shelf_id, action)
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
 
 
 class cmd_clean_tree(Command):

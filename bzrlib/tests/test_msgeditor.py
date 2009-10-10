@@ -81,7 +81,6 @@ added:
 
     def make_multiple_pending_tree(self):
         from bzrlib import config
-        self.thisFailsStrictLockCheck() # clone?
         config.GlobalConfig().set_user_option('email',
                                               'Bilbo Baggins <bb@hobbit.net>')
         tree = self.make_branch_and_tree('a')
@@ -94,7 +93,7 @@ added:
         tree3.commit('Feature Y, based on initial X work.',
                      timestamp=1233285960, timezone=0)
         tree.merge_from_branch(tree2.branch)
-        tree.merge_from_branch(tree3.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
         return tree
 
     def test_commit_template_pending_merges(self):

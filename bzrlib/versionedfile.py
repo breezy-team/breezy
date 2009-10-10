@@ -32,6 +32,7 @@ import urllib
 from bzrlib import (
     annotate,
     errors,
+    graph as _mod_graph,
     groupcompress,
     index,
     knit,
@@ -940,6 +941,20 @@ class VersionedFiles(object):
         for line in lines:
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        # most basic implementation is a loop around get_parent_map
+        pending = set(keys)
+        parent_map = {}
+        while pending:
+            this_parent_map = self.get_parent_map(pending)
+            parent_map.update(this_parent_map)
+            pending = set()
+            map(pending.update, this_parent_map.itervalues())
+            pending = pending.difference(parent_map)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
