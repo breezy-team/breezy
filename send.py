@@ -56,11 +56,6 @@ version_tail = "bzr %s, bzr-git %d.%d.%d, dulwich %d.%d.%d" % (
 class GitDiffTree(_mod_diff.DiffTree):
     """Provides a text representation between two trees, formatted for svn."""
 
-    def _get_file_mode(self, tree, path, kind, executable):
-        if path is None:
-            return None
-        return object_mode(kind, executable)
-
     def _show_diff(self, specific_files, extra_trees):
         from dulwich.patch import write_blob_diff
         iterator = self.new_tree.iter_changes(self.old_tree,
@@ -70,34 +65,37 @@ class GitDiffTree(_mod_diff.DiffTree):
         def get_encoded_path(path):
             if path is not None:
                 return path.encode(self.path_encoding, "replace")
+        def get_file_mode(tree, path, kind, executable):
+            if path is None:
+                return None
+            return object_mode(kind, executable)
+        def get_blob(present, tree, file_id):
+            if present is not None:
+                return Blob.from_string(tree.get_file(file_id).read())
+            else:
+                return None
+        trees = (self.old_tree, self.new_tree)
         for (file_id, paths, changed_content, versioned, parent, name, kind,
              executable) in iterator:
             # The root does not get diffed, and items with no known kind (that
             # is, missing) in both trees are skipped as well.
             if parent == (None, None) or kind == (None, None):
                 continue
-            oldpath, newpath = paths
-            oldpath_encoded = get_encoded_path(paths[0])
-            newpath_encoded = get_encoded_path(paths[1])
-            old_present = (kind[0] is not None and versioned[0])
-            if old_present is not None:
-                old_contents = Blob.from_string(self.old_tree.get_file(file_id).read())
-            else:
-                old_contents = None
-            new_present = (kind[1] is not None and versioned[1])
-            if new_present is not None:
-                new_contents = Blob.from_string(self.new_tree.get_file(file_id).read())
-            else:
-                new_contents = None
+            path_encoded = (get_encoded_path(paths[0]), 
+                            get_encoded_path(paths[1]))
+            present = ((kind[0] is not None and versioned[0]),
+                       (kind[1] is not None and versioned[1]))
+            contents = (get_blob(present[0], trees[0], file_id),
+                        get_blob(present[1], trees[1], file_id))
             renamed = (parent[0], name[0]) != (parent[1], name[1])
-            old_mode = self._get_file_mode(self.old_tree, oldpath_encoded, 
-                                           kind[0], executable[0])
-            new_mode = self._get_file_mode(self.new_tree, newpath_encoded,
-                                           kind[1], executable[1])
+            mode = (get_file_mode(trees[0], path_encoded[0], 
+                                  kind[0], executable[0]), 
+                    get_file_mode(trees[1], path_encoded[1], 
+                                  kind[1], executable[1]))
             write_blob_diff(self.to_file, 
-                (oldpath_encoded, old_mode, old_contents), 
-                (newpath_encoded, new_mode, new_contents))
-            has_changes = (changed_content or renamed)
+                (path_encoded[0], mode[0], contents[0]), 
+                (path_encoded[1], mode[1], contents[1]))
+            has_changes |= (changed_content or renamed)
         return has_changes
 
 
