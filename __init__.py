@@ -97,6 +97,7 @@ revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
 
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
+
     _lock_class = TransportLock
 
     def is_supported(self):
