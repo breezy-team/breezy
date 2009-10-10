@@ -1,10 +1,2 @@
-Coding style
-------------
-bzr-git tries to follow PEP-8 where possible. docstrings should use 
-restructuredText.
-
-Testing
--------
-The aim is to have unit tests for all functionality: If you add functionality
-please provide matching tests. If you fix a bug, it would be nice if you could
-add a test that reproduces the bug (so that we can prevent regressions).
+Please refer to HACKING in the Bazaar source distribution for topics not 
+covered here.
