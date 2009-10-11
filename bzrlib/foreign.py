@@ -122,7 +122,7 @@ class ForeignRevision(Revision):
 class ForeignVcs(object):
     """A foreign version control system."""
 
-    branch_formats = []
+    branch_format = None
 
     def __init__(self, mapping_registry):
         self.mapping_registry = mapping_registry
