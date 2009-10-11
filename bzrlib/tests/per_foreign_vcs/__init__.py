@@ -26,18 +26,22 @@ from bzrlib import (
 
 
 def vcs_scenarios():
+    scenarios = []
     for name, vcs in foreign.foreign_vcs_registry.iteritems():
-        yield (name, {
-            "branch_factory": None, # FIXME
-            "branch_format": None   # FIXME
-            })
+        scenarios.append((vcs.__class__.__name__, {
+            "branch_factory": vcs.branch_format.get_foreign_tests_branch_factory(),
+            "branch_format": vcs.branch_format,
+            }))
+    return scenarios
 
 
 def load_tests(standard_tests, module, loader):
+    result = loader.suiteClass()
     per_vcs_mod_names = [
         'branch',
         ]
     sub_tests = loader.loadTestsFromModuleNames(
         ['bzrlib.tests.per_foreign_vcs.test_' + name
          for name in per_vcs_mod_names])
-    return tests.multiply_tests(sub_tests, vcs_scenarios(), standard_tests)
+    tests.multiply_tests(sub_tests, vcs_scenarios(), result)
+    return result
