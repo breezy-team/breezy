@@ -190,7 +190,7 @@ class GitBranch(ForeignBranch):
 
     def get_stacked_on_url(self):
         # Git doesn't do stacking (yet...)
-        return None
+        raise errors.UnstackableBranchFormat(self._format, self.base)
 
     def get_parent(self):
         """See Branch.get_parent()."""
@@ -523,6 +523,10 @@ class InterGitRemoteLocalBranch(InterGitBranch):
     
 class InterToGitBranch(branch.InterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return None, None
 
     @classmethod
     def is_compatible(self, source, target):
