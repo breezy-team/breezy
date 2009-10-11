@@ -6,6 +6,9 @@
 
   * Support creating working tree for existing repository. (Jelmer Vernooij)
 
+  * Fix base url of Git branches - use the working tree path rather than 
+    the control directory path. (Jelmer Vernooij)
+
  PERFORMANCE
 
   * Improve performance of WorkingTree.extras() by not looking up the 

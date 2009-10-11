@@ -150,7 +150,7 @@ class GitBranch(ForeignBranch):
             self.tags = DictTagDict(self, tagsdict)
         self.name = name
         self._head = None
-        self.base = bzrdir.transport.base
+        self.base = bzrdir.root_transport.base
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
