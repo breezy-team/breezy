@@ -49,6 +49,9 @@ class GitLock(object):
     def validate_token(self, token):
         pass
 
+    def break_lock(self):
+        pass
+
 
 class GitLockableFiles(lockable_files.LockableFiles):
     """Git specific lockable files abstraction."""
