@@ -23,6 +23,7 @@ from bzrlib import (
     _static_tuple_py,
     errors,
     osutils,
+    static_tuple,
     tests,
     )
 
@@ -383,3 +384,13 @@ class TestStaticTuple(tests.TestCase):
         if self.module is _static_tuple_py:
             return
         self.assertIsNot(None, self.module._C_API)
+
+    def test_static_tuple_thunk(self):
+        # Make sure the right implementation is available from
+        # bzrlib.static_tuple.StaticTuple.
+        if self.module is _static_tuple_py:
+            if CompiledStaticTuple.available():
+                # We will be using the C version
+                return
+        self.assertIs(static_tuple.StaticTuple, 
+                      self.module.StaticTuple)
