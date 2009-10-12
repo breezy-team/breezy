@@ -140,6 +140,13 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual('foo', k[0])
         self.assertEqual('z', k[6])
         self.assertEqual('z', k[-1])
+        self.assertRaises(IndexError, k.__getitem__, 7)
+        self.assertRaises(IndexError, k.__getitem__, 256+7)
+        self.assertRaises(IndexError, k.__getitem__, 12024)
+        # Python's [] resolver handles the negative arguments, so we can't
+        # really test StaticTuple_item() with negative values.
+        self.assertRaises(TypeError, k.__getitem__, 'not-an-int')
+        self.assertRaises(TypeError, k.__getitem__, '5')
 
     def test_refcount(self):
         f = 'fo' + 'oo'
@@ -276,12 +283,22 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
         self.assertEqual(('foo', 'bar'), k[:2])
         self.assertEqual(('baz',), k[2:-1])
+        try:
+            val = k[::2]
+        except TypeError:
+            # C implementation raises a TypeError, we don't need the
+            # implementation yet, so allow this to pass
+            pass
+        else:
+            # Python implementation uses a regular Tuple, so make sure it gives
+            # the right result
+            self.assertEqual(('foo', 'baz'), val)
 
     def test_referents(self):
         # We implement tp_traverse so that things like 'meliae' can measure the
         # amount of referenced memory. Unfortunately gc.get_referents() first
-        # checks the IS_GC flag before it traverses anything. So there isn't a
-        # way to expose it that I can see.
+        # checks the IS_GC flag before it traverses anything. We could write a
+        # helper func, but that won't work for the generic implementation...
         self.requireFeature(Meliae)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']
