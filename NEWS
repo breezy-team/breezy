@@ -206,6 +206,13 @@ Internals
   repository or branch object is unlocked then relocked the same way.
   (Andrew Bennetts)
   
+* Added ``bzrlib._simple_set_pyx``. This is a hybrid between a Set and a
+  Dict (it only holds keys, but you can lookup the object located at a
+  given key). It has significantly reduced memory consumption versus the
+  builtin objects (1/2 the size of Set, 1/3rd the size of Dict). This will
+  be used as the interning structure for StaticTuple objects, as part of
+  an ongoing push to reduce peak memory consumption.  (John Arbash Meinel)
+
 * ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
   mallocs while parsing the index (approx 3=>1 mallocs per key read).
   This results in a 10% speedup while reading an index.

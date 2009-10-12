@@ -300,6 +300,7 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
+add_pyrex_extension('bzrlib._simple_set_pyx')
 
 
 if unavailable_files:
