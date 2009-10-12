@@ -37,6 +37,10 @@ New Features
   automatically benefit from this feature when ``bzr`` on the server is
   upgraded.  (Andrew Bennetts, #109143)
 
+* Extensions can now be compiled if either Cython or Pyrex is available.
+  Currently Pyrex is preferred, but that may change in the future.
+  (Arkanes)
+
 * Give more control on BZR_PLUGIN_PATH by providing a way to refer to or
   disable the user, site and core plugin directories.
   (Vincent Ladeuil, #412930, #316192, #145612)
@@ -153,6 +157,13 @@ Improvements
   See also <https://answers.launchpad.net/bzr/+faq/703>.
   (Martin Pool, #406113, #430529)
 
+* Secondary errors that occur during Branch.unlock and Repository.unlock
+  no longer obscure the original error.  These methods now use a new
+  decorator, ``only_raises``.  This fixes many causes of
+  ``TooManyConcurrentRequests`` and similar errors.
+  (Andrew Bennetts, #429747)
+
+
 Documentation
 *************
 
@@ -164,21 +175,37 @@ Documentation
 API Changes
 ***********
 
-* ``ProgressTask.note`` is deprecated.
-  (Martin Pool)
-
 * ``bzrlib.user_encoding`` has been removed; use
   ``bzrlib.osutils.get_user_encoding`` instead.  (Martin Pool)
 
 * ``bzrlib.tests`` now uses ``stopTestRun`` for its ``TestResult``
   subclasses - the same as python's unittest module. (Robert Collins)
+  
+* ``diff._get_trees_to_diff`` has been renamed to 
+  ``diff.get_trees_and_branches_to_diff``. It is now a public API, and it 
+  returns the old and new branches. (Gary van der Merwe)
 
 * ``bzrlib.trace.log_error``, ``error`` and ``info`` have been deprecated.
+  (Martin Pool)
+
+* ``MutableTree.has_changes()`` does not require a tree parameter anymore. It
+  now defaults to comparing to the basis tree. It now checks for pending
+  merges too.  ``Merger.check_basis`` has been deprecated and replaced by the
+  corresponding has_changes() calls. ``Merge.compare_basis``,
+  ``Merger.file_revisions`` and ``Merger.ensure_revision_trees`` have also
+  been deprecated.
+  (Vincent Ladeuil, #440631)
+
+* ``ProgressTask.note`` is deprecated.
   (Martin Pool)
 
 Internals
 *********
 
+* Added ``-Drelock`` debug flag.  It will ``note`` a message every time a
+  repository or branch object is unlocked then relocked the same way.
+  (Andrew Bennetts)
+  
 * ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
   mallocs while parsing the index (approx 3=>1 mallocs per key read).
   This results in a 10% speedup while reading an index.
