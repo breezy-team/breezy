@@ -22,6 +22,13 @@
 
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
+
+/* Pyrex 0.9.6.4 exports _simple_set_pyx_api as
+ * import__simple_set_pyx(), while Pyrex 0.9.8.5 and Cython 0.11.3 export them
+ * as import_bzrlib___simple_set_pyx(). As such, we just #define one to be
+ * equivalent to the other in our internal code.
+ */
+#define import__simple_set_pyx import_bzrlib___simple_set_pyx
 #include "_simple_set_pyx_api.h"
 
 #include "python-compat.h"
@@ -341,6 +348,8 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         case Py_EQ:case Py_LT:case Py_LE:
             Py_INCREF(Py_False);
             return Py_False;
+    default: // Should never happen
+        return Py_NotImplemented;
         }
     } else {
         /* We don't special case this comparison, we just let python handle
@@ -432,7 +441,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         }
         Py_DECREF(result);
     }
-    if (i >= vlen || i >= wlen) {
+    if (i >= min_len) {
         /* We walked off one of the lists, but everything compared equal so
          * far. Just compare the size.
          */
@@ -679,6 +688,51 @@ setup_c_api(PyObject *m)
 }
 
 
+static int
+_workaround_pyrex_096()
+{
+    /* Work around an incompatibility in how pyrex 0.9.6 exports a module,
+     * versus how pyrex 0.9.8 and cython 0.11 export it.
+     * Namely 0.9.6 exports import__simple_set_pyx and tries to
+     * "import _simple_set_pyx" but it is available only as
+     * "import bzrlib._simple_set_pyx"
+     * It is a shame to hack up sys.modules, but that is what we've got to do.
+     */
+    PyObject *sys_module = NULL, *modules = NULL, *set_module = NULL;
+    int retval = -1;
+
+    /* Clear out the current ImportError exception, and try again. */
+    PyErr_Clear();
+    /* Note that this only seems to work if somewhere else imports
+     * bzrlib._simple_set_pyx before importing bzrlib._static_tuple_c
+     */
+    set_module = PyImport_ImportModule("bzrlib._simple_set_pyx");
+    if (set_module == NULL) {
+	// fprintf(stderr, "Failed to import bzrlib._simple_set_pyx\n");
+        goto end;
+    }
+    /* Add the _simple_set_pyx into sys.modules at the appropriate location. */
+    sys_module = PyImport_ImportModule("sys");
+    if (sys_module == NULL) {
+    	// fprintf(stderr, "Failed to import sys\n");
+        goto end;
+    }
+    modules = PyObject_GetAttrString(sys_module, "modules");
+    if (modules == NULL || !PyDict_Check(modules)) {
+    	// fprintf(stderr, "Failed to find sys.modules\n");
+        goto end;
+    }
+    PyDict_SetItemString(modules, "_simple_set_pyx", set_module);
+    /* Now that we have hacked it in, try the import again. */
+    retval = import_bzrlib___simple_set_pyx();
+end:
+    Py_XDECREF(set_module);
+    Py_XDECREF(sys_module);
+    Py_XDECREF(modules);
+    return retval;
+}
+
+
 PyMODINIT_FUNC
 init_static_tuple_c(void)
 {
@@ -694,8 +748,9 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    if (import_bzrlib___simple_set_pyx() == -1) {
-        // We failed to set up, stop early
+    if (import_bzrlib___simple_set_pyx() == -1
+        && _workaround_pyrex_096() == -1)
+    {
         return;
     }
     setup_interned_tuples(m);
