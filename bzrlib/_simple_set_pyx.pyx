@@ -16,6 +16,9 @@
 
 """Definition of a class that is similar to Set with some small changes."""
 
+cdef extern from "python-compat.h":
+    pass
+
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
     ctypedef long (*hashfunc)(PyObject*)
@@ -208,8 +211,8 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             slot = &table[i & mask]
             if slot[0] == NULL:
                 slot[0] = key
-                self._fill += 1
-                self._used += 1
+                self._fill = self._fill + 1
+                self._used = self._used + 1
                 return 1
             i = i + 1 + n_lookup
         raise RuntimeError('ran out of slots.')
@@ -263,11 +266,11 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             if slot[0] == NULL: # unused slot
                 pass 
             elif slot[0] == _dummy: # dummy slot
-                remaining -= 1
+                remaining = remaining - 1
             else: # active slot
-                remaining -= 1
+                remaining = remaining - 1
                 self._insert_clean(slot[0])
-            slot += 1
+            slot = slot + 1
         PyMem_Free(old_table)
         return new_size
 
@@ -295,13 +298,13 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         slot = _lookup(self, key)
         if (slot[0] == NULL):
             Py_INCREF(py_key)
-            self._fill += 1
-            self._used += 1
+            self._fill = self._fill + 1
+            self._used = self._used + 1
             slot[0] = py_key
             added = 1
         elif (slot[0] == _dummy):
             Py_INCREF(py_key)
-            self._used += 1
+            self._used = self._used + 1
             slot[0] = py_key
             added = 1
         # No else: clause. If _lookup returns a pointer to
@@ -331,7 +334,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
             return 0
-        self._used -= 1
+        self._used = self._used - 1
         Py_DECREF(slot[0])
         slot[0] = _dummy
         # PySet uses the heuristic: If more than 1/5 are dummies, then resize
@@ -384,7 +387,7 @@ cdef class _SimpleSet_iterator:
             raise StopIteration
         # we found something
         the_key = <object>key # INCREF
-        self.len -= 1
+        self.len = self.len - 1
         return the_key
 
     def __length_hint__(self):
@@ -565,7 +568,7 @@ cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
     mask = true_self._mask
     table= true_self._table
     while (i <= mask and (table[i] == NULL or table[i] == _dummy)):
-        i += 1
+        i = i + 1
     pos[0] = i + 1
     if (i > mask):
         return 0 # All done
