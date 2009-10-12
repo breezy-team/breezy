@@ -373,22 +373,16 @@ class TestingHTTPServerMixin:
         self.serving  = threading.Event()
         self.serving.set()
         self.is_shut_down.clear()
-        # Ensure that we will not stay blocked in listen()
-        self.socket.settimeout(1)
         if 'threads' in tests.selftest_debug_flags:
             print 'Starting %r' % (self.server_address,)
         # We are listening and ready to accept connections
         started.set()
         while self.serving.isSet():
-            try:
-                if 'threads' in tests.selftest_debug_flags:
-                    print 'Accepting on %r' % (self.server_address,)
-                # Really a connection but the python framework is generic and
-                # call them requests
-                self.handle_request()
-            except socket.timeout:
-                # So we can check if we're asked to stop
-                pass
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Accepting on %r' % (self.server_address,)
+            # Really a connection but the python framework is generic and
+            # call them requests
+            self.handle_request()
         if 'threads' in tests.selftest_debug_flags:
             print 'Closing  %r' % (self.server_address,)
         # Let's close the listening socket
@@ -445,7 +439,7 @@ class TestingHTTPServerMixin:
             # still being called)
             pass
         # We don't have to wait for the server to shut down to start shutting
-        # the clients, so let's start now.
+        # down the clients, so let's start now.
         for c in self.clients:
             self.shutdown_client(c)
         self.clients = []
