@@ -45,14 +45,17 @@ _export_function(PyObject *module, char *funcname, void *func, char *signature)
     PyObject *d = NULL;
     PyObject *c_obj = NULL;
 
-    d = PyObject_GetAttrString(module, _C_API_NAME);
+    /* (char *) is because python2.4 declares this api as 'char *' rather than
+     * const char* which it really is.
+     */
+    d = PyObject_GetAttrString(module, (char *)_C_API_NAME);
     if (!d) {
         PyErr_Clear();
         d = PyDict_New();
         if (!d)
             goto bad;
         Py_INCREF(d);
-        if (PyModule_AddObject(module, _C_API_NAME, d) < 0)
+        if (PyModule_AddObject(module, (char *)_C_API_NAME, d) < 0)
             goto bad;
     }
     c_obj = PyCObject_FromVoidPtrAndDesc(func, signature, 0);
