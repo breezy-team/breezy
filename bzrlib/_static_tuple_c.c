@@ -389,6 +389,10 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         PyObject *result = NULL;
         v_obj = StaticTuple_GET_ITEM(v_st, i);
         w_obj = StaticTuple_GET_ITEM(w_st, i);
+        if (v_obj == w_obj) {
+            /* Shortcut case, these must be identical */
+            continue;
+        }
         if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj)) {
             result = string_richcompare(v_obj, w_obj, Py_EQ);
         } else if (StaticTuple_CheckExact(v_obj) &&
