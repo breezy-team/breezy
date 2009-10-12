@@ -203,7 +203,9 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
+            # TODO: StaticTuple
             node_refs.append(tuple(reference_list))
+        # TODO: StaticTuple
         return tuple(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
