@@ -20,6 +20,9 @@
  */
 #define STATIC_TUPLE_MODULE
 
+#include <Python.h>
+#include "python-compat.h"
+
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
 
@@ -30,8 +33,6 @@
  */
 #define import__simple_set_pyx import_bzrlib___simple_set_pyx
 #include "_simple_set_pyx_api.h"
-
-#include "python-compat.h"
 
 #if defined(__GNUC__)
 #   define inline __inline__
@@ -689,7 +690,7 @@ setup_c_api(PyObject *m)
 
 
 static int
-_workaround_pyrex_096()
+_workaround_pyrex_096(void)
 {
     /* Work around an incompatibility in how pyrex 0.9.6 exports a module,
      * versus how pyrex 0.9.8 and cython 0.11 export it.
