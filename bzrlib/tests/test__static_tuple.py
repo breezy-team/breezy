@@ -208,13 +208,29 @@ class TestStaticTuple(tests.TestCase):
         self.assertTrue(k_small <= k_big)
         self.assertTrue(k_small < k_big)
 
+    def assertCompareNoRelation(self, k1, k2):
+        """Run the comparison operators, make sure they do something.
+
+        However, we don't actually care what comes first or second. This is
+        stuff like cross-class comparisons. We don't want to segfault/raise an
+        exception, but we don't care about the sort order.
+        """
+        self.assertFalse(k1 == k2)
+        self.assertTrue(k1 != k2)
+        # Do the comparison, but we don't care about the result
+        k1 >= k2
+        k1 > k2
+        k1 <= k2
+        k1 < k2
+
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')
         self.assertCompareDifferent(None, k1)
-        self.assertCompareDifferent(10, k1)
-        # Comparison with a string is poorly-defined, I seem to get failures
-        # regardless of which one comes first...
-        # self.assertCompareDifferent('baz', k1)
+    
+    def test_compare_cross_class(self):
+        k1 = self.module.StaticTuple('baz', 'bing')
+        self.assertCompareNoRelation(10, k1)
+        self.assertCompareNoRelation('baz', k1)
 
     def test_compare_all_different_same_width(self):
         k1 = self.module.StaticTuple('baz', 'bing')
