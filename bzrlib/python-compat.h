@@ -77,5 +77,8 @@
 #ifndef Py_TYPE
 #  define Py_TYPE(o) ((o)->ob_type)
 #endif
+#ifndef Py_REFCNT
+#  define Py_REFCNT(o) ((o)->ob_refcnt)
+#endif
 
 #endif /* _BZR_PYTHON_COMPAT_H */

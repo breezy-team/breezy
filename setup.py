@@ -301,7 +301,8 @@ add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 add_pyrex_extension('bzrlib._simple_set_pyx')
-
+ext_modules.append(Extension('bzrlib._static_tuple_c',
+                             ['bzrlib/_static_tuple_c.c']))
 
 if unavailable_files:
     print 'C extension(s) not found:'

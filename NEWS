@@ -209,14 +209,22 @@ Internals
 * Added ``bzrlib._simple_set_pyx``. This is a hybrid between a Set and a
   Dict (it only holds keys, but you can lookup the object located at a
   given key). It has significantly reduced memory consumption versus the
-  builtin objects (1/2 the size of Set, 1/3rd the size of Dict). This will
-  be used as the interning structure for StaticTuple objects, as part of
-  an ongoing push to reduce peak memory consumption.  (John Arbash Meinel)
+  builtin objects (1/2 the size of Set, 1/3rd the size of Dict). This is
+  used as the interning structure for StaticTuple objects.
+  (John Arbash Meinel)
 
 * ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
   mallocs while parsing the index (approx 3=>1 mallocs per key read).
   This results in a 10% speedup while reading an index.
   (John Arbash Meinel)
+
+* ``bzrlib._static_tuple_pyx.StaticTuple`` is now available. This class
+  functions similarly to ``tuple`` objects. However, it can only point at
+  other ``StaticTuple`` instances or strings. This allows us to remove it
+  from the garbage collector (it cannot be in a cycle), it also allows us
+  to intern the objects. In testing, this can reduce peak memory by
+  20-40%, and significantly improve performance by removing objects from
+  being inspected by the garbage collector. (John Arbash Meinel)
 
 * The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
   profiling in some situations like callbacks and generators easier.
