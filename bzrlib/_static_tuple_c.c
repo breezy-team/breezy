@@ -364,10 +364,17 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return Py_False;
         }
     }
-    /* TODO: if STATIC_TUPLE_INTERNED_FLAG is set on both objects and they are
-     *       not the same pointer, then we know they aren't the same object
-     *       without having to do sub-by-sub comparison.
-     */
+    if (op == Py_EQ
+        && _StaticTuple_is_interned(v_st)
+        && _StaticTuple_is_interned(w_st))
+    {
+        /* If both objects are interned, we know they are different if the
+         * pointer is not the same, which would have been handled by the
+         * previous if. No need to compare the entries.
+         */
+        Py_INCREF(Py_False);
+        return Py_False;
+    }
 
     /* The only time we are likely to compare items of different lengths is in
      * something like the interned_keys set. However, the hash is good enough
@@ -559,8 +566,9 @@ static PySequenceMethods StaticTuple_as_sequence = {
 };
 
 /* TODO: Implement StaticTuple_as_mapping.
- * The only thing we really want to support from there is mp_subscript, so that
- * we could support extended slicing (foo[::2]). Not worth it yet, though.
+ *       The only thing we really want to support from there is mp_subscript,
+ *       so that we could support extended slicing (foo[::2]). Not worth it
+ *       yet, though.
  */
 
 
