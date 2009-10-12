@@ -32,6 +32,7 @@ from bzrlib.diff import (
     external_diff,
     internal_diff,
     show_diff_trees,
+    get_trees_and_branches_to_diff,
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
@@ -41,6 +42,8 @@ import bzrlib.patiencediff
 import bzrlib._patiencediff_py
 from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
+from bzrlib.revisiontree import RevisionTree
+from bzrlib.revisionspec import RevisionSpec
 
 
 class _AttribFeature(Feature):
@@ -1382,3 +1385,46 @@ class TestDiffFromTool(TestCaseWithTransport):
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+
+
+class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
+
+    def test_basic(self):
+        tree = self.make_branch_and_tree('tree')
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = \
+            get_trees_and_branches_to_diff(['tree'], None, None, None)
+
+        self.assertIsInstance(old_tree, RevisionTree)
+        #print dir (old_tree)
+        self.assertEqual(_mod_revision.NULL_REVISION, old_tree.get_revision_id())
+        self.assertEqual(tree.basedir, new_tree.basedir)
+        self.assertEqual(tree.branch.base, old_branch.base)
+        self.assertEqual(tree.branch.base, new_branch.base)
+        self.assertIs(None, specific_files)
+        self.assertIs(None, extra_trees)
+
+    def test_with_rev_specs(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'oldcontent')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree', timestamp=0, rev_id="old-id")
+        self.build_tree_contents([('tree/file', 'newcontent')])
+        tree.commit('new tree', timestamp=0, rev_id="new-id")
+
+        revisions = [RevisionSpec.from_string('1'),
+                     RevisionSpec.from_string('2')]
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = \
+            get_trees_and_branches_to_diff(['tree'], revisions, None, None)
+
+        self.assertIsInstance(old_tree, RevisionTree)
+        self.assertEqual("old-id", old_tree.get_revision_id())
+        self.assertIsInstance(new_tree, RevisionTree)
+        self.assertEqual("new-id", new_tree.get_revision_id())
+        self.assertEqual(tree.branch.base, old_branch.base)
+        self.assertEqual(tree.branch.base, new_branch.base)
+        self.assertIs(None, specific_files)
+        self.assertEqual(tree.basedir, extra_trees[0].basedir)

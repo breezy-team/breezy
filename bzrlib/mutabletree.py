@@ -233,12 +233,20 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._gather_kinds)
 
     @needs_read_lock
-    def has_changes(self, from_tree):
-        """Quickly check that the tree contains at least one change.
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
 
         :return: True if a change is found. False otherwise
         """
-        changes = self.iter_changes(from_tree)
+        # Check pending merges
+        if len(self.get_parent_ids()) > 1:
+            return True
+        if _from_tree is None:
+            _from_tree = self.basis_tree()
+        changes = self.iter_changes(_from_tree)
         try:
             change = changes.next()
             # Exclude root (talk about black magic... --vila 20090629)

@@ -141,6 +141,13 @@ class TestStaticTuple(tests.TestCase):
         self.assertEqual('foo', k[0])
         self.assertEqual('z', k[6])
         self.assertEqual('z', k[-1])
+        self.assertRaises(IndexError, k.__getitem__, 7)
+        self.assertRaises(IndexError, k.__getitem__, 256+7)
+        self.assertRaises(IndexError, k.__getitem__, 12024)
+        # Python's [] resolver handles the negative arguments, so we can't
+        # really test StaticTuple_item() with negative values.
+        self.assertRaises(TypeError, k.__getitem__, 'not-an-int')
+        self.assertRaises(TypeError, k.__getitem__, '5')
 
     def test_refcount(self):
         f = 'fo' + 'oo'
@@ -202,13 +209,29 @@ class TestStaticTuple(tests.TestCase):
         self.assertTrue(k_small <= k_big)
         self.assertTrue(k_small < k_big)
 
+    def assertCompareNoRelation(self, k1, k2):
+        """Run the comparison operators, make sure they do something.
+
+        However, we don't actually care what comes first or second. This is
+        stuff like cross-class comparisons. We don't want to segfault/raise an
+        exception, but we don't care about the sort order.
+        """
+        self.assertFalse(k1 == k2)
+        self.assertTrue(k1 != k2)
+        # Do the comparison, but we don't care about the result
+        k1 >= k2
+        k1 > k2
+        k1 <= k2
+        k1 < k2
+
     def test_compare_vs_none(self):
         k1 = self.module.StaticTuple('baz', 'bing')
         self.assertCompareDifferent(None, k1)
-        self.assertCompareDifferent(10, k1)
-        # Comparison with a string is poorly-defined, I seem to get failures
-        # regardless of which one comes first...
-        # self.assertCompareDifferent('baz', k1)
+    
+    def test_compare_cross_class(self):
+        k1 = self.module.StaticTuple('baz', 'bing')
+        self.assertCompareNoRelation(10, k1)
+        self.assertCompareNoRelation('baz', k1)
 
     def test_compare_all_different_same_width(self):
         k1 = self.module.StaticTuple('baz', 'bing')
@@ -277,12 +300,22 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
         self.assertEqual(('foo', 'bar'), k[:2])
         self.assertEqual(('baz',), k[2:-1])
+        try:
+            val = k[::2]
+        except TypeError:
+            # C implementation raises a TypeError, we don't need the
+            # implementation yet, so allow this to pass
+            pass
+        else:
+            # Python implementation uses a regular Tuple, so make sure it gives
+            # the right result
+            self.assertEqual(('foo', 'baz'), val)
 
     def test_referents(self):
         # We implement tp_traverse so that things like 'meliae' can measure the
         # amount of referenced memory. Unfortunately gc.get_referents() first
-        # checks the IS_GC flag before it traverses anything. So there isn't a
-        # way to expose it that I can see.
+        # checks the IS_GC flag before it traverses anything. We could write a
+        # helper func, but that won't work for the generic implementation...
         self.requireFeature(Meliae)
         from meliae import scanner
         strs = ['foo', 'bar', 'baz', 'bing']

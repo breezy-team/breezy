@@ -30,6 +30,45 @@ except ImportError:
     _simple_set_pyx = None
 
 
+class _Hashable(object):
+    """A simple object which has a fixed hash value.
+
+    We could have used an 'int', but it turns out that Int objects don't
+    implement tp_richcompare...
+    """
+
+    def __init__(self, the_hash):
+        self.hash = the_hash
+
+    def __hash__(self):
+        return self.hash
+
+    def __eq__(self, other):
+        if not isinstance(other, _Hashable):
+            return NotImplemented
+        return other.hash == self.hash
+
+
+class _BadSecondHash(_Hashable):
+
+    def __init__(self, the_hash):
+        _Hashable.__init__(self, the_hash)
+        self._first = True
+
+    def __hash__(self):
+        if self._first:
+            self._first = False
+            return self.hash
+        else:
+            raise ValueError('I can only be hashed once.')
+
+
+class _BadCompare(_Hashable):
+
+    def __eq__(self, other):
+        raise RuntimeError('I refuse to play nice')
+
+
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 
@@ -62,6 +101,9 @@ class TestSimpleSet(tests.TestCase):
     def assertFillState(self, used, fill, mask, obj):
         self.assertEqual((used, fill, mask), (obj.used, obj.fill, obj.mask))
 
+    def assertLookup(self, offset, value, obj, key):
+        self.assertEqual((offset, value), obj._test_lookup(key))
+
     def assertRefcount(self, count, obj):
         """Assert that the refcount for obj is what we expect.
 
@@ -81,58 +123,88 @@ class TestSimpleSet(tests.TestCase):
         self.assertFillState(0, 0, 0x3ff, obj)
 
     def test__lookup(self):
-        # The tuple hash function is rather good at entropy. For all integers
-        # 0=>1023, hash((i,)) & 1023 maps to a unique output, and hash((i,j))
-        # maps to all 1024 fields evenly.
-        # However, hash((c,d))& 1023 for characters has an uneven distribution
-        # of collisions, for example:
-        #  ('a', 'a'), ('f', '4'), ('p', 'r'), ('q', '1'), ('F', 'T'),
-        #  ('Q', 'Q'), ('V', 'd'), ('7', 'C')
-        # all collide @ 643
+        # These are carefully chosen integers to force hash collisions in the
+        # algorithm, based on the initial set size of 1024
         obj = self.module.SimpleSet()
-        offset, val = obj._test_lookup(('a', 'a'))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(('f', '4'))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(('p', 'r'))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
+        self.assertLookup(643, '<null>', obj, _Hashable(643))
+        self.assertLookup(643, '<null>', obj, _Hashable(643 + 1024))
+        self.assertLookup(643, '<null>', obj, _Hashable(643 + 50*1024))
+
+    def test__lookup_collision(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(643)
+        k2 = _Hashable(643 + 1024)
+        self.assertLookup(643, '<null>', obj, k1)
+        self.assertLookup(643, '<null>', obj, k2)
+        obj.add(k1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, '<null>', obj, k2)
+
+    def test__lookup_after_resize(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(643)
+        k2 = _Hashable(643 + 1024)
+        obj.add(k1)
+        obj.add(k2)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        obj._py_resize(2047) # resized to 2048
+        self.assertEqual(2048, obj.mask + 1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(643+1024, k2, obj, k2)
+        obj._py_resize(1023) # resized back to 1024
+        self.assertEqual(1024, obj.mask + 1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
 
     def test_get_set_del_with_collisions(self):
         obj = self.module.SimpleSet()
-        k1 = ('a', 'a')
-        k2 = ('f', '4') # collides
-        k3 = ('p', 'r')
-        k4 = ('q', '1')
-        self.assertEqual((643, '<null>'), obj._test_lookup(k1))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k2))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k3))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k4))
+
+        h1 = 643
+        h2 = 643 + 1024
+        h3 = 643 + 1024*50
+        h4 = 643 + 1024*25
+        h5 = 644
+        h6 = 644 + 1024
+
+        k1 = _Hashable(h1)
+        k2 = _Hashable(h2)
+        k3 = _Hashable(h3)
+        k4 = _Hashable(h4)
+        k5 = _Hashable(h5)
+        k6 = _Hashable(h6)
+        self.assertLookup(643, '<null>', obj, k1)
+        self.assertLookup(643, '<null>', obj, k2)
+        self.assertLookup(643, '<null>', obj, k3)
+        self.assertLookup(643, '<null>', obj, k4)
+        self.assertLookup(644, '<null>', obj, k5)
+        self.assertLookup(644, '<null>', obj, k6)
         obj.add(k1)
         self.assertIn(k1, obj)
         self.assertNotIn(k2, obj)
         self.assertNotIn(k3, obj)
         self.assertNotIn(k4, obj)
-        self.assertEqual((643, k1), obj._test_lookup(k1))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k2))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k3))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k4))
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, '<null>', obj, k2)
+        self.assertLookup(644, '<null>', obj, k3)
+        self.assertLookup(644, '<null>', obj, k4)
+        self.assertLookup(644, '<null>', obj, k5)
+        self.assertLookup(644, '<null>', obj, k6)
         self.assertIs(k1, obj[k1])
-        obj.add(k2)
+        self.assertIs(k2, obj.add(k2))
         self.assertIs(k2, obj[k2])
-        self.assertEqual((643, k1), obj._test_lookup(k1))
-        self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((660, '<null>'), obj._test_lookup(k3))
-        # Even though k4 collides for the first couple of iterations, the hash
-        # perturbation uses the full width hash (not just the masked value), so
-        # it now diverges
-        self.assertEqual((180, '<null>'), obj._test_lookup(k4))
-        self.assertEqual((643, k1), obj._test_lookup(('a', 'a')))
-        self.assertEqual((787, k2), obj._test_lookup(('f', '4')))
-        self.assertEqual((660, '<null>'), obj._test_lookup(('p', 'r')))
-        self.assertEqual((180, '<null>'), obj._test_lookup(('q', '1')))
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        self.assertLookup(646, '<null>', obj, k3)
+        self.assertLookup(646, '<null>', obj, k4)
+        self.assertLookup(645, '<null>', obj, k5)
+        self.assertLookup(645, '<null>', obj, k6)
+        self.assertLookup(643, k1, obj, _Hashable(h1))
+        self.assertLookup(644, k2, obj, _Hashable(h2))
+        self.assertLookup(646, '<null>', obj, _Hashable(h3))
+        self.assertLookup(646, '<null>', obj, _Hashable(h4))
+        self.assertLookup(645, '<null>', obj, _Hashable(h5))
+        self.assertLookup(645, '<null>', obj, _Hashable(h6))
         obj.add(k3)
         self.assertIs(k3, obj[k3])
         self.assertIn(k1, obj)
@@ -140,11 +212,11 @@ class TestSimpleSet(tests.TestCase):
         self.assertIn(k3, obj)
         self.assertNotIn(k4, obj)
 
-        del obj[k1]
-        self.assertEqual((643, '<dummy>'), obj._test_lookup(k1))
-        self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((660, k3), obj._test_lookup(k3))
-        self.assertEqual((643, '<dummy>'), obj._test_lookup(k4))
+        obj.discard(k1)
+        self.assertLookup(643, '<dummy>', obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        self.assertLookup(646, k3, obj, k3)
+        self.assertLookup(643, '<dummy>', obj, k4)
         self.assertNotIn(k1, obj)
         self.assertIn(k2, obj)
         self.assertIn(k3, obj)
@@ -179,7 +251,7 @@ class TestSimpleSet(tests.TestCase):
         self.assertRefcount(2, k1)
         self.assertRefcount(1, k2)
         # Deleting an entry should remove the fill, but not the used
-        del obj[k1]
+        obj.discard(k1)
         self.assertFillState(0, 1, 0x3ff, obj)
         self.assertRefcount(1, k1)
         k3 = tuple(['bar'])
@@ -210,23 +282,6 @@ class TestSimpleSet(tests.TestCase):
         self.assertEqual(1, obj.discard(k3))
         self.assertRefcount(1, k3)
 
-    def test__delitem__(self):
-        obj = self.module.SimpleSet()
-        k1 = tuple(['foo'])
-        k2 = tuple(['foo'])
-        k3 = tuple(['bar'])
-        self.assertRefcount(1, k1)
-        self.assertRefcount(1, k2)
-        self.assertRefcount(1, k3)
-        obj.add(k1)
-        self.assertRefcount(2, k1)
-        self.assertRaises(KeyError, obj.__delitem__, k3)
-        self.assertRefcount(1, k3)
-        obj.add(k3)
-        self.assertRefcount(2, k3)
-        del obj[k3]
-        self.assertRefcount(1, k3)
-
     def test__resize(self):
         obj = self.module.SimpleSet()
         k1 = ('foo',)
@@ -235,13 +290,13 @@ class TestSimpleSet(tests.TestCase):
         obj.add(k1)
         obj.add(k2)
         obj.add(k3)
-        del obj[k2]
+        obj.discard(k2)
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(1024, obj._py_resize(500))
         # Doesn't change the size, but does change the content
         self.assertFillState(2, 2, 0x3ff, obj)
         obj.add(k2)
-        del obj[k3]
+        obj.discard(k3)
         self.assertFillState(2, 3, 0x3ff, obj)
         self.assertEqual(4096, obj._py_resize(4095))
         self.assertFillState(2, 2, 0xfff, obj)
@@ -250,12 +305,29 @@ class TestSimpleSet(tests.TestCase):
         self.assertNotIn(k3, obj)
         obj.add(k2)
         self.assertIn(k2, obj)
-        del obj[k2]
+        obj.discard(k2)
         self.assertEqual((591, '<dummy>'), obj._test_lookup(k2))
         self.assertFillState(1, 2, 0xfff, obj)
         self.assertEqual(2048, obj._py_resize(1024))
         self.assertFillState(1, 1, 0x7ff, obj)
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
+
+    def test_second_hash_failure(self):
+        obj = self.module.SimpleSet()
+        k1 = _BadSecondHash(200)
+        k2 = _Hashable(200)
+        # Should only call hash() one time
+        obj.add(k1)
+        self.assertFalse(k1._first)
+        self.assertRaises(ValueError, obj.add, k2)
+
+    def test_richcompare_failure(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(200)
+        k2 = _BadCompare(200)
+        obj.add(k1)
+        # Tries to compare with k1, fails
+        self.assertRaises(RuntimeError, obj.add, k2)
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
@@ -295,5 +367,5 @@ class TestSimpleSet(tests.TestCase):
         # Set changed size
         self.assertRaises(RuntimeError, iterator.next)
         # And even removing an item still causes it to fail
-        del obj[k2]
+        obj.discard(k2)
         self.assertRaises(RuntimeError, iterator.next)
