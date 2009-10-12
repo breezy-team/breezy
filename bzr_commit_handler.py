@@ -186,7 +186,8 @@ class GenericCommitHandler(processor.CommitHandler):
                         return id, False
 
         # Doesn't exist yet so create it
-        id = generate_ids.gen_file_id(path)
+        dirname, basename = osutils.split(path)
+        id = generate_ids.gen_file_id(basename)
         self.debug("Generated new file id %s for '%s' in revision-id '%s'",
             id, path, self.revision_id)
         self._new_file_ids[path] = id
