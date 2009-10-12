@@ -207,6 +207,11 @@ mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mapping",
 class ForeignGit(ForeignVcs):
     """The Git Stupid Content Tracker"""
 
+    @property
+    def branch_format(self):
+        from bzrlib.plugins.git.branch import GitBranchFormat
+        return GitBranchFormat()
+
     def __init__(self):
         super(ForeignGit, self).__init__(mapping_registry)
 
