@@ -107,7 +107,6 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     """
     # Attributes are defined in the .pxd file
     DEF DEFAULT_SIZE=1024
-    DEF PERTURB_SHIFT=5
 
     def __init__(self):
         cdef Py_ssize_t size, n_bytes
@@ -193,27 +192,27 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         as it makes a lot of assuptions about keys not already being present,
         and there being no dummy entries.
         """
-        cdef size_t i, perturb, mask
+        cdef size_t i, n_lookup
         cdef long the_hash
         cdef PyObject **table, **slot
+        cdef Py_ssize_t mask
 
         mask = self._mask
         table = self._table
 
         the_hash = Py_TYPE(key).tp_hash(key)
-        i = the_hash & mask
-        slot = &table[i]
-        perturb = the_hash
-        # Because we know that we made all items unique before, we can just
-        # iterate as long as the target location is not empty, we don't have to
-        # do any comparison, etc.
-        while slot[0] != NULL:
-            i = (i << 2) + i + perturb + 1
+        if the_hash == -1:
+            return -1
+        i = the_hash
+        for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
             slot = &table[i & mask]
-            perturb >>= PERTURB_SHIFT
-        slot[0] = key
-        self._fill += 1
-        self._used += 1
+            if slot[0] == NULL:
+                slot[0] = key
+                self._fill += 1
+                self._used += 1
+                return 1
+            i = i + 1 + n_lookup
+        raise RuntimeError('ran out of slots.')
 
     def _py_resize(self, min_used):
         """Do not use this directly, it is only exposed for testing."""
@@ -422,26 +421,50 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
 
     :param key: An object we are looking up
     :param hash: The hash for key
-    :return: The location in self.table where key should be put
-        should never be NULL, but may reference a NULL (PyObject*)
+    :return: The location in self.table where key should be put.
+        location == NULL is an exception, but (*location) == NULL just
+        indicates the slot is empty and can be used.
     """
-    # This is the heart of most functions, which is why it is pulled out as an
-    # cdef inline function.
-    cdef size_t i, perturb
+    # This uses Quadratic Probing:
+    #  http://en.wikipedia.org/wiki/Quadratic_probing
+    # with c1 = c2 = 1/2
+    # This leads to probe locations at:
+    #  h0 = hash(k1)
+    #  h1 = h0 + 1
+    #  h2 = h0 + 3 = h1 + 1 + 1
+    #  h3 = h0 + 6 = h2 + 1 + 2
+    #  h4 = h0 + 10 = h2 + 1 + 3
+    # Note that all of these are '& mask', but that is computed *after* the
+    # offset.
+    # This differs from the algorithm used by Set and Dict. Which, effectively,
+    # use double-hashing, and a step size that starts large, but dwindles to
+    # stepping one-by-one.
+    # This gives more 'locality' in that if you have a collision at offset X,
+    # the first fallback is X+1, which is fast to check. However, that means
+    # that an object w/ hash X+1 will also check there, and then X+2 next.
+    # However, for objects with differing hashes, their chains are different.
+    # The former checks X, X+1, X+3, ... the latter checks X+1, X+2, X+4, ...
+    # So different hashes diverge quickly.
+    # A bigger problem is that we *only* ever use the lowest bits of the hash
+    # So all integers (x + SIZE*N) will resolve into the same bucket, and all
+    # use the same collision resolution. We may want to try to find a way to
+    # incorporate the upper bits of the hash with quadratic probing. (For
+    # example, X, X+1, X+3+some_upper_bits, X+6+more_upper_bits, etc.)
+    cdef size_t i, n_lookup
     cdef Py_ssize_t mask
     cdef long key_hash
     cdef PyObject **table, **slot, *cur, **free_slot, *py_key
 
+    # hash is a signed long(), we are using an offset at unsigned size_t
     key_hash = hash(key)
+    i = <size_t>key_hash
     mask = self._mask
     table = self._table
     free_slot = NULL
-    i = key_hash & mask
-    slot = &table[i]
-    cur = slot[0]
     py_key = <PyObject *>key
-    perturb = key_hash
-    while True:
+    for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
+        slot = &table[i & mask]
+        cur = slot[0]
         if cur == NULL:
             # Found a blank spot
             if free_slot != NULL:
@@ -458,10 +481,7 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
         elif _is_equal(py_key, key_hash, cur):
             # Both py_key and cur belong in this slot, return it
             return slot
-        i = (i << 2) + i + perturb + 1
-        perturb >>= PERTURB_SHIFT
-        slot = &table[i & mask]
-        cur = slot[0]
+        i = i + 1 + n_lookup
     raise AssertionError('should never get here')
 
 

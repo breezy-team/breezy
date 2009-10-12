@@ -101,6 +101,9 @@ class TestSimpleSet(tests.TestCase):
     def assertFillState(self, used, fill, mask, obj):
         self.assertEqual((used, fill, mask), (obj.used, obj.fill, obj.mask))
 
+    def assertLookup(self, offset, value, obj, key):
+        self.assertEqual((offset, value), obj._test_lookup(key))
+
     def assertRefcount(self, count, obj):
         """Assert that the refcount for obj is what we expect.
 
@@ -123,15 +126,36 @@ class TestSimpleSet(tests.TestCase):
         # These are carefully chosen integers to force hash collisions in the
         # algorithm, based on the initial set size of 1024
         obj = self.module.SimpleSet()
-        offset, val = obj._test_lookup(_Hashable(643))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(_Hashable(643 + 1024))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
-        offset, val = obj._test_lookup(_Hashable(643 + 1024*50))
-        self.assertEqual(643, offset)
-        self.assertEqual('<null>', val)
+        self.assertLookup(643, '<null>', obj, _Hashable(643))
+        self.assertLookup(643, '<null>', obj, _Hashable(643 + 1024))
+        self.assertLookup(643, '<null>', obj, _Hashable(643 + 50*1024))
+
+    def test__lookup_collision(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(643)
+        k2 = _Hashable(643 + 1024)
+        self.assertLookup(643, '<null>', obj, k1)
+        self.assertLookup(643, '<null>', obj, k2)
+        obj.add(k1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, '<null>', obj, k2)
+
+    def test__lookup_after_resize(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(643)
+        k2 = _Hashable(643 + 1024)
+        obj.add(k1)
+        obj.add(k2)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        obj._py_resize(2047) # resized to 2048
+        self.assertEqual(2048, obj.mask + 1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(643+1024, k2, obj, k2)
+        obj._py_resize(1023) # resized back to 1024
+        self.assertEqual(1024, obj.mask + 1)
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
 
     def test_get_set_del_with_collisions(self):
         obj = self.module.SimpleSet()
@@ -140,38 +164,47 @@ class TestSimpleSet(tests.TestCase):
         h2 = 643 + 1024
         h3 = 643 + 1024*50
         h4 = 643 + 1024*25
+        h5 = 644
+        h6 = 644 + 1024
 
         k1 = _Hashable(h1)
         k2 = _Hashable(h2)
         k3 = _Hashable(h3)
         k4 = _Hashable(h4)
-        self.assertEqual((643, '<null>'), obj._test_lookup(k1))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k2))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k3))
-        self.assertEqual((643, '<null>'), obj._test_lookup(k4))
+        k5 = _Hashable(h5)
+        k6 = _Hashable(h6)
+        self.assertLookup(643, '<null>', obj, k1)
+        self.assertLookup(643, '<null>', obj, k2)
+        self.assertLookup(643, '<null>', obj, k3)
+        self.assertLookup(643, '<null>', obj, k4)
+        self.assertLookup(644, '<null>', obj, k5)
+        self.assertLookup(644, '<null>', obj, k6)
         obj.add(k1)
         self.assertIn(k1, obj)
         self.assertNotIn(k2, obj)
         self.assertNotIn(k3, obj)
         self.assertNotIn(k4, obj)
-        self.assertEqual((643, k1), obj._test_lookup(k1))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k2))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k3))
-        self.assertEqual((787, '<null>'), obj._test_lookup(k4))
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, '<null>', obj, k2)
+        self.assertLookup(644, '<null>', obj, k3)
+        self.assertLookup(644, '<null>', obj, k4)
+        self.assertLookup(644, '<null>', obj, k5)
+        self.assertLookup(644, '<null>', obj, k6)
         self.assertIs(k1, obj[k1])
-        obj.add(k2)
+        self.assertIs(k2, obj.add(k2))
         self.assertIs(k2, obj[k2])
-        self.assertEqual((643, k1), obj._test_lookup(k1))
-        self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((436, '<null>'), obj._test_lookup(k3))
-        # Even though k4 collides for the first couple of iterations, the hash
-        # perturbation uses the full width hash (not just the masked value), so
-        # it now diverges
-        self.assertEqual((660, '<null>'), obj._test_lookup(k4))
-        self.assertEqual((643, k1), obj._test_lookup(_Hashable(h1)))
-        self.assertEqual((787, k2), obj._test_lookup(_Hashable(h2)))
-        self.assertEqual((436, '<null>'), obj._test_lookup(_Hashable(h3)))
-        self.assertEqual((660, '<null>'), obj._test_lookup(_Hashable(h4)))
+        self.assertLookup(643, k1, obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        self.assertLookup(646, '<null>', obj, k3)
+        self.assertLookup(646, '<null>', obj, k4)
+        self.assertLookup(645, '<null>', obj, k5)
+        self.assertLookup(645, '<null>', obj, k6)
+        self.assertLookup(643, k1, obj, _Hashable(h1))
+        self.assertLookup(644, k2, obj, _Hashable(h2))
+        self.assertLookup(646, '<null>', obj, _Hashable(h3))
+        self.assertLookup(646, '<null>', obj, _Hashable(h4))
+        self.assertLookup(645, '<null>', obj, _Hashable(h5))
+        self.assertLookup(645, '<null>', obj, _Hashable(h6))
         obj.add(k3)
         self.assertIs(k3, obj[k3])
         self.assertIn(k1, obj)
@@ -180,10 +213,10 @@ class TestSimpleSet(tests.TestCase):
         self.assertNotIn(k4, obj)
 
         obj.discard(k1)
-        self.assertEqual((643, '<dummy>'), obj._test_lookup(k1))
-        self.assertEqual((787, k2), obj._test_lookup(k2))
-        self.assertEqual((436, k3), obj._test_lookup(k3))
-        self.assertEqual((643, '<dummy>'), obj._test_lookup(k4))
+        self.assertLookup(643, '<dummy>', obj, k1)
+        self.assertLookup(644, k2, obj, k2)
+        self.assertLookup(646, k3, obj, k3)
+        self.assertLookup(643, '<dummy>', obj, k4)
         self.assertNotIn(k1, obj)
         self.assertIn(k2, obj)
         self.assertIn(k3, obj)
