@@ -52,6 +52,8 @@ class StaticTuple(tuple):
         return _interned_tuples.setdefault(self, self)
 
 
+# Have to set it to None first, so that __new__ can determine whether
+# the _empty_tuple singleton has been created yet or not.
 _empty_tuple = None
 _empty_tuple = StaticTuple()
 _interned_tuples = {}
