@@ -255,7 +255,7 @@ class RecordingServer(object):
             pass
 
     def connect_socket(self):
-        msg = "getaddrinfo returns an empty list"
+        err = socket.error('getaddrinfo returns an empty list')
         for res in socket.getaddrinfo(self.host, self.port):
             af, socktype, proto, canonname, sa = res
             sock = None
@@ -264,10 +264,11 @@ class RecordingServer(object):
                 sock.connect(sa)
                 return sock
 
-            except socket.error, msg:
+            except socket.error, err:
+                # err is now the most recent error
                 if sock is not None:
                     sock.close()
-        raise socket.error, msg
+        raise err
 
     def tearDown(self):
         try:
@@ -283,8 +284,6 @@ class RecordingServer(object):
         self._thread.join()
         if 'threads' in tests.selftest_debug_flags:
             print 'Thread  joined: %s' % (self._thread.ident,)
-        del self._thread
-        self.thread = None
 
 
 class TestAuthHeader(tests.TestCase):
