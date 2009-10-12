@@ -48,6 +48,27 @@ class _Hashable(object):
             return NotImplemented
         return other.hash == self.hash
 
+
+class _BadSecondHash(_Hashable):
+
+    def __init__(self, the_hash):
+        _Hashable.__init__(self, the_hash)
+        self._first = True
+
+    def __hash__(self):
+        if self._first:
+            self._first = False
+            return self.hash
+        else:
+            raise ValueError('I can only be hashed once.')
+
+
+class _BadCompare(_Hashable):
+
+    def __eq__(self, other):
+        raise RuntimeError('I refuse to play nice')
+
+
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 
@@ -257,6 +278,23 @@ class TestSimpleSet(tests.TestCase):
         self.assertEqual(2048, obj._py_resize(1024))
         self.assertFillState(1, 1, 0x7ff, obj)
         self.assertEqual((591, '<null>'), obj._test_lookup(k2))
+
+    def test_second_hash_failure(self):
+        obj = self.module.SimpleSet()
+        k1 = _BadSecondHash(200)
+        k2 = _Hashable(200)
+        # Should only call hash() one time
+        obj.add(k1)
+        self.assertFalse(k1._first)
+        self.assertRaises(ValueError, obj.add, k2)
+
+    def test_richcompare_failure(self):
+        obj = self.module.SimpleSet()
+        k1 = _Hashable(200)
+        k2 = _BadCompare(200)
+        obj.add(k1)
+        # Tries to compare with k1, fails
+        self.assertRaises(RuntimeError, obj.add, k2)
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()

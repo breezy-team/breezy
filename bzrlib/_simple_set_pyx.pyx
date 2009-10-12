@@ -59,6 +59,10 @@ cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     if this == other:
         return 1
     other_hash = Py_TYPE(other).tp_hash(other)
+    if other_hash == -1:
+        # Even though other successfully hashed in the past, it seems to have
+        # changed its mind, and failed this time, so propogate the failure.
+        return -1
     if other_hash != this_hash:
         return 0
 
@@ -426,7 +430,6 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
     cdef size_t i, perturb
     cdef Py_ssize_t mask
     cdef long key_hash
-    cdef long this_hash
     cdef PyObject **table, **slot, *cur, **free_slot, *py_key
 
     key_hash = hash(key)
