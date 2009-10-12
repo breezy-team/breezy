@@ -857,8 +857,6 @@ class TestCase(unittest.TestCase):
         # going away but leak one) but it seems less likely than the actual
         # false positives (the test see threads going away and does not leak).
         if leaked_threads > 0:
-            if 'threads' in selftest_debug_flags:
-                print '%s is leaking, active is now %d' % (self.id(), active)
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
