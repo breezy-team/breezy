@@ -356,6 +356,11 @@ def _flatten_node(node, reference_lists):
     #       And when there are 2 items, we could do a single malloc + len() + 1
     #       also, doing .join() requires a PyObject_GetAttrString call, which
     #       we could also avoid.
+    # TODO: Note that pyrex 0.9.6 generates fairly crummy code here, using the
+    #       python object interface, versus 0.9.8+ which uses a helper that
+    #       checks if this supports the sequence interface.
+    #       We *could* do more work on our own, and grab the actual items
+    #       lists. For now, just ask people to use a better compiler. :)
     string_key = '\0'.join(node[1])
 
     # TODO: instead of using string joins, precompute the final string length,
