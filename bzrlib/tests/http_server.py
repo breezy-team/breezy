@@ -343,7 +343,7 @@ class TestingHTTPServerMixin:
         self.is_shut_down.set()
 
     def connect_socket(self):
-        msg = "getaddrinfo returns an empty list"
+        err = socket.error('getaddrinfo returns an empty list')
         for res in socket.getaddrinfo(*self.server_address):
             af, socktype, proto, canonname, sa = res
             sock = None
@@ -352,10 +352,11 @@ class TestingHTTPServerMixin:
                 sock.connect(sa)
                 return sock
 
-            except socket.error, msg:
+            except socket.error, err:
+                # 'err' is now the most recent error
                 if sock is not None:
                     sock.close()
-        raise socket.error, msg
+        raise err
 
     def shutdown(self):
         """Stops the serve() loop.
