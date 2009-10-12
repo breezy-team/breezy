@@ -354,10 +354,10 @@ class TestHTTPServer(tests.TestCase):
         server.setUp()
         try:
             self.assertTrue(server._httpd is not None)
-            self.assertTrue(server._httpd.serving)
+            self.assertTrue(server._httpd.serving is not None)
+            self.assertTrue(server._httpd.serving.isSet())
         finally:
             server.tearDown()
-        self.assertFalse(server._httpd.serving)
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):

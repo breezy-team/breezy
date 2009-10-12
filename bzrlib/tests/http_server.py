@@ -369,7 +369,7 @@ class TestingHTTPServerMixin:
         if sys.version < (2, 5):
             self.server_address = self.socket.getsockname()
 
-    def serve(self):
+    def serve(self, started):
         self.serving  = threading.Event()
         self.serving.set()
         self.is_shut_down.clear()
@@ -377,8 +377,12 @@ class TestingHTTPServerMixin:
         self.socket.settimeout(1)
         if 'threads' in tests.selftest_debug_flags:
             print 'Starting %r' % (self.server_address,)
+        # We are listening and ready to accept connections
+        started.set()
         while self.serving.isSet():
             try:
+                if 'threads' in tests.selftest_debug_flags:
+                    print 'Accepting on %r' % (self.server_address,)
                 # Really a connection but the python framework is generic and
                 # call them requests
                 self.handle_request()
@@ -430,12 +434,9 @@ class TestingHTTPServerMixin:
         # one to get out of the blocking listen.
         self.serving.clear()
         # The server is listening for a last connection, let's give it:
+        last_conn = None
         try:
-            fake_conn = self.connect_socket()
-            # But close it immediately without trying to use it. The server
-            # will not process a single byte on that socket to avoid
-            # complications (SSL starts with a handshake for example).
-            fake_conn.close()
+            last__conn = self.connect_socket()
         except socket.error, e:
             # But ignore connection errors as the point is to unblock the
             # server thread, it may happen that it's not blocked or even not
@@ -450,6 +451,11 @@ class TestingHTTPServerMixin:
         self.clients = []
         # Now we wait for the thread running serve() to finish
         self.is_shut_down.wait()
+        if last_conn is not None:
+            # Close the last connection without trying to use it. The server
+            # will not process a single byte on that socket to avoid
+            # complications (SSL starts with a handshake for example).
+            last_conn.close()
 
     def shutdown_client(self, client):
         sock, addr = client[:2]
@@ -517,6 +523,8 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         return SocketServer.ThreadingTCPServer.get_request(self)
 
     def process_request_thread(self, started, request, client_address):
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Processing: %s' % (threading.currentThread().name,)
         started.set()
         SocketServer.ThreadingTCPServer.process_request_thread(
             self, request, client_address)
@@ -546,6 +554,8 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
             # is shut down.
             sock, addr, thread = client
             if thread.isAlive():
+                if 'threads' in tests.selftest_debug_flags:
+                    print 'Try    joining: %s' % (thread.name,)
                 self.join_thread(thread)
 
     def server_bind(self):
@@ -623,24 +633,22 @@ class HttpServer(transport.Server):
         """Server thread main entry point. """
         server = None
         try:
-            try:
-                server = self._get_httpd()
-                self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                                       self.host, self.port)
-            except:
-                # Whatever goes wrong, we save the exception for the main
-                # thread. Note that since we are running in a thread, no signal
-                # can be received, so we don't care about KeyboardInterrupt.
-                self._http_exception = sys.exc_info()
-        finally:
-            # Release the lock or the main thread will block and the whole
-            # process will hang.
-            started.set()
+            server = self._get_httpd()
+            self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                                   self.host, self.port)
+        except:
+            # Whatever goes wrong, we save the exception for the main
+            # thread. Note that since we are running in a thread, no signal
+            # can be received, so we don't care about KeyboardInterrupt.
+            self._http_exception = sys.exc_info()
 
-        # From now on, exceptions are taken care of by the
-        # SocketServer.BaseServer or the request handler.
         if server is not None:
-            server.serve()
+            # From now on, exceptions are taken care of by the
+            # SocketServer.BaseServer or the request handler.
+            server.serve(started)
+        if not started.isSet():
+            # Hmm, something went wrong, but we can release the caller anyway
+            started.set()
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -699,6 +707,8 @@ class HttpServer(transport.Server):
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         self._httpd.shutdown()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Try    joining: %s' % (self._http_thread.name,)
         self._httpd.join_thread(self._http_thread)
         if 'threads' in tests.selftest_debug_flags:
             print 'Thread  joined: %s' % (self._http_thread.name,)
