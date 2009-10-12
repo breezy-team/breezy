@@ -167,7 +167,7 @@ StaticTuple_New(Py_ssize_t size)
 
 
 static PyObject *
-StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     StaticTuple *self;
     PyObject *obj = NULL;
@@ -623,7 +623,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_dictoffset */
     0,                                           /* tp_init */
     0,                                           /* tp_alloc */
-    StaticTuple_new,                             /* tp_new */
+    StaticTuple_new_constructor,                 /* tp_new */
 };
 
 
