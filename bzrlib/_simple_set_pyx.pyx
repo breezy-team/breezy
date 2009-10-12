@@ -16,6 +16,9 @@
 
 """Definition of a class that is similar to Set with some small changes."""
 
+cdef extern from "python-compat.h":
+    pass
+
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
     ctypedef long (*hashfunc)(PyObject*)
@@ -33,35 +36,58 @@ cdef extern from "Python.h":
         traverseproc tp_traverse
 
     PyTypeObject *Py_TYPE(PyObject *)
+    int PyObject_IsTrue(PyObject *)
         
     void *PyMem_Malloc(size_t nbytes)
     void PyMem_Free(void *)
     void memset(void *, int, size_t)
 
 
+# Dummy is an object used to mark nodes that have been deleted. Since
+# collisions require us to move a node to an alternative location, if we just
+# set an entry to NULL on delete, we won't find any relocated nodes.
+# We have to use _dummy_obj because we need to keep a refcount to it, but we
+# also use _dummy as a pointer, because it avoids having to put <PyObject*> all
+# over the code base.
 cdef object _dummy_obj
 cdef PyObject *_dummy
 _dummy_obj = object()
 _dummy = <PyObject *>_dummy_obj
 
 
-cdef int _is_equal(PyObject *this, long this_hash, PyObject *other):
+cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     cdef long other_hash
     cdef PyObject *res
 
     if this == other:
         return 1
     other_hash = Py_TYPE(other).tp_hash(other)
+    if other_hash == -1:
+        # Even though other successfully hashed in the past, it seems to have
+        # changed its mind, and failed this time, so propogate the failure.
+        return -1
     if other_hash != this_hash:
         return 0
+
+    # This implements a subset of the PyObject_RichCompareBool functionality.
+    # Namely it:
+    #   1) Doesn't try to do anything with old-style classes
+    #   2) Assumes that both objects have a tp_richcompare implementation, and
+    #      that if that is not enough to compare equal, then they are not
+    #      equal. (It doesn't try to cast them both to some intermediate form
+    #      that would compare equal.)
     res = Py_TYPE(this).tp_richcompare(this, other, Py_EQ)
-    if res == Py_True:
+    if res == NULL: # Exception
+        return -1
+    if PyObject_IsTrue(res):
         Py_DECREF(res)
         return 1
     if res == Py_NotImplemented:
         Py_DECREF(res)
         res = Py_TYPE(other).tp_richcompare(other, this, Py_EQ)
-    if res == Py_True:
+    if res == NULL:
+        return -1
+    if PyObject_IsTrue(res):
         Py_DECREF(res)
         return 1
     Py_DECREF(res)
@@ -84,7 +110,6 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
     """
     # Attributes are defined in the .pxd file
     DEF DEFAULT_SIZE=1024
-    DEF PERTURB_SHIFT=5
 
     def __init__(self):
         cdef Py_ssize_t size, n_bytes
@@ -170,27 +195,27 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         as it makes a lot of assuptions about keys not already being present,
         and there being no dummy entries.
         """
-        cdef size_t i, perturb, mask
+        cdef size_t i, n_lookup
         cdef long the_hash
-        cdef PyObject **table, **entry
+        cdef PyObject **table, **slot
+        cdef Py_ssize_t mask
 
         mask = self._mask
         table = self._table
 
         the_hash = Py_TYPE(key).tp_hash(key)
-        i = the_hash & mask
-        entry = &table[i]
-        perturb = the_hash
-        # Because we know that we made all items unique before, we can just
-        # iterate as long as the target location is not empty, we don't have to
-        # do any comparison, etc.
-        while entry[0] != NULL:
-            i = (i << 2) + i + perturb + 1
-            entry = &table[i & mask]
-            perturb >>= PERTURB_SHIFT
-        entry[0] = key
-        self._fill += 1
-        self._used += 1
+        if the_hash == -1:
+            return -1
+        i = the_hash
+        for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
+            slot = &table[i & mask]
+            if slot[0] == NULL:
+                slot[0] = key
+                self._fill = self._fill + 1
+                self._used = self._used + 1
+                return 1
+            i = i + 1 + n_lookup
+        raise RuntimeError('ran out of slots.')
 
     def _py_resize(self, min_used):
         """Do not use this directly, it is only exposed for testing."""
@@ -206,7 +231,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         :return: The new size of the internal table
         """
         cdef Py_ssize_t new_size, n_bytes, remaining
-        cdef PyObject **new_table, **old_table, **entry
+        cdef PyObject **new_table, **old_table, **slot
 
         new_size = DEFAULT_SIZE
         while new_size <= min_used and new_size > 0:
@@ -236,16 +261,16 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
 
         # Moving everything to the other table is refcount neutral, so we don't
         # worry about it.
-        entry = old_table
+        slot = old_table
         while remaining > 0:
-            if entry[0] == NULL: # unused slot
+            if slot[0] == NULL: # unused slot
                 pass 
-            elif entry[0] == _dummy: # dummy slot
-                remaining -= 1
+            elif slot[0] == _dummy: # dummy slot
+                remaining = remaining - 1
             else: # active slot
-                remaining -= 1
-                self._insert_clean(entry[0])
-            entry += 1
+                remaining = remaining - 1
+                self._insert_clean(slot[0])
+            slot = slot + 1
         PyMem_Free(old_table)
         return new_size
 
@@ -262,20 +287,24 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         cdef PyObject **slot, *py_key
         cdef int added
 
+        py_key = <PyObject *>key
+        if (Py_TYPE(py_key).tp_richcompare == NULL
+            or Py_TYPE(py_key).tp_hash == NULL):
+            raise TypeError('Types added to SimpleSet must implement'
+                            ' both tp_richcompare and tp_hash')
         added = 0
         # We need at least one empty slot
         assert self._used < self._mask
         slot = _lookup(self, key)
-        py_key = <PyObject *>key
         if (slot[0] == NULL):
             Py_INCREF(py_key)
-            self._fill += 1
-            self._used += 1
+            self._fill = self._fill + 1
+            self._used = self._used + 1
             slot[0] = py_key
             added = 1
         elif (slot[0] == _dummy):
             Py_INCREF(py_key)
-            self._used += 1
+            self._used = self._used + 1
             slot[0] = py_key
             added = 1
         # No else: clause. If _lookup returns a pointer to
@@ -291,11 +320,13 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         return retval
 
     def discard(self, key):
-        """Remove key from the dict, whether it exists or not.
+        """Remove key from the set, whether it exists or not.
 
-        :return: 0 if the item did not exist, 1 if it did
+        :return: False if the item did not exist, True if it did
         """
-        return self._discard(key)
+        if self._discard(key):
+            return True
+        return False
 
     cdef int _discard(self, key) except -1:
         cdef PyObject **slot, *py_key
@@ -303,7 +334,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         slot = _lookup(self, key)
         if slot[0] == NULL or slot[0] == _dummy:
             return 0
-        self._used -= 1
+        self._used = self._used - 1
         Py_DECREF(slot[0])
         slot[0] = _dummy
         # PySet uses the heuristic: If more than 1/5 are dummies, then resize
@@ -319,16 +350,6 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         if ((self._fill - self._used) * 5 > self._mask):
             self._resize(self._used * 2)
         return 1
-
-    def __delitem__(self, key):
-        """Remove the given item from the dict.
-
-        Raise a KeyError if the key was not present.
-        """
-        cdef int exists
-        exists = self._discard(key)
-        if not exists:
-            raise KeyError('Key %s not present' % (key,))
 
     def __iter__(self):
         return _SimpleSet_iterator(self)
@@ -353,7 +374,7 @@ cdef class _SimpleSet_iterator:
 
     def __next__(self):
         cdef Py_ssize_t mask, i
-        cdef PyObject **table
+        cdef PyObject *key
 
         if self.set is None:
             raise StopIteration
@@ -361,21 +382,13 @@ cdef class _SimpleSet_iterator:
             # Force this exception to continue to be raised
             self._used = -1
             raise RuntimeError("Set size changed during iteration")
-        i = self.pos
-        mask = self.set._mask
-        table = self.set._table
-        assert i >= 0
-        while i <= mask and (table[i] == NULL or table[i] == _dummy):
-            i += 1
-        self.pos = i + 1
-        if i > mask:
-            # we walked to the end
+        if not SimpleSet_Next(self.set, &self.pos, &key):
             self.set = None
             raise StopIteration
-        # We must have found one
-        key = <object>(table[i])
-        self.len -= 1
-        return key
+        # we found something
+        the_key = <object>key # INCREF
+        self.len = self.len - 1
+        return the_key
 
     def __length_hint__(self):
         if self.set is not None and self._used == self.set._used:
@@ -411,51 +424,67 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
 
     :param key: An object we are looking up
     :param hash: The hash for key
-    :return: The location in self.table where key should be put
-        should never be NULL, but may reference a NULL (PyObject*)
+    :return: The location in self.table where key should be put.
+        location == NULL is an exception, but (*location) == NULL just
+        indicates the slot is empty and can be used.
     """
-    # This is the heart of most functions, which is why it is pulled out as an
-    # cdef inline function.
-    cdef size_t i, perturb
+    # This uses Quadratic Probing:
+    #  http://en.wikipedia.org/wiki/Quadratic_probing
+    # with c1 = c2 = 1/2
+    # This leads to probe locations at:
+    #  h0 = hash(k1)
+    #  h1 = h0 + 1
+    #  h2 = h0 + 3 = h1 + 1 + 1
+    #  h3 = h0 + 6 = h2 + 1 + 2
+    #  h4 = h0 + 10 = h2 + 1 + 3
+    # Note that all of these are '& mask', but that is computed *after* the
+    # offset.
+    # This differs from the algorithm used by Set and Dict. Which, effectively,
+    # use double-hashing, and a step size that starts large, but dwindles to
+    # stepping one-by-one.
+    # This gives more 'locality' in that if you have a collision at offset X,
+    # the first fallback is X+1, which is fast to check. However, that means
+    # that an object w/ hash X+1 will also check there, and then X+2 next.
+    # However, for objects with differing hashes, their chains are different.
+    # The former checks X, X+1, X+3, ... the latter checks X+1, X+2, X+4, ...
+    # So different hashes diverge quickly.
+    # A bigger problem is that we *only* ever use the lowest bits of the hash
+    # So all integers (x + SIZE*N) will resolve into the same bucket, and all
+    # use the same collision resolution. We may want to try to find a way to
+    # incorporate the upper bits of the hash with quadratic probing. (For
+    # example, X, X+1, X+3+some_upper_bits, X+6+more_upper_bits, etc.)
+    cdef size_t i, n_lookup
     cdef Py_ssize_t mask
     cdef long key_hash
-    cdef long this_hash
-    cdef PyObject **table, **cur, **free_slot, *py_key
+    cdef PyObject **table, **slot, *cur, **free_slot, *py_key
 
+    # hash is a signed long(), we are using an offset at unsigned size_t
     key_hash = hash(key)
+    i = <size_t>key_hash
     mask = self._mask
     table = self._table
-    i = key_hash & mask
-    cur = &table[i]
+    free_slot = NULL
     py_key = <PyObject *>key
-    if cur[0] == NULL:
-        # Found a blank spot, or found the exact key
-        return cur
-    if cur[0] == py_key:
-        return cur
-    if cur[0] == _dummy:
-        free_slot = cur
-    else:
-        if _is_equal(py_key, key_hash, cur[0]):
-            # Both py_key and cur[0] belong in this slot, return it
-            return cur
-        free_slot = NULL
-    # size_t is unsigned, hash is signed...
-    perturb = key_hash
-    while True:
-        i = (i << 2) + i + perturb + 1
-        cur = &table[i & mask]
-        if cur[0] == NULL: # Found an empty spot
-            if free_slot: # Did we find a _dummy earlier?
+    for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
+        slot = &table[i & mask]
+        cur = slot[0]
+        if cur == NULL:
+            # Found a blank spot
+            if free_slot != NULL:
+                # Did we find an earlier _dummy entry?
                 return free_slot
             else:
-                return cur
-        if (cur[0] == py_key # exact match
-            or _is_equal(py_key, key_hash, cur[0])): # Equivalent match
-            return cur
-        if (cur[0] == _dummy and free_slot == NULL):
-            free_slot = cur
-        perturb >>= PERTURB_SHIFT
+                return slot
+        if cur == py_key:
+            # Found an exact pointer to the key
+            return slot
+        if cur == _dummy:
+            if free_slot == NULL:
+                free_slot = slot
+        elif _is_equal(py_key, key_hash, cur):
+            # Both py_key and cur belong in this slot, return it
+            return slot
+        i = i + 1 + n_lookup
     raise AssertionError('should never get here')
 
 
@@ -521,7 +550,6 @@ cdef api Py_ssize_t SimpleSet_Size(object self) except -1:
     return _check_self(self)._used
 
 
-# TODO: this should probably have direct tests, since it isn't used by __iter__
 cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
     """Walk over items in a SimpleSet.
 
@@ -540,7 +568,7 @@ cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
     mask = true_self._mask
     table= true_self._table
     while (i <= mask and (table[i] == NULL or table[i] == _dummy)):
-        i += 1
+        i = i + 1
     pos[0] = i + 1
     if (i > mask):
         return 0 # All done
@@ -565,8 +593,7 @@ cdef int SimpleSet_traverse(SimpleSet self, visitproc visit, void *arg):
         ret = visit(next_key, arg)
         if ret:
             return ret
-
-    return 0;
+    return 0
 
 # It is a little bit ugly to do this, but it works, and means that Meliae can
 # dump the total memory consumed by all child objects.

@@ -54,7 +54,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.decorators import needs_write_lock
+from bzrlib.decorators import needs_write_lock, only_raises
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
@@ -73,6 +73,7 @@ from bzrlib.repository import (
     )
 from bzrlib.trace import (
     mutter,
+    note,
     warning,
     )
 
@@ -2300,6 +2301,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -2312,6 +2316,9 @@ class KnitPackRepository(KnitRepository):
         else:
             self.control_files.lock_read()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -2345,6 +2352,7 @@ class KnitPackRepository(KnitRepository):
         packer = ReconcilePacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
