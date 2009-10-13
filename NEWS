@@ -375,6 +375,10 @@ Bug Fixes
   bugfix vs 2.0rc1, and all 2.0rc1 users should upgrade to 2.0rc2 before
   converting repositories. (Robert Collins, #422849)
 
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
 * Network streams now decode adjacent records of the same type into a
   single stream, reducing layering churn. (Robert Collins)
 

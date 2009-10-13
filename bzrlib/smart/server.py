@@ -18,6 +18,7 @@
 
 import errno
 import os.path
+import select
 import socket
 import sys
 import threading
