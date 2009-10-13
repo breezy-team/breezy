@@ -279,6 +279,18 @@ class TestStaticTuple(tests.TestCase):
         self.assertCompareEqual(k3, (k1, ('foo', 'bar')))
         self.assertCompareEqual((k1, ('foo', 'bar')), k3)
 
+    def test_compare_mixed_depths(self):
+        stuple = self.module.StaticTuple
+        k1 = stuple(stuple('launchpad@pqm.canonical.com-20080513123945-5rksdb3kzaszgujl',),
+                    stuple('bjorn@canonical.com-20080513090729-gxckcc7gv01txwl6',))
+        k2 = stuple(stuple(stuple('tim.penhey@canonical.com-20080805095941-04dh2yw94fjtialz',),
+                           stuple('launchpad@pqm.canonical.com-20080805101011-jt59xexr9sdkcjiu',)),
+                    stuple('bjorn@canonical.com-20080513090729-gxckcc7gv01txwl6',))
+        # This requires comparing a StaticTuple to a 'string', and then
+        # interpreting that value in the next higher StaticTuple. This used to
+        # generate a PyErr_BadIternalCall. We now fall back to *something*.
+        self.assertCompareNoRelation(k1, k2)
+
     def test_hash(self):
         k = self.module.StaticTuple('foo')
         self.assertEqual(hash(k), hash(('foo',)))
