@@ -299,9 +299,9 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
         if True and a view is set, apply the view or check that the paths
         are within it
     :returns:
-        a tuple of (old_tree, new_tree, specific_files, extra_trees) where
-        extra_trees is a sequence of additional trees to search in for
-        file-ids.
+        a tuple of (old_tree, new_tree, old_branch, new_branch,
+        specific_files, extra_trees) where extra_trees is a sequence of
+        additional trees to search in for file-ids.
     """
     # Get the old and new revision specs
     old_revision_spec = None
@@ -381,6 +381,7 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
     return old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees
+
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     if branch is None and tree is not None:
