@@ -658,7 +658,7 @@ If some of your developers are unable to use the most recent
 version of Bazaar (due to distro package availability say), be
 sure to adjust the guidelines above accordingly. For example,
 you may need to select 1.14 instead of 2a if your project has
-standardized on Bazaar 1.13.1.
+standardized on Bazaar 1.14.
 
 Note: Some of the older formats have two variants:
 a plain one and a rich-root one. The latter include an additional
