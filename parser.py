@@ -257,16 +257,20 @@ _WHO_RE = re.compile(r'([^<]*)<(.*)>')
 
 class ImportParser(LineBasedParser):
 
-    def __init__(self, input, verbose=False, output=sys.stdout):
+    def __init__(self, input, verbose=False, output=sys.stdout,
+        user_mapper=None):
         """A Parser of import commands.
 
         :param input: the file-like object to read from
         :param verbose: display extra information of not
         :param output: the file-like object to write messages to (YAGNI?)
+        :param user_mapper: if not None, the UserMapper used to adjust
+          user-ids for authors, committers and taggers.
         """
         LineBasedParser.__init__(self, input)
         self.verbose = verbose
         self.output = output
+        self.user_mapper = user_mapper
         # We auto-detect the date format when a date is first encountered
         self.date_parser = None
 
@@ -548,6 +552,8 @@ class ImportParser(LineBasedParser):
             self.warning("%s email not in utf8 - replacing unknown characters"
                 % (section,))
             email = email.decode('utf_8', 'replace')
+        if self.user_mapper:
+            name, email = self.user_mapper.map_name_and_email(name, email)
         return (name, email, when[0], when[1])
 
     def _name_value(self, s):

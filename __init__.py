@@ -91,7 +91,8 @@ def test_suite():
     return tests.test_suite()
 
 
-def _run(source, processor_factory, control, params, verbose):
+def _run(source, processor_factory, control, params, verbose,
+    user_map=None):
     """Create and run a processor.
     
     :param source: a filename or '-' for standard input. If the
@@ -100,11 +101,13 @@ def _run(source, processor_factory, control, params, verbose):
     :param processor_factory: a callable for creating a processor
     :param control: the BzrDir of the destination or None if no
       destination is expected
+    :param user_map: if not None, the file containing the user map.
     """
     import parser
     stream = _get_source_stream(source)
+    user_mapper = _get_user_mapper(user_map)
     proc = processor_factory(control, params=params, verbose=verbose)
-    p = parser.ImportParser(stream, verbose=verbose)
+    p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
     return proc.process(p.iter_commands)
 
 
@@ -118,6 +121,16 @@ def _get_source_stream(source):
     else:
         stream = open(source, "rb")
     return stream
+
+
+def _get_user_mapper(filename):
+    import user_mapper
+    if filename is None:
+        return None
+    f = open(filename)
+    lines = f.readlines()
+    f.close()
+    return user_mapper.UserMapper(lines)
 
 
 class cmd_fast_import(Command):
@@ -196,6 +209,34 @@ class cmd_fast_import(Command):
      specification. In many cases, exporters can be written quite
      quickly using whatever scripting/programming language you like.
 
+    :User mapping:
+
+     Some source repositories store just the user name while Bazaar
+     prefers a full email address. You can adjust user-ids while
+     importing by using the --user-map option. The argument is a
+     text file with lines in the format::
+
+       old-id = new-id
+
+     Blank lines and lines beginning with # are ignored.
+     If old-id has the special value '@', then users without an
+     email address will get one created by using the matching new-id
+     as the domain, unless a more explicit address is given for them.
+     For example, given the user-map of::
+
+       @ = example.com
+       bill = William Jones <bill@example.com>
+
+     then user-ids are mapped as follows::
+     
+      maria => maria <maria@example.com>
+      bill => William Jones <bill@example.com>
+
+     .. note::
+     
+        User mapping is supported by both the fast-import and
+        fast-import-filter commands.
+
     :Blob tracking:
 
      As some exporters (like git-fast-export) reuse blob data across
@@ -257,6 +298,9 @@ class cmd_fast_import(Command):
     _see_also = ['fast-export', 'fast-import-filter', 'fast-import-info']
     takes_args = ['source', 'destination?']
     takes_options = ['verbose',
+                    Option('user-map', type=str,
+                        help="Path to file containing a map of user-ids.",
+                        ),
                     Option('info', type=str,
                         help="Path to file containing caching hints.",
                         ),
@@ -300,7 +344,8 @@ class cmd_fast_import(Command):
     aliases = []
     def run(self, source, destination='.', verbose=False, info=None,
         trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
-        mode=None, import_marks=None, export_marks=None, format=None):
+        mode=None, import_marks=None, export_marks=None, format=None,
+        user_map=None):
         from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
         from bzrlib.plugins.fastimport.helpers import (
@@ -336,7 +381,7 @@ class cmd_fast_import(Command):
             'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor, control,
-            params, verbose)
+            params, verbose, user_map=user_map)
 
     def _generate_info(self, source):
         from cStringIO import StringIO
@@ -366,19 +411,52 @@ class cmd_fast_import_filter(Command):
     commercially sensitive material, files with an incompatible license or
     large binary files like CD images.
 
-    When filtering out a subdirectory (or file), the new stream uses the
-    subdirectory (or subdirectory containing the file) as the root. As
-    fast-import doesn't know in advance whether a path is a file or
-    directory in the stream, you need to specify a trailing '/' on
-    directories passed to the `--includes option`. If multiple files or
-    directories are given, the new root is the deepest common directory.
-
     To specify standard input as the input stream, use a source name
     of '-'. If the source name ends in '.gz', it is assumed to be
     compressed in gzip format.
 
-    Note: If a path has been renamed, take care to specify the *original*
-    path name, not the final name that it ends up with.
+    :File/directory filtering:
+
+     This is supported by the -i and -x options. Excludes take precedence
+     over includes.
+
+     When filtering out a subdirectory (or file), the new stream uses the
+     subdirectory (or subdirectory containing the file) as the root. As
+     fast-import doesn't know in advance whether a path is a file or
+     directory in the stream, you need to specify a trailing '/' on
+     directories passed to the `--includes option`. If multiple files or
+     directories are given, the new root is the deepest common directory.
+
+     Note: If a path has been renamed, take care to specify the *original*
+     path name, not the final name that it ends up with.
+
+    :User mapping:
+
+     Some source repositories store just the user name while Bazaar
+     prefers a full email address. You can adjust user-ids
+     by using the --user-map option. The argument is a
+     text file with lines in the format::
+
+       old-id = new-id
+
+     Blank lines and lines beginning with # are ignored.
+     If old-id has the special value '@', then users without an
+     email address will get one created by using the matching new-id
+     as the domain, unless a more explicit address is given for them.
+     For example, given the user-map of::
+
+       @ = example.com
+       bill = William Jones <bill@example.com>
+
+     then user-ids are mapped as follows::
+     
+      maria => maria <maria@example.com>
+      bill => William Jones <bill@example.com>
+
+     .. note::
+     
+        User mapping is supported by both the fast-import and
+        fast-import-filter commands.
 
     :Examples:
 
@@ -405,18 +483,21 @@ class cmd_fast_import_filter(Command):
                     ListOption('exclude_paths', short_name='x', type=str,
                         help="Exclude these paths from commits."
                         ),
+                    Option('user-map', type=str,
+                        help="Path to file containing a map of user-ids.",
+                        ),
                      ]
     aliases = []
     encoding_type = 'exact'
     def run(self, source, verbose=False, include_paths=None,
-        exclude_paths=None):
+        exclude_paths=None, user_map=None):
         from bzrlib.plugins.fastimport.processors import filter_processor
         params = {
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
             }
         return _run(source, filter_processor.FilterProcessor, None, params,
-            verbose)
+            verbose, user_map=user_map)
 
 
 class cmd_fast_import_info(Command):
