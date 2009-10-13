@@ -35,6 +35,9 @@ Bug Fixes
   ``/``, but that is not true when working at the root of the filesystem.
   (John Arbash Meinel, Jason Spashett, #322807)
 
+* Hide deprecation warnings for 'final' releases for python2.6.
+  (John Arbash Meinel, #440062)
+
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
   iterating over all objects in all revisions.
