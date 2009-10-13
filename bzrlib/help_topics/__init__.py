@@ -656,7 +656,7 @@ for using a rich-root format but you cannot easily merge changes
 from a rich-root format into a plain format. As a consequence,
 moving a project to a rich-root format takes some co-ordination
 in that all contributors need to upgrade their repositories
-around the same time. 2a and all future versions will be
+around the same time. 2a and all future formats will be
 implicitly rich-root.
 
 See ``bzr help current-formats`` for the complete list of
