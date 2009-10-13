@@ -41,8 +41,20 @@ New Features
   used are called multiple-authors, commit-properties and
   empty-directories. (Ian Clatworthy)
 
+* fast-import and fast-import-filter now support user mapping
+  via the new --user-map option. The argument is a file specifying
+  how user-ids should be mapped to preferred user-ids.
+  (Ian Clatworthy)
+
+* svn-fast-export now supports an address option (to control the
+  default email domain) and a first-rev option (to select revisions
+  since a given one). (Ted Gould)
+
 Improvements
 ------------
+
+* Large repositories now compress better thanks to a change in
+  how file-ids are assigned. (Ian Clatworthy, John Arbash Meinel)
 
 * If a fast-import source ends in ".gz", it is assumed to be in
   gzip format and the stream is implicitly uncompressed. This
