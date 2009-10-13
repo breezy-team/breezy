@@ -222,6 +222,10 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%s is leaking threads among %d leaking tests.\n' % (
                 TestCase._first_thread_leaker_id,
                 TestCase._leaking_threads_tests))
+            # We don't report the main thread as an active one.
+            self.stream.write(
+                '%d non-main threads were left active in the end.\n'
+                % (TestCase._active_threads - 1))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -846,7 +850,13 @@ class TestCase(unittest.TestCase):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
         TestCase._active_threads = active
-        if leaked_threads:
+        # If some tests make the number of threads *decrease*, we'll consider
+        # that they are just observing old threads dieing, not agressively kill
+        # random threads. So we don't report these tests as leaking. The risk
+        # is that we have false positives that way (the test see 2 threads
+        # going away but leak one) but it seems less likely than the actual
+        # false positives (the test see threads going away and does not leak).
+        if leaked_threads > 0:
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
