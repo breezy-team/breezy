@@ -644,21 +644,10 @@ new features requiring new metadata are added. New storage
 formats may also be introduced to improve performance and
 scalability.
 
-Use the following guidelines to select a format (stopping
-as soon as a condition is true):
+The newest format, 2a, is highly recommended. If your
+project is not using support 2a, then you should suggest to the
+project owner to upgrade.
 
-* If you are working on an existing project, use whatever
-  format that project is using. (Bazaar will do this for you
-  by default).
-
-* Otherwise, use the default format - it is good enough for
-  most projects.
-
-If some of your developers are unable to use the most recent
-version of Bazaar (due to distro package availability say), be
-sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.14 instead of 2a if your project has
-standardized on Bazaar 1.14.
 
 Note: Some of the older formats have two variants:
 a plain one and a rich-root one. The latter include an additional
@@ -667,7 +656,8 @@ for using a rich-root format but you cannot easily merge changes
 from a rich-root format into a plain format. As a consequence,
 moving a project to a rich-root format takes some co-ordination
 in that all contributors need to upgrade their repositories
-around the same time.
+around the same time. 2a and all future versions will be
+implicitly rich-root.
 
 See ``bzr help current-formats`` for the complete list of
 currently supported formats. See ``bzr help other-formats`` for
