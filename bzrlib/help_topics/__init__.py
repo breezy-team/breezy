@@ -645,7 +645,7 @@ formats may also be introduced to improve performance and
 scalability.
 
 The newest format, 2a, is highly recommended. If your
-project is not using support 2a, then you should suggest to the
+project is not using 2a, then you should suggest to the
 project owner to upgrade.
 
 
