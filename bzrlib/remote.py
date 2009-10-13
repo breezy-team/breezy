@@ -2434,6 +2434,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION
