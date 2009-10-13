@@ -174,6 +174,52 @@ StaticTuple_New(Py_ssize_t size)
 }
 
 
+static StaticTuple *
+StaticTuple_FromSequence(PyObject *sequence)
+{
+    StaticTuple *new;
+    PyObject *item;
+    Py_ssize_t i, size;
+
+    if (StaticTuple_CheckExact(sequence)) {
+        Py_INCREF(sequence);
+        return (StaticTuple *)sequence;
+    }
+    if (!PySequence_Check(sequence)) {
+        PyErr_Format(PyExc_TypeError, "Type %s is not a sequence type",
+                     Py_TYPE(sequence)->tp_name);
+        return NULL;
+    }
+    size = PySequence_Size(sequence);
+    if (size == -1)
+        return NULL;
+    new = StaticTuple_New(size);
+    if (new == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < size; ++i) {
+        // This returns a new reference, which we then 'steal' with 
+        // StaticTuple_SET_ITEM
+        item = PySequence_GetItem(sequence, i);
+        if (item == NULL) {
+            Py_DECREF(new);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(new, i, item);
+    }
+    return (StaticTuple *)new;
+}
+
+static StaticTuple *
+StaticTuple_from_sequence(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    PyObject *sequence;
+    if (!PyArg_ParseTuple(args, "O", &sequence))
+        return NULL;
+    return StaticTuple_FromSequence(sequence);
+}
+
+
 static PyObject *
 StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -565,6 +611,10 @@ static PyMethodDef StaticTuple_methods[] = {
     {"intern", (PyCFunction)StaticTuple_Intern, METH_NOARGS, StaticTuple_Intern_doc},
     {"_is_interned", (PyCFunction)StaticTuple__is_interned, METH_NOARGS,
      StaticTuple__is_interned_doc},
+    {"from_sequence", (PyCFunction)StaticTuple_from_sequence,
+     METH_STATIC | METH_VARARGS,
+     "Create a StaticTuple from a given sequence. This functions"
+     " the same as the tuple() constructor."},
     {NULL, NULL} /* sentinel */
 };
 
@@ -684,6 +734,8 @@ setup_c_api(PyObject *m)
         "StaticTuple *(Py_ssize_t)");
     _export_function(m, "StaticTuple_Intern", StaticTuple_Intern,
         "StaticTuple *(StaticTuple *)");
+    _export_function(m, "StaticTuple_FromSequence", StaticTuple_FromSequence,
+        "StaticTuple *(PyObject *)");
     _export_function(m, "_StaticTuple_CheckExact", _StaticTuple_CheckExact,
         "int(PyObject *)");
 }

@@ -74,6 +74,7 @@ typedef struct {
 
 static StaticTuple * StaticTuple_New(Py_ssize_t);
 static StaticTuple * StaticTuple_Intern(StaticTuple *self);
+static StaticTuple * StaticTuple_FromSequence(PyObject *);
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == &StaticTuple_Type)
 
 #else
@@ -83,6 +84,7 @@ static StaticTuple * StaticTuple_Intern(StaticTuple *self);
 
 static StaticTuple *(*StaticTuple_New)(Py_ssize_t);
 static StaticTuple *(*StaticTuple_Intern)(StaticTuple *);
+static StaticTuple *(*StaticTuple_FromSequence)(PyObject *);
 static PyTypeObject *_p_StaticTuple_Type;
 
 #define StaticTuple_CheckExact(op) (Py_TYPE(op) == _p_StaticTuple_Type)
@@ -98,6 +100,8 @@ import_static_tuple_c(void)
             "StaticTuple *(Py_ssize_t)"},
         {"StaticTuple_Intern", (void **)&StaticTuple_Intern,
             "StaticTuple *(StaticTuple *)"},
+        {"StaticTuple_FromSequence", (void **)&StaticTuple_FromSequence,
+            "StaticTuple *(PyObject *)"},
         {"_StaticTuple_CheckExact", (void **)&_StaticTuple_CheckExact,
             "int(PyObject *)"},
         {NULL}};
