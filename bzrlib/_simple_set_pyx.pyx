@@ -21,13 +21,12 @@ cdef extern from "python-compat.h":
 
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
-    ctypedef long (*hashfunc)(PyObject*)
-    ctypedef PyObject *(*richcmpfunc)(PyObject *, PyObject *, int)
+    ctypedef long (*hashfunc)(PyObject*) except -1
+    ctypedef object (*richcmpfunc)(PyObject *, PyObject *, int)
     ctypedef int (*visitproc)(PyObject *, void *)
     ctypedef int (*traverseproc)(PyObject *, visitproc, void *)
     int Py_EQ
     PyObject *Py_True
-    PyObject *Py_NotImplemented
     void Py_INCREF(PyObject *)
     void Py_DECREF(PyObject *)
     ctypedef struct PyTypeObject:
@@ -58,9 +57,12 @@ _dummy_obj = object()
 _dummy = <PyObject *>_dummy_obj
 
 
+cdef object _NotImplemented
+_NotImplemented = NotImplemented
+
+
 cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     cdef long other_hash
-    cdef PyObject *res
 
     if this == other:
         return 1
@@ -76,20 +78,12 @@ cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     #      equal. (It doesn't try to cast them both to some intermediate form
     #      that would compare equal.)
     res = Py_TYPE(this).tp_richcompare(this, other, Py_EQ)
-    if res == NULL: # Exception
-        return -1
-    if PyObject_IsTrue(res):
-        Py_DECREF(res)
-        return 1
-    if res == Py_NotImplemented:
-        Py_DECREF(res)
+    if res is _NotImplemented:
         res = Py_TYPE(other).tp_richcompare(other, this, Py_EQ)
-    if res == NULL:
-        return -1
-    if PyObject_IsTrue(res):
-        Py_DECREF(res)
+        if res is _NotImplemented:
+            return 0
+    if res:
         return 1
-    Py_DECREF(res)
     return 0
 
 
