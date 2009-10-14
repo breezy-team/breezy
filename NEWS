@@ -17,7 +17,8 @@ This is the first development release in the new split "stable" and
 without creating a release candidate first. This release includes a
 fair amount of internal changes, with deprecated code being removed,
 and several new feature developments. People looking for a stable code
-base with only bugfixes should focus on the 2.0.1 release.
+base with only bugfixes should focus on the 2.0.1 release. All bugfixes
+present in 2.0.1 are present in 2.1.0b1.
 
 Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
 finer control over the plugin search path via extended BZR_PLUGIN_PATH
