@@ -22,9 +22,8 @@ present in 2.0.1 are present in 2.1.0b1.
 
 Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
 finer control over the plugin search path via extended BZR_PLUGIN_PATH
-syntax, visible warnings when extension modules fail to load, improved
-error handling during unlocking and 'on-the-fly' compression when fetching
-new content from a repository.
+syntax, visible warnings when extension modules fail to load, and improved
+error handling during unlocking.
 
 
 New Features
