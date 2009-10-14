@@ -961,8 +961,8 @@ class CommonInventory(object):
     def path2id(self, relpath):
         """Walk down through directories to return entry of last component.
 
-        names may be either a list of path components, or a single
-        string, in which case it is automatically split.
+        :param relpath: may be either a list of path components, or a single
+            string, in which case it is automatically split.
 
         This returns the entry of the last component in the path,
         which may be either a file or a directory.
