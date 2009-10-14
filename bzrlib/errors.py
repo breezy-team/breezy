@@ -702,11 +702,14 @@ class InvalidNormalization(PathError):
 # TODO: Probably this behavior of should be a common superclass
 class NotBranchError(PathError):
 
-    _fmt = 'Not a branch: "%(path)s".'
+    _fmt = 'Not a branch: "%(path)s"%(extra)s.'
 
-    def __init__(self, path):
+    def __init__(self, path, detail=None):
        import bzrlib.urlutils as urlutils
-       self.path = urlutils.unescape_for_display(path, 'ascii')
+       path = urlutils.unescape_for_display(path, 'ascii')
+       # remember the detail in case of remote serialization
+       self.detail = detail
+       PathError.__init__(self, path=path, extra=self.detail)
 
 
 class NoSubmitBranch(PathError):
