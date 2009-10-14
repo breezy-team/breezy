@@ -35,7 +35,6 @@ cdef extern from "Python.h":
         traverseproc tp_traverse
 
     PyTypeObject *Py_TYPE(PyObject *)
-    int PyObject_IsTrue(PyObject *)
     # Note: *Don't* use hash(), Pyrex 0.9.8.5 thinks it returns an 'int', and
     #       thus silently truncates to 32-bits on 64-bit machines.
     long PyObject_Hash(PyObject *) except -1
