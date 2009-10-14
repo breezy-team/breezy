@@ -124,6 +124,8 @@ class ForeignVcs(object):
 
     branch_format = None
 
+    repository_format = None
+
     def __init__(self, mapping_registry):
         self.mapping_registry = mapping_registry
 
