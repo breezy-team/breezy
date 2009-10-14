@@ -5,8 +5,16 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0.1 2009-10-14
-####################
+bzr 2.0.1
+#########
+
+:Codename: Stability First
+:2.0.1: 2009-10-14
+
+The first of our new ongoing bugfix-only stable releases has arrived. It
+includes a collection of 12 bugfixes applied to bzr 2.0.0, but does not
+include any of the feature development in the 2.1.0 series.
+
 
 Bug Fixes
 *********
