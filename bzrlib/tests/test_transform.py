@@ -2728,6 +2728,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
     def test_ascii_limbo_paths(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tt = TransformPreview(tree)
