@@ -6,8 +6,25 @@ Bazaar Release Notes
    :depth: 1
 
 
-2.1.0 series (not released yet)
-###############################
+bzr 2.1.0b1
+###########
+
+:Codename: While the cat is away
+:2.1.0b1: 2009-10-14
+
+This is the first development release in the new split "stable" and
+"development" series. As such, the release is a snapshot of bzr.dev
+without creating a release candidate first. This release includes a
+fair amount of internal changes, with deprecated code being removed,
+and several new feature developments. People looking for a stable code
+base with only bugfixes should focus on the 2.0.1 release.
+
+Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
+finer control over the plugin search path via extended BZR_PLUGIN_PATH
+syntax, visible warnings when extension modules fail to load, improved
+error handling during unlocking and 'on-the-fly' compression when fetching
+new content from a repository.
+
 
 Compatibility Breaks
 ********************
