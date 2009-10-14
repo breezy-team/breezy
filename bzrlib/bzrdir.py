@@ -1034,6 +1034,19 @@ class BzrDir(object):
         except errors.NotBranchError:
             return False
 
+    def has_repository(self):
+        """Tell if this bzrdir contains a repository.
+
+        Note: if you're going to open the repository, you should just go ahead
+        and try, and not ask permission first.  (This method just opens the
+        repository and discards it, and that's somewhat expensive.)
+        """
+        try:
+            self.open_repository()
+            return True
+        except errors.NoRepositoryPresent:
+            return False
+
     def has_workingtree(self):
         """Tell if this bzrdir contains a working tree.
 
@@ -1465,7 +1478,11 @@ class BzrDirPreSplitOut(BzrDir):
         return not isinstance(self._format, format.__class__)
 
     def open_branch(self, unsupported=False, ignore_fallbacks=False):
-        """See BzrDir.open_branch."""
+        """See BzrDir.open_branch.
+        
+        Note: Test for repository on failure is not done here as
+        BzrDirPreSplitOut cannot have a repository.
+        """
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
@@ -1642,9 +1659,16 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_reference(self):
         """See BzrDir.get_branch_reference()."""
-        from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self)
-        return format.get_reference(self)
+        try:
+            from bzrlib.branch import BranchFormat
+            format = BranchFormat.find_format(self)
+            return format.get_reference(self)
+        except errors.NotBranchError, e:
+            # provide indication to the user if they're actually
+            # opening a repository (see bug 440952)
+            if self.has_repository():
+                raise errors.NotBranchError(path=e.path, detail='location is a repository')
+            raise e
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
@@ -1689,6 +1713,15 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def has_repository(self):
+        """See BzrDir.has_repository()."""
+        from bzrlib.repository import RepositoryFormat
+        try:
+            RepositoryFormat.find_format(self)
+            return True
+        except errors.NoRepositoryPresent:
+            return False
 
     def has_workingtree(self):
         """Tell if this bzrdir contains a working tree.
@@ -1743,9 +1776,16 @@ class BzrDirMeta1(BzrDir):
 
     def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        format = self.find_branch_format()
-        self._check_supported(format, unsupported)
-        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
+        try:
+            format = self.find_branch_format()
+            self._check_supported(format, unsupported)
+            return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
+        except errors.NotBranchError, e:
+            # provide indication to the user if they're actually
+            # opening a repository (see bug 440952)
+            if self.has_repository():
+                raise errors.NotBranchError(path=e.path, detail='location is a repository')
+            raise e
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
