@@ -644,38 +644,20 @@ new features requiring new metadata are added. New storage
 formats may also be introduced to improve performance and
 scalability.
 
-Use the following guidelines to select a format (stopping
-as soon as a condition is true):
+The newest format, 2a, is highly recommended. If your
+project is not using 2a, then you should suggest to the
+project owner to upgrade.
 
-* If you are working on an existing project, use whatever
-  format that project is using. (Bazaar will do this for you
-  by default).
 
-* If you are using bzr-svn to interoperate with a Subversion
-  repository, use 1.14-rich-root.
-
-* If you are working on a project with big trees (5000+ paths)
-  or deep history (5000+ revisions), use 1.14.
-
-* Otherwise, use the default format - it is good enough for
-  most projects.
-
-If some of your developers are unable to use the most recent
-version of Bazaar (due to distro package availability say), be
-sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.9 instead of 1.14 if your project has
-standardized on Bazaar 1.13.1 say.
-
-Note: Many of the currently supported formats have two variants:
+Note: Some of the older formats have two variants:
 a plain one and a rich-root one. The latter include an additional
 field about the root of the tree. There is no performance cost
 for using a rich-root format but you cannot easily merge changes
 from a rich-root format into a plain format. As a consequence,
 moving a project to a rich-root format takes some co-ordination
 in that all contributors need to upgrade their repositories
-around the same time. (It is for this reason that we have delayed
-making a rich-root format the default so far, though we will do
-so at some appropriate time in the future.)
+around the same time. 2a and all future formats will be
+implicitly rich-root.
 
 See ``bzr help current-formats`` for the complete list of
 currently supported formats. See ``bzr help other-formats`` for
