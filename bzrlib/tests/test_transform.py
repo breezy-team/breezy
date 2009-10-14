@@ -2727,6 +2727,15 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         rev2_tree = tree.branch.repository.revision_tree(rev2_id)
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
 
+    def test_ascii_limbo_paths(self):
+        branch = self.make_branch('any')
+        tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
+        tt = TransformPreview(tree)
+        foo_id = tt.new_directory('', ROOT_PARENT)
+        bar_id = tt.new_file(u'\u1234bar', foo_id, 'contents')
+        limbo_path = tt._limbo_name(bar_id)
+        self.assertEqual(limbo_path.encode('ascii', 'replace'), limbo_path)
+
 
 class FakeSerializer(object):
     """Serializer implementation that simply returns the input.

@@ -22,6 +22,9 @@ Bug Fixes
   ``keyboard-interactive`` auth but not ``password`` auth when using
   Paramiko.   (Andrew Bennetts, #433846)
 
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 * Occasional IndexError on renamed files have been fixed. Operations that
   set a full inventory in the working tree will now go via the
   apply_inventory_delta code path which is simpler and easier to
