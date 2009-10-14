@@ -1105,7 +1105,9 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         for stream_info in self._fetch_revision_texts(revision_ids):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
+        self.from_repository.revisions._group_cache.clear()
         yield self._get_inventory_stream(self._revision_keys)
+        self.from_repository.inventories._group_cache.clear()
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
@@ -1114,7 +1116,9 @@ class GroupCHKStreamSource(KnitPackStreamSource):
                         self._revision_keys)
         for stream_info in self._get_filtered_chk_streams(parent_keys):
             yield stream_info
+        self.from_repository.chk_bytes._group_cache.clear()
         yield self._get_text_stream()
+        self.from_repository.texts._group_cache.clear()
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not
