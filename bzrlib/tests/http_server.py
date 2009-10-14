@@ -431,7 +431,7 @@ class TestingHTTPServerMixin:
         # The server is listening for a last connection, let's give it:
         last_conn = None
         try:
-            last__conn = self.connect_socket()
+            last_conn = self.connect_socket()
         except socket.error, e:
             # But ignore connection errors as the point is to unblock the
             # server thread, it may happen that it's not blocked or even not
@@ -548,10 +548,9 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
             # after the connection is inited. This could happne when the server
             # is shut down.
             sock, addr, thread = client
-            if thread.isAlive():
-                if 'threads' in tests.selftest_debug_flags:
-                    print 'Try    joining: %s' % (thread.name,)
-                self.join_thread(thread)
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Try    joining: %s' % (thread.name,)
+            self.join_thread(thread)
 
     def server_bind(self):
         SocketServer.ThreadingTCPServer.server_bind(self)
