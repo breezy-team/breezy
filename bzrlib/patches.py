@@ -277,7 +277,7 @@ class BinaryPatch(object):
         self.newname = newname
 
     def __str__(self):
-        return 'Binary files %s and %s differ' % (self.oldname, self.newname)
+        return 'Binary files %s and %s differ\n' % (self.oldname, self.newname)
 
 
 class Patch(BinaryPatch):

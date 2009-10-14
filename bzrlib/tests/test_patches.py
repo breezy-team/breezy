@@ -138,7 +138,7 @@ class PatchesTester(TestCase):
         patchtext = self.datafile("patchtext.patch").read()
         self.compare_parsed(patchtext)
 
-    def test_binary(self):
+    def test_parse_binary(self):
         """Test parsing a whole patch"""
         patches = parse_patches(self.datafile("binary.patch"))
         self.assertIs(BinaryPatch, patches[0].__class__)
@@ -146,7 +146,12 @@ class PatchesTester(TestCase):
         self.assertContainsRe(patches[0].oldname, '^bar\t')
         self.assertContainsRe(patches[0].newname, '^qux\t')
         self.assertContainsRe(str(patches[0]),
-                                  'Binary files bar\t.* and qux\t.* differ$')
+                                  'Binary files bar\t.* and qux\t.* differ\n')
+
+    def test_roundtrip_binary(self):
+        patchtext = self.datafile("binary.patch").read()
+        patches = parse_patches(patchtext.splitlines(True))
+        self.assertEqual(patchtext, ''.join(str(p) for p in patches))
 
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
