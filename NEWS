@@ -5,14 +5,8 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0.1 (not released)
-########################
-
-Compatibility Breaks
-********************
-
-New Features
-************
+bzr 2.0.1 2009-10-14
+####################
 
 Bug Fixes
 *********
@@ -69,9 +63,6 @@ Bug Fixes
 * When a file kind becomes unversionable after being added, a sensible
   error will be shown instead of a traceback. (Robert Collins, #438569)
 
-Improvements
-************
-
 Documentation
 *************
 
@@ -80,14 +71,6 @@ Documentation
 * Improved upgrade documentation for Launchpad branches.
   (Barry Warsaw)
 
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 bzr 2.0.0
 #########
