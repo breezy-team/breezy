@@ -2813,6 +2813,9 @@ def _translate_error(err, **context):
         raise NoSuchRevision(find('repository'), err.error_args[0])
     elif err.error_tuple == ('nobranch',):
         raise errors.NotBranchError(path=find('bzrdir').root_transport.base)
+    elif err.error_verb == 'nobranch':
+        raise errors.NotBranchError(path=find('bzrdir').root_transport.base,
+            detail=err.error_args[0])
     elif err.error_verb == 'norepository':
         raise errors.NoRepositoryPresent(find('bzrdir'))
     elif err.error_verb == 'LockContention':

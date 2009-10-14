@@ -88,8 +88,10 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            if e.detail is None:
+                return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse(('nobranch', e.detail))
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
@@ -465,8 +467,10 @@ class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('ok', ''))
             else:
                 return SuccessfulSmartServerResponse(('ok', reference_url))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            if e.detail is None:
+                return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse(('nobranch', e.detail))
 
 
 class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
@@ -481,5 +485,7 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            if e.detail is None:
+                return FailedSmartServerResponse(('nobranch',))
+            return FailedSmartServerResponse(('nobranch', e.detail))
