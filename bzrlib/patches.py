@@ -14,6 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+import re
+
+
+class BinaryFiles(Exception):
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+        Exception.__init__(self, 'Binary files section encountered.')
 
 
 class PatchSyntax(Exception):
@@ -57,6 +66,9 @@ class PatchConflict(Exception):
 def get_patch_names(iter_lines):
     try:
         line = iter_lines.next()
+        match = re.match('Binary files (.*) and (.*) differ\n', line)
+        if match is not None:
+            raise BinaryFiles(match.group(1), match.group(2))
         if not line.startswith("--- "):
             raise MalformedPatchHeader("No orig name", line)
         else:
@@ -259,10 +271,19 @@ def iter_hunks(iter_lines):
         yield hunk
 
 
-class Patch:
+class BinaryPatch(object):
     def __init__(self, oldname, newname):
         self.oldname = oldname
         self.newname = newname
+
+    def __str__(self):
+        return 'Binary files %s and %s differ' % (self.oldname, self.newname)
+
+
+class Patch(BinaryPatch):
+
+    def __init__(self, oldname, newname):
+        BinaryPatch.__init__(self, oldname, newname)
         self.hunks = []
 
     def __str__(self):
@@ -317,11 +338,15 @@ class Patch:
 
 def parse_patch(iter_lines):
     iter_lines = iter_lines_handle_nl(iter_lines)
-    (orig_name, mod_name) = get_patch_names(iter_lines)
-    patch = Patch(orig_name, mod_name)
-    for hunk in iter_hunks(iter_lines):
-        patch.hunks.append(hunk)
-    return patch
+    try:
+        (orig_name, mod_name) = get_patch_names(iter_lines)
+    except BinaryFiles, e:
+        return BinaryPatch(e.orig_name, e.mod_name)
+    else:
+        patch = Patch(orig_name, mod_name)
+        for hunk in iter_hunks(iter_lines):
+            patch.hunks.append(hunk)
+        return patch
 
 
 def iter_file_patch(iter_lines):

@@ -24,6 +24,8 @@ from bzrlib.iterablefile import IterableFile
 from bzrlib.patches import (MalformedLine,
                             MalformedHunkHeader,
                             MalformedPatchHeader,
+                            BinaryPatch,
+                            Patch,
                             ContextLine,
                             InsertLine,
                             RemoveLine,
@@ -135,6 +137,16 @@ class PatchesTester(TestCase):
         """Test parsing a whole patch"""
         patchtext = self.datafile("patchtext.patch").read()
         self.compare_parsed(patchtext)
+
+    def test_binary(self):
+        """Test parsing a whole patch"""
+        patches = parse_patches(self.datafile("binary.patch"))
+        self.assertIs(BinaryPatch, patches[0].__class__)
+        self.assertIs(Patch, patches[1].__class__)
+        self.assertContainsRe(patches[0].oldname, '^bar\t')
+        self.assertContainsRe(patches[0].newname, '^qux\t')
+        self.assertContainsRe(str(patches[0]),
+                                  'Binary files bar\t.* and qux\t.* differ$')
 
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
