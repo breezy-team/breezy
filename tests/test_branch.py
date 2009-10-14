@@ -26,6 +26,7 @@ from dulwich.repo import (
 import os
 
 from bzrlib import (
+    errors,
     revision,
     )
 from bzrlib.branch import (
@@ -42,7 +43,9 @@ from bzrlib.plugins.git import (
     branch,
     tests,
     )
-from bzrlib.plugins.git.mapping import default_mapping
+from bzrlib.plugins.git.mapping import (
+    default_mapping,
+    )
 
 
 class TestGitBranch(tests.TestCaseInTempDir):
@@ -123,7 +126,8 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
         self.assertIs(None, self.git_branch.get_parent())
 
     def test_get_stacked_on_url(self):
-        self.assertIs(None, self.git_branch.get_stacked_on_url())
+        self.assertRaises(errors.UnstackableBranchFormat, 
+            self.git_branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
         self.assertFalse(self.git_branch.get_physical_lock_status())
