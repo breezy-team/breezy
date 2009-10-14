@@ -685,7 +685,11 @@ class cmd_mkdir(Command):
 
     def run(self, dir_list, parents=None):
         for d in dir_list:
-            os.makedirs(d)
+            if (parents is None):
+                os.mkdir(d)
+            else:
+                os.makedirs(d)
+                
             wt, dd = WorkingTree.open_containing(d)
             wt.smart_add([dd])
             self.outf.write('added %s\n' % d)
