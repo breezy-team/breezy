@@ -47,7 +47,10 @@ static int _import_function(PyObject *module, const char *funcname,
     PyObject *c_obj = NULL;
     const char *desc = NULL;
 
-    d = PyObject_GetAttrString(module, _C_API_NAME);
+    /* (char *) because Python2.4 defines this as (char *) rather than
+     * (const char *)
+     */
+    d = PyObject_GetAttrString(module, (char *)_C_API_NAME);
     if (!d) {
         // PyObject_GetAttrString sets an appropriate exception
         goto bad;
@@ -94,7 +97,7 @@ _import_type(PyObject *module, const char *class_name)
 {
     PyObject *type = NULL;
 
-    type = PyObject_GetAttrString(module, class_name);
+    type = PyObject_GetAttrString(module, (char *)class_name);
     if (!type) {
         goto bad;
     }
@@ -149,7 +152,7 @@ _import_extension_module(const char *module_name,
     struct type_description *cur_type;
     int ret_code;
     
-    module = PyImport_ImportModule(module_name);
+    module = PyImport_ImportModule((char *)module_name);
     if (!module)
         goto bad;
     if (functions != NULL) {

@@ -108,16 +108,30 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
+* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
+  on branches via a smart server.  (Andrew Bennetts, #389413)
+
 * ftp transports were built differently when the kerberos python module was
   present leading to obscure failures related to ASCII/BINARY modes.
   (Vincent Ladeuil, #443041)
 
-* Network streams now decode adjacent records of the same type into a
-  single stream, reducing layering churn. (Robert Collins)
+* Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
+  at the root of a drive. ``osutils._cicp_canonical_relpath`` always
+  assumed that ``abspath()`` returned a path that did not have a trailing
+  ``/``, but that is not true when working at the root of the filesystem.
+  (John Arbash Meinel, Jason Spashett, #322807)
+
+* Improve the time for ``bzr log DIR`` for 2a format repositories.
+  We had been using the same code path as for <2a formats, which required
+  iterating over all objects in all revisions.
+  (John Arbash Meinel, #374730)
 
 * Make sure that we unlock the tree if we fail to create a TreeTransform
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
+
+* Network streams now decode adjacent records of the same type into a
+  single stream, reducing layering churn. (Robert Collins)
 
 * Occasional IndexError on renamed files have been fixed. Operations that
   set a full inventory in the working tree will now go via the
@@ -137,6 +151,14 @@ Bug Fixes
 
 * Registry objects should not use iteritems() when asked to use items().
   (Vincent Ladeuil, #430510)
+
+* Retrieving file text or mtime from a _PreviewTree has good performance when
+  there are many changes.  (Aaron Bentley)
+
+* The CHK index pages now use an unlimited cache size. With a limited
+  cache and a large project, the random access of chk pages could cause us
+  to download the entire cix file many times.
+  (John Arbash Meinel, #402623)
 
 * Weave based repositories couldn't be cloned when committers were using
   domains or user ids embedding '.sig'. Now they can.
@@ -176,6 +198,12 @@ Documentation
 
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
+
+* Improved README. (Ian Clatworthy)
+
+* Improved upgrade documentation for Launchpad branches.
+  (Barry Warsaw)
+
 
 API Changes
 ***********
@@ -291,6 +319,15 @@ Bug Fixes
   with some combinations of remote and local formats.  This was causing
   "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
 
+* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
+  on branches via a smart server.  (Andrew Bennetts, #389413)
+
+* Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
+  at the root of a drive. ``osutils._cicp_canonical_relpath`` always
+  assumed that ``abspath()`` returned a path that did not have a trailing
+  ``/``, but that is not true when working at the root of the filesystem.
+  (John Arbash Meinel, Jason Spashett, #322807)
+
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
   iterating over all objects in all revisions.
@@ -308,11 +345,25 @@ Bug Fixes
   but such operations are already doing full tree scans, so no radical
   performance change should be observed. (Robert Collins, #403322)
 
+* Retrieving file text or mtime from a _PreviewTree has good performance when
+  there are many changes.  (Aaron Bentley)
+
+* The CHK index pages now use an unlimited cache size. With a limited
+  cache and a large project, the random access of chk pages could cause us
+  to download the entire cix file many times.
+  (John Arbash Meinel, #402623)
+
 * When a file kind becomes unversionable after being added, a sensible
   error will be shown instead of a traceback. (Robert Collins, #438569)
 
-* Retrieving file text or mtime from a _PreviewTree has good performance when
-  there are many changes.  (Aaron Bentley)
+
+Documentation
+*************
+
+* Improved README. (Ian Clatworthy)
+
+* Improved upgrade documentation for Launchpad branches.
+  (Barry Warsaw)
 
 
 bzr 2.0.0
