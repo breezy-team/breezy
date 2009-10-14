@@ -691,6 +691,11 @@ class cmd_mkdir(Command):
                 os.makedirs(d)
                 
             wt, dd = WorkingTree.open_containing(d)
+
+            # This should work since the target directory of "bzr mkdir"
+            # is always empty - Therefore, no files except the directory
+            # will be added, making this equivalent to recursively adding
+            # the directories, if needed.
             wt.smart_add([dd])
             self.outf.write('added %s\n' % d)
 
