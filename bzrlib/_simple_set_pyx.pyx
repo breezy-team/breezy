@@ -26,7 +26,6 @@ cdef extern from "Python.h":
     ctypedef int (*visitproc)(PyObject *, void *)
     ctypedef int (*traverseproc)(PyObject *, visitproc, void *)
     int Py_EQ
-    PyObject *Py_True
     void Py_INCREF(PyObject *)
     void Py_DECREF(PyObject *)
     ctypedef struct PyTypeObject:
