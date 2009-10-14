@@ -163,10 +163,9 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        text = self.repository.texts.get_record_stream([(fileid, revision)],
-            "unordered", True).next().get_bytes_as("fulltext")
+        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
         blob = Blob()
-        blob._text = text
+        blob._text = "".join(chunks)
         self._check_expected_sha(expected_sha, blob)
         return blob
 
