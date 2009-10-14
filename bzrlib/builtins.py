@@ -674,13 +674,20 @@ class cmd_mkdir(Command):
     """
 
     takes_args = ['dir+']
+    takes_options = [
+        Option(
+            'parents',
+            help='no error if existing, make parent directories as needed',
+            short_name='p'
+            )
+        ]
     encoding_type = 'replace'
 
-    def run(self, dir_list):
+    def run(self, dir_list, parents=None):
         for d in dir_list:
-            os.mkdir(d)
+            os.makedirs(d)
             wt, dd = WorkingTree.open_containing(d)
-            wt.add([dd])
+            wt.smart_add([dd])
             self.outf.write('added %s\n' % d)
 
 
