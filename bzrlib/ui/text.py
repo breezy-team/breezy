@@ -49,9 +49,6 @@ class TextUIFactory(UIFactory):
                  stdout=None,
                  stderr=None):
         """Create a TextUIFactory.
-
-        :param bar_type: The type of progress bar to create.  Deprecated
-            and ignored; a TextProgressView is always used.
         """
         super(TextUIFactory, self).__init__()
         # TODO: there's no good reason not to pass all three streams, maybe we
@@ -175,6 +172,17 @@ class TextUIFactory(UIFactory):
         """
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
+
+    def show_error(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: error: %s\n" % msg)
+
+    def show_message(self, msg):
+        self.note(msg)
+
+    def show_warning(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
