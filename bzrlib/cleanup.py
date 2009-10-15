@@ -94,6 +94,38 @@ def _run_cleanups(funcs, on_error='log'):
             seen_error |= _run_cleanup_reporting_errors(func)
 
 
+class OperationWithCleanups(object):
+    """A helper for using do_with_cleanups with a dynamic cleanup list.
+
+    This provides a way to add cleanups while the function-with-cleanups is
+    running.
+
+    Typical use::
+
+        operation = OperationWithCleanups(some_func)
+        operation.run(args...)
+
+    where `some_func` is::
+
+        def some_func(operation, args, ...)
+            do_something()
+            operation.add_cleanup(something)
+            # etc
+    """
+
+    def __init__(self, func):
+        self.func = func
+        self.cleanups = []
+
+    def add_cleanup(self, cleanup_func):
+        """Add a cleanup to run.  Cleanups will be executed in LIFO order."""
+        self.cleanups.insert(0, cleanup_func)
+
+    def run(self, *args, **kwargs):
+        func = lambda: self.func(self, *args, **kwargs)
+        return do_with_cleanups(func, self.cleanups)
+
+
 def do_with_cleanups(func, cleanup_funcs):
     """Run `func`, then call all the cleanup_funcs.
 
@@ -116,7 +148,7 @@ def do_with_cleanups(func, cleanup_funcs):
        running (but the first exception encountered is still the one
        propagated).
 
-    Unike `run_cleanup`, `do_with_cleanups` can propagate an exception from a
+    Unike `_run_cleanup`, `do_with_cleanups` can propagate an exception from a
     cleanup, but only if there is no exception from func.
     """
     # As correct as Python 2.4 allows.
