@@ -50,7 +50,6 @@ from bzrlib.testament import Testament
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
-from bzrlib.lock import _RelockDebugMixin
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -58,6 +57,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
