@@ -511,6 +511,14 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
             request.execute('reference'))
 
+    def test_notif_on_branch_from_repo(self):
+        """When there is a repository, the error should return details."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('nobranch', 'location is a repository')),
+            request.execute(''))
+
 
 class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
 
@@ -561,6 +569,14 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
             SuccessfulSmartServerResponse(('branch', expected_format)),
             response)
         self.assertLength(1, opened_branches)
+
+    def test_notif_on_branch_from_repo(self):
+        """When there is a repository, the error should return details."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('nobranch', 'location is a repository')),
+            request.execute(''))
 
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):

@@ -120,3 +120,12 @@ Location:
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(15, self.hpss_calls)
+
+    def test_notification_on_branch_from_repository(self):
+        out, err = self.run_bzr("init-repository -q a")
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
+        dir = BzrDir.open('a')
+        self.assertIs(dir.has_repository(), True)
+        e = self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertEqual(e.detail, "location is a repository")
