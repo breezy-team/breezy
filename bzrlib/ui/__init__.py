@@ -22,18 +22,18 @@ messages or progress to the user, and with gathering different types of input.
 Several levels are supported, and you can also register new factories such as
 for a GUI.
 
-UIFactory
+bzrlib.ui.UIFactory
     Semi-abstract base class
 
-SilentUIFactory
+bzrlib.ui.SilentUIFactory
     Produces no output and cannot take any input; useful for programs using
     bzrlib in batch mode or for programs such as loggerhead.
 
-CannedInputUIFactory
+bzrlib.ui.CannedInputUIFactory
     For use in testing; the input values to be returned are provided 
     at construction.
 
-TextUIFactory
+bzrlib.ui.text.TextUIFactory
     Standard text command-line interface, with stdin, stdout, stderr.
     May make more or less advanced use of them, eg in drawing progress bars,
     depending on the detected capabilities of the terminal.
@@ -208,6 +208,22 @@ class UIFactory(object):
         """
         pass
 
+    def show_error(self, msg):
+        """Show an error message (not an exception) to the user.
+        
+        The message should not have an error prefix or trailing newline.  That
+        will be added by the factory if appropriate. 
+        """
+        raise NotImplementedError(self.show_error)
+
+    def show_message(self, msg):
+        """Show a message to the user."""
+        raise NotImplementedError(self.show_message)
+
+    def show_warning(self, msg):
+        """Show a warning to the user."""
+        raise NotImplementedError(self.show_warning)
+
 
 
 class CLIUIFactory(UIFactory):
@@ -317,6 +333,15 @@ class SilentUIFactory(UIFactory):
 
     def get_username(self, prompt, **kwargs):
         return None
+
+    def show_error(self, msg):
+        pass
+
+    def show_message(self, msg):
+        pass
+
+    def show_warning(self, msg):
+        pass
 
 
 class CannedInputUIFactory(SilentUIFactory):

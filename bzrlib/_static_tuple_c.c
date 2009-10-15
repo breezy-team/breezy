@@ -418,9 +418,15 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return NULL; /* There seems to be an error */
         }
         if (result == Py_NotImplemented) {
-            PyErr_BadInternalCall();
             Py_DECREF(result);
-            return NULL;
+            /* One side must have had a string and the other a StaticTuple.
+             * This clearly means that they are not equal.
+             */
+            if (op == Py_EQ) {
+                Py_INCREF(Py_False);
+                return Py_False;
+            }
+            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
         }
         if (result == Py_False) {
             /* This entry is not identical
@@ -604,7 +610,7 @@ PyTypeObject StaticTuple_Type = {
     (hashfunc)StaticTuple_hash,                  /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
-    PyObject_GenericGetAttr,                     /* tp_getattro */
+    0,                                           /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
@@ -739,6 +745,7 @@ init_static_tuple_c(void)
 {
     PyObject* m;
 
+    StaticTuple_Type.tp_getattro = PyObject_GenericGetAttr;
     if (PyType_Ready(&StaticTuple_Type) < 0)
         return;
 
