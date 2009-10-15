@@ -13,8 +13,23 @@ bzr 2.1.0b2 (not released yet)
 :2.1.0b2: ???
 
 
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
 API Changes
-###########
+***********
 
 * ``UIFactory`` now has new ``show_error``, ``show_message`` and
   ``show_warning`` methods, which can be hooked by non-text UIs.  
@@ -37,6 +52,40 @@ Internals
   to intern the objects. In testing, this can reduce peak memory by
   20-40%, and significantly improve performance by removing objects from
   being inspected by the garbage collector. (John Arbash Meinel)
+
+Testing
+*******
+
+
+bzr 2.0.2 (not released yet)
+############################
+
+:Codename:
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 
 bzr 2.1.0b1
@@ -10941,6 +10990,39 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
+
+
+bzr ?.?.? (not released yet)
+############################
+
+:Codename: template
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 
 ..
    vim: tw=74 ft=rst ff=unix
