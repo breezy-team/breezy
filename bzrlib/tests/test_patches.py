@@ -25,6 +25,7 @@ from bzrlib.patches import (MalformedLine,
                             MalformedHunkHeader,
                             MalformedPatchHeader,
                             BinaryPatch,
+                            BinaryFiles,
                             Patch,
                             ContextLine,
                             InsertLine,
@@ -46,6 +47,13 @@ class PatchesTester(TestCase):
         data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
         return file(data_path, "rb")
+
+    def data_lines(self, filename):
+        datafile = self.datafile(filename)
+        try:
+            return datafile.readlines()
+        finally:
+            datafile.close()
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
@@ -140,7 +148,7 @@ class PatchesTester(TestCase):
 
     def test_parse_binary(self):
         """Test parsing a whole patch"""
-        patches = parse_patches(self.datafile("binary.patch"))
+        patches = parse_patches(self.data_lines("binary.patch"))
         self.assertIs(BinaryPatch, patches[0].__class__)
         self.assertIs(Patch, patches[1].__class__)
         self.assertContainsRe(patches[0].oldname, '^bar\t')
@@ -149,7 +157,7 @@ class PatchesTester(TestCase):
                                   'Binary files bar\t.* and qux\t.* differ\n')
 
     def test_roundtrip_binary(self):
-        patchtext = self.datafile("binary.patch").read()
+        patchtext = ''.join(self.data_lines("binary.patch"))
         patches = parse_patches(patchtext.splitlines(True))
         self.assertEqual(patchtext, ''.join(str(p) for p in patches))
 
@@ -210,6 +218,11 @@ class PatchesTester(TestCase):
                 self.assertEqual(patch_line, mod_lines[count])
                 count += 1
             self.assertEqual(count, len(mod_lines))
+
+    def test_iter_patched_binary(self):
+        binary_lines = self.data_lines('binary.patch')
+        e = self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
+
 
     def test_iter_patched_from_hunks(self):
         """Test a few patch files, and make sure they work."""
