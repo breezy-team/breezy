@@ -504,7 +504,16 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     except paramiko.SSHException, e:
         # Don't know what happened, but just ignore it
         pass
-    if 'password' not in supported_auth_types:
+    # We treat 'keyboard-interactive' and 'password' auth methods identically,
+    # because Paramiko's auth_password method will automatically try
+    # 'keyboard-interactive' auth (using the password as the response) if
+    # 'password' auth is not available.  Apparently some Debian and Gentoo
+    # OpenSSH servers require this.
+    # XXX: It's possible for a server to require keyboard-interactive auth that
+    # requires something other than a single password, but we currently don't
+    # support that.
+    if ('password' not in supported_auth_types and
+        'keyboard-interactive' not in supported_auth_types):
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
             '\n  %s@%s\nsupported auth types: %s'
             % (username, host, supported_auth_types))

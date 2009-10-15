@@ -33,12 +33,12 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import ParamikoNotPresent
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    TestCaseWithTransport,
+    ParamikoFeature,
     TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
     TestSkipped,
     )
 from bzrlib.trace import mutter
@@ -165,97 +165,6 @@ class TestBzrServe(TestCaseWithTransport):
         branch = Branch.open(url)
         self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
-
-    def test_bzr_connect_to_bzr_ssh(self):
-        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
-
-        bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
-        """
-        try:
-            # SFTPFullAbsoluteServer has a get_url method, and doesn't
-            # override the interface (doesn't change self._vendor).
-            from bzrlib.transport.sftp import SFTPFullAbsoluteServer
-        except ParamikoNotPresent:
-            raise TestSkipped('Paramiko not installed')
-        from bzrlib.tests.stub_sftp import StubServer
-
-        # Make a branch
-        self.make_branch('a_branch')
-
-        # Start an SSH server
-        self.command_executed = []
-        # XXX: This is horrible -- we define a really dumb SSH server that
-        # executes commands, and manage the hooking up of stdin/out/err to the
-        # SSH channel ourselves.  Surely this has already been implemented
-        # elsewhere?
-        class StubSSHServer(StubServer):
-
-            test = self
-
-            def check_channel_exec_request(self, channel, command):
-                self.test.command_executed.append(command)
-                proc = subprocess.Popen(
-                    command, shell=True, stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                # XXX: horribly inefficient, not to mention ugly.
-                # Start a thread for each of stdin/out/err, and relay bytes from
-                # the subprocess to channel and vice versa.
-                def ferry_bytes(read, write, close):
-                    while True:
-                        bytes = read(1)
-                        if bytes == '':
-                            close()
-                            break
-                        write(bytes)
-
-                file_functions = [
-                    (channel.recv, proc.stdin.write, proc.stdin.close),
-                    (proc.stdout.read, channel.sendall, channel.close),
-                    (proc.stderr.read, channel.sendall_stderr, channel.close)]
-                for read, write, close in file_functions:
-                    t = threading.Thread(
-                        target=ferry_bytes, args=(read, write, close))
-                    t.start()
-
-                return True
-
-        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
-        # XXX: We *don't* want to override the default SSH vendor, so we set
-        # _vendor to what _get_ssh_vendor returns.
-        self.start_server(ssh_server)
-        port = ssh_server._listener.port
-
-        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
-        # variable is used to tell bzr what command to run on the remote end.
-        path_to_branch = osutils.abspath('a_branch')
-
-        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        bzr_remote_path = self.get_bzr_path()
-        if sys.platform == 'win32':
-            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
-        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
-        try:
-            if sys.platform == 'win32':
-                path_to_branch = os.path.splitdrive(path_to_branch)[1]
-            url_suffix = '@localhost:%d%s' % (port, path_to_branch)
-            self.permit_url('bzr+ssh://fred' + url_suffix)
-            branch = Branch.open('bzr+ssh://fred:secret' + url_suffix)
-            self.make_read_requests(branch)
-            # Check we can perform write operations
-            branch.bzrdir.root_transport.mkdir('foo')
-        finally:
-            # Restore the BZR_REMOTE_PATH environment variable back to its
-            # original state.
-            if orig_bzr_remote_path is None:
-                del os.environ['BZR_REMOTE_PATH']
-            else:
-                os.environ['BZR_REMOTE_PATH'] = orig_bzr_remote_path
-
-        self.assertEqual(
-            ['%s serve --inet --directory=/ --allow-writes'
-             % bzr_remote_path],
-            self.command_executed)
 
 
 class TestCmdServeChrooting(TestCaseWithTransport):

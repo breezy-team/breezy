@@ -134,6 +134,44 @@ class TestInterRepository(TestCaseWithInterRepository):
             to_repo.texts.get_record_stream([('foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
 
+    def test_fetch_from_stacked_smart(self):
+        self.setup_smart_server_with_call_log()
+        self.test_fetch_from_stacked()
+
+    def test_fetch_from_stacked_smart_old(self):
+        self.setup_smart_server_with_call_log()
+        self.disable_verb('Repository.get_stream_1.19')
+        self.test_fetch_from_stacked()
+
+    def test_fetch_from_stacked(self):
+        """Fetch from a stacked branch succeeds."""
+        if not self.repository_format.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the source.")
+        builder = self.make_branch_builder('full-branch')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('second', ['first'], [
+            ('modify', ('file-id', 'second content\n'))])
+        builder.build_snapshot('third', ['second'], [
+            ('modify', ('file-id', 'third content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_repository('stacking-base')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'second')
+        repo = self.make_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'third')
+        target = self.make_to_repository('target')
+        target.fetch(stacked_branch.repository, 'third')
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        all_revs = set(['first', 'second', 'third'])
+        self.assertEqual(all_revs, set(target.get_parent_map(all_revs)))
+
     def test_fetch_parent_inventories_at_stacking_boundary_smart(self):
         self.setup_smart_server_with_call_log()
         self.test_fetch_parent_inventories_at_stacking_boundary()
