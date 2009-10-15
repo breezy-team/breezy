@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -368,7 +368,7 @@ class GraphIndex(object):
     suitable for production use. :XXX
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Open an index called name on transport.
 
         :param transport: A bzrlib.transport.Transport.

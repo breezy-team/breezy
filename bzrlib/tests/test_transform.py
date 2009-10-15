@@ -2277,6 +2277,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(os.stat(limbo_path).st_mtime,
                          preview_tree.get_file_mtime('file-id'))
 
+    def test_get_file_mtime_renamed(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_tree_file_id('file-id')
+        preview.adjust_path('renamed', preview.root, file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
+        work_mtime = work_tree.get_file_mtime('file-id', 'file')
+
     def test_get_file(self):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'contents', 'file-id')
@@ -2617,7 +2629,9 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_walkdirs(self):
         preview = self.get_empty_preview()
-        preview.version_file('tree-root', preview.root)
+        root = preview.new_directory('', ROOT_PARENT, 'tree-root')
+        # FIXME: new_directory should mark root.
+        preview.adjust_path('', ROOT_PARENT, root)
         preview_tree = preview.get_preview_tree()
         file_trans_id = preview.new_file('a', preview.root, 'contents',
                                          'a-id')
@@ -2654,11 +2668,11 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.addCleanup(work_tree.unlock)
         preview = TransformPreview(work_tree)
         self.addCleanup(preview.finalize)
-        preview_tree = preview.get_preview_tree()
         file_trans_id = preview.trans_id_file_id('file-id')
         preview.delete_contents(file_trans_id)
         preview.create_file('a\nb\n', file_trans_id)
         pb = progress.DummyProgress()
+        preview_tree = preview.get_preview_tree()
         merger = Merger.from_revision_ids(pb, preview_tree,
                                           child_tree.branch.last_revision(),
                                           other_branch=child_tree.branch,

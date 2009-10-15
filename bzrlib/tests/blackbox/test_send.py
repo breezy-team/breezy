@@ -423,7 +423,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-    def test_push_strict_command_line_override_config(self):
+    def test_send_strict_command_line_override_config(self):
         self.set_config_send_strict('false')
         self.assertSendSucceeds([])
         self.assertSendFails(['--strict'])

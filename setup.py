@@ -167,7 +167,13 @@ from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
-    from Pyrex.Distutils import build_ext
+    try:
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print "No Pyrex, trying Cython..."
+        from Cython.Distutils import build_ext
+        from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -180,7 +186,6 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    from Pyrex.Compiler.Version import version as pyrex_version
 
 
 class build_ext_if_possible(build_ext):
@@ -295,7 +300,9 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
-
+add_pyrex_extension('bzrlib._simple_set_pyx')
+ext_modules.append(Extension('bzrlib._static_tuple_c',
+                             ['bzrlib/_static_tuple_c.c']))
 
 if unavailable_files:
     print 'C extension(s) not found:'

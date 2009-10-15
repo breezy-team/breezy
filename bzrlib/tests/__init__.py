@@ -222,6 +222,10 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%s is leaking threads among %d leaking tests.\n' % (
                 TestCase._first_thread_leaker_id,
                 TestCase._leaking_threads_tests))
+            # We don't report the main thread as an active one.
+            self.stream.write(
+                '%d non-main threads were left active in the end.\n'
+                % (TestCase._active_threads - 1))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -496,8 +500,8 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d err' % self.error_count
         if self.failure_count:
             a += ', %d fail' % self.failure_count
-        if self.unsupported:
-            a += ', %d missing' % len(self.unsupported)
+        # if self.unsupported:
+        #     a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
@@ -512,20 +516,20 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.pb.note('ERROR: %s\n    %s\n',
+        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_failure(self, test, err):
-        self.pb.note('FAIL: %s\n    %s\n',
+        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_known_failure(self, test, err):
-        self.pb.note('XFAIL: %s\n%s\n',
-            self._test_description(test), err[1])
+        ui.ui_factory.note('XFAIL: %s\n%s\n' % (
+            self._test_description(test), err[1]))
 
     def report_skip(self, test, reason):
         pass
@@ -846,7 +850,13 @@ class TestCase(unittest.TestCase):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
         TestCase._active_threads = active
-        if leaked_threads:
+        # If some tests make the number of threads *decrease*, we'll consider
+        # that they are just observing old threads dieing, not agressively kill
+        # random threads. So we don't report these tests as leaking. The risk
+        # is that we have false positives that way (the test see 2 threads
+        # going away but leak one) but it seems less likely than the actual
+        # false positives (the test see threads going away and does not leak).
+        if leaked_threads > 0:
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
@@ -1145,6 +1155,25 @@ class TestCase(unittest.TestCase):
         if len(obj_with_len) != length:
             self.fail("Incorrect length: wanted %d, got %d for %r" % (
                 length, len(obj_with_len), obj_with_len))
+
+    def assertLogsError(self, exception_class, func, *args, **kwargs):
+        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """
+        from bzrlib import trace
+        captured = []
+        orig_log_exception_quietly = trace.log_exception_quietly
+        try:
+            def capture():
+                orig_log_exception_quietly()
+                captured.append(sys.exc_info())
+            trace.log_exception_quietly = capture
+            func(*args, **kwargs)
+        finally:
+            trace.log_exception_quietly = orig_log_exception_quietly
+        self.assertLength(1, captured)
+        err = captured[0][1]
+        self.assertIsInstance(err, exception_class)
+        return err
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -3661,6 +3690,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
         'bzrlib.tests.test__annotator',
@@ -3669,6 +3699,8 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test__groupcompress',
         'bzrlib.tests.test__known_graph',
         'bzrlib.tests.test__rio',
+        'bzrlib.tests.test__simple_set',
+        'bzrlib.tests.test__static_tuple',
         'bzrlib.tests.test__walkdirs_win32',
         'bzrlib.tests.test_ancestry',
         'bzrlib.tests.test_annotate',
@@ -4249,6 +4281,28 @@ class _UTF8Filesystem(Feature):
         return False
 
 UTF8Filesystem = _UTF8Filesystem()
+
+
+class _BreakinFeature(Feature):
+    """Does this platform support the breakin feature?"""
+
+    def _probe(self):
+        from bzrlib import breakin
+        if breakin.determine_signal() is None:
+            return False
+        if sys.platform == 'win32':
+            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
+            # We trigger SIGBREAK via a Console api so we need ctypes to
+            # access the function
+            if not have_ctypes:
+                return False
+        return True
+
+    def feature_name(self):
+        return "SIGQUIT or SIGBREAK w/ctypes on win32"
+
+
+BreakinFeature = _BreakinFeature()
 
 
 class _CaseInsCasePresFilenameFeature(Feature):

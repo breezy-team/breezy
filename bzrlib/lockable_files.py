@@ -32,8 +32,7 @@ from bzrlib import (
 """)
 
 from bzrlib.decorators import (
-    needs_read_lock,
-    needs_write_lock,
+    only_raises,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -221,6 +220,7 @@ class LockableFiles(object):
         """Setup a write transaction."""
         self._set_transaction(transactions.WriteTransaction())
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_mode:
             return lock.cant_unlock_not_held(self)
