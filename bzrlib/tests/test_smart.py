@@ -511,7 +511,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
             request.execute('reference'))
 
-    def test_notif_on_branch_from_repo(self):
+    def test_notification_on_branch_from_repository(self):
         """When there is a repository, the error should return details."""
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
@@ -570,7 +570,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
             response)
         self.assertLength(1, opened_branches)
 
-    def test_notif_on_branch_from_repo(self):
+    def test_notification_on_branch_from_repository(self):
         """When there is a repository, the error should return details."""
         backing = self.get_transport()
         request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)

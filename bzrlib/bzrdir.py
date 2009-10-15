@@ -1480,8 +1480,9 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, unsupported=False, ignore_fallbacks=False):
         """See BzrDir.open_branch.
         
-        Note: Test for repository on failure is not done here as
-        BzrDirPreSplitOut cannot have a repository.
+        Note: Test for repository on failure is not required here as
+        BzrDirPreSplitOut always has a branch; if there's no branch,
+        then there's no BzrDirPreSplitOut and no repository.
         """
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
