@@ -69,6 +69,12 @@ class _BadCompare(_Hashable):
         raise RuntimeError('I refuse to play nice')
 
 
+class _NoImplementCompare(_Hashable):
+
+    def __eq__(self, other):
+        return NotImplemented
+
+
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
 
@@ -328,6 +334,20 @@ class TestSimpleSet(tests.TestCase):
         obj.add(k1)
         # Tries to compare with k1, fails
         self.assertRaises(RuntimeError, obj.add, k2)
+
+    def test_richcompare_not_implemented(self):
+        obj = self.module.SimpleSet()
+        # Even though their hashes are the same, tp_richcompare returns
+        # NotImplemented, which means we treat them as not equal
+        k1 = _NoImplementCompare(200)
+        k2 = _NoImplementCompare(200)
+        self.assertLookup(200, '<null>', obj, k1)
+        self.assertLookup(200, '<null>', obj, k2)
+        self.assertIs(k1, obj.add(k1))
+        self.assertLookup(200, k1, obj, k1)
+        self.assertLookup(201, '<null>', obj, k2)
+        self.assertIs(k2, obj.add(k2))
+        self.assertIs(k1, obj[k1])
 
     def test_add_and_remove_lots_of_items(self):
         obj = self.module.SimpleSet()
