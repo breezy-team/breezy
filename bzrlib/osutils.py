@@ -1296,6 +1296,9 @@ else:
 
 def terminal_width():
     """Return estimated terminal width."""
+    if not sys.stdout.isatty():
+        return 10000
+
     if sys.platform == 'win32':
         return win32utils.get_console_size()[0]
     width = 0
