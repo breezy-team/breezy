@@ -166,6 +166,10 @@ Bug Fixes
 
 * When a file kind becomes unversionable after being added, a sensible
   error will be shown instead of a traceback. (Robert Collins, #438569)
+  
+* "bzr mkdir" now includes -p (--parents) option for recursively adding
+  parent directories.
+  (Jared Hance, #253529)
 
 Improvements
 ************
