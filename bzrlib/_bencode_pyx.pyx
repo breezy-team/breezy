@@ -58,6 +58,13 @@ cdef extern from "_bencode_pyx.h":
     void D_UPDATE_TAIL(Decoder, int n)
     void E_UPDATE_TAIL(Encoder, int n)
 
+# To maintain compatibility with older versions of pyrex, we have to use the
+# relative import here, rather than 'bzrlib._static_tuple_c'
+from _static_tuple_c cimport StaticTuple, StaticTuple_CheckExact, \
+    import_static_tuple_c
+
+import_static_tuple_c()
+
 
 cdef class Decoder:
     """Bencode decoder"""
@@ -371,7 +378,8 @@ cdef class Encoder:
                 self._encode_int(x)
             elif PyLong_CheckExact(x):
                 self._encode_long(x)
-            elif PyList_CheckExact(x) or PyTuple_CheckExact(x):
+            elif (PyList_CheckExact(x) or PyTuple_CheckExact(x)
+                  or StaticTuple_CheckExact(x)):
                 self._encode_list(x)
             elif PyDict_CheckExact(x):
                 self._encode_dict(x)

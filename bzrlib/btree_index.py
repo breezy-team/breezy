@@ -163,6 +163,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
+        # TODO: StaticTuple
         self._nodes[key] = (node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
@@ -625,6 +626,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
+            # TODO: Switch to StaticTuple here.
             nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
