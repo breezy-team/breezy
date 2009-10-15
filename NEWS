@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Avoid "NoneType has no attribute st_mode" error when files disappear
+  from a directory while it's being read.  (Martin Pool, #446033)
+
 Improvements
 ************
 
