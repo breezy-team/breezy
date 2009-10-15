@@ -2858,7 +2858,7 @@ class TestTestSuite(tests.TestCase):
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
-             '.test_abspath(LocalURLServer)'),
+             '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
             # modules_to_doctest
             'bzrlib.timestamp.format_highres_date',

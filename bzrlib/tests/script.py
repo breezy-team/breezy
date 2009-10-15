@@ -158,22 +158,66 @@ def _scan_redirection_options(args):
 
 
 class ScriptRunner(object):
+    """Run a shell-like script from a test.
+    
+    Can be used as:
 
-    def __init__(self, test_case):
-        self.test_case = test_case
+    from bzrlib.tests import script
+
+    ...
+
+        def test_bug_nnnnn(self):
+            sr = script.ScriptRunner()
+            sr.run_script(self, '''
+            $ bzr init
+            $ bzr do-this
+            # Boom, error
+            ''')
+    """
+
+    def __init__(self):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
-    def run_script(self, text):
-        for cmd, input, output, error in _script_to_commands(text):
-            self.run_command(cmd, input, output, error)
+    def run_script(self, test_case, text):
+        """Run a shell-like script as a test.
 
-    def _check_output(self, expected, actual):
+        :param test_case: A TestCase instance that should provide the fail(),
+            assertEqualDiff and _run_bzr_core() methods as well as a 'test_dir'
+            attribute used as a jail root.
+
+        :param text: A shell-like script (see _script_to_commands for syntax).
+        """
+        for cmd, input, output, error in _script_to_commands(text):
+            self.run_command(test_case, cmd, input, output, error)
+
+    def run_command(self, test_case, cmd, input, output, error):
+        mname = 'do_' + cmd[0]
+        method = getattr(self, mname, None)
+        if method is None:
+            raise SyntaxError('Command not found "%s"' % (cmd[0],),
+                              None, 1, ' '.join(cmd))
+        if input is None:
+            str_input = ''
+        else:
+            str_input = ''.join(input)
+        args = list(self._pre_process_args(cmd[1:]))
+        retcode, actual_output, actual_error = method(test_case,
+                                                      str_input, args)
+
+        self._check_output(output, actual_output, test_case)
+        self._check_output(error, actual_error, test_case)
+        if retcode and not error and actual_error:
+            test_case.fail('In \n\t%s\nUnexpected error: %s'
+                           % (' '.join(cmd), actual_error))
+        return retcode, actual_output, actual_error
+
+    def _check_output(self, expected, actual, test_case):
         if expected is None:
             # Specifying None means: any output is accepted
             return
         if actual is None:
-            self.test_case.fail('Unexpected: %s' % actual)
+            test_case.fail('Unexpected: %s' % actual)
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
         if not matching:
@@ -183,7 +227,7 @@ class ScriptRunner(object):
             # 'expected' parameter. So we just fallback to our good old
             # assertEqualDiff since we know there *are* differences and the
             # output should be decently readable.
-            self.test_case.assertEqualDiff(expected, actual)
+            test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
@@ -205,26 +249,6 @@ class ScriptRunner(object):
                 else:
                     yield arg
 
-    def run_command(self, cmd, input, output, error):
-        mname = 'do_' + cmd[0]
-        method = getattr(self, mname, None)
-        if method is None:
-            raise SyntaxError('Command not found "%s"' % (cmd[0],),
-                              None, 1, ' '.join(cmd))
-        if input is None:
-            str_input = ''
-        else:
-            str_input = ''.join(input)
-        args = list(self._pre_process_args(cmd[1:]))
-        retcode, actual_output, actual_error = method(str_input, args)
-
-        self._check_output(output, actual_output)
-        self._check_output(error, actual_error)
-        if retcode and not error and actual_error:
-            self.test_case.fail('In \n\t%s\nUnexpected error: %s'
-                                % (' '.join(cmd), actual_error))
-        return retcode, actual_output, actual_error
-
     def _read_input(self, input, in_name):
         if in_name is not None:
             infile = open(in_name, 'rb')
@@ -245,12 +269,12 @@ class ScriptRunner(object):
             output = None
         return output
 
-    def do_bzr(self, input, args):
-        retcode, out, err = self.test_case._run_bzr_core(
+    def do_bzr(self, test_case, input, args):
+        retcode, out, err = test_case._run_bzr_core(
             args, retcode=None, encoding=None, stdin=input, working_dir=None)
         return retcode, out, err
 
-    def do_cat(self, input, args):
+    def do_cat(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
         if args and in_name is not None:
             raise SyntaxError('Specify a file OR use redirection')
@@ -278,7 +302,7 @@ class ScriptRunner(object):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
-    def do_echo(self, input, args):
+    def do_echo(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
         if input and args:
                 raise SyntaxError('Specify parameters OR use redirection')
@@ -301,31 +325,35 @@ class ScriptRunner(object):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
         return 0, output, None
 
-    def _ensure_in_jail(self, path):
-        jail_root = self.test_case.get_jail_root()
+    def _get_jail_root(self, test_case):
+        return test_case.test_dir
+
+    def _ensure_in_jail(self, test_case, path):
+        jail_root = self._get_jail_root(test_case)
         if not osutils.is_inside(jail_root, osutils.normalizepath(path)):
             raise ValueError('%s is not inside %s' % (path, jail_root))
 
-    def do_cd(self, input, args):
+    def do_cd(self, test_case, input, args):
         if len(args) > 1:
             raise SyntaxError('Usage: cd [dir]')
         if len(args) == 1:
             d = args[0]
-            self._ensure_in_jail(d)
+            self._ensure_in_jail(test_case, d)
         else:
-            d = self.test_case.get_jail_root()
+            # The test "home" directory is the root of its jail
+            d = self._get_jail_root(test_case)
         os.chdir(d)
         return 0, None, None
 
-    def do_mkdir(self, input, args):
+    def do_mkdir(self, test_case, input, args):
         if not args or len(args) != 1:
             raise SyntaxError('Usage: mkdir dir')
         d = args[0]
-        self._ensure_in_jail(d)
+        self._ensure_in_jail(test_case, d)
         os.mkdir(d)
         return 0, None, None
 
-    def do_rm(self, input, args):
+    def do_rm(self, test_case, input, args):
         err = None
 
         def error(msg, path):
@@ -344,7 +372,7 @@ class ScriptRunner(object):
         if not args or opts:
             raise SyntaxError('Usage: rm [-fr] path+')
         for p in args:
-            self._ensure_in_jail(p)
+            self._ensure_in_jail(test_case, p)
             # FIXME: Should we put that in osutils ?
             try:
                 os.remove(p)
@@ -371,40 +399,49 @@ class ScriptRunner(object):
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
+    """Helper class to experiment shell-like test and memory fs.
+
+    This not intended to be used outside of experiments in implementing memoy
+    based file systems and evolving bzr so that test can use only memory based
+    resources.
+    """
 
     def setUp(self):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
-        self.script_runner = ScriptRunner(self)
-        # Break the circular dependency
-        def break_dependency():
-            self.script_runner = None
-        self.addCleanup(break_dependency)
-
-    def get_jail_root(self):
-        raise NotImplementedError(self.get_jail_root)
+        self.script_runner = ScriptRunner()
 
     def run_script(self, script):
-        return self.script_runner.run_script(script)
+        return self.script_runner.run_script(self, script)
 
     def run_command(self, cmd, input, output, error):
-        return self.script_runner.run_command(cmd, input, output, error)
+        return self.script_runner.run_command(self, cmd, input, output, error)
 
 
 class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
+    """Helper class to quickly define shell-like tests.
+
+    Can be used as:
+
+    from bzrlib.tests import script
+
+
+    class TestBug(script.TestCaseWithTransportAndScript):
+
+        def test_bug_nnnnn(self):
+            self.run_script('''
+            $ bzr init
+            $ bzr do-this
+            # Boom, error
+            ''')
+    """
 
     def setUp(self):
         super(TestCaseWithTransportAndScript, self).setUp()
-        self.script_runner = ScriptRunner(self)
-        # Break the circular dependency
-        def break_dependency():
-            self.script_runner = None
-        self.addCleanup(break_dependency)
-
-    def get_jail_root(self):
-        return self.test_dir
+        self.script_runner = ScriptRunner()
 
     def run_script(self, script):
-        return self.script_runner.run_script(script)
+        return self.script_runner.run_script(self, script)
 
     def run_command(self, cmd, input, output, error):
-        return self.script_runner.run_command(cmd, input, output, error)
+        return self.script_runner.run_command(self, cmd, input, output, error)
+

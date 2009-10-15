@@ -997,7 +997,11 @@ class SmartTCPTests(tests.TestCase):
         # tests wanting a server. The latter should be updated to use
         # self.vfs_transport_factory etc.
         if not backing_transport:
-            self.backing_transport = memory.MemoryTransport()
+            mem_server = memory.MemoryServer()
+            mem_server.setUp()
+            self.addCleanup(mem_server.tearDown)
+            self.permit_url(mem_server.get_url())
+            self.backing_transport = get_transport(mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:

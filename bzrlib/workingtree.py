@@ -896,7 +896,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
-        merge_type=None):
+                          merge_type=None, force=False):
         """Merge from a branch into this working tree.
 
         :param branch: The branch to merge from.
@@ -911,9 +911,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             merger = Merger(self.branch, this_tree=self, pb=pb)
             merger.pp = ProgressPhase("Merge phase", 5, pb)
             merger.pp.next_phase()
-            # check that there are no
-            # local alterations
-            merger.check_basis(check_clean=True, require_commits=False)
+            # check that there are no local alterations
+            if not force and self.has_changes():
+                raise errors.UncommittedChanges(self)
             if to_revision is None:
                 to_revision = _mod_revision.ensure_null(branch.last_revision())
             merger.other_rev_id = to_revision
