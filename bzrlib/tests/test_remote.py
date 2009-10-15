@@ -474,6 +474,57 @@ class TestBzrDirCloningMetaDir(TestRemote):
         self.assertFinished(client)
 
 
+class TestBzrDirOpen(TestRemote):
+
+    def make_fake_client_and_transport(self, path='quack'):
+        transport = MemoryTransport()
+        transport.mkdir(path)
+        transport = transport.clone(path)
+        client = FakeClient(transport.base)
+        return client, transport
+
+    def test_absent(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('no',))
+        self.assertRaises(errors.NotBranchError, RemoteBzrDir, transport,
+                remote.RemoteBzrDirFormat(), _client=client, _force_probe=True)
+        self.assertFinished(client)
+
+    def test_present_without_workingtree(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'no'))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFalse(bd.has_workingtree())
+        self.assertRaises(errors.NoWorkingTree, bd.open_workingtree)
+        self.assertFinished(client)
+
+    def test_present_with_workingtree(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'yes'))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertTrue(bd.has_workingtree())
+        self.assertRaises(errors.NotLocalUrl, bd.open_workingtree)
+        self.assertFinished(client)
+
+    def test_backwards_compat(self):
+        client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
+        client.add_expected_call(
+            'BzrDir.open', ('quack/',), 'success', ('yes',))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFinished(client)
+
+
 class TestBzrDirOpenBranch(TestRemote):
 
     def test_backwards_compat(self):
@@ -689,7 +740,9 @@ class TestBzrDirOpenRepository(TestRemote):
         # fallback all the way to the first version.
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
-        client = FakeClient('bzr://example.com/')
+        server_url = 'bzr://example.com/'
+        self.permit_url(server_url)
+        client = FakeClient(server_url)
         client.add_unknown_method_response('BzrDir.find_repositoryV3')
         client.add_unknown_method_response('BzrDir.find_repositoryV2')
         client.add_success_response('ok', '', 'no', 'no')
@@ -701,7 +754,7 @@ class TestBzrDirOpenRepository(TestRemote):
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
         client.add_success_response('stat', '0', '65535')
-        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+        remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
         bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
             _client=client)
@@ -721,7 +774,9 @@ class TestBzrDirOpenRepository(TestRemote):
         # fallback to find_repositoryV2
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
-        client = FakeClient('bzr://example.com/')
+        server_url = 'bzr://example.com/'
+        self.permit_url(server_url)
+        client = FakeClient(server_url)
         client.add_unknown_method_response('BzrDir.find_repositoryV3')
         client.add_success_response('ok', '', 'no', 'no', 'no')
         # A real repository instance will be created to determine the network
@@ -732,7 +787,7 @@ class TestBzrDirOpenRepository(TestRemote):
             reference_format.get_format_string(), 'ok')
         # PackRepository wants to do a stat
         client.add_success_response('stat', '0', '65535')
-        remote_transport = RemoteTransport('bzr://example.com/quack/', medium=False,
+        remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
         bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
             _client=client)
@@ -1999,8 +2054,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
     def test_allows_new_revisions(self):
         """get_parent_map's results can be updated by commit."""
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
+        self.start_server(smart_server)
         self.make_branch('branch')
         branch = Branch.open(smart_server.get_url() + '/branch')
         tree = branch.create_checkout('tree', lightweight=True)
@@ -2146,6 +2200,26 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
             errors.NoSuchRevision,
             repo.get_rev_id_for_revno, 5, (42, 'rev-foo'))
         self.assertFinished(client)
+
+    def test_branch_fallback_locking(self):
+        """RemoteBranch.get_rev_id takes a read lock, and tries to call the
+        get_rev_id_for_revno verb.  If the verb is unknown the VFS fallback
+        will be invoked, which will fail if the repo is unlocked.
+        """
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        rev1 = tree.commit('First')
+        rev2 = tree.commit('Second')
+        tree.unlock()
+        branch = tree.branch
+        self.assertFalse(branch.is_locked())
+        self.reset_smart_call_log()
+        verb = 'Repository.get_rev_id_for_revno'
+        self.disable_verb(verb)
+        self.assertEqual(rev1, branch.get_rev_id(1))
+        self.assertLength(1, [call for call in self.hpss_calls if
+                              call.call.method == verb])
 
 
 class TestRepositoryIsShared(TestRemoteRepository):
@@ -2839,8 +2913,7 @@ class TestStacking(tests.TestCaseWithTransport):
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp()
-        self.addCleanup(smart_server.tearDown)
+        self.start_server(smart_server)
         remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
         # can get its branch and repository
         remote_branch = remote_bzrdir.open_branch()
@@ -3001,8 +3074,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         _SmartClient.hooks.install_named_hook(
             'call', self.capture_hpss_call, None)

@@ -57,6 +57,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -856,7 +857,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(object):
+class Repository(_RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1381,6 +1382,7 @@ class Repository(object):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
+            self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1391,6 +1393,7 @@ class Repository(object):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
+            self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -2330,7 +2333,7 @@ class Repository(object):
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
             if pb is not None:
-                pb.update("fetch texts", count, num_file_ids)
+                pb.update("Fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
 
@@ -3586,7 +3589,7 @@ class InterWeaveRepo(InterSameDataRepository):
                 self.target.texts.insert_record_stream(
                     self.source.texts.get_record_stream(
                         self.source.texts.keys(), 'topological', False))
-                pb.update('copying inventory', 0, 1)
+                pb.update('Copying inventory', 0, 1)
                 self.target.inventories.insert_record_stream(
                     self.source.inventories.get_record_stream(
                         self.source.inventories.keys(), 'topological', False))
@@ -4079,13 +4082,13 @@ class CopyConverter(object):
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            self.step('Copying content into repository.')
+            self.step('Copying content')
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        self.step('Deleting old repository content.')
+        self.step('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
-        self.pb.note('repository converted')
+        ui.ui_factory.note('repository converted')
 
     def step(self, message):
         """Update the pb by a step."""

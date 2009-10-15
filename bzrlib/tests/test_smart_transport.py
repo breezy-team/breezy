@@ -732,7 +732,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
         server_sock.close()
-        self.assertEqual(expected_response, client_sock.recv(50),
+        self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
 
@@ -993,8 +993,15 @@ class SmartTCPTests(tests.TestCase):
 
         :param readonly: Create a readonly server.
         """
+        # NB: Tests using this fall into two categories: tests of the server,
+        # tests wanting a server. The latter should be updated to use
+        # self.vfs_transport_factory etc.
         if not backing_transport:
-            self.backing_transport = memory.MemoryTransport()
+            mem_server = memory.MemoryServer()
+            mem_server.setUp()
+            self.addCleanup(mem_server.tearDown)
+            self.permit_url(mem_server.get_url())
+            self.backing_transport = get_transport(mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
@@ -1004,6 +1011,7 @@ class SmartTCPTests(tests.TestCase):
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
+        self.permit_url(self.server.get_url())
 
     def tearDownServer(self):
         if getattr(self, 'transport', None):
@@ -1248,7 +1256,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def test_hello(self):
         handler = self.build_handler(None)
-        handler.dispatch_command('hello', ())
+        handler.args_received(('hello',))
         self.assertEqual(('ok', '2'), handler.response.args)
         self.assertEqual(None, handler.response.body)
 
@@ -1268,7 +1276,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """The response for a read-only error is ('ReadOnlyError')."""
         handler = self.build_handler(self.get_readonly_transport())
         # send a mkdir for foo, with no explicit mode - should fail.
-        handler.dispatch_command('mkdir', ('foo', ''))
+        handler.args_received(('mkdir', 'foo', ''))
         # and the failure should be an explicit ReadOnlyError
         self.assertEqual(("ReadOnlyError", ), handler.response.args)
         # XXX: TODO: test that other TransportNotPossible errors are
@@ -1279,14 +1287,14 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_hello_has_finished_body_on_dispatch(self):
         """The 'hello' command should set finished_reading."""
         handler = self.build_handler(None)
-        handler.dispatch_command('hello', ())
+        handler.args_received(('hello',))
         self.assertTrue(handler.finished_reading)
         self.assertNotEqual(None, handler.response)
 
     def test_put_bytes_non_atomic(self):
         """'put_...' should set finished_reading after reading the bytes."""
         handler = self.build_handler(self.get_transport())
-        handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
+        handler.args_received(('put_non_atomic', 'a-file', '', 'F', ''))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('1234')
         self.assertFalse(handler.finished_reading)
@@ -1300,7 +1308,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """'readv' should set finished_reading after reading offsets."""
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
-        handler.dispatch_command('readv', ('a-file', ))
+        handler.args_received(('readv', 'a-file'))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('2,')
         self.assertFalse(handler.finished_reading)
@@ -1315,7 +1323,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
-        handler.dispatch_command('readv', ('a-file', ))
+        handler.args_received(('readv', 'a-file'))
         # read beyond the end of the file.
         handler.accept_body('100,1')
         handler.end_of_body()
@@ -2542,8 +2550,8 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('end_received',))
         self.finished_reading = True
 
-    def dispatch_command(self, cmd, args):
-        self.calls.append(('dispatch_command', cmd, args))
+    def args_received(self, args):
+        self.calls.append(('args_received', args))
 
     def accept_body(self, bytes):
         self.calls.append(('accept_body', bytes))

@@ -21,6 +21,7 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -881,9 +882,57 @@ def parent_directories(filename):
     return parents
 
 
+_extension_load_failures = []
+
+
+def failed_to_load_extension(exception):
+    """Handle failing to load a binary extension.
+
+    This should be called from the ImportError block guarding the attempt to
+    import the native extension.  If this function returns, the pure-Python
+    implementation should be loaded instead::
+
+    >>> try:
+    >>>     import bzrlib._fictional_extension_pyx
+    >>> except ImportError, e:
+    >>>     bzrlib.osutils.failed_to_load_extension(e)
+    >>>     import bzrlib._fictional_extension_py
+    """
+    # NB: This docstring is just an example, not a doctest, because doctest
+    # currently can't cope with the use of lazy imports in this namespace --
+    # mbp 20090729
+    
+    # This currently doesn't report the failure at the time it occurs, because
+    # they tend to happen very early in startup when we can't check config
+    # files etc, and also we want to report all failures but not spam the user
+    # with 10 warnings.
+    from bzrlib import trace
+    exception_str = str(exception)
+    if exception_str not in _extension_load_failures:
+        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        _extension_load_failures.append(exception_str)
+
+
+def report_extension_load_failures():
+    if not _extension_load_failures:
+        return
+    from bzrlib.config import GlobalConfig
+    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+        return
+    # the warnings framework should by default show this only once
+    from bzrlib.trace import warning
+    warning(
+        "bzr: warning: some compiled extensions could not be loaded; "
+        "see <https://answers.launchpad.net/bzr/+faq/703>")
+    # we no longer show the specific missing extensions here, because it makes
+    # the message too long and scary - see
+    # https://bugs.launchpad.net/bzr/+bug/430529
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
-except ImportError:
+except ImportError, e:
+    failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
 
@@ -1083,7 +1132,14 @@ def _cicp_canonical_relpath(base, path):
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
-        for look in _listdir(current):
+        try:
+            next_entries = _listdir(current)
+        except OSError: # enoent, eperm, etc
+            # We can't find this in the filesystem, so just append the
+            # remaining bits.
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+        for look in next_entries:
             if lbit == look.lower():
                 current = pathjoin(current, look)
                 break
@@ -1093,7 +1149,7 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base)+1:]
+    return current[len(abs_base):].lstrip('/')
 
 # XXX - TODO - we need better detection/integration of case-insensitive
 # file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
@@ -1466,7 +1522,8 @@ def _walkdirs_utf8(top, prefix=""):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError:
+            except ImportError, e:
+                failed_to_load_extension(e)
                 pass
 
     if _selected_dir_reader is None:
@@ -1778,7 +1835,9 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError:
+        except ImportError, e:
+            # This is one time where we won't warn that an extension failed to
+            # load. The extension is never available on Windows anyway.
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )

@@ -16,11 +16,11 @@ lots of protocols some of which are given below.
   ===========         ======================================================
   Prefix              Description
   ===========         ======================================================
-  file://             Access using the standard filesystem (default)
-  sftp://             Access using SFTP (most SSH servers provide SFTP).
-  bzr://              Fast access using the Bazaar smart server.
-  ftp://              Access using passive FTP.
-  http://             Read-only access to branches exported by a web server.
+  \file://            Access using the standard filesystem (default)
+  \sftp://            Access using SFTP (most SSH servers provide SFTP).
+  \bzr://             Fast access using the Bazaar smart server.
+  \ftp://             Access using passive FTP.
+  \http://            Read-only access to branches exported by a web server.
   ===========         ======================================================
 
 As indicated above, branches are identified using URLs with the

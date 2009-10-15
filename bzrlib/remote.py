@@ -89,7 +89,7 @@ def response_tuple_to_repo_format(response):
 class RemoteBzrDir(BzrDir, _RpcHelper):
     """Control directory on a remote server, accessed via bzr:// or similar."""
 
-    def __init__(self, transport, format, _client=None):
+    def __init__(self, transport, format, _client=None, _force_probe=False):
         """Construct a RemoteBzrDir.
 
         :param _client: Private parameter for testing. Disables probing and the
@@ -99,6 +99,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         # this object holds a delegated bzrdir that uses file-level operations
         # to talk to the other side
         self._real_bzrdir = None
+        self._has_working_tree = None
         # 1-shot cache for the call pattern 'create_branch; open_branch' - see
         # create_branch for details.
         self._next_open_branch_result = None
@@ -108,14 +109,44 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             self._client = client._SmartClient(medium)
         else:
             self._client = _client
-            return
+            if not _force_probe:
+                return
 
+        self._probe_bzrdir()
+
+    def _probe_bzrdir(self):
+        medium = self._client._medium
         path = self._path_for_remote_call(self._client)
+        if medium._is_remote_before((2, 1)):
+            self._rpc_open(path)
+            return
+        try:
+            self._rpc_open_2_1(path)
+            return
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 1))
+            self._rpc_open(path)
+
+    def _rpc_open_2_1(self, path):
+        response = self._call('BzrDir.open_2.1', path)
+        if response == ('no',):
+            raise errors.NotBranchError(path=self.root_transport.base)
+        elif response[0] == 'yes':
+            if response[1] == 'yes':
+                self._has_working_tree = True
+            elif response[1] == 'no':
+                self._has_working_tree = False
+            else:
+                raise errors.UnexpectedSmartServerResponse(response)
+        else:
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _rpc_open(self, path):
         response = self._call('BzrDir.open', path)
         if response not in [('yes',), ('no',)]:
             raise errors.UnexpectedSmartServerResponse(response)
         if response == ('no',):
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=self.root_transport.base)
 
     def _ensure_real(self):
         """Ensure that there is a _real_bzrdir set.
@@ -355,9 +386,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         else:
             raise errors.NoRepositoryPresent(self)
 
+    def has_workingtree(self):
+        if self._has_working_tree is None:
+            self._ensure_real()
+            self._has_working_tree = self._real_bzrdir.has_workingtree()
+        return self._has_working_tree
+
     def open_workingtree(self, recommend_upgrade=True):
-        self._ensure_real()
-        if self._real_bzrdir.has_workingtree():
+        if self.has_workingtree():
             raise errors.NotLocalUrl(self.root_transport)
         else:
             raise errors.NoWorkingTree(self.root_transport.base)
@@ -583,7 +619,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper):
+class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -913,6 +949,7 @@ class RemoteRepository(_RpcHelper):
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
+            self._note_lock('r')
             self._lock_mode = 'r'
             self._lock_count = 1
             self._unstacked_provider.enable_cache(cache_misses=True)
@@ -938,6 +975,7 @@ class RemoteRepository(_RpcHelper):
 
     def lock_write(self, token=None, _skip_rpc=False):
         if not self._lock_mode:
+            self._note_lock('w')
             if _skip_rpc:
                 if self._lock_token is not None:
                     if token != self._lock_token:
@@ -1888,7 +1926,7 @@ class RemoteStreamSource(repository.StreamSource):
         :param search: The overall search to satisfy with streams.
         :param sources: A list of Repository objects to query.
         """
-        self.serialiser = self.to_format._serializer
+        self.from_serialiser = self.from_repository._format._serializer
         self.seen_revs = set()
         self.referenced_revs = set()
         # If there are heads in the search, or the key count is > 0, we are not
@@ -1911,7 +1949,8 @@ class RemoteStreamSource(repository.StreamSource):
     def missing_parents_rev_handler(self, substream):
         for content in substream:
             revision_bytes = content.get_bytes_as('fulltext')
-            revision = self.serialiser.read_revision_from_string(revision_bytes)
+            revision = self.from_serialiser.read_revision_from_string(
+                revision_bytes)
             self.seen_revs.add(content.key[-1])
             self.referenced_revs.update(revision.parent_ids)
             yield content
@@ -2045,7 +2084,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return self._custom_format.supports_set_append_revisions_only()
 
 
-class RemoteBranch(branch.Branch, _RpcHelper):
+class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
 
     At the moment most operations are mapped down to simple file operations.
@@ -2282,6 +2321,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def lock_read(self):
         self.repository.lock_read()
         if not self._lock_mode:
+            self._note_lock('r')
             self._lock_mode = 'r'
             self._lock_count = 1
             if self._real_branch is not None:
@@ -2307,6 +2347,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def lock_write(self, token=None):
         if not self._lock_mode:
+            self._note_lock('w')
             # Lock the branch and repo in one remote call.
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
@@ -2393,6 +2434,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION
