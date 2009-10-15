@@ -1097,7 +1097,7 @@ def main(argv=None):
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=False)
+        suppress_deprecation_warnings(override=True)
     if argv is None:
         argv = osutils.get_unicode_argv()
     else:
