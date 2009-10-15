@@ -1105,7 +1105,7 @@ class DiskTreeTransform(TreeTransformBase):
             self._limbo_children[previous_parent].remove(trans_id)
             del self._limbo_children_names[previous_parent][previous_name]
 
-    def _rename_in_limbo(self, trans_ids):
+    def _rename_in_limbo(self, trans_ids, rename=True):
         """Fix limbo names so that the right final path is produced.
 
         This means we outsmarted ourselves-- we tried to avoid renaming
@@ -1122,6 +1122,17 @@ class DiskTreeTransform(TreeTransformBase):
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            for descendant in self._limbo_descendants(trans_id):
+                desc_path = self._limbo_files[descendant]
+                desc_path = new_path + desc_path[len(old_path):]
+                self._limbo_files[descendant] = desc_path
+
+    def _limbo_descendants(self, trans_id):
+        """Return the set of trans_ids whose limbo paths descend from this."""
+        descendants = set(self._limbo_children.get(trans_id, []))
+        for descendant in list(descendants):
+            descendants.update(self._limbo_descendants(descendant))
+        return descendants
 
     def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
