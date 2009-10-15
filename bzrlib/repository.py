@@ -4319,6 +4319,13 @@ class StreamSink(object):
                 ):
                 if versioned_file is None:
                     continue
+                # TODO: key is often going to be a StaticTuple object
+                #       I don't believe we can define a method by which
+                #       (prefix,) + StaticTuple will work, though we could
+                #       define a StaticTuple.sq_concat that would allow you to
+                #       pass in either a tuple or a StaticTuple as the second
+                #       object, so instead we could have:
+                #       StaticTuple(prefix) + key here...
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:

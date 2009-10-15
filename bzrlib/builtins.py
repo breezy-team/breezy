@@ -431,7 +431,10 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            self.outf.write('%s\n' % (node[1:],))
+            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
+                                   for ref_list in node[3]])
+            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
+            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
