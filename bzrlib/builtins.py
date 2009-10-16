@@ -685,7 +685,7 @@ class cmd_mkdir(Command):
 
     def run(self, dir_list, parents=None):
         for d in dir_list:
-            if (parents is None):
+            if parents is None:
                 os.mkdir(d)
             else:
                 os.makedirs(d)
