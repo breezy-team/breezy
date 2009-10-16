@@ -17,18 +17,18 @@
 import os
 
 from bzrlib import (
-    conflicts
+    conflicts,
+    tests,
+    workingtree,
     )
-from bzrlib.workingtree import WorkingTree
-from bzrlib.tests.blackbox import ExternalBase
 
 # FIXME: These don't really look at the output of the conflict commands, just
 # the number of lines - there should be more examination.
 
-class TestConflicts(ExternalBase):
+class TestConflicts(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(ExternalBase, self).setUp()
+        super(TestConflicts, self).setUp()
         a_tree = self.make_branch_and_tree('a')
         self.build_tree_contents([
             ('a/myfile', 'contentsa\n'),
@@ -86,7 +86,7 @@ class TestConflicts(ExternalBase):
             self.run_bzr("resolve ../myfile")
             os.chdir("../../b")
             self.run_bzr("resolve ../a/myfile")
-            wt = WorkingTree.open_containing('.')[0]
+            wt = workingtree.WorkingTree.open_containing('.')[0]
             conflicts = wt.conflicts()
             if not conflicts.is_empty():
                 self.fail("tree still contains conflicts: %r" % conflicts)
