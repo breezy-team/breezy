@@ -23,6 +23,9 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 Improvements
 ************
 
