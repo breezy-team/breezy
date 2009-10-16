@@ -91,8 +91,9 @@ class cmd_resolve(commands.Command):
     takes_args = ['file*']
     takes_options = [
             Option('all', help='Resolve all conflicts in this tree.'),
+            Option('interactive', help='Dialog-based resolution'),
             ]
-    def run(self, file_list=None, all=False):
+    def run(self, file_list=None, all=False, interactive=False):
         from bzrlib.workingtree import WorkingTree
         if all:
             if file_list:
