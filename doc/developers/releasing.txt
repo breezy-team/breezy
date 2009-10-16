@@ -27,10 +27,10 @@ To start a new release cycle:
 #. Create a new series at <https://launchpad.net/bzr/+addseries>. There is one
    series for every *x.y* release.
 
-#. Go to the series web page at <https://launchpad.net/bzr/2.0>
+#. Go to the series web page at <https://launchpad.net/bzr/x.y>
 
 #. Create a new release at
-   <https://launchpad.net/bzr/2.0/+addrelease> and add
+   <https://launchpad.net/bzr/x.y/+addrelease> and add
    information about this release. We will not use it yet, but it
    will be available for targeting or nominating bugs.
 
@@ -40,7 +40,7 @@ To start a new release cycle:
    general development continues on the trunk, and only
    specifically-targeted fixes go into the release branch.
 
-#. Add milestones at <https://edge.launchpad.net/bzr/2.0/+addmilestone> to
+#. Add milestones at <https://edge.launchpad.net/bzr/x.y/+addmilestone> to
    that series for the beta release, release candidate and the final release,
    and their expected dates.
 
@@ -59,10 +59,8 @@ Starting the release phase
 
 When it's time to make the first beta release or release candidate:
 
-#. Create a new milestone at <https://launchpad.net/bzr/2.0/+addmilestone>
-   for the beta release or release candidate.
-
-#. Make a beta release or release candidate.
+#. Make a beta release or release candidate. The milestone for this
+   candidate will already exist (see Starting a cycle above).
 
 Preparing the tree for release
 ------------------------------
@@ -72,13 +70,14 @@ Preparing the tree for release
 
      bzr branch trunk prepare-1.14
 
-#. Configure pqm-submit for this branch, with a section like this in
+#. Configure pqm-submit for this branch, with a section like this (where
+   x.y is the version to release).
    ``~/.bazaar/locations.conf``::
 
-	[/home/mbp/bzr/prepare-1.14]
+	[/home/mbp/bzr/prepare-x.y]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
-	submit_branch = lp:bzr/2.0
-	public_branch = http://bazaar.example.com/prepare-2.0
+	submit_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
+	public_branch = http://bazaar.example.com/prepare-x.y
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
@@ -174,9 +173,6 @@ Making the source tarball
   
      make dist
 
-   This also makes a zip file, which is easier to access on Microsoft
-   Windows.
-
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
  
@@ -189,10 +185,31 @@ Making the source tarball
    failures.
 
 
+Publishing the source tarball
+-----------------------------
+
+#. Go to the relevant milestone page in Launchpad.
+
+#. Within that release, upload the source tarball and the GPG
+   signature.  Or, if you prefer, use the
+   ``tools/packaging/lp-upload-release`` script to do this.
+
+
+Announcing the source freeze
+----------------------------
+
+#. Post to the ``bazaar`` list, saying that the source has been frozen.
+   This is the cue for platform maintainers and plugin authors to update
+   their code.  This is done before the general public announcement of the
+   release.
+
+
 Publishing the release
 ----------------------
 
-Now you have the beta or releasable product.  The next step is making it
+There is normally a delay of a few days after the source freeze to allow
+for binaries to be built on various platforms.  Once they have been built,
+we have a releasable product.  The next step is to make it generally
 available to the world.
 
 go to the release
@@ -201,9 +218,14 @@ go to the release
    signature.  Or, if you prefer, use the
    ``tools/packaging/lp-upload-release`` script to do this.
 
-#. Link from http://bazaar-vcs.org/Download to the tarball and signature.
+#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
+   signature.
 
-#. Announce on the `Bazaar home page <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+   This page is edited via the lp:bzr-website branch. (Changes
+   pushed to this branch are refreshed by a cron job on escudero.)
+
+#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
 
 #. Check that the documentation for this release is available in
    <http://doc.bazaar-vcs.org>.  It should be automatically build when the

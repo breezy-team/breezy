@@ -3700,5 +3700,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

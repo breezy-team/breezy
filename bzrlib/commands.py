@@ -101,11 +101,11 @@ class CommandRegistry(registry.Registry):
             registry.Registry.register(self, k_unsquished, cmd,
                                        override_existing=decorate, info=info)
         except KeyError:
-            trace.log_error('Two plugins defined the same command: %r' % k)
-            trace.log_error('Not loading the one in %r' %
-                            sys.modules[cmd.__module__])
-            trace.log_error('Previously this command was registered from %r' %
-                            sys.modules[previous.__module__])
+            trace.warning('Two plugins defined the same command: %r' % k)
+            trace.warning('Not loading the one in %r' %
+                sys.modules[cmd.__module__])
+            trace.warning('Previously this command was registered from %r' %
+                sys.modules[previous.__module__])
         return previous
 
     def register_lazy(self, command_name, aliases, module_name):
@@ -1035,13 +1035,13 @@ def run_bzr(argv):
             ret = apply_coveraged(opt_coverage_dir, run, *run_argv)
         else:
             ret = run(*run_argv)
-        if 'memory' in debug.debug_flags:
-            trace.debug_memory('Process status after command:', short=False)
         return ret or 0
     finally:
         # reset, in case we may do other commands later within the same
         # process. Commands that want to execute sub-commands must propagate
         # --verbose in their own way.
+        if 'memory' in debug.debug_flags:
+            trace.debug_memory('Process status after command:', short=False)
         option._verbosity_level = saved_verbosity_level
 
 
@@ -1097,7 +1097,7 @@ def main(argv=None):
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=False)
+        suppress_deprecation_warnings(override=True)
     if argv is None:
         argv = osutils.get_unicode_argv()
     else:
@@ -1114,6 +1114,7 @@ def main(argv=None):
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
+    osutils.report_extension_load_failures()
     return ret
 
 

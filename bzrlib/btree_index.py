@@ -17,6 +17,7 @@
 
 """B+Tree indices"""
 
+import cStringIO
 from bisect import bisect_right
 import math
 import tempfile
@@ -60,14 +61,20 @@ class _BuilderRow(object):
     def __init__(self):
         """Create a _BuilderRow."""
         self.nodes = 0
-        self.spool = tempfile.TemporaryFile()
+        self.spool = None# tempfile.TemporaryFile(prefix='bzr-index-row-')
         self.writer = None
 
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
+            self.spool = cStringIO.StringIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
+        elif self.nodes == 1:
+            # We got bigger than 1 node, switch to a temp file
+            spool = tempfile.TemporaryFile(prefix='bzr-index-row-')
+            spool.write(self.spool.getvalue())
+            self.spool = spool
         skipped_bytes = 0
         if not pad and padding:
             del byte_lines[-1]
@@ -156,6 +163,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
+        # TODO: StaticTuple
         self._nodes[key] = (node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
@@ -182,11 +190,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
              backing_pos) = self._spill_mem_keys_and_combine()
         else:
             new_backing_file, size = self._spill_mem_keys_without_combining()
-        dir_path, base_name = osutils.split(new_backing_file.name)
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport(dir_path),
-                                      base_name, size)
+        new_backing = BTreeGraphIndex(get_transport('.'), '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
         if self._combine_backing_indices:
@@ -379,13 +385,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
         lines.append(_OPTION_LEN + str(key_count) + '\n')
         row_lengths = [row.nodes for row in rows]
         lines.append(_OPTION_ROW_LENGTHS + ','.join(map(str, row_lengths)) + '\n')
+        if row_lengths and row_lengths[-1] > 1:
+            result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
+        else:
+            result = cStringIO.StringIO()
         result.writelines(lines)
         position = sum(map(len, lines))
         root_row = True
@@ -617,6 +626,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
+            # TODO: Switch to StaticTuple here.
             nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
@@ -628,7 +638,7 @@ class BTreeGraphIndex(object):
     memory except when very large walks are done.
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Create a B+Tree index object on the index name.
 
         :param transport: The transport to read data for the index from.
@@ -638,6 +648,9 @@ class BTreeGraphIndex(object):
             the initial read (to read the root node header) can be done
             without over-reading even on empty indices, and on small indices
             allows single-IO to read the entire index.
+        :param unlimited_cache: If set to True, then instead of using an
+            LRUCache with size _NODE_CACHE_SIZE, we will use a dict and always
+            cache all leaf nodes.
         """
         self._transport = transport
         self._name = name
@@ -647,12 +660,15 @@ class BTreeGraphIndex(object):
         self._root_node = None
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
-        self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        # We could limit this, but even a 300k record btree has only 3k leaf
-        # nodes, and only 20 internal nodes. So the default of 100 nodes in an
-        # LRU would mean we always cache everything anyway, no need to pay the
-        # overhead of LRU
-        self._internal_node_cache = fifo_cache.FIFOCache(100)
+        if unlimited_cache:
+            self._leaf_node_cache = {}
+            self._internal_node_cache = {}
+        else:
+            self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
+            # We use a FIFO here just to prevent possible blowout. However, a
+            # 300k record btree has only 3k leaf nodes, and only 20 internal
+            # nodes. A value of 100 scales to ~100*100*100 = 1M records.
+            self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
@@ -690,9 +706,9 @@ class BTreeGraphIndex(object):
                 if start_of_leaves is None:
                     start_of_leaves = self._row_offsets[-2]
                 if node_pos < start_of_leaves:
-                    self._internal_node_cache.add(node_pos, node)
+                    self._internal_node_cache[node_pos] = node
                 else:
-                    self._leaf_node_cache.add(node_pos, node)
+                    self._leaf_node_cache[node_pos] = node
             found[node_pos] = node
         return found
 
@@ -1526,5 +1542,6 @@ class BTreeGraphIndex(object):
 
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

@@ -3971,7 +3971,8 @@ try:
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks,
         bisect_dirblock,

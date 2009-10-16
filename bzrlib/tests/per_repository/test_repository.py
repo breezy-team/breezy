@@ -52,6 +52,7 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
+from bzrlib.transport.fakevfat import FakeVFATServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
@@ -825,9 +826,8 @@ class TestRepository(TestCaseWithRepository):
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
+        self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()
         return remote_repo
@@ -898,14 +898,6 @@ class TestRepository(TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
-
-    # XXX: this helper probably belongs on TestCaseWithTransport
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        return remote_transport
 
     def test_clone_to_hpss(self):
         pre_metadir_formats = [RepositoryFormat5(), RepositoryFormat6()]
@@ -1304,6 +1296,7 @@ class TestEscaping(TestCaseWithTransport):
         from bzrlib.remote import RemoteRepositoryFormat
         if isinstance(self.repository_format, RemoteRepositoryFormat):
             return
+        self.transport_server = FakeVFATServer
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         # this makes a default format repository always, which is wrong:
@@ -1315,7 +1308,7 @@ class TestEscaping(TestCaseWithTransport):
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)
         # now access over vfat; should be safe
-        branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
+        branch = bzrdir.BzrDir.open(self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)

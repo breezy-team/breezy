@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ from bzrlib import (
     debug,
     errors,
     )
+from bzrlib.static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -102,7 +103,7 @@ class GraphIndexBuilder(object):
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
-        if type(key) != tuple:
+        if type(key) not in (tuple, StaticTuple):
             raise errors.BadIndexKey(key)
         if self._key_length != len(key):
             raise errors.BadIndexKey(key)
@@ -202,7 +203,9 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
+            # TODO: StaticTuple
             node_refs.append(tuple(reference_list))
+        # TODO: StaticTuple
         return tuple(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
@@ -368,7 +371,7 @@ class GraphIndex(object):
     suitable for production use. :XXX
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Open an index called name on transport.
 
         :param transport: A bzrlib.transport.Transport.
