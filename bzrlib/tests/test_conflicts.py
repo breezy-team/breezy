@@ -22,6 +22,7 @@ from bzrlib import (
     conflicts,
     errors,
     tests,
+    workingtree,
     )
 from bzrlib.tests import script
 
@@ -274,15 +275,15 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 
     def test_resolve_keeping_this(self):
         self.run_script("""
-$ bzr resolve --interactive file
-<this
+$ bzr resolve --interactive file2
+<keep_this
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_keeping_other(self):
         self.run_script("""
-$ bzr resolve --interactive file
-<other
+$ bzr resolve --interactive file2
+<keep_other
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 

@@ -104,9 +104,11 @@ class cmd_resolve(commands.Command):
             tree = workingtree.WorkingTree.open_containing('.')[0]
             resolve(tree)
         elif interactive:
+            tree, file_list = builtins.tree_files(file_list)
             if file_list is None or len(file_list) != 1:
                 raise errors.BzrCommandError(
                     '--interactive requires a single FILE parameter')
+            _resolve_interactive( tree, file_list[0])
         else:
             tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
@@ -152,6 +154,33 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False):
         except errors.UnsupportedOperation:
             pass
         selected_conflicts.remove_files(tree)
+    finally:
+        tree.unlock()
+
+
+def _resolve_interactive(tree, path):
+    import sys # TEMPORARY
+    tree.lock_tree_write()
+    try:
+        tree_conflicts = tree.conflicts()
+        (remaining,
+         selected) = tree_conflicts.select_conflicts(
+            tree, [path], ignore_misses=True)
+        if not selected:
+            raise errors.NotConflicted(path)
+        # FIXME: we should really do a loop below as some paths may be involved
+        # in several conflicts but it's not yet clear how we will handle that.
+        c = selected[0]
+        action_name = sys.stdin.readline()
+        action_name = action_name.rstrip('\n')
+        # Crude exit
+        if action_name == 'quit':
+            return
+        action = getattr(c, action_name, None)
+        if action is None:
+            raise NotImplementedError(action_name)
+        action(tree)
+        tree.set_conflicts(remaining)
     finally:
         tree.unlock()
 
@@ -468,6 +497,13 @@ class DuplicateEntry(HandledPathConflict):
     typestring = 'duplicate'
 
     format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
+
+    def keep_this(self, tree):
+        tree.remove([self.conflict_path], force=True, keep_files=False)
+        tree.rename_one(self.path, self.conflict_path)
+
+    def keep_other(self, tree):
+        tree.remove([self.path], force=True, keep_files=False)
 
 
 class ParentLoop(HandledPathConflict):

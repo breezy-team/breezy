@@ -122,7 +122,8 @@ class TestResolve(tests.TestCaseWithTransport, TestMixin):
         self.assertContainsRe(note, 'All conflicts resolved.')
 
     def test_resolve_interactive(self):
-        out, err = self.run_bzr('resolve --interactive mydir2', retcode=0)
+        out, err = self.run_bzr('resolve --interactive mydir2', retcode=0,
+                                stdin='quit')
 
     def test_resolve_interactive_all(self):
         self.run_bzr_error(['--all and --interactive are mutually exclusive'],
