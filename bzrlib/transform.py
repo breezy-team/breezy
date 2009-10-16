@@ -1105,7 +1105,7 @@ class DiskTreeTransform(TreeTransformBase):
             self._limbo_children[previous_parent].remove(trans_id)
             del self._limbo_children_names[previous_parent][previous_name]
 
-    def _rename_in_limbo(self, trans_ids, rename=True):
+    def _rename_in_limbo(self, trans_ids):
         """Fix limbo names so that the right final path is produced.
 
         This means we outsmarted ourselves-- we tried to avoid renaming
