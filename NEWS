@@ -22,8 +22,12 @@ New Features
 Bug Fixes
 *********
 
+
 * Added support for removing multiple working trees to "bzr remove-tree"
   (Jared Hance, #253137)
+
+* TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
+  files.  (Aaron Bentley)
 
 Improvements
 ************
@@ -38,6 +42,8 @@ Documentation
 
 API Changes
 ***********
+
+* Remove deprecated ``CLIUIFactory``.  (Martin Pool)
 
 * ``UIFactory`` now has new ``show_error``, ``show_message`` and
   ``show_warning`` methods, which can be hooked by non-text UIs.  
