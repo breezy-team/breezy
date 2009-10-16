@@ -32,6 +32,7 @@ from bzrlib import (
     osutils,
     rio,
     trace,
+    workingtree,
     )
 """)
 from bzrlib.option import Option
@@ -62,8 +63,7 @@ class cmd_conflicts(commands.Command):
         ]
 
     def run(self, text=False):
-        from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open_containing(u'.')[0]
+        wt = workingtree.WorkingTree.open_containing(u'.')[0]
         for conflict in wt.conflicts():
             if text:
                 if conflict.typestring != 'text conflict':
@@ -94,12 +94,11 @@ class cmd_resolve(commands.Command):
             Option('interactive', help='Dialog-based resolution'),
             ]
     def run(self, file_list=None, all=False, interactive=False):
-        from bzrlib.workingtree import WorkingTree
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
                                              " no FILE may be provided")
-            tree = WorkingTree.open_containing('.')[0]
+            tree = workingtree.WorkingTree.open_containing('.')[0]
             resolve(tree)
         else:
             tree, file_list = builtins.tree_files(file_list)
