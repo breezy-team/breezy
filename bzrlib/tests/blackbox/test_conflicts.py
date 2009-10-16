@@ -25,10 +25,9 @@ from bzrlib import (
 # FIXME: These don't really look at the output of the conflict commands, just
 # the number of lines - there should be more examination.
 
-class TestConflicts(tests.TestCaseWithTransport):
+class TestBase(tests.TestCaseWithTransport):
 
-    def setUp(self):
-        super(TestConflicts, self).setUp()
+    def make_tree_with_conflicts(self):
         a_tree = self.make_branch_and_tree('a')
         self.build_tree_contents([
             ('a/myfile', 'contentsa\n'),
@@ -55,6 +54,13 @@ class TestConflicts(tests.TestCaseWithTransport):
         a_tree.merge_from_branch(b_tree.branch)
         os.chdir('a')
 
+
+class TestConflicts(TestBase):
+
+    def setUp(self):
+        super(TestConflicts, self).setUp()
+        self.make_tree_with_conflicts()
+
     def test_conflicts(self):
         conflicts, errs = self.run_bzr('conflicts')
         self.assertEqual(3, len(conflicts.splitlines()))
@@ -62,6 +68,13 @@ class TestConflicts(tests.TestCaseWithTransport):
     def test_conflicts_text(self):
         conflicts = self.run_bzr('conflicts --text')[0].splitlines()
         self.assertEqual(['my_other_file', 'myfile'], conflicts)
+
+
+class TestResolve(TestBase):
+
+    def setUp(self):
+        super(TestResolve, self).setUp()
+        self.make_tree_with_conflicts()
 
     def test_resolve(self):
         self.run_bzr('resolve myfile')
@@ -79,19 +92,15 @@ class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_in_subdir(self):
         """resolve when run from subdirectory should handle relative paths"""
-        orig_dir = os.getcwdu()
-        try:
-            os.mkdir("subdir")
-            os.chdir("subdir")
-            self.run_bzr("resolve ../myfile")
-            os.chdir("../../b")
-            self.run_bzr("resolve ../a/myfile")
-            wt = workingtree.WorkingTree.open_containing('.')[0]
-            conflicts = wt.conflicts()
-            if not conflicts.is_empty():
-                self.fail("tree still contains conflicts: %r" % conflicts)
-        finally:
-            os.chdir(orig_dir)
+        os.mkdir("subdir")
+        os.chdir("subdir")
+        self.run_bzr("resolve ../myfile")
+        os.chdir("../../b")
+        self.run_bzr("resolve ../a/myfile")
+        wt = workingtree.WorkingTree.open_containing('.')[0]
+        conflicts = wt.conflicts()
+        if not conflicts.is_empty():
+            self.fail("tree still contains conflicts: %r" % conflicts)
 
     def test_auto_resolve(self):
         """Text conflicts can be resolved automatically"""
@@ -110,3 +119,4 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.build_tree_contents([('file', 'a\n')])
         note = self.run_bzr('resolve')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')
+
