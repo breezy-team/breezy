@@ -94,12 +94,19 @@ class cmd_resolve(commands.Command):
             Option('interactive', help='Dialog-based resolution'),
             ]
     def run(self, file_list=None, all=False, interactive=False):
+        if all and interactive:
+            raise errors.BzrCommandError(
+                '--all and --interactive are mutually exclusive')
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
                                              " no FILE may be provided")
             tree = workingtree.WorkingTree.open_containing('.')[0]
             resolve(tree)
+        elif interactive:
+            if file_list is None or len(file_list) != 1:
+                raise errors.BzrCommandError(
+                    '--interactive requires a single FILE parameter')
         else:
             tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
