@@ -25,7 +25,7 @@ from bzrlib import (
 # FIXME: These don't really look at the output of the conflict commands, just
 # the number of lines - there should be more examination.
 
-class TestBase(tests.TestCaseWithTransport):
+class TestMixin(object):
 
     def make_tree_with_conflicts(self):
         a_tree = self.make_branch_and_tree('a')
@@ -55,7 +55,7 @@ class TestBase(tests.TestCaseWithTransport):
         os.chdir('a')
 
 
-class TestConflicts(TestBase):
+class TestConflicts(tests.TestCaseWithTransport, TestMixin):
 
     def setUp(self):
         super(TestConflicts, self).setUp()
@@ -70,7 +70,7 @@ class TestConflicts(TestBase):
         self.assertEqual(['my_other_file', 'myfile'], conflicts)
 
 
-class TestResolve(TestBase):
+class TestResolve(tests.TestCaseWithTransport, TestMixin):
 
     def setUp(self):
         super(TestResolve, self).setUp()
@@ -120,3 +120,5 @@ class TestResolve(TestBase):
         note = self.run_bzr('resolve')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')
 
+    def test_resolve_interactive(self):
+        out, err = self.run_bzr('resolve --interactive mydir2', retcode=0)
