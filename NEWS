@@ -2,8 +2,14 @@
 Bazaar Release Notes
 ####################
 
-2.0 series (not released)
-#########################
+.. contents:: List of Releases
+   :depth: 1
+
+bzr 2.0.2 (not released yet)
+############################
+
+:Codename:
+:2.0.2: ???
 
 Compatibility Breaks
 ********************
@@ -14,27 +20,11 @@ New Features
 Bug Fixes
 *********
 
-* ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
-  filename will issue a warning and skip over those files.
-  (Robert Collins, #3918)
-
-* bzr will attempt to authenticate with SSH servers that support
-  ``keyboard-interactive`` auth but not ``password`` auth when using
-  Paramiko.   (Andrew Bennetts, #433846)
+* Avoid "NoneType has no attribute st_mode" error when files disappear
+  from a directory while it's being read.  (Martin Pool, #446033)
 
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
-
-* Occasional IndexError on renamed files have been fixed. Operations that
-  set a full inventory in the working tree will now go via the
-  apply_inventory_delta code path which is simpler and easier to
-  understand than dirstates set_state_from_inventory method. This may
-  have a small performance impact on operations built on _write_inventory,
-  but such operations are already doing full tree scans, so no radical
-  performance change should be observed. (Robert Collins, #403322)
-
-* When a file kind becomes unversionable after being added, a sensible
-  error will be shown instead of a traceback. (Robert Collins, #438569)
 
 Improvements
 ************
@@ -51,11 +41,44 @@ Internals
 Testing
 *******
 
+
 bzr 2.0.1
-##########
+#########
+
+:Codename: Stability First
+:2.0.1: 2009-10-14
+
+The first of our new ongoing bugfix-only stable releases has arrived. It
+includes a collection of 12 bugfixes applied to bzr 2.0.0, but does not
+include any of the feature development in the 2.1.0 series.
+
 
 Bug Fixes
 *********
+
+* ``bzr add`` in a tree that has files with ``\r`` or ``\n`` in the
+  filename will issue a warning and skip over those files.
+  (Robert Collins, #3918)
+
+* bzr will attempt to authenticate with SSH servers that support
+  ``keyboard-interactive`` auth but not ``password`` auth when using
+  Paramiko.   (Andrew Bennetts, #433846)
+
+* Fixed fetches from a stacked branch on a smart server that were failing
+  with some combinations of remote and local formats.  This was causing
+  "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
+
+* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
+  on branches via a smart server.  (Andrew Bennetts, #389413)
+
+* Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
+  at the root of a drive. ``osutils._cicp_canonical_relpath`` always
+  assumed that ``abspath()`` returned a path that did not have a trailing
+  ``/``, but that is not true when working at the root of the filesystem.
+  (John Arbash Meinel, Jason Spashett, #322807)
+
+* Hide deprecation warnings for 'final' releases for python2.6.
+  (John Arbash Meinel, #440062)
 
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
@@ -66,8 +89,32 @@ Bug Fixes
   object when doing a merge, and there is limbo, or pending-deletions
   directory.  (Gary van der Merwe, #427773)
 
+* Occasional IndexError on renamed files have been fixed. Operations that
+  set a full inventory in the working tree will now go via the
+  apply_inventory_delta code path which is simpler and easier to
+  understand than dirstates set_state_from_inventory method. This may
+  have a small performance impact on operations built on _write_inventory,
+  but such operations are already doing full tree scans, so no radical
+  performance change should be observed. (Robert Collins, #403322)
+
 * Retrieving file text or mtime from a _PreviewTree has good performance when
   there are many changes.  (Aaron Bentley)
+
+* The CHK index pages now use an unlimited cache size. With a limited
+  cache and a large project, the random access of chk pages could cause us
+  to download the entire cix file many times.
+  (John Arbash Meinel, #402623)
+
+* When a file kind becomes unversionable after being added, a sensible
+  error will be shown instead of a traceback. (Robert Collins, #438569)
+
+Documentation
+*************
+
+* Improved README. (Ian Clatworthy)
+
+* Improved upgrade documentation for Launchpad branches.
+  (Barry Warsaw)
 
 
 bzr 2.0.0
@@ -10674,6 +10721,39 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
+
+
+bzr ?.?.? (not released yet)
+############################
+
+:Codename: template
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 
 ..
    vim: tw=74 ft=rst ff=unix
