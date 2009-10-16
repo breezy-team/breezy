@@ -10,6 +10,9 @@ https://bugs.edge.launchpad.net/bzr/+bug/322767
 https://bugs.edge.launchpad.net/bzr/+bug/416903
 https://bugs.edge.launchpad.net/bzr/+bug/355964
 
+https://bugs.edge.launchpad.net/bzr/+bug/257297
+https://bugs.edge.launchpad.net/bzr/+bug/232512
+
 https://bugs.edge.launchpad.net/bzr/+bug/405264
 
 
