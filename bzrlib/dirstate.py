@@ -1324,7 +1324,7 @@ class DirState(object):
                 key = (dirname_utf8, basename, file_id)
                 minikind = DirState._kind_to_minikind[inv_entry.kind]
                 if minikind == 't':
-                    fingerprint = inv_entry.reference_revision
+                    fingerprint = inv_entry.reference_revision or ''
                 else:
                     fingerprint = ''
                 insertions[file_id] = (key, minikind, inv_entry.executable,
@@ -3328,7 +3328,9 @@ class ProcessEntryPython(object):
                         content_change = False
                     target_exec = False
                 else:
-                    raise Exception, "unknown kind %s" % path_info[2]
+                    if path is None:
+                        path = pathjoin(old_dirname, old_basename)
+                    raise errors.BadFileKindError(path, path_info[2])
             if source_minikind == 'd':
                 if path is None:
                     old_path = path = pathjoin(old_dirname, old_basename)
