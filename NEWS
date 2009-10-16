@@ -22,6 +22,9 @@ New Features
 Bug Fixes
 *********
 
+* TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
+  files.  (Aaron Bentley)
+
 Improvements
 ************
 
