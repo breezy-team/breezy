@@ -14,7 +14,7 @@ Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree, ${misc:Depends}
 Recommends: bzrtools, python-paramiko, ca-certificates
-Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1)
+Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1), bzr-doc
 XB-Python-Version: ${python:Versions}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
@@ -39,3 +39,35 @@ Description: easy to use distributed version control system
  Install python-paramiko if you are going to push branches to remote
  hosts with sftp, and python-pycurl if you'd like for SSL certificates
  always to be verified.
+
+Package: bzr-doc
+Architecture: all
+Section: doc
+Depends: ${misc:Depends}
+Suggests: bzr
+Conflicts: bzr (< 2.0.1)
+Description: easy to use distributed version control system (documentation)
+ Bazaar is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ Publishing of branches can be done over plain HTTP, that is, no special
+ software is needed on the server to host Bazaar branches. Branches can
+ be pushed to the server via sftp (which most SSH instalations come
+ with), FTP, or over a custom and faster protocol if bzr is installed in
+ the remote end.
+ .
+ Merging in Bazaar is easy, as the implementation is able to avoid many
+ spurious conflicts, deals well with repeated merges between branches,
+ and is able to handle modifications to renamed files correctly.
+ .
+ Bazaar is written in Python, and has a flexible plugin interface which
+ can be used to extend its functionality. Many plugins exist, providing
+ useful commands (bzrtools), graphical interfaces (bzr-gtk), or native
+ interaction with Subversion branches (bzr-svn).
+ .
+ Install python-paramiko if you are going to push branches to remote
+ hosts with sftp, and python-pycurl if you'd like for SSL certificates
+ always to be verified.
+ .
+ This package provides the documentation.

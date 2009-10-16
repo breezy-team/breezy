@@ -1,7 +1,7 @@
 Document: bzr
 Title: Bazaar documentation
 Abstract: Documentation for Bazaar in text and HTML form.
-Section: Apps/Programming
+Section: Programming
 
 Format: Text
 Files: /usr/share/doc/bzr/txt/index.txt
