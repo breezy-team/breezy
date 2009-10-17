@@ -498,11 +498,11 @@ class DuplicateEntry(HandledPathConflict):
 
     format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
 
-    def keep_this(self, tree):
+    def keep_mine(self, tree):
         tree.remove([self.conflict_path], force=True, keep_files=False)
         tree.rename_one(self.path, self.conflict_path)
 
-    def keep_other(self, tree):
+    def take_theirs(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
 

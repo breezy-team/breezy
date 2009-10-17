@@ -273,17 +273,17 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
         self.failIfExists('branch/file2.moved')
 
-    def test_resolve_keeping_this(self):
+    def test_resolve_keeping_mine(self):
         self.run_script("""
 $ bzr resolve --interactive file2
-<keep_this
+<keep_mine
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_other(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
 $ bzr resolve --interactive file2
-<keep_other
+<take_theirs
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
