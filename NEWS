@@ -33,6 +33,9 @@ Improvements
   memory, and can give a performance boost up to 40% on large projects.
   (John Arbash Meinel)
 
+* Peak memory under certain operations has been reduced significantly.
+  (John Arbash Meinel)
+
 Documentation
 *************
 
@@ -63,6 +66,15 @@ Internals
   testing, this can reduce peak memory by 20-40%, and significantly
   improve performance by removing objects from being inspected by the
   garbage collector. (John Arbash Meinel)
+
+* ``GroupCompressBlock._ensure_content()`` will now release the
+  ``zlib.decompressobj()`` when the first request is for all of the
+  content. (Previously it would only be released if you made a request for
+  part of the content, and then all of it later.) This turns out to be a
+  significant memory savings, as a ``zstream`` carries around approx 260kB
+  of internal state and buffers. (For branching bzr.dev this drops peak
+  memory from 382MB => 345MB.) (John Arbash Meinel)
+
 
 Testing
 *******
