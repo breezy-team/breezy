@@ -22,7 +22,6 @@ New Features
 Bug Fixes
 *********
 
-
 * Added support for removing multiple working trees to "bzr remove-tree"
   (Jared Hance, #253137)
 
