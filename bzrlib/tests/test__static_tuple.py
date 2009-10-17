@@ -428,6 +428,37 @@ class TestStaticTuple(tests.TestCase):
             return
         self.assertIsNot(None, self.module._C_API)
 
+    def test_from_sequence_tuple(self):
+        st = self.module.StaticTuple.from_sequence(('foo', 'bar'))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_str(self):
+        st = self.module.StaticTuple.from_sequence('foo')
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('f', 'o', 'o'), st)
+
+    def test_from_sequence_list(self):
+        st = self.module.StaticTuple.from_sequence(['foo', 'bar'])
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_static_tuple(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        st2 = self.module.StaticTuple.from_sequence(st)
+        # If the source is a StaticTuple already, we return the exact object
+        self.assertIs(st, st2)
+
+    def test_from_sequence_not_sequence(self):
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, object())
+
+    def test_from_sequence_incorrect_args(self):
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, object(), 'a')
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, foo='a')
+
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from
         # bzrlib.static_tuple.StaticTuple.
@@ -435,5 +466,5 @@ class TestStaticTuple(tests.TestCase):
             if CompiledStaticTuple.available():
                 # We will be using the C version
                 return
-        self.assertIs(static_tuple.StaticTuple, 
+        self.assertIs(static_tuple.StaticTuple,
                       self.module.StaticTuple)
