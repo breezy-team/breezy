@@ -409,7 +409,7 @@ dist:
 	$(MAKE) clean && \
 	$(MAKE) && \
 	bzr export $$expdir && \
-	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	cp bzrlib/*.c bzrlib/*.h $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
 	rm -rf $$expbasedir

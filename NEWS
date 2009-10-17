@@ -6,11 +6,121 @@ Bazaar Release Notes
    :depth: 1
 
 
-2.1.0 series (not released yet)
-###############################
+bzr 2.1.0b2 (not released yet)
+##############################
+
+:Codename:
+:2.1.0b2: ???
+
 
 Compatibility Breaks
 ********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
+  files.  (Aaron Bentley)
+
+Improvements
+************
+
+* When reading index files, we now use a ``StaticTuple`` rather than a
+  plain ``tuple`` object. This generally gives a 20% decrease in peak
+  memory, and can give a performance boost up to 40% on large projects.
+  (John Arbash Meinel)
+
+Documentation
+*************
+
+API Changes
+***********
+
+* Remove deprecated ``CLIUIFactory``.  (Martin Pool)
+
+* ``UIFactory`` now has new ``show_error``, ``show_message`` and
+  ``show_warning`` methods, which can be hooked by non-text UIs.  
+  (Martin Pool)
+
+Internals
+*********
+
+* Added ``bzrlib._simple_set_pyx``. This is a hybrid between a Set and a
+  Dict (it only holds keys, but you can lookup the object located at a
+  given key). It has significantly reduced memory consumption versus the
+  builtin objects (1/2 the size of Set, 1/3rd the size of Dict). This is
+  used as the interning structure for StaticTuple objects.
+  (John Arbash Meinel)
+
+* ``bzrlib._static_tuple_pyx.StaticTuple`` is now available and used by
+  the btree index parser. This class functions similarly to ``tuple``
+  objects. However, it can only point at other ``StaticTuple`` instances
+  or strings. This allows us to remove it from the garbage collector (it
+  cannot be in a cycle), it also allows us to intern the objects. In
+  testing, this can reduce peak memory by 20-40%, and significantly
+  improve performance by removing objects from being inspected by the
+  garbage collector. (John Arbash Meinel)
+
+Testing
+*******
+
+
+bzr 2.0.2 (not released yet)
+############################
+
+:Codename:
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Avoid "NoneType has no attribute st_mode" error when files disappear
+  from a directory while it's being read.  (Martin Pool, #446033)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b1
+###########
+
+:Codename: While the cat is away
+:2.1.0b1: 2009-10-14
+
+This is the first development release in the new split "stable" and
+"development" series. As such, the release is a snapshot of bzr.dev
+without creating a release candidate first. This release includes a
+fair amount of internal changes, with deprecated code being removed,
+and several new feature developments. People looking for a stable code
+base with only bugfixes should focus on the 2.0.1 release. All bugfixes
+present in 2.0.1 are present in 2.1.0b1.
+
+Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
+finer control over the plugin search path via extended BZR_PLUGIN_PATH
+syntax, visible warnings when extension modules fail to load, and improved
+error handling during unlocking.
+
 
 New Features
 ************
@@ -60,36 +170,17 @@ Bug Fixes
   filename will issue a warning and skip over those files.
   (Robert Collins, #3918)
 
-* ``bzr check`` in pack-0.92, 1.6 and 1.9 format repositories will no
-  longer report incorrect errors about ``Missing inventory ('TREE_ROOT', ...)``
-  (Robert Collins, #416732)
-
 * ``bzr dpush`` now aborts if uncommitted changes (including pending merges)
   are present in the working tree. The configuration option ``dpush_strict``
   can be used to set the default for this behavior.
   (Vincent Ladeuil, #438158)
 
-* ``bzr info -v`` on a 2a format still claimed that it was a "Development
-  format" (John Arbash Meinel, #424392)
-
 * ``bzr merge`` and ``bzr remove-tree`` now requires --force if pending
   merges are present in the working tree.
   (Vincent Ladeuil, #426344)
 
-* bzr will attempt to authenticate with SSH servers that support
-  ``keyboard-interactive`` auth but not ``password`` auth when using
-  Paramiko.   (Andrew Bennetts, #433846)
-
 * Clearer message when Bazaar runs out of memory, instead of a ``MemoryError``
   traceback.  (Martin Pool, #109115)
-
-* Conversion to 2a will create a single pack for all the new revisions (as
-  long as it ran without interruption). This improves both ``bzr upgrade``
-  and ``bzr pull`` or ``bzr merge`` from local branches in older formats.
-  The autopack logic that occurs every 100 revisions during local
-  conversions was not returning that pack's identifier, which resulted in
-  the partial packs created during the conversion not being consolidated
-  at the end of the conversion process. (Robert Collins, #423818)
 
 * Don't give a warning on Windows when failing to import ``_readdir_pyx``
   as it is never built. (John Arbash Meinel, #430645)
@@ -97,54 +188,12 @@ Bug Fixes
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
-* Fetches from 2a to 2a are now again requested in 'groupcompress' order.
-  Groups that are seen as 'underutilized' will be repacked on-the-fly.
-  This means that when the source is fully packed, there is minimal
-  overhead during the fetch, but if the source is poorly packed the result
-  is a fairly well packed repository (not as good as 'bzr pack' but
-  good-enough.) (Robert Collins, John Arbash Meinel, #402652)
-
-* Fixed fetches from a stacked branch on a smart server that were failing
-  with some combinations of remote and local formats.  This was causing
-  "unknown object type identifier 60" errors.  (Andrew Bennetts, #427736)
-
-* Fixed ``ObjectNotLocked`` errors when doing some log and diff operations
-  on branches via a smart server.  (Andrew Bennetts, #389413)
-
 * ftp transports were built differently when the kerberos python module was
   present leading to obscure failures related to ASCII/BINARY modes.
   (Vincent Ladeuil, #443041)
 
-* Handle things like ``bzr add foo`` and ``bzr rm foo`` when the tree is
-  at the root of a drive. ``osutils._cicp_canonical_relpath`` always
-  assumed that ``abspath()`` returned a path that did not have a trailing
-  ``/``, but that is not true when working at the root of the filesystem.
-  (John Arbash Meinel, Jason Spashett, #322807)
-
-* Improve the time for ``bzr log DIR`` for 2a format repositories.
-  We had been using the same code path as for <2a formats, which required
-  iterating over all objects in all revisions.
-  (John Arbash Meinel, #374730)
-
-* Make sure that we unlock the tree if we fail to create a TreeTransform
-  object when doing a merge, and there is limbo, or pending-deletions
-  directory.  (Gary van der Merwe, #427773)
-
 * Network streams now decode adjacent records of the same type into a
   single stream, reducing layering churn. (Robert Collins)
-
-* Occasional IndexError on renamed files have been fixed. Operations that
-  set a full inventory in the working tree will now go via the
-  apply_inventory_delta code path which is simpler and easier to
-  understand than dirstates set_state_from_inventory method. This may
-  have a small performance impact on operations built on _write_inventory,
-  but such operations are already doing full tree scans, so no radical
-  performance change should be observed. (Robert Collins, #403322)
-
-* Prevent some kinds of incomplete data from being committed to a 2a
-  repository, such as revisions without inventories or inventories without
-  chk_bytes root records.
-  (Andrew Bennetts, #423506)
 
 * PreviewTree behaves correctly when get_file_mtime is invoked on an unmodified
   file. (Aaron Bentley, #251532)
@@ -152,20 +201,9 @@ Bug Fixes
 * Registry objects should not use iteritems() when asked to use items().
   (Vincent Ladeuil, #430510)
 
-* Retrieving file text or mtime from a _PreviewTree has good performance when
-  there are many changes.  (Aaron Bentley)
-
-* The CHK index pages now use an unlimited cache size. With a limited
-  cache and a large project, the random access of chk pages could cause us
-  to download the entire cix file many times.
-  (John Arbash Meinel, #402623)
-
 * Weave based repositories couldn't be cloned when committers were using
   domains or user ids embedding '.sig'. Now they can.
   (Matthew Fuller, Vincent Ladeuil, #430868)
-
-* When a file kind becomes unversionable after being added, a sensible
-  error will be shown instead of a traceback. (Robert Collins, #438569)
 
 Improvements
 ************
@@ -185,7 +223,6 @@ Improvements
   ``TooManyConcurrentRequests`` and similar errors.
   (Andrew Bennetts, #429747)
 
-
 Documentation
 *************
 
@@ -193,12 +230,6 @@ Documentation
 
 * Help on hooks no longer says 'Not deprecated' for hooks that are
   currently supported. (Ian Clatworthy, #422415)
-
-* Improved README. (Ian Clatworthy)
-
-* Improved upgrade documentation for Launchpad branches.
-  (Barry Warsaw)
-
 
 API Changes
 ***********
@@ -234,25 +265,10 @@ Internals
   repository or branch object is unlocked then relocked the same way.
   (Andrew Bennetts)
   
-* Added ``bzrlib._simple_set_pyx``. This is a hybrid between a Set and a
-  Dict (it only holds keys, but you can lookup the object located at a
-  given key). It has significantly reduced memory consumption versus the
-  builtin objects (1/2 the size of Set, 1/3rd the size of Dict). This is
-  used as the interning structure for StaticTuple objects.
-  (John Arbash Meinel)
-
 * ``BTreeLeafParser.extract_key`` has been tweaked slightly to reduce
   mallocs while parsing the index (approx 3=>1 mallocs per key read).
   This results in a 10% speedup while reading an index.
   (John Arbash Meinel)
-
-* ``bzrlib._static_tuple_pyx.StaticTuple`` is now available. This class
-  functions similarly to ``tuple`` objects. However, it can only point at
-  other ``StaticTuple`` instances or strings. This allows us to remove it
-  from the garbage collector (it cannot be in a cycle), it also allows us
-  to intern the objects. In testing, this can reduce peak memory by
-  20-40%, and significantly improve performance by removing objects from
-  being inspected by the garbage collector. (John Arbash Meinel)
 
 * The ``bzrlib.lsprof`` module has a new class ``BzrProfiler`` which makes
   profiling in some situations like callbacks and generators easier.
@@ -295,8 +311,16 @@ Testing
   present. (Vincent Ladeuil, #430749)
 
 
-bzr 2.0.1 (Not Released Yet)
-############################
+bzr 2.0.1
+#########
+
+:Codename: Stability First
+:2.0.1: 2009-10-14
+
+The first of our new ongoing bugfix-only stable releases has arrived. It
+includes a collection of 12 bugfixes applied to bzr 2.0.0, but does not
+include any of the feature development in the 2.1.0 series.
+
 
 Bug Fixes
 *********
@@ -321,6 +345,9 @@ Bug Fixes
   assumed that ``abspath()`` returned a path that did not have a trailing
   ``/``, but that is not true when working at the root of the filesystem.
   (John Arbash Meinel, Jason Spashett, #322807)
+
+* Hide deprecation warnings for 'final' releases for python2.6.
+  (John Arbash Meinel, #440062)
 
 * Improve the time for ``bzr log DIR`` for 2a format repositories.
   We had been using the same code path as for <2a formats, which required
@@ -349,7 +376,6 @@ Bug Fixes
 
 * When a file kind becomes unversionable after being added, a sensible
   error will be shown instead of a traceback. (Robert Collins, #438569)
-
 
 Documentation
 *************
@@ -10978,6 +11004,39 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
+
+
+bzr ?.?.? (not released yet)
+############################
+
+:Codename: template
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 
 ..
    vim: tw=74 ft=rst ff=unix

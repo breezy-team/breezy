@@ -21,13 +21,11 @@ cdef extern from "python-compat.h":
 
 cdef extern from "Python.h":
     ctypedef unsigned long size_t
-    ctypedef long (*hashfunc)(PyObject*)
-    ctypedef PyObject *(*richcmpfunc)(PyObject *, PyObject *, int)
+    ctypedef long (*hashfunc)(PyObject*) except -1
+    ctypedef object (*richcmpfunc)(PyObject *, PyObject *, int)
     ctypedef int (*visitproc)(PyObject *, void *)
     ctypedef int (*traverseproc)(PyObject *, visitproc, void *)
     int Py_EQ
-    PyObject *Py_True
-    PyObject *Py_NotImplemented
     void Py_INCREF(PyObject *)
     void Py_DECREF(PyObject *)
     ctypedef struct PyTypeObject:
@@ -36,7 +34,9 @@ cdef extern from "Python.h":
         traverseproc tp_traverse
 
     PyTypeObject *Py_TYPE(PyObject *)
-    int PyObject_IsTrue(PyObject *)
+    # Note: *Don't* use hash(), Pyrex 0.9.8.5 thinks it returns an 'int', and
+    #       thus silently truncates to 32-bits on 64-bit machines.
+    long PyObject_Hash(PyObject *) except -1
         
     void *PyMem_Malloc(size_t nbytes)
     void PyMem_Free(void *)
@@ -55,17 +55,16 @@ _dummy_obj = object()
 _dummy = <PyObject *>_dummy_obj
 
 
+cdef object _NotImplemented
+_NotImplemented = NotImplemented
+
+
 cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     cdef long other_hash
-    cdef PyObject *res
 
     if this == other:
         return 1
-    other_hash = Py_TYPE(other).tp_hash(other)
-    if other_hash == -1:
-        # Even though other successfully hashed in the past, it seems to have
-        # changed its mind, and failed this time, so propogate the failure.
-        return -1
+    other_hash = PyObject_Hash(other)
     if other_hash != this_hash:
         return 0
 
@@ -77,20 +76,12 @@ cdef int _is_equal(PyObject *this, long this_hash, PyObject *other) except -1:
     #      equal. (It doesn't try to cast them both to some intermediate form
     #      that would compare equal.)
     res = Py_TYPE(this).tp_richcompare(this, other, Py_EQ)
-    if res == NULL: # Exception
-        return -1
-    if PyObject_IsTrue(res):
-        Py_DECREF(res)
-        return 1
-    if res == Py_NotImplemented:
-        Py_DECREF(res)
+    if res is _NotImplemented:
         res = Py_TYPE(other).tp_richcompare(other, this, Py_EQ)
-    if res == NULL:
-        return -1
-    if PyObject_IsTrue(res):
-        Py_DECREF(res)
+        if res is _NotImplemented:
+            return 0
+    if res:
         return 1
-    Py_DECREF(res)
     return 0
 
 
@@ -203,9 +194,7 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         mask = self._mask
         table = self._table
 
-        the_hash = Py_TYPE(key).tp_hash(key)
-        if the_hash == -1:
-            return -1
+        the_hash = PyObject_Hash(key)
         i = the_hash
         for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
             slot = &table[i & mask]
@@ -458,13 +447,14 @@ cdef PyObject **_lookup(SimpleSet self, object key) except NULL:
     cdef long key_hash
     cdef PyObject **table, **slot, *cur, **free_slot, *py_key
 
-    # hash is a signed long(), we are using an offset at unsigned size_t
-    key_hash = hash(key)
+    py_key = <PyObject *>key
+    # Note: avoid using hash(obj) because of a bug w/ pyrex 0.9.8.5 and 64-bit
+    #       (it treats hash() as returning an 'int' rather than a 'long')
+    key_hash = PyObject_Hash(py_key)
     i = <size_t>key_hash
     mask = self._mask
     table = self._table
     free_slot = NULL
-    py_key = <PyObject *>key
     for n_lookup from 0 <= n_lookup <= <size_t>mask: # Don't loop forever
         slot = &table[i & mask]
         cur = slot[0]
