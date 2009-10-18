@@ -155,14 +155,16 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _generate_hg_message_tail(self, rev):
         extra = {}
-        # TODO: renames
         renames = []
-        branch = None
+        branch = 'default'
         for name in rev.properties:
             if name == 'hg:extra:branch':
                 branch = rev.properties['hg:extra:branch']
             elif name.startswith('hg:extra'):
                 extra[name[len('hg:extra:'):]] = base64.b64decode(rev.properties[name])
+            elif name == 'hg:renames':
+                renames = bencode.bdecode(base64.b64decode(rev.properties['hg:renames']))
+            # TODO: Export other properties as 'bzr:' extras?
         return format_hg_metadata(renames, branch, extra)
 
     def _extract_hg_metadata(self, rev, message):
@@ -171,7 +173,8 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['hg:extra:branch'] = branch
         for name, value in extra.iteritems():
             rev.properties['hg:extra:' + name] = base64.b64encode(value)
-        # TODO: renames
+        if renames:
+            rev.properties['hg:renames'] = base64.b64encode(bencode.bencode([(new, old) for (old, new) in renames.iteritems()]))
         return message
 
     def _decode_commit_message(self, rev, message):
