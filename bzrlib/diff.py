@@ -277,8 +277,8 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
-def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
-    apply_view=True):
+def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
+                                   apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
@@ -299,9 +299,9 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
         if True and a view is set, apply the view or check that the paths
         are within it
     :returns:
-        a tuple of (old_tree, new_tree, specific_files, extra_trees) where
-        extra_trees is a sequence of additional trees to search in for
-        file-ids.
+        a tuple of (old_tree, new_tree, old_branch, new_branch,
+        specific_files, extra_trees) where extra_trees is a sequence of
+        additional trees to search in for file-ids.
     """
     # Get the old and new revision specs
     old_revision_spec = None
@@ -341,6 +341,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             views.check_path_in_view(working_tree, relpath)
         specific_files.append(relpath)
     old_tree = _get_tree_to_diff(old_revision_spec, working_tree, branch)
+    old_branch = branch
 
     # Get the new location
     if new_url is None:
@@ -354,6 +355,7 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
             specific_files.append(relpath)
     new_tree = _get_tree_to_diff(new_revision_spec, working_tree, branch,
         basis_is_default=working_tree is None)
+    new_branch = branch
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
@@ -378,7 +380,8 @@ def _get_trees_to_diff(path_list, revision_specs, old_url, new_url,
     extra_trees = None
     if working_tree is not None and working_tree not in (old_tree, new_tree):
         extra_trees = (working_tree,)
-    return old_tree, new_tree, specific_files, extra_trees
+    return old_tree, new_tree, old_branch, new_branch, specific_files, extra_trees
+
 
 def _get_tree_to_diff(spec, tree=None, branch=None, basis_is_default=True):
     if branch is None and tree is not None:

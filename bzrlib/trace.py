@@ -59,7 +59,6 @@ import codecs
 import logging
 import os
 import sys
-import re
 import time
 
 from bzrlib.lazy_import import lazy_import
@@ -71,6 +70,11 @@ import traceback
 """)
 
 import bzrlib
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 lazy_import(globals(), """
 from bzrlib import (
@@ -123,15 +127,34 @@ def warning(*args, **kwargs):
     _bzr_logger.warning(*args, **kwargs)
 
 
-# configure convenient aliases for output routines
-#
-# TODO: deprecate them, have one name for each.
-info = note
-log_error = _bzr_logger.error
-error =     _bzr_logger.error
+@deprecated_function(deprecated_in((2, 1, 0)))
+def info(*args, **kwargs):
+    """Deprecated: use trace.note instead."""
+    note(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def log_error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+def show_error(msg):
+    """Show an error message to the user.
+
+    Don't use this for exceptions, use report_exception instead.
+    """
+    _bzr_logger.error(*args, **kwargs)
 
 
 _last_mutter_flush_time = None
+
 
 def mutter(fmt, *args):
     global _last_mutter_flush_time

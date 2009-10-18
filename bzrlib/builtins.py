@@ -431,7 +431,10 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            self.outf.write('%s\n' % (node[1:],))
+            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
+                                   for ref_list in node[3]])
+            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
+            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
@@ -461,8 +464,7 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            if (working.has_changes(working.basis_tree())
-                or len(working.get_parent_ids()) > 1):
+            if (working.has_changes()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
@@ -1109,8 +1111,7 @@ class cmd_push(Command):
         else:
             revision_id = None
         if strict and tree is not None and revision_id is None:
-            if (tree.has_changes(tree.basis_tree())
-                or len(tree.get_parent_ids()) > 1):
+            if (tree.has_changes()):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -1887,7 +1888,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
+        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1907,9 +1908,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        old_tree, new_tree, specific_files, extra_trees = \
-                _get_trees_to_diff(file_list, revision, old, new,
-                apply_view=True)
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = get_trees_and_branches_to_diff(
+            file_list, revision, old, new, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -3663,7 +3665,7 @@ class cmd_merge(Command):
 
         # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree) or len(tree.get_parent_ids()) > 1:
+            if tree.has_changes():
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -3720,7 +3722,10 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(False)
+            if merger.this_basis is None:
+                raise errors.BzrCommandError(
+                    "This branch has no commits."
+                    " (perhaps you would prefer 'bzr pull')")
             if preview:
                 return self._do_preview(merger, cleanups)
             elif interactive:
@@ -4969,9 +4974,10 @@ class cmd_send(Command):
 
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mutt", and
-    "thunderbird"; generic options are "default", "editor", "emacsclient",
-    "mapi", and "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
+    Mail.app), "mutt", and "thunderbird"; generic options are "default",
+    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
+    supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration

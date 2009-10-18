@@ -1267,9 +1267,17 @@ class DirStateWorkingTree(WorkingTree3):
         if self._dirty:
             raise AssertionError("attempting to write an inventory when the "
                 "dirstate is dirty will lose pending changes")
-        self.current_dirstate().set_state_from_inventory(inv)
-        self._make_dirty(reset_inventory=False)
-        if self._inventory is not None:
+        had_inventory = self._inventory is not None
+        # Setting self._inventory = None forces the dirstate to regenerate the
+        # working inventory. We do this because self.inventory may be inv, or
+        # may have been modified, and either case would prevent a clean delta
+        # being created.
+        self._inventory = None
+        # generate a delta,
+        delta = inv._make_delta(self.inventory)
+        # and apply it.
+        self.apply_inventory_delta(delta)
+        if had_inventory:
             self._inventory = inv
         self.flush()
 

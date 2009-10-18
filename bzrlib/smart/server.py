@@ -143,8 +143,7 @@ class SmartTCPServer(object):
                 # dont log when CTRL-C'd.
                 raise
             except Exception, e:
-                trace.error("Unhandled smart server error.")
-                trace.log_exception_quietly()
+                trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
             self._stopped.set()

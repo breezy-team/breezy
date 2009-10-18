@@ -39,7 +39,7 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
+	$(PYTHON) -Werror -O ./bzr selftest -1 --subunit $(tests)
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -409,7 +409,7 @@ dist:
 	$(MAKE) clean && \
 	$(MAKE) && \
 	bzr export $$expdir && \
-	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	cp bzrlib/*.c bzrlib/*.h $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
 	rm -rf $$expbasedir
