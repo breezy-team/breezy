@@ -53,11 +53,13 @@ class GitRevisions(VersionedFiles):
         for key in keys:
             (sha,) = key
             try:
-                text = self.object_store.get_raw(sha)
+                commit = self.object_store[sha]
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
-                yield FulltextContentFactory(key, None, None, text)
+                yield FulltextContentFactory(key, 
+                    tuple([(p,) for p in commit.parents]), None, 
+                    commit.as_raw_string())
 
     def get_parent_map(self, keys):
         ret = {}
@@ -85,21 +87,22 @@ class GitTexts(VersionedFiles):
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
             (fileid, revid) = key
-            (foreign_revid, mapping) = self.repository.lookup_git_revid(revid)
-            root_tree = self.object_store[foreign_revid].tree
+            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
+            root_tree = self.object_store[commit_id].tree
             path = mapping.parse_file_id(fileid)
             try:
-                obj = tree_lookup_path(self.object_store.__getitem__, 
-                                       root_tree, path)
+                (mode, item_id) = tree_lookup_path(
+                    self.object_store.__getitem__, root_tree, path)
+                obj = self.object_store[item_id]
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
                 if isinstance(obj, Tree):
                     yield FulltextContentFactory(key, None, None, "")
                 elif isinstance(obj, Blob):
-                    yield FulltextContentFactory(key, None, None, obj._text)
+                    yield FulltextContentFactory(key, None, None, obj.data)
                 else:
-                    yield AbsentContentFactory(key)
+                    raise AssertionError("file text resolved to %r" % obj)
 
     def get_parent_map(self, keys):
         raise NotImplementedError(self.get_parent_map)
