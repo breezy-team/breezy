@@ -66,9 +66,11 @@ def extract_hg_metadata(message):
             if command == 'rename':
                 before, after = data.split(" => ", 1)
                 renames[after] = before
-            if command == 'branch':
+            elif command == 'branch':
                 branch = data
-            if command == 'extra':
+            elif command == 'extra':
                 before, after = data.split(" : ", 1)
                 extra[before] = urllib.unquote(after)
+            else:
+                raise KeyError("unknown hg-git metadata command %s" % command)
     return (message, renames, branch, extra)
