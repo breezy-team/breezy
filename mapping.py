@@ -257,6 +257,11 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         ret += self._generate_hg_message_tail(rev)
         return ret
 
+    def import_commit(self, commit):
+        rev = super(BzrGitMappingExperimental, self).import_commit(commit)
+        rev.properties['converted_revision'] = "git %s\n" % commit.id
+        return rev
+
 
 class GitMappingRegistry(VcsMappingRegistry):
     """Registry with available git mappings."""
