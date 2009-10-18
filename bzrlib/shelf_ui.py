@@ -149,7 +149,8 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
-        self.change_editor = None
+        config = self.work_tree.branch.get_config()
+        self.change_editor = config.get_change_editor(target_tree, work_tree)
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -180,11 +181,6 @@ class Shelver(object):
             raise
         return klass(tree, target_tree, diff_writer, all, all, files, message,
                      destroy)
-
-    def set_change_editor(self):
-        config = self.work_tree.branch.get_config()
-        self.change_editor = config.get_change_editor(self.target_tree,
-                                                      self.work_tree)
 
     def run(self):
         """Interactively shelve the changes."""
@@ -224,8 +220,9 @@ class Shelver(object):
             creator.finalize()
 
     def finalize(self):
-        if self.change_editor is not None:
-            self.change_editor.finish()
+        self.change_editor.finish()
+        self.work_tree.unlock()
+
 
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.

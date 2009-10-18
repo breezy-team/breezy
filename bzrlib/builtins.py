@@ -5653,11 +5653,9 @@ class cmd_shelve(Command):
         try:
             shelver = Shelver.from_args(writer(sys.stdout), revision, all,
                 file_list, message, destroy=destroy)
-            shelver.set_change_editor()
             try:
                 shelver.run()
             finally:
-                shelver.work_tree.unlock()
                 shelver.finalize()
         except errors.UserAbort:
             return 0
