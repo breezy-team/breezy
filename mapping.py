@@ -153,6 +153,27 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
 
+    def _generate_hg_message_tail(self, rev):
+        extra = {}
+        # TODO: renames
+        renames = []
+        branch = None
+        for name in rev.properties:
+            if name == 'hg:extra:branch':
+                branch = rev.properties['hg:extra:branch']
+            elif name.startswith('hg:extra'):
+                extra[name[len('hg:extra:'):]] = base64.b64decode(rev.properties[name])
+        return format_hg_metadata(renames, branch, extra)
+
+    def _extract_hg_metadata(self, rev, message):
+        (message, renames, branch, extra) = extract_hg_metadata(message)
+        if branch is not None:
+            rev.properties['hg:extra:branch'] = branch
+        for name, value in extra.iteritems():
+            rev.properties['hg:extra:' + name] = base64.b64encode(value)
+        # TODO: renames
+        return message
+
     def _decode_commit_message(self, rev, message):
         return message.decode("utf-8", "replace")
 
@@ -225,26 +246,12 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     experimental = True
 
     def _decode_commit_message(self, rev, message):
-        (message, renames, branch, extra) = extract_hg_metadata(message)
-        if branch is not None:
-            rev.properties['hg:extra:branch'] = branch
-        for name, value in extra.iteritems():
-            rev.properties['hg:extra:' + name] = base64.b64encode(value)
-        # TODO: renames
+        message = self._extract_hg_metadata(rev, message)
         return message.decode("utf-8", "replace")
 
     def _encode_commit_message(self, rev, message):
         ret = message.encode("utf-8")
-        extra = {}
-        # TODO: renames
-        renames = []
-        branch = None
-        for name in rev.properties:
-            if name == 'hg:extra:branch':
-                branch = rev.properties['hg:extra:branch']
-            elif name.startswith('hg:extra'):
-                extra[name[len('hg:extra:'):]] = base64.b64decode(rev.properties[name])
-        ret += format_hg_metadata(renames, branch, extra)
+        ret += self._generate_hg_message_tail(rev)
         return ret
 
 
