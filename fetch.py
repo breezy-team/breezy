@@ -526,12 +526,32 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 class InterGitGitRepository(InterGitRepository):
     """InterRepository that copies between Git repositories."""
 
+    def fetch_objects(self, determine_wants, mapping, pb=None):
+        def progress(text):
+            trace.note("git: %s", text)
+        graphwalker = self.target._git.get_graph_walker()
+        if isinstance(self.source, LocalGitRepository) and isinstance(self.target, LocalGitRepository):
+            return self.source._git.fetch(self.target._git, determine_wants, 
+                progress)
+        elif isinstance(self.source, LocalGitRepository) and isinstance(self.target, RemoteGitRepository):
+            raise NotImplementedError
+        elif isinstance(self.source, RemoteGitRepository) and isinstance(self.target, LocalGitRepository):
+            f, commit = self.target._git.object_store.add_thin_pack()
+            try:
+                refs = self.source._git.fetch_pack(determine_wants, graphwalker,
+                                                   f.write, progress)
+                commit()
+                return refs
+            except:
+                f.close()
+                raise
+        else:
+            raise AssertionError
+
     def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
               mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
             mapping = self.source.get_mapping()
-        def progress(text):
-            trace.info("git: %s", text)
         r = self.target._git
         if revision_id is not None:
             args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
@@ -543,17 +563,8 @@ class InterGitGitRepository(InterGitRepository):
             determine_wants = r.object_store.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
+        return self.fetch_objects(determine_wants, mapping)
 
-        graphwalker = r.get_graph_walker()
-        f, commit = r.object_store.add_thin_pack()
-        try:
-            refs = self.source.fetch_pack(determine_wants, graphwalker,
-                                          f.write, progress)
-            commit()
-            return refs
-        except:
-            f.close()
-            raise
 
     @staticmethod
     def is_compatible(source, target):
