@@ -22,6 +22,11 @@
   * Provide custom InterTree for faster deltas between git revision trees.
     (Jelmer Vernooij)
 
+ FEATURES
+
+  * Support for parsing --HG-- metadata in git commit messages, for 
+    better interoperability with bzr-hg.
+
 0.4.2	2009-10-01
 
  BUG FIXES
