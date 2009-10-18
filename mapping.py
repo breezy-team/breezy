@@ -18,6 +18,7 @@
 
 """Converters, etc for going between Bazaar and Git ids."""
 
+import base64
 import stat
 
 from bzrlib import (
@@ -38,6 +39,10 @@ from bzrlib.foreign import (
     ForeignVcs, 
     VcsMappingRegistry, 
     ForeignRevision,
+    )
+from bzrlib.plugins.git.hg import (
+    format_hg_metadata,
+    extract_hg_metadata,
     )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
@@ -148,6 +153,42 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
 
+    def _decode_commit_message(self, rev, message):
+        return message.decode("utf-8", "replace")
+
+    def _encode_commit_message(self, rev, message):
+        return message.encode("utf-8")
+
+    def export_commit(self, rev, tree_sha, parent_lookup):
+        """Turn a Bazaar revision in to a Git commit
+
+        :param tree_sha: Tree sha for the commit
+        :param parent_lookup: Function for looking up the GIT sha equiv of a bzr revision
+        :return dulwich.objects.Commit represent the revision:
+        """
+        from dulwich.objects import Commit
+        commit = Commit()
+        commit.tree = tree_sha
+        for p in rev.parent_ids:
+            git_p = parent_lookup(p)
+            if git_p is not None:
+                assert len(git_p) == 40, "unexpected length for %r" % git_p
+                commit.parents.append(git_p)
+        commit.committer = fix_person_identifier(rev.committer.encode("utf-8"))
+        commit.author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
+        commit.commit_time = long(rev.timestamp)
+        if 'author-timestamp' in rev.properties:
+            commit.author_time = long(rev.properties['author-timestamp'])
+        else:
+            commit.author_time = commit.commit_time
+        commit.commit_timezone = rev.timezone
+        if 'author-timezone' in rev.properties:
+            commit.author_timezone = int(rev.properties['author-timezone'])
+        else:
+            commit.author_timezone = commit.commit_timezone 
+        commit.message = self._encode_commit_message(rev, rev.message)
+        return commit
+
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 
@@ -157,7 +198,6 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.message = commit.message.decode("utf-8", "replace")
         rev.committer = str(commit.committer).decode("utf-8", "replace")
         if commit.committer != commit.author:
             rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
@@ -168,6 +208,7 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['author-timezone'] = "%d" % (commit.author_timezone, )
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
+        rev.message = self._decode_commit_message(rev, commit.message)
         return rev
 
 
@@ -182,6 +223,29 @@ class BzrGitMappingv1(BzrGitMapping):
 class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
     experimental = True
+
+    def _decode_commit_message(self, rev, message):
+        (message, renames, branch, extra) = extract_hg_metadata(message)
+        if branch is not None:
+            rev.properties['hg:extra:branch'] = branch
+        for name, value in extra.iteritems():
+            rev.properties['hg:extra:' + name] = base64.b64encode(value)
+        # TODO: renames
+        return message.decode("utf-8", "replace")
+
+    def _encode_commit_message(self, rev, message):
+        ret = message.encode("utf-8")
+        extra = {}
+        # TODO: renames
+        renames = []
+        branch = None
+        for name in rev.properties:
+            if name == 'hg:extra:branch':
+                branch = rev.properties['hg:extra:branch']
+            elif name.startswith('hg:extra'):
+                extra[name[len('hg:extra:'):]] = base64.b64decode(rev.properties[name])
+        ret += format_hg_metadata(renames, branch, extra)
+        return ret
 
 
 class GitMappingRegistry(VcsMappingRegistry):
@@ -361,33 +425,3 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
     tree.serialize()
     yield tree.id, tree, cur.encode("utf-8")
 
-
-def revision_to_commit(rev, tree_sha, parent_lookup):
-    """Turn a Bazaar revision in to a Git commit
-
-    :param tree_sha: Tree sha for the commit
-    :param parent_lookup: Function for looking up the GIT sha equiv of a bzr revision
-    :return dulwich.objects.Commit represent the revision:
-    """
-    from dulwich.objects import Commit
-    commit = Commit()
-    commit.tree = tree_sha
-    for p in rev.parent_ids:
-        git_p = parent_lookup(p)
-        if git_p is not None:
-            assert len(git_p) == 40, "unexpected length for %r" % git_p
-            commit.parents.append(git_p)
-    commit.message = rev.message.encode("utf-8")
-    commit.committer = fix_person_identifier(rev.committer.encode("utf-8"))
-    commit.author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
-    commit.commit_time = long(rev.timestamp)
-    if 'author-timestamp' in rev.properties:
-        commit.author_time = long(rev.properties['author-timestamp'])
-    else:
-        commit.author_time = commit.commit_time
-    commit.commit_timezone = rev.timezone
-    if 'author-timezone' in rev.properties:
-        commit.author_timezone = int(rev.properties['author-timezone'])
-    else:
-        commit.author_timezone = commit.commit_timezone 
-    return commit

@@ -39,7 +39,6 @@ from bzrlib.plugins.git.mapping import (
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
-    revision_to_commit,
     )
 from bzrlib.plugins.git.shamap import (
     SqliteGitShaMap,
@@ -98,7 +97,7 @@ class BazaarObjectStore(BaseObjectStore):
             except errors.NoSuchRevision:
                 trace.warning("Ignoring ghost parent %s", revid)
                 return None
-        return revision_to_commit(rev, tree_sha, parent_lookup)
+        return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)

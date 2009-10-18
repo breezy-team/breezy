@@ -30,7 +30,6 @@ from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
     directory_to_tree,
     escape_file_id,
-    revision_to_commit,
     unescape_file_id,
     )
 
@@ -109,7 +108,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
     def assertRoundtripCommit(self, commit1):
         commit1.serialize()
         rev = self.mapping.import_commit(commit1)
-        commit2 = revision_to_commit(rev, "12341212121212", None)
+        commit2 = self.mapping.export_commit(rev, "12341212121212", None)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
