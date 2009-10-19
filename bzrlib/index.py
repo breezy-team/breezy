@@ -461,6 +461,14 @@ class GraphIndex(object):
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
 
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+
     def external_references(self, ref_list_num):
         """Return references that are not present in this index.
         """
@@ -1225,6 +1233,11 @@ class CombinedGraphIndex(object):
         return "%s(%s)" % (
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
+
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()"""
+        for index in self._indices:
+            index.clear_cache()
 
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""

@@ -639,6 +639,25 @@ class TestBTreeIndex(BTreeTestCase):
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
+    def test_clear_cache(self):
+        nodes = self.make_nodes(160, 2, 2)
+        index = self.make_index(ref_lists=2, key_elements=2, nodes=nodes)
+        self.assertEqual(1, len(list(index.iter_entries([nodes[30][0]]))))
+        self.assertEqual([1, 4], index._row_lengths)
+        self.assertIsNot(None, index._root_node)
+        # NOTE: we don't want to affect the _internal_node_cache, as we expect
+        #       it will be small, and if we ever do touch this index again, it
+        #       will save round-trips. However, it requires a 3-level tree to
+        #       test this...
+        # self.assertTrue(len(index._internal_node_cache) > 0)
+        self.assertTrue(len(index._leaf_node_cache) > 0)
+        index.clear_cache()
+        # We don't touch _root_node or _internal_node_cache, both should be
+        # small, and can save a round trip or two
+        self.assertIsNot(None, index._root_node)
+        # self.assertTrue(len(index._internal_node_cache) > 0)
+        self.assertEqual(0, len(index._leaf_node_cache))
+
     def test_trivial_constructor(self):
         transport = get_transport('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(transport, 'index', None)

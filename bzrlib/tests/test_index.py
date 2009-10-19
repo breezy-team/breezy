@@ -383,6 +383,12 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
 
+    def test_clear_cache(self):
+        index = self.make_index()
+        # For now, we just want to make sure the api is available. As this is
+        # old code, we don't really worry if it *does* anything.
+        index.clear_cache()
+
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
@@ -1070,6 +1076,30 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         index.insert_index(0, index1)
         self.assertEqual([(index1, ('key', ), '')], list(index.iter_all_entries()))
+
+    def test_clear_cache(self):
+        log = []
+
+        class ClearCacheProxy(object):
+
+            def __init__(self, index):
+                self._index = index
+
+            def __getattr__(self, name):
+                return getattr(self._index)
+
+            def clear_cache(self):
+                log.append(self._index)
+                return self._index.clear_cache()
+
+        index = CombinedGraphIndex([])
+        index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(0, ClearCacheProxy(index1))
+        index2 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(1, ClearCacheProxy(index2))
+        # CombinedGraphIndex should call 'clear_cache()' on all children
+        index.clear_cache()
+        self.assertEqual(sorted([index1, index2]), sorted(log))
 
     def test_iter_all_entries_empty(self):
         index = CombinedGraphIndex([])
