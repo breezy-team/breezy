@@ -574,6 +574,16 @@ class DeletingParent(HandledConflict):
     format = "Conflict: can't delete %(path)s because it is not empty.  "\
              "%(action)s."
 
+    # FIXME: It's a bit strange that the default action is not coherent with
+    # MissingParent from the *user* pov.
+
+    def keep_mine(self, tree):
+        # just acccept bzr proposal
+        pass
+
+    def take_theirs(self, tree):
+        tree.remove([self.path], force=True, keep_files=False)
+
 
 class NonDirectoryParent(HandledConflict):
     """An attempt to add files to a directory that is not a director or

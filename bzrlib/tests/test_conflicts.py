@@ -456,6 +456,20 @@ $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
+    def test_resolve_keeping_mine(self):
+        self.run_script("""
+$ bzr resolve --interactive dir
+<keep_mine
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_taking_theirs(self):
+        self.run_script("""
+$ bzr resolve --interactive dir
+<take_theirs
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
 
 class TestResolvePathConflict(TestResolveConflicts):
 
