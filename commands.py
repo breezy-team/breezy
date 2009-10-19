@@ -24,17 +24,14 @@ from bzrlib.errors import (
     BzrCommandError,
     ConflictsInTree,
     NoSuchFile,
-    NoSuchRevision,
     NoWorkingTree,
     UncommittedChanges,
-    UnrelatedBranches,
     )
 from bzrlib.option import (
     Option,
     )
 from bzrlib.trace import (
     note,
-    warning,
     )
 
 class cmd_rebase(Command):
