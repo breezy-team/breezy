@@ -1265,6 +1265,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
+    def clear_cache(self):
+        """See VersionedFiles.clear_cache()"""
+        self._group_cache.clear()
+
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
