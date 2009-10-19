@@ -126,8 +126,15 @@ class GitBranchFormat(branch.BranchFormat):
     def get_format_description(self):
         return 'Git Branch'
 
+    def network_name(self):
+        return "git"
+
     def supports_tags(self):
         return True
+
+    def get_foreign_tests_branch_factory(self):
+        from bzrlib.plugins.git.tests.test_branch import ForeignTestsBranchFactory
+        return ForeignTestsBranchFactory()
 
     def make_tags(self, branch):
         if getattr(branch.repository, "get_refs", None) is not None:

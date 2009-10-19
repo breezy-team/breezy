@@ -40,6 +40,7 @@ from bzrlib.repository import (
     )
 
 from bzrlib.plugins.git import (
+    LocalGitBzrDirFormat,
     branch,
     tests,
     )
@@ -179,3 +180,11 @@ class BranchTests(tests.TestCaseInTempDir):
         newbranch = self.clone_git_branch(path, "f")
         self.assertEquals({"lala": revid}, newbranch.tags.get_tag_dict())
         self.assertEquals([revid], newbranch.repository.all_revision_ids())
+
+
+class ForeignTestsBranchFactory(object):
+
+    def make_empty_branch(self, transport):
+        return LocalGitBzrDirFormat().initialize_on_transport(transport).open_branch()
+
+    make_branch = make_empty_branch
