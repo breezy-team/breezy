@@ -74,9 +74,13 @@ class DummyForeignVcs(foreign.ForeignVcs):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
         self.mapping_registry.register("v1", DummyForeignVcsMapping(self),
                                        "Version 1")
+        self.abbreviation = "dummy"
 
     def show_foreign_revid(self, foreign_revid):
         return { "dummy ding": "%s/%s\\%s" % foreign_revid }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        return "%s|%s|%s" % foreign_revid
 
 
 class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
