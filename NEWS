@@ -4,6 +4,12 @@
 
    * Mark as compatible with Bazaar 2.1.
 
+  FEATURES
+
+   * Add hidden 'pseudonyms' command for finding revision pseudonyms.
+
+   * Add 'rebase-foreign' command for rebasing branches of imports.
+
 0.5.4	2009-09-24
 
   CHANGES

@@ -119,7 +119,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         self.assertEquals({'bla2': ('newbla2', ("bloe",))},
             generate_simple_plan(
                 graph.find_difference(b.last_revision(),"bla")[0],
-                "bla2", None, "bloe", graph, lambda y: "new"+y))
+                "bla2", None, "bloe", graph, lambda y, _: "new"+y))
         b.repository.unlock()
      
     def test_simple_plan_creator_extra_history(self):
@@ -144,7 +144,7 @@ class PlanCreatorTests(TestCaseWithTransport):
             generate_simple_plan(
                 graph.find_difference(b.last_revision(),"bloe")[0],
                 "bla2", None, "bloe",
-                graph, lambda y: "new"+y))
+                graph, lambda y, _: "new"+y))
         b.repository.unlock()
 
     def test_generate_transpose_plan(self):
@@ -175,7 +175,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         self.assertEquals({
             'blie': ('newblie', ('lala',))},
             generate_transpose_plan(graph.iter_ancestry(["blie"]), 
-            {"bla": "lala"}, graph, lambda y: "new"+y))
+            {"bla": "lala"}, graph, lambda y, _: "new"+y))
         self.assertEquals({
             'bla2': ('newbla2', ('lala',)),
             'bla3': ('newbla3', ('newbla2',)),
@@ -183,14 +183,14 @@ class PlanCreatorTests(TestCaseWithTransport):
             'bloe': ('newbloe', ('lala',))},
             generate_transpose_plan(graph.iter_ancestry(b.repository._all_revision_ids()), 
             {"bla": "lala"}, 
-            graph, lambda y: "new"+y))
+            graph, lambda y, _: "new"+y))
         b.repository.unlock()
 
     def test_generate_transpose_plan_one(self):
         graph = Graph(DictParentsProvider({"bla": ("bloe",), "bloe": (), "lala": ()}))
         self.assertEquals({"bla": ("newbla", ("lala",))},
                 generate_transpose_plan(graph.iter_ancestry(["bla", "bloe"]),
-                    {"bloe": "lala"}, graph, lambda y: "new"+y))
+                    {"bloe": "lala"}, graph, lambda y, _: "new"+y))
 
     def test_plan_with_already_merged(self):
         """We need to use a merge base that makes sense. 
@@ -220,7 +220,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         graph = Graph(DictParentsProvider(parents_map))
         self.assertEquals({"D": ("D'", ("C",)), "E": ("E'", ("D'",))},
             generate_simple_plan(["D", "E"], "D", None, "C",
-                graph, lambda y: y+"'"))
+                graph, lambda y, _: y+"'"))
 
     def test_plan_with_already_merged_skip_merges(self):
         """We need to use a merge base that makes sense. 
@@ -249,7 +249,7 @@ class PlanCreatorTests(TestCaseWithTransport):
         graph = Graph(DictParentsProvider(parents_map))
         self.assertEquals({"D": ("D'", ("C",))},
                 generate_simple_plan(["D", "E"], "D", None, "C",
-                    graph, lambda y: y+"'", True))
+                    graph, lambda y, _: y+"'", True))
  
 
 class PlanFileTests(TestCaseWithTransport):

@@ -17,6 +17,7 @@ bzr_commands = [
     "rebase",
     "rebase_abort",
     "rebase_continue",
+    "rebase_foreign",
     "rebase_todo",
     ]
 

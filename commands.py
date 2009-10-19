@@ -89,7 +89,6 @@ class cmd_rebase(Command):
             generate_simple_plan,
             rebase,
             rebase_plan_exists,
-            read_rebase_plan,
             remove_rebase_plan,
             workingtree_replay,
             write_rebase_plan,
@@ -177,7 +176,7 @@ class cmd_rebase(Command):
             replace_map = generate_simple_plan(
                 our_new, start_revid, stop_revid,
                     onto, repo_graph,
-                    lambda revid: regenerate_default_revid(
+                    lambda revid, ps: regenerate_default_revid(
                         wt.branch.repository, revid),
                     not always_rebase_merges
                     )
@@ -387,6 +386,8 @@ class cmd_foreign_mapping_upgrade(Command):
         from bzrlib.repository import Repository
         from bzrlib.workingtree import WorkingTree
         from bzrlib.plugins.rebase.upgrade import (
+            create_upgraded_revid,
+            generate_rebase_map_from_mappings,
             upgrade_branch,
             upgrade_workingtree,
             )
@@ -416,14 +417,23 @@ class cmd_foreign_mapping_upgrade(Command):
 
         new_mapping = from_repository.get_mapping()
 
+        def generate_rebase_map(revision_id):
+            return generate_rebase_map_from_mappings(branch_to.repository, 
+                branch_to.repository.get_graph(), revision_id, from_repository, 
+                new_mapping)
+        def determine_new_revid(old_revid, new_parents):
+            # If this revision id already exists round-tripped upstream, 
+            # leave it alone.
+            if from_repository.has_revision(old_revid):
+                return old_revid
+            # if not, return old_revid'
+            return create_upgraded_revid(old_revid, new_mapping.upgrade_suffix)
         if wt_to is not None:
-            renames = upgrade_workingtree(wt_to, from_repository, 
-                                          new_mapping=new_mapping,
-                                          allow_changes=True, verbose=verbose)
+            renames = upgrade_workingtree(wt_to, generate_rebase_map,
+                determine_new_revid, allow_changes=True, verbose=verbose)
         else:
-            renames = upgrade_branch(branch_to, from_repository, 
-                                     new_mapping=new_mapping,
-                                     allow_changes=True, verbose=verbose)
+            renames = upgrade_branch(branch_to, generate_rebase_map,
+                determine_new_revid, allow_changes=True, verbose=verbose)
 
         if renames == {}:
             note("Nothing to do.")
@@ -458,3 +468,94 @@ class cmd_pseudonyms(Command):
         from bzrlib.plugins.rebase.pseudonyms import find_pseudonyms
         for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
             self.outf.write(", ".join(pseudonyms) + "\n")
+
+
+class cmd_rebase_foreign(Command):
+    """Rebase revisions based on a branch created with a different import tool.
+    
+    This will change the identity of revisions whose parents 
+    were mapped from revisions in the other version control system.
+
+    You are recommended to run "bzr check" in the local repository 
+    after running this command.
+    """
+    takes_args = ['new_base?']
+    takes_options = ['verbose', 
+        Option("idmap-file", help="Write map with old and new revision ids.", 
+               type=str)]
+
+    def run(self, new_base=None, verbose=False, idmap_file=None):
+        from bzrlib import (
+            urlutils,
+            )
+        from bzrlib.branch import Branch
+        from bzrlib.workingtree import WorkingTree
+        from bzrlib.plugins.rebase.pseudonyms import (
+            find_pseudonyms,
+            generate_rebase_map_from_pseudonyms,
+            pseudonyms_as_dict,
+            )
+        from bzrlib.plugins.rebase.upgrade import (
+            create_deterministic_revid,
+            upgrade_branch,
+            upgrade_workingtree,
+            )
+        try:
+            wt_to = WorkingTree.open(".")
+            branch_to = wt_to.branch
+        except NoWorkingTree:
+            wt_to = None
+            branch_to = Branch.open(".")
+
+        stored_loc = branch_to.get_parent()
+        if new_base is None:
+            if stored_loc is None:
+                raise BzrCommandError("No pull location known or"
+                                             " specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                new_bsae = Branch.open(stored_loc)
+        else:
+            new_base = Branch.open(new_base)
+
+        branch_to.repository.fetch(new_base.repository, 
+            revision_id=branch_to.last_revision())
+    
+        pseudonyms = pseudonyms_as_dict(find_pseudonyms(branch_to.repository,
+            branch_to.repository.all_revision_ids()))
+
+        def generate_rebase_map(revision_id):
+            return generate_rebase_map_from_pseudonyms(pseudonyms, 
+                branch_to.repository.get_ancestry(revision_id),
+                branch_to.repository.get_ancestry(new_base.last_revision()))
+        def determine_new_revid(old_revid, new_parents):
+            return create_deterministic_revid(old_revid, new_parents)
+        branch_to.lock_write()
+        try:
+            graph = branch_to.repository.get_graph()
+
+            if wt_to is not None:
+                renames = upgrade_workingtree(wt_to, generate_rebase_map,
+                    determine_new_revid, allow_changes=True, verbose=verbose)
+            else:
+                renames = upgrade_branch(branch_to, generate_rebase_map,
+                        determine_new_revid, allow_changes=True, 
+                        verbose=verbose)
+        finally:
+            branch_to.unlock()
+
+        if renames == {}:
+            note("Nothing to do.")
+
+        if idmap_file is not None:
+            f = open(idmap_file, 'w')
+            try:
+                for oldid, newid in renames.iteritems():
+                    f.write("%s\t%s\n" % (oldid, newid))
+            finally:
+                f.close()
+
+        if wt_to is not None:
+            wt_to.set_last_revision(branch_to.last_revision())
