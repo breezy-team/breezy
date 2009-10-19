@@ -555,6 +555,13 @@ class MissingParent(HandledConflict):
 
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
+    def keep_mine(self, tree):
+        tree.remove([self.path], force=True, keep_files=False)
+
+    def take_theirs(self, tree):
+        # just acccept bzr proposal
+        pass
+
 
 class DeletingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
