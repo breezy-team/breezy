@@ -12,6 +12,7 @@ bzr_minimum_version = bzr_compatible_versions[0]
 bzr_maximum_version = bzr_compatible_versions[-1]
 
 bzr_commands = [
+    "pseudonyms",
     "replay",
     "rebase",
     "rebase_abort",

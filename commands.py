@@ -441,3 +441,22 @@ class cmd_foreign_mapping_upgrade(Command):
 
         if wt_to is not None:
             wt_to.set_last_revision(branch_to.last_revision())
+
+
+class cmd_pseudonyms(Command):
+    """Show a list of 'pseudonym' revisions.
+
+    Pseudonym revisions are revisions that are roughly the same revision, 
+    usually because they were converted from the same revision in a 
+    foreign version control system.
+    """
+
+    takes_args = ['repository?']
+    hidden = True
+
+    def run(self, repository=None):
+        from bzrlib.repository import Repository
+        r = Repository.open(repository)
+        from bzrlib.plugins.rebase.pseudonyms import find_pseudonyms
+        for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
+            self.outf.write(", ".join(pseudonyms) + "\n")
