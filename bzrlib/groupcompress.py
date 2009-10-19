@@ -119,13 +119,8 @@ class GroupCompressBlock(object):
         :param num_bytes: Ensure that we have extracted at least num_bytes of
             content. If None, consume everything
         """
-        # TODO: If we re-use the same content block at different times during
-        #       get_record_stream(), it is possible that the first pass will
-        #       get inserted, triggering an extract/_ensure_content() which
-        #       will get rid of _z_content. And then the next use of the block
-        #       will try to access _z_content (to send it over the wire), and
-        #       fail because it is already extracted. Consider never releasing
-        #       _z_content because of this.
+        if self._content_length is None:
+            raise AssertionError('self._content_length should never be None')
         if num_bytes is None:
             num_bytes = self._content_length
         elif (self._content_length is not None
@@ -148,7 +143,10 @@ class GroupCompressBlock(object):
                 self._content = pylzma.decompress(self._z_content)
             elif self._compressor_name == 'zlib':
                 # Start a zlib decompressor
-                if num_bytes is None:
+                if num_bytes * 4 > self._content_length * 3:
+                    # If we are requesting more that 3/4ths of the content,
+                    # just extract the whole thing in a single pass
+                    num_bytes = self._content_length
                     self._content = zlib.decompress(self._z_content)
                 else:
                     self._z_content_decompressor = zlib.decompressobj()
@@ -156,6 +154,8 @@ class GroupCompressBlock(object):
                     # that the rest of the code is simplified
                     self._content = self._z_content_decompressor.decompress(
                         self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
+                    if not self._z_content_decompressor.unconsumed_tail:
+                        self._z_content_decompressor = None
             else:
                 raise AssertionError('Unknown compressor: %r'
                                      % self._compressor_name)
@@ -163,45 +163,28 @@ class GroupCompressBlock(object):
         # 'unconsumed_tail'
 
         # Do we have enough bytes already?
-        if num_bytes is not None and len(self._content) >= num_bytes:
-            return
-        if num_bytes is None and self._z_content_decompressor is None:
-            # We must have already decompressed everything
+        if len(self._content) >= num_bytes:
             return
         # If we got this far, and don't have a decompressor, something is wrong
         if self._z_content_decompressor is None:
             raise AssertionError(
                 'No decompressor to decompress %d bytes' % num_bytes)
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
-        if num_bytes is None:
-            if remaining_decomp:
-                # We don't know how much is left, but we'll decompress it all
-                self._content += self._z_content_decompressor.decompress(
-                    remaining_decomp)
-                # Note: There's what I consider a bug in zlib.decompressobj
-                #       If you pass back in the entire unconsumed_tail, only
-                #       this time you don't pass a max-size, it doesn't
-                #       change the unconsumed_tail back to None/''.
-                #       However, we know we are done with the whole stream
-                self._z_content_decompressor = None
-            # XXX: Why is this the only place in this routine we set this?
-            self._content_length = len(self._content)
-        else:
-            if not remaining_decomp:
-                raise AssertionError('Nothing left to decompress')
-            needed_bytes = num_bytes - len(self._content)
-            # We always set max_size to 32kB over the minimum needed, so that
-            # zlib will give us as much as we really want.
-            # TODO: If this isn't good enough, we could make a loop here,
-            #       that keeps expanding the request until we get enough
-            self._content += self._z_content_decompressor.decompress(
-                remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
-            if len(self._content) < num_bytes:
-                raise AssertionError('%d bytes wanted, only %d available'
-                                     % (num_bytes, len(self._content)))
-            if not self._z_content_decompressor.unconsumed_tail:
-                # The stream is finished
-                self._z_content_decompressor = None
+        if not remaining_decomp:
+            raise AssertionError('Nothing left to decompress')
+        needed_bytes = num_bytes - len(self._content)
+        # We always set max_size to 32kB over the minimum needed, so that
+        # zlib will give us as much as we really want.
+        # TODO: If this isn't good enough, we could make a loop here,
+        #       that keeps expanding the request until we get enough
+        self._content += self._z_content_decompressor.decompress(
+            remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
+        if len(self._content) < num_bytes:
+            raise AssertionError('%d bytes wanted, only %d available'
+                                 % (num_bytes, len(self._content)))
+        if not self._z_content_decompressor.unconsumed_tail:
+            # The stream is finished
+            self._z_content_decompressor = None
 
     def _parse_bytes(self, bytes, pos):
         """Read the various lengths from the header.

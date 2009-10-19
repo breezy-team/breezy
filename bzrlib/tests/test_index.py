@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1005,6 +1005,15 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
+
+    def test_supports_unlimited_cache(self):
+        builder = GraphIndexBuilder(0, key_elements=1)
+        stream = builder.finish()
+        trans = get_transport(self.get_url())
+        size = trans.put_file('index', stream)
+        # It doesn't matter what unlimited_cache does here, just that it can be
+        # passed
+        index = GraphIndex(trans, 'index', size, unlimited_cache=True)
 
 
 class TestCombinedGraphIndex(TestCaseWithMemoryTransport):

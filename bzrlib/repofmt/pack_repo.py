@@ -54,7 +54,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.decorators import needs_write_lock
+from bzrlib.decorators import needs_write_lock, only_raises
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
@@ -73,6 +73,7 @@ from bzrlib.repository import (
     )
 from bzrlib.trace import (
     mutter,
+    note,
     warning,
     )
 
@@ -224,10 +225,14 @@ class Pack(object):
         return self.index_name('text', name)
 
     def _replace_index_with_readonly(self, index_type):
+        unlimited_cache = False
+        if index_type == 'chk':
+            unlimited_cache = True
         setattr(self, index_type + '_index',
             self.index_class(self.index_transport,
                 self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)]))
+                self.index_sizes[self.index_offset(index_type)],
+                unlimited_cache=unlimited_cache))
 
 
 class ExistingPack(Pack):
@@ -1674,7 +1679,7 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix')
+                chk_index = self._make_index(name, '.cix', unlimited_cache=True)
             else:
                 chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
@@ -1699,7 +1704,8 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix', resume=True)
             sig_index = self._make_index(name, '.six', resume=True)
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', resume=True)
+                chk_index = self._make_index(name, '.cix', resume=True,
+                                             unlimited_cache=True)
             else:
                 chk_index = None
             result = self.resumed_pack_factory(name, rev_index, inv_index,
@@ -1735,7 +1741,7 @@ class RepositoryPackCollection(object):
         return self._index_class(self.transport, 'pack-names', None
                 ).iter_all_entries()
 
-    def _make_index(self, name, suffix, resume=False):
+    def _make_index(self, name, suffix, resume=False, unlimited_cache=False):
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
         if resume:
@@ -1744,7 +1750,8 @@ class RepositoryPackCollection(object):
         else:
             transport = self._index_transport
             index_size = self._names[name][size_offset]
-        return self._index_class(transport, index_name, index_size)
+        return self._index_class(transport, index_name, index_size,
+                                 unlimited_cache=unlimited_cache)
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -2082,7 +2089,7 @@ class RepositoryPackCollection(object):
                 ('signatures', self.repo.signatures),
                 ):
             missing = versioned_file.get_missing_compression_parent_keys()
-            all_missing.update([(prefix,) + key for key in missing])
+            all_missing.update([(prefix,) + tuple(key) for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
@@ -2300,6 +2307,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -2312,6 +2322,9 @@ class KnitPackRepository(KnitRepository):
         else:
             self.control_files.lock_read()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -2345,6 +2358,7 @@ class KnitPackRepository(KnitRepository):
         packer = ReconcilePacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
