@@ -507,6 +507,20 @@ $ bzr resolve file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
+    def test_resolve_keeping_mine(self):
+        self.run_script("""
+$ bzr resolve --interactive file-in-branch
+<keep_mine
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_taking_theirs(self):
+        self.run_script("""
+$ bzr resolve --interactive file-in-branch
+<take_theirs
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
 
 class TestResolveParentLoop(TestResolveConflicts):
 

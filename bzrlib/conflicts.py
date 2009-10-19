@@ -414,6 +414,13 @@ class PathConflict(Conflict):
             s.add('conflict_path', self.conflict_path)
         return s
 
+    def keep_mine(self, tree):
+        tree.rename_one(self.conflict_path, self.path)
+
+    def take_theirs(self, tree):
+        # just acccept bzr proposal
+        pass
+
 
 class ContentsConflict(PathConflict):
     """The files are of different types, or not present"""
@@ -441,6 +448,12 @@ class TextConflict(PathConflict):
     typestring = 'text conflict'
 
     format = 'Text conflict in %(path)s'
+
+    def keep_mine(self, tree):
+        raise NotImplementedError(self.keep_mine)
+
+    def take_theirs(self, tree):
+        raise NotImplementedError(self.take_theirs)
 
 
 class HandledConflict(Conflict):
