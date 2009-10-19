@@ -95,3 +95,16 @@ def find_pseudonyms(repository, revids):
             ret.add(x)
         if len(ret) > 1:
             yield ret
+
+
+def pseudonyms_as_dict(l):
+    """Convert an iterable over pseudonyms to a dictionary.
+
+    :param l: Iterable over sets of pseudonyms
+    :return: Dictionary with pseudonyms for each revid.
+    """
+    ret = {}
+    for pns in l:
+        for pn in pns:
+            ret[pn] = pns - set([pn])
+    return ret

@@ -156,7 +156,8 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
     for revid in revs:
         assert isinstance(revid, str)
         try:
-            (foreign_revid, old_mapping) = vcs.mapping_registry.parse_revision_id(revid)
+            (foreign_revid, old_mapping) = \
+                vcs.mapping_registry.parse_revision_id(revid)
         except InvalidRevisionId:
             # Not a foreign revision, nothing to do
             continue
@@ -254,10 +255,9 @@ def upgrade_repository(repository, foreign_repository, new_mapping,
     try:
         repository.lock_write()
         foreign_repository.lock_read()
-        (plan, revid_renames) = create_upgrade_plan(repository, foreign_repository, 
-                                                    new_mapping, 
-                                                    revision_id=revision_id,
-                                                    allow_changes=allow_changes)
+        (plan, revid_renames) = create_upgrade_plan(repository,
+            foreign_repository, new_mapping, revision_id=revision_id,
+            allow_changes=allow_changes)
         if verbose:
             for revid in rebase_todo(repository, plan):
                 trace.note("%s -> %s" % (revid, plan[revid][0]))
