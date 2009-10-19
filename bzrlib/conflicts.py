@@ -178,7 +178,7 @@ def _resolve_interactive(tree, path):
             return
         action = getattr(c, action_name, None)
         if action is None:
-            raise NotImplementedError(action_name)
+            raise NotImplementedError(c.__class__.__name__ + '.' + action_name)
         action(tree)
         # FIXME: We need an API to use that on a single conflict
         ConflictList([c]).remove_files(tree)
@@ -429,6 +429,7 @@ class ContentsConflict(PathConflict):
 
     def take_theirs(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
+
 
 # FIXME: TextConflict is about a single file-id, there never is a conflict_path
 # attribute so we shouldn't inherit from PathConflict but simply from Conflict

@@ -306,6 +306,8 @@ class TestResolveUnversionedParent(TestResolveConflicts):
 
     # FIXME: Add the reverse tests: dir deleted in trunk, file added in branch
 
+    # FIXME: While this *creates* UnversionedParent conflicts, this really only
+    # tests MissingParent resolution :-/
     preamble = """
 $ bzr init trunk
 $ cd trunk
