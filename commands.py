@@ -452,8 +452,9 @@ class cmd_pseudonyms(Command):
     hidden = True
 
     def run(self, repository=None):
-        from bzrlib.repository import Repository
-        r = Repository.open(repository)
+        from bzrlib.bzrdir import BzrDir
+        dir, _ = BzrDir.open_containing(repository)
+        r = dir.find_repository()
         from bzrlib.plugins.rebase.pseudonyms import find_pseudonyms
         for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
             self.outf.write(", ".join(pseudonyms) + "\n")

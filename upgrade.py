@@ -122,7 +122,8 @@ def upgrade_branch(branch, foreign_repository, new_mapping,
               allow_changes=allow_changes, verbose=verbose)
     if revid in renames:
         branch.generate_revision_history(renames[revid])
-    ancestry = branch.repository.get_ancestry(branch.last_revision(), topo_sorted=False)
+    ancestry = branch.repository.get_ancestry(branch.last_revision(),
+                    topo_sorted=False)
     upgrade_tags(branch.tags, branch.repository, foreign_repository, 
            new_mapping=new_mapping, 
            allow_changes=allow_changes, verbose=verbose, branch_renames=renames,
@@ -168,21 +169,7 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
     return rename_map
 
 
-def create_upgrade_plan(repository, foreign_repository, new_mapping,
-                        revision_id=None, allow_changes=False):
-    """Generate a rebase plan for upgrading revisions.
-
-    :param repository: Repository to do upgrade in
-    :param foreign_repository: Subversion repository to fetch new revisions from.
-    :param new_mapping: New mapping to use.
-    :param revision_id: Revision to upgrade (None for all revisions in 
-        repository.)
-    :param allow_changes: Whether an upgrade is allowed to change the contents
-        of revisions.
-    :return: Tuple with a rebase plan and map of renamed revisions.
-    """
-
-    graph = repository.get_graph()
+def generate_rebase_map_from_mappings(repository, graph, revision_id, foreign_repository, new_mapping):
     if revision_id is None:
         potential = repository.all_revision_ids()
     else:
@@ -204,8 +191,28 @@ def create_upgrade_plan(repository, foreign_repository, new_mapping,
                 return None
         return new_revid
 
-    upgrade_map = generate_upgrade_map(potential, foreign_repository.vcs, 
+    return generate_upgrade_map(potential, foreign_repository.vcs, 
                                        determine_upgraded_revid)
+
+
+def create_upgrade_plan(repository, foreign_repository, new_mapping,
+                        revision_id=None, allow_changes=False):
+    """Generate a rebase plan for upgrading revisions.
+
+    :param repository: Repository to do upgrade in
+    :param foreign_repository: Subversion repository to fetch new revisions from.
+    :param new_mapping: New mapping to use.
+    :param revision_id: Revision to upgrade (None for all revisions in 
+        repository.)
+    :param allow_changes: Whether an upgrade is allowed to change the contents
+        of revisions.
+    :return: Tuple with a rebase plan and map of renamed revisions.
+    """
+
+    graph = repository.get_graph()
+
+    upgrade_map = generate_rebase_map_from_mappings(repository, graph, 
+            revision_id, foreign_repository, new_mapping)
    
     if not allow_changes:
         for oldrevid, newrevid in upgrade_map.iteritems():
