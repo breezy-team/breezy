@@ -153,6 +153,12 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
 
+    def _generate_git_svn_metadata(self, rev):
+        try:
+            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"]
+        except KeyError:
+            return ""
+
     def _generate_hg_message_tail(self, rev):
         extra = {}
         renames = []
@@ -166,6 +172,17 @@ class BzrGitMapping(foreign.VcsMapping):
                 renames = bencode.bdecode(base64.b64decode(rev.properties['hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
         return format_hg_metadata(renames, branch, extra)
+
+    def _extract_git_svn_metadata(self, rev, message):
+        lines = message.split("\n")
+        if not (lines[-1] == "" and lines[-2].startswith("git-svn-id ")):
+            return message
+        git_svn_id = lines[-2].split(": ", 1)
+        rev.properties['git-svn-id'] = git_svn_id
+        (head, uuid) = git_svn_id.rsplit(" ", 1)
+        (full_url, rev) = head.rsplit("@", 1)
+        # FIXME: Convert this to converted-from property somehow..
+        return "\n".join(lines[:-2])
 
     def _extract_hg_metadata(self, rev, message):
         (message, renames, branch, extra) = extract_hg_metadata(message)
@@ -250,11 +267,13 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
 
     def _decode_commit_message(self, rev, message):
         message = self._extract_hg_metadata(rev, message)
+        message = self._extract_git_svn_metadata(rev, message)
         return message.decode("utf-8", "replace")
 
     def _encode_commit_message(self, rev, message):
         ret = message.encode("utf-8")
         ret += self._generate_hg_message_tail(rev)
+        ret += self._generate_git_svn_metadata(rev)
         return ret
 
     def import_commit(self, commit):
