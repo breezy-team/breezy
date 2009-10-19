@@ -36,7 +36,7 @@ from bzrlib import (
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
@@ -121,6 +121,8 @@ class ForeignRevision(Revision):
 
 class ForeignVcs(object):
     """A foreign version control system."""
+
+    branch_format = None
 
     def __init__(self, mapping_registry):
         self.mapping_registry = mapping_registry
