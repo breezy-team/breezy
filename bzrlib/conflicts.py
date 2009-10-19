@@ -430,7 +430,8 @@ class ContentsConflict(PathConflict):
     def take_theirs(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
-
+# FIXME: TextConflict is about a single file-id, there never is a conflict_path
+# attribute so we shouldn't inherit from PathConflict but simply from Conflict
 class TextConflict(PathConflict):
     """The merge algorithm could not resolve all differences encountered."""
 

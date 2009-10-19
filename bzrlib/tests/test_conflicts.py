@@ -304,45 +304,43 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 
 class TestResolveUnversionedParent(TestResolveConflicts):
 
+    # FIXME: Add the reverse tests: dir deleted in trunk, file added in branch
+
     preamble = """
 $ bzr init trunk
 $ cd trunk
-$ echo 'trunk content' >file
-$ bzr add file
+$ mkdir dir
+$ bzr add dir
 $ bzr commit -m 'Create trunk'
-$ echo 'trunk content too' >file2
-$ bzr add file2
-$ bzr commit -m 'Add file2 in trunk'
+$ echo 'trunk content' >dir/file
+$ bzr add dir/file
+$ bzr commit -m 'Add dir/file in trunk'
 
 $ bzr branch . -r 1 ../branch
 $ cd ../branch
-$ echo 'branch content' >file2
-$ bzr add file2
-$ bzr commit -m 'Add file2 in branch'
+$ bzr rm dir
+$ bzr commit -m 'Remove dir in branch'
 
 $ bzr merge ../trunk
-2>+N  file2
-2>R   file2 => file2.moved
-2>Conflict adding file file2.  Moved existing file to file2.moved.
-2>1 conflicts encountered.
+2>+N  dir/
+2>+N  dir/file
+2>Conflict adding files to dir.  Created directory.
+2>Conflict because dir is not versioned, but has versioned children.  Versioned directory.
+2>2 conflicts encountered.
 """
 
-    def test_keep_this(self):
+    def test_keep_mine(self):
         self.run_script("""
-$ bzr rm file2  --force
-$ bzr mv file2.moved file2
-$ bzr resolve file2
+$ bzr rm dir  --force
+$ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_keep_other(self):
-        self.failIfExists('branch/file2.moved')
+    def test_take_theirs(self):
         self.run_script("""
-$ bzr rm file2.moved --force
-$ bzr resolve file2
+$ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
-        self.failIfExists('branch/file2.moved')
 
 
 class TestResolveMissingParent(TestResolveConflicts):
