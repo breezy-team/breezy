@@ -543,17 +543,31 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_keep_target(self):
+    def test_keep_mine(self):
         self.run_script("""
 $ bzr resolve dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_keep_source(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr mv dir2/dir1 dir1
 $ bzr mv dir2 dir1
 $ bzr resolve dir2
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_keeping_mine(self):
+        self.run_script("""
+$ bzr resolve --interactive dir2
+<keep_mine
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_taking_theirs(self):
+        self.run_script("""
+$ bzr resolve --interactive dir2
+<take_theirs
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 

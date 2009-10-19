@@ -544,6 +544,19 @@ class ParentLoop(HandledPathConflict):
 
     format = 'Conflict moving %(conflict_path)s into %(path)s.  %(action)s.'
 
+    def keep_mine(self, tree):
+        # just acccept bzr proposal
+        pass
+
+    def take_theirs(self, tree):
+        # FIXME: We should have to manipulate so many paths here (and there is
+        # probably a bug or two...)
+        conflict_base_path = osutils.basename(self.conflict_path)
+        base_path = osutils.basename(self.path)
+        tree.rename_one(self.conflict_path, conflict_base_path)
+        tree.rename_one(self.path,
+                        osutils.joinpath([conflict_base_path, base_path]))
+
 
 class UnversionedParent(HandledConflict):
     """An attempt to version a file whose parent directory is not versioned.
