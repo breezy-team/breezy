@@ -1106,6 +1106,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         self.from_repository.revisions.clear_cache()
+        self.from_repository.signatures.clear_cache()
         yield self._get_inventory_stream(self._revision_keys)
         self.from_repository.inventories.clear_cache()
         # TODO: The keys to exclude might be part of the search recipe
