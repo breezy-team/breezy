@@ -34,6 +34,9 @@ Improvements
 Documentation
 *************
 
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
+
 API Changes
 ***********
 
