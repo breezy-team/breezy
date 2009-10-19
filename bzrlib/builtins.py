@@ -680,15 +680,15 @@ class cmd_mkdir(Command):
     takes_options = [
         Option(
             'parents',
-            help='no error if existing, make parent directories as needed',
+            help='No error if existing, make parent directories as needed.',
             short_name='p'
             )
         ]
     encoding_type = 'replace'
 
-    def run(self, dir_list, parents=None):
+    def run(self, dir_list, parents=False):
         for d in dir_list:
-            if parents is None:
+            if parents:
                 os.mkdir(d)
             else:
                 os.makedirs(d)
