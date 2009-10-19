@@ -1268,6 +1268,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
     def clear_cache(self):
         """See VersionedFiles.clear_cache()"""
         self._group_cache.clear()
+        self._index._graph_index.clear_cache()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""

@@ -232,6 +232,13 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()
+
+        This is a no-op, but we need the api to conform to a generic 'Index'
+        abstraction.
+        """
+        
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')

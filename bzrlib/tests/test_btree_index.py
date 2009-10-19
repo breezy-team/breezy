@@ -124,6 +124,12 @@ class BTreeTestCase(TestCaseWithTransport):
 
 class TestBTreeBuilder(BTreeTestCase):
 
+    def test_clear_cache(self):
+        builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        # This is a no-op, but we need the api to be consistent with other
+        # BTreeGraphIndex apis.
+        builder.clear_cache()
+
     def test_empty_1_0(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
         # NamedTemporaryFile dies on builder.finish().read(). weird.

@@ -173,6 +173,11 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "key\x00\x00\t\x00data\n"
             "\n", contents)
 
+    def test_clear_cache(self):
+        builder = GraphIndexBuilder(reference_lists=2)
+        # This is a no-op, but the api should exist
+        builder.clear_cache()
+
     def test_node_references_are_byte_offsets(self):
         builder = GraphIndexBuilder(reference_lists=1)
         builder.add_node(('reference', ), 'data', ([], ))
