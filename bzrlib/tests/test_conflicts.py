@@ -216,17 +216,31 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_keep_this(self):
+    def test_keep_mine(self):
         self.run_script("""
 $ bzr rm file.OTHER --force # a simple rm file.OTHER is valid too
 $ bzr resolve file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_keep_other(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr mv file.OTHER file
 $ bzr resolve file
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_keeping_mine(self):
+        self.run_script("""
+$ bzr resolve --interactive file
+<keep_mine
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_taking_theirs(self):
+        self.run_script("""
+$ bzr resolve --interactive file
+<take_theirs
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 

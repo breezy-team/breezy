@@ -108,7 +108,7 @@ class cmd_resolve(commands.Command):
             if file_list is None or len(file_list) != 1:
                 raise errors.BzrCommandError(
                     '--interactive requires a single FILE parameter')
-            _resolve_interactive( tree, file_list[0])
+            _resolve_interactive(tree, file_list[0])
         else:
             tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
@@ -180,6 +180,8 @@ def _resolve_interactive(tree, path):
         if action is None:
             raise NotImplementedError(action_name)
         action(tree)
+        # FIXME: We need an API to use that on a single conflict
+        ConflictList([c]).remove_files(tree)
         tree.set_conflicts(remaining)
     finally:
         tree.unlock()
@@ -421,6 +423,12 @@ class ContentsConflict(PathConflict):
     typestring = 'contents conflict'
 
     format = 'Contents conflict in %(path)s'
+
+    def keep_mine(self, tree):
+        tree.remove([self.path + '.OTHER'], force=True, keep_files=False)
+
+    def take_theirs(self, tree):
+        tree.remove([self.path], force=True, keep_files=False)
 
 
 class TextConflict(PathConflict):
