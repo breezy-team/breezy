@@ -598,7 +598,17 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_remove_this(self):
+    def test_keep_mine(self):
+        self.run_script("""
+$ bzr rm foo.new --force
+# FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
+# aside ? -- vila 090916
+$ bzr add foo
+$ bzr resolve foo.new
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr rm foo --force
 $ bzr mv foo.new foo
@@ -606,13 +616,17 @@ $ bzr resolve foo
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_remove_other(self):
+    def test_resolve_keeping_mine(self):
         self.run_script("""
-$ bzr rm foo.new --force
-# FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
-# aside ? -- vila 090916
-$ bzr add foo
-$ bzr resolve foo.new
+$ bzr resolve --interactive foo.new
+<keep_mine
+$ bzr commit --strict -m 'No more conflicts nor unknown files'
+""")
+
+    def test_resolve_taking_theirs(self):
+        self.run_script("""
+$ bzr resolve --interactive foo.new
+<take_theirs
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 

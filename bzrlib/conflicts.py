@@ -612,7 +612,7 @@ class DeletingParent(HandledConflict):
 
 
 class NonDirectoryParent(HandledConflict):
-    """An attempt to add files to a directory that is not a director or
+    """An attempt to add files to a directory that is not a directory or
     an attempt to change the kind of a directory with files.
     """
 
@@ -620,6 +620,25 @@ class NonDirectoryParent(HandledConflict):
 
     format = "Conflict: %(path)s is not a directory, but has files in it."\
              "  %(action)s."
+
+    def keep_mine(self, tree):
+        # FIXME: we should preserve that path at conflict build time !
+        if self.path.endswith('.new'):
+            conflict_path = self.path[:-(len('.new'))]
+            tree.remove([self.path], force=True, keep_files=False)
+            tree.add(conflict_path)
+        else:
+            raise NotImplementedError(self.keep_mine)
+
+    def take_theirs(self, tree):
+        # FIXME: we should preserve that path at conflict build time !
+        if self.path.endswith('.new'):
+            conflict_path = self.path[:-(len('.new'))]
+            tree.remove([conflict_path], force=True, keep_files=False)
+            tree.rename_one(self.path, conflict_path)
+        else:
+            raise NotImplementedError(self.take_theirs)
+
 
 ctype = {}
 
