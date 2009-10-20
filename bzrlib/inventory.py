@@ -1817,8 +1817,7 @@ class CHKInventory(CommonInventory):
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
                 if entry.parent_id is not None:
-                    parents.add(StaticTuple(split(new_path)[0].encode('utf8'),
-                                            entry.parent_id))
+                    parents.add((split(new_path)[0], entry.parent_id))
             if old_path is None:
                 old_key = None
             else:
