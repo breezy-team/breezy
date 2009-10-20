@@ -35,6 +35,10 @@ from bzrlib import (
     ui,
     versionedfile
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 # TODO: Report back as changes are merged in
 
 
@@ -226,6 +230,7 @@ class Merger(object):
         revision_id = _mod_revision.ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
             self.this_basis_tree = self.revision_tree(self.this_basis)
@@ -239,6 +244,7 @@ class Merger(object):
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
         def get_id(tree, file_id):
@@ -252,6 +258,7 @@ class Merger(object):
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def check_basis(self, check_clean, require_commits=True):
         if self.this_basis is None and require_commits is True:
             raise errors.BzrCommandError(
@@ -262,6 +269,7 @@ class Merger(object):
             if self.this_basis != self.this_rev_id:
                 raise errors.UncommittedChanges(self.this_tree)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def compare_basis(self):
         try:
             basis_tree = self.revision_tree(self.this_tree.last_revision())
@@ -274,7 +282,8 @@ class Merger(object):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor or not self.base_is_other_ancestor or self.other_rev_id is None:
+        if (not self.base_is_ancestor or not self.base_is_other_ancestor
+            or self.other_rev_id is None):
             return
         self._add_parent()
 

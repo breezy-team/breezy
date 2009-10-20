@@ -51,7 +51,18 @@ class StaticTuple(tuple):
     def intern(self):
         return _interned_tuples.setdefault(self, self)
 
+    @staticmethod
+    def from_sequence(seq):
+        """Convert a sequence object into a StaticTuple instance."""
+        if isinstance(seq, StaticTuple):
+            # it already is
+            return seq
+        return StaticTuple(*seq)
 
+
+
+# Have to set it to None first, so that __new__ can determine whether
+# the _empty_tuple singleton has been created yet or not.
 _empty_tuple = None
 _empty_tuple = StaticTuple()
 _interned_tuples = {}

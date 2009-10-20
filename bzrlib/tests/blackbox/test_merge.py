@@ -605,7 +605,7 @@ class TestMergeForce(tests.TestCaseWithTransport):
 
     def test_merge_force(self):
         self.tree_a.commit('empty change to allow merge to run')
-        # Second merge on top if the uncommitted one
+        # Second merge on top of the uncommitted one
         self.run_bzr(['merge', '../a', '--force'], working_dir='b')
 
 

@@ -457,6 +457,49 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
         self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
 
 
+class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
+
+    def assertRelpath(self, expected, base, path):
+        actual = osutils._cicp_canonical_relpath(base, path)
+        self.assertEqual(expected, actual)
+
+    def test_simple(self):
+        self.build_tree(['MixedCaseName'])
+        base = osutils.realpath(self.get_transport('.').local_abspath('.'))
+        self.assertRelpath('MixedCaseName', base, 'mixedcAsename')
+
+    def test_subdir_missing_tail(self):
+        self.build_tree(['MixedCaseParent/', 'MixedCaseParent/a_child'])
+        base = osutils.realpath(self.get_transport('.').local_abspath('.'))
+        self.assertRelpath('MixedCaseParent/a_child', base,
+                           'MixedCaseParent/a_child')
+        self.assertRelpath('MixedCaseParent/a_child', base,
+                           'MixedCaseParent/A_Child')
+        self.assertRelpath('MixedCaseParent/not_child', base,
+                           'MixedCaseParent/not_child')
+
+    def test_at_root_slash(self):
+        # We can't test this on Windows, because it has a 'MIN_ABS_PATHLENGTH'
+        # check...
+        if osutils.MIN_ABS_PATHLENGTH > 1:
+            raise tests.TestSkipped('relpath requires %d chars'
+                                    % osutils.MIN_ABS_PATHLENGTH)
+        self.assertRelpath('foo', '/', '/foo')
+
+    def test_at_root_drive(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable('we can only test drive-letter relative'
+                                          ' paths on Windows where we have drive'
+                                          ' letters.')
+        # see bug #322807
+        # The specific issue is that when at the root of a drive, 'abspath'
+        # returns "C:/" or just "/". However, the code assumes that abspath
+        # always returns something like "C:/foo" or "/foo" (no trailing slash).
+        self.assertRelpath('foo', 'C:/', 'C:/foo')
+        self.assertRelpath('foo', 'X:/', 'X:/foo')
+        self.assertRelpath('foo', 'X:/', 'X://foo')
+
+
 class TestPumpFile(tests.TestCase):
     """Test pumpfile method."""
 

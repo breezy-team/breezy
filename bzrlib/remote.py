@@ -33,7 +33,7 @@ from bzrlib import (
 )
 from bzrlib.branch import BranchReferenceFormat
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
     NoSuchRevision,
     SmartProtocolError,
@@ -619,7 +619,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper):
+class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -949,6 +949,7 @@ class RemoteRepository(_RpcHelper):
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
+            self._note_lock('r')
             self._lock_mode = 'r'
             self._lock_count = 1
             self._unstacked_provider.enable_cache(cache_misses=True)
@@ -974,6 +975,7 @@ class RemoteRepository(_RpcHelper):
 
     def lock_write(self, token=None, _skip_rpc=False):
         if not self._lock_mode:
+            self._note_lock('w')
             if _skip_rpc:
                 if self._lock_token is not None:
                     if token != self._lock_token:
@@ -1082,6 +1084,7 @@ class RemoteRepository(_RpcHelper):
         else:
             raise errors.UnexpectedSmartServerResponse(response)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_count:
             return lock.cant_unlock_not_held(self)
@@ -2081,7 +2084,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         return self._custom_format.supports_set_append_revisions_only()
 
 
-class RemoteBranch(branch.Branch, _RpcHelper):
+class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
 
     At the moment most operations are mapped down to simple file operations.
@@ -2318,6 +2321,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
     def lock_read(self):
         self.repository.lock_read()
         if not self._lock_mode:
+            self._note_lock('r')
             self._lock_mode = 'r'
             self._lock_count = 1
             if self._real_branch is not None:
@@ -2343,6 +2347,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
 
     def lock_write(self, token=None):
         if not self._lock_mode:
+            self._note_lock('w')
             # Lock the branch and repo in one remote call.
             remote_tokens = self._remote_lock_write(token)
             self._lock_token, self._repo_lock_token = remote_tokens
@@ -2383,6 +2388,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             return
         raise errors.UnexpectedSmartServerResponse(response)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         try:
             self._lock_count -= 1
@@ -2428,6 +2434,7 @@ class RemoteBranch(branch.Branch, _RpcHelper):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION

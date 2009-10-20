@@ -23,6 +23,8 @@ import zlib
 from bzrlib import (
     btree_index,
     errors,
+    fifo_cache,
+    lru_cache,
     osutils,
     tests,
     )
@@ -121,6 +123,12 @@ class BTreeTestCase(TestCaseWithTransport):
 
 
 class TestBTreeBuilder(BTreeTestCase):
+
+    def test_clear_cache(self):
+        builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        # This is a no-op, but we need the api to be consistent with other
+        # BTreeGraphIndex apis.
+        builder.clear_cache()
 
     def test_empty_1_0(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -637,6 +645,27 @@ class TestBTreeIndex(BTreeTestCase):
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
+    def test_clear_cache(self):
+        nodes = self.make_nodes(160, 2, 2)
+        index = self.make_index(ref_lists=2, key_elements=2, nodes=nodes)
+        self.assertEqual(1, len(list(index.iter_entries([nodes[30][0]]))))
+        self.assertEqual([1, 4], index._row_lengths)
+        self.assertIsNot(None, index._root_node)
+        internal_node_pre_clear = index._internal_node_cache.keys()
+        self.assertTrue(len(index._leaf_node_cache) > 0)
+        index.clear_cache()
+        # We don't touch _root_node or _internal_node_cache, both should be
+        # small, and can save a round trip or two
+        self.assertIsNot(None, index._root_node)
+        # NOTE: We don't want to affect the _internal_node_cache, as we expect
+        #       it will be small, and if we ever do touch this index again, it
+        #       will save round-trips.  This assertion isn't very strong,
+        #       becuase without a 3-level index, we don't have any internal
+        #       nodes cached.
+        self.assertEqual(internal_node_pre_clear,
+                         index._internal_node_cache.keys())
+        self.assertEqual(0, len(index._leaf_node_cache))
+
     def test_trivial_constructor(self):
         transport = get_transport('trace+' + self.get_url(''))
         index = btree_index.BTreeGraphIndex(transport, 'index', None)
@@ -1114,6 +1143,43 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual(set(), search_keys)
         self.assertEqual({}, parent_map)
         self.assertEqual(set([('one',), ('two',)]), missing_keys)
+
+    def test_supports_unlimited_cache(self):
+        builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        # We need enough nodes to cause a page split (so we have both an
+        # internal node and a couple leaf nodes. 500 seems to be enough.)
+        nodes = self.make_nodes(500, 1, 0)
+        for node in nodes:
+            builder.add_node(*node)
+        stream = builder.finish()
+        trans = get_transport(self.get_url())
+        size = trans.put_file('index', stream)
+        index = btree_index.BTreeGraphIndex(trans, 'index', size)
+        self.assertEqual(500, index.key_count())
+        # We have an internal node
+        self.assertEqual(2, len(index._row_lengths))
+        # We have at least 2 leaf nodes
+        self.assertTrue(index._row_lengths[-1] >= 2)
+        self.assertIsInstance(index._leaf_node_cache, lru_cache.LRUCache)
+        self.assertEqual(btree_index._NODE_CACHE_SIZE,
+                         index._leaf_node_cache._max_cache)
+        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertEqual(100, index._internal_node_cache._max_cache)
+        # No change if unlimited_cache=False is passed
+        index = btree_index.BTreeGraphIndex(trans, 'index', size,
+                                            unlimited_cache=False)
+        self.assertIsInstance(index._leaf_node_cache, lru_cache.LRUCache)
+        self.assertEqual(btree_index._NODE_CACHE_SIZE,
+                         index._leaf_node_cache._max_cache)
+        self.assertIsInstance(index._internal_node_cache, fifo_cache.FIFOCache)
+        self.assertEqual(100, index._internal_node_cache._max_cache)
+        index = btree_index.BTreeGraphIndex(trans, 'index', size,
+                                            unlimited_cache=True)
+        self.assertIsInstance(index._leaf_node_cache, dict)
+        self.assertIs(type(index._internal_node_cache), dict)
+        # Exercise the lookup code
+        entries = set(index.iter_entries([n[0] for n in nodes]))
+        self.assertEqual(500, len(entries))
 
 
 class TestBTreeNodes(BTreeTestCase):

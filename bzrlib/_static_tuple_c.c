@@ -20,11 +20,19 @@
  */
 #define STATIC_TUPLE_MODULE
 
+#include <Python.h>
+#include "python-compat.h"
+
 #include "_static_tuple_c.h"
 #include "_export_c_api.h"
-#include "_simple_set_pyx_api.h"
 
-#include "python-compat.h"
+/* Pyrex 0.9.6.4 exports _simple_set_pyx_api as
+ * import__simple_set_pyx(), while Pyrex 0.9.8.5 and Cython 0.11.3 export them
+ * as import_bzrlib___simple_set_pyx(). As such, we just #define one to be
+ * equivalent to the other in our internal code.
+ */
+#define import__simple_set_pyx import_bzrlib___simple_set_pyx
+#include "_simple_set_pyx_api.h"
 
 #if defined(__GNUC__)
 #   define inline __inline__
@@ -74,7 +82,7 @@ static char StaticTuple_as_tuple_doc[] = "as_tuple() => tuple";
 static StaticTuple *
 StaticTuple_Intern(StaticTuple *self)
 {
-    PyObject *unique_key = NULL;
+    PyObject *canonical_tuple = NULL;
 
     if (_interned_tuples == NULL || _StaticTuple_is_interned(self)) {
         Py_INCREF(self);
@@ -83,20 +91,18 @@ StaticTuple_Intern(StaticTuple *self)
     /* SimpleSet_Add returns whatever object is present at self
      * or the new object if it needs to add it.
      */
-    unique_key = SimpleSet_Add(_interned_tuples, (PyObject *)self);
-    if (!unique_key) {
-        // Suppress any error and just return the object
-        PyErr_Clear();
-        Py_INCREF(self);
-        return self;
+    canonical_tuple = SimpleSet_Add(_interned_tuples, (PyObject *)self);
+    if (!canonical_tuple) {
+        // Some sort of exception, propogate it.
+        return NULL;
     }
-    if (unique_key != (PyObject *)self) {
-        // There was already a key at that location
-        return (StaticTuple *)unique_key;
+    if (canonical_tuple != (PyObject *)self) {
+        // There was already a tuple with that value
+        return (StaticTuple *)canonical_tuple;
     }
     self->flags |= STATIC_TUPLE_INTERNED_FLAG;
-    // The two references in the dict do not count, so that the StaticTuple object
-    // does not become immortal just because it was interned.
+    // The two references in the dict do not count, so that the StaticTuple
+    // object does not become immortal just because it was interned.
     Py_REFCNT(self) -= 1;
     return self;
 }
@@ -168,8 +174,54 @@ StaticTuple_New(Py_ssize_t size)
 }
 
 
+static StaticTuple *
+StaticTuple_FromSequence(PyObject *sequence)
+{
+    StaticTuple *new;
+    PyObject *item;
+    Py_ssize_t i, size;
+
+    if (StaticTuple_CheckExact(sequence)) {
+        Py_INCREF(sequence);
+        return (StaticTuple *)sequence;
+    }
+    if (!PySequence_Check(sequence)) {
+        PyErr_Format(PyExc_TypeError, "Type %s is not a sequence type",
+                     Py_TYPE(sequence)->tp_name);
+        return NULL;
+    }
+    size = PySequence_Size(sequence);
+    if (size == -1)
+        return NULL;
+    new = StaticTuple_New(size);
+    if (new == NULL) {
+        return NULL;
+    }
+    for (i = 0; i < size; ++i) {
+        // This returns a new reference, which we then 'steal' with 
+        // StaticTuple_SET_ITEM
+        item = PySequence_GetItem(sequence, i);
+        if (item == NULL) {
+            Py_DECREF(new);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(new, i, item);
+    }
+    return (StaticTuple *)new;
+}
+
+static StaticTuple *
+StaticTuple_from_sequence(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    PyObject *sequence;
+    if (!PyArg_ParseTuple(args, "O", &sequence))
+        return NULL;
+    return StaticTuple_FromSequence(sequence);
+}
+
+
 static PyObject *
-StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     StaticTuple *self;
     PyObject *obj = NULL;
@@ -187,7 +239,7 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (len < 0 || len > 255) {
         /* Too big or too small */
         PyErr_SetString(PyExc_ValueError, "StaticTuple.__init__(...)"
-            " takes from 0 to 255 key bits");
+            " takes from 0 to 255 items");
         return NULL;
     }
     self = (StaticTuple *)StaticTuple_New(len);
@@ -199,8 +251,7 @@ StaticTuple_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         if (!PyString_CheckExact(obj)) {
             if (!StaticTuple_CheckExact(obj)) {
                 PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
-                    " requires that all key bits are strings or StaticTuple.");
-                /* TODO: What is the proper way to dealloc ? */
+                    " requires that all items are strings or StaticTuple.");
                 type->tp_dealloc((PyObject *)self);
                 return NULL;
             }
@@ -236,21 +287,21 @@ StaticTuple_hash(StaticTuple *self)
     /* adapted from tuplehash(), is the specific hash value considered
      * 'stable'?
      */
-	register long x, y;
-	Py_ssize_t len = self->size;
-	PyObject **p;
-	long mult = 1000003L;
+    register long x, y;
+    Py_ssize_t len = self->size;
+    PyObject **p;
+    long mult = 1000003L;
 
 #if STATIC_TUPLE_HAS_HASH
     if (self->hash != -1) {
         return self->hash;
     }
 #endif
-	x = 0x345678L;
-	p = self->items;
+    x = 0x345678L;
+    p = self->items;
     // TODO: We could set specific flags if we know that, for example, all the
-    //       keys are strings. I haven't seen a real-world benefit to that yet,
-    //       though.
+    //       items are strings. I haven't seen a real-world benefit to that
+    //       yet, though.
     while (--len >= 0) {
         y = PyObject_Hash(*p++);
         if (y == -1) /* failure */
@@ -259,18 +310,13 @@ StaticTuple_hash(StaticTuple *self)
         /* the cast might truncate len; that doesn't change hash stability */
         mult += (long)(82520L + len + len);
     }
-	x += 97531L;
-	if (x == -1)
-		x = -2;
+    x += 97531L;
+    if (x == -1)
+        x = -2;
 #if STATIC_TUPLE_HAS_HASH
-    if (self->hash != -1) {
-        if (self->hash != x) {
-            fprintf(stderr, "hash changed: %d => %d\n", self->hash, x);
-        }
-    }
     self->hash = x;
 #endif
-	return x;
+    return x;
 }
 
 static PyObject *
@@ -281,25 +327,39 @@ StaticTuple_richcompare_to_tuple(StaticTuple *v, PyObject *wt, int op)
     
     vt = StaticTuple_as_tuple((StaticTuple *)v);
     if (vt == NULL) {
-        goto Done;
+        goto done;
     }
     if (!PyTuple_Check(wt)) {
         PyErr_BadInternalCall();
-        result = NULL;
-        goto Done;
+        goto done;
     }
     /* Now we have 2 tuples to compare, do it */
     result = PyTuple_Type.tp_richcompare(vt, wt, op);
-Done:
+done:
     Py_XDECREF(vt);
     return result;
 }
 
+/** Compare two objects to determine if they are equivalent.
+ * The basic flow is as follows
+ *  1) First make sure that both objects are StaticTuple instances. If they
+ *     aren't then cast self to a tuple, and have the tuple do the comparison.
+ *  2) Special case comparison to Py_None, because it happens to occur fairly
+ *     often in the test suite.
+ *  3) Special case when v and w are the same pointer. As we know the answer to
+ *     all queries without walking individual items.
+ *  4) For all operations, we then walk the items to find the first paired
+ *     items that are not equal.
+ *  5) If all items found are equal, we then check the length of self and
+ *     other to determine equality.
+ *  6) If an item differs, then we apply "op" to those last two items. (eg.
+ *     StaticTuple(A, B) > StaticTuple(A, C) iff B > C)
+ */
 
 static PyObject *
 StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
 {
-    StaticTuple *vk, *wk;
+    StaticTuple *v_st, *w_st;
     Py_ssize_t vlen, wlen, min_len, i;
     PyObject *v_obj, *w_obj;
     richcmpfunc string_richcompare;
@@ -313,10 +373,10 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         Py_INCREF(Py_NotImplemented);
         return Py_NotImplemented;
     }
-    vk = (StaticTuple *)v;
+    v_st = (StaticTuple *)v;
     if (StaticTuple_CheckExact(w)) {
         /* The most common case */
-        wk = (StaticTuple*)w;
+        w_st = (StaticTuple*)w;
     } else if (PyTuple_Check(w)) {
         /* One of v or w is a tuple, so we go the 'slow' route and cast up to
          * tuples to compare.
@@ -325,17 +385,19 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
          *       We probably want to optimize comparing self to other when
          *       other is a tuple.
          */
-        return StaticTuple_richcompare_to_tuple(vk, w, op);
+        return StaticTuple_richcompare_to_tuple(v_st, w, op);
     } else if (w == Py_None) {
         // None is always less than the object
-		switch (op) {
-		case Py_NE:case Py_GT:case Py_GE:
+        switch (op) {
+        case Py_NE:case Py_GT:case Py_GE:
             Py_INCREF(Py_True);
             return Py_True;
         case Py_EQ:case Py_LT:case Py_LE:
             Py_INCREF(Py_False);
             return Py_False;
-		}
+    default: // Should never happen
+        return Py_NotImplemented;
+        }
     } else {
         /* We don't special case this comparison, we just let python handle
          * it.
@@ -344,38 +406,49 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
          return Py_NotImplemented;
     }
     /* Now we know that we have 2 StaticTuple objects, so let's compare them.
-     * This code is somewhat borrowed from tuplerichcompare, except we know our
+     * This code is inspired from tuplerichcompare, except we know our
      * objects are limited in scope, so we can inline some comparisons.
      */
     if (v == w) {
         /* Identical pointers, we can shortcut this easily. */
-		switch (op) {
-		case Py_EQ:case Py_LE:case Py_GE:
+        switch (op) {
+        case Py_EQ:case Py_LE:case Py_GE:
             Py_INCREF(Py_True);
             return Py_True;
-		case Py_NE:case Py_LT:case Py_GT:
+        case Py_NE:case Py_LT:case Py_GT:
             Py_INCREF(Py_False);
             return Py_False;
-		}
+        }
     }
-    /* TODO: if STATIC_TUPLE_INTERNED_FLAG is set on both objects and they are
-     *       not the same pointer, then we know they aren't the same object
-     *       without having to do sub-by-sub comparison.
-     */
+    if (op == Py_EQ
+        && _StaticTuple_is_interned(v_st)
+        && _StaticTuple_is_interned(w_st))
+    {
+        /* If both objects are interned, we know they are different if the
+         * pointer is not the same, which would have been handled by the
+         * previous if. No need to compare the entries.
+         */
+        Py_INCREF(Py_False);
+        return Py_False;
+    }
 
-    /* It will be rare that we compare tuples of different lengths, so we don't
-     * start by optimizing the length comparision, same as the tuple code
-     * TODO: Interning may change this, because we'll be comparing lots of
-     *       different StaticTuple objects in the intern dict
+    /* The only time we are likely to compare items of different lengths is in
+     * something like the interned_keys set. However, the hash is good enough
+     * that it is rare. Note that 'tuple_richcompare' also does not compare
+     * lengths here.
      */
-    vlen = vk->size;
-    wlen = wk->size;
-	min_len = (vlen < wlen) ? vlen : wlen;
+    vlen = v_st->size;
+    wlen = w_st->size;
+    min_len = (vlen < wlen) ? vlen : wlen;
     string_richcompare = PyString_Type.tp_richcompare;
     for (i = 0; i < min_len; i++) {
         PyObject *result = NULL;
-        v_obj = StaticTuple_GET_ITEM(vk, i);
-        w_obj = StaticTuple_GET_ITEM(wk, i);
+        v_obj = StaticTuple_GET_ITEM(v_st, i);
+        w_obj = StaticTuple_GET_ITEM(w_st, i);
+        if (v_obj == w_obj) {
+            /* Shortcut case, these must be identical */
+            continue;
+        }
         if (PyString_CheckExact(v_obj) && PyString_CheckExact(w_obj)) {
             result = string_richcompare(v_obj, w_obj, Py_EQ);
         } else if (StaticTuple_CheckExact(v_obj) &&
@@ -391,9 +464,15 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             return NULL; /* There seems to be an error */
         }
         if (result == Py_NotImplemented) {
-            PyErr_BadInternalCall();
             Py_DECREF(result);
-            return NULL;
+            /* One side must have had a string and the other a StaticTuple.
+             * This clearly means that they are not equal.
+             */
+            if (op == Py_EQ) {
+                Py_INCREF(Py_False);
+                return Py_False;
+            }
+            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
         }
         if (result == Py_False) {
             /* This entry is not identical
@@ -415,28 +494,28 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         }
         Py_DECREF(result);
     }
-	if (i >= vlen || i >= wlen) {
+    if (i >= min_len) {
         /* We walked off one of the lists, but everything compared equal so
          * far. Just compare the size.
          */
-		int cmp;
-		PyObject *res;
-		switch (op) {
-		case Py_LT: cmp = vlen <  wlen; break;
-		case Py_LE: cmp = vlen <= wlen; break;
-		case Py_EQ: cmp = vlen == wlen; break;
-		case Py_NE: cmp = vlen != wlen; break;
-		case Py_GT: cmp = vlen >  wlen; break;
-		case Py_GE: cmp = vlen >= wlen; break;
-		default: return NULL; /* cannot happen */
-		}
-		if (cmp)
-			res = Py_True;
-		else
-			res = Py_False;
-		Py_INCREF(res);
-		return res;
-	}
+        int cmp;
+        PyObject *res;
+        switch (op) {
+        case Py_LT: cmp = vlen <  wlen; break;
+        case Py_LE: cmp = vlen <= wlen; break;
+        case Py_EQ: cmp = vlen == wlen; break;
+        case Py_NE: cmp = vlen != wlen; break;
+        case Py_GT: cmp = vlen >  wlen; break;
+        case Py_GE: cmp = vlen >= wlen; break;
+        default: return NULL; /* cannot happen */
+        }
+        if (cmp)
+            res = Py_True;
+        else
+            res = Py_False;
+        Py_INCREF(res);
+        return res;
+    }
     /* The last item differs, shortcut the Py_NE case */
     if (op == Py_NE) {
         Py_INCREF(Py_True);
@@ -477,15 +556,22 @@ StaticTuple__is_interned(StaticTuple *self)
 }
 
 static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
-    "Check to see if this key has been interned.\n";
+    "Check to see if this tuple has been interned.\n";
 
 
 static PyObject *
 StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
 {
     PyObject *obj;
-    if (offset < 0 || offset >= self->size) {
-        PyErr_SetString(PyExc_IndexError, "StaticTuple index out of range");
+    /* We cast to (int) to avoid worrying about whether Py_ssize_t is a
+     * long long, etc. offsets should never be >2**31 anyway.
+     */
+    if (offset < 0) {
+        PyErr_Format(PyExc_IndexError, "StaticTuple_item does not support"
+            " negative indices: %d\n", (int)offset);
+    } else if (offset >= self->size) {
+        PyErr_Format(PyExc_IndexError, "StaticTuple index out of range"
+            " %d >= %d", (int)offset, (int)self->size);
         return NULL;
     }
     obj = (PyObject *)self->items[offset];
@@ -519,15 +605,22 @@ StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
 
 static char StaticTuple_doc[] =
     "C implementation of a StaticTuple structure."
-    "\n This is used as StaticTuple(key_bit_1, key_bit_2, key_bit_3, ...)"
-    "\n This is similar to tuple, just less flexible in what it"
-    "\n supports, but also lighter memory consumption.";
+    "\n This is used as StaticTuple(item1, item2, item3)"
+    "\n This is similar to tuple, less flexible in what it"
+    "\n supports, but also lighter memory consumption."
+    "\n Note that the constructor mimics the () form of tuples"
+    "\n Rather than the 'tuple()' constructor."
+    "\n  eg. StaticTuple(a, b) == (a, b) == tuple((a, b))";
 
 static PyMethodDef StaticTuple_methods[] = {
     {"as_tuple", (PyCFunction)StaticTuple_as_tuple, METH_NOARGS, StaticTuple_as_tuple_doc},
     {"intern", (PyCFunction)StaticTuple_Intern, METH_NOARGS, StaticTuple_Intern_doc},
     {"_is_interned", (PyCFunction)StaticTuple__is_interned, METH_NOARGS,
      StaticTuple__is_interned_doc},
+    {"from_sequence", (PyCFunction)StaticTuple_from_sequence,
+     METH_STATIC | METH_VARARGS,
+     "Create a StaticTuple from a given sequence. This functions"
+     " the same as the tuple() constructor."},
     {NULL, NULL} /* sentinel */
 };
 
@@ -541,6 +634,12 @@ static PySequenceMethods StaticTuple_as_sequence = {
     0,                              /* sq_ass_slice */
     0,                              /* sq_contains */
 };
+
+/* TODO: Implement StaticTuple_as_mapping.
+ *       The only thing we really want to support from there is mp_subscript,
+ *       so that we could support extended slicing (foo[::2]). Not worth it
+ *       yet, though.
+ */
 
 
 PyTypeObject StaticTuple_Type = {
@@ -561,7 +660,7 @@ PyTypeObject StaticTuple_Type = {
     (hashfunc)StaticTuple_hash,                  /* tp_hash */
     0,                                           /* tp_call */
     0,                                           /* tp_str */
-    PyObject_GenericGetAttr,                     /* tp_getattro */
+    0,                                           /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
@@ -590,7 +689,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_dictoffset */
     0,                                           /* tp_init */
     0,                                           /* tp_alloc */
-    StaticTuple_new,                             /* tp_new */
+    StaticTuple_new_constructor,                 /* tp_new */
 };
 
 
@@ -641,8 +740,55 @@ setup_c_api(PyObject *m)
         "StaticTuple *(Py_ssize_t)");
     _export_function(m, "StaticTuple_Intern", StaticTuple_Intern,
         "StaticTuple *(StaticTuple *)");
+    _export_function(m, "StaticTuple_FromSequence", StaticTuple_FromSequence,
+        "StaticTuple *(PyObject *)");
     _export_function(m, "_StaticTuple_CheckExact", _StaticTuple_CheckExact,
         "int(PyObject *)");
+}
+
+
+static int
+_workaround_pyrex_096(void)
+{
+    /* Work around an incompatibility in how pyrex 0.9.6 exports a module,
+     * versus how pyrex 0.9.8 and cython 0.11 export it.
+     * Namely 0.9.6 exports import__simple_set_pyx and tries to
+     * "import _simple_set_pyx" but it is available only as
+     * "import bzrlib._simple_set_pyx"
+     * It is a shame to hack up sys.modules, but that is what we've got to do.
+     */
+    PyObject *sys_module = NULL, *modules = NULL, *set_module = NULL;
+    int retval = -1;
+
+    /* Clear out the current ImportError exception, and try again. */
+    PyErr_Clear();
+    /* Note that this only seems to work if somewhere else imports
+     * bzrlib._simple_set_pyx before importing bzrlib._static_tuple_c
+     */
+    set_module = PyImport_ImportModule("bzrlib._simple_set_pyx");
+    if (set_module == NULL) {
+	// fprintf(stderr, "Failed to import bzrlib._simple_set_pyx\n");
+        goto end;
+    }
+    /* Add the _simple_set_pyx into sys.modules at the appropriate location. */
+    sys_module = PyImport_ImportModule("sys");
+    if (sys_module == NULL) {
+    	// fprintf(stderr, "Failed to import sys\n");
+        goto end;
+    }
+    modules = PyObject_GetAttrString(sys_module, "modules");
+    if (modules == NULL || !PyDict_Check(modules)) {
+    	// fprintf(stderr, "Failed to find sys.modules\n");
+        goto end;
+    }
+    PyDict_SetItemString(modules, "_simple_set_pyx", set_module);
+    /* Now that we have hacked it in, try the import again. */
+    retval = import_bzrlib___simple_set_pyx();
+end:
+    Py_XDECREF(set_module);
+    Py_XDECREF(sys_module);
+    Py_XDECREF(modules);
+    return retval;
 }
 
 
@@ -651,6 +797,7 @@ init_static_tuple_c(void)
 {
     PyObject* m;
 
+    StaticTuple_Type.tp_getattro = PyObject_GenericGetAttr;
     if (PyType_Ready(&StaticTuple_Type) < 0)
         return;
 
@@ -661,8 +808,9 @@ init_static_tuple_c(void)
 
     Py_INCREF(&StaticTuple_Type);
     PyModule_AddObject(m, "StaticTuple", (PyObject *)&StaticTuple_Type);
-    if (import_bzrlib___simple_set_pyx() == -1) {
-        // We failed to set up, stop early
+    if (import_bzrlib___simple_set_pyx() == -1
+        && _workaround_pyrex_096() == -1)
+    {
         return;
     }
     setup_interned_tuples(m);

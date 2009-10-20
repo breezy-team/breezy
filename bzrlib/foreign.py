@@ -36,7 +36,7 @@ from bzrlib import (
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
@@ -122,7 +122,15 @@ class ForeignRevision(Revision):
 class ForeignVcs(object):
     """A foreign version control system."""
 
-    def __init__(self, mapping_registry):
+    branch_format = None
+
+    def __init__(self, mapping_registry, abbreviation=None):
+        """Create a new foreign vcs instance.
+
+        :param mapping_registry: Registry with mappings for this VCS.
+        :param abbreviation: Optional abbreviation ('bzr', 'svn', 'git', etc)
+        """
+        self.abbreviation = abbreviation
         self.mapping_registry = mapping_registry
 
     def show_foreign_revid(self, foreign_revid):
@@ -132,6 +140,15 @@ class ForeignVcs(object):
         :return: Dictionary mapping string keys to string values.
         """
         return { }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        """Serialize a foreign revision id for this VCS.
+
+        :param foreign_revid: Foreign revision id
+        :return: Bytestring with serialized revid, will not contain any 
+            newlines.
+        """
+        raise NotImplementedError(self.serialize_foreign_revid)
 
 
 class ForeignVcsRegistry(registry.Registry):
@@ -305,8 +322,7 @@ class cmd_dpush(Command):
                 ).get_user_option_as_bool('dpush_strict')
         if strict is None: strict = True # default value
         if strict and source_wt is not None:
-            if (source_wt.has_changes(source_wt.basis_tree())
-                or len(source_wt.get_parent_ids()) > 1):
+            if (source_wt.has_changes()):
                 raise errors.UncommittedChanges(
                     source_wt, more='Use --no-strict to force the push.')
             if source_wt.last_revision() != source_wt.branch.last_revision():

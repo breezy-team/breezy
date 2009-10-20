@@ -163,6 +163,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
+        # TODO: StaticTuple
         self._nodes[key] = (node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
@@ -625,6 +626,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
+            # TODO: Switch to StaticTuple here.
             nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
@@ -636,7 +638,7 @@ class BTreeGraphIndex(object):
     memory except when very large walks are done.
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Create a B+Tree index object on the index name.
 
         :param transport: The transport to read data for the index from.
@@ -646,6 +648,9 @@ class BTreeGraphIndex(object):
             the initial read (to read the root node header) can be done
             without over-reading even on empty indices, and on small indices
             allows single-IO to read the entire index.
+        :param unlimited_cache: If set to True, then instead of using an
+            LRUCache with size _NODE_CACHE_SIZE, we will use a dict and always
+            cache all leaf nodes.
         """
         self._transport = transport
         self._name = name
@@ -655,12 +660,15 @@ class BTreeGraphIndex(object):
         self._root_node = None
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
-        self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        # We could limit this, but even a 300k record btree has only 3k leaf
-        # nodes, and only 20 internal nodes. So the default of 100 nodes in an
-        # LRU would mean we always cache everything anyway, no need to pay the
-        # overhead of LRU
-        self._internal_node_cache = fifo_cache.FIFOCache(100)
+        if unlimited_cache:
+            self._leaf_node_cache = {}
+            self._internal_node_cache = {}
+        else:
+            self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
+            # We use a FIFO here just to prevent possible blowout. However, a
+            # 300k record btree has only 3k leaf nodes, and only 20 internal
+            # nodes. A value of 100 scales to ~100*100*100 = 1M records.
+            self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
@@ -698,9 +706,9 @@ class BTreeGraphIndex(object):
                 if start_of_leaves is None:
                     start_of_leaves = self._row_offsets[-2]
                 if node_pos < start_of_leaves:
-                    self._internal_node_cache.add(node_pos, node)
+                    self._internal_node_cache[node_pos] = node
                 else:
-                    self._leaf_node_cache.add(node_pos, node)
+                    self._leaf_node_cache[node_pos] = node
             found[node_pos] = node
         return found
 
@@ -844,6 +852,19 @@ class BTreeGraphIndex(object):
             final_offsets.update(next_tips)
             new_tips = next_tips
         return final_offsets
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+        # Note that we don't touch self._root_node or self._internal_node_cache
+        # We don't expect either of those to be big, and it can save
+        # round-trips in the future. We may re-evaluate this if InternalNode
+        # memory starts to be an issue.
+        self._leaf_node_cache.clear()
 
     def external_references(self, ref_list_num):
         if self._root_node is None:
