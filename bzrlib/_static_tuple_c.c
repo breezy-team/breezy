@@ -250,8 +250,9 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
         obj = PyTuple_GET_ITEM(args, i);
         if (!PyString_CheckExact(obj)) {
             if (!StaticTuple_CheckExact(obj)) {
-                PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
-                    " requires that all items are strings or StaticTuple.");
+                PyErr_Format(PyExc_TypeError, "StaticTuple.__init__(...)"
+                    " requires that all items are strings or StaticTuple"
+                    " not %s", Py_TYPE(obj)->tp_name);
                 type->tp_dealloc((PyObject *)self);
                 return NULL;
             }

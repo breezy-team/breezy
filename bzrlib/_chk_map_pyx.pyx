@@ -103,8 +103,8 @@ def _search_key_16(key):
     cdef char *c_out
     # cdef PyObject *bit
 
-    if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a tuple' % (key,))
+    if not StaticTuple_CheckExact(key):
+        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (9 * num_bits) - 1
@@ -143,8 +143,8 @@ def _search_key_255(key):
     cdef char *c_out
     # cdef PyObject *bit
 
-    if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a tuple' % (key,))
+    if not StaticTuple_CheckExact(key):
+        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (5 * num_bits) - 1
@@ -282,6 +282,8 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             cur = next_line + 1
         entry_bits = StaticTuple_New(width)
         for i from 0 <= i < num_prefix_bits:
+            # TODO: Use PyList_GetItem, or turn prefix_bits into a
+            #       tuple/StaticTuple
             entry = prefix_bits[i]
             # SET_ITEM 'steals' a reference
             Py_INCREF(entry)
@@ -359,6 +361,8 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         _unknown = chk_map._unknown
     result = _InternalNode(search_key_func=search_key_func)
 
+    if not StaticTuple_CheckExact(key):
+        raise TypeError('key %r is not a StaticTuple' % (key,))
     if not PyString_CheckExact(bytes):
         raise TypeError('bytes must be a plain string not %s' % (type(bytes),))
 
@@ -415,6 +419,3 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._node_width = len(item_prefix)
     result._search_prefix = PyString_FromStringAndSize(prefix, prefix_length)
     return result
-
-
-_key_type = StaticTuple

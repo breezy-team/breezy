@@ -51,6 +51,7 @@ from bzrlib.errors import (
     )
 from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
+from bzrlib.static_tuple import StaticTuple
 
 
 class InventoryEntry(object):
@@ -1810,21 +1811,24 @@ class CHKInventory(CommonInventory):
                         pass
                 deletes.add(file_id)
             else:
-                new_key = (file_id,)
+                new_key = StaticTuple(file_id,)
                 new_value = result._entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
-                parents.add((split(new_path)[0], entry.parent_id))
+                if entry.parent_id is not None:
+                    parents.add(StaticTuple(split(new_path)[0].encode('utf8'),
+                                            entry.parent_id))
             if old_path is None:
                 old_key = None
             else:
-                old_key = (file_id,)
+                old_key = StaticTuple(file_id,)
                 if self.id2path(file_id) != old_path:
                     raise errors.InconsistentDelta(old_path, file_id,
                         "Entry was at wrong other path %r." %
                         self.id2path(file_id))
                 altered.add(file_id)
+            # TODO: use a StaticTuple here, though a value may be None
             id_to_entry_delta.append((old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
@@ -1923,7 +1927,13 @@ class CHKInventory(CommonInventory):
         search_key_name = info.get('search_key_name', 'plain')
         parent_id_basename_to_file_id = info.get(
             'parent_id_basename_to_file_id', None)
+        if not parent_id_basename_to_file_id.startswith('sha1:'):
+            raise ValueError('parent_id_basename_to_file_id should be a sha1'
+                             ' key not %r' % (parent_id_basename_to_file_id,))
         id_to_entry = info['id_to_entry']
+        if not id_to_entry.startswith('sha1:'):
+            raise ValueError('id_to_entry should be a sha1'
+                             ' key not %r' % (id_to_entry,))
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
@@ -1932,12 +1942,13 @@ class CHKInventory(CommonInventory):
                             result._search_key_name)
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (parent_id_basename_to_file_id,),
+                chk_store, StaticTuple(parent_id_basename_to_file_id,),
                 search_key_func=search_key_func)
         else:
             result.parent_id_basename_to_file_id = None
 
-        result.id_to_entry = chk_map.CHKMap(chk_store, (id_to_entry,),
+        result.id_to_entry = chk_map.CHKMap(chk_store,
+                                            StaticTuple(id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1965,7 +1976,8 @@ class CHKInventory(CommonInventory):
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            key = StaticTuple(entry.file_id,).intern()
+            id_to_entry_dict[key] = entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
 
@@ -1994,7 +2006,7 @@ class CHKInventory(CommonInventory):
             parent_id = entry.parent_id
         else:
             parent_id = ''
-        return parent_id, entry.name.encode('utf8')
+        return StaticTuple(parent_id, entry.name.encode('utf8')).intern()
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
@@ -2215,9 +2227,9 @@ class CHKInventory(CommonInventory):
             lines.append('search_key_name: %s\n' % (self._search_key_name,))
             lines.append("root_id: %s\n" % self.root_id)
             lines.append('parent_id_basename_to_file_id: %s\n' %
-                self.parent_id_basename_to_file_id.key())
+                (self.parent_id_basename_to_file_id.key()[0],))
             lines.append("revision_id: %s\n" % self.revision_id)
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         else:
             lines.append("revision_id: %s\n" % self.revision_id)
             lines.append("root_id: %s\n" % self.root_id)

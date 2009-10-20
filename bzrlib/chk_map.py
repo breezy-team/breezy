@@ -52,6 +52,7 @@ from bzrlib import (
     registry,
     trace,
     )
+from bzrlib.static_tuple import StaticTuple
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -100,6 +101,7 @@ class CHKMap(object):
         if root_key is None:
             self._root_node = LeafNode(search_key_func=search_key_func)
         else:
+            _check_key(root_key)
             self._root_node = self._node_key(root_key)
 
     def apply_delta(self, delta):
@@ -133,7 +135,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) in (_key_type, tuple):
+        if type(self._root_node) is StaticTuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -147,7 +149,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) in (tuple, _key_type):
+        if type(node) is StaticTuple:
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -218,6 +220,7 @@ class CHKMap(object):
         root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
+        assert type(root_key) is StaticTuple
         return root_key
 
     @classmethod
@@ -256,7 +259,11 @@ class CHKMap(object):
             for split, subnode in node_details:
                 node.add_node(split, subnode)
         keys = list(node.serialise(store))
-        return keys[-1]
+        root_node = keys[-1]
+        assert (type(root_node) is StaticTuple
+                and len(root_node) == 1 and
+                type(root_node[0]) is str)
+        return root_node
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -486,7 +493,8 @@ class CHKMap(object):
 
     def key(self):
         """Return the key for this map."""
-        if type(self._root_node) in (tuple, _key_type):
+        if type(self._root_node) is StaticTuple:
+            _check_key(self._root_node)
             return self._root_node
         else:
             return self._root_node._key
@@ -516,8 +524,12 @@ class CHKMap(object):
 
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
-        if type(node) in (tuple, _key_type):
+        if type(node) is StaticTuple:
+            _check_key(node)
             return node
+        elif type(node) is tuple:
+            raise TypeError('node %r should be a StaticTuple not tuple'
+                            % (node,))
         else:
             return node._key
 
@@ -542,7 +554,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) in (tuple, _key_type):
+        if type(self._root_node) is StaticTuple:
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -873,7 +885,7 @@ class LeafNode(Node):
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
+        self._key = StaticTuple("sha1:" + sha1,).intern()
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             raise AssertionError('Invalid _current_size')
@@ -994,6 +1006,9 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
+        if type(key) is not StaticTuple:
+            import pdb; pdb.set_trace()
+        key = StaticTuple.from_sequence(key).intern()
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 
@@ -1024,7 +1039,7 @@ class InternalNode(Node):
             # for whatever we are missing
             shortcut = True
             for prefix, node in self._items.iteritems():
-                if node.__class__ in (tuple, _key_type):
+                if node.__class__ is StaticTuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
@@ -1059,7 +1074,7 @@ class InternalNode(Node):
                     # A given key can only match 1 child node, if it isn't
                     # there, then we can just return nothing
                     return
-                if node.__class__ in (tuple, _key_type):
+                if node.__class__ is StaticTuple:
                     keys[node] = (search_prefix, [key])
                 else:
                     # This is loaded, and the only thing that can match,
@@ -1092,7 +1107,7 @@ class InternalNode(Node):
                         # We can ignore this one
                         continue
                     node_key_filter = prefix_to_keys[search_prefix]
-                    if node.__class__ in (tuple, _key_type):
+                    if node.__class__ is StaticTuple:
                         keys[node] = (search_prefix, node_key_filter)
                     else:
                         yield node, node_key_filter
@@ -1107,7 +1122,7 @@ class InternalNode(Node):
                         if sub_prefix in length_filter:
                             node_key_filter.extend(prefix_to_keys[sub_prefix])
                     if node_key_filter: # this key matched something, yield it
-                        if node.__class__ in (tuple, _key_type):
+                        if node.__class__ is StaticTuple:
                             keys[node] = (prefix, node_key_filter)
                         else:
                             yield node, node_key_filter
@@ -1245,7 +1260,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) in (tuple, _key_type):
+            if type(node) is StaticTuple:
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1262,7 +1277,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) in (tuple, _key_type):
+            if type(node) is StaticTuple:
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1272,7 +1287,7 @@ class InternalNode(Node):
                     % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
+        self._key = StaticTuple("sha1:" + sha1,).intern()
         _page_cache.add(self._key, ''.join(lines))
         yield self._key
 
@@ -1307,7 +1322,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) in (tuple, _key_type):
+            if type(value) is StaticTuple:
                 refs.append(value)
             else:
                 refs.append(value.key())
@@ -1639,7 +1654,6 @@ try:
         _search_key_255,
         _deserialise_leaf_node,
         _deserialise_internal_node,
-        _key_type,
         )
 except ImportError, e:
     osutils.failed_to_load_extension(e)
@@ -1648,7 +1662,19 @@ except ImportError, e:
         _search_key_255,
         _deserialise_leaf_node,
         _deserialise_internal_node,
-        _key_type,
         )
 search_key_registry.register('hash-16-way', _search_key_16)
 search_key_registry.register('hash-255-way', _search_key_255)
+
+def _check_key(key):
+    if type(key) is not StaticTuple:
+        raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
+    if len(key) != 1:
+        raise ValueError('key %r should have length 1, not %d' % (key, len(key),))
+    if type(key[0]) is not str:
+        raise TypeError('key %r should hold a str, not %r'
+                        % (key, type(key[0])))
+    if not key[0].startswith('sha1:'):
+        raise ValueError('key %r should point to a sha1:' % (key,))
+
+
