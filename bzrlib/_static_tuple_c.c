@@ -574,6 +574,27 @@ static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
 
 
 static PyObject *
+StaticTuple_reduce(StaticTuple *self)
+{
+    PyObject *result = NULL, *as_tuple = NULL;
+
+    result = PyTuple_New(2);
+    if (!result) {
+        return NULL;
+    }
+    as_tuple = StaticTuple_as_tuple(self);
+    if (as_tuple == NULL) {
+        return NULL;
+    }
+    PyTuple_SET_ITEM(result, 0, (PyObject *)&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 1, as_tuple);
+    return result;
+}
+
+static char StaticTuple_reduce_doc[] = "__reduce__() => tuple\n";
+
+
+static PyObject *
 StaticTuple_add(PyObject *v, PyObject *w)
 {
     Py_ssize_t i, len_v, len_w;
@@ -688,6 +709,7 @@ static PyMethodDef StaticTuple_methods[] = {
      METH_STATIC | METH_VARARGS,
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
+    {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
     {NULL, NULL} /* sentinel */
 };
 
