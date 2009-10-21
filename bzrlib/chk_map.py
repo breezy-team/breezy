@@ -101,7 +101,6 @@ class CHKMap(object):
         if root_key is None:
             self._root_node = LeafNode(search_key_func=search_key_func)
         else:
-            _check_key(root_key)
             self._root_node = self._node_key(root_key)
 
     def apply_delta(self, delta):
