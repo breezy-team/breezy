@@ -559,6 +559,78 @@ static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
     "Check to see if this tuple has been interned.\n";
 
 
+int
+StaticTuple_coerce(PyObject **v, PyObject **w)
+{
+	StaticTuple *st;
+	if (PyTuple_Check(*v)) {
+		st = (StaticTuple*) StaticTuple_new_constructor(
+				&StaticTuple_Type, *v, NULL);
+		if (!st)
+			return -1;
+		Py_INCREF(st);
+		*v = (PyObject*)st;
+	} else if (StaticTuple_CheckExact(*v))
+		Py_INCREF(*v);
+	else
+		return 1;
+
+	if (PyTuple_Check(*w)) {
+		st = (StaticTuple*) StaticTuple_new_constructor(
+				&StaticTuple_Type, *w, NULL);
+		if (!st)
+			return -1;
+		Py_INCREF(st);
+		*w = (PyObject*)st;
+	} else if (StaticTuple_CheckExact(*w))
+		Py_INCREF(*w);
+	else
+		return 1;
+	return 0;
+}
+
+static PyObject *
+StaticTuple_add(PyObject *v, PyObject *w)
+{
+	PyObject *v_t = NULL, *w_t = NULL;
+	PyObject *tmp_tuple, *result;
+	 /* StaticTuples and plain tuples may be added (concatenated) to
+	  * StaticTuples.
+	  */
+	if (StaticTuple_CheckExact(v)) {
+		v_t = StaticTuple_as_tuple((StaticTuple*)v);
+		if (!v_t)
+			goto fail;
+	} else if (PyTuple_Check(v))
+		v_t = v;
+	else
+		goto not_imp;
+
+	if (StaticTuple_CheckExact(w)) {
+		w_t = StaticTuple_as_tuple((StaticTuple*)w);
+		if (!w_t)
+			goto fail;
+	} else if (PyTuple_Check(w))
+		w_t = w;
+	else
+		goto not_imp;
+
+	tmp_tuple = PySequence_Concat(v_t, w_t);
+	result = StaticTuple_new_constructor(&StaticTuple_Type, tmp_tuple, NULL);
+	Py_DECREF(tmp_tuple);
+	Py_INCREF(result);
+	return result;
+
+not_imp:
+	Py_XDECREF(v_t);
+	Py_XDECREF(w_t);
+	return Py_NotImplemented;
+fail:
+	Py_XDECREF(v_t);
+	Py_XDECREF(w_t);
+	return NULL;
+}
+
 static PyObject *
 StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
 {
@@ -624,6 +696,29 @@ static PyMethodDef StaticTuple_methods[] = {
     {NULL, NULL} /* sentinel */
 };
 
+
+static PyNumberMethods StaticTuple_as_number = {
+	(binaryfunc) StaticTuple_add,	/* nb_add */
+	0, 		/* nb_subtract */
+	0, 		/* nb_multiply */
+	0,	/* nb_divide */
+	0,		/* nb_remainder */
+	0,		/* nb_divmod */
+	0,		/* nb_power */
+	0,			/* nb_negative */
+	0,			/* nb_positive */
+	0,			/* nb_absolute */
+	0,		/* nb_nonzero */
+	0,					/* nb_invert */
+	0,					/* nb_lshift */
+	0,					/* nb_rshift */
+	0,					/* nb_and */
+	0,					/* nb_xor */
+	0,					/* nb_or */
+	StaticTuple_coerce,				/* nb_coerce */
+};
+	
+
 static PySequenceMethods StaticTuple_as_sequence = {
     (lenfunc)StaticTuple_length,            /* sq_length */
     0,                              /* sq_concat */
@@ -654,7 +749,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
     (reprfunc)StaticTuple_repr,                  /* tp_repr */
-    0,                                           /* tp_as_number */
+    &StaticTuple_as_number,                      /* tp_as_number */
     &StaticTuple_as_sequence,                    /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
     (hashfunc)StaticTuple_hash,                  /* tp_hash */
