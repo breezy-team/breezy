@@ -1132,7 +1132,7 @@ class TestMap(TestCaseWithStore):
     def test_iteritems_selected_one_of_two_items(self):
         chkmap = self._get_map( {("a",):"content here", ("b",):"more content"})
         self.assertEqual({("a",): "content here"},
-            self.to_dict(chkmap, [StaticTuple("a",)]))
+            self.to_dict(chkmap, [("a",)]))
 
     def test_iteritems_keys_prefixed_by_2_width_nodes(self):
         chkmap = self._get_map(
@@ -1141,7 +1141,7 @@ class TestMap(TestCaseWithStore):
             maximum_size=10, key_width=2)
         self.assertEqual(
             {("a", "a"): "content here", ("a", "b"): 'more content'},
-            self.to_dict(chkmap, [StaticTuple("a",)]))
+            self.to_dict(chkmap, [("a",)]))
 
     def test_iteritems_keys_prefixed_by_2_width_nodes_hashed(self):
         search_key_func = chk_map.search_key_registry.get('hash-16-way')
@@ -1157,7 +1157,7 @@ class TestMap(TestCaseWithStore):
             maximum_size=10, key_width=2, search_key_func=search_key_func)
         self.assertEqual(
             {("a", "a"): "content here", ("a", "b"): 'more content'},
-            self.to_dict(chkmap, [StaticTuple("a",)]))
+            self.to_dict(chkmap, [("a",)]))
 
     def test_iteritems_keys_prefixed_by_2_width_one_leaf(self):
         chkmap = self._get_map(
@@ -1165,7 +1165,7 @@ class TestMap(TestCaseWithStore):
              ("b", ""): 'boring content'}, key_width=2)
         self.assertEqual(
             {("a", "a"): "content here", ("a", "b"): 'more content'},
-            self.to_dict(chkmap, [StaticTuple("a",)]))
+            self.to_dict(chkmap, [("a",)]))
 
     def test___len__empty(self):
         chkmap = self._get_map({})
@@ -1380,9 +1380,9 @@ class TestMapSearchKeys(TestCaseWithStore):
         chkmap = chk_map.CHKMap(chk_bytes, None,
                                 search_key_func=chk_map._search_key_16)
         chkmap._root_node.set_maximum_size(10)
-        chkmap.map(StaticTuple('1',), 'foo')
-        chkmap.map(StaticTuple('2',), 'bar')
-        chkmap.map(StaticTuple('3',), 'baz')
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
         self.assertEqualDiff("'' InternalNode\n"
                              "  '1' LeafNode\n"
                              "      ('2',) 'bar'\n"
@@ -1396,7 +1396,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                                 search_key_func=chk_map._search_key_16)
         # We can get the values back correctly
         self.assertEqual([(('1',), 'foo')],
-                         list(chkmap.iteritems([StaticTuple('1',)])))
+                         list(chkmap.iteritems([('1',)])))
         self.assertEqualDiff("'' InternalNode\n"
                              "  '1' LeafNode\n"
                              "      ('2',) 'bar'\n"
@@ -1411,9 +1411,9 @@ class TestMapSearchKeys(TestCaseWithStore):
         chkmap = chk_map.CHKMap(chk_bytes, None,
                                 search_key_func=chk_map._search_key_255)
         chkmap._root_node.set_maximum_size(10)
-        chkmap.map(StaticTuple('1',), 'foo')
-        chkmap.map(StaticTuple('2',), 'bar')
-        chkmap.map(StaticTuple('3',), 'baz')
+        chkmap.map(('1',), 'foo')
+        chkmap.map(('2',), 'bar')
+        chkmap.map(('3',), 'baz')
         self.assertEqualDiff("'' InternalNode\n"
                              "  '\\x1a' LeafNode\n"
                              "      ('2',) 'bar'\n"
@@ -1427,7 +1427,7 @@ class TestMapSearchKeys(TestCaseWithStore):
                                 search_key_func=chk_map._search_key_255)
         # We can get the values back correctly
         self.assertEqual([(('1',), 'foo')],
-                         list(chkmap.iteritems([StaticTuple('1',)])))
+                         list(chkmap.iteritems([('1',)])))
         self.assertEqualDiff("'' InternalNode\n"
                              "  '\\x1a' LeafNode\n"
                              "      ('2',) 'bar'\n"
@@ -1888,7 +1888,8 @@ class TestInternalNode(TestCaseWithStore):
         node._items['\xbe'] = None
         node.add_node("\x85", leaf2)
         self.assertEqual([(('strange',), 'beast')],
-            sorted(node.iteritems(None, [StaticTuple('strange',), StaticTuple('weird',)])))
+            sorted(node.iteritems(None, [StaticTuple('strange',),
+                                         StaticTuple('weird',)])))
 
     def test_iteritems_partial_empty(self):
         node = InternalNode()

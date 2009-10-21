@@ -494,6 +494,9 @@ class CHKMap(object):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
         # TODO: StaticTuple Barrier here
+        if key_filter is not None:
+            as_st = StaticTuple.from_sequence
+            key_filter = [as_st(key) for key in key_filter]
         return self._root_node.iteritems(self._store, key_filter=key_filter)
 
     def key(self):
