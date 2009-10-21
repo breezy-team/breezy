@@ -1600,8 +1600,6 @@ class CHKInventory(CommonInventory):
         interesting.add(None) # this will auto-filter it in the loop
         remaining_parents.discard(None) 
         while remaining_parents:
-            if None in remaining_parents:
-                import pdb; pdb.set_trace()
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
@@ -1616,7 +1614,7 @@ class CHKInventory(CommonInventory):
         while directories_to_expand:
             # Expand directories by looking in the
             # parent_id_basename_to_file_id map
-            keys = [(f,) for f in directories_to_expand]
+            keys = [StaticTuple(f,) for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
             next_file_ids = set([item[1] for item in items])
@@ -2016,7 +2014,7 @@ class CHKInventory(CommonInventory):
             return result
         try:
             return self._bytes_to_entry(
-                self.id_to_entry.iteritems([(file_id,)]).next()[1])
+                self.id_to_entry.iteritems([StaticTuple(file_id,)]).next()[1])
         except StopIteration:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id)
@@ -2035,7 +2033,7 @@ class CHKInventory(CommonInventory):
                 remaining.append(file_id)
             else:
                 result.append(entry)
-        file_keys = [(f,) for f in remaining]
+        file_keys = [StaticTuple(f,) for f in remaining]
         for file_key, value in self.id_to_entry.iteritems(file_keys):
             entry = self._bytes_to_entry(value)
             result.append(entry)
@@ -2046,7 +2044,8 @@ class CHKInventory(CommonInventory):
         # Perhaps have an explicit 'contains' method on CHKMap ?
         if self._fileid_to_entry_cache.get(file_id, None) is not None:
             return True
-        return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
+        return len(list(
+            self.id_to_entry.iteritems([StaticTuple(file_id,)]))) == 1
 
     def is_root(self, file_id):
         return file_id == self.root_id
@@ -2204,7 +2203,7 @@ class CHKInventory(CommonInventory):
             basename_utf8 = basename.encode('utf8')
             file_id = self._path_to_fileid_cache.get(cur_path, None)
             if file_id is None:
-                key_filter = [(current_id, basename_utf8)]
+                key_filter = [StaticTuple(current_id, basename_utf8)]
                 items = parent_id_index.iteritems(key_filter)
                 for (parent_id, name_utf8), file_id in items:
                     if parent_id != current_id or name_utf8 != basename_utf8:
@@ -2234,8 +2233,8 @@ class CHKInventory(CommonInventory):
             lines.append("root_id: %s\n" % self.root_id)
             if self.parent_id_basename_to_file_id is not None:
                 lines.append('parent_id_basename_to_file_id: %s\n' %
-                    self.parent_id_basename_to_file_id.key())
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+                    (self.parent_id_basename_to_file_id.key()[0],))
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         return lines
 
     @property
@@ -2282,8 +2281,8 @@ class CHKInventoryDirectory(InventoryDirectory):
         parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
         child_keys = set()
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-            key_filter=[(self.file_id,)]):
-            child_keys.add((file_id,))
+            key_filter=[StaticTuple(self.file_id,)]):
+            child_keys.add(StaticTuple(file_id,))
         cached = set()
         for file_id_key in child_keys:
             entry = self._chk_inventory._fileid_to_entry_cache.get(
