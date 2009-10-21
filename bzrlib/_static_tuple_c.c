@@ -587,6 +587,7 @@ StaticTuple_reduce(StaticTuple *self)
         Py_DECREF(result);
         return NULL;
     }
+    Py_INCREF(&StaticTuple_Type);
     PyTuple_SET_ITEM(result, 0, (PyObject *)&StaticTuple_Type);
     PyTuple_SET_ITEM(result, 1, as_tuple);
     return result;
