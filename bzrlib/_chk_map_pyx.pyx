@@ -17,14 +17,7 @@
 
 #python2.4 support
 cdef extern from "python-compat.h":
-    # PyString_InternInPlace takes a **, and mutate the pointer supplied.
-    # Neither Pyrex nor Cython handles that particularly well.
-    # We also cannot use intern() directly, because our strings have '\x00' in
-    # them, and pyrex and cython both translate intern() into
-    # PyString_InternFromString(PyString_AsString()) which assumes a regular
-    # null terminated C string
-    # 
-    void INTERN_STRING(object)
+    pass
 
 cdef extern from *:
     ctypedef unsigned int size_t
@@ -57,8 +50,6 @@ cdef extern from "Python.h":
     Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *s)
     char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
-    void PyString_InternInPlace(PyObject **)
-    int PyString_CHECK_INTERNED(object)
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
@@ -301,13 +292,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             # SET_ITEM 'steals' a reference
             Py_INCREF(entry)
             StaticTuple_SET_ITEM(entry_bits, i, entry)
-        # TODO: Consider interning the value lines
-        #       Often there will be many leaf nodes that only have a single
-        #       line or two that is different among many (60+) lines
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
-        INTERN_STRING(value)
-        if not PyString_CHECK_INTERNED(value):
-            raise AssertionError('i asked to intern, but it didn\'t work')
         # The next entry bit needs the 'tail' from the prefix, and first part
         # of the line
         entry_start = line_start
@@ -415,21 +400,15 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         next_null = <char *>_my_memrchr(cur, c'\0', next_line - cur)
         if next_null == NULL:
             raise ValueError('bad no null')
-        # TODO: intern item_prefix, it will almost always be redundant with all
-        #       of the other internal node instances at this depth.
         item_prefix = PyString_FromStringAndSize(NULL,
             prefix_length + next_null - cur)
         c_item_prefix = PyString_AS_STRING(item_prefix)
         if prefix_length:
             memcpy(c_item_prefix, prefix, prefix_length)
         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
-        c_item_prefix = NULL # Done with this
         flat_key = PyString_FromStringAndSize(next_null + 1,
                                               next_line - next_null - 1)
         flat_key = StaticTuple(flat_key).intern()
-        INTERN_STRING(item_prefix)
-        if not PyString_CHECK_INTERNED(item_prefix):
-            raise AssertionError('i asked to intern, but it didn\'t work')
         PyDict_SetItem(items, item_prefix, flat_key)
         cur = next_line + 1
     assert len(items) > 0

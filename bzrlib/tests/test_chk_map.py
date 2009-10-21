@@ -1139,10 +1139,6 @@ class TestMap(TestCaseWithStore):
             {("a","a"):"content here", ("a", "b",):"more content",
              ("b", ""): 'boring content'},
             maximum_size=10, key_width=2)
-        print
-        print chkmap._dump_tree()
-        print repr(chk_map._page_cache[chkmap.key()])
-        print repr(chk_map._page_cache[chkmap._root_node._items['a']._key])
         self.assertEqual(
             {("a", "a"): "content here", ("a", "b"): 'more content'},
             self.to_dict(chkmap, [("a",)]))
