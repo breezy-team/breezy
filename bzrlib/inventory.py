@@ -1614,7 +1614,7 @@ class CHKInventory(CommonInventory):
         while directories_to_expand:
             # Expand directories by looking in the
             # parent_id_basename_to_file_id map
-            keys = [StaticTuple(f,) for f in directories_to_expand]
+            keys = [StaticTuple(f,).intern() for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
             next_file_ids = set([item[1] for item in items])
@@ -1814,8 +1814,7 @@ class CHKInventory(CommonInventory):
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
                 result._path_to_fileid_cache[new_path] = file_id
-                if entry.parent_id is not None:
-                    parents.add((split(new_path)[0], entry.parent_id))
+                parents.add((split(new_path)[0], entry.parent_id))
             if old_path is None:
                 old_key = None
             else:
@@ -1825,8 +1824,7 @@ class CHKInventory(CommonInventory):
                         "Entry was at wrong other path %r." %
                         self.id2path(file_id))
                 altered.add(file_id)
-            # TODO: use a StaticTuple here, though a value may be None
-            id_to_entry_delta.append((old_key, new_key, new_value))
+            id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
                 if old_path is None:
@@ -2033,7 +2031,7 @@ class CHKInventory(CommonInventory):
                 remaining.append(file_id)
             else:
                 result.append(entry)
-        file_keys = [StaticTuple(f,) for f in remaining]
+        file_keys = [StaticTuple(f,).intern() for f in remaining]
         for file_key, value in self.id_to_entry.iteritems(file_keys):
             entry = self._bytes_to_entry(value)
             result.append(entry)

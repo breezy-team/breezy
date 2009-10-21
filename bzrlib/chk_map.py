@@ -222,7 +222,9 @@ class CHKMap(object):
         root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
-        assert type(root_key) is StaticTuple
+        if type(root_key) is not StaticTuple:
+            raise AssertionError('we got a %s instead of a StaticTuple'
+                                 % (type(root_key),))
         return root_key
 
     @classmethod
@@ -263,11 +265,7 @@ class CHKMap(object):
             for split, subnode in node_details:
                 node.add_node(split, subnode)
         keys = list(node.serialise(store))
-        root_node = keys[-1]
-        assert (type(root_node) is StaticTuple
-                and len(root_node) == 1 and
-                type(root_node[0]) is str)
-        return root_node
+        return keys[-1]
 
     def iter_changes(self, basis):
         """Iterate over the changes between basis and self.
@@ -493,7 +491,6 @@ class CHKMap(object):
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
-        # TODO: StaticTuple Barrier here
         if key_filter is not None:
             as_st = StaticTuple.from_sequence
             key_filter = [as_st(key) for key in key_filter]
@@ -502,7 +499,6 @@ class CHKMap(object):
     def key(self):
         """Return the key for this map."""
         if type(self._root_node) is StaticTuple:
-            _check_key(self._root_node)
             return self._root_node
         else:
             return self._root_node._key
@@ -536,7 +532,6 @@ class CHKMap(object):
         if type(node) is tuple:
             node = StaticTuple.from_sequence(node)
         if type(node) is StaticTuple:
-            _check_key(node)
             return node
         else:
             return node._key
@@ -567,7 +562,6 @@ class CHKMap(object):
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
-        assert type(keys[-1]) is StaticTuple
         return keys[-1]
 
 
@@ -1025,8 +1019,8 @@ class InternalNode(Node):
         :return: An InternalNode instance.
         """
         if type(key) is not StaticTuple:
-            import pdb; pdb.set_trace()
-        key = StaticTuple.from_sequence(key).intern()
+            raise AssertionError('deserialise should be called with a'
+                                 ' StaticTuple not %s' % (type(key),))
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 
@@ -1460,6 +1454,12 @@ class CHKMapDifference(object):
 
     def __init__(self, store, new_root_keys, old_root_keys,
                  search_key_func, pb=None):
+        # TODO: Should we add a StaticTuple barrier here? It would be nice to
+        #       force callers to use StaticTuple, because there will often be
+        #       lots of keys passed in here. And even if we cast it locally,
+        #       that just meanst that we will have *both* a StaticTuple and a
+        #       tuple() in memory, referring to the same object. (so a net
+        #       increase in memory, not a decrease.)
         self._store = store
         self._new_root_keys = new_root_keys
         self._old_root_keys = old_root_keys
@@ -1684,7 +1684,13 @@ except ImportError, e:
 search_key_registry.register('hash-16-way', _search_key_16)
 search_key_registry.register('hash-255-way', _search_key_255)
 
+
 def _check_key(key):
+    """Helper function to assert that a key is properly formatted.
+
+    This generally shouldn't be used in production code, but it can be helpful
+    to debug problems.
+    """
     if type(key) is not StaticTuple:
         raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
     if len(key) != 1:

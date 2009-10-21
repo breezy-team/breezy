@@ -55,7 +55,6 @@ from bzrlib.repofmt.pack_repo import (
     )
 from bzrlib.static_tuple import StaticTuple
 
-_check_key = chk_map._check_key
 
 class GCPack(NewPack):
 
@@ -816,11 +815,11 @@ class CHKInventoryRepository(KnitPackRepository):
                                  ' no new_path %r' % (file_id,))
             if new_path == '':
                 new_inv.root_id = file_id
-                parent_id_basename_key = StaticTuple('', '')
+                parent_id_basename_key = StaticTuple('', '').intern()
             else:
                 utf8_entry_name = entry.name.encode('utf-8')
                 parent_id_basename_key = StaticTuple(entry.parent_id,
-                                                     utf8_entry_name)
+                                                     utf8_entry_name).intern()
             new_value = entry_to_bytes(entry)
             # Populate Caches?
             # new_inv._path_to_fileid_cache[new_path] = file_id
@@ -1174,8 +1173,6 @@ def _build_interesting_key_sets(repo, inventory_ids, parent_only_inv_ids):
     for inv in repo.iter_inventories(inventory_ids, 'unordered'):
         root_key = inv.id_to_entry.key()
         pid_root_key = inv.parent_id_basename_to_file_id.key()
-        _check_key(root_key)
-        _check_key(pid_root_key)
         if inv.revision_id in parent_only_inv_ids:
             result.uninteresting_root_keys.add(root_key)
             result.uninteresting_pid_root_keys.add(pid_root_key)
