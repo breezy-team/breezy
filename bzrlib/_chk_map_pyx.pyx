@@ -29,9 +29,8 @@ cdef extern from *:
 
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
-    struct _PyObject:
+    ctypedef struct PyObject:
         pass
-    ctypedef _PyObject PyObject
     int PyTuple_CheckExact(object p)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     int PyString_CheckExact(object)
@@ -52,6 +51,18 @@ cdef extern from "Python.h":
     char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
+# It seems we need to import the definitions so that the pyrex compiler has
+# local names to access them.
+from _static_tuple_c cimport StaticTuple,\
+    import_static_tuple_c, StaticTuple_New, \
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+
+cdef extern from "_static_tuple_c.h":
+    # Defined explicitly rathert than cimport ing. Using cimport the type for
+    # PyObject is a different class that happens to have the same name...
+    PyObject * StaticTuple_GET_ITEM_ptr "StaticTuple_GET_ITEM" (StaticTuple,
+                                                                Py_ssize_t)
+
 cdef extern from "zlib.h":
     ctypedef unsigned long uLong
     ctypedef unsigned int uInt
@@ -59,11 +70,6 @@ cdef extern from "zlib.h":
 
     uLong crc32(uLong crc, Bytef *buf, uInt len)
 
-# It seems we need to import the definitions so that the pyrex compiler has
-# local names to access them.
-from _static_tuple_c cimport StaticTuple,\
-    import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 
 # This sets up the StaticTuple C_API functionality
@@ -101,7 +107,7 @@ def _search_key_16(key):
     cdef uInt crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    # cdef PyObject *bit
+    cdef PyObject *bit
 
     if not StaticTuple_CheckExact(key):
         raise TypeError('key %r is not a StaticTuple' % (key,))
@@ -117,13 +123,11 @@ def _search_key_16(key):
         # We use the _ptr variant, because GET_ITEM returns a borrowed
         # reference, and Pyrex assumes that returned 'object' are a new
         # reference
-        # XXX: This needs to be updated for PySequence_GetItem since both
-        #      PyTuple and StaticTuple support that api
-        bit = key[i]# PyTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact(bit):
+        bit = StaticTuple_GET_ITEM_ptr(key, i)
+        if not PyString_CheckExact_ptr(bit):
             raise TypeError('Bit %d of %r is not a string' % (i, key))
-        c_bit = <Bytef *>PyString_AS_STRING(bit)
-        c_len = PyString_GET_SIZE(bit)
+        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
+        c_len = PyString_GET_SIZE_ptr(bit)
         crc_val = crc32(0, c_bit, c_len)
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
@@ -141,7 +145,7 @@ def _search_key_255(key):
     cdef uInt crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    # cdef PyObject *bit
+    cdef PyObject *bit
 
     if not StaticTuple_CheckExact(key):
         raise TypeError('key %r is not a StaticTuple' % (key,))
@@ -154,12 +158,12 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = key[i] # PyTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact(bit):
-            raise TypeError('Bit %d of %r is not a string: %r' % (i, key,
-            bit))
-        c_bit = <Bytef *>PyString_AS_STRING(bit)
-        c_len = PyString_GET_SIZE(bit)
+        bit = StaticTuple_GET_ITEM_ptr(key, i)
+        if not PyString_CheckExact_ptr(bit):
+            raise TypeError('Bit %d of %r is not a string: %r'
+                            % (i, key, <object>bit))
+        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
+        c_len = PyString_GET_SIZE_ptr(bit)
         crc_val = crc32(0, c_bit, c_len)
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
