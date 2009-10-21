@@ -33,11 +33,11 @@ class StaticTuple(tuple):
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""
         for bit in args:
-            if type(bit) not in (str, StaticTuple, unicode, int, float,
+            if type(bit) not in (str, StaticTuple, unicode, int, long, float,
                                  None.__class__, bool):
                 raise TypeError('StaticTuple can only point to'
-                    ' StaticTuple, str, unicode, int, float, bool, or None'
-                    ' not %s' % (type(bit),))
+                    ' StaticTuple, str, unicode, int, long, float, bool, or'
+                    ' None not %s' % (type(bit),))
         num_keys = len(args)
         if num_keys < 0 or num_keys > 255:
             raise ValueError('must have 1 => 256 key bits')

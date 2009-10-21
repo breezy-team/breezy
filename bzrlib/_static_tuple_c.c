@@ -240,14 +240,20 @@ StaticTuple_check_items(StaticTuple *self)
                 " should not have a NULL entry.");
             return 0;
         }
-        if (!PyString_CheckExact(obj)) {
-            if (!StaticTuple_CheckExact(obj)) {
-                PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
-                    " requires that all items are strings or StaticTuples"
-                    " not %s.", Py_TYPE(obj)->tp_name);
-                return 0;
-            }
-        }
+        if (PyString_CheckExact(obj)
+            || StaticTuple_CheckExact(obj)
+            || obj == Py_None
+            || PyBool_Check(obj)
+            || PyInt_Check(obj)
+            || PyLong_Check(obj)
+            || PyFloat_Check(obj)
+            || PyUnicode_Check(obj)
+            ) continue;
+        PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
+            " requires that all items are one of"
+            " str, StaticTuple, None, bool, int, long, float, or unicode"
+            " not %s.", Py_TYPE(obj)->tp_name);
+        return 0;
     }
     return 1;
 }
@@ -479,27 +485,14 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             /* Both are StaticTuple types, so recurse */
             result = StaticTuple_richcompare(v_obj, w_obj, Py_EQ);
         } else {
-            /* Not the same type, obviously they won't compare equal */
-            break;
+            /* Fall back to generic richcompare */
+            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
         }
         if (result == NULL) {
             return NULL; /* There seems to be an error */
         }
-        if (result == Py_NotImplemented) {
-            Py_DECREF(result);
-            /* One side must have had a string and the other a StaticTuple.
-             * This clearly means that they are not equal.
-             */
-            if (op == Py_EQ) {
-                Py_INCREF(Py_False);
-                return Py_False;
-            }
-            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
-        }
         if (result == Py_False) {
-            /* This entry is not identical
-             * Shortcut for Py_EQ
-             */
+            // This entry is not identical, Shortcut for Py_EQ
             if (op == Py_EQ) {
                 return result;
             }
@@ -553,8 +546,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         /* Both are StaticTuple types, so recurse */
         return StaticTuple_richcompare(v_obj, w_obj, op);
     } else {
-        Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        return PyObject_RichCompare(v_obj, w_obj, op);
     }
 }
 
