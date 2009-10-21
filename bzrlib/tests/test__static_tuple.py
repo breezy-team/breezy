@@ -104,7 +104,7 @@ class TestStaticTuple(tests.TestCase):
         args_300 = ['a']*300
         self.assertRaises(ValueError, self.module.StaticTuple, *args_300)
         # not a string
-        self.assertRaises(TypeError, self.module.StaticTuple, 10)
+        self.assertRaises(TypeError, self.module.StaticTuple, object())
 
     def test_concat(self):
         st1 = self.module.StaticTuple('foo')
@@ -222,11 +222,29 @@ class TestStaticTuple(tests.TestCase):
         self.assertFalse(k1 < k2)
         self.assertFalse(k1 > k2)
 
+    def test_holds_None(self):
+        k1 = self.module.StaticTuple(None)
+
+    def test_holds_int(self):
+        k1 = self.module.StaticTuple(1)
+
+    def test_holds_float(self):
+        k1 = self.module.StaticTuple(1.2)
+
+    def test_holds_unicode(self):
+        k1 = self.module.StaticTuple(u'\xb5')
+
+    def test_hold_bool(self):
+        k1 = self.module.StaticTuple(True)
+        k2 = self.module.StaticTuple(False)
+
     def test_compare_same_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareEqual(k1, k1)
         k2 = self.module.StaticTuple(k1, k1)
         self.assertCompareEqual(k2, k2)
+        k3 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, True, k1)
+        self.assertCompareEqual(k3, k3)
 
     def test_compare_equivalent_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
@@ -235,6 +253,12 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k2)
         k4 = self.module.StaticTuple(k2, k1)
         self.assertCompareEqual(k1, k2)
+        k5 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, True, k1)
+        k6 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, True, k1)
+        self.assertCompareEqual(k5, k6)
+        k7 = self.module.StaticTuple(None)
+        k8 = self.module.StaticTuple(None)
+        self.assertCompareEqual(k7, k8)
 
     def test_compare_similar_obj(self):
         k1 = self.module.StaticTuple('foo' + ' bar', 'bar' + ' baz')
@@ -285,6 +309,15 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k2)
         k4 = self.module.StaticTuple(k2, k1)
         self.assertCompareDifferent(k3, k4)
+        k5 = self.module.StaticTuple(1)
+        k6 = self.module.StaticTuple(2)
+        self.assertCompareDifferent(k5, k6)
+        k7 = self.module.StaticTuple(1.2)
+        k8 = self.module.StaticTuple(2.4)
+        self.assertCompareDifferent(k7, k8)
+        k9 = self.module.StaticTuple(u's\xb5')
+        k10 = self.module.StaticTuple(u's\xe5')
+        self.assertCompareDifferent(k9, k10)
 
     def test_compare_some_different(self):
         k1 = self.module.StaticTuple('foo', 'bar')
@@ -293,6 +326,9 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k1)
         k4 = self.module.StaticTuple(k1, k2)
         self.assertCompareDifferent(k3, k4)
+        k5 = self.module.StaticTuple('foo', None)
+        self.assertCompareDifferent(k5, k1)
+        self.assertCompareDifferent(k5, k2)
 
     def test_compare_diff_width(self):
         k1 = self.module.StaticTuple('foo')
@@ -301,6 +337,17 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1)
         k4 = self.module.StaticTuple(k1, k2)
         self.assertCompareDifferent(k3, k4)
+
+    def test_compare_different_types(self):
+        k1 = self.module.StaticTuple('foo', 'bar')
+        k2 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, True, k1)
+        self.assertCompareNoRelation(k1, k2)
+        k3 = self.module.StaticTuple('foo')
+        self.assertCompareDifferent(k3, k1)
+        k4 = self.module.StaticTuple(None)
+        self.assertCompareDifferent(k4, k1)
+        k5 = self.module.StaticTuple(1)
+        self.assertCompareNoRelation(k1, k5)
 
     def test_compare_to_tuples(self):
         k1 = self.module.StaticTuple('foo')
@@ -350,6 +397,10 @@ class TestStaticTuple(tests.TestCase):
         k2 = self.module.StaticTuple(k)
         as_tuple2 = (('foo', 'bar', 'baz', 'bing'),)
         self.assertEqual(hash(k2), hash(as_tuple2))
+
+        k3 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, True, k)
+        as_tuple3 = ('foo', 1, None, u'\xb5', 1.2, True, k)
+        self.assertEqual(hash(as_tuple3), hash(k3))
 
     def test_slice(self):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
