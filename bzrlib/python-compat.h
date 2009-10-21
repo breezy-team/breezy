@@ -84,4 +84,7 @@
 #  define Py_REFCNT(o) ((o)->ob_refcnt)
 #endif
 
+
+#define INTERN_STRING(obj)  (PyString_InternInPlace(&(obj)))
+
 #endif /* _BZR_PYTHON_COMPAT_H */
