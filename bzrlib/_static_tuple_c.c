@@ -304,8 +304,8 @@ StaticTuple_repr(StaticTuple *self)
     if (tuple_repr == NULL) {
         return NULL;
     }
-    result = PyString_FromFormat("%s%s", Py_TYPE(self)->tp_name,
-                                         PyString_AsString(tuple_repr));
+    result = PyString_FromFormat("StaticTuple%s",
+                                 PyString_AsString(tuple_repr));
     return result;
 }
 
