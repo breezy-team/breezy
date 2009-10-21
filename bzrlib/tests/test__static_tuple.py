@@ -141,6 +141,15 @@ class TestStaticTuple(tests.TestCase):
             pass
         else:
             self.fail('TypeError not raised')
+
+    def test_concat_with_non_tuple(self):
+        st1 = self.module.StaticTuple('foo')
+        try:
+            st1 + 10
+        except TypeError:
+            pass
+        else:
+            self.fail('TypeError not raised for addition w/ an int')
         
     def test_as_tuple(self):
         k = self.module.StaticTuple('foo')
