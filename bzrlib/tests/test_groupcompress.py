@@ -459,7 +459,8 @@ class TestGroupCompressBlock(tests.TestCase):
                          ], block._dump())
 
 
-class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
+class TestCaseWithGroupCompressVersionedFiles(
+        tests.TestCaseWithMemoryTransport):
 
     def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
                      dir='.', inconsistency_fatal=True):
@@ -731,6 +732,17 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                               " in add_records:"
                               " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
                               " 0 8', \(\(\('a',\),\),\)\)")
+
+    def test_clear_cache(self):
+        vf = self.make_source_with_b(True, 'source')
+        vf.writer.end()
+        for record in vf.get_record_stream([('a',), ('b',)], 'unordered',
+                                           True):
+            pass
+        self.assertTrue(len(vf._group_cache) > 0)
+        vf.clear_cache()
+        self.assertEqual(0, len(vf._group_cache))
+
 
 
 class StubGCVF(object):

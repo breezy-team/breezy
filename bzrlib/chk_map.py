@@ -83,6 +83,8 @@ search_key_registry.register('plain', _search_key_plain)
 class CHKMap(object):
     """A persistent map from string to string backed by a CHK store."""
 
+    __slots__ = ('_store', '_root_node', '_search_key_func')
+
     def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
 
@@ -556,6 +558,10 @@ class Node(object):
         adding the header bytes, and without prefix compression.
     """
 
+    __slots__ = ('_key', '_len', '_maximum_size', '_key_width',
+                 '_raw_size', '_items', '_search_prefix', '_search_key_func'
+                )
+
     def __init__(self, key_width=1):
         """Create a node.
 
@@ -649,6 +655,8 @@ class LeafNode(Node):
     :ivar _size: The number of bytes that would be used by serializing all of
         the key/value pairs.
     """
+
+    __slots__ = ('_common_serialised_prefix', '_serialise_key')
 
     def __init__(self, search_key_func=None):
         Node.__init__(self)
@@ -946,6 +954,8 @@ class InternalNode(Node):
     :ivar _items: serialised_key => node dictionary. node may be a tuple,
         LeafNode or InternalNode.
     """
+
+    __slots__ = ('_node_width',)
 
     def __init__(self, prefix='', search_key_func=None):
         Node.__init__(self)
