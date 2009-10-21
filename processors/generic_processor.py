@@ -52,8 +52,8 @@ _DEFAULT_AUTO_CHECKPOINT = 10000
 _DEFAULT_AUTO_PACK = 4
 
 # How many inventories to cache
-_DEFAULT_INV_CACHE_SIZE = 10
-_DEFAULT_CHK_INV_CACHE_SIZE = 100
+_DEFAULT_INV_CACHE_SIZE = 1
+_DEFAULT_CHK_INV_CACHE_SIZE = 1
 
 
 class GenericProcessor(processor.ImportProcessor):
@@ -96,7 +96,7 @@ class GenericProcessor(processor.ImportProcessor):
     * autopack - pack every n checkpoints. The default is 4.
 
     * inv-cache - number of inventories to cache.
-      If not set, the default is 100 for CHK formats and 10 otherwise.
+      If not set, the default is 1.
 
     * mode - import algorithm to use: default, experimental or classic.
 
