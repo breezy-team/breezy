@@ -16,6 +16,7 @@
 
 """Tests for the StaticTuple type."""
 
+import cPickle
 import gc
 import sys
 
@@ -576,6 +577,12 @@ class TestStaticTuple(tests.TestCase):
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_pickle(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from
