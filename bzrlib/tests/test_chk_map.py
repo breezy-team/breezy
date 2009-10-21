@@ -2131,7 +2131,7 @@ class TestCHKMapDifference(TestCaseWithExampleMaps):
     def help__read_all_roots(self, search_key_func):
         c_map = self.make_root_only_map(search_key_func=search_key_func)
         key1 = c_map.key()
-        c_map.map(StaticTuple('aaa',), 'new aaa content')
+        c_map.map(('aaa',), 'new aaa content')
         key2 = c_map._save()
         diff = self.get_difference([key2], [key1], search_key_func)
         root_results = [record.key for record in diff._read_all_roots()]
