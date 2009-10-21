@@ -583,6 +583,10 @@ class TestStaticTuple(tests.TestCase):
         pickled = cPickle.dumps(st)
         unpickled = cPickle.loads(pickled)
         self.assertEqual(unpickled, st)
+        st = self.module.StaticTuple()
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertIs(st, unpickled)
 
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from
