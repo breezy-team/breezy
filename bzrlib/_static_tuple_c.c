@@ -145,6 +145,12 @@ StaticTuple_New(Py_ssize_t size)
         return NULL;
     }
 
+    if (size < 0 || size > 255) {
+        /* Too big or too small */
+        PyErr_SetString(PyExc_ValueError, "StaticTuple(...)"
+            " takes from 0 to 255 items");
+        return NULL;
+    }
     if (size == 0 && _empty_tuple != NULL) {
         Py_INCREF(_empty_tuple);
         return _empty_tuple;
@@ -262,12 +268,6 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     len = PyTuple_GET_SIZE(args);
-    if (len < 0 || len > 255) {
-        /* Too big or too small */
-        PyErr_SetString(PyExc_ValueError, "StaticTuple.__init__(...)"
-            " takes from 0 to 255 items");
-        return NULL;
-    }
     self = (StaticTuple *)StaticTuple_New(len);
     if (self == NULL) {
         return NULL;
@@ -584,42 +584,54 @@ static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
 static PyObject *
 StaticTuple_add(PyObject *v, PyObject *w)
 {
-    PyObject *v_t = NULL, *w_t = NULL;
-    PyObject *tmp_tuple, *result;
+    Py_ssize_t i, len_v, len_w;
+    PyObject *item;
+    StaticTuple *result;
      /* StaticTuples and plain tuples may be added (concatenated) to
       * StaticTuples.
       */
     if (StaticTuple_CheckExact(v)) {
-        v_t = StaticTuple_as_tuple((StaticTuple*)v);
-        if (!v_t)
-            goto fail;
-    } else if (PyTuple_Check(v))
-        v_t = v;
-    else
-        goto not_imp;
-
+        len_v = ((StaticTuple*)v)->size;
+    } else if (PyTuple_Check(v)) {
+        len_v = PyTuple_GET_SIZE(v);
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
     if (StaticTuple_CheckExact(w)) {
-        w_t = StaticTuple_as_tuple((StaticTuple*)w);
-        if (!w_t)
-            goto fail;
-    } else if (PyTuple_Check(w))
-        w_t = w;
-    else
-        goto not_imp;
-
-    tmp_tuple = PySequence_Concat(v_t, w_t);
-    result = StaticTuple_new_constructor(&StaticTuple_Type, tmp_tuple, NULL);
-    Py_DECREF(tmp_tuple);
-    return result;
-
-not_imp:
-    Py_XDECREF(v_t);
-    Py_XDECREF(w_t);
-    return Py_NotImplemented;
-fail:
-    Py_XDECREF(v_t);
-    Py_XDECREF(w_t);
-    return NULL;
+        len_w = ((StaticTuple*)w)->size;
+    } else if (PyTuple_Check(w)) {
+        len_w = PyTuple_GET_SIZE(w);
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    result = StaticTuple_New(len_v + len_w);
+    if (result == NULL)
+        return NULL;
+    for (i = 0; i < len_v; ++i) {
+        // This returns a new reference, which we then 'steal' with 
+        // StaticTuple_SET_ITEM
+        item = PySequence_GetItem(v, i);
+        if (item == NULL) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(result, i, item);
+    }
+    for (i = 0; i < len_w; ++i) {
+        item = PySequence_GetItem(w, i);
+        if (item == NULL) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(result, i+len_v, item);
+    }
+    if (!StaticTuple_check_items(result)) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return (PyObject *)result;
 }
 
 static PyObject *
