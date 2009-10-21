@@ -135,21 +135,12 @@ class TestStaticTuple(tests.TestCase):
     def test_concat_with_bad_tuple(self):
         st1 = self.module.StaticTuple('foo')
         t2 = (object(),)
-        try:
-            st3 = st1 + t2
-        except TypeError:
-            pass
-        else:
-            self.fail('TypeError not raised')
+        # Using st1.__add__ doesn't give the same results as doing the '+' form
+        self.assertRaises(TypeError, lambda: st1 + t2)
 
     def test_concat_with_non_tuple(self):
         st1 = self.module.StaticTuple('foo')
-        try:
-            st1 + 10
-        except TypeError:
-            pass
-        else:
-            self.fail('TypeError not raised for addition w/ an int')
+        self.assertRaises(TypeError, lambda: st1 + 10)
         
     def test_as_tuple(self):
         k = self.module.StaticTuple('foo')
@@ -224,22 +215,45 @@ class TestStaticTuple(tests.TestCase):
 
     def test_holds_None(self):
         k1 = self.module.StaticTuple(None)
+        # You cannot subclass None anyway
 
     def test_holds_int(self):
         k1 = self.module.StaticTuple(1)
+        class subint(int):
+            pass
+        # But not a subclass, because subint could introduce refcycles
+        self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
 
     def test_holds_long(self):
         k1 = self.module.StaticTuple(2L**65)
+        class sublong(long):
+            pass
+        # But not a subclass
+        self.assertRaises(TypeError, self.module.StaticTuple, sublong(1))
 
     def test_holds_float(self):
         k1 = self.module.StaticTuple(1.2)
+        class subfloat(float):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
+
+    def test_holds_str(self):
+        k1 = self.module.StaticTuple('astring')
+        class substr(str):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple, substr('a'))
 
     def test_holds_unicode(self):
         k1 = self.module.StaticTuple(u'\xb5')
+        class subunicode(unicode):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple,
+                          subunicode(u'\xb5'))
 
     def test_hold_bool(self):
         k1 = self.module.StaticTuple(True)
         k2 = self.module.StaticTuple(False)
+        # Cannot subclass bool
 
     def test_compare_same_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')

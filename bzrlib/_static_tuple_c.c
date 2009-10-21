@@ -244,10 +244,10 @@ StaticTuple_check_items(StaticTuple *self)
             || StaticTuple_CheckExact(obj)
             || obj == Py_None
             || PyBool_Check(obj)
-            || PyInt_Check(obj)
-            || PyLong_Check(obj)
-            || PyFloat_Check(obj)
-            || PyUnicode_Check(obj)
+            || PyInt_CheckExact(obj)
+            || PyLong_CheckExact(obj)
+            || PyFloat_CheckExact(obj)
+            || PyUnicode_CheckExact(obj)
             ) continue;
         PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
             " requires that all items are one of"
