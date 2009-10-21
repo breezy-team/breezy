@@ -74,7 +74,6 @@ class TestCaseWithStore(tests.TestCaseWithMemoryTransport):
                  search_key_func=None):
         if chk_bytes is None:
             chk_bytes = self.get_chk_bytes()
-        a_dict = dict((StaticTuple(*k), v) for k, v in a_dict.iteritems())
         root_key = CHKMap.from_dict(chk_bytes, a_dict,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)

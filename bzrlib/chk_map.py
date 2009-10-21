@@ -115,8 +115,9 @@ class CHKMap(object):
         """
         delete_count = 0
         # Check preconditions first.
-        new_items = set([key for (old, key, value) in delta if key is not None
-            and old is None])
+        as_st = StaticTuple.from_sequence
+        new_items = set([as_st(key) for (old, key, value) in delta
+                         if key is not None and old is None])
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,
@@ -242,9 +243,11 @@ class CHKMap(object):
         node = LeafNode(search_key_func=search_key_func)
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
-        node._items = dict(initial_value)
+        as_st = StaticTuple.from_sequence
+        node._items = dict([(as_st(key), val) for key, val
+                                               in initial_value.iteritems()])
         node._raw_size = sum([node._key_value_len(key, value)
-                              for key,value in initial_value.iteritems()])
+                              for key,value in node._items.iteritems()])
         node._len = len(node._items)
         node._compute_search_prefix()
         node._compute_serialised_prefix()
@@ -490,6 +493,7 @@ class CHKMap(object):
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
+        # TODO: StaticTuple Barrier here
         return self._root_node.iteritems(self._store, key_filter=key_filter)
 
     def key(self):
@@ -510,6 +514,7 @@ class CHKMap(object):
         :param key: A key to map.
         :param value: The value to assign to key.
         """
+        key = StaticTuple.from_sequence(key)
         # Need a root object.
         self._ensure_root()
         prefix, node_details = self._root_node.map(self._store, key, value)
@@ -525,17 +530,17 @@ class CHKMap(object):
 
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
+        if type(node) is tuple:
+            node = StaticTuple.from_sequence(node)
         if type(node) is StaticTuple:
             _check_key(node)
             return node
-        elif type(node) is tuple:
-            raise TypeError('node %r should be a StaticTuple not tuple'
-                            % (node,))
         else:
             return node._key
 
     def unmap(self, key, check_remap=True):
         """remove key from the map."""
+        key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if type(self._root_node) is InternalNode:
             unmapped = self._root_node.unmap(self._store, key,
@@ -559,6 +564,7 @@ class CHKMap(object):
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
+        assert type(keys[-1]) is StaticTuple
         return keys[-1]
 
 
