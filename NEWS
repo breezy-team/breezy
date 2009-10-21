@@ -25,6 +25,10 @@ Bug Fixes
 
 * Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
 
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
 
