@@ -220,6 +220,32 @@ StaticTuple_from_sequence(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 
+/* Check that all items we point to are 'valid' */
+static int
+StaticTuple_check_items(StaticTuple *self)
+{
+    int i;
+    PyObject *obj;
+
+    for (i = 0; i < self->size; ++i) {
+        obj = self->items[i];
+        if (obj == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "StaticTuple(...)"
+                " should not have a NULL entry.");
+            return 0;
+        }
+        if (!PyString_CheckExact(obj)) {
+            if (!StaticTuple_CheckExact(obj)) {
+                PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
+                    " requires that all items are strings or StaticTuples"
+                    " not %s.", Py_TYPE(obj)->tp_name);
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
 static PyObject *
 StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -248,17 +274,12 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
     }
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
-        if (!PyString_CheckExact(obj)) {
-            if (!StaticTuple_CheckExact(obj)) {
-                PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
-                    " requires that all items are strings or StaticTuples"
-                    " not %s.", Py_TYPE(obj)->tp_name);
-                type->tp_dealloc((PyObject *)self);
-                return NULL;
-            }
-        }
         Py_INCREF(obj);
         self->items[i] = obj;
+    }
+    if (!StaticTuple_check_items(self)) {
+        type->tp_dealloc((PyObject *)self);
+        return NULL;
     }
     return (PyObject *)self;
 }
