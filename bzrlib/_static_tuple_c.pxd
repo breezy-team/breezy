@@ -36,9 +36,9 @@ cdef extern from "_static_tuple_c.h":
 
     # Steals a reference and val must be a valid type, no checking is done
     void StaticTuple_SET_ITEM(StaticTuple key, Py_ssize_t offset, object val)
-    # This isn't particularly useful. Namely because Pyrex doesn't think of
-    # this PyObject* to be the same type as a PyObject* defined in another
-    # pyrex file... However, because we don't INCREF, we don't want to define
-    # it as returning a regular 'object'.
-    PyObject * StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)
+    # We would normally use PyObject * here. However it seems that cython/pyrex
+    # treat the PyObject defined in this header as something different than one
+    # defined in a .pyx file. And since we don't INCREF, we need a raw pointer,
+    # not an 'object' return value.
+    void *StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)
     int StaticTuple_CheckExact(object)

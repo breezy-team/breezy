@@ -51,15 +51,15 @@ cdef extern from "Python.h":
     char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
-# It seems we need to import the definitions so that the pyrex compiler has
-# local names to access them.
+# cimport all of the definitions we will need to access
 from _static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
 
 cdef extern from "_static_tuple_c.h":
-    # Defined explicitly rathert than cimport ing. Using cimport the type for
-    # PyObject is a different class that happens to have the same name...
+    # Defined explicitly rather than cimport-ing. Trying to use cimport, the
+    # type for PyObject is a different class that happens to have the same
+    # name...
     PyObject * StaticTuple_GET_ITEM_ptr "StaticTuple_GET_ITEM" (StaticTuple,
                                                                 Py_ssize_t)
 
@@ -71,8 +71,7 @@ cdef extern from "zlib.h":
     uLong crc32(uLong crc, Bytef *buf, uInt len)
 
 
-
-# This sets up the StaticTuple C_API functionality
+# Set up the StaticTuple C_API functionality
 import_static_tuple_c()
 
 cdef object _LeafNode

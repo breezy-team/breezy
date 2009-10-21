@@ -95,7 +95,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         value_lines = lines[pos:pos+num_value_lines]
         pos += num_value_lines
         value = '\n'.join(value_lines)
-        items[StaticTuple(*elements[:-1])] = value
+        items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError("item count (%d) mismatch for key %s,"
             " bytes %r" % (length, key, bytes))
