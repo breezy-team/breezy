@@ -299,33 +299,29 @@ class RevisionSpec_dwim(RevisionSpec):
 
     help_txt = None
 
-    def _try_spectype(self, rstype, spec, branch):
-        rs = rstype(spec, _internal=True)
+    def _try_spectype(self, rstype, branch):
+        rs = rstype(self.spec, _internal=True)
         # Hit in_history to find out if it exists, or we need to try the
         # next type.
         return rs.in_history(branch)
 
     def _match_on(self, branch, revs):
         """Run the lookup and see what we can get."""
-        spec = self.spec
 
         # First, see if it's a revno
         global _revno_regex
         if _revno_regex is None:
             _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
-        if _revno_regex.match(spec) is not None:
+        if _revno_regex.match(self.spec) is not None:
             try:
-                return self._try_spectype(RevisionSpec_revno, spec, branch)
+                return self._try_spectype(RevisionSpec_revno, branch)
             except RevisionSpec_revno.dwim_catchable_exceptions:
                 pass
 
         # Next see what has been registered
         for rs_class in dwim_revspecs:
             try:
-                rs = rs_class(self.spec, _internal=True)
-                # Hit in_history to find out if it exists, or we need to try
-                # the next type.
-                return rs.in_history(branch)
+                return self._try_spectype(rs_class, branch)
             except rs_class.dwim_catchable_exceptions:
                 pass
 
