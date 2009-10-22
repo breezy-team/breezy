@@ -1918,11 +1918,11 @@ class CHKInventory(CommonInventory):
                 raise errors.BzrError('Duplicate key in inventory: %r\n%r'
                                       % (key, bytes))
             info[key] = value
-        revision_id = info['revision_id']
-        root_id = info['root_id']
-        search_key_name = info.get('search_key_name', 'plain')
-        parent_id_basename_to_file_id = info.get(
-            'parent_id_basename_to_file_id', None)
+        revision_id = intern(info['revision_id'])
+        root_id = intern(info['root_id'])
+        search_key_name = intern(info.get('search_key_name', 'plain'))
+        parent_id_basename_to_file_id = intern(info.get(
+            'parent_id_basename_to_file_id', None))
         id_to_entry = info['id_to_entry']
 
         result = CHKInventory(search_key_name)

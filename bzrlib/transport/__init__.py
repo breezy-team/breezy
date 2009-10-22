@@ -108,7 +108,7 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multple protcol ( like the ftp
+    a) a single provider can support multiple protocols ( like the ftp
     provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
     protocol which is supported by both the urllib and pycurl provider )
