@@ -1296,7 +1296,8 @@ else:
 
 def terminal_width():
     """Return estimated terminal width."""
-    if getattr(sys.stdout, 'isatty', None) is None:
+    isatty = getattr(sys.stdout, 'isatty', None)
+    if  isatty is None or not isatty():
         # If it's not a tty, the width makes no sense. We just use a value bug
         # enough to avoid truncations. When the output is redirected, the
         # pagers can then handle that themselves. A cleaner implementation
