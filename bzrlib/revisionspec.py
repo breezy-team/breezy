@@ -298,6 +298,9 @@ class RevisionSpec_dwim(RevisionSpec):
     """
 
     help_txt = None
+    # We don't need to build the revision history ourself, that's delegated to
+    # each revspec we try.
+    wants_revision_history = False
 
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
