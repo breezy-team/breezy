@@ -271,7 +271,7 @@ class SmartServerRequestHandler(object):
     # and allow it to be streamed into the server.
 
     def __init__(self, backing_transport, commands, root_client_path,
-        jail_root):
+        jail_root=None):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -281,6 +281,8 @@ class SmartServerRequestHandler(object):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._commands = commands
+        if jail_root is None:
+            jail_root = backing_transport
         self._jail_root = jail_root
         self.response = None
         self.finished_reading = False
