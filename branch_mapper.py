@@ -32,11 +32,15 @@ class BranchMapper(object):
                 parts.pop(0)
             category = parts.pop(0)
             if category == 'heads':
-                bazaar_name = self._git_to_bzr_name(parts[-1])
+                git_name = '/'.join(parts)
+                bazaar_name = self._git_to_bzr_name(git_name)
             else:
+                if category == 'remotes' and parts[0] == 'origin':
+                    parts.pop(0)
+                git_name = '/'.join(parts)
                 if category.endswith('s'):
                     category = category[:-1]
-                name_no_ext = self._git_to_bzr_name(parts[-1])
+                name_no_ext = self._git_to_bzr_name(git_name)
                 bazaar_name = "%s.%s" % (name_no_ext, category)
             bazaar_names[ref_name] = bazaar_name
         return bazaar_names

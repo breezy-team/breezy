@@ -45,6 +45,26 @@ class TestBranchMapper(tests.TestCase):
             'refs/remotes/origin/foo':          'foo.remote',
             })
 
+    def test_git_to_bzr_with_slashes(self):
+        m = branch_mapper.BranchMapper()
+        git_refs = [
+            'refs/heads/master/slave',
+            'refs/heads/foo/bar',
+            'refs/tags/master/slave',
+            'refs/tags/foo/bar',
+            'refs/remotes/origin/master/slave',
+            'refs/remotes/origin/foo/bar',
+            ]
+        git_to_bzr_map = m.git_to_bzr(git_refs)
+        self.assertEqual(git_to_bzr_map, {
+            'refs/heads/master/slave':              'master/slave',
+            'refs/heads/foo/bar':                   'foo/bar',
+            'refs/tags/master/slave':               'master/slave.tag',
+            'refs/tags/foo/bar':                    'foo/bar.tag',
+            'refs/remotes/origin/master/slave':     'master/slave.remote',
+            'refs/remotes/origin/foo/bar':          'foo/bar.remote',
+            })
+
     def test_git_to_bzr_for_trunk(self):
         # As 'master' in git is mapped to trunk in bzr, we need to handle
         # 'trunk' in git in a sensible way.
