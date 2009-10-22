@@ -131,6 +131,7 @@ property p2 5 hohum
 property p3 16 alpha
 beta
 gamma
+property p4 8 whatever
 # Test a commit with multiple authors
 commit refs/heads/master
 mark :7
@@ -247,6 +248,7 @@ class TestImportParser(tests.TestCase):
             'p1': None,
             'p2': u'hohum',
             'p3': u'alpha\nbeta\ngamma',
+            'p4': u'whatever',
             }, cmd.properties)
         cmd = result.pop(0)
         self.assertEqual('commit', cmd.name)

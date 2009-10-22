@@ -566,11 +566,9 @@ class ImportParser(LineBasedParser):
             size = int(parts[1])
             value = parts[2]
             still_to_read = size - len(value)
-            if still_to_read == 1:
-                value += "\n"
-            elif still_to_read > 0:
-                read_bytes = self.read_bytes(still_to_read - 1)
-                value += "\n" + read_bytes
+            if still_to_read > 0:
+                read_bytes = self.read_bytes(still_to_read)
+                value += "\n" + read_bytes[:still_to_read - 1]
             value = value.decode('utf8')
         return (name, value)
 
