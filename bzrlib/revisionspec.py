@@ -137,6 +137,14 @@ class RevisionSpec(object):
 
     prefix = None
     wants_revision_history = True
+    dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
+    """Expections that RevisionSpec_dwim._match_on will catch.
+
+    If the revspec is part of dwim_revspecs, it may be tried with an invalid
+    revspec and raise some exception. The exceptions mentioned here will not be
+    reported to the user but simply ignored without stopping the dwim
+    processing.
+    """
 
     @staticmethod
     def from_string(spec):
@@ -163,7 +171,8 @@ class RevisionSpec(object):
                     trace.mutter('Returning RevisionSpec %s for %s',
                                  spectype.__name__, spec)
                     return spectype(spec, _internal=True)
-            # Otherwise treat it as a DWIM
+            # Otherwise treat it as a DWIM, build the RevisionSpec object and
+            # wait for _match_on to be called.
             return RevisionSpec_dwim(spec, _internal=True)
 
     def __init__(self, spec, _internal=False):
@@ -282,8 +291,10 @@ class RevisionSpec(object):
 class RevisionSpec_dwim(RevisionSpec):
     """Provides a DWIMish revision specifier lookup.
 
-    Note that this does not go in the revspec_registry.  It's solely
-    called from RevisionSpec.from_string().
+    Note that this does not go in the revspec_registry because by definition
+    there is no prefix to identify it.  It's solely called from
+    RevisionSpec.from_string() because the DWIMification happen when _match_on
+    is called so the string describing the revision is kept here until needed.
     """
 
     help_txt = None
@@ -305,34 +316,22 @@ class RevisionSpec_dwim(RevisionSpec):
         if _revno_regex.match(spec) is not None:
             try:
                 return self._try_spectype(RevisionSpec_revno, spec, branch)
-            except errors.InvalidRevisionSpec:
+            except RevisionSpec_revno.dwim_catchable_exceptions:
                 pass
 
-        # OK, next let's try for a tag
-        try:
-            return self._try_spectype(RevisionSpec_tag, spec, branch)
-        except (errors.NoSuchTag, errors.TagsNotSupported):
-            pass
+        # Next see what has been registered
+        for rs_class in dwim_revspecs:
+            try:
+                rs = rs_class(self.spec, _internal=True)
+                # Hit in_history to find out if it exists, or we need to try
+                # the next type.
+                return rs.in_history(branch)
+            except rs_class.dwim_catchable_exceptions:
+                pass
 
-        # Maybe it's a revid?
-        try:
-            return self._try_spectype(RevisionSpec_revid, spec, branch)
-        except errors.InvalidRevisionSpec:
-            pass
-
-        # Perhaps a date?
-        try:
-            return self._try_spectype(RevisionSpec_date, spec, branch)
-        except errors.InvalidRevisionSpec:
-            pass
-
-        # OK, last try, maybe it's a branch
-        try:
-            return self._try_spectype(RevisionSpec_branch, spec, branch)
-        except errors.NotBranchError:
-            pass
-
-        # Well, I dunno what it is.
+        # Well, I dunno what it is. Note that we don't try to keep track of the
+        # first of last exception raised during the DWIM tries as none seems
+        # really relevant.
         raise errors.InvalidRevisionSpec(self.spec, branch)
 
 
@@ -607,6 +606,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
+    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -806,6 +806,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
+    dwim_catchable_exceptions = (errors.NotBranchError,)
 
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
@@ -882,6 +883,17 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
     def _as_revision_id(self, context_branch):
         return self._find_revision_id(context_branch,
             self._get_submit_location(context_branch))
+
+
+# The order in which we want to DWIM a revision spec without any prefix.
+# revno is always tried first and isn't listed here, this is used by
+# RevisionSpec_dwim._match_on
+dwim_revspecs = [
+    RevisionSpec_tag, # Let's try for a tag
+    RevisionSpec_revid, # Maybe it's a revid?
+    RevisionSpec_date, # Perhaps a date?
+    RevisionSpec_branch, # OK, last try, maybe it's a branch
+    ]
 
 
 revspec_registry = registry.Registry()
