@@ -105,9 +105,9 @@ class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
 
 class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/', jail_root=None):
         SmartServerLockedBranchRequest.__init__(
-            self, backing_transport, root_client_path)
+            self, backing_transport, root_client_path, jail_root)
         self.locked = False
         
     def do_with_locked_branch(self, branch):

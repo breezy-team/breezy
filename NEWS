@@ -22,6 +22,9 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr+http`` servers no longer give spurious jail break errors when
+  serving branches inside a shared repository.  (Andrew Bennetts, #348308)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
