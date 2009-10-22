@@ -33,6 +33,8 @@ import shutil
 import subprocess
 import optparse
 import re
+import urllib
+import StringIO
 
 sys = reload(sys)
 sys.setdefaultencoding("utf-8")
@@ -117,7 +119,7 @@ def parse_inventory(sock=None):
 	nextprev = False
 	buf = []
 	if not sock:
-		sock = open(os.path.join("_darcs", "hashed_inventory"))
+		sock = open_(os.path.join(origin, "_darcs", "hashed_inventory"))
 	for i in sock.readlines():
 		if i.startswith("hash"):
 			buf.insert(0, i[6:-1])
@@ -130,8 +132,30 @@ def parse_inventory(sock=None):
 	for i in buf:
 		hashes.insert(0, i)
 	if prev:
-		sock = gzip.open(os.path.join("_darcs", "inventories", prev))
+		sock = gzip_open(os.path.join(origin, "_darcs", "inventories", prev))
 		parse_inventory(sock)
+
+# this is like gzip.open but supports urls as well
+def gzip_open(path):
+	if os.path.exists(path):
+		return gzip.open(path)
+	buf = urllib.urlopen(path).read()
+	sock = StringIO.StringIO(buf)
+	return gzip.GzipFile(fileobj=sock)
+
+# this is like os.path.exists but supports urls as well
+def os_path_exists(path):
+	if os.path.exists(path):
+		return True
+	else:
+		return urllib.urlopen(path).getcode() == 200
+
+# this is like open, but supports urls as well
+def open_(path):
+	if os.path.exists(path):
+		return open(path)
+	else:
+		return urllib.urlopen(path)
 
 # Option Parser
 usage="%prog [options] darcsrepo"
@@ -176,16 +200,25 @@ if options.authors_file:
 	authormap = dict([i.strip().split('=',1) for i in sock])
 	sock.close()
 
-origin = os.path.abspath(args[0])
+if "://" not in args[0]:
+	origin = os.path.abspath(args[0])
+else:
+	origin = args[0].strip('/')
 if options.working:
 	working = os.path.abspath(options.working)
 else:
-	working = "%s.darcs" % origin
+	if "://" not in origin:
+		working = "%s.darcs" % origin
+	else:
+		working = "%s.darcs" % os.path.split(origin)[-1]
 patchfile = "%s.patch" % origin
 if options.logfile:
 	logfile = os.path.abspath(options.logfile)
 else:
-	logfile = "%s.log" % origin
+	if "://" not in origin:
+		logfile = "%s.log" % origin
+	else:
+		logfile = "%s.log" % os.path.split(origin)[-1]
 logsock = open(logfile, "a")
 if options.git_branch:
 	git_branch = options.git_branch
@@ -228,15 +261,16 @@ sys.stdout.flush()
 darcs2 = False
 oldfashionedpatch = True
 cwd = os.getcwd()
-if os.path.exists(os.path.join(origin, "_darcs", "format")):
-	sock = open(os.path.join(origin, "_darcs", "format"))
+if os_path_exists(os.path.join(origin, "_darcs", "format")):
+	sock = open_(os.path.join(origin, "_darcs", "format"))
 	format = [x.strip() for x in sock]
 	sock.close()
 	darcs2 = 'darcs-2' in format
 	oldfashionedpatch = not 'hashed' in format
 if not oldfashionedpatch:
 	progress("parsing the inventory")
-	os.chdir(origin)
+	if "://" not in origin:
+		os.chdir(origin)
 	parse_inventory()
 if not options.import_marks or not os.path.exists(working):
 	# init the tmp darcs repo
@@ -277,9 +311,9 @@ for i in patches:
 	hash = i.attributes['hash'].value
 	buf = ["\nNew patches:\n"]
 	if oldfashionedpatch:
-		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hash))
+		sock = gzip_open(os.path.join(origin, "_darcs", "patches", hash))
 	else:
-		sock = gzip.open(os.path.join(origin, "_darcs", "patches", hashes[count-1]))
+		sock = gzip_open(os.path.join(origin, "_darcs", "patches", hashes[count-1]))
 	buf.append(sock.read())
 	sock.close()
 	sock = os.popen("darcs changes --context")
