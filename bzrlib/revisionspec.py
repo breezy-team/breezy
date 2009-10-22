@@ -113,8 +113,6 @@ class RevisionInfo(object):
         return RevisionInfo(branch, revno, revision_id)
 
 
-# classes in this list should have a "prefix" attribute, against which
-# string specs are matched
 _revno_regex = None
 
 
@@ -289,11 +287,8 @@ class RevisionSpec_dwim(RevisionSpec):
     """
 
     help_txt = None
-    # Default to False to save building the history in the revno case
-    wants_revision_history = False
 
-    # Util
-    def __try_spectype(self, rstype, spec, branch):
+    def _try_spectype(self, rstype, spec, branch):
         rs = rstype(spec, _internal=True)
         # Hit in_history to find out if it exists, or we need to try the
         # next type.
@@ -309,34 +304,31 @@ class RevisionSpec_dwim(RevisionSpec):
             _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
         if _revno_regex.match(spec) is not None:
             try:
-                return self.__try_spectype(RevisionSpec_revno, spec, branch)
+                return self._try_spectype(RevisionSpec_revno, spec, branch)
             except errors.InvalidRevisionSpec:
                 pass
 
-        # It's not a revno, so now we need this
-        self.wants_revision_history = True
-
         # OK, next let's try for a tag
         try:
-            return self.__try_spectype(RevisionSpec_tag, spec, branch)
+            return self._try_spectype(RevisionSpec_tag, spec, branch)
         except (errors.NoSuchTag, errors.TagsNotSupported):
             pass
 
         # Maybe it's a revid?
         try:
-            return self.__try_spectype(RevisionSpec_revid, spec, branch)
+            return self._try_spectype(RevisionSpec_revid, spec, branch)
         except errors.InvalidRevisionSpec:
             pass
 
         # Perhaps a date?
         try:
-            return self.__try_spectype(RevisionSpec_date, spec, branch)
+            return self._try_spectype(RevisionSpec_date, spec, branch)
         except errors.InvalidRevisionSpec:
             pass
 
         # OK, last try, maybe it's a branch
         try:
-            return self.__try_spectype(RevisionSpec_branch, spec, branch)
+            return self._try_spectype(RevisionSpec_branch, spec, branch)
         except errors.NotBranchError:
             pass
 
@@ -906,5 +898,7 @@ _register_revspec(RevisionSpec_ancestor)
 _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
 
+# classes in this list should have a "prefix" attribute, against which
+# string specs are matched
 SPEC_TYPES = symbol_versioning.deprecated_list(
     symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])
