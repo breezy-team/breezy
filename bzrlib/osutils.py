@@ -1296,6 +1296,14 @@ else:
 
 def terminal_width():
     """Return estimated terminal width."""
+    if getattr(sys.stdout, 'isatty', None) is None:
+        # If it's not a tty, the width makes no sense. We just use a value bug
+        # enough to avoid truncations. When the output is redirected, the
+        # pagers can then handle that themselves. A cleaner implementation
+        # would be to fix the callers to not try to format at all in these
+        # circumstances.
+        return 65536
+
     if sys.platform == 'win32':
         return win32utils.get_console_size()[0]
     width = 0
