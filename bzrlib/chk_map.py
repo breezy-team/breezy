@@ -1629,6 +1629,9 @@ class CHKMapDifference(object):
         refs = refs.difference(all_old_chks)
         processed_new_refs.update(refs)
         while refs:
+            # TODO: Using a SimpleSet for self._processed_new_refs and
+            #       saved as much as 10MB of peak memory. However, it requires
+            #       implementing a non-pyrex version.
             next_refs = set()
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
