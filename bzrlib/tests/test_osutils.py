@@ -1897,6 +1897,16 @@ class TestTerminalWidth(tests.TestCase):
 
     def test_tty_default_without_columns(self):
         del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+
+        class I_am_a_tty(object):
+            def isatty(self):
+                return True
+
+        sys.stdout = I_am_a_tty()
         self.assertEquals(osutils.default_tty_width, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
