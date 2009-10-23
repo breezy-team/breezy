@@ -558,6 +558,7 @@ BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
+BZR_CONCURRENCY  How many processes can be run concurrently.
 ================ =================================================================
 """
 
