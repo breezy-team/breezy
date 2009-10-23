@@ -1508,7 +1508,8 @@ class CHKMapDifference(object):
                 #       i'm not sure if there is a big win on top of that
                 #       Also note that prefix_refs itself seems to be a pretty
                 #       short lived list.
-                prefix_refs = node._items.items()
+                prefix_refs = [as_st(item).intern()
+                               for item in node._items.iteritems()]
                 items = []
             else:
                 prefix_refs = []
