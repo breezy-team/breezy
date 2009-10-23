@@ -23,6 +23,7 @@ import re
 import socket
 import stat
 import sys
+import termios
 import time
 
 from bzrlib import (
@@ -1880,3 +1881,45 @@ class TestFailedToLoadExtension(tests.TestCase):
             r"bzr: warning: some compiled extensions could not be loaded; "
             "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
             )
+
+
+class TestTerminalWidth(tests.TestCase):
+
+    def test_default_values(self):
+        self.assertEquals(80, osutils.default_tty_width)
+        self.assertEquals(256, osutils.default_non_tty_width)
+
+    def test_defaults_to_COLUMNS(self):
+        # COLUMNS is set by the test framework
+        self.assertEquals('80', os.environ['COLUMNS'])
+        os.environ['COLUMNS'] = '12'
+        self.assertEquals(12, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['COLUMNS']
+        self.assertEquals(osutils.default_tty_width, osutils.terminal_width())
+
+    def test_non_tty_default_without_columns(self):
+        del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+        sys.stdout = None
+        self.assertEquals(osutils.default_non_tty_width,
+                          osutils.terminal_width())
+
+    def test_TIOCGWINSZ(self):
+        # bug 63539 is about a termios without TIOCGWINSZ attribute
+        exist = True
+        try:
+            orig = termios.TIOCGWINSZ
+        except AttributeError:
+            exist = False
+
+        def restore():
+            if exist:
+                termios.TIOCGWINSZ = orig
+        self.addCleanup(restore)
+        del termios.TIOCGWINSZ
+        self.assertEquals(osutils.default_tty_width, osutils.terminal_width())

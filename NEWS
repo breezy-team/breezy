@@ -22,9 +22,12 @@ New Features
 Bug Fixes
 *********
 
-* ``osutils.terminal_width()`` will now return a very large value
-  to avoid truuncated lines when using pagers (for example).
-  (Joke de Buhr, Vincent Ladeuil, #353370)
+* ``osutils.terminal_width()`` obeys the COLUMNS envrionment
+  variable and then default to a reasonable value if the terminal
+  is not a tty (when output is redirected for example). Also
+  fixes its usage under OSes that doesn't provide
+  termios.TIOCGWINSZ.
+  (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
 
 Improvements
 ************
