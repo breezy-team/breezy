@@ -598,7 +598,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         #   - and any present parent inventories have their chk root
         #     entries too.
         # And all this should be independent of any fallback repository.
-        trace.debug_memory('starting _check_new_inventories')
         problems = []
         key_deps = self.repo.revisions._index._key_dependencies
         new_revisions_keys = key_deps.get_new_keys()
@@ -640,7 +639,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 % (sorted(missing_chk_roots),))
             # Don't bother checking any further.
             return problems
-        trace.debug_memory('after looking for missing_chk_roots')
         # Find all interesting chk_bytes records, and make sure they are
         # present, as well as the text keys they reference.
         chk_bytes_no_fallbacks = self.repo.chk_bytes.without_fallbacks()
@@ -671,7 +669,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         if missing_text_keys:
             problems.append("missing text keys: %r"
                 % (sorted(missing_text_keys),))
-        trace.debug_memory('after checking for missing text keys')
         return problems
 
     def _execute_pack_operations(self, pack_operations,
@@ -1111,14 +1108,10 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         for stream_info in self._fetch_revision_texts(revision_ids):
             yield stream_info
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
-        trace.debug_memory('Before clearing revisions cache')
         self.from_repository.revisions.clear_cache()
         self.from_repository.signatures.clear_cache()
-        trace.debug_memory('after clearing revisions cache')
         yield self._get_inventory_stream(self._revision_keys)
-        trace.debug_memory('before clearing inventories cache')
         self.from_repository.inventories.clear_cache()
-        trace.debug_memory('after clearing inventories cache')
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
@@ -1126,15 +1119,10 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         parent_keys = from_repo._find_parent_keys_of_revisions(
                         self._revision_keys)
         for stream_info in self._get_filtered_chk_streams(parent_keys):
-            trace.debug_memory('during _get_filtered_chk_streams')
             yield stream_info
-        trace.debug_memory('before clearing chk_bytes')
         self.from_repository.chk_bytes.clear_cache()
-        trace.debug_memory('after clearing chk_bytes')
         yield self._get_text_stream()
-        trace.debug_memory('after text stream')
         self.from_repository.texts.clear_cache()
-        trace.debug_memory('after clearing text cache')
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not
