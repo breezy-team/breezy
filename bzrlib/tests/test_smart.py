@@ -170,6 +170,9 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, 'bar/')
         self.assertEqual('./baz', request.translate_client_path('foo/baz'))
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path('foo/' + e_acute))
 
     def test_transport_from_client_path(self):
         transport = self.get_transport()
