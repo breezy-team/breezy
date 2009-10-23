@@ -133,6 +133,7 @@ class Shelver(object):
         :param manager: The shelf manager to use.
         :param reporter: Object for reporting changes to user.
         """
+        work_tree.lock_tree_write()
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.diff_writer = diff_writer
@@ -176,11 +177,10 @@ class Shelver(object):
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                 tree.branch, tree)
             files = builtins.safe_relpath_files(tree, file_list)
-        except:
+            return klass(tree, target_tree, diff_writer, all, all, files,
+                         message, destroy)
+        finally:
             tree.unlock()
-            raise
-        return klass(tree, target_tree, diff_writer, all, all, files, message,
-                     destroy)
 
     def run(self):
         """Interactively shelve the changes."""
@@ -220,7 +220,8 @@ class Shelver(object):
             creator.finalize()
 
     def finalize(self):
-        self.change_editor.finish()
+        if self.change_editor is not None:
+            self.change_editor.finish()
         self.work_tree.unlock()
 
 
