@@ -1489,6 +1489,7 @@ class CHKMapDifference(object):
         # this code. (We may want to evaluate saving the raw bytes into the
         # page cache, which would allow a working tree update after the fetch
         # to not have to read the bytes again.)
+        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1505,6 +1506,8 @@ class CHKMapDifference(object):
                 #       The sha1 pointer (in this case the value), should
                 #       already be a static tuple, and properly interned. So
                 #       i'm not sure if there is a big win on top of that
+                #       Also note that prefix_refs itself seems to be a pretty
+                #       short lived list.
                 prefix_refs = node._items.items()
                 items = []
             else:
@@ -1517,7 +1520,7 @@ class CHKMapDifference(object):
                 #       may not be an actual benefit to interning this tuple.
                 #       The file_key should already be interned. If it isn't we
                 #       need to look into it.
-                items = node._items.items()
+                items = [as_st(item) for item in node._items.iteritems()]
             yield record, node, prefix_refs, items
 
     def _read_old_roots(self):
