@@ -44,6 +44,7 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
+    timestamp,
     transport,
     ui,
     urlutils,
@@ -2941,6 +2942,9 @@ class cmd_commit(Command):
              Option('strict',
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
+             Option('commit-time', type=str,
+                    help="Manually set a commit time using commit date format, e.g."
+                    "'2009-10-10 08:00:00 +0100'"),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
@@ -2953,9 +2957,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-              Option('show-diff',
-                     help='When no message is supplied, show the diff along'
-                     ' with the status summary in the message editor.'),
+             Option('show-diff',
+                    help='When no message is supplied, show the diff along'
+                    ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2980,7 +2984,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None):
+            author=None, show_diff=False, exclude=None, commit_time=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2991,6 +2995,10 @@ class cmd_commit(Command):
             generate_commit_message_template,
             make_commit_message_template_encoded
         )
+
+        commit_stamp = None
+        if commit_time is not None:
+                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -3049,7 +3057,7 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        authors=author,
+                        authors=author, timestamp=commit_stamp,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
