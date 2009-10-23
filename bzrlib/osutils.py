@@ -1957,10 +1957,13 @@ def local_concurrency(use_cache=True):
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    try:
-        concurrency = _local_concurrency()
-    except (OSError, IOError):
-        concurrency = None
+    if 'BZR_CONCURRENCY' in os.environ:
+        concurrency = os.environ['BZR_CONCURRENCY']
+    else:
+        try:
+            concurrency = _local_concurrency()
+        except (OSError, IOError):
+            concurrency = None
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

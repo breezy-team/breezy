@@ -1839,6 +1839,14 @@ class TestConcurrency(tests.TestCase):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
 
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(False))
+
 
 class TestFailedToLoadExtension(tests.TestCase):
 
