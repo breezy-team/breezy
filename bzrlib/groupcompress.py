@@ -1832,6 +1832,9 @@ class _GCGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
         self._inconsistency_fatal = inconsistency_fatal
+        # GroupCompress records tend to have the same 'group' start + offset
+        # repeated over and over, this creates a surplus of ints
+        self._int_cache = {}
         if track_external_parent_refs:
             self._key_dependencies = knit._KeyRefs(
                 track_new_keys=track_new_keys)
@@ -2013,11 +2016,17 @@ class _GCGraphIndex(object):
         """Convert an index value to position details."""
         bits = node[2].split(' ')
         # It would be nice not to read the entire gzip.
+        # Note, start and stop would be good objects to 'intern', they are
+        # likely to be duplicated many times in a given index
         start = int(bits[0])
+        start = self._int_cache.setdefault(start, start)
         stop = int(bits[1])
+        stop = self._int_cache.setdefault(stop, stop)
         basis_end = int(bits[2])
         delta_end = int(bits[3])
-        return node[0], start, stop, basis_end, delta_end
+        # We can't use StaticTuple here, because node[0] is a BTreeGraphIndex
+        # instance...
+        return (node[0], start, stop, basis_end, delta_end)
 
     def scan_unvalidated_index(self, graph_index):
         """Inform this _GCGraphIndex that there is an unvalidated index.

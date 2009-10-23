@@ -1460,6 +1460,7 @@ class CHKMapDifference(object):
         #       that just meanst that we will have *both* a StaticTuple and a
         #       tuple() in memory, referring to the same object. (so a net
         #       increase in memory, not a decrease.)
+        trace.debug_memory('starting a new CHKMapDifference')
         self._store = store
         self._new_root_keys = new_root_keys
         self._old_root_keys = old_root_keys
@@ -1489,6 +1490,7 @@ class CHKMapDifference(object):
         # this code. (We may want to evaluate saving the raw bytes into the
         # page cache, which would allow a working tree update after the fetch
         # to not have to read the bytes again.)
+        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1501,11 +1503,15 @@ class CHKMapDifference(object):
             if type(node) is InternalNode:
                 # Note we don't have to do node.refs() because we know that
                 # there are no children that have been pushed into this node
-                prefix_refs = node._items.items()
+                # TODO: We might want to intern these StaticTuple instances, we
+                #       need to check how much redundancy there is
+                prefix_refs = [as_st(item) for item in node._items.iteritems()]
                 items = []
             else:
                 prefix_refs = []
-                items = node._items.items()
+                # TODO: We might want to intern these StaticTuple instances, we
+                #       need to check how much redundancy there is
+                items = [as_st(item) for item in node._items.iteritems()]
             yield record, node, prefix_refs, items
 
     def _read_old_roots(self):
@@ -1599,6 +1605,8 @@ class CHKMapDifference(object):
         # First pass, flush all interesting items and convert to using direct refs
         all_old_chks = self._all_old_chks
         processed_new_refs = self._processed_new_refs
+        # We will be processing these in this pass
+        processed_new_refs.update(refs)
         all_old_items = self._all_old_items
         new_items = [item for item in self._new_item_queue
                            if item not in all_old_items]
@@ -1606,19 +1614,35 @@ class CHKMapDifference(object):
         if new_items:
             yield None, new_items
         refs = refs.difference(all_old_chks)
+        trace.debug_memory('sent %d new_items' % (len(new_items),))
         while refs:
             next_refs = set()
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
             # from 1m54s to 1m51s. Consider it.
+            idx = 0
             for record, _, p_refs, items in self._read_nodes_from_store(refs):
+                idx += 1
+                if idx & 0x7fff == 0:
+                    import sys
+                    from meliae import scanner
+                    #scanner.dump_all_objects('memory_dump-%d.json' % (idx,))
+                    # Generally *everything* is reachable from _getframe
+                    count, size = scanner.get_recursive_size(sys._getframe())
+                    trace.debug_memory('read %d records %d objects %.1fMB'
+                                       % (idx, count, size/ 1024. / 1024))
                 items = [item for item in items
                          if item not in all_old_items]
                 yield record, items
                 next_refs_update([p_r[1] for p_r in p_refs])
+            trace.debug_memory('processed %d refs, shrinking %d'
+                               % (len(refs), len(next_refs)))
             next_refs = next_refs.difference(all_old_chks)
             next_refs = next_refs.difference(processed_new_refs)
             processed_new_refs.update(next_refs)
+            trace.debug_memory('processed %d refs (%d total), working on %d'
+                               % (len(refs), len(processed_new_refs),
+                                  len(next_refs)))
             refs = next_refs
 
     def _process_next_old(self):
@@ -1636,13 +1660,19 @@ class CHKMapDifference(object):
     def _process_queues(self):
         while self._old_queue:
             self._process_next_old()
+            trace.debug_memory('processed next old')
+        trace.debug_memory('preparing to flush new queue %d'
+                           % (len(self._new_queue),))
         return self._flush_new_queue()
 
     def process(self):
         for record in self._read_all_roots():
             yield record, []
+        trace.debug_memory('after reading all roots (%d old to proc)'
+                           % (len(self._old_queue)))
         for record, items in self._process_queues():
             yield record, items
+        trace.debug_memory('processed queues')
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
