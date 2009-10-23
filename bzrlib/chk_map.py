@@ -1520,7 +1520,7 @@ class CHKMapDifference(object):
                 #       may not be an actual benefit to interning this tuple.
                 #       The file_key should already be interned. If it isn't we
                 #       need to look into it.
-                items = [as_st(item) for item in node._items.iteritems()]
+                items = [as_st(item).intern() for item in node._items.iteritems()]
             yield record, node, prefix_refs, items
 
     def _read_old_roots(self):
