@@ -1467,11 +1467,16 @@ class CHKMapDifference(object):
         # All uninteresting chks that we have seen. By the time they are added
         # here, they should be either fully ignored, or queued up for
         # processing
+        # TODO: This might grow to a large size if there are lots of merge
+        #       parents, etc. However, it probably doesn't scale to O(history)
+        #       like _processed_new_refs does.
         self._all_old_chks = set(self._old_root_keys)
         # All items that we have seen from the old_root_keys
         self._all_old_items = set()
         # These are interesting items which were either read, or already in the
         # interesting queue (so we don't need to walk them again)
+        # TODO: processed_new_refs becomes O(all_chks), consider switching to
+        #       SimpleSet here.
         self._processed_new_refs = set()
         self._search_key_func = search_key_func
 
@@ -1502,26 +1507,19 @@ class CHKMapDifference(object):
             if type(node) is InternalNode:
                 # Note we don't have to do node.refs() because we know that
                 # there are no children that have been pushed into this node
-                # TODO: Turn these into StaticTuple, and possibly intern them.
-                #       The sha1 pointer (in this case the value), should
-                #       already be a static tuple, and properly interned. So
-                #       i'm not sure if there is a big win on top of that
-                #       Also note that prefix_refs itself seems to be a pretty
-                #       short lived list.
-                prefix_refs = [as_st(item).intern()
-                               for item in node._items.iteritems()]
+                # Note: Using as_st() here seemed to save 1.2MB, which would
+                #       indicate that we keep 100k prefix_refs around while
+                #       processing. They *should* be shorter lived than that...
+                #       It does cost us ~10s of processing time
+                #prefix_refs = [as_st(item) for item in node._items.iteritems()]
+                prefix_refs = node._items.items()
                 items = []
             else:
                 prefix_refs = []
-                # TODO: Turn these into StaticTuple, and possibly intern them.
-                #       This points (ST(file_id), value), which in reality
-                #       should be pretty common, because of all the leaf nodes
-                #       that share most of the entries. Note, though, that we
-                #       didn't find a benefit to interning the value, so there
-                #       may not be an actual benefit to interning this tuple.
-                #       The file_key should already be interned. If it isn't we
-                #       need to look into it.
-                items = [as_st(item).intern() for item in node._items.iteritems()]
+                # Note: We don't use a StaticTuple here. Profiling showed a
+                #       minor memory improvement (0.8MB out of 335MB peak 0.2%)
+                #       But a significant slowdown (15s / 145s, or 10%)
+                items = node._items.items()
             yield record, node, prefix_refs, items
 
     def _read_old_roots(self):
@@ -1534,6 +1532,10 @@ class CHKMapDifference(object):
                                 if p_r[1] not in all_old_chks]
             new_refs = [p_r[1] for p_r in prefix_refs]
             all_old_chks.update(new_refs)
+            # TODO: This might be a good time to turn items into StaticTuple
+            #       instances and possibly intern them. However, this does not
+            #       impact 'initial branch' performance, so I'm not worrying
+            #       about this yet
             self._all_old_items.update(items)
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
@@ -1592,6 +1594,9 @@ class CHKMapDifference(object):
             #       current design allows for this, as callers will do the work
             #       to make the results unique. We might profile whether we
             #       gain anything by ensuring unique return values for items
+            # TODO: This might be a good time to cast to StaticTuple, as
+            #       self._new_item_queue will hold the contents of multiple
+            #       records for an extended lifetime
             new_items = [item for item in items
                                if item not in self._all_old_items]
             self._new_item_queue.extend(new_items)
@@ -1622,16 +1627,28 @@ class CHKMapDifference(object):
         if new_items:
             yield None, new_items
         refs = refs.difference(all_old_chks)
+        processed_new_refs.update(refs)
         while refs:
             next_refs = set()
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
             # from 1m54s to 1m51s. Consider it.
             for record, _, p_refs, items in self._read_nodes_from_store(refs):
-                items = [item for item in items
-                         if item not in all_old_items]
+                if all_old_items:
+                    # using the 'if' check saves about 145s => 141s, when
+                    # streaming initial branch of Launchpad data.
+                    items = [item for item in items
+                             if item not in all_old_items]
                 yield record, items
                 next_refs_update([p_r[1] for p_r in p_refs])
+                del p_refs
+            # set1.difference(set/dict) walks all of set1, and checks if it
+            # exists in 'other'.
+            # set1.difference(iterable) walks all of iterable, and does a
+            # 'difference_update' on a clone of set1. Pick wisely based on the
+            # expected sizes of objects.
+            # in our case it is expected that 'new_refs' will always be quite
+            # small.
             next_refs = next_refs.difference(all_old_chks)
             next_refs = next_refs.difference(processed_new_refs)
             processed_new_refs.update(next_refs)
@@ -1644,6 +1661,7 @@ class CHKMapDifference(object):
         self._old_queue = []
         all_old_chks = self._all_old_chks
         for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+            # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
             refs = [r for _,r in prefix_refs if r not in all_old_chks]
             self._old_queue.extend(refs)

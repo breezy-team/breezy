@@ -952,6 +952,10 @@ class CHKInventoryRepository(KnitPackRepository):
                         pb=pb):
                 for name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
+                    # TODO: consider interning file_id, revision_id here, or
+                    #       pushing that intern() into bytes_to_info()
+                    # TODO: rich_root should always be True here, for all
+                    #       repositories that support chk_bytes
                     if not rich_root and name_utf8 == '':
                         continue
                     try:
