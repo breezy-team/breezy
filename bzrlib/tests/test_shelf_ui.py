@@ -344,7 +344,6 @@ class TestApplyReporter(TestShelver):
         tree = self.create_shelvable_tree()
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
-        return
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
         self.addCleanup(shelver.finalize)
