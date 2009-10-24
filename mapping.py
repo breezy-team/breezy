@@ -313,6 +313,7 @@ class ForeignGit(ForeignVcs):
 
     def __init__(self):
         super(ForeignGit, self).__init__(mapping_registry)
+        self.abbreviation = "git"
 
     @classmethod
     def show_foreign_revid(cls, foreign_revid):
