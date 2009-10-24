@@ -88,15 +88,17 @@ class LocalGitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for k,v in self.repository._git.refs.as_dict("refs/tags").iteritems():
+        for k,v in self.repository._git.get_refs().iteritems():
+            if not k.startswith("refs/tags/"):
+                continue
             try:
-                obj = self.repository._git.get_object(v)
+                obj = self.repository._git[v]
             except KeyError:
                 mutter("Tag %s points at unknown object %s, ignoring", v, obj)
                 continue
             while isinstance(obj, Tag):
                 v = obj.object[1]
-                obj = self.repository._git.get_object(v)
+                obj = self.repository._git[v]
             if not isinstance(obj, Commit):
                 mutter("Tag %s points at object %r that is not a commit, "
                        "ignoring", k, obj)
