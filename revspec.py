@@ -15,27 +15,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Custom revision specifier for Subversion."""
 
+# Please note that imports are delayed as much as possible here since 
+# if DWIM revspecs are supported this module is imported by __init__.py.
+
 from bzrlib.errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
-    )
-from bzrlib.revision import (
-    NULL_REVISION,
     )
 from bzrlib.revisionspec import (
     RevisionInfo,
     RevisionSpec,
     )
 
-from bzrlib.plugins.git import (
-    lazy_check_versions,
-    )
-from bzrlib.plugins.git.errors import (
-    GitSmartRemoteNotSupported,
-    )
-from bzrlib.plugins.git.mapping import (
-    mapping_registry,
-    )
+
+def valid_git_sha1(hex):
+    import binascii
+    try:
+        binascii.unhexlify(hex)
+    except TypeError:
+        return False
+    else:
+        return True
+
 
 class RevisionSpec_git(RevisionSpec):
     """Selects a revision using a Subversion revision number."""
@@ -47,6 +48,10 @@ class RevisionSpec_git(RevisionSpec):
     wants_revision_history = False
 
     def _lookup_git_sha1(self, branch, sha1):
+        from bzrlib.plugins.git.errors import (
+            GitSmartRemoteNotSupported,
+            )
+
         bzr_revid = branch.mapping.revision_id_foreign_to_bzr(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
@@ -62,6 +67,9 @@ class RevisionSpec_git(RevisionSpec):
         return history
 
     def __nonzero__(self):
+        from bzrlib.revision import (
+            NULL_REVISION,
+            )
         # The default implementation uses branch.repository.has_revision()
         if self.rev_id is None:
             return False
@@ -70,6 +78,9 @@ class RevisionSpec_git(RevisionSpec):
         return True
 
     def _find_short_git_sha1(self, branch, sha1):
+        from bzrlib.plugins.git.mapping import (
+            mapping_registry,
+            )
         parse_revid = getattr(branch.repository, "lookup_git_revid",
                               mapping_registry.parse_revision_id)
         branch.repository.lock_read()
@@ -88,13 +99,16 @@ class RevisionSpec_git(RevisionSpec):
             branch.repository.unlock()
 
     def _match_on(self, branch, revs):
-        lazy_check_versions()
         loc = self.spec.find(':')
         git_sha1 = self.spec[loc+1:].encode("utf-8")
+        if len(git_sha1) > 40 or not valid_git_sha1(git_sha1):
+            raise InvalidRevisionSpec(self.user_spec, branch)
+        from bzrlib.plugins.git import (
+            lazy_check_versions,
+            )
+        lazy_check_versions()
         if len(git_sha1) == 40:
             return self._lookup_git_sha1(branch, git_sha1)
-        elif len(git_sha1) > 40:
-            raise InvalidRevisionSpec(self.user_spec, branch)
         else:
             return self._find_short_git_sha1(branch, git_sha1)
 

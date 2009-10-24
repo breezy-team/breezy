@@ -95,6 +95,14 @@ from bzrlib.revisionspec import revspec_registry
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
     "RevisionSpec_git")
 
+try:
+    from bzrlib.revisionspec import dwim_revspecs
+except ImportError:
+    pass
+else:
+    from bzrlib.plugins.git.revspec import RevisionSpec_git
+    dwim_revspecs.append(RevisionSpec_git)
+
 
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
