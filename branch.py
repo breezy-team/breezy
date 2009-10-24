@@ -54,12 +54,12 @@ from bzrlib.plugins.git.errors import (
 from bzrlib.foreign import ForeignBranch
 
 
-def extract_tags(refs, mapping):
+def extract_tags(refs):
     ret = {}
     for k,v in refs.iteritems():
         if k.startswith("refs/tags/") and not k.endswith("^{}"):
             v = refs.get(k+"^{}", v)
-            ret[k[len("refs/tags/"):]] = mapping.revision_id_foreign_to_bzr(v)
+            ret[k[len("refs/tags/"):]] = v
     return ret
 
 
@@ -88,9 +88,7 @@ class LocalGitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for k,v in self.repository._git.get_refs().iteritems():
-            if not k.startswith("refs/tags/"):
-                continue
+        for k,v in extract_tags(self.repository._git.get_refs()).iteritems():
             try:
                 obj = self.repository._git[v]
             except KeyError:
@@ -501,7 +499,8 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         return result
 
     def update_tags(self, refs):
-        for name, revid in extract_tags(refs, self.target.mapping).iteritems():
+        for name, v in extract_tags(refs).iteritems():
+            revid = self.target.mapping.revision_id_foreign_to_bzr(v)
             self.target.tags.set_tag(name, revid)
 
     def update_refs(self, stop_revision=None):

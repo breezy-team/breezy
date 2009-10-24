@@ -85,7 +85,9 @@ class cmd_git_import(Command):
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch_refs()
-        tags = extract_tags(refs, mapping)
+        tags = {}
+        for k, v in extract_tags(refs).iteritems():
+            tags[k] = mapping.revision_id_foreign_to_bzr(v)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):

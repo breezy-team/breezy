@@ -288,7 +288,10 @@ class RemoteGitTagDict(tag.BasicTags):
         self.repository = branch.repository
 
     def get_tag_dict(self):
-        return extract_tags(self.repository.get_refs(), self.branch.mapping)
+        tags = {}
+        for k, v in extract_tags(self.repository.get_refs()).iteritems():
+            tags[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
+        return tags
 
     def set_tag(self, name, revid):
         # FIXME: Not supported yet, should do a push of a new ref
