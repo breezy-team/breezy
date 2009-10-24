@@ -32,7 +32,8 @@ from bzrlib.versionedfile import (
 
 class GitRevisions(VersionedFiles):
 
-    def __init__(self, object_store):
+    def __init__(self, repository, object_store):
+        self.repository = repository
         self.object_store = object_store
 
     def check(self, progressbar=None):
@@ -51,23 +52,25 @@ class GitRevisions(VersionedFiles):
 
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
-            (sha,) = key
+            (revid,) = key
+            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
             try:
-                commit = self.object_store[sha]
+                commit = self.object_store[commit_id]
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
                 yield FulltextContentFactory(key, 
-                    tuple([(p,) for p in commit.parents]), None, 
+                    tuple([(self.repository.lookup_revision_id(p, mapping),) for p in commit.parents]), None, 
                     commit.as_raw_string())
 
     def get_parent_map(self, keys):
         ret = {}
-        for (key,) in keys:
+        for (revid,) in keys:
+            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
             try:
-                ret[(key,)] = [(p,) for p in self.object_store[key].parents]
+                ret[(revid,)] = [(self.repository.lookup_revision_id(p, mapping),) for p in self.object_store[commit_id].parents]
             except KeyError:
-                ret[(key,)] = None
+                ret[(revid,)] = None
         return ret
 
 

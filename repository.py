@@ -107,7 +107,7 @@ class LocalGitRepository(GitRepository):
         self._git = gitdir._git
         self.texts = None
         self.signatures = None
-        self.revisions = GitRevisions(self._git.object_store)
+        self.revisions = GitRevisions(self, self._git.object_store)
         self.inventories = None
         self.texts = GitTexts(self)
 
@@ -163,14 +163,15 @@ class LocalGitRepository(GitRepository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
-    def lookup_revision_id(self, revid):
+    def lookup_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
         
         :param revid: Bazaar revision id.
         :return: Tuple with git revisionid and mapping.
         """
-        # Yes, this doesn't really work, but good enough as a stub
-        return osutils.sha(revid).hexdigest(), self.get_mapping()
+        if mapping is None:
+            mapping = self.get_mapping()
+        return mapping.revision_id_foreign_to_bzr(foreign_revid)
 
     def has_signature_for_revision_id(self, revision_id):
         return False
