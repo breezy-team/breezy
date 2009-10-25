@@ -317,7 +317,7 @@ class AbstractRevisionStore(object):
                 validator, new_inv = self.repo.add_inventory_by_delta(parents[0],
                     inv_delta, revision_id, parents)
         else:
-            if hasattr(basis_inv, 'create_by_apply_delta'):
+            if isinstance(basis_inv, inventory.CHKInventory):
                 new_inv = basis_inv.create_by_apply_delta(inv_delta, revision_id)
             else:
                 new_inv = inventory.Inventory(revision_id=revision_id)
