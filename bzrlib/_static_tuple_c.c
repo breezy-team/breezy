@@ -304,8 +304,8 @@ StaticTuple_repr(StaticTuple *self)
     if (tuple_repr == NULL) {
         return NULL;
     }
-    result = PyString_FromFormat("%s%s", Py_TYPE(self)->tp_name,
-                                         PyString_AsString(tuple_repr));
+    result = PyString_FromFormat("StaticTuple%s",
+                                 PyString_AsString(tuple_repr));
     return result;
 }
 
@@ -574,6 +574,29 @@ static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
 
 
 static PyObject *
+StaticTuple_reduce(StaticTuple *self)
+{
+    PyObject *result = NULL, *as_tuple = NULL;
+
+    result = PyTuple_New(2);
+    if (!result) {
+        return NULL;
+    }
+    as_tuple = StaticTuple_as_tuple(self);
+    if (as_tuple == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    Py_INCREF(&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 0, (PyObject *)&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 1, as_tuple);
+    return result;
+}
+
+static char StaticTuple_reduce_doc[] = "__reduce__() => tuple\n";
+
+
+static PyObject *
 StaticTuple_add(PyObject *v, PyObject *w)
 {
     Py_ssize_t i, len_v, len_w;
@@ -688,6 +711,7 @@ static PyMethodDef StaticTuple_methods[] = {
      METH_STATIC | METH_VARARGS,
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
+    {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -735,7 +759,7 @@ static PySequenceMethods StaticTuple_as_sequence = {
 PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
-    "StaticTuple",                               /* tp_name */
+    "bzrlib._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */

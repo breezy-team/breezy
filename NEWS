@@ -25,7 +25,10 @@ Bug Fixes
 * "bzr mkdir" now includes -p (--parents) option for recursively adding
   parent directories.
   (Jared Hance, #253529)
-  
+
+* ``bzr+http`` servers no longer give spurious jail break errors when
+  serving branches inside a shared repository.  (Andrew Bennetts, #348308)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 

@@ -48,6 +48,9 @@ class StaticTuple(tuple):
     def __repr__(self):
         return '%s%s' % (self.__class__.__name__, tuple.__repr__(self))
 
+    def __reduce__(self):
+        return (StaticTuple, tuple(self))
+
     def __add__(self, other):
         """Concatenate self with other"""
         return StaticTuple.from_sequence(tuple.__add__(self,other))
