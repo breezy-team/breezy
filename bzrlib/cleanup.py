@@ -31,14 +31,18 @@ the original exception.
 If you want to be certain that the first, and only the first, error is raised,
 then use::
 
-    do_with_cleanups(do_something, cleanups)
+    operation = OperationWithCleanups(lambda operation: do_something())
+    operation.add_cleanup(cleanup_something)
+    operation.run()
 
 This is more inconvenient (because you need to make every try block a
 function), but will ensure that the first error encountered is the one raised,
-while also ensuring all cleanups are run.
+while also ensuring all cleanups are run.  See OperationWithCleanups for more
+details.
 """
 
 
+from collections import deque
 import sys
 from bzrlib import (
     debug,
@@ -70,12 +74,12 @@ def _run_cleanup(func, *args, **kwargs):
 
 def _run_cleanups(funcs):
     """Run a series of cleanup functions."""
-    for func in funcs:
-        _run_cleanup(func)
+    for func, args, kwargs in funcs:
+        _run_cleanup(func, *args, **kwargs)
 
 
 class OperationWithCleanups(object):
-    """A helper for using do_with_cleanups with a dynamic cleanup list.
+    """A way to run some code with a dynamic cleanup list.
 
     This provides a way to add cleanups while the function-with-cleanups is
     running.
@@ -91,22 +95,29 @@ class OperationWithCleanups(object):
             do_something()
             operation.add_cleanup(something)
             # etc
+
+    Note that the first argument passed to `some_func` will be the
+    OperationWithCleanups object.
     """
 
     def __init__(self, func):
         self.func = func
-        self.cleanups = []
+        self.cleanups = deque()
 
-    def add_cleanup(self, cleanup_func):
-        """Add a cleanup to run.  Cleanups will be executed in LIFO order."""
-        self.cleanups.insert(0, cleanup_func)
+    def add_cleanup(self, cleanup_func, *args, **kwargs):
+        """Add a cleanup to run.
+
+        Cleanups may be added at any time before or during the execution of
+        self.func.  Cleanups will be executed in LIFO order.
+        """
+        self.cleanups.appendleft((cleanup_func, args, kwargs))
 
     def run(self, *args, **kwargs):
-        func = lambda: self.func(self, *args, **kwargs)
-        return do_with_cleanups(func, self.cleanups)
+        return _do_with_cleanups(
+            self.cleanups, self.func, self, *args, **kwargs)
 
 
-def do_with_cleanups(func, cleanup_funcs):
+def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
     """Run `func`, then call all the cleanup_funcs.
 
     All the cleanup_funcs are guaranteed to be run.  The first exception raised
@@ -116,10 +127,10 @@ def do_with_cleanups(func, cleanup_funcs):
     Conceptually similar to::
 
         try:
-            return func()
+            return func(*args, **kwargs)
         finally:
-            for cleanup in cleanup_funcs:
-                cleanup()
+            for cleanup, cargs, ckwargs in cleanup_funcs:
+                cleanup(*cargs, **ckwargs)
 
     It avoids several problems with using try/finally directly:
      * an exception from func will not be obscured by a subsequent exception
@@ -128,12 +139,12 @@ def do_with_cleanups(func, cleanup_funcs):
        running (but the first exception encountered is still the one
        propagated).
 
-    Unike `_run_cleanup`, `do_with_cleanups` can propagate an exception from a
+    Unike `_run_cleanup`, `_do_with_cleanups` can propagate an exception from a
     cleanup, but only if there is no exception from func.
     """
     # As correct as Python 2.4 allows.
     try:
-        result = func()
+        result = func(*args, **kwargs)
     except:
         # We have an exception from func already, so suppress cleanup errors.
         _run_cleanups(cleanup_funcs)
@@ -143,13 +154,13 @@ def do_with_cleanups(func, cleanup_funcs):
         # cleanup_funcs to propagate if one occurs (but only after running all
         # of them).
         exc_info = None
-        for cleanup in cleanup_funcs:
+        for cleanup, c_args, c_kwargs in cleanup_funcs:
             # XXX: Hmm, if KeyboardInterrupt arrives at exactly this line, we
             # won't run all cleanups... perhaps we should temporarily install a
             # SIGINT handler?
             if exc_info is None:
                 try:
-                    cleanup()
+                    cleanup(*c_args, **c_kwargs)
                 except:
                     # This is the first cleanup to fail, so remember its
                     # details.
@@ -157,7 +168,7 @@ def do_with_cleanups(func, cleanup_funcs):
             else:
                 # We already have an exception to propagate, so log any errors
                 # but don't propagate them.
-                _run_cleanup(cleanup)
+                _run_cleanup(cleanup, *c_args, **kwargs)
         if exc_info is not None:
             raise exc_info[0], exc_info[1], exc_info[2]
         # No error, so we can return the result

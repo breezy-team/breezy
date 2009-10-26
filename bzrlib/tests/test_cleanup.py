@@ -18,8 +18,9 @@ from cStringIO import StringIO
 import re
 
 from bzrlib.cleanup import (
-    do_with_cleanups,
+    _do_with_cleanups,
     _run_cleanup,
+    OperationWithCleanups,
     )
 from bzrlib.tests import TestCase
 from bzrlib import (
@@ -116,12 +117,6 @@ class TestRunCleanup(CleanupsTestCase):
         self.assertLogContains('Cleanup failed:.*failing_cleanup goes boom')
 
 
-#class TestRunCleanupReportingErrors(CleanupsTestCase):
-#
-#    def test_cleanup_error_reported(self):
-#        xxx
-
-
 class TestDoWithCleanups(CleanupsTestCase):
 
     def trivial_func(self):
@@ -129,17 +124,17 @@ class TestDoWithCleanups(CleanupsTestCase):
         return 'trivial result'
 
     def test_runs_func(self):
-        """do_with_cleanups runs the function it is given, and returns the
+        """_do_with_cleanups runs the function it is given, and returns the
         result.
         """
-        result = do_with_cleanups(self.trivial_func, [])
+        result = _do_with_cleanups([], self.trivial_func)
         self.assertEqual('trivial result', result)
 
     def test_runs_cleanups(self):
         """Cleanup functions are run (in the given order)."""
-        cleanup_func_1 = lambda: self.call_log.append('cleanup 1')
-        cleanup_func_2 = lambda: self.call_log.append('cleanup 2')
-        do_with_cleanups(self.trivial_func, [cleanup_func_1, cleanup_func_2])
+        cleanup_func_1 = (self.call_log.append, ('cleanup 1',), {})
+        cleanup_func_2 = (self.call_log.append, ('cleanup 2',), {})
+        _do_with_cleanups([cleanup_func_1, cleanup_func_2], self.trivial_func)
         self.assertEqual(
             ['trivial_func', 'cleanup 1', 'cleanup 2'], self.call_log)
 
@@ -152,8 +147,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         cleanups).
         """
         self.assertRaises(
-            ZeroDivisionError, do_with_cleanups, self.failing_func,
-            [self.no_op_cleanup])
+            ZeroDivisionError, _do_with_cleanups,
+            [(self.no_op_cleanup, (), {})], self.failing_func)
         self.assertEqual(['failing_func', 'no_op_cleanup'], self.call_log)
 
     def test_func_error_trumps_cleanup_error(self):
@@ -163,8 +158,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         The cleanup error is be logged.
         """
         self.assertRaises(
-            ZeroDivisionError, do_with_cleanups, self.failing_func,
-            [self.failing_cleanup])
+            ZeroDivisionError, _do_with_cleanups,
+            [(self.failing_cleanup, (), {})], self.failing_func)
         self.assertLogContains('Cleanup failed:.*failing_cleanup goes boom')
 
     def test_func_passes_and_error_from_cleanup(self):
@@ -172,8 +167,9 @@ class TestDoWithCleanups(CleanupsTestCase):
         raise an error.  Later cleanups are still executed.
         """
         exc = self.assertRaises(
-            Exception, do_with_cleanups, self.trivial_func,
-            [self.failing_cleanup, self.no_op_cleanup])
+            Exception, _do_with_cleanups,
+            [(self.failing_cleanup, (), {}), (self.no_op_cleanup, (), {})],
+            self.trivial_func)
         self.assertEqual('failing_cleanup goes boom!', exc.args[0])
         self.assertEqual(
             ['trivial_func', 'failing_cleanup', 'no_op_cleanup'],
@@ -185,8 +181,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         logged.
         """
         cleanups = self.make_two_failing_cleanup_funcs()
-        self.assertRaises(ErrorA, do_with_cleanups, self.trivial_func,
-            cleanups)
+        self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
+            self.trivial_func)
         self.assertLogContains('Cleanup failed:.*ErrorB')
         log = self._get_log(keep_log_file=True)
         self.assertFalse('ErrorA' in log)
@@ -196,14 +192,15 @@ class TestDoWithCleanups(CleanupsTestCase):
             raise ErrorA('Error A')
         def raise_b():
             raise ErrorB('Error B')
-        return [raise_a, raise_b]
+        return [(raise_a, (), {}), (raise_b, (), {})]
 
     def test_multiple_cleanup_failures_debug_flag(self):
         log = StringIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
-        self.assertRaises(ErrorA, do_with_cleanups, self.trivial_func, cleanups)
+        self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
+            self.trivial_func)
         self.assertContainsRe(
             log.getvalue(), "bzr: warning: Cleanup failed:.*Error B\n")
         self.assertEqual(1, log.getvalue().count('bzr: warning:'),
@@ -214,8 +211,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
         cleanups = self.make_two_failing_cleanup_funcs()
-        self.assertRaises(ZeroDivisionError, do_with_cleanups,
-            self.failing_func, cleanups)
+        self.assertRaises(ZeroDivisionError, _do_with_cleanups, cleanups,
+            self.failing_func)
         self.assertContainsRe(
             log.getvalue(), "bzr: warning: Cleanup failed:.*Error A\n")
         self.assertContainsRe(
@@ -226,16 +223,15 @@ class TestDoWithCleanups(CleanupsTestCase):
         """The main func may mutate the cleanups before it returns.
         
         This allows a function to gradually add cleanups as it acquires
-        resources, rather than planning all the cleanups up-front.
+        resources, rather than planning all the cleanups up-front.  The
+        OperationWithCleanups helper relies on this working.
         """
-        # XXX: this is cute, but an object with an 'add_cleanup' method may
-        # make a better API?
         cleanups_list = []
         def func_that_adds_cleanups():
             self.call_log.append('func_that_adds_cleanups')
-            cleanups_list.append(self.no_op_cleanup)
+            cleanups_list.append((self.no_op_cleanup, (), {}))
             return 'result'
-        result = do_with_cleanups(func_that_adds_cleanups, cleanups_list)
+        result = _do_with_cleanups(cleanups_list, func_that_adds_cleanups)
         self.assertEqual('result', result)
         self.assertEqual(
             ['func_that_adds_cleanups', 'no_op_cleanup'], self.call_log)
@@ -247,8 +243,8 @@ class TestDoWithCleanups(CleanupsTestCase):
         log = StringIO()
         trace.push_log_file(log)
         debug.debug_flags.add('cleanup')
-        self.assertRaises(ZeroDivisionError, do_with_cleanups,
-            self.failing_func, [self.failing_cleanup])
+        self.assertRaises(ZeroDivisionError, _do_with_cleanups,
+            [(self.failing_cleanup, (), {})], self.failing_func)
         self.assertContainsRe(
             log.getvalue(),
             "bzr: warning: Cleanup failed:.*failing_cleanup goes boom")
@@ -257,3 +253,28 @@ class TestDoWithCleanups(CleanupsTestCase):
 
 class ErrorA(Exception): pass
 class ErrorB(Exception): pass
+
+
+class TestOperationWithCleanups(CleanupsTestCase):
+
+    def test_cleanup_ordering(self):
+        """Cleanups are added in LIFO order.
+
+        So cleanups added before run is called are run last, and the last
+        cleanup added during the func is run first.
+        """
+        call_log = []
+        def func(op, foo):
+            call_log.append(('func called', foo))
+            op.add_cleanup(call_log.append, 'cleanup 2')
+            op.add_cleanup(call_log.append, 'cleanup 1')
+            return 'result'
+        owc = OperationWithCleanups(func)
+        owc.add_cleanup(call_log.append, 'cleanup 4')
+        owc.add_cleanup(call_log.append, 'cleanup 3')
+        result = owc.run('foo')
+        self.assertEqual('result', result)
+        self.assertEqual(
+            [('func called', 'foo'), 'cleanup 1', 'cleanup 2', 'cleanup 3',
+            'cleanup 4'], call_log)
+
