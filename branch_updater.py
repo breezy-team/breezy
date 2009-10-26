@@ -18,7 +18,7 @@
 
 from operator import itemgetter
 
-from bzrlib import bzrdir, errors, osutils
+from bzrlib import bzrdir, errors, osutils, transport
 from bzrlib.trace import error, note
 
 import branch_mapper
@@ -134,11 +134,14 @@ class BranchUpdater(object):
 
     def make_branch(self, location):
         """Make a branch in the repository if not already there."""
+        to_transport = transport.get_transport(location)
+        to_transport.create_prefix()
         try:
             return bzrdir.BzrDir.open(location).open_branch()
         except errors.NotBranchError, ex:
             return bzrdir.BzrDir.create_branch_convenience(location,
-                format=self._branch_format)
+                format=self._branch_format,
+                possible_transports=[to_transport])
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.
