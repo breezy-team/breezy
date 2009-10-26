@@ -68,30 +68,10 @@ def _run_cleanup(func, *args, **kwargs):
     return True
 
 
-def _run_cleanup_reporting_errors(func, *args, **kwargs):
-    try:
-        func(*args, **kwargs)
-    except KeyboardInterrupt:
-        raise
-    except Exception, exc:
-        trace.mutter('Cleanup failed:')
-        trace.log_exception_quietly()
-        trace.warning('Cleanup failed: %s', exc)
-        return False
-    return True
-
-
-def _run_cleanups(funcs, on_error='log'):
-    """Run a series of cleanup functions.
-
-    :param errors: One of 'log', 'warn first', 'warn all'
-    """
-    seen_error = False
+def _run_cleanups(funcs):
+    """Run a series of cleanup functions."""
     for func in funcs:
-        if on_error == 'log' or (on_error == 'warn first' and seen_error):
-            seen_error |= _run_cleanup(func)
-        else:
-            seen_error |= _run_cleanup_reporting_errors(func)
+        _run_cleanup(func)
 
 
 class OperationWithCleanups(object):
