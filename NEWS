@@ -46,6 +46,7 @@ Improvements
   (John Arbash Meinel)
 
 * Peak memory under certain operations has been reduced significantly.
+  (eg, 'bzr branch launchpad standalone' is cut in half)
   (John Arbash Meinel)
 
 Documentation
@@ -74,14 +75,14 @@ Internals
   (John Arbash Meinel)
 
 * ``bzrlib._static_tuple_c.StaticTuple`` is now available and used by
-  the btree index parser. This class functions similarly to ``tuple``
-  objects. However, it can only point to a limited collection of types.
-  (Currently StaticTuple, str, unicode, None, bool, int, long, float, and
-  not subclasses).  This allows us to remove it from the garbage collector
-  (it cannot be in a cycle), it also allows us to intern the objects. In
-  testing, this can reduce peak memory by 20-40%, and significantly
-  improve performance by removing objects from being inspected by the
-  garbage collector.  (John Arbash Meinel)
+  the btree index parser and the chk map parser. This class functions
+  similarly to ``tuple`` objects. However, it can only point to a limited
+  collection of types.  (Currently StaticTuple, str, unicode, None, bool,
+  int, long, float, but not subclasses).  This allows us to remove it from
+  the garbage collector (it cannot be in a cycle), it also allows us to
+  intern the objects. In testing, this can reduce peak memory by 20-40%,
+  and significantly improve performance by removing objects from being
+  inspected by the garbage collector.  (John Arbash Meinel)
 
 * ``GroupCompressBlock._ensure_content()`` will now release the
   ``zlib.decompressobj()`` when the first request is for all of the
