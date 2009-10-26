@@ -39,7 +39,7 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1 --subunit $(tests)
+	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
 
 # Run Python style checker (apt-get install pyflakes)
 #
