@@ -25,6 +25,15 @@ Bug Fixes
 * ``bzr+http`` servers no longer give spurious jail break errors when
   serving branches inside a shared repository.  (Andrew Bennetts, #348308)
 
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
@@ -41,6 +50,9 @@ Improvements
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
@@ -107,11 +119,23 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 Improvements
 ************
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
