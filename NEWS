@@ -97,6 +97,11 @@ Bug Fixes
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
+* Errors during commit are handled more robustly so that knock-on errors
+  are less likely to occur, and will not obscure the original error if
+  they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
+  and similar errors.  (Andrew Bennetts, #429747, #243391)
+
 * Fetches from 2a to 2a are now again requested in 'groupcompress' order.
   Groups that are seen as 'underutilized' will be repacked on-the-fly.
   This means that when the source is fully packed, there is minimal
