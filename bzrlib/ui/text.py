@@ -82,6 +82,15 @@ class TextUIFactory(UIFactory):
                 # end-of-file; possibly should raise an error here instead
                 return None
 
+    def get_integer(self, prompt):
+        while True:
+            self.prompt(prompt)
+            line = self.stdin.readline()
+            try:
+                return int(line)
+            except ValueError:
+                pass
+
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)
         if isatty is not None and isatty():

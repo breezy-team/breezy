@@ -19,6 +19,9 @@ Compatibility Breaks
 New Features
 ************
 
+* ``UIFactory`` can now query for signed integers.
+  (Vincent Ladeuil)
+
 Bug Fixes
 *********
 
