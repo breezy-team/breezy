@@ -183,7 +183,7 @@ StaticTuple_New(Py_ssize_t size)
 static StaticTuple *
 StaticTuple_FromSequence(PyObject *sequence)
 {
-    StaticTuple *new;
+    StaticTuple *new = NULL;
     PyObject *as_tuple = NULL;
     PyObject *item;
     Py_ssize_t i, size;
@@ -194,17 +194,17 @@ StaticTuple_FromSequence(PyObject *sequence)
     }
     if (!PySequence_Check(sequence)) {
         as_tuple = PySequence_Tuple(sequence);
+        if (as_tuple == NULL)
+            goto done;
         sequence = as_tuple;
     }
     size = PySequence_Size(sequence);
     if (size == -1) {
-        Py_XDECREF(as_tuple);
-        return NULL;
+        goto done;
     }
     new = StaticTuple_New(size);
     if (new == NULL) {
-        Py_XDECREF(as_tuple);
-        return NULL;
+        goto done;
     }
     for (i = 0; i < size; ++i) {
         // This returns a new reference, which we then 'steal' with 
@@ -212,11 +212,12 @@ StaticTuple_FromSequence(PyObject *sequence)
         item = PySequence_GetItem(sequence, i);
         if (item == NULL) {
             Py_DECREF(new);
-            Py_XDECREF(as_tuple);
-            return NULL;
+            new = NULL;
+            goto done;
         }
         StaticTuple_SET_ITEM(new, i, item);
     }
+done:
     Py_XDECREF(as_tuple);
     return (StaticTuple *)new;
 }
