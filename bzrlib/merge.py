@@ -1164,7 +1164,14 @@ class Merge3Merger(object):
                 # OTHER changed the file
                 wt = self.this_tree
                 if wt.supports_content_filtering():
-                    filter_tree_path = self.other_tree.id2path(file_id)
+                    # We get the path from the working tree if it exists.
+                    # That fails though when OTHER is adding a file, so
+                    # we fall back to the other tree to find the path if
+                    # it doesn't exist locally.
+                    try:
+                        filter_tree_path = wt.id2path(file_id)
+                    except errors.NoSuchId:
+                        filter_tree_path = self.other_tree.id2path(file_id)
                 else:
                     # Skip the id2path lookup for older formats
                     filter_tree_path = None
