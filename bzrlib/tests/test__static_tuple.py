@@ -578,6 +578,11 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
 
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(('foo', 'bar')))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
     def test_pickle(self):
         st = self.module.StaticTuple('foo', 'bar')
         pickled = cPickle.dumps(st)

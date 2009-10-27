@@ -184,6 +184,7 @@ static StaticTuple *
 StaticTuple_FromSequence(PyObject *sequence)
 {
     StaticTuple *new;
+    PyObject *as_tuple = NULL;
     PyObject *item;
     Py_ssize_t i, size;
 
@@ -192,15 +193,17 @@ StaticTuple_FromSequence(PyObject *sequence)
         return (StaticTuple *)sequence;
     }
     if (!PySequence_Check(sequence)) {
-        PyErr_Format(PyExc_TypeError, "Type %s is not a sequence type",
-                     Py_TYPE(sequence)->tp_name);
-        return NULL;
+        as_tuple = PySequence_Tuple(sequence);
+        sequence = as_tuple;
     }
     size = PySequence_Size(sequence);
-    if (size == -1)
+    if (size == -1) {
+        Py_XDECREF(as_tuple);
         return NULL;
+    }
     new = StaticTuple_New(size);
     if (new == NULL) {
+        Py_XDECREF(as_tuple);
         return NULL;
     }
     for (i = 0; i < size; ++i) {
@@ -209,10 +212,12 @@ StaticTuple_FromSequence(PyObject *sequence)
         item = PySequence_GetItem(sequence, i);
         if (item == NULL) {
             Py_DECREF(new);
+            Py_XDECREF(as_tuple);
             return NULL;
         }
         StaticTuple_SET_ITEM(new, i, item);
     }
+    Py_XDECREF(as_tuple);
     return (StaticTuple *)new;
 }
 
