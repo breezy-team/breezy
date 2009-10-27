@@ -571,12 +571,27 @@ class TestStaticTuple(tests.TestCase):
     def test_from_sequence_not_sequence(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object())
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, 10)
 
     def test_from_sequence_incorrect_args(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(['foo', 'bar']))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_generator(self):
+        def generate_tuple():
+            yield 'foo'
+            yield 'bar'
+        st = self.module.StaticTuple.from_sequence(generate_tuple())
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
 
     def test_pickle(self):
         st = self.module.StaticTuple('foo', 'bar')
