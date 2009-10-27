@@ -138,12 +138,12 @@ class RevisionSpec(object):
     prefix = None
     wants_revision_history = True
     dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
-    """Expections that RevisionSpec_dwim._match_on will catch.
+    """Exceptions that RevisionSpec_dwim._match_on will catch.
 
-    If the revspec is part of dwim_revspecs, it may be tried with an invalid
-    revspec and raise some exception. The exceptions mentioned here will not be
-    reported to the user but simply ignored without stopping the dwim
-    processing.
+    If the revspec is part of ``dwim_revspecs``, it may be tried with an
+    invalid revspec and raises some exception. The exceptions mentioned here
+    will not be reported to the user but simply ignored without stopping the
+    dwim processing.
     """
 
     @staticmethod
