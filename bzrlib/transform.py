@@ -2420,8 +2420,14 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
-    """Create new file contents according to tree contents."""
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+    filter_tree_path=None):
+    """Create new file contents according to tree contents.
+    
+    :param filter_tree_path: the tree path to use to lookup
+      content filters to apply to the bytes output in the working tree.
+      This only applies if the working tree supports content filtering.
+    """
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
@@ -2432,6 +2438,11 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
                 bytes = tree_file.readlines()
             finally:
                 tree_file.close()
+        wt = tt._tree
+        if wt.supports_content_filtering() and filter_tree_path is not None:
+            filters = wt._content_filter_stack(filter_tree_path)
+            bytes = filtered_output_bytes(bytes, filters,
+                ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
@@ -2628,9 +2639,19 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 tt.adjust_path(name[1], parent_trans, trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
-        for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
-            deferred_files):
-            tt.create_file(bytes, trans_id, mode_id)
+        if working_tree.supports_content_filtering():
+            for index, ((trans_id, mode_id), bytes) in enumerate(
+                target_tree.iter_files_bytes(deferred_files)):
+                file_id = deferred_files[index][0]
+                filter_tree_path = target_tree.id2path(file_id)
+                filters = working_tree._content_filter_stack(filter_tree_path)
+                bytes = filtered_output_bytes(bytes, filters,
+                    ContentFilterContext(filter_tree_path, working_tree))
+                tt.create_file(bytes, trans_id, mode_id)
+        else:
+            for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
+                deferred_files):
+                tt.create_file(bytes, trans_id, mode_id)
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
