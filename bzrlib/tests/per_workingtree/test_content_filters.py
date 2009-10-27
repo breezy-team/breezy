@@ -83,12 +83,19 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
         # Commit another revision with changed text, if requested
-        if two_revisions:
-            self.build_tree_contents([(dir + '/file1.txt', 'Foo ROCKS!')])
-            tree.commit("changed file1.txt")
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
-        return tree, txt_fileid, bin_fileid
+        if two_revisions:
+            self.build_tree_contents([
+                (dir + '/file1.txt', 'Foo ROCKS!'),
+                (dir + '/file2.txt', 'Hello World'),
+                ])
+            tree.add(['file2.txt'])
+            tree.commit("changed file1.txt, added file2.txt")
+            txt2_fileid = tree.path2id('file2.txt')
+            return tree, txt_fileid, bin_fileid, txt2_fileid
+        else:
+            return tree, txt_fileid, bin_fileid
 
     def patch_in_content_filter(self):
         # Patch in a custom, symmetric content filter stack
@@ -227,7 +234,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_pull(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
             txt_reader=None, txt_writer=None, dir='source', two_revisions=True)
         if not source.supports_content_filtering():
             return
@@ -245,10 +252,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.run_bzr('pull -d target')
         self.assertFileEqual("fOO rocks!", 'target/file1.txt')
         self.assert_basis_content("Foo ROCKS!", target, txt_fileid)
+        self.assertFileEqual("hELLO wORLD", 'target/file2.txt')
+        self.assert_basis_content("Hello World", target, txt2_fileid)
 
     def test_content_filtering_applied_on_merge(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
             txt_reader=None, txt_writer=None, dir='source', two_revisions=True)
         if not source.supports_content_filtering():
             return
@@ -265,14 +274,16 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Merge the latter change and check the target tree is updated
         self.run_bzr('merge -d target source')
         self.assertFileEqual("fOO rocks!", 'target/file1.txt')
+        self.assertFileEqual("hELLO wORLD", 'target/file2.txt')
 
         # Commit the merge and check the right content is stored
         target.commit("merge file1.txt changes from source")
         self.assert_basis_content("Foo ROCKS!", target, txt_fileid)
+        self.assert_basis_content("Hello World", target, txt2_fileid)
 
     def test_content_filtering_applied_on_switch(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid = self.create_cf_tree(
+        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
             txt_reader=None, txt_writer=None, dir='branch-a', two_revisions=True)
         if not source.supports_content_filtering():
             return
@@ -289,6 +300,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         checkout_control_dir = BzrDir.open_containing('checkout')[0]
         switch(checkout_control_dir, source.branch)
         self.assertFileEqual("fOO rocks!", 'checkout/file1.txt')
+        self.assertFileEqual("hELLO wORLD", 'checkout/file2.txt')
 
     def test_content_filtering_applied_on_revert(self):
         # Create a source branch with content filtering
