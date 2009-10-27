@@ -1054,46 +1054,19 @@ class DiskTreeTransform(TreeTransformBase):
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
         limbo_name = self._limbo_files.get(trans_id)
-        if limbo_name is not None:
-            return limbo_name
-        parent = self._new_parent.get(trans_id)
-        # if the parent directory is already in limbo (e.g. when building a
-        # tree), choose a limbo name inside the parent, to reduce further
-        # renames.
-        use_direct_path = False
-        if self._new_contents.get(parent) == 'directory':
-            filename = self._new_name.get(trans_id)
-            if filename is not None:
-                if parent not in self._limbo_children:
-                    self._limbo_children[parent] = set()
-                    self._limbo_children_names[parent] = {}
-                    use_direct_path = True
-                # the direct path can only be used if no other file has
-                # already taken this pathname, i.e. if the name is unused, or
-                # if it is already associated with this trans_id.
-                elif self._case_sensitive_target:
-                    if (self._limbo_children_names[parent].get(filename)
-                        in (trans_id, None)):
-                        use_direct_path = True
-                else:
-                    for l_filename, l_trans_id in\
-                        self._limbo_children_names[parent].iteritems():
-                        if l_trans_id == trans_id:
-                            continue
-                        if l_filename.lower() == filename.lower():
-                            break
-                    else:
-                        use_direct_path = True
-
-        if use_direct_path:
-            limbo_name = pathjoin(self._limbo_files[parent], filename)
-            self._limbo_children[parent].add(trans_id)
-            self._limbo_children_names[parent][filename] = trans_id
-        else:
-            limbo_name = pathjoin(self._limbodir, trans_id)
-            self._needs_rename.add(trans_id)
-        self._limbo_files[trans_id] = limbo_name
+        if limbo_name is None:
+            limbo_name = self._generate_limbo_path(trans_id)
+            self._limbo_files[trans_id] = limbo_name
         return limbo_name
+
+    def _generate_limbo_path(self, trans_id):
+        """Generate a limbo path using the trans_id as the relative path.
+
+        This is suitable as a fallback, and when the transform should not be
+        sensitive to the path encoding of the limbo directory.
+        """
+        self._needs_rename.add(trans_id)
+        return pathjoin(self._limbodir, trans_id)
 
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
@@ -1122,6 +1095,17 @@ class DiskTreeTransform(TreeTransformBase):
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            for descendant in self._limbo_descendants(trans_id):
+                desc_path = self._limbo_files[descendant]
+                desc_path = new_path + desc_path[len(old_path):]
+                self._limbo_files[descendant] = desc_path
+
+    def _limbo_descendants(self, trans_id):
+        """Return the set of trans_ids whose limbo paths descend from this."""
+        descendants = set(self._limbo_children.get(trans_id, []))
+        for descendant in list(descendants):
+            descendants.update(self._limbo_descendants(descendant))
+        return descendants
 
     def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
@@ -1395,6 +1379,54 @@ class TreeTransform(DiskTreeTransform):
             if self._tree.is_control_filename(childpath):
                 continue
             yield self.trans_id_tree_path(childpath)
+
+    def _generate_limbo_path(self, trans_id):
+        """Generate a limbo path using the final path if possible.
+
+        This optimizes the performance of applying the tree transform by
+        avoiding renames.  These renames can be avoided only when the parent
+        directory is already scheduled for creation.
+
+        If the final path cannot be used, falls back to using the trans_id as
+        the relpath.
+        """
+        parent = self._new_parent.get(trans_id)
+        # if the parent directory is already in limbo (e.g. when building a
+        # tree), choose a limbo name inside the parent, to reduce further
+        # renames.
+        use_direct_path = False
+        if self._new_contents.get(parent) == 'directory':
+            filename = self._new_name.get(trans_id)
+            if filename is not None:
+                if parent not in self._limbo_children:
+                    self._limbo_children[parent] = set()
+                    self._limbo_children_names[parent] = {}
+                    use_direct_path = True
+                # the direct path can only be used if no other file has
+                # already taken this pathname, i.e. if the name is unused, or
+                # if it is already associated with this trans_id.
+                elif self._case_sensitive_target:
+                    if (self._limbo_children_names[parent].get(filename)
+                        in (trans_id, None)):
+                        use_direct_path = True
+                else:
+                    for l_filename, l_trans_id in\
+                        self._limbo_children_names[parent].iteritems():
+                        if l_trans_id == trans_id:
+                            continue
+                        if l_filename.lower() == filename.lower():
+                            break
+                    else:
+                        use_direct_path = True
+
+        if not use_direct_path:
+            return DiskTreeTransform._generate_limbo_path(self, trans_id)
+
+        limbo_name = pathjoin(self._limbo_files[parent], filename)
+        self._limbo_children[parent].add(trans_id)
+        self._limbo_children_names[parent][filename] = trans_id
+        return limbo_name
+
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
