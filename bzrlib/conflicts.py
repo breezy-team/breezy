@@ -159,7 +159,6 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False):
 
 
 def _resolve_interactive(tree, path):
-    import sys # TEMPORARY
     tree.lock_tree_write()
     try:
         tree_conflicts = tree.conflicts()
@@ -171,6 +170,7 @@ def _resolve_interactive(tree, path):
         # FIXME: we should really do a loop below as some paths may be involved
         # in several conflicts but it's not yet clear how we will handle that.
         c = selected[0]
+        import sys # TEMPORARY
         action_name = sys.stdin.readline()
         action_name = action_name.rstrip('\n')
         # Crude exit
