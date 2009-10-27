@@ -853,6 +853,19 @@ class BTreeGraphIndex(object):
             new_tips = next_tips
         return final_offsets
 
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+        # Note that we don't touch self._root_node or self._internal_node_cache
+        # We don't expect either of those to be big, and it can save
+        # round-trips in the future. We may re-evaluate this if InternalNode
+        # memory starts to be an issue.
+        self._leaf_node_cache.clear()
+
     def external_references(self, ref_list_num):
         if self._root_node is None:
             self._get_root_node()

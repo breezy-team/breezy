@@ -145,6 +145,12 @@ StaticTuple_New(Py_ssize_t size)
         return NULL;
     }
 
+    if (size < 0 || size > 255) {
+        /* Too big or too small */
+        PyErr_SetString(PyExc_ValueError, "StaticTuple(...)"
+            " takes from 0 to 255 items");
+        return NULL;
+    }
     if (size == 0 && _empty_tuple != NULL) {
         Py_INCREF(_empty_tuple);
         return _empty_tuple;
@@ -220,6 +226,38 @@ StaticTuple_from_sequence(PyObject *self, PyObject *args, PyObject *kwargs)
 }
 
 
+/* Check that all items we point to are 'valid' */
+static int
+StaticTuple_check_items(StaticTuple *self)
+{
+    int i;
+    PyObject *obj;
+
+    for (i = 0; i < self->size; ++i) {
+        obj = self->items[i];
+        if (obj == NULL) {
+            PyErr_SetString(PyExc_RuntimeError, "StaticTuple(...)"
+                " should not have a NULL entry.");
+            return 0;
+        }
+        if (PyString_CheckExact(obj)
+            || StaticTuple_CheckExact(obj)
+            || obj == Py_None
+            || PyBool_Check(obj)
+            || PyInt_CheckExact(obj)
+            || PyLong_CheckExact(obj)
+            || PyFloat_CheckExact(obj)
+            || PyUnicode_CheckExact(obj)
+            ) continue;
+        PyErr_Format(PyExc_TypeError, "StaticTuple(...)"
+            " requires that all items are one of"
+            " str, StaticTuple, None, bool, int, long, float, or unicode"
+            " not %s.", Py_TYPE(obj)->tp_name);
+        return 0;
+    }
+    return 1;
+}
+
 static PyObject *
 StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
@@ -236,28 +274,18 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     len = PyTuple_GET_SIZE(args);
-    if (len < 0 || len > 255) {
-        /* Too big or too small */
-        PyErr_SetString(PyExc_ValueError, "StaticTuple.__init__(...)"
-            " takes from 0 to 255 items");
-        return NULL;
-    }
     self = (StaticTuple *)StaticTuple_New(len);
     if (self == NULL) {
         return NULL;
     }
     for (i = 0; i < len; ++i) {
         obj = PyTuple_GET_ITEM(args, i);
-        if (!PyString_CheckExact(obj)) {
-            if (!StaticTuple_CheckExact(obj)) {
-                PyErr_SetString(PyExc_TypeError, "StaticTuple.__init__(...)"
-                    " requires that all items are strings or StaticTuple.");
-                type->tp_dealloc((PyObject *)self);
-                return NULL;
-            }
-        }
         Py_INCREF(obj);
         self->items[i] = obj;
+    }
+    if (!StaticTuple_check_items(self)) {
+        type->tp_dealloc((PyObject *)self);
+        return NULL;
     }
     return (PyObject *)self;
 }
@@ -276,8 +304,8 @@ StaticTuple_repr(StaticTuple *self)
     if (tuple_repr == NULL) {
         return NULL;
     }
-    result = PyString_FromFormat("%s%s", Py_TYPE(self)->tp_name,
-                                         PyString_AsString(tuple_repr));
+    result = PyString_FromFormat("StaticTuple%s",
+                                 PyString_AsString(tuple_repr));
     return result;
 }
 
@@ -457,27 +485,14 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
             /* Both are StaticTuple types, so recurse */
             result = StaticTuple_richcompare(v_obj, w_obj, Py_EQ);
         } else {
-            /* Not the same type, obviously they won't compare equal */
-            break;
+            /* Fall back to generic richcompare */
+            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
         }
         if (result == NULL) {
             return NULL; /* There seems to be an error */
         }
-        if (result == Py_NotImplemented) {
-            Py_DECREF(result);
-            /* One side must have had a string and the other a StaticTuple.
-             * This clearly means that they are not equal.
-             */
-            if (op == Py_EQ) {
-                Py_INCREF(Py_False);
-                return Py_False;
-            }
-            result = PyObject_RichCompare(v_obj, w_obj, Py_EQ);
-        }
         if (result == Py_False) {
-            /* This entry is not identical
-             * Shortcut for Py_EQ
-             */
+            // This entry is not identical, Shortcut for Py_EQ
             if (op == Py_EQ) {
                 return result;
             }
@@ -531,8 +546,7 @@ StaticTuple_richcompare(PyObject *v, PyObject *w, int op)
         /* Both are StaticTuple types, so recurse */
         return StaticTuple_richcompare(v_obj, w_obj, op);
     } else {
-        Py_INCREF(Py_NotImplemented);
-        return Py_NotImplemented;
+        return PyObject_RichCompare(v_obj, w_obj, op);
     }
 }
 
@@ -558,6 +572,82 @@ StaticTuple__is_interned(StaticTuple *self)
 static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
     "Check to see if this tuple has been interned.\n";
 
+
+static PyObject *
+StaticTuple_reduce(StaticTuple *self)
+{
+    PyObject *result = NULL, *as_tuple = NULL;
+
+    result = PyTuple_New(2);
+    if (!result) {
+        return NULL;
+    }
+    as_tuple = StaticTuple_as_tuple(self);
+    if (as_tuple == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    Py_INCREF(&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 0, (PyObject *)&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 1, as_tuple);
+    return result;
+}
+
+static char StaticTuple_reduce_doc[] = "__reduce__() => tuple\n";
+
+
+static PyObject *
+StaticTuple_add(PyObject *v, PyObject *w)
+{
+    Py_ssize_t i, len_v, len_w;
+    PyObject *item;
+    StaticTuple *result;
+     /* StaticTuples and plain tuples may be added (concatenated) to
+      * StaticTuples.
+      */
+    if (StaticTuple_CheckExact(v)) {
+        len_v = ((StaticTuple*)v)->size;
+    } else if (PyTuple_Check(v)) {
+        len_v = PyTuple_GET_SIZE(v);
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    if (StaticTuple_CheckExact(w)) {
+        len_w = ((StaticTuple*)w)->size;
+    } else if (PyTuple_Check(w)) {
+        len_w = PyTuple_GET_SIZE(w);
+    } else {
+        Py_INCREF(Py_NotImplemented);
+        return Py_NotImplemented;
+    }
+    result = StaticTuple_New(len_v + len_w);
+    if (result == NULL)
+        return NULL;
+    for (i = 0; i < len_v; ++i) {
+        // This returns a new reference, which we then 'steal' with 
+        // StaticTuple_SET_ITEM
+        item = PySequence_GetItem(v, i);
+        if (item == NULL) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(result, i, item);
+    }
+    for (i = 0; i < len_w; ++i) {
+        item = PySequence_GetItem(w, i);
+        if (item == NULL) {
+            Py_DECREF(result);
+            return NULL;
+        }
+        StaticTuple_SET_ITEM(result, i+len_v, item);
+    }
+    if (!StaticTuple_check_items(result)) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    return (PyObject *)result;
+}
 
 static PyObject *
 StaticTuple_item(StaticTuple *self, Py_ssize_t offset)
@@ -621,8 +711,32 @@ static PyMethodDef StaticTuple_methods[] = {
      METH_STATIC | METH_VARARGS,
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
+    {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
     {NULL, NULL} /* sentinel */
 };
+
+
+static PyNumberMethods StaticTuple_as_number = {
+    (binaryfunc) StaticTuple_add,   /* nb_add */
+    0,                              /* nb_subtract */
+    0,                              /* nb_multiply */
+    0,                              /* nb_divide */
+    0,                              /* nb_remainder */
+    0,                              /* nb_divmod */
+    0,                              /* nb_power */
+    0,                              /* nb_negative */
+    0,                              /* nb_positive */
+    0,                              /* nb_absolute */
+    0,                              /* nb_nonzero */
+    0,                              /* nb_invert */
+    0,                              /* nb_lshift */
+    0,                              /* nb_rshift */
+    0,                              /* nb_and */
+    0,                              /* nb_xor */
+    0,                              /* nb_or */
+    0,                              /* nb_coerce */
+};
+    
 
 static PySequenceMethods StaticTuple_as_sequence = {
     (lenfunc)StaticTuple_length,            /* sq_length */
@@ -645,7 +759,7 @@ static PySequenceMethods StaticTuple_as_sequence = {
 PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
-    "StaticTuple",                               /* tp_name */
+    "bzrlib._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */
@@ -654,7 +768,7 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_setattr */
     0,                                           /* tp_compare */
     (reprfunc)StaticTuple_repr,                  /* tp_repr */
-    0,                                           /* tp_as_number */
+    &StaticTuple_as_number,                      /* tp_as_number */
     &StaticTuple_as_sequence,                    /* tp_as_sequence */
     0,                                           /* tp_as_mapping */
     (hashfunc)StaticTuple_hash,                  /* tp_hash */
@@ -663,7 +777,10 @@ PyTypeObject StaticTuple_Type = {
     0,                                           /* tp_getattro */
     0,                                           /* tp_setattro */
     0,                                           /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT,                          /* tp_flags*/
+    /* Py_TPFLAGS_CHECKTYPES tells the number operations that they shouldn't
+     * try to 'coerce' but instead stuff like 'add' will check it arguments.
+     */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_CHECKTYPES,  /* tp_flags*/
     StaticTuple_doc,                             /* tp_doc */
     /* gc.get_referents checks the IS_GC flag before it calls tp_traverse
      * And we don't include this object in the garbage collector because we
@@ -767,18 +884,15 @@ _workaround_pyrex_096(void)
      */
     set_module = PyImport_ImportModule("bzrlib._simple_set_pyx");
     if (set_module == NULL) {
-	// fprintf(stderr, "Failed to import bzrlib._simple_set_pyx\n");
         goto end;
     }
     /* Add the _simple_set_pyx into sys.modules at the appropriate location. */
     sys_module = PyImport_ImportModule("sys");
     if (sys_module == NULL) {
-    	// fprintf(stderr, "Failed to import sys\n");
         goto end;
     }
     modules = PyObject_GetAttrString(sys_module, "modules");
     if (modules == NULL || !PyDict_Check(modules)) {
-    	// fprintf(stderr, "Failed to find sys.modules\n");
         goto end;
     }
     PyDict_SetItemString(modules, "_simple_set_pyx", set_module);
@@ -817,3 +931,5 @@ init_static_tuple_c(void)
     setup_empty_tuple(m);
     setup_c_api(m);
 }
+
+// vim: tabstop=4 sw=4 expandtab

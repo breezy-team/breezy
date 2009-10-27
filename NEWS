@@ -22,6 +22,18 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr+http`` servers no longer give spurious jail break errors when
+  serving branches inside a shared repository.  (Andrew Bennetts, #348308)
+
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
@@ -34,10 +46,14 @@ Improvements
   (John Arbash Meinel)
 
 * Peak memory under certain operations has been reduced significantly.
+  (eg, 'bzr branch launchpad standalone' is cut in half)
   (John Arbash Meinel)
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
@@ -58,14 +74,15 @@ Internals
   used as the interning structure for StaticTuple objects.
   (John Arbash Meinel)
 
-* ``bzrlib._static_tuple_pyx.StaticTuple`` is now available and used by
-  the btree index parser. This class functions similarly to ``tuple``
-  objects. However, it can only point at other ``StaticTuple`` instances
-  or strings. This allows us to remove it from the garbage collector (it
-  cannot be in a cycle), it also allows us to intern the objects. In
-  testing, this can reduce peak memory by 20-40%, and significantly
-  improve performance by removing objects from being inspected by the
-  garbage collector. (John Arbash Meinel)
+* ``bzrlib._static_tuple_c.StaticTuple`` is now available and used by
+  the btree index parser and the chk map parser. This class functions
+  similarly to ``tuple`` objects. However, it can only point to a limited
+  collection of types.  (Currently StaticTuple, str, unicode, None, bool,
+  int, long, float, but not subclasses).  This allows us to remove it from
+  the garbage collector (it cannot be in a cycle), it also allows us to
+  intern the objects. In testing, this can reduce peak memory by 20-40%,
+  and significantly improve performance by removing objects from being
+  inspected by the garbage collector.  (John Arbash Meinel)
 
 * ``GroupCompressBlock._ensure_content()`` will now release the
   ``zlib.decompressobj()`` when the first request is for all of the
@@ -74,6 +91,11 @@ Internals
   significant memory savings, as a ``zstream`` carries around approx 260kB
   of internal state and buffers. (For branching bzr.dev this drops peak
   memory from 382MB => 345MB.) (John Arbash Meinel)
+
+* When streaming content between ``2a`` format repositories, we now clear
+  caches from earlier versioned files. (So 'revisions' is cleared when we
+  start reading 'inventories', etc.) This can have a significant impact on
+  peak memory for initial copies (~200MB). (John Arbash Meinel)
 
 
 Testing
@@ -98,11 +120,23 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 Improvements
 ************
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********

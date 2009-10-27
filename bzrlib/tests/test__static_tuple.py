@@ -16,6 +16,7 @@
 
 """Tests for the StaticTuple type."""
 
+import cPickle
 import gc
 import sys
 
@@ -104,7 +105,43 @@ class TestStaticTuple(tests.TestCase):
         args_300 = ['a']*300
         self.assertRaises(ValueError, self.module.StaticTuple, *args_300)
         # not a string
-        self.assertRaises(TypeError, self.module.StaticTuple, 10)
+        self.assertRaises(TypeError, self.module.StaticTuple, object())
+
+    def test_concat(self):
+        st1 = self.module.StaticTuple('foo')
+        st2 = self.module.StaticTuple('bar')
+        st3 = self.module.StaticTuple('foo', 'bar')
+        st4 = st1 + st2
+        self.assertEqual(st3, st4)
+        self.assertIsInstance(st4, self.module.StaticTuple)
+
+    def test_concat_with_tuple(self):
+        st1 = self.module.StaticTuple('foo')
+        t2 = ('bar',)
+        st3 = self.module.StaticTuple('foo', 'bar')
+        st4 = self.module.StaticTuple('bar', 'foo')
+        st5 = st1 + t2
+        st6 = t2 + st1
+        self.assertEqual(st3, st5)
+        self.assertIsInstance(st5, self.module.StaticTuple)
+        self.assertEqual(st4, st6)
+        if self.module is _static_tuple_py:
+            # _static_tuple_py has StaticTuple(tuple), so tuple thinks it
+            # already knows how to concatenate, as such we can't "inject" our
+            # own concatenation...
+            self.assertIsInstance(st6, tuple)
+        else:
+            self.assertIsInstance(st6, self.module.StaticTuple)
+
+    def test_concat_with_bad_tuple(self):
+        st1 = self.module.StaticTuple('foo')
+        t2 = (object(),)
+        # Using st1.__add__ doesn't give the same results as doing the '+' form
+        self.assertRaises(TypeError, lambda: st1 + t2)
+
+    def test_concat_with_non_tuple(self):
+        st1 = self.module.StaticTuple('foo')
+        self.assertRaises(TypeError, lambda: st1 + 10)
         
     def test_as_tuple(self):
         k = self.module.StaticTuple('foo')
@@ -177,11 +214,56 @@ class TestStaticTuple(tests.TestCase):
         self.assertFalse(k1 < k2)
         self.assertFalse(k1 > k2)
 
+    def test_holds_None(self):
+        k1 = self.module.StaticTuple(None)
+        # You cannot subclass None anyway
+
+    def test_holds_int(self):
+        k1 = self.module.StaticTuple(1)
+        class subint(int):
+            pass
+        # But not a subclass, because subint could introduce refcycles
+        self.assertRaises(TypeError, self.module.StaticTuple, subint(2))
+
+    def test_holds_long(self):
+        k1 = self.module.StaticTuple(2L**65)
+        class sublong(long):
+            pass
+        # But not a subclass
+        self.assertRaises(TypeError, self.module.StaticTuple, sublong(1))
+
+    def test_holds_float(self):
+        k1 = self.module.StaticTuple(1.2)
+        class subfloat(float):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple, subfloat(1.5))
+
+    def test_holds_str(self):
+        k1 = self.module.StaticTuple('astring')
+        class substr(str):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple, substr('a'))
+
+    def test_holds_unicode(self):
+        k1 = self.module.StaticTuple(u'\xb5')
+        class subunicode(unicode):
+            pass
+        self.assertRaises(TypeError, self.module.StaticTuple,
+                          subunicode(u'\xb5'))
+
+    def test_hold_bool(self):
+        k1 = self.module.StaticTuple(True)
+        k2 = self.module.StaticTuple(False)
+        # Cannot subclass bool
+
     def test_compare_same_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
         self.assertCompareEqual(k1, k1)
         k2 = self.module.StaticTuple(k1, k1)
         self.assertCompareEqual(k2, k2)
+        k3 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
+                                     k1)
+        self.assertCompareEqual(k3, k3)
 
     def test_compare_equivalent_obj(self):
         k1 = self.module.StaticTuple('foo', 'bar')
@@ -190,6 +272,14 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k2)
         k4 = self.module.StaticTuple(k2, k1)
         self.assertCompareEqual(k1, k2)
+        k5 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
+                                     k1)
+        k6 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
+                                     k1)
+        self.assertCompareEqual(k5, k6)
+        k7 = self.module.StaticTuple(None)
+        k8 = self.module.StaticTuple(None)
+        self.assertCompareEqual(k7, k8)
 
     def test_compare_similar_obj(self):
         k1 = self.module.StaticTuple('foo' + ' bar', 'bar' + ' baz')
@@ -240,6 +330,15 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k2)
         k4 = self.module.StaticTuple(k2, k1)
         self.assertCompareDifferent(k3, k4)
+        k5 = self.module.StaticTuple(1)
+        k6 = self.module.StaticTuple(2)
+        self.assertCompareDifferent(k5, k6)
+        k7 = self.module.StaticTuple(1.2)
+        k8 = self.module.StaticTuple(2.4)
+        self.assertCompareDifferent(k7, k8)
+        k9 = self.module.StaticTuple(u's\xb5')
+        k10 = self.module.StaticTuple(u's\xe5')
+        self.assertCompareDifferent(k9, k10)
 
     def test_compare_some_different(self):
         k1 = self.module.StaticTuple('foo', 'bar')
@@ -248,6 +347,9 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1, k1)
         k4 = self.module.StaticTuple(k1, k2)
         self.assertCompareDifferent(k3, k4)
+        k5 = self.module.StaticTuple('foo', None)
+        self.assertCompareDifferent(k5, k1)
+        self.assertCompareDifferent(k5, k2)
 
     def test_compare_diff_width(self):
         k1 = self.module.StaticTuple('foo')
@@ -256,6 +358,18 @@ class TestStaticTuple(tests.TestCase):
         k3 = self.module.StaticTuple(k1)
         k4 = self.module.StaticTuple(k1, k2)
         self.assertCompareDifferent(k3, k4)
+
+    def test_compare_different_types(self):
+        k1 = self.module.StaticTuple('foo', 'bar')
+        k2 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
+                                     k1)
+        self.assertCompareNoRelation(k1, k2)
+        k3 = self.module.StaticTuple('foo')
+        self.assertCompareDifferent(k3, k1)
+        k4 = self.module.StaticTuple(None)
+        self.assertCompareDifferent(k4, k1)
+        k5 = self.module.StaticTuple(1)
+        self.assertCompareNoRelation(k1, k5)
 
     def test_compare_to_tuples(self):
         k1 = self.module.StaticTuple('foo')
@@ -305,6 +419,11 @@ class TestStaticTuple(tests.TestCase):
         k2 = self.module.StaticTuple(k)
         as_tuple2 = (('foo', 'bar', 'baz', 'bing'),)
         self.assertEqual(hash(k2), hash(as_tuple2))
+
+        k3 = self.module.StaticTuple('foo', 1, None, u'\xb5', 1.2, 2**65, True,
+                                     k)
+        as_tuple3 = ('foo', 1, None, u'\xb5', 1.2, 2**65, True, k)
+        self.assertEqual(hash(as_tuple3), hash(k3))
 
     def test_slice(self):
         k = self.module.StaticTuple('foo', 'bar', 'baz', 'bing')
@@ -458,6 +577,24 @@ class TestStaticTuple(tests.TestCase):
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_pickle(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
+
+    def test_pickle_empty(self):
+        st = self.module.StaticTuple()
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertIs(st, unpickled)
+
+    def test_pickle_nested(self):
+        st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from

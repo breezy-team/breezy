@@ -124,6 +124,12 @@ class BTreeTestCase(TestCaseWithTransport):
 
 class TestBTreeBuilder(BTreeTestCase):
 
+    def test_clear_cache(self):
+        builder = btree_index.BTreeBuilder(reference_lists=0, key_elements=1)
+        # This is a no-op, but we need the api to be consistent with other
+        # BTreeGraphIndex apis.
+        builder.clear_cache()
+
     def test_empty_1_0(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
         # NamedTemporaryFile dies on builder.finish().read(). weird.
@@ -638,6 +644,27 @@ class TestBTreeIndex(BTreeTestCase):
         trans = get_transport('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
+
+    def test_clear_cache(self):
+        nodes = self.make_nodes(160, 2, 2)
+        index = self.make_index(ref_lists=2, key_elements=2, nodes=nodes)
+        self.assertEqual(1, len(list(index.iter_entries([nodes[30][0]]))))
+        self.assertEqual([1, 4], index._row_lengths)
+        self.assertIsNot(None, index._root_node)
+        internal_node_pre_clear = index._internal_node_cache.keys()
+        self.assertTrue(len(index._leaf_node_cache) > 0)
+        index.clear_cache()
+        # We don't touch _root_node or _internal_node_cache, both should be
+        # small, and can save a round trip or two
+        self.assertIsNot(None, index._root_node)
+        # NOTE: We don't want to affect the _internal_node_cache, as we expect
+        #       it will be small, and if we ever do touch this index again, it
+        #       will save round-trips.  This assertion isn't very strong,
+        #       becuase without a 3-level index, we don't have any internal
+        #       nodes cached.
+        self.assertEqual(internal_node_pre_clear,
+                         index._internal_node_cache.keys())
+        self.assertEqual(0, len(index._leaf_node_cache))
 
     def test_trivial_constructor(self):
         transport = get_transport('trace+' + self.get_url(''))
