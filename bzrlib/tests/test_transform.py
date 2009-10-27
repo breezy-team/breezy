@@ -369,6 +369,18 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertContainsRe(transform._limbo_name(first), 'new-1/file')
         self.assertNotContainsRe(transform._limbo_name(second), 'new-1/FiLe')
 
+    def test_adjust_path_updates_child_limbo_names(self):
+        tree = self.make_branch_and_tree('tree')
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        foo_id = transform.new_directory('foo', transform.root)
+        bar_id = transform.new_directory('bar', foo_id)
+        baz_id = transform.new_directory('baz', bar_id)
+        qux_id = transform.new_directory('qux', baz_id)
+        transform.adjust_path('quxx', foo_id, bar_id)
+        self.assertStartsWith(transform._limbo_name(qux_id),
+                              transform._limbo_name(bar_id))
+
     def test_add_del(self):
         start, root = self.get_transform()
         start.new_directory('a', root, 'a')
@@ -2741,6 +2753,16 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         rev2_id = builder.commit('rev2')
         rev2_tree = tree.branch.repository.revision_tree(rev2_id)
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
+
+    def test_ascii_limbo_paths(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        branch = self.make_branch('any')
+        tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
+        tt = TransformPreview(tree)
+        foo_id = tt.new_directory('', ROOT_PARENT)
+        bar_id = tt.new_file(u'\u1234bar', foo_id, 'contents')
+        limbo_path = tt._limbo_name(bar_id)
+        self.assertEqual(limbo_path.encode('ascii', 'replace'), limbo_path)
 
 
 class FakeSerializer(object):

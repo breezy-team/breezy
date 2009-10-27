@@ -163,6 +163,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
+        # TODO: StaticTuple
         self._nodes[key] = (node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
@@ -625,6 +626,7 @@ class _InternalNode(object):
         for line in lines[2:]:
             if line == '':
                 break
+            # TODO: Switch to StaticTuple here.
             nodes.append(tuple(map(intern, line.split('\0'))))
         return nodes
 
@@ -850,6 +852,19 @@ class BTreeGraphIndex(object):
             final_offsets.update(next_tips)
             new_tips = next_tips
         return final_offsets
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+        # Note that we don't touch self._root_node or self._internal_node_cache
+        # We don't expect either of those to be big, and it can save
+        # round-trips in the future. We may re-evaluate this if InternalNode
+        # memory starts to be an issue.
+        self._leaf_node_cache.clear()
 
     def external_references(self, ref_list_num):
         if self._root_node is None:

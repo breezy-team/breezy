@@ -305,16 +305,6 @@ class UITests(tests.TestCase):
                 'TERM=%r' % (term_type,))
 
 
-class CLIUITests(tests.TestCase):
-
-    def test_cli_factory_deprecated(self):
-        StringIO = tests.StringIOWrapper
-        uif = self.applyDeprecated(deprecated_in((1, 18, 0)),
-            _mod_ui.CLIUIFactory,
-            StringIO(), StringIO(), StringIO())
-        self.assertIsInstance(uif, _mod_ui.UIFactory)
-
-
 class SilentUITests(tests.TestCase):
 
     def test_silent_factory_get_password(self):
