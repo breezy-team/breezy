@@ -18,6 +18,10 @@ The script can produce the fast-import stream format from the darcs
 repository. It supports incremental conversion as well, via the
 --import-marks / --export-marks switches.
 
+Optionally the darcsrepo string may be a HTTP repository, in that case
+only the patches are downloaded, not the pristine, speeding up a
+one-time import.
+
 == OPTIONS
 
 -h, --help::
