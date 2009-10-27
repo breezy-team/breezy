@@ -2643,6 +2643,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             for index, ((trans_id, mode_id), bytes) in enumerate(
                 target_tree.iter_files_bytes(deferred_files)):
                 file_id = deferred_files[index][0]
+                # We're reverting a tree to the target tree so using the
+                # target tree to find the file path seems the best choice
+                # here IMO - Ian C 27/Oct/2009
                 filter_tree_path = target_tree.id2path(file_id)
                 filters = working_tree._content_filter_stack(filter_tree_path)
                 bytes = filtered_output_bytes(bytes, filters,
