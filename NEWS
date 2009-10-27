@@ -29,8 +29,8 @@ Bug Fixes
   fails intermittently with "second push failed to complete".
   (Andrew Bennetts, #437626)
 
-* Fix typos left after test_selftest refactoring. (Vincent Ladeuil, Matt
-  Nordhoff, #461149)
+* Fix typos left after test_selftest refactoring.
+  (Vincent Ladeuil, Matt Nordhoff, #461149)
 
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
