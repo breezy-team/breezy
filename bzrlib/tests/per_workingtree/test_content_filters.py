@@ -68,8 +68,7 @@ def _remove_appended_text(chunks, context=None):
 
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
-    def create_cf_tree(self, txt_reader, txt_writer, dir='.',
-        two_revisions=False):
+    def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
         tree = self.make_branch_and_tree(dir)
         def _content_filter_stack(path=None, file_id=None):
             if path.endswith('.txt'):
@@ -82,20 +81,39 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
             (dir + '/file2.bin', 'Foo Bin')])
         tree.add(['file1.txt', 'file2.bin'])
         tree.commit('commit raw content')
-        # Commit another revision with changed text, if requested
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
-        if two_revisions:
-            self.build_tree_contents([
-                (dir + '/file1.txt', 'Foo ROCKS!'),
-                (dir + '/file2.txt', 'Hello World'),
-                ])
-            tree.add(['file2.txt'])
-            tree.commit("changed file1.txt, added file2.txt")
-            txt2_fileid = tree.path2id('file2.txt')
-            return tree, txt_fileid, bin_fileid, txt2_fileid
-        else:
-            return tree, txt_fileid, bin_fileid
+        return tree, txt_fileid, bin_fileid
+
+    def create_cf_tree_with_two_revisions(self, txt_reader, txt_writer,
+        dir='.'):
+        tree = self.make_branch_and_tree(dir)
+        def _content_filter_stack(path=None, file_id=None):
+            if path.endswith('.txt'):
+                return [ContentFilter(txt_reader, txt_writer)]
+            else:
+                return []
+        tree._content_filter_stack = _content_filter_stack
+        self.build_tree_contents([
+            (dir + '/file1.txt', 'Foo Txt'),
+            (dir + '/file2.bin', 'Foo Bin'),
+            (dir + '/file3.txt', 'Bar Txt'),
+            ])
+        tree.add(['file1.txt', 'file2.bin', 'file3.txt'])
+        tree.commit('commit raw content')
+        # Commit another revision with various changes
+        self.build_tree_contents([
+            (dir + '/file1.txt', 'Foo ROCKS!'),
+            (dir + '/file2.txt', 'Hello World'),
+            ])
+        tree.add(['file2.txt'])
+        tree.remove(['file3.txt'], keep_files=False)
+        tree.rename_one('file2.bin', 'file3.txt')
+        tree.commit("change, add and rename stuff")
+        txt1_fileid = tree.path2id('file1.txt')
+        txt2_fileid = tree.path2id('file2.txt')
+        txt3_fileid = tree.path2id('file3.txt')
+        return tree, txt1_fileid, txt2_fileid, txt3_fileid
 
     def patch_in_content_filter(self):
         # Patch in a custom, symmetric content filter stack
@@ -234,8 +252,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_pull(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
-            txt_reader=None, txt_writer=None, dir='source', two_revisions=True)
+        source, txt_fileid, txt2_fileid, txt3_fileid = \
+            self.create_cf_tree_with_two_revisions(txt_reader=None,
+            txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
@@ -257,8 +276,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_merge(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
-            txt_reader=None, txt_writer=None, dir='source', two_revisions=True)
+        source, txt_fileid, txt2_fileid, txt3_fileid = \
+            self.create_cf_tree_with_two_revisions(txt_reader=None,
+            txt_writer=None, dir='source')
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
@@ -283,8 +303,9 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_content_filtering_applied_on_switch(self):
         # Create a source branch with two revisions
-        source, txt_fileid, bin_fileid, txt2_fileid = self.create_cf_tree(
-            txt_reader=None, txt_writer=None, dir='branch-a', two_revisions=True)
+        source, txt_fileid, txt2_fileid, txt3_fileid = \
+            self.create_cf_tree_with_two_revisions(txt_reader=None,
+            txt_writer=None, dir='branch-a')
         if not source.supports_content_filtering():
             return
 
