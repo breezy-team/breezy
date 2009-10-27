@@ -1710,10 +1710,12 @@ class KnitVersionedFiles(VersionedFiles):
             # There were index entries buffered at the end of the stream,
             # So these need to be added (if the index supports holding such
             # entries for later insertion)
+            all_entries = []
             for key in buffered_index_entries:
                 index_entries = buffered_index_entries[key]
-                self._index.add_records(index_entries,
-                    missing_compression_parents=True)
+                all_entries.extend(index_entries)
+            self._index.add_records(
+                all_entries, missing_compression_parents=True)
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.

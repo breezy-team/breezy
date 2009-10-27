@@ -3679,6 +3679,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.commands',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
+        'bzrlib.tests.per_foreign_vcs',
         'bzrlib.tests.per_interrepository',
         'bzrlib.tests.per_intertree',
         'bzrlib.tests.per_inventory',

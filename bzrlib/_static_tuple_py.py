@@ -24,6 +24,8 @@ strings.
 class StaticTuple(tuple):
     """A static type, similar to a tuple of strings."""
 
+    __slots__ = ()
+
     def __new__(cls, *args):
         # Make the empty StaticTuple a singleton
         if not args and _empty_tuple is not None:
@@ -33,8 +35,11 @@ class StaticTuple(tuple):
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""
         for bit in args:
-            if type(bit) not in (str, StaticTuple):
-                raise TypeError('key bits must be strings or StaticTuple')
+            if type(bit) not in (str, StaticTuple, unicode, int, long, float,
+                                 None.__class__, bool):
+                raise TypeError('StaticTuple can only point to'
+                    ' StaticTuple, str, unicode, int, long, float, bool, or'
+                    ' None not %s' % (type(bit),))
         num_keys = len(args)
         if num_keys < 0 or num_keys > 255:
             raise ValueError('must have 1 => 256 key bits')
@@ -45,11 +50,27 @@ class StaticTuple(tuple):
     def __repr__(self):
         return '%s%s' % (self.__class__.__name__, tuple.__repr__(self))
 
+    def __reduce__(self):
+        return (StaticTuple, tuple(self))
+
+    def __add__(self, other):
+        """Concatenate self with other"""
+        return StaticTuple.from_sequence(tuple.__add__(self,other))
+
     def as_tuple(self):
         return self
 
     def intern(self):
         return _interned_tuples.setdefault(self, self)
+
+    @staticmethod
+    def from_sequence(seq):
+        """Convert a sequence object into a StaticTuple instance."""
+        if isinstance(seq, StaticTuple):
+            # it already is
+            return seq
+        return StaticTuple(*seq)
+
 
 
 # Have to set it to None first, so that __new__ can determine whether
