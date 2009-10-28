@@ -105,7 +105,6 @@ class LocalGitRepository(GitRepository):
         GitRepository.__init__(self, gitdir, lockfiles)
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
-        self.texts = None
         self.signatures = None
         self.revisions = GitRevisions(self, self._git.object_store)
         self.inventories = None
