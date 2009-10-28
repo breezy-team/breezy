@@ -27,6 +27,11 @@ Bug Fixes
 
 * Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
 
+* Errors during commit are handled more robustly so that knock-on errors
+  are less likely to occur, and will not obscure the original error if
+  they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
+  and similar errors.  (Andrew Bennetts, #429747, #243391)
+
 * Fetching from stacked pre-2a repository via a smart server no longer
   fails intermittently with "second push failed to complete".
   (Andrew Bennetts, #437626)
