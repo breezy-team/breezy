@@ -23,6 +23,9 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
+
 * Content filters are now applied correctly after revert.
   (Ian Clatworthy)
 

@@ -2420,8 +2420,14 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
-    """Create new file contents according to tree contents."""
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+    filter_tree_path=None):
+    """Create new file contents according to tree contents.
+    
+    :param filter_tree_path: the tree path to use to lookup
+      content filters to apply to the bytes output in the working tree.
+      This only applies if the working tree supports content filtering.
+    """
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
@@ -2432,6 +2438,11 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
                 bytes = tree_file.readlines()
             finally:
                 tree_file.close()
+        wt = tt._tree
+        if wt.supports_content_filtering() and filter_tree_path is not None:
+            filters = wt._content_filter_stack(filter_tree_path)
+            bytes = filtered_output_bytes(bytes, filters,
+                ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
