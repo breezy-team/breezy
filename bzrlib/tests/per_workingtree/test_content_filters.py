@@ -105,15 +105,14 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         fileid_2 = tree.path2id('file2.bin')
         fileid_3 = tree.path2id('file3.txt')
         # Commit another revision with various changes. We make sure
-        # the change includes a modification, an addition, a deletion and
-        # a rename from a path without content filtering to one with it.
+        # the change includes a modification, an addition and a deletion.
+        # Renames are more complex and need a separate set of tests later.
         self.build_tree_contents([
             (dir + '/file1.txt', 'Foo ROCKS!'),
             (dir + '/file4.txt', 'Hello World'),
             ])
         tree.add(['file4.txt'])
         tree.remove(['file3.txt'], keep_files=False)
-        tree.rename_one('file2.bin', 'file3.txt')
         tree.commit("change, add and rename stuff")
         fileid_4 = tree.path2id('file4.txt')
         return tree, fileid_1, fileid_2, fileid_3, fileid_4
@@ -283,9 +282,6 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assert_basis_content("Foo ROCKS!", target, fileid_1)
         self.assertFileEqual("fOO rocks!", 'target/file1.txt')
         self.assert_basis_content("Foo Bin", target, fileid_2)
-        # This is failing because Merge/TreeTransform doesn't reformat
-        # content on a rename (from what I can tell)
-        #self.assertFileEqual("fOO bIN", 'target/file3.txt')
         self.assert_basis_content("Hello World", target, fileid_4)
         self.assertFileEqual("hELLO wORLD", 'target/file4.txt')
 
@@ -299,7 +295,6 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assert_basis_content("Foo ROCKS!", source, fileid_1)
         self.assertFileEqual("Foo ROCKS!", 'source/file1.txt')
         self.assert_basis_content("Foo Bin", source, fileid_2)
-        self.assertFileEqual("Foo Bin", 'source/file3.txt')
         self.assert_basis_content("Hello World", source, fileid_4)
         self.assertFileEqual("Hello World", 'source/file4.txt')
 
@@ -315,18 +310,11 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # Merge the latter change and check the target tree is updated
         self.run_bzr('merge -d target source')
         self.assertFileEqual("fOO rocks!", 'target/file1.txt')
-        # This is failing because Merge/TreeTransform doesn't reformat
-        # content on a rename (from what I can tell)
-        #self.assertFileEqual("fOO bIN", 'target/file3.txt')
         self.assertFileEqual("hELLO wORLD", 'target/file4.txt')
 
         # Commit the merge and check the right content is stored
         target.commit("merge file1.txt changes from source")
         self.assert_basis_content("Foo ROCKS!", target, fileid_1)
-        # This is failing because Merge/TreeTransform doesn't reformat
-        # content on a rename (from what I can tell). In turn, that
-        # means the content is then flipped here. :-(
-        #self.assert_basis_content("Foo Bin", target, fileid_2)
         self.assert_basis_content("Hello World", target, fileid_4)
 
     def test_content_filtering_applied_on_switch(self):
