@@ -53,22 +53,22 @@ class GitRevisions(VersionedFiles):
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
             (revid,) = key
-            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
+            (commit_id, mapping) = self.repository.lookup_bzr_revision_id(revid)
             try:
                 commit = self.object_store[commit_id]
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
                 yield FulltextContentFactory(key, 
-                    tuple([(self.repository.lookup_revision_id(p, mapping),) for p in commit.parents]), None, 
+                    tuple([(self.repository.lookup_foreign_revision_id(p, mapping),) for p in commit.parents]), None, 
                     commit.as_raw_string())
 
     def get_parent_map(self, keys):
         ret = {}
         for (revid,) in keys:
-            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
+            (commit_id, mapping) = self.repository.lookup_bzr_revision_id(revid)
             try:
-                ret[(revid,)] = [(self.repository.lookup_revision_id(p, mapping),) for p in self.object_store[commit_id].parents]
+                ret[(revid,)] = [(self.repository.lookup_foreign_revision_id(p, mapping),) for p in self.object_store[commit_id].parents]
             except KeyError:
                 ret[(revid,)] = None
         return ret
@@ -90,7 +90,7 @@ class GitTexts(VersionedFiles):
     def get_record_stream(self, keys, ordering, include_delta_closure):
         for key in keys:
             (fileid, revid) = key
-            (commit_id, mapping) = self.repository.lookup_git_revid(revid)
+            (commit_id, mapping) = self.repository.lookup_bzr_revision_id(revid)
             root_tree = self.object_store[commit_id].tree
             path = mapping.parse_file_id(fileid)
             try:

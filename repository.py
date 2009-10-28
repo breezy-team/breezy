@@ -134,7 +134,7 @@ class LocalGitRepository(GitRepository):
             if revision_id == revision.NULL_REVISION:
                 parent_map[revision_id] = ()
                 continue
-            hexsha, mapping = self.lookup_git_revid(revision_id)
+            hexsha, mapping = self.lookup_bzr_revision_id(revision_id)
             try:
                 commit = self._git.commit(hexsha)
             except KeyError:
@@ -163,7 +163,7 @@ class LocalGitRepository(GitRepository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
-    def lookup_revision_id(self, foreign_revid, mapping=None):
+    def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
         
         :param revid: Bazaar revision id.
@@ -176,14 +176,14 @@ class LocalGitRepository(GitRepository):
     def has_signature_for_revision_id(self, revision_id):
         return False
 
-    def lookup_git_revid(self, bzr_revid):
+    def lookup_bzr_revision_id(self, bzr_revid):
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
             raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
-        git_commit_id, mapping = self.lookup_git_revid(revision_id)
+        git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
             commit = self._git.commit(git_commit_id)
         except KeyError:

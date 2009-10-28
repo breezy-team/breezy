@@ -116,7 +116,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def commit(self, message):
         c = Commit()
-        c.parents = [self.repository.lookup_git_revid(revid)[0] for revid in self.parents]
+        c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, 
                 [(path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems()])
         c.committer = self._committer

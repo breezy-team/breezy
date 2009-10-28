@@ -273,7 +273,7 @@ class RemoteGitRepository(GitRepository):
             return EmptyObjectStoreIterator()
         return TemporaryPackIterator(path[:-len(".pack")], resolve_ext_ref)
 
-    def lookup_git_revid(self, bzr_revid):
+    def lookup_bzr_revision_id(self, bzr_revid):
         # This won't work for any round-tripped bzr revisions, but it's a start..
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)

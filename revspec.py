@@ -81,7 +81,7 @@ class RevisionSpec_git(RevisionSpec):
         from bzrlib.plugins.git.mapping import (
             mapping_registry,
             )
-        parse_revid = getattr(branch.repository, "lookup_git_revid",
+        parse_revid = getattr(branch.repository, "lookup_bzr_revision_id",
                               mapping_registry.parse_revision_id)
         branch.repository.lock_read()
         try:

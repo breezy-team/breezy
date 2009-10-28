@@ -367,7 +367,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 raise NoSuchRef(self.source.name, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
-                self._head, mapping = self.source.repository.lookup_git_revid(
+                self._head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
                 self._head = heads[self.source.name]
@@ -468,7 +468,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
             result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get("refs/heads/master", "0" * 40))
-            refs = { "refs/heads/master": self.source.repository.lookup_git_revid(stop_revision)[0] }
+            refs = { "refs/heads/master": self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
                 refs["refs/tags/%s" % name] = sha

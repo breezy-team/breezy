@@ -40,7 +40,7 @@ class GitRevisionTree(revisiontree.RevisionTree):
         self._repository = repository
         store = repository._git.object_store
         assert isinstance(revision_id, str)
-        git_id, self.mapping = repository.lookup_git_revid(revision_id)
+        git_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         try:
             commit = store[git_id]
         except KeyError, r:
