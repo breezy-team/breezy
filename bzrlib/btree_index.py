@@ -411,7 +411,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # Special case the first node as it may be prefixed
             node = row.spool.read(_PAGE_SIZE)
             result.write(node[reserved:])
-            result.write("\x00" * (reserved - position))
+            if len(node) == _PAGE_SIZE:
+                result.write("\x00" * (reserved - position))
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
