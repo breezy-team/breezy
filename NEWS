@@ -641,7 +641,7 @@ Improvements
 * ``bzr shelve`` and ``bzr unshelve`` now work on windows.
   (Robert Collins, #305006)
 
-* Commit of specific files no longer prevents using the the iter_changes
+* Commit of specific files no longer prevents using the iter_changes
   codepath. On 2a repositories, commit of specific files should now be as
   fast, or slightly faster, than a full commit. (Robert Collins)
 
@@ -1410,7 +1410,7 @@ New Features
 ************
 
 * A new repository format ``2a`` has been added.  This is a beta release
-  of the the brisbane-core (aka group-compress) project.  This format now
+  of the brisbane-core (aka group-compress) project.  This format now
   suitable for wider testing by advanced users willing to deal with some
   bugs.  We would appreciate test reports, either positive or negative.
   Format 2a is substantially smaller and faster for many operations on
@@ -2139,7 +2139,7 @@ Internals
 
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
-  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+  streaming on the network.  (Robert Collins, Andrew Bennetts)
 
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
@@ -4863,7 +4863,7 @@ Testing
   exception. (Andrew Bennetts)
 
 * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
-  options for debugging tests, these are complementary to the the -D
+  options for debugging tests, these are complementary to the -D
   options.  The ``-Dselftest_debug`` global option has been replaced by the
   ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
 

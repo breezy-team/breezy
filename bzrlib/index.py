@@ -1170,7 +1170,7 @@ class GraphIndex(object):
             self._parsed_key_map.insert(index + 1, new_key)
 
     def _read_and_parse(self, readv_ranges):
-        """Read the the ranges and parse the resulting data.
+        """Read the ranges and parse the resulting data.
 
         :param readv_ranges: A prepared readv range list.
         """
