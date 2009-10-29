@@ -1,0 +1,165 @@
+Filtered views
+==============
+
+Filtered view の紹介
+--------------------------
+
+Viewはtreeに対するマスクを提供し、ユーザーはtreeの一部分に集中できる\
+ようになります。
+このマスキングが役に立ついくつかの場面があります。たとえば、大きな\
+プロジェクトの技術ライターやテスターはプロジェクトのうち一部のディレクトリ\
+やファイルだけを扱います。
+
+開発者は大規模な変更をviewを使っていくつかのコミットに分解したいと思う\
+かもしれません。 ``shelve`` ``unshelve`` がいくつかの変更を後のコミットまで\
+とっておくのに対して、viewは次のコミットに(何を含めないかではなく)何を\
+含めるかを指定します。
+
+viewを作った後は、ファイルリストをサポートするコマンド - status,
+diff, commit, etc - に暗黙的に毎回そのファイルリストが渡されます。
+それらのコマンドに明示的にファイルリストを渡すことも可能ですが、\
+指名するファイルは現在のviewの中にないといけません。
+対照的に、ツリーを対象とするコマンド - pull, merge, update, etc -
+はviewが作られた後もツリー全体に対して操作しますが、現在のviewに\
+関係するもののみを報告します。
+どちらのケースでも、Bazaarはユーザーに毎回viewが使われていることを\
+報告するので、操作や出力がマスクされていることが判ります。
+
+.. 2aになったらこのnoteは要らない
+.. Note: Bazaar's default format does not yet support filtered views. That
+   is likely to change in the near future. To use filtered views in the
+   meantime, you currently need to upgrade to ``development-wt6`` (or
+   ``development-wt6-rich-root``) format first.
+
+
+view を作る
+---------------
+
+次のように, ``view`` コマンドにファイルやディレクトリを指定することで\
+viewを作ります::
+
+  bzr view file1 file2 dir1 ...
+
+出力は::
+
+  Using 'my' view: file1, file2, dir1
+
+
+現在のviewをリストする
+------------------------
+
+現在のviewを見るには、 ``view`` コマンドに引数をつけないで実行します::
+
+  bzr view
+
+もしviewが無ければ、 ``No current view.`` というメッセージが出力されるでしょう。
+そうでなければ、現在のviewの名前と内容が次のように表示されます::
+
+  'my' view is: a, b, c
+
+
+viewを切り替える
+-----------------------
+
+ほとんどの場合、viewは「変更を選択するために作られて、\
+変更がコミットされると削除される」という具合に短い期間で使われます。
+それ以外の場合では、viewに名前をつけてそれを切り替えたい場合がある\
+かもしれません。
+
+名前つきviewを宣言してそれに切り替えるには::
+
+    bzr view --name view-name file1 dir1 ...
+
+たとえば::
+
+  bzr view --name doc NEWS doc/
+  Using doc view: NEWS, doc/
+
+名前つきviewを見るには::
+
+  bzr view --name view-name
+
+名前つきviewに切り替えるには::
+
+  bzr view --switch view-name
+
+全ての名前つきviewの一覧を得るには::
+
+  bzr view --all
+
+
+一時的にviewを無効にする
+----------------------------
+
+現在のviewを削除せずに無効にしたい場合、 ``off`` という名前の仮想viewに\
+切り替えることができます。これは、ツリー全体を一つか二つのコマンドで操作する\
+必要があり(例: merge)、しかしその後に元のviewに戻りたい場合に便利です。
+
+現在のviewを削除せずに無効にするには::
+
+  bzr view --switch off
+
+ツリー全体に対する操作が終わったら、元のviewの名前を指定して戻ることが\
+できます。たとえば、デフォルトの名前が使われて他のであれば::
+
+  bzr view --switch my
+
+
+viewを削除する
+--------------
+
+現在のviewを削除するには::
+
+  bzr view --delete
+
+名前つきviewを削除するには::
+
+  bzr view --name view-name --delete
+
+全てのviewを削除するには::
+
+  bzr view --delete --all
+
+
+注意点
+---------------------
+
+view を定義しても作業ツリー内のほかのファイルを削除するわけでは\
+ありません。単に作業ツリーに対する "レンズ" を提供するだけです。
+
+view は作業ツリーのメタデータとして保存されます。pull, push, update
+といったブランチコマンドを使っても他の作業ツリーに伝播しません。
+
+view はファイルパスの形で定義されます。もしview内のファイルをview外に
+移動したのであれば、view はそのファイルを追跡しません。
+たとえば、viewが ``doc/`` と定義されていて ``doc/NEWS`` を ``NEWS``
+に移動しても view は ``doc/`` に定義されたままで、 ``doc/`` と ``NEWS``
+のように変更されたりはしません。同じように、view内のファイルを削除しても\
+viewからはそのファイルパスは削除されません。
+
+
+現在のviewを利用するコマンドは:
+
+* status
+* diff
+* commit
+* add
+* remove
+* revert
+* mv
+* ls
+
+ツリー全体に対する操作だけれども現在のviewの中だけを報告するコマンドは:
+
+* pull
+* update
+* merge.
+
+現在のところ、多くのコマンドがviewを無視します。ニーズがある\
+コマンドから徐々に上の対応リストに追加されていくでしょう。
+いくつかのコマンドは全体図を見るのがより適しているために、\
+viewを無視したままになるでしょう。このタイプのコマンドには\
+次のものがあります:
+
+* log
+* info
