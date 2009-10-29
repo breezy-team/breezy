@@ -42,6 +42,9 @@ Bug Fixes
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
+* Unicode paths are now handled correctly and consistently by the smart
+  server.  (Andrew Bennetts, Michael Hudson, #458762)
+
 Improvements
 ************
 
