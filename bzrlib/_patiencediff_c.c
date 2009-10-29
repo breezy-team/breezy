@@ -319,7 +319,7 @@ unique_lcs(struct matching_line *answer,
         /* check for duplicates of this line in lines_b[blo:bhi] */
         /* loop through all lines in the linked list */
         for (i = h[equiv].b_pos; i != SENTINEL; i = lines_b[i].next) {
-            /* the index is lower than blo, continue to the the next line */
+            /* the index is lower than blo, continue to the next line */
             if (i < blo) {
                 h[equiv].b_pos = i;
                 continue;
