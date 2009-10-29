@@ -2089,7 +2089,7 @@ class RepositoryPackCollection(object):
                 ('signatures', self.repo.signatures),
                 ):
             missing = versioned_file.get_missing_compression_parent_keys()
-            all_missing.update([(prefix,) + tuple(key) for key in missing])
+            all_missing.update([(prefix,) + key for key in missing])
         if all_missing:
             raise errors.BzrCheckError(
                 "Repository %s has missing compression parent(s) %r "
