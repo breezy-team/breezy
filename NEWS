@@ -32,11 +32,17 @@ Bug Fixes
 * Fix typos left after test_selftest refactoring.
   (Vincent Ladeuil, Matt Nordhoff, #461149)
 
+* Fixed ``ObjectNotLocked`` errors during ``bzr log -r NNN somefile``.
+  (Andrew Bennetts, #445171)
+  
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
 
 Improvements
 ************
+
+* ``bzr log`` now read-locks branches exactly once, so makes better use of
+  data caches.  (Andrew Bennetts)
 
 Documentation
 *************
