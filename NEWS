@@ -125,17 +125,29 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Content filters are now applied correctly after revert.
+  (Ian Clatworthy)
+
 * Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
 
 * Fetching from stacked pre-2a repository via a smart server no longer
   fails intermittently with "second push failed to complete".
   (Andrew Bennetts, #437626)
 
+* Fix typos left after test_selftest refactoring.
+  (Vincent Ladeuil, Matt Nordhoff, #461149)
+
+* Fixed ``ObjectNotLocked`` errors during ``bzr log -r NNN somefile``.
+  (Andrew Bennetts, #445171)
+  
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
 
 Improvements
 ************
+
+* ``bzr log`` now read-locks branches exactly once, so makes better use of
+  data caches.  (Andrew Bennetts)
 
 Documentation
 *************
