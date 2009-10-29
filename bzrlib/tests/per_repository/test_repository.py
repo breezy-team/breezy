@@ -77,11 +77,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertSubset([getattr(repo._format, attribute)], allowed_values)
 
     def test_attribute__fetch_order(self):
-        """Test the the _fetch_order attribute."""
+        """Test the _fetch_order attribute."""
         self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
-        """Test the the _fetch_uses_deltas attribute."""
+        """Test the _fetch_uses_deltas attribute."""
         self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_fast_deltas(self):
@@ -89,7 +89,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertFormatAttribute('fast_deltas', (True, False))
 
     def test_attribute__fetch_reconcile(self):
-        """Test the the _fetch_reconcile attribute."""
+        """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
 
     def test_attribute_format_pack_compresses(self):

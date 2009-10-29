@@ -4511,7 +4511,7 @@ class cmd_bind(Command):
     before they will be applied to the local branch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case binding will update the the local nickname to be
+    locally, in which case binding will update the local nickname to be
     that of the master.
     """
 
@@ -5362,7 +5362,7 @@ class cmd_switch(Command):
     /path/to/newbranch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case switching will update the the local nickname to be
+    locally, in which case switching will update the local nickname to be
     that of the master.
     """
 

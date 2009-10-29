@@ -2367,7 +2367,7 @@ class _KndxIndex(object):
     FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
-        that the the compressed data starts at.
+        that the compressed data starts at.
     LENGTH is the ascii representation of the length of the data file.
     PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
         REVISION_ID.
