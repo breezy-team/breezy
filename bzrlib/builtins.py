@@ -2425,10 +2425,15 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        b = tree.branch
         file_id = tree.path2id(relpath)
-        for revno, revision_id, what in log.find_touching_revisions(b, file_id):
-            self.outf.write("%6d %s\n" % (revno, what))
+        b = tree.branch
+        b.lock_read()
+        try:
+            touching_revs = log.find_touching_revisions(b, file_id)
+            for revno, revision_id, what in touching_revs:
+                self.outf.write("%6d %s\n" % (revno, what))
+        finally:
+            b.unlock()
 
 
 class cmd_ls(Command):
