@@ -184,7 +184,7 @@ Bazaar_ は、何がマージ済みかを記憶し、たとえファイルが変
 また、他の部分の修正をする人に邪魔されることもありません。
 チェックアウトを持っているため、 ``~/work/sigil/doodle-fixes/`` に対してコミットした内容は\
 ``centralhost`` 上にも現れます。
-[#nestedbranches]_ ``dev``ブランチと同じように、このようなブランチ上で二人の開発者が共同で\
+[#nestedbranches]_ ``dev`` ブランチと同じように、このようなブランチ上で二人の開発者が共同で\
 作業することもできます。
 [#cbranch]_
 
@@ -273,4 +273,4 @@ Bazaar_ の用語では、"共用リポジトリ"とは複数のブランチが�
 
 
 .. 
-   vim: tw=74 ft=rst spell spelllang=en_us
+   vim: tw=74 ft=rst
