@@ -29,18 +29,36 @@ from bzrlib import (
 def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
-    return (full_url, rev, uuid)
+    return (full_url.encode("utf-8"), int(rev), uuid.encode("utf-8"))
 
 
-def find_svn_branch_path(url):
-    try:
-        from subvertpy.ra import RemoteAccess
-    except ImportError:
-        return None
-    c = RemoteAccess(url)
-    root = c.get_repos_root()
-    assert url.startswith(root)
-    return url[len(root):].strip("/")
+class SubversionBranchUrlFinder(object):
+
+    def __init__(self):
+        self._roots = defaultdict(set)
+
+    def find_root(self, uuid, url):
+        for root in self._roots[uuid]:
+            if url.startswith(root):
+                return root
+        try:
+            from subvertpy.ra import RemoteAccess
+        except ImportError:
+            return None
+        c = RemoteAccess(url)
+        root = c.get_repos_root()
+        self._roots[uuid].add(root)
+        return root
+
+    def find_branch_path(self, uuid, url):
+        root = self.find_root(uuid, url)
+        if root is None:
+            return None
+        assert url.startswith(root)
+        return url[len(root):].strip("/")
+
+
+svn_branch_path_finder = SubversionBranchUrlFinder()
 
 
 def extract_foreign_revids(rev):
@@ -61,10 +79,10 @@ def extract_foreign_revids(rev):
              rev.properties["cscvs-svn-revision-number"],
              urllib.quote(rev.properties["cscvs-svn-branch-path"].strip("/")))))
     if "git-svn-id" in rev.properties:
-        (full_url, rev, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
-        branch_path = find_svn_branch_path(full_url)
+        (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
+        branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
         if branch_path is not None:
-            ret.add(("svn", "%s:%d:%s" % (uuid, rev, urllib.quote(branch_path))))
+            ret.add(("svn", "%s:%d:%s" % (uuid, revnum, urllib.quote(branch_path))))
     # Perhaps 'rev' is a foreign revision ?
     if getattr(rev, "foreign_revid", None) is not None:
         ret.add(("svn", rev.mapping.vcs.serialize_foreign_revid(rev.foreign_revid)))
