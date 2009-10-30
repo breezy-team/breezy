@@ -313,15 +313,22 @@ Content-Type: text/plain; charset=UTF-8\r
         server.canned_response = response_format % dict(length=length,
                                                         path=path)
 
-    def test_simple_request(self):
-        self.set_canned_response(self.server, '~bzr-pqm/bzr/bzr.dev')
+    def do_request(self, server_url):
         os.environ['BZR_LP_XMLRPC_URL'] = self.server.get_url()
         service = lp_registration.LaunchpadService()
         resolve = lp_registration.ResolveLaunchpadPathRequest('bzr')
         result = resolve.submit(service)
+        return result
+
+    def test_direct_request(self):
+        self.set_canned_response(self.server, '~bzr-pqm/bzr/bzr.dev')
+        result = self.do_request(self.server.get_url())
         urls = result.get('urls', None)
         self.assertIsNot(None, urls)
         self.assertEquals(
             ['bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev',
              'http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev'],
             urls)
+    # FIXME: we need to test with a real proxy, I can't find a way so simulate
+    # CONNECT without leaving one server hanging the test :-/ Since that maybe
+    # related to the leaking tests problems, I'll punt for now -- vila 20091030
