@@ -66,7 +66,8 @@ class Transport(xmlrpclib.Transport):
         self.verbose = verbose
         url = self._scheme + "://" + host + handler
         request = _urllib2_wrappers.Request("POST", url, request_body)
-        request.add_header("User-Agent", self.user_agent)
+        # FIXME: _urllib2_wrappers will override user-agent with its own
+        # request.add_header("User-Agent", self.user_agent)
         request.add_header("Content-Type", "text/xml")
 
         response = self._opener.open(request)
