@@ -295,7 +295,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # make sure the cache used by get_lines knows that
             self.lines_for_commit[file_id] = []
         elif kind == 'symlink':
-            ie.symlink_target = data.encode('utf8')
+            ie.symlink_target = data.decode('utf8')
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
             self.lines_for_commit[file_id] = []
