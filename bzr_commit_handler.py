@@ -826,14 +826,14 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self._delete_item(filecmd.path, self.basis_inventory)
 
     def copy_handler(self, filecmd):
-        src_path = filecmd.src_path
-        dest_path = filecmd.dest_path
+        src_path = filecmd.src_path.decode("utf8")
+        dest_path = filecmd.dest_path.decode("utf8")
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd):
-        old_path = filecmd.old_path
-        new_path = filecmd.new_path
+        old_path = filecmd.old_path.decode("utf8")
+        new_path = filecmd.new_path.decode("utf8")
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.basis_inventory)
 
