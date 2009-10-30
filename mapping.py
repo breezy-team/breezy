@@ -175,7 +175,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _extract_git_svn_metadata(self, rev, message):
         lines = message.split("\n")
-        if not (lines[-1] == "" and lines[-2].startswith("git-svn-id ")):
+        if not (lines[-1] == "" and lines[-2].startswith("git-svn-id:")):
             return message
         git_svn_id = lines[-2].split(": ", 1)[1]
         rev.properties['git-svn-id'] = git_svn_id
@@ -473,4 +473,4 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
 def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
-    return (full_url, rev, uuid)
+    return (full_url, int(rev), uuid)
