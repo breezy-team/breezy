@@ -47,7 +47,7 @@ def load_tests(standard_tests, module, loader):
     result = loader.suiteClass()
     t_tests, remaining_tests = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance((
-                TestTransport,
+                TestXMLRPCTransport,
                 )))
     transport_scenarios = [
         ('http', dict(server_class=PreCannedHTTPServer,)),
@@ -244,6 +244,7 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
 
         self.wfile.write(tcs.canned_response)
 
+
 class PreCannedServerMixin(object):
 
     def __init__(self):
@@ -265,7 +266,7 @@ if tests.HTTPSServerFeature.available():
         pass
 
 
-class TestTransport(tests.TestCase):
+class TestXMLRPCTransport(tests.TestCase):
 
     # set by load_tests
     server_class = None

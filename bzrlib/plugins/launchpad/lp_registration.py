@@ -54,7 +54,7 @@ class NotLaunchpadBranch(errors.BzrError):
         errors.BzrError.__init__(self, url=url)
 
 
-class Transport(xmlrpclib.Transport):
+class XMLRPCTransport(xmlrpclib.Transport):
 
     def __init__(self, scheme, use_datetime=0):
         xmlrpclib.Transport.__init__(self, use_datetime=use_datetime)
@@ -114,7 +114,7 @@ class LaunchpadService(object):
         self._lp_instance = lp_instance
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
-            transport = Transport(uri_type)
+            transport = XMLRPCTransport(uri_type)
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
                     % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
