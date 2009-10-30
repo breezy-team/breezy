@@ -17,12 +17,30 @@
 """Revision pseudonyms."""
 
 from collections import defaultdict
+import urllib
 
 from bzrlib import (
     errors,
     foreign,
     ui,
     )
+
+
+def parse_git_svn_id(text):
+    (head, uuid) = text.rsplit(" ", 1)
+    (full_url, rev) = head.rsplit("@", 1)
+    return (full_url, rev, uuid)
+
+
+def find_svn_branch_path(url):
+    try:
+        from subvertpy.ra import RemoteAccess
+    except ImportError:
+        return None
+    c = RemoteAccess(url)
+    root = c.get_repos_root()
+    assert url.startswith(root)
+    return url[len(root):].strip("/")
 
 
 def extract_foreign_revids(rev):
@@ -38,11 +56,15 @@ def extract_foreign_revids(rev):
             ret.add((kind, serialized_foreign_revid))
     # Maybe an older-style launchpad-cscvs import ?
     if "cscvs-svn-branch-path" in rev.properties:
-        import urllib
         ret.add(("svn", "%s:%s:%s" % (
              rev.properties["cscvs-svn-repository-uuid"],
              rev.properties["cscvs-svn-revision-number"],
              urllib.quote(rev.properties["cscvs-svn-branch-path"].strip("/")))))
+    if "git-svn-id" in rev.properties:
+        (full_url, rev, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
+        branch_path = find_svn_branch_path(full_url)
+        if branch_path is not None:
+            ret.add(("svn", "%s:%d:%s" % (uuid, rev, urllib.quote(branch_path))))
     # Perhaps 'rev' is a foreign revision ?
     if getattr(rev, "foreign_revid", None) is not None:
         ret.add(("svn", rev.mapping.vcs.serialize_foreign_revid(rev.foreign_revid)))
