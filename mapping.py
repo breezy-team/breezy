@@ -177,10 +177,9 @@ class BzrGitMapping(foreign.VcsMapping):
         lines = message.split("\n")
         if not (lines[-1] == "" and lines[-2].startswith("git-svn-id ")):
             return message
-        git_svn_id = lines[-2].split(": ", 1)
+        git_svn_id = lines[-2].split(": ", 1)[1]
         rev.properties['git-svn-id'] = git_svn_id
-        (head, uuid) = git_svn_id.rsplit(" ", 1)
-        (full_url, rev) = head.rsplit("@", 1)
+        (url, rev, uuid) = parse_git_svn_id(git_svn_id)
         # FIXME: Convert this to converted-from property somehow..
         return "\n".join(lines[:-2])
 
@@ -314,6 +313,10 @@ class ForeignGit(ForeignVcs):
     def __init__(self):
         super(ForeignGit, self).__init__(mapping_registry)
         self.abbreviation = "git"
+
+    @classmethod
+    def serialize_foreign_revid(self, foreign_revid):
+        return foreign_revid
 
     @classmethod
     def show_foreign_revid(cls, foreign_revid):
@@ -466,3 +469,8 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
     tree.serialize()
     yield tree.id, tree, cur.encode("utf-8")
 
+
+def parse_git_svn_id(text):
+    (head, uuid) = text.rsplit(" ", 1)
+    (full_url, rev) = head.rsplit("@", 1)
+    return (full_url, rev, uuid)
