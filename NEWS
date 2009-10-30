@@ -5,7 +5,6 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-
 bzr 2.1.0b2 (not released yet)
 ##############################
 
@@ -110,17 +109,15 @@ Testing
 *******
 
 
-bzr 2.0.2 (not released yet)
-############################
+bzr 2.0.2
+#########
 
-:Codename:
-:2.0.2: ???
+:Codename: after the scare
+:2.0.2: 2009-11-02
 
-Compatibility Breaks
-********************
-
-New Features
-************
+The second in our "let's keep the stable bugfixes flowing" series. As
+expected this has a few (~9) bugfixes relative to 2.0.1, and no major api
+changes or features.
 
 Bug Fixes
 *********
@@ -157,15 +154,6 @@ Documentation
 
 * Filtered views user documentation upgraded to refer to format 2a
   instead of pre-2.0 formats. (Ian Clatworthy)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b1
