@@ -188,7 +188,7 @@ class SmartServerRequest(object):
             relpath = urlutils.joinpath('/', path)
             if not relpath.startswith('/'):
                 raise ValueError(relpath)
-            return '.' + relpath
+            return urlutils.escape('.' + relpath)
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
 
