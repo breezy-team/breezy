@@ -331,7 +331,8 @@ class FileModifyCommand(FileCommand):
         elif self.dataref is None:
             dataref = "inline"
             if include_file_contents:
-                datastr = "\ndata %d\n%s" % (len(self.data), self.data)
+                dataencoded = self.data.encode("utf8")
+                datastr = "\ndata %d\n%s" % (len(dataencoded), dataencoded)
         else:
             dataref = "%s" % (self.dataref,)
         path = format_path(self.path)
