@@ -43,7 +43,7 @@ sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
-change_editor=vimdiff -of %(new_path)s %(old_path)s
+change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
@@ -212,7 +212,7 @@ class InstrumentedConfig(config.Config):
 
     def _get_change_editor(self):
         self._calls.append('_get_change_editor')
-        return 'vimdiff -fo %(new_path)s %(old_path)s'
+        return 'vimdiff -fo @new_path @old_path'
 
 
 bool_config = """[DEFAULT]
@@ -325,7 +325,7 @@ class TestConfig(tests.TestCase):
         change_editor = my_config.get_change_editor('old_tree', 'new_tree')
         self.assertEqual(['_get_change_editor'], my_config._calls)
         self.assertIs(diff.DiffFromTool, change_editor.__class__)
-        self.assertEqual(['vimdiff', '-fo', '%(new_path)s', '%(old_path)s'],
+        self.assertEqual(['vimdiff', '-fo', '@new_path', '@old_path'],
                          change_editor.command_template)
 
 
@@ -650,7 +650,7 @@ class TestGlobalConfigItems(tests.TestCase):
         my_config = self._get_sample_config()
         change_editor = my_config.get_change_editor('old', 'new')
         self.assertIs(diff.DiffFromTool, change_editor.__class__)
-        self.assertEqual('vimdiff -of %(new_path)s %(old_path)s',
+        self.assertEqual('vimdiff -of @new_path @old_path',
                          ' '.join(change_editor.command_template))
 
     def test_get_no_change_editor(self):
