@@ -6,12 +6,11 @@ Bazaar Release Notes
    :depth: 1
 
 
-bzr 2.1.0b2 (not released yet)
+bzr 2.1.0b3 (not released yet)
 ##############################
 
 :Codename:
-:2.1.0b2: ???
-
+:2.1.0b3: ???
 
 Compatibility Breaks
 ********************
@@ -22,22 +21,79 @@ New Features
 Bug Fixes
 *********
 
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+
+bzr 2.0.3 (not released yet)
+############################
+
+:Codename: template
+:2.0.3: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b2
+###########
+
+:Codename: a load off my mind
+:2.1.0b2: 2009-11-02
+
+This is our second feature-filled release since 2.0, pushing us down the
+path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
+
+Key highlights in this release are: improved handling of
+failures-during-cleanup for commit, fixing a long-standing bug with
+``bzr+http`` and shared repositories, and a new StaticTuple datatype,
+allowing us to reduce memory consumption (50%) and garbage collector
+overhead (40% faster) for many operations.
+
+Bug Fixes
+*********
+
 * ``bzr+http`` servers no longer give spurious jail break errors when
   serving branches inside a shared repository.  (Andrew Bennetts, #348308)
-
-* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
 
 * Errors during commit are handled more robustly so that knock-on errors
   are less likely to occur, and will not obscure the original error if
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
-
-* Fetching from stacked pre-2a repository via a smart server no longer
-  fails intermittently with "second push failed to complete".
-  (Andrew Bennetts, #437626)
-
-* PreviewTree file names are not limited by the encoding of the temp
-  directory's filesystem. (Aaron Bentley, #436794)
 
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
@@ -106,21 +162,15 @@ Internals
   peak memory for initial copies (~200MB). (John Arbash Meinel)
 
 
-Testing
-*******
+bzr 2.0.2
+#########
 
+:Codename: after the scare
+:2.0.2: 2009-11-02
 
-bzr 2.0.2 (not released yet)
-############################
-
-:Codename:
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
+The second in our "let's keep the stable bugfixes flowing" series. As
+expected this has a few (~9) bugfixes relative to 2.0.1, and no major api
+changes or features.
 
 Bug Fixes
 *********
@@ -157,15 +207,6 @@ Documentation
 
 * Filtered views user documentation upgraded to refer to format 2a
   instead of pre-2.0 formats. (Ian Clatworthy)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b1
