@@ -1,11 +1,7 @@
-=======================
-Guide to Testing Bazaar
-=======================
+====================
+Bazaar Testing Guide
+====================
 
-.. contents::
-
-Testing Bazaar
-##############
 
 The Importance of Testing
 =========================
@@ -199,6 +195,98 @@ make our documentation testable, rather than as a way to make tests.
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
   __ http://docs.python.org/lib/module-doctest.html
+
+
+Shell-like tests
+~~~~~~~~~~~~~~~~
+
+``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
+using a restricted and limited set of commands that should be enough to mimic
+most of the behaviours.
+
+A script is a set of commands, each command is composed of:
+
+ * one mandatory command line,
+ * one optional set of input lines to feed the command,
+ * one optional set of output expected lines,
+ * one optional set of error expected lines.
+
+Input, output and error lines can be specified in any order.
+
+Except for the expected output, all lines start with a special
+string (based on their origin when used under a Unix shell):
+
+ * '$ ' for the command,
+ * '<' for input,
+ * nothing for output,
+ * '2>' for errors,
+
+Comments can be added anywhere, they start with '#' and end with
+the line.
+
+The execution stops as soon as an expected output or an expected error is not
+matched. 
+
+When no output is specified, any ouput from the command is accepted
+and execution continue. 
+
+If an error occurs and no expected error is specified, the execution stops.
+
+An error is defined by a returned status different from zero, not by the
+presence of text on the error stream.
+
+The matching is done on a full string comparison basis unless '...' is used, in
+which case expected output/errors can be less precise.
+
+Examples:
+
+The following will succeeds only if 'bzr add' outputs 'adding file'::
+
+  $ bzr add file
+  >adding file
+
+If you want the command to succeed for any output, just use::
+
+  $ bzr add file
+
+The following will stop with an error::
+
+  $ bzr not-a-command
+
+If you want it to succeed, use::
+
+  $ bzr not-a-command
+  2> bzr: ERROR: unknown command "not-a-command"
+
+You can use ellipsis (...) to replace any piece of text you don't want to be
+matched exactly::
+
+  $ bzr branch not-a-branch
+  2>bzr: ERROR: Not a branch...not-a-branch/".
+
+This can be used to ignore entire lines too::
+
+  $ cat
+  <first line
+  <second line
+  <third line
+  # And here we explain that surprising fourth line
+  <fourth line
+  <last line
+  >first line
+  >...
+  >last line
+
+You can check the content of a file with cat::
+
+  $ cat <file
+  >expected content
+
+You can also check the existence of a file with cat, the following will fail if
+the file doesn't exist::
+
+  $ cat file
+
 
 
 .. Effort tests

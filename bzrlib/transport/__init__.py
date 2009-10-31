@@ -90,8 +90,10 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is no handler registered for it.
+    # Add chroot and pathfilter directly, because there is no handler
+    # registered for it.
     modules.add('bzrlib.transport.chroot')
+    modules.add('bzrlib.transport.pathfilter')
     result = list(modules)
     result.sort()
     return result
@@ -106,7 +108,7 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multple protcol ( like the ftp
+    a) a single provider can support multiple protocols ( like the ftp
     provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
     protocol which is supported by both the urllib and pycurl provider )

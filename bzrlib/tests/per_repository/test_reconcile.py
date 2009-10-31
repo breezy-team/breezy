@@ -341,6 +341,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-first-parent')
         inv.root.revision = 'wrong-first-parent'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'wrong-first-parent'), [], [])
         sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,

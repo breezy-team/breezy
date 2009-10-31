@@ -154,6 +154,13 @@ else:
         encode_int(int(x), r)
     encode_func[BooleanType] = encode_bool
 
+try:
+    from bzrlib._static_tuple_c import StaticTuple
+except ImportError:
+    pass
+else:
+    encode_func[StaticTuple] = encode_list
+
 
 def bencode(x):
     r = []

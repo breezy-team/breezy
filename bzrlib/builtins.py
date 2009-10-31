@@ -431,7 +431,10 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            self.outf.write('%s\n' % (node[1:],))
+            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
+                                   for ref_list in node[3]])
+            as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
+            self.outf.write('%s\n' % (as_tuple,))
 
 
 class cmd_remove_tree(Command):
@@ -461,8 +464,7 @@ class cmd_remove_tree(Command):
             raise errors.BzrCommandError("You cannot remove the working tree"
                                          " of a remote path")
         if not force:
-            # XXX: What about pending merges ? -- vila 20090629
-            if working.has_changes(working.basis_tree()):
+            if (working.has_changes()):
                 raise errors.UncommittedChanges(working)
 
         working_path = working.bzrdir.root_transport.base
@@ -1109,8 +1111,7 @@ class cmd_push(Command):
         else:
             revision_id = None
         if strict and tree is not None and revision_id is None:
-            if (tree.has_changes(tree.basis_tree())
-                or len(tree.get_parent_ids()) > 1):
+            if (tree.has_changes()):
                 raise errors.UncommittedChanges(
                     tree, more='Use --no-strict to force the push.')
             if tree.last_revision() != tree.branch.last_revision():
@@ -1673,7 +1674,7 @@ class cmd_init(Command):
                 lazy_registry=('bzrlib.bzrdir', 'format_registry'),
                 converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
                 value_switches=True,
-                title="Branch Format",
+                title="Branch format",
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
@@ -1887,7 +1888,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import _get_trees_to_diff, show_diff_trees
+        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1907,9 +1908,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        old_tree, new_tree, specific_files, extra_trees = \
-                _get_trees_to_diff(file_list, revision, old, new,
-                apply_view=True)
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = get_trees_and_branches_to_diff(
+            file_list, revision, old, new, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -2274,50 +2276,51 @@ class cmd_log(Command):
 
         file_ids = []
         filter_by_dir = False
-        if file_list:
-            # find the file ids to log and check for directory filtering
-            b, file_info_list, rev1, rev2 = _get_info_for_log_files(revision,
-                file_list)
-            for relpath, file_id, kind in file_info_list:
-                if file_id is None:
-                    raise errors.BzrCommandError(
-                        "Path unknown at end or start of revision range: %s" %
-                        relpath)
-                # If the relpath is the top of the tree, we log everything
-                if relpath == '':
-                    file_ids = []
-                    break
-                else:
-                    file_ids.append(file_id)
-                filter_by_dir = filter_by_dir or (
-                    kind in ['directory', 'tree-reference'])
-        else:
-            # log everything
-            # FIXME ? log the current subdir only RBC 20060203
-            if revision is not None \
-                    and len(revision) > 0 and revision[0].get_branch():
-                location = revision[0].get_branch()
-            else:
-                location = '.'
-            dir, relpath = bzrdir.BzrDir.open_containing(location)
-            b = dir.open_branch()
-            rev1, rev2 = _get_revision_range(revision, b, self.name())
-
-        # Decide on the type of delta & diff filtering to use
-        # TODO: add an --all-files option to make this configurable & consistent
-        if not verbose:
-            delta_type = None
-        else:
-            delta_type = 'full'
-        if not show_diff:
-            diff_type = None
-        elif file_ids:
-            diff_type = 'partial'
-        else:
-            diff_type = 'full'
-
-        b.lock_read()
+        b = None
         try:
+            if file_list:
+                # find the file ids to log and check for directory filtering
+                b, file_info_list, rev1, rev2 = _get_info_for_log_files(
+                    revision, file_list)
+                for relpath, file_id, kind in file_info_list:
+                    if file_id is None:
+                        raise errors.BzrCommandError(
+                            "Path unknown at end or start of revision range: %s" %
+                            relpath)
+                    # If the relpath is the top of the tree, we log everything
+                    if relpath == '':
+                        file_ids = []
+                        break
+                    else:
+                        file_ids.append(file_id)
+                    filter_by_dir = filter_by_dir or (
+                        kind in ['directory', 'tree-reference'])
+            else:
+                # log everything
+                # FIXME ? log the current subdir only RBC 20060203
+                if revision is not None \
+                        and len(revision) > 0 and revision[0].get_branch():
+                    location = revision[0].get_branch()
+                else:
+                    location = '.'
+                dir, relpath = bzrdir.BzrDir.open_containing(location)
+                b = dir.open_branch()
+                b.lock_read()
+                rev1, rev2 = _get_revision_range(revision, b, self.name())
+
+            # Decide on the type of delta & diff filtering to use
+            # TODO: add an --all-files option to make this configurable & consistent
+            if not verbose:
+                delta_type = None
+            else:
+                delta_type = 'full'
+            if not show_diff:
+                diff_type = None
+            elif file_ids:
+                diff_type = 'partial'
+            else:
+                diff_type = 'full'
+
             # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
@@ -2353,7 +2356,8 @@ class cmd_log(Command):
                 diff_type=diff_type, _match_using_deltas=match_using_deltas)
             Logger(b, rqst).show(lf)
         finally:
-            b.unlock()
+            if b is not None:
+                b.unlock()
 
 
 def _get_revision_range(revisionspec_list, branch, command_name):
@@ -2423,10 +2427,15 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        b = tree.branch
         file_id = tree.path2id(relpath)
-        for revno, revision_id, what in log.find_touching_revisions(b, file_id):
-            self.outf.write("%6d %s\n" % (revno, what))
+        b = tree.branch
+        b.lock_read()
+        try:
+            touching_revs = log.find_touching_revisions(b, file_id)
+            for revno, revision_id, what in touching_revs:
+                self.outf.write("%6d %s\n" % (revno, what))
+        finally:
+            b.unlock()
 
 
 class cmd_ls(Command):
@@ -3340,6 +3349,9 @@ class cmd_selftest(Command):
     Tests that need working space on disk use a common temporary directory,
     typically inside $TMPDIR or /tmp.
 
+    If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
+    into a pdb postmortem session.
+
     :Examples:
         Run only tests relating to 'ignore'::
 
@@ -3653,13 +3665,14 @@ class cmd_merge(Command):
         verified = 'inapplicable'
         tree = WorkingTree.open_containing(directory)[0]
 
-        # die as quickly as possible if there are uncommitted changes
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = tree.basis_tree()
+
+        # die as quickly as possible if there are uncommitted changes
         if not force:
-            if tree.has_changes(basis_tree):
+            if tree.has_changes():
                 raise errors.UncommittedChanges(tree)
 
         view_info = _get_view_info_for_change_reporter(tree)
@@ -3716,7 +3729,10 @@ class cmd_merge(Command):
                                        merger.other_rev_id)
                     result.report(self.outf)
                     return 0
-            merger.check_basis(False)
+            if merger.this_basis is None:
+                raise errors.BzrCommandError(
+                    "This branch has no commits."
+                    " (perhaps you would prefer 'bzr pull')")
             if preview:
                 return self._do_preview(merger, cleanups)
             elif interactive:
@@ -4502,7 +4518,7 @@ class cmd_bind(Command):
     before they will be applied to the local branch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case binding will update the the local nickname to be
+    locally, in which case binding will update the local nickname to be
     that of the master.
     """
 
@@ -4965,9 +4981,10 @@ class cmd_send(Command):
 
     To use a specific mail program, set the mail_client configuration option.
     (For Thunderbird 1.5, this works around some bugs.)  Supported values for
-    specific clients are "claws", "evolution", "kmail", "mutt", and
-    "thunderbird"; generic options are "default", "editor", "emacsclient",
-    "mapi", and "xdg-email".  Plugins may also add supported clients.
+    specific clients are "claws", "evolution", "kmail", "mail.app" (MacOS X's
+    Mail.app), "mutt", and "thunderbird"; generic options are "default",
+    "editor", "emacsclient", "mapi", and "xdg-email".  Plugins may also add
+    supported clients.
 
     If mail is being sent, a to address is required.  This can be supplied
     either on the commandline, by setting the submit_to configuration
@@ -5352,7 +5369,7 @@ class cmd_switch(Command):
     /path/to/newbranch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case switching will update the the local nickname to be
+    locally, in which case switching will update the local nickname to be
     that of the master.
     """
 

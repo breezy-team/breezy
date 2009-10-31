@@ -53,6 +53,8 @@ import warnings
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    chk_map,
+    config,
     debug,
     errors,
     hooks,
@@ -90,7 +92,7 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport
+from bzrlib.transport import get_transport, pathfilter
 import bzrlib.transport
 from bzrlib.transport.local import LocalURLServer
 from bzrlib.transport.memory import MemoryServer
@@ -221,6 +223,10 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%s is leaking threads among %d leaking tests.\n' % (
                 TestCase._first_thread_leaker_id,
                 TestCase._leaking_threads_tests))
+            # We don't report the main thread as an active one.
+            self.stream.write(
+                '%d non-main threads were left active in the end.\n'
+                % (TestCase._active_threads - 1))
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -298,6 +304,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         elif isinstance(err[1], UnavailableFeature):
             return self.addNotSupported(test, err[1].args[0])
         else:
+            self._post_mortem()
             unittest.TestResult.addError(self, test, err)
             self.error_count += 1
             self.report_error(test, err)
@@ -315,6 +322,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
+            self._post_mortem()
             unittest.TestResult.addFailure(self, test, err)
             self.failure_count += 1
             self.report_failure(test, err)
@@ -404,6 +412,11 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.writeln(self.separator2)
             self.stream.writeln("%s" % err)
 
+    def _post_mortem(self):
+        """Start a PDB post mortem session."""
+        if os.environ.get('BZR_TEST_PDB', None):
+            import pdb;pdb.post_mortem()
+
     def progress(self, offset, whence):
         """The test is adjusting the count of tests to run."""
         if whence == SUBUNIT_SEEK_SET:
@@ -488,8 +501,8 @@ class TextTestResult(ExtendedTestResult):
             a += ', %d err' % self.error_count
         if self.failure_count:
             a += ', %d fail' % self.failure_count
-        if self.unsupported:
-            a += ', %d missing' % len(self.unsupported)
+        # if self.unsupported:
+        #     a += ', %d missing' % len(self.unsupported)
         a += ']'
         return a
 
@@ -504,20 +517,20 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.pb.note('ERROR: %s\n    %s\n',
+        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_failure(self, test, err):
-        self.pb.note('FAIL: %s\n    %s\n',
+        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
-            )
+            ))
 
     def report_known_failure(self, test, err):
-        self.pb.note('XFAIL: %s\n%s\n',
-            self._test_description(test), err[1])
+        ui.ui_factory.note('XFAIL: %s\n%s\n' % (
+            self._test_description(test), err[1]))
 
     def report_skip(self, test, reason):
         pass
@@ -812,6 +825,7 @@ class TestCase(unittest.TestCase):
         self._cleanups = []
         self._bzr_test_setUp_run = False
         self._bzr_test_tearDown_run = False
+        self._directory_isolation = True
 
     def setUp(self):
         unittest.TestCase.setUp(self)
@@ -822,6 +836,7 @@ class TestCase(unittest.TestCase):
         self._benchcalls = []
         self._benchtime = None
         self._clear_hooks()
+        self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
         TestCase._active_threads = threading.activeCount()
@@ -836,7 +851,13 @@ class TestCase(unittest.TestCase):
         active = threading.activeCount()
         leaked_threads = active - TestCase._active_threads
         TestCase._active_threads = active
-        if leaked_threads:
+        # If some tests make the number of threads *decrease*, we'll consider
+        # that they are just observing old threads dieing, not agressively kill
+        # random threads. So we don't report these tests as leaking. The risk
+        # is that we have false positives that way (the test see 2 threads
+        # going away but leak one) but it seems less likely than the actual
+        # false positives (the test see threads going away and does not leak).
+        if leaked_threads > 0:
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
@@ -867,6 +888,14 @@ class TestCase(unittest.TestCase):
             setattr(parent, name, factory())
         # this hook should always be installed
         request._install_hook()
+
+    def disable_directory_isolation(self):
+        """Turn off directory isolation checks."""
+        self._directory_isolation = False
+
+    def enable_directory_isolation(self):
+        """Enable directory isolation checks."""
+        self._directory_isolation = True
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
@@ -928,6 +957,80 @@ class TestCase(unittest.TestCase):
     def _lock_broken(self, result):
         self._lock_actions.append(('broken', result))
 
+    def permit_dir(self, name):
+        """Permit a directory to be used by this test. See permit_url."""
+        name_transport = get_transport(name)
+        self.permit_url(name)
+        self.permit_url(name_transport.base)
+
+    def permit_url(self, url):
+        """Declare that url is an ok url to use in this test.
+        
+        Do this for memory transports, temporary test directory etc.
+        
+        Do not do this for the current working directory, /tmp, or any other
+        preexisting non isolated url.
+        """
+        if not url.endswith('/'):
+            url += '/'
+        self._bzr_selftest_roots.append(url)
+
+    def permit_source_tree_branch_repo(self):
+        """Permit the source tree bzr is running from to be opened.
+
+        Some code such as bzrlib.version attempts to read from the bzr branch
+        that bzr is executing from (if any). This method permits that directory
+        to be used in the test suite.
+        """
+        path = self.get_source_path()
+        self.record_directory_isolation()
+        try:
+            try:
+                workingtree.WorkingTree.open(path)
+            except (errors.NotBranchError, errors.NoWorkingTree):
+                return
+        finally:
+            self.enable_directory_isolation()
+
+    def _preopen_isolate_transport(self, transport):
+        """Check that all transport openings are done in the test work area."""
+        while isinstance(transport, pathfilter.PathFilteringTransport):
+            # Unwrap pathfiltered transports
+            transport = transport.server.backing_transport.clone(
+                transport._filter('.'))
+        url = transport.base
+        # ReadonlySmartTCPServer_for_testing decorates the backing transport
+        # urls it is given by prepending readonly+. This is appropriate as the
+        # client shouldn't know that the server is readonly (or not readonly).
+        # We could register all servers twice, with readonly+ prepending, but
+        # that makes for a long list; this is about the same but easier to
+        # read.
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+        self._preopen_isolate_url(url)
+
+    def _preopen_isolate_url(self, url):
+        if not self._directory_isolation:
+            return
+        if self._directory_isolation == 'record':
+            self._bzr_selftest_roots.append(url)
+            return
+        # This prevents all transports, including e.g. sftp ones backed on disk
+        # from working unless they are explicitly granted permission. We then
+        # depend on the code that sets up test transports to check that they are
+        # appropriately isolated and enable their use by calling
+        # self.permit_transport()
+        if not osutils.is_inside_any(self._bzr_selftest_roots, url):
+            raise errors.BzrError("Attempt to escape test isolation: %r %r"
+                % (url, self._bzr_selftest_roots))
+
+    def record_directory_isolation(self):
+        """Gather accessed directories to permit later access.
+        
+        This is used for tests that access the branch bzr is running from.
+        """
+        self._directory_isolation = "record"
+
     def start_server(self, transport_server, backing_server=None):
         """Start transport_server for this test.
 
@@ -939,6 +1042,46 @@ class TestCase(unittest.TestCase):
         else:
             transport_server.setUp(backing_server)
         self.addCleanup(transport_server.tearDown)
+        # Obtain a real transport because if the server supplies a password, it
+        # will be hidden from the base on the client side.
+        t = get_transport(transport_server.get_url())
+        # Some transport servers effectively chroot the backing transport;
+        # others like SFTPServer don't - users of the transport can walk up the
+        # transport to read the entire backing transport. This wouldn't matter
+        # except that the workdir tests are given - and that they expect the
+        # server's url to point at - is one directory under the safety net. So
+        # Branch operations into the transport will attempt to walk up one
+        # directory. Chrooting all servers would avoid this but also mean that
+        # we wouldn't be testing directly against non-root urls. Alternatively
+        # getting the test framework to start the server with a backing server
+        # at the actual safety net directory would work too, but this then
+        # means that the self.get_url/self.get_transport methods would need
+        # to transform all their results. On balance its cleaner to handle it
+        # here, and permit a higher url when we have one of these transports.
+        if t.base.endswith('/work/'):
+            # we have safety net/test root/work
+            t = t.clone('../..')
+        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+            # The smart server adds a path similar to work, which is traversed
+            # up from by the client. But the server is chrooted - the actual
+            # backing transport is not escaped from, and VFS requests to the
+            # root will error (because they try to escape the chroot).
+            t2 = t.clone('..')
+            while t2.base != t.base:
+                t = t2
+                t2 = t.clone('..')
+        self.permit_url(t.base)
+
+    def _track_transports(self):
+        """Install checks for transport usage."""
+        # TestCase has no safe place it can write to.
+        self._bzr_selftest_roots = []
+        # Currently the easiest way to be sure that nothing is going on is to
+        # hook into bzr dir opening. This leaves a small window of error for
+        # transport tests, but they are well known, and we can improve on this
+        # step.
+        bzrdir.BzrDir.hooks.install_named_hook("pre_open",
+            self._preopen_isolate_transport, "Check bzr directories are safe.")
 
     def _ndiff_strings(self, a, b):
         """Return ndiff between two strings containing lines.
@@ -982,9 +1125,9 @@ class TestCase(unittest.TestCase):
             return
         if message is None:
             message = "texts not equal:\n"
-        if a == b + '\n':
-            message = 'first string is missing a final newline.\n'
         if a + '\n' == b:
+            message = 'first string is missing a final newline.\n'
+        if a == b + '\n':
             message = 'second string is missing a final newline.\n'
         raise AssertionError(message +
                              self._ndiff_strings(a, b))
@@ -1013,6 +1156,25 @@ class TestCase(unittest.TestCase):
         if len(obj_with_len) != length:
             self.fail("Incorrect length: wanted %d, got %d for %r" % (
                 length, len(obj_with_len), obj_with_len))
+
+    def assertLogsError(self, exception_class, func, *args, **kwargs):
+        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """
+        from bzrlib import trace
+        captured = []
+        orig_log_exception_quietly = trace.log_exception_quietly
+        try:
+            def capture():
+                orig_log_exception_quietly()
+                captured.append(sys.exc_info())
+            trace.log_exception_quietly = capture
+            func(*args, **kwargs)
+        finally:
+            trace.log_exception_quietly = orig_log_exception_quietly
+        self.assertLength(1, captured)
+        err = captured[0][1]
+        self.assertIsInstance(err, exception_class)
+        return err
 
     def assertPositive(self, val):
         """Assert that val is greater than 0."""
@@ -1629,6 +1791,9 @@ class TestCase(unittest.TestCase):
 
     def _run_bzr_core(self, args, retcode, encoding, stdin,
             working_dir):
+        # Clear chk_map page cache, because the contents are likely to mask
+        # locking errors.
+        chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
         stdout = StringIOWrapper()
@@ -1670,7 +1835,7 @@ class TestCase(unittest.TestCase):
         if retcode is not None:
             self.assertEquals(retcode, result,
                               message='Unexpected return code')
-        return out, err
+        return result, out, err
 
     def run_bzr(self, args, retcode=0, encoding=None, stdin=None,
                 working_dir=None, error_regexes=[], output_encoding=None):
@@ -1705,7 +1870,7 @@ class TestCase(unittest.TestCase):
         :keyword error_regexes: A list of expected error messages.  If
             specified they must be seen in the error output of the command.
         """
-        out, err = self._run_bzr_autosplit(
+        retcode, out, err = self._run_bzr_autosplit(
             args=args,
             retcode=retcode,
             encoding=encoding,
@@ -1862,9 +2027,13 @@ class TestCase(unittest.TestCase):
         """
         return Popen(*args, **kwargs)
 
+    def get_source_path(self):
+        """Return the path of the directory containing bzrlib."""
+        return os.path.dirname(os.path.dirname(bzrlib.__file__))
+
     def get_bzr_path(self):
         """Return the path of the 'bzr' executable for this test suite."""
-        bzr_path = os.path.dirname(os.path.dirname(bzrlib.__file__))+'/bzr'
+        bzr_path = self.get_source_path()+'/bzr'
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
@@ -2196,6 +2365,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
+        self.permit_url(get_transport(root).base)
         wt = workingtree.WorkingTree.open(root)
         last_rev = wt.last_revision()
         if last_rev != 'null:':
@@ -2209,7 +2379,9 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def _make_test_root(self):
         if TestCaseWithMemoryTransport.TEST_ROOT is None:
-            root = osutils.mkdtemp(prefix='testbzr-', suffix='.tmp')
+            # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
+            root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
+                                                    suffix='.tmp'))
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -2218,6 +2390,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # specifically told when all tests are finished.  This will do.
             atexit.register(_rmtree_temp_dir, root)
 
+        self.permit_dir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.addCleanup(self._check_safety_net)
 
     def makeAndChdirToTestDir(self):
@@ -2231,6 +2404,7 @@ class TestCaseWithMemoryTransport(TestCase):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
         self.test_dir = TestCaseWithMemoryTransport.TEST_ROOT
         self.test_home_dir = self.test_dir + "/MemoryTransportMissingHomeDir"
+        self.permit_dir(self.test_dir)
 
     def make_branch(self, relpath, format=None):
         """Create a branch on the transport at relpath."""
@@ -2368,10 +2542,18 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             if os.path.exists(name):
                 name = name_prefix + '_' + str(i)
             else:
-                os.mkdir(name)
+                # now create test and home directories within this dir
+                self.test_base_dir = name
+                self.addCleanup(self.deleteTestDir)
+                os.mkdir(self.test_base_dir)
                 break
-        # now create test and home directories within this dir
-        self.test_base_dir = name
+        self.permit_dir(self.test_base_dir)
+        # 'sprouting' and 'init' of a branch both walk up the tree to find
+        # stacking policy to honour; create a bzr dir with an unshared
+        # repository (but not a branch - our code would be trying to escape
+        # then!) to stop them, and permit it to be read.
+        # control = bzrdir.BzrDir.create(self.test_base_dir)
+        # control.create_repository()
         self.test_home_dir = self.test_base_dir + '/home'
         os.mkdir(self.test_home_dir)
         self.test_dir = self.test_base_dir + '/work'
@@ -2383,7 +2565,6 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
             f.write(self.id())
         finally:
             f.close()
-        self.addCleanup(self.deleteTestDir)
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
@@ -2553,6 +2734,14 @@ class TestCaseWithTransport(TestCaseInTempDir):
     def setUp(self):
         super(TestCaseWithTransport, self).setUp()
         self.__vfs_server = None
+
+    def disable_missing_extensions_warning(self):
+        """Some tests expect a precise stderr content.
+
+        There is no point in forcing them to duplicate the extension related
+        warning.
+        """
+        config.GlobalConfig().set_user_option('ignore_missing_extensions', True)
 
 
 class ChrootedTestCase(TestCaseWithTransport):
@@ -3494,6 +3683,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.commands',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
+        'bzrlib.tests.per_foreign_vcs',
         'bzrlib.tests.per_interrepository',
         'bzrlib.tests.per_intertree',
         'bzrlib.tests.per_inventory',
@@ -3505,6 +3695,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
         'bzrlib.tests.test__annotator',
@@ -3513,6 +3704,8 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test__groupcompress',
         'bzrlib.tests.test__known_graph',
         'bzrlib.tests.test__rio',
+        'bzrlib.tests.test__simple_set',
+        'bzrlib.tests.test__static_tuple',
         'bzrlib.tests.test__walkdirs_win32',
         'bzrlib.tests.test_ancestry',
         'bzrlib.tests.test_annotate',
@@ -3533,6 +3726,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_chk_serializer',
         'bzrlib.tests.test_chunk_writer',
         'bzrlib.tests.test_clean_tree',
+        'bzrlib.tests.test_cleanup',
         'bzrlib.tests.test_commands',
         'bzrlib.tests.test_commit',
         'bzrlib.tests.test_commit_merge',
@@ -3618,6 +3812,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
         'bzrlib.tests.test_setup',
@@ -4046,6 +4241,23 @@ class _HTTPSServerFeature(Feature):
 HTTPSServerFeature = _HTTPSServerFeature()
 
 
+class _ParamikoFeature(Feature):
+    """Is paramiko available?"""
+
+    def _probe(self):
+        try:
+            from bzrlib.transport.sftp import SFTPAbsoluteServer
+            return True
+        except errors.ParamikoNotPresent:
+            return False
+
+    def feature_name(self):
+        return "Paramiko"
+
+
+ParamikoFeature = _ParamikoFeature()
+
+
 class _UnicodeFilename(Feature):
     """Does the filesystem support Unicode filenames?"""
 
@@ -4075,6 +4287,28 @@ class _UTF8Filesystem(Feature):
         return False
 
 UTF8Filesystem = _UTF8Filesystem()
+
+
+class _BreakinFeature(Feature):
+    """Does this platform support the breakin feature?"""
+
+    def _probe(self):
+        from bzrlib import breakin
+        if breakin.determine_signal() is None:
+            return False
+        if sys.platform == 'win32':
+            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
+            # We trigger SIGBREAK via a Console api so we need ctypes to
+            # access the function
+            if not have_ctypes:
+                return False
+        return True
+
+    def feature_name(self):
+        return "SIGQUIT or SIGBREAK w/ctypes on win32"
+
+
+BreakinFeature = _BreakinFeature()
 
 
 class _CaseInsCasePresFilenameFeature(Feature):

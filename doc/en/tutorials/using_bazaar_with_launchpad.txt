@@ -2,8 +2,6 @@
 Using Bazaar with Launchpad
 ===========================
 
-.. contents::
-
 
 Motivation
 ==========

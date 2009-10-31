@@ -681,15 +681,84 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
         self.assertFalse(repo._format.supports_external_lookups)
 
 
-class Test2a(TestCaseWithTransport):
+class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
+
+    def test_fetch_combines_groups(self):
+        builder = self.make_branch_builder('source', format='2a')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('2', ['1'], [
+            ('modify', ('file-id', 'content-2\n'))])
+        builder.finish_series()
+        source = builder.get_branch()
+        target = self.make_repository('target', format='2a')
+        target.fetch(source.repository)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        details = target.texts._index.get_build_details(
+            [('file-id', '1',), ('file-id', '2',)])
+        file_1_details = details[('file-id', '1')]
+        file_2_details = details[('file-id', '2')]
+        # The index, and what to read off disk, should be the same for both
+        # versions of the file.
+        self.assertEqual(file_1_details[0][:3], file_2_details[0][:3])
 
     def test_format_pack_compresses_True(self):
         repo = self.make_repository('repo', format='2a')
         self.assertTrue(repo._format.pack_compresses)
 
     def test_inventories_use_chk_map_with_parent_base_dict(self):
-        tree = self.make_branch_and_tree('repo', format="2a")
+        tree = self.make_branch_and_memory_tree('repo', format="2a")
+        tree.lock_write()
+        tree.add([''], ['TREE_ROOT'])
         revid = tree.commit("foo")
+        tree.unlock()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         inv = tree.branch.repository.get_inventory(revid)
@@ -704,12 +773,19 @@ class Test2a(TestCaseWithTransport):
         # at 20 unchanged commits, chk pages are packed that are split into
         # two groups such that the new pack being made doesn't have all its
         # pages in the source packs (though they are in the repository).
-        tree = self.make_branch_and_tree('tree', format='2a')
+        # Use a memory backed repository, we don't need to hit disk for this
+        tree = self.make_branch_and_memory_tree('tree', format='2a')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
         for pos in range(20):
             tree.commit(str(pos))
 
     def test_pack_with_hint(self):
-        tree = self.make_branch_and_tree('tree', format='2a')
+        tree = self.make_branch_and_memory_tree('tree', format='2a')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['TREE_ROOT'])
         # 1 commit to leave untouched
         tree.commit('1')
         to_keep = tree.branch.repository._pack_collection.names()
@@ -954,6 +1030,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
             inv = inventory.Inventory(revision_id='rev1a')
             inv.root.revision = 'rev1a'
             self.add_file(repo, inv, 'file1', 'rev1a', [])
+            repo.texts.add_lines((inv.root.file_id, 'rev1a'), [], [])
             repo.add_inventory('rev1a', inv, [])
             revision = _mod_revision.Revision('rev1a',
                 committer='jrandom@example.com', timestamp=0,
@@ -994,6 +1071,7 @@ class TestWithBrokenRepo(TestCaseWithTransport):
     def add_revision(self, repo, revision_id, inv, parent_ids):
         inv.revision_id = revision_id
         inv.root.revision = revision_id
+        repo.texts.add_lines((inv.root.file_id, revision_id), [], [])
         repo.add_inventory(revision_id, inv, parent_ids)
         revision = _mod_revision.Revision(revision_id,
             committer='jrandom@example.com', timestamp=0, inventory_sha1='',

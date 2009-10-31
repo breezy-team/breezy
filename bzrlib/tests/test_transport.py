@@ -16,11 +16,16 @@
 
 
 from cStringIO import StringIO
+import os
+import subprocess
+import sys
+import threading
 
 import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    tests,
     urlutils,
     )
 from bzrlib.errors import (DependencyNotPresent,
@@ -31,7 +36,7 @@ from bzrlib.errors import (DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import ParamikoFeature, TestCase, TestCaseInTempDir
 from bzrlib.transport import (_clear_protocol_handlers,
                               _CoalescedOffset,
                               ConnectedTransport,
@@ -48,6 +53,7 @@ from bzrlib.transport.chroot import ChrootServer
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
+from bzrlib.transport.pathfilter import PathFilteringServer
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -80,7 +86,8 @@ class TestTransport(TestCase):
             register_lazy_transport('bar', 'bzrlib.tests.test_transport',
                                     'TestTransport.SampleHandler')
             self.assertEqual([SampleHandler.__module__,
-                              'bzrlib.transport.chroot'],
+                              'bzrlib.transport.chroot',
+                              'bzrlib.transport.pathfilter'],
                              _get_transport_modules())
         finally:
             _set_protocol_handlers(handlers)
@@ -446,6 +453,90 @@ class ChrootServerTest(TestCase):
             server.tearDown()
 
 
+class PathFilteringDecoratorTransportTest(TestCase):
+    """Pathfilter decoration specific tests."""
+
+    def test_abspath(self):
+        # The abspath is always relative to the base of the backing transport.
+        server = PathFilteringServer(get_transport('memory:///foo/bar/'),
+            lambda x: x)
+        server.setUp()
+        transport = get_transport(server.get_url())
+        self.assertEqual(server.get_url(), transport.abspath('/'))
+
+        subdir_transport = transport.clone('subdir')
+        self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
+        server.tearDown()
+
+    def make_pf_transport(self, filter_func=None):
+        """Make a PathFilteringTransport backed by a MemoryTransport.
+        
+        :param filter_func: by default this will be a no-op function.  Use this
+            parameter to override it."""
+        if filter_func is None:
+            filter_func = lambda x: x
+        server = PathFilteringServer(
+            get_transport('memory:///foo/bar/'), filter_func)
+        server.setUp()
+        self.addCleanup(server.tearDown)
+        return get_transport(server.get_url())
+
+    def test__filter(self):
+        # _filter (with an identity func as filter_func) always returns
+        # paths relative to the base of the backing transport.
+        transport = self.make_pf_transport()
+        self.assertEqual('foo', transport._filter('foo'))
+        self.assertEqual('foo/bar', transport._filter('foo/bar'))
+        self.assertEqual('', transport._filter('..'))
+        self.assertEqual('', transport._filter('/'))
+        # The base of the pathfiltering transport is taken into account too.
+        transport = transport.clone('subdir1/subdir2')
+        self.assertEqual('subdir1/subdir2/foo', transport._filter('foo'))
+        self.assertEqual(
+            'subdir1/subdir2/foo/bar', transport._filter('foo/bar'))
+        self.assertEqual('subdir1', transport._filter('..'))
+        self.assertEqual('', transport._filter('/'))
+
+    def test_filter_invocation(self):
+        filter_log = []
+        def filter(path):
+            filter_log.append(path)
+            return path
+        transport = self.make_pf_transport(filter)
+        transport.has('abc')
+        self.assertEqual(['abc'], filter_log)
+        del filter_log[:]
+        transport.clone('abc').has('xyz')
+        self.assertEqual(['abc/xyz'], filter_log)
+        del filter_log[:]
+        transport.has('/abc')
+        self.assertEqual(['abc'], filter_log)
+
+    def test_clone(self):
+        transport = self.make_pf_transport()
+        # relpath from root and root path are the same
+        relpath_cloned = transport.clone('foo')
+        abspath_cloned = transport.clone('/foo')
+        self.assertEqual(transport.server, relpath_cloned.server)
+        self.assertEqual(transport.server, abspath_cloned.server)
+
+    def test_url_preserves_pathfiltering(self):
+        """Calling get_transport on a pathfiltered transport's base should
+        produce a transport with exactly the same behaviour as the original
+        pathfiltered transport.
+
+        This is so that it is not possible to escape (accidentally or
+        otherwise) the filtering by doing::
+            url = filtered_transport.base
+            parent_url = urlutils.join(url, '..')
+            new_transport = get_transport(parent_url)
+        """
+        transport = self.make_pf_transport()
+        new_transport = get_transport(transport.base)
+        self.assertEqual(transport.server, new_transport.server)
+        self.assertEqual(transport.base, new_transport.base)
+
+
 class ReadonlyDecoratorTransportTest(TestCase):
     """Readonly decoration specific tests."""
 
@@ -790,3 +881,89 @@ class TestTransportTrace(TestCase):
         # readv records the supplied offset request
         expected_result.append(('readv', 'foo', [(0, 1), (3, 2)], True, 6))
         self.assertEqual(expected_result, transport._activity)
+
+
+class TestSSHConnections(tests.TestCaseWithTransport):
+
+    def test_bzr_connect_to_bzr_ssh(self):
+        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
+
+        bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
+        """
+        # This test actually causes a bzr instance to be invoked, which is very
+        # expensive: it should be the only such test in the test suite.
+        # A reasonable evolution for this would be to simply check inside
+        # check_channel_exec_request that the command is appropriate, and then
+        # satisfy requests in-process.
+        self.requireFeature(ParamikoFeature)
+        # SFTPFullAbsoluteServer has a get_url method, and doesn't
+        # override the interface (doesn't change self._vendor).
+        # Note that this does encryption, so can be slow.
+        from bzrlib.transport.sftp import SFTPFullAbsoluteServer
+        from bzrlib.tests.stub_sftp import StubServer
+
+        # Start an SSH server
+        self.command_executed = []
+        # XXX: This is horrible -- we define a really dumb SSH server that
+        # executes commands, and manage the hooking up of stdin/out/err to the
+        # SSH channel ourselves.  Surely this has already been implemented
+        # elsewhere?
+        class StubSSHServer(StubServer):
+
+            test = self
+
+            def check_channel_exec_request(self, channel, command):
+                self.test.command_executed.append(command)
+                proc = subprocess.Popen(
+                    command, shell=True, stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                # XXX: horribly inefficient, not to mention ugly.
+                # Start a thread for each of stdin/out/err, and relay bytes from
+                # the subprocess to channel and vice versa.
+                def ferry_bytes(read, write, close):
+                    while True:
+                        bytes = read(1)
+                        if bytes == '':
+                            close()
+                            break
+                        write(bytes)
+
+                file_functions = [
+                    (channel.recv, proc.stdin.write, proc.stdin.close),
+                    (proc.stdout.read, channel.sendall, channel.close),
+                    (proc.stderr.read, channel.sendall_stderr, channel.close)]
+                for read, write, close in file_functions:
+                    t = threading.Thread(
+                        target=ferry_bytes, args=(read, write, close))
+                    t.start()
+
+                return True
+
+        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
+        # We *don't* want to override the default SSH vendor: the detected one
+        # is the one to use.
+        self.start_server(ssh_server)
+        port = ssh_server._listener.port
+
+        if sys.platform == 'win32':
+            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
+        else:
+            bzr_remote_path = self.get_bzr_path()
+        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+
+        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
+        # variable is used to tell bzr what command to run on the remote end.
+        path_to_branch = osutils.abspath('.')
+        if sys.platform == 'win32':
+            # On Windows, we export all drives as '/C:/, etc. So we need to
+            # prefix a '/' to get the right path.
+            path_to_branch = '/' + path_to_branch
+        url = 'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch)
+        t = get_transport(url)
+        self.permit_url(t.base)
+        t.mkdir('foo')
+
+        self.assertEqual(
+            ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
+            self.command_executed)

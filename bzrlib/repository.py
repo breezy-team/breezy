@@ -49,7 +49,7 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -57,6 +57,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -856,7 +857,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(object):
+class Repository(_RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1381,6 +1382,7 @@ class Repository(object):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
+            self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1391,6 +1393,7 @@ class Repository(object):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
+            self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -1604,7 +1607,7 @@ class Repository(object):
         # but at the moment we're only checking for texts referenced by
         # inventories at the graph's edge.
         key_deps = self.revisions._index._key_dependencies
-        key_deps.add_keys(present_inventories)
+        key_deps.satisfy_refs_for_keys(present_inventories)
         referrers = frozenset(r[0] for r in key_deps.get_referrers())
         file_ids = self.fileids_altered_by_revision_ids(referrers)
         missing_texts = set()
@@ -1720,6 +1723,7 @@ class Repository(object):
         self.start_write_group()
         return result
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if (self.control_files._lock_count == 1 and
             self.control_files._lock_mode == 'w'):
@@ -4084,7 +4088,7 @@ class CopyConverter(object):
             converted.unlock()
         self.step('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
-        self.pb.note('repository converted')
+        ui.ui_factory.note('repository converted')
 
     def step(self, message):
         """Update the pb by a step."""
@@ -4315,6 +4319,13 @@ class StreamSink(object):
                 ):
                 if versioned_file is None:
                     continue
+                # TODO: key is often going to be a StaticTuple object
+                #       I don't believe we can define a method by which
+                #       (prefix,) + StaticTuple will work, though we could
+                #       define a StaticTuple.sq_concat that would allow you to
+                #       pass in either a tuple or a StaticTuple as the second
+                #       object, so instead we could have:
+                #       StaticTuple(prefix) + key here...
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
