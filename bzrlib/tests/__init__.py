@@ -53,6 +53,7 @@ import warnings
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    chk_map,
     config,
     debug,
     errors,
@@ -1790,6 +1791,9 @@ class TestCase(unittest.TestCase):
 
     def _run_bzr_core(self, args, retcode, encoding, stdin,
             working_dir):
+        # Clear chk_map page cache, because the contents are likely to mask
+        # locking errors.
+        chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
         stdout = StringIOWrapper()
@@ -3722,6 +3726,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_chk_serializer',
         'bzrlib.tests.test_chunk_writer',
         'bzrlib.tests.test_clean_tree',
+        'bzrlib.tests.test_cleanup',
         'bzrlib.tests.test_commands',
         'bzrlib.tests.test_commit',
         'bzrlib.tests.test_commit_merge',

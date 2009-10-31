@@ -39,7 +39,7 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1 --subunit $(tests)
+	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -172,7 +172,7 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 ### Documentation Website ###
 
 # Where to build the website
-DOC_WEBSITE_BUILD := build_doc_website
+DOC_WEBSITE_BUILD = build_doc_website
 
 # Build and package docs into a website, complete with downloads.
 doc-website: html-sphinx pdf-sphinx
@@ -188,13 +188,13 @@ doc-website: html-sphinx pdf-sphinx
 # support our "plain" html documentation so that Sphinx is not a hard
 # dependency for packagers on older platforms.
 
-rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
+rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
 
 # translate txt docs to html
-derived_txt_files := \
+derived_txt_files = \
 	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
-txt_all := \
+txt_all = \
 	doc/en/tutorials/tutorial.txt \
 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
@@ -207,14 +207,14 @@ txt_all := \
 	doc/en/upgrade-guide/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
-txt_nohtml := \
+txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
 	doc/ru/user-guide/index.txt
-txt_files := $(filter-out $(txt_nohtml), $(txt_all))
-htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
+txt_files = $(filter-out $(txt_nohtml), $(txt_all))
+htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
-non_txt_files := \
+non_txt_files = \
        doc/default.css \
        $(wildcard doc/*/bzr-en-quick-reference.svg) \
        $(wildcard doc/*/bzr-en-quick-reference.png) \
@@ -229,7 +229,7 @@ non_txt_files := \
 
 # doc/developers/*.txt files that should *not* be individually
 # converted to HTML
-dev_txt_nohtml := \
+dev_txt_nohtml = \
 	doc/developers/add.txt \
 	doc/developers/annotate.txt \
 	doc/developers/bundle-creation.txt \
@@ -255,9 +255,9 @@ dev_txt_nohtml := \
 	doc/developers/status.txt \
 	doc/developers/uncommit.txt
 
-dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
-dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
-dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
+dev_txt_all = $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_txt_files = $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
+dev_htm_files = $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
 	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
@@ -299,7 +299,7 @@ ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 docs-plain: $(ALL_DOCS)
 
 # produce a tree containing just the final docs, ready for uploading to the web
-HTMLDIR := html_docs
+HTMLDIR = html_docs
 html-plain: docs-plain
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
@@ -325,7 +325,7 @@ doc/developers/performance.png: doc/developers/performance.dot
 # These are files that need to be copied into the build location to boostrap
 # the build process.
 # Note that the path is relative to tools/win32
-BUILDOUT_FILES := buildout.cfg \
+BUILDOUT_FILES = buildout.cfg \
 	buildout-templates/bin/build-installer.bat.in \
 	ostools.py bootstrap.py
 

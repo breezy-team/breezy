@@ -16,6 +16,7 @@
 
 """Tests for the StaticTuple type."""
 
+import cPickle
 import gc
 import sys
 
@@ -570,12 +571,45 @@ class TestStaticTuple(tests.TestCase):
     def test_from_sequence_not_sequence(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object())
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, 10)
 
     def test_from_sequence_incorrect_args(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(['foo', 'bar']))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_generator(self):
+        def generate_tuple():
+            yield 'foo'
+            yield 'bar'
+        st = self.module.StaticTuple.from_sequence(generate_tuple())
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_pickle(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
+
+    def test_pickle_empty(self):
+        st = self.module.StaticTuple()
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertIs(st, unpickled)
+
+    def test_pickle_nested(self):
+        st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from

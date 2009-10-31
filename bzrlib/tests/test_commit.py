@@ -484,7 +484,7 @@ class TestCommit(TestCaseWithTransport):
         other_bzrdir = master_branch.bzrdir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
 
-        # do a commit to the the other branch changing the content file so
+        # do a commit to the other branch changing the content file so
         # that our commit after merging will have a merged revision in the
         # content file history.
         self.build_tree_contents([('other/content_file', 'change in other\n')])

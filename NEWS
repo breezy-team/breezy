@@ -25,12 +25,25 @@ Bug Fixes
 * ``bzr+http`` servers no longer give spurious jail break errors when
   serving branches inside a shared repository.  (Andrew Bennetts, #348308)
 
-* ``osutils.terminal_width()`` will now return a very large value
-  to avoid truuncated lines when using pagers (for example).
-  (Joke de Buhr, Vincent Ladeuil, #353370)
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Errors during commit are handled more robustly so that knock-on errors
+  are less likely to occur, and will not obscure the original error if
+  they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
+  and similar errors.  (Andrew Bennetts, #429747, #243391)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
 
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
+
+* Unicode paths are now handled correctly and consistently by the smart
+  server.  (Andrew Bennetts, Michael Hudson, #458762)
 
 Improvements
 ************
@@ -41,10 +54,14 @@ Improvements
   (John Arbash Meinel)
 
 * Peak memory under certain operations has been reduced significantly.
+  (eg, 'bzr branch launchpad standalone' is cut in half)
   (John Arbash Meinel)
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
@@ -66,14 +83,14 @@ Internals
   (John Arbash Meinel)
 
 * ``bzrlib._static_tuple_c.StaticTuple`` is now available and used by
-  the btree index parser. This class functions similarly to ``tuple``
-  objects. However, it can only point to a limited collection of types.
-  (Currently StaticTuple, str, unicode, None, bool, int, long, float, and
-  not subclasses).  This allows us to remove it from the garbage collector
-  (it cannot be in a cycle), it also allows us to intern the objects. In
-  testing, this can reduce peak memory by 20-40%, and significantly
-  improve performance by removing objects from being inspected by the
-  garbage collector.  (John Arbash Meinel)
+  the btree index parser and the chk map parser. This class functions
+  similarly to ``tuple`` objects. However, it can only point to a limited
+  collection of types.  (Currently StaticTuple, str, unicode, None, bool,
+  int, long, float, but not subclasses).  This allows us to remove it from
+  the garbage collector (it cannot be in a cycle), it also allows us to
+  intern the objects. In testing, this can reduce peak memory by 20-40%,
+  and significantly improve performance by removing objects from being
+  inspected by the garbage collector.  (John Arbash Meinel)
 
 * ``GroupCompressBlock._ensure_content()`` will now release the
   ``zlib.decompressobj()`` when the first request is for all of the
@@ -111,11 +128,35 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Content filters are now applied correctly after revert.
+  (Ian Clatworthy)
+
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* Fix typos left after test_selftest refactoring.
+  (Vincent Ladeuil, Matt Nordhoff, #461149)
+
+* Fixed ``ObjectNotLocked`` errors during ``bzr log -r NNN somefile``.
+  (Andrew Bennetts, #445171)
+  
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 Improvements
 ************
 
+* ``bzr log`` now read-locks branches exactly once, so makes better use of
+  data caches.  (Andrew Bennetts)
+
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
@@ -232,6 +273,10 @@ Bug Fixes
 
 Improvements
 ************
+
+* Revision specifiers can now be given in a more DWIM form, without
+  needing explicit prefixes for specifiers like tags or revision id's.
+  See ``bzr help revisionspec`` for full details.  (Matthew Fuller)
 
 * Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
   compiled extensions can't be loaded.  This typically indicates a
@@ -611,7 +656,7 @@ Improvements
 * ``bzr shelve`` and ``bzr unshelve`` now work on windows.
   (Robert Collins, #305006)
 
-* Commit of specific files no longer prevents using the the iter_changes
+* Commit of specific files no longer prevents using the iter_changes
   codepath. On 2a repositories, commit of specific files should now be as
   fast, or slightly faster, than a full commit. (Robert Collins)
 
@@ -1380,7 +1425,7 @@ New Features
 ************
 
 * A new repository format ``2a`` has been added.  This is a beta release
-  of the the brisbane-core (aka group-compress) project.  This format now
+  of the brisbane-core (aka group-compress) project.  This format now
   suitable for wider testing by advanced users willing to deal with some
   bugs.  We would appreciate test reports, either positive or negative.
   Format 2a is substantially smaller and faster for many operations on
@@ -2109,7 +2154,7 @@ Internals
 
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
-  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+  streaming on the network.  (Robert Collins, Andrew Bennetts)
 
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
@@ -4833,7 +4878,7 @@ Testing
   exception. (Andrew Bennetts)
 
 * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
-  options for debugging tests, these are complementary to the the -D
+  options for debugging tests, these are complementary to the -D
   options.  The ``-Dselftest_debug`` global option has been replaced by the
   ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
 

@@ -1117,7 +1117,7 @@ class Packer(object):
             iterator is a tuple with:
             index, readv_vector, node_vector. readv_vector is a list ready to
             hand to the transport readv method, and node_vector is a list of
-            (key, eol_flag, references) for the the node retrieved by the
+            (key, eol_flag, references) for the node retrieved by the
             matching readv_vector.
         """
         # group by pack so we do one readv per pack

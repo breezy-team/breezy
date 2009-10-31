@@ -582,11 +582,13 @@ class MergeDirective2(_BaseMergeDirective):
                     revision_id):
                     raise errors.PublicBranchOutOfDate(public_branch,
                                                        revision_id)
+            testament_sha1 = t.as_sha1()
         finally:
             for entry in reversed(locked):
                 entry.unlock()
-        return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, public_branch, message, bundle, base_revision_id)
+        return klass(revision_id, testament_sha1, time, timezone,
+            target_branch, patch, public_branch, message, bundle,
+            base_revision_id)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,
