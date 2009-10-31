@@ -77,6 +77,7 @@ from bzrlib.weave import Weave
 from bzrlib.trace import (
     mutter,
     note,
+    warning,
     )
 
 from bzrlib import (
@@ -128,9 +129,16 @@ class BzrDir(object):
         return True
 
     def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        # The only current restriction is that the repository content can be 
+        # fetched compatibly with the target.
         target_repo_format = target_format.repository_format
-        source_repo_format = self._format.repository_format
-        source_repo_format.check_conversion_target(target_repo_format)
+        try:
+            self.open_repository()._format.check_conversion_target(
+                target_repo_format)
+        except errors.NoRepositoryPresent:
+            # No repo, no problem.
+            pass
 
     @staticmethod
     def _check_supported(format, allow_unsupported,
@@ -576,8 +584,7 @@ class BzrDir(object):
             # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
             new_path = self.root_transport.abspath('backup.bzr')
-            pb.note('making backup of %s' % (old_path,))
-            pb.note('  to %s' % (new_path,))
+            ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
             self.root_transport.copy_tree('.bzr', 'backup.bzr')
             return (old_path, new_path)
         finally:
@@ -1384,6 +1391,9 @@ class BzrDirPreSplitOut(BzrDir):
         # that can do wonky stuff here, and that only
         # happens for creating checkouts, which cannot be
         # done on this format anyway. So - acceptable wart.
+        if hardlink:
+            warning("can't support hardlinked working trees in %r"
+                % (self,))
         try:
             result = self.open_workingtree(recommend_upgrade=False)
         except errors.NoSuchFile:
@@ -1526,6 +1536,10 @@ class BzrDir5(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
@@ -1547,6 +1561,10 @@ class BzrDir6(BzrDirPreSplitOut):
     This is a deprecated format and may be removed after sept 2006.
     """
 
+    def has_workingtree(self):
+        """See BzrDir.has_workingtree."""
+        return True
+    
     def open_repository(self):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
@@ -1630,6 +1648,8 @@ class BzrDirMeta1(BzrDir):
 
     def get_branch_transport(self, branch_format):
         """See BzrDir.get_branch_transport()."""
+        # XXX: this shouldn't implicitly create the directory if it's just
+        # promising to get a transport -- mbp 20090727
         if branch_format is None:
             return self.transport.clone('branch')
         try:
@@ -1669,6 +1689,22 @@ class BzrDirMeta1(BzrDir):
         except errors.FileExists:
             pass
         return self.transport.clone('checkout')
+
+    def has_workingtree(self):
+        """Tell if this bzrdir contains a working tree.
+
+        This will still raise an exception if the bzrdir has a workingtree that
+        is remote & inaccessible.
+
+        Note: if you're going to open the working tree, you should just go
+        ahead and try, and not ask permission first.
+        """
+        from bzrlib.workingtree import WorkingTreeFormat
+        try:
+            WorkingTreeFormat.find_format(self)
+        except errors.NoWorkingTree:
+            return False
+        return True
 
     def needs_format_conversion(self, format=None):
         """See BzrDir.needs_format_conversion()."""
@@ -2574,14 +2610,14 @@ class ConvertBzrDir4To5(Converter):
         """See Converter.convert()."""
         self.bzrdir = to_convert
         self.pb = pb
-        self.pb.note('starting upgrade from format 4 to 5')
+        ui.ui_factory.note('starting upgrade from format 4 to 5')
         if isinstance(self.bzrdir.transport, local.LocalTransport):
             self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
         self._convert_to_weaves()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def _convert_to_weaves(self):
-        self.pb.note('note: upgrade may be faster if all store files are ungzipped first')
+        ui.ui_factory.note('note: upgrade may be faster if all store files are ungzipped first')
         try:
             # TODO permissions
             stat = self.bzrdir.transport.stat('weaves')
@@ -2615,10 +2651,10 @@ class ConvertBzrDir4To5(Converter):
         self.pb.clear()
         self._write_all_weaves()
         self._write_all_revs()
-        self.pb.note('upgraded to weaves:')
-        self.pb.note('  %6d revisions and inventories', len(self.revisions))
-        self.pb.note('  %6d revisions not present', len(self.absent_revisions))
-        self.pb.note('  %6d texts', self.text_count)
+        ui.ui_factory.note('upgraded to weaves:')
+        ui.ui_factory.note('  %6d revisions and inventories' % len(self.revisions))
+        ui.ui_factory.note('  %6d revisions not present' % len(self.absent_revisions))
+        ui.ui_factory.note('  %6d texts' % self.text_count)
         self._cleanup_spare_files_after_format4()
         self.branch._transport.put_bytes(
             'branch-format',
@@ -2692,8 +2728,8 @@ class ConvertBzrDir4To5(Converter):
                        len(self.known_revisions))
         if not self.branch.repository.has_revision(rev_id):
             self.pb.clear()
-            self.pb.note('revision {%s} not present in branch; '
-                         'will be converted as a ghost',
+            ui.ui_factory.note('revision {%s} not present in branch; '
+                         'will be converted as a ghost' %
                          rev_id)
             self.absent_revisions.add(rev_id)
         else:
@@ -2826,7 +2862,7 @@ class ConvertBzrDir5To6(Converter):
         """See Converter.convert()."""
         self.bzrdir = to_convert
         self.pb = pb
-        self.pb.note('starting upgrade from format 5 to 6')
+        ui.ui_factory.note('starting upgrade from format 5 to 6')
         self._convert_to_prefixed()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
@@ -2834,7 +2870,7 @@ class ConvertBzrDir5To6(Converter):
         from bzrlib.store import TransportStore
         self.bzrdir.transport.delete('branch-format')
         for store_name in ["weaves", "revision-store"]:
-            self.pb.note("adding prefixes to %s" % store_name)
+            ui.ui_factory.note("adding prefixes to %s" % store_name)
             store_transport = self.bzrdir.transport.clone(store_name)
             store = TransportStore(store_transport, prefixed=True)
             for urlfilename in store_transport.list_dir('.'):
@@ -2874,7 +2910,7 @@ class ConvertBzrDir6ToMeta(Converter):
         self.dir_mode = self.bzrdir._get_dir_mode()
         self.file_mode = self.bzrdir._get_file_mode()
 
-        self.pb.note('starting upgrade from format 6 to metadir')
+        ui.ui_factory.note('starting upgrade from format 6 to metadir')
         self.bzrdir.transport.put_bytes(
                 'branch-format',
                 "Converting to format 6",
@@ -2930,7 +2966,7 @@ class ConvertBzrDir6ToMeta(Converter):
         else:
             has_checkout = True
         if not has_checkout:
-            self.pb.note('No working tree.')
+            ui.ui_factory.note('No working tree.')
             # If some checkout files are there, we may as well get rid of them.
             for name, mandatory in checkout_files:
                 if name in bzrcontents:
@@ -3005,7 +3041,7 @@ class ConvertMetaToMeta(Converter):
         else:
             if not isinstance(repo._format, self.target_format.repository_format.__class__):
                 from bzrlib.repository import CopyConverter
-                self.pb.note('starting repository conversion')
+                ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
         try:
@@ -3033,7 +3069,8 @@ class ConvertMetaToMeta(Converter):
                       new is _mod_branch.BzrBranchFormat8):
                     branch_converter = _mod_branch.Converter7to8()
                 else:
-                    raise errors.BadConversionTarget("No converter", new)
+                    raise errors.BadConversionTarget("No converter", new,
+                        branch._format)
                 branch_converter.convert(branch)
                 branch = self.bzrdir.open_branch()
                 old = branch._format.__class__
@@ -3542,6 +3579,10 @@ class RepositoryAcquisitionPolicy(object):
             if self._require_stacking:
                 raise
 
+    def requires_stacking(self):
+        """Return True if this policy requires stacking."""
+        return self._stack_on is not None and self._require_stacking
+
     def _get_full_stack_on(self):
         """Get a fully-qualified URL for the stack_on location."""
         if self._stack_on is None:
@@ -3854,11 +3895,11 @@ format_registry.register_metadir('2a',
 # The following format should be an alias for the rich root equivalent 
 # of the default format
 format_registry.register_metadir('default-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
-    help='Default format, rich root variant. (needed for bzr-svn and bzr-git).',
-    branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
     alias=True,
-    )
+    help='Same as 2a.')
+
 # The current format that is made on 'bzr init'.
-format_registry.set_default('pack-0.92')
+format_registry.set_default('2a')

@@ -26,7 +26,9 @@ import sys
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
+    check,
     errors,
+    gpg,
     lockdir,
     osutils,
     repository,
@@ -38,7 +40,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.check import check_branch
 from bzrlib.errors import (FileExists,
                            NoSuchRevision,
                            NoSuchFile,
@@ -431,6 +432,27 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = source.bzrdir
         target = dir.clone(self.get_url('target'), revision_id='2')
         raise TestSkipped('revision limiting not strict yet')
+
+    def test_clone_bzrdir_branch_and_repo_fixed_user_id(self):
+        # Bug #430868 is about an email containing '.sig'
+        os.environ['BZR_EMAIL'] = 'murphy@host.sighup.org'
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['commit_tree/foo'])
+        tree.add('foo')
+        rev1 = tree.commit('revision 1')
+        tree_repo = tree.branch.repository
+        tree_repo.lock_write()
+        tree_repo.start_write_group()
+        tree_repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
+        tree_repo.commit_write_group()
+        tree_repo.unlock()
+        target = self.make_branch('target')
+        tree.branch.repository.copy_content_into(target.repository)
+        tree.branch.copy_content_into(target)
+        self.assertTrue(target.repository.has_revision(rev1))
+        self.assertEqual(
+            tree_repo.get_signature_text(rev1),
+            target.repository.get_signature_text(rev1))
 
     def test_clone_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
@@ -1255,7 +1277,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # repository is the same as the external location of the stacked-on
         # branch.
         balloon = self.make_bzrdir('balloon')
-        if isinstance(balloon, bzrdir.BzrDirMetaFormat1):
+        if isinstance(balloon._format, bzrdir.BzrDirMetaFormat1):
             stack_on = self.make_branch('stack-on', format='1.9')
         else:
             stack_on = self.make_branch('stack-on')
@@ -1738,8 +1760,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             finally:
                 pb.finished()
             # and it should pass 'check' now.
-            check_branch(bzrdir.BzrDir.open(self.get_url('.')).open_branch(),
-                         False)
+            check.check_dwim(self.get_url('.'), False, True, True)
 
     def test_format_description(self):
         dir = self.make_bzrdir('.')

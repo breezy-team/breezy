@@ -215,3 +215,5 @@ class TestCountedLock(TestCase):
         l.break_lock()
         self.assertFalse(l.is_locked())
         self.assertFalse(real_lock.is_locked())
+
+    # TODO: test get_physical_lock_status

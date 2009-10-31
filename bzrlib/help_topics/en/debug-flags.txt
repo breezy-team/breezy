@@ -12,17 +12,28 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
                   operations.
 -Dfetch           Trace history copying between repositories.
 -Dfilters         Emit information for debugging content filtering.
+-Dforceinvdeltas  Force use of inventory deltas during generic streaming fetch.
 -Dgraph           Trace graph traversal.
 -Dhashcache       Log every time a working file is read to determine its hash.
 -Dhooks           Trace hook execution.
 -Dhpss            Trace smart protocol requests and responses.
 -Dhpssdetail      More hpss details.
 -Dhpssvfs         Traceback on vfs access to Remote objects.
--Dhttp            Trace http connections, requests and responses
+-Dhttp            Trace http connections, requests and responses.
 -Dindex           Trace major index operations.
 -Dknit            Trace knit operations.
 -Dlock            Trace when lockdir locks are taken or released.
+-Dprogress        Trace progress bar operations.
 -Dmerge           Emit information for debugging merges.
--Dunlock          Some errors during unlock are treated as warnings.
+-Dno_apport       Don't use apport to report crashes.
 -Dpack            Emit information about pack operations.
+-Drelock          Emit a message every time a branch or repository object is
+                  unlocked then relocked the same way.
 -Dsftp            Trace SFTP internals.
+-Dstream          Trace fetch streams.
+-Dstrict_locks    Trace when OS locks are potentially used in a non-portable
+                  manner.
+-Dunlock          Some errors during unlock are treated as warnings.
+-DIDS_never       Never use InterDifferingSerializer when fetching.
+-DIDS_always      Always use InterDifferingSerializer to fetch if appropriate
+                  for the format, even for non-local fetches.

@@ -46,9 +46,10 @@ from bzrlib.tag import (
     )
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -148,6 +149,14 @@ class Branch(object):
             stop_index=stop_index, stop_revision=stop_revision)
         if self._partial_revision_history_cache[-1] == _mod_revision.NULL_REVISION:
             self._partial_revision_history_cache.pop()
+
+    def _get_check_refs(self):
+        """Get the references needed for check().
+
+        See bzrlib.check.
+        """
+        revid = self.last_revision()
+        return [('revision-existence', revid), ('lefthand-distance', revid)]
 
     @staticmethod
     def open(base, _unsupported=False, possible_transports=None):
@@ -438,15 +447,11 @@ class Branch(object):
         # start_revision_id.
         if self._merge_sorted_revisions_cache is None:
             last_revision = self.last_revision()
-            graph = self.repository.get_graph()
-            parent_map = dict(((key, value) for key, value in
-                     graph.iter_ancestry([last_revision]) if value is not None))
-            revision_graph = repository._strip_NULL_ghosts(parent_map)
-            revs = tsort.merge_sort(revision_graph, last_revision, None,
-                generate_revno=True)
-            # Drop the sequence # before caching
-            self._merge_sorted_revisions_cache = [r[1:] for r in revs]
-
+            last_key = (last_revision,)
+            known_graph = self.repository.revisions.get_known_graph_ancestry(
+                [last_key])
+            self._merge_sorted_revisions_cache = known_graph.merge_sort(
+                last_key)
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id, stop_rule)
@@ -462,27 +467,34 @@ class Branch(object):
         """Iterate over an inclusive range of sorted revisions."""
         rev_iter = iter(merge_sorted_revisions)
         if start_revision_id is not None:
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id != start_revision_id:
                     continue
                 else:
                     # The decision to include the start or not
                     # depends on the stop_rule if a stop is provided
-                    rev_iter = chain(
-                        iter([(rev_id, depth, revno, end_of_merge)]),
-                        rev_iter)
+                    # so pop this node back into the iterator
+                    rev_iter = chain(iter([node]), rev_iter)
                     break
         if stop_revision_id is None:
-            for rev_id, depth, revno, end_of_merge in rev_iter:
-                yield rev_id, depth, revno, end_of_merge
+            # Yield everything
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'exclude':
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id == stop_revision_id:
                     return
-                yield rev_id, depth, revno, end_of_merge
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'include':
-            for rev_id, depth, revno, end_of_merge in rev_iter:
-                yield rev_id, depth, revno, end_of_merge
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
                 if rev_id == stop_revision_id:
                     return
         elif stop_rule == 'with-merges':
@@ -491,10 +503,12 @@ class Branch(object):
                 left_parent = stop_rev.parent_ids[0]
             else:
                 left_parent = _mod_revision.NULL_REVISION
-            for rev_id, depth, revno, end_of_merge in rev_iter:
+            for node in rev_iter:
+                rev_id = node.key[-1]
                 if rev_id == left_parent:
                     return
-                yield rev_id, depth, revno, end_of_merge
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
@@ -1139,6 +1153,9 @@ class Branch(object):
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
+        if (repository_policy is not None and
+            repository_policy.requires_stacking()):
+            to_bzrdir._format.require_stacking(_skip_repo=True)
         result = to_bzrdir.create_branch()
         result.lock_write()
         try:
@@ -1212,7 +1229,7 @@ class Branch(object):
         target._set_all_reference_info(target_reference_dict)
 
     @needs_read_lock
-    def check(self):
+    def check(self, refs):
         """Check consistency of the branch.
 
         In particular this checks that revisions given in the revision-history
@@ -1221,42 +1238,23 @@ class Branch(object):
 
         Callers will typically also want to check the repository.
 
+        :param refs: Calculated refs for this branch as specified by
+            branch._get_check_refs()
         :return: A BranchCheckResult.
         """
-        ret = BranchCheckResult(self)
-        mainline_parent_id = None
+        result = BranchCheckResult(self)
         last_revno, last_revision_id = self.last_revision_info()
-        real_rev_history = []
-        try:
-            for revid in self.repository.iter_reverse_revision_history(
-                last_revision_id):
-                real_rev_history.append(revid)
-        except errors.RevisionNotPresent:
-            ret.ghosts_in_mainline = True
-        else:
-            ret.ghosts_in_mainline = False
-        real_rev_history.reverse()
-        if len(real_rev_history) != last_revno:
-            raise errors.BzrCheckError('revno does not match len(mainline)'
-                ' %s != %s' % (last_revno, len(real_rev_history)))
-        # TODO: We should probably also check that real_rev_history actually
-        #       matches self.revision_history()
-        for revision_id in real_rev_history:
-            try:
-                revision = self.repository.get_revision(revision_id)
-            except errors.NoSuchRevision, e:
-                raise errors.BzrCheckError("mainline revision {%s} not in repository"
-                            % revision_id)
-            # In general the first entry on the revision history has no parents.
-            # But it's not illegal for it to have parents listed; this can happen
-            # in imports from Arch when the parents weren't reachable.
-            if mainline_parent_id is not None:
-                if mainline_parent_id not in revision.parent_ids:
-                    raise errors.BzrCheckError("previous revision {%s} not listed among "
-                                        "parents of {%s}"
-                                        % (mainline_parent_id, revision_id))
-            mainline_parent_id = revision_id
-        return ret
+        actual_revno = refs[('lefthand-distance', last_revision_id)]
+        if actual_revno != last_revno:
+            result.errors.append(errors.BzrCheckError(
+                'revno does not match len(mainline) %s != %s' % (
+                last_revno, actual_revno)))
+        # TODO: We should probably also check that self.revision_history
+        # matches the repository for older branch formats.
+        # If looking for the code that cross-checks repository parents against
+        # the iter_reverse_revision_history output, that is now a repository
+        # specific check.
+        return result
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -2075,14 +2073,14 @@ BranchFormat.register_format(BranchReferenceFormat())
 BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
-BranchFormat.set_default_format(__format6)
+BranchFormat.set_default_format(__format7)
 _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
     _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
-class BzrBranch(Branch):
+class BzrBranch(Branch, _RelockDebugMixin):
     """A branch stored in the actual filesystem.
 
     Note that it's "local" in the context of the filesystem; it doesn't
@@ -2134,6 +2132,8 @@ class BzrBranch(Branch):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
+        if not self.is_locked():
+            self._note_lock('w')
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
@@ -2149,6 +2149,8 @@ class BzrBranch(Branch):
             raise
 
     def lock_read(self):
+        if not self.is_locked():
+            self._note_lock('r')
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
@@ -2163,6 +2165,7 @@ class BzrBranch(Branch):
                 self.repository.unlock()
             raise
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         try:
             self.control_files.unlock()
@@ -2839,7 +2842,7 @@ class BranchCheckResult(object):
 
     def __init__(self, branch):
         self.branch = branch
-        self.ghosts_in_mainline = False
+        self.errors = []
 
     def report_results(self, verbose):
         """Report the check results via trace.note.
@@ -2847,11 +2850,10 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s',
-             self.branch.base,
-             self.branch._format)
-        if self.ghosts_in_mainline:
-            note('branch contains ghosts in mainline')
+        note('checked branch %s format %s', self.branch.base,
+            self.branch._format)
+        for error in self.errors:
+            note('found error:%s', error)
 
 
 class Converter5to6(object):

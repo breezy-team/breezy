@@ -27,7 +27,7 @@ class TestSharedRepo(TestCaseInTempDir):
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository a")
         self.assertEqual(out,
-"""Shared repository with trees (format: pack-0.92)
+"""Shared repository with trees (format: 2a)
 Location:
   shared repository: a
 """)
@@ -119,4 +119,4 @@ Location:
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(16, self.hpss_calls)
+        self.assertLength(15, self.hpss_calls)

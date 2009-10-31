@@ -34,6 +34,7 @@ from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
+    deprecated_method,
     )
 
 
@@ -69,6 +70,15 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
+    
+    :ivar update_latency: The interval (in seconds) at which the PB should be
+        updated.  Setting this to zero suggests every update should be shown
+        synchronously.
+
+    :ivar show_transport_activity: If true (default), transport activity
+        will be shown when this task is drawn.  Disable it if you're sure 
+        that only irrelevant or uninteresting transport activity can occur
+        during this task.
     """
 
     def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
@@ -97,6 +107,8 @@ class ProgressTask(object):
         self.show_eta = False,
         self.show_count = True
         self.show_bar = True
+        self.update_latency = 0.1
+        self.show_transport_activity = True
 
     def __repr__(self):
         return '%s(%r/%r, msg=%r)' % (
@@ -145,16 +157,27 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def note(self, fmt_string, *args):
-        """Record a note without disrupting the progress bar."""
-        # XXX: shouldn't be here; put it in mutter or the ui instead
+        """Record a note without disrupting the progress bar.
+        
+        Deprecated: use ui_factory.note() instead or bzrlib.trace.  Note that
+        ui_factory.note takes just one string as the argument, not a format
+        string and arguments.
+        """
         if args:
             self.ui_factory.note(fmt_string % args)
         else:
             self.ui_factory.note(fmt_string)
 
     def clear(self):
-        # XXX: shouldn't be here; put it in mutter or the ui instead
+        # TODO: deprecate this method; the model object shouldn't be concerned
+        # with whether it's shown or not.  Most callers use this because they
+        # want to write some different non-progress output to the screen, but
+        # they should probably instead use a stream that's synchronized with
+        # the progress output.  It may be there is a model-level use for
+        # saying "this task's not active at the moment" but I don't see it. --
+        # mbp 20090623
         if self.progress_view:
             self.progress_view.clear()
         else:
@@ -163,7 +186,10 @@ class ProgressTask(object):
 
 @deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
-    """Abstract factory"""
+    """Construct a progress bar.
+
+    Deprecated; ask the ui_factory for a progress task instead.
+    """
     if to_file is None:
         to_file = sys.stderr
     requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')

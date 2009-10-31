@@ -1857,9 +1857,11 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
+      branch will be read-locked.
     """
     from builtins import _get_revision_range, safe_relpath_files
     tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
+    b.lock_read()
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

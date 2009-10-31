@@ -90,8 +90,10 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is no handler registered for it.
+    # Add chroot and pathfilter directly, because there is no handler
+    # registered for it.
     modules.add('bzrlib.transport.chroot')
+    modules.add('bzrlib.transport.pathfilter')
     result = list(modules)
     result.sort()
     return result
@@ -106,7 +108,7 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multple protcol ( like the ftp
+    a) a single provider can support multiple protocols ( like the ftp
     provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
     protocol which is supported by both the urllib and pycurl provider )
@@ -846,7 +848,7 @@ class Transport(object):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         :return: A list or generator of file-like objects
         """
         # TODO: Consider having this actually buffer the requests,
@@ -1015,7 +1017,7 @@ class Transport(object):
         the supplied location.
 
         :param files: A set of (path, f) entries
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         """
         return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 

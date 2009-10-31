@@ -18,6 +18,7 @@
 """
 
 from bzrlib import (
+    errors,
     revision,
     )
 
@@ -38,6 +39,18 @@ class _KnownGraphNode(object):
         return '%s(%s  gdfo:%s par:%s child:%s)' % (
             self.__class__.__name__, self.key, self.gdfo,
             self.parent_keys, self.child_keys)
+
+
+class _MergeSortNode(object):
+    """Information about a specific node in the merge graph."""
+
+    __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
+
+    def __init__(self, key, merge_depth, revno, end_of_merge):
+        self.key = key
+        self.merge_depth = merge_depth
+        self.revno = revno
+        self.end_of_merge = end_of_merge
 
 
 class KnownGraph(object):
@@ -83,6 +96,10 @@ class KnownGraph(object):
     def _find_tails(self):
         return [node for node in self._nodes.itervalues()
                 if not node.parent_keys]
+
+    def _find_tips(self):
+        return [node for node in self._nodes.itervalues()
+                      if not node.child_keys]
 
     def _find_gdfo(self):
         nodes = self._nodes
@@ -171,3 +188,119 @@ class KnownGraph(object):
             self._known_heads[heads_key] = heads
         return heads
 
+    def topo_sort(self):
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        for node in self._nodes.itervalues():
+            if node.gdfo is None:
+                raise errors.GraphCycleError(self._nodes)
+        pending = self._find_tails()
+        pending_pop = pending.pop
+        pending_append = pending.append
+
+        topo_order = []
+        topo_order_append = topo_order.append
+
+        num_seen_parents = dict.fromkeys(self._nodes, 0)
+        while pending:
+            node = pending_pop()
+            if node.parent_keys is not None:
+                # We don't include ghost parents
+                topo_order_append(node.key)
+            for child_key in node.child_keys:
+                child_node = self._nodes[child_key]
+                seen_parents = num_seen_parents[child_key] + 1
+                if seen_parents == len(child_node.parent_keys):
+                    # All parents have been processed, enqueue this child
+                    pending_append(child_node)
+                    # This has been queued up, stop tracking it
+                    del num_seen_parents[child_key]
+                else:
+                    num_seen_parents[child_key] = seen_parents
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
+
+    def gc_sort(self):
+        """Return a reverse topological ordering which is 'stable'.
+
+        There are a few constraints:
+          1) Reverse topological (all children before all parents)
+          2) Grouped by prefix
+          3) 'stable' sorting, so that we get the same result, independent of
+             machine, or extra data.
+        To do this, we use the same basic algorithm as topo_sort, but when we
+        aren't sure what node to access next, we sort them lexicographically.
+        """
+        tips = self._find_tips()
+        # Split the tips based on prefix
+        prefix_tips = {}
+        for node in tips:
+            if node.key.__class__ is str or len(node.key) == 1:
+                prefix = ''
+            else:
+                prefix = node.key[0]
+            prefix_tips.setdefault(prefix, []).append(node)
+
+        num_seen_children = dict.fromkeys(self._nodes, 0)
+
+        result = []
+        for prefix in sorted(prefix_tips):
+            pending = sorted(prefix_tips[prefix], key=lambda n:n.key,
+                             reverse=True)
+            while pending:
+                node = pending.pop()
+                if node.parent_keys is None:
+                    # Ghost node, skip it
+                    continue
+                result.append(node.key)
+                for parent_key in sorted(node.parent_keys, reverse=True):
+                    parent_node = self._nodes[parent_key]
+                    seen_children = num_seen_children[parent_key] + 1
+                    if seen_children == len(parent_node.child_keys):
+                        # All children have been processed, enqueue this parent
+                        pending.append(parent_node)
+                        # This has been queued up, stop tracking it
+                        del num_seen_children[parent_key]
+                    else:
+                        num_seen_children[parent_key] = seen_children
+        return result
+
+    def merge_sort(self, tip_key):
+        """Compute the merge sorted graph output."""
+        from bzrlib import tsort
+        as_parent_map = dict((node.key, node.parent_keys)
+                             for node in self._nodes.itervalues()
+                              if node.parent_keys is not None)
+        # We intentionally always generate revnos and never force the
+        # mainline_revisions
+        # Strip the sequence_number that merge_sort generates
+        return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
+                for _, key, merge_depth, revno, end_of_merge
+                 in tsort.merge_sort(as_parent_map, tip_key,
+                                     mainline_revisions=None,
+                                     generate_revno=True)]
+    
+    def get_parent_keys(self, key):
+        """Get the parents for a key
+        
+        Returns a list containg the parents keys. If the key is a ghost,
+        None is returned. A KeyError will be raised if the key is not in
+        the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of parents
+        """
+        return self._nodes[key].parent_keys
+
+    def get_child_keys(self, key):
+        """Get the children for a key
+        
+        Returns a list containg the children keys. A KeyError will be raised
+        if the key is not in the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of children
+        """
+        return self._nodes[key].child_keys

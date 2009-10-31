@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,6 +40,7 @@ from bzrlib import (
     debug,
     errors,
     )
+from bzrlib.static_tuple import StaticTuple
 
 _HEADER_READV = (0, 200)
 _OPTION_KEY_ELEMENTS = "key_elements="
@@ -102,7 +103,7 @@ class GraphIndexBuilder(object):
 
     def _check_key(self, key):
         """Raise BadIndexKey if key is not a valid key for this index."""
-        if type(key) != tuple:
+        if type(key) not in (tuple, StaticTuple):
             raise errors.BadIndexKey(key)
         if self._key_length != len(key):
             raise errors.BadIndexKey(key)
@@ -202,7 +203,9 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
+            # TODO: StaticTuple
             node_refs.append(tuple(reference_list))
+        # TODO: StaticTuple
         return tuple(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
@@ -229,6 +232,13 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()
+
+        This is a no-op, but we need the api to conform to a generic 'Index'
+        abstraction.
+        """
+        
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
@@ -333,6 +343,22 @@ class GraphIndexBuilder(object):
         if combine_backing_indices is not None:
             self._combine_backing_indices = combine_backing_indices
 
+    def find_ancestry(self, keys, ref_list_num):
+        """See CombinedGraphIndex.find_ancestry()"""
+        pending = set(keys)
+        parent_map = {}
+        missing_keys = set()
+        while pending:
+            next_pending = set()
+            for _, key, value, ref_lists in self.iter_entries(pending):
+                parent_keys = ref_lists[ref_list_num]
+                parent_map[key] = parent_keys
+                next_pending.update([p for p in parent_keys if p not in
+                                     parent_map])
+                missing_keys.update(pending.difference(parent_map))
+            pending = next_pending
+        return parent_map, missing_keys
+
 
 class GraphIndex(object):
     """An index for data with embedded graphs.
@@ -352,7 +378,7 @@ class GraphIndex(object):
     suitable for production use. :XXX
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Open an index called name on transport.
 
         :param transport: A bzrlib.transport.Transport.
@@ -441,6 +467,14 @@ class GraphIndex(object):
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
 
     def external_references(self, ref_list_num):
         """Return references that are not present in this index.
@@ -701,6 +735,23 @@ class GraphIndex(object):
             else:
                 # the last thing looked up was a terminal element
                 yield (self, ) + key_dict
+
+    def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
+        """See BTreeIndex._find_ancestors."""
+        # The api can be implemented as a trivial overlay on top of
+        # iter_entries, it is not an efficient implementation, but it at least
+        # gets the job done.
+        found_keys = set()
+        search_keys = set()
+        for index, key, value, refs in self.iter_entries(keys):
+            parent_keys = refs[ref_list_num]
+            found_keys.add(key)
+            parent_map[key] = parent_keys
+            search_keys.update(parent_keys)
+        # Figure out what, if anything, was missing
+        missing_keys.update(set(keys).difference(found_keys))
+        search_keys = search_keys.difference(parent_map)
+        return search_keys
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.
@@ -1119,7 +1170,7 @@ class GraphIndex(object):
             self._parsed_key_map.insert(index + 1, new_key)
 
     def _read_and_parse(self, readv_ranges):
-        """Read the the ranges and parse the resulting data.
+        """Read the ranges and parse the resulting data.
 
         :param readv_ranges: A prepared readv range list.
         """
@@ -1189,6 +1240,11 @@ class CombinedGraphIndex(object):
         return "%s(%s)" % (
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
+
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()"""
+        for index in self._indices:
+            index.clear_cache()
 
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""
@@ -1296,6 +1352,69 @@ class CombinedGraphIndex(object):
                 return
             except errors.NoSuchFile:
                 self._reload_or_raise()
+
+    def find_ancestry(self, keys, ref_list_num):
+        """Find the complete ancestry for the given set of keys.
+
+        Note that this is a whole-ancestry request, so it should be used
+        sparingly.
+
+        :param keys: An iterable of keys to look for
+        :param ref_list_num: The reference list which references the parents
+            we care about.
+        :return: (parent_map, missing_keys)
+        """
+        missing_keys = set()
+        parent_map = {}
+        keys_to_lookup = set(keys)
+        generation = 0
+        while keys_to_lookup:
+            # keys that *all* indexes claim are missing, stop searching them
+            generation += 1
+            all_index_missing = None
+            # print 'gen\tidx\tsub\tn_keys\tn_pmap\tn_miss'
+            # print '%4d\t\t\t%4d\t%5d\t%5d' % (generation, len(keys_to_lookup),
+            #                                   len(parent_map),
+            #                                   len(missing_keys))
+            for index_idx, index in enumerate(self._indices):
+                # TODO: we should probably be doing something with
+                #       'missing_keys' since we've already determined that
+                #       those revisions have not been found anywhere
+                index_missing_keys = set()
+                # Find all of the ancestry we can from this index
+                # keep looking until the search_keys set is empty, which means
+                # things we didn't find should be in index_missing_keys
+                search_keys = keys_to_lookup
+                sub_generation = 0
+                # print '    \t%2d\t\t%4d\t%5d\t%5d' % (
+                #     index_idx, len(search_keys),
+                #     len(parent_map), len(index_missing_keys))
+                while search_keys:
+                    sub_generation += 1
+                    # TODO: ref_list_num should really be a parameter, since
+                    #       CombinedGraphIndex does not know what the ref lists
+                    #       mean.
+                    search_keys = index._find_ancestors(search_keys,
+                        ref_list_num, parent_map, index_missing_keys)
+                    # print '    \t  \t%2d\t%4d\t%5d\t%5d' % (
+                    #     sub_generation, len(search_keys),
+                    #     len(parent_map), len(index_missing_keys))
+                # Now set whatever was missing to be searched in the next index
+                keys_to_lookup = index_missing_keys
+                if all_index_missing is None:
+                    all_index_missing = set(index_missing_keys)
+                else:
+                    all_index_missing.intersection_update(index_missing_keys)
+                if not keys_to_lookup:
+                    break
+            if all_index_missing is None:
+                # There were no indexes, so all search keys are 'missing'
+                missing_keys.update(keys_to_lookup)
+                keys_to_lookup = None
+            else:
+                missing_keys.update(all_index_missing)
+                keys_to_lookup.difference_update(all_index_missing)
+        return parent_map, missing_keys
 
     def key_count(self):
         """Return an estimate of the number of keys in this index.

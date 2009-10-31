@@ -16,6 +16,8 @@
 
 """Tests for content filtering conformance"""
 
+import os
+
 from bzrlib.filters import ContentFilter
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -43,6 +45,25 @@ def _lowercase(chunks, context=None):
     return _converter_helper(chunks, 'lower')
 
 
+_trailer_string = '\nend string\n'
+
+
+def _append_text(chunks, context=None):
+    """A content filter that appends a string to the end of the file.
+
+    This tests filters that change the length."""
+    return chunks + [_trailer_string]
+
+
+def _remove_appended_text(chunks, context=None):
+    """Remove the appended text."""
+
+    text = ''.join(chunks)
+    if text.endswith(_trailer_string):
+        text = text[:-len(_trailer_string)]
+    return [text]
+
+
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
@@ -61,6 +82,33 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         txt_fileid = tree.path2id('file1.txt')
         bin_fileid = tree.path2id('file2.bin')
         return tree, txt_fileid, bin_fileid
+
+    def patch_in_content_filter(self):
+        # Patch in a custom, symmetric content filter stack. It's pretty gross
+        # that we need to monkey-patch a class method to do this, bit it's
+        # the easiest way currently given we don't have easy access to the
+        # WorkingTree after it is created but before the filter stack is used
+        # to populate content.
+        self.real_content_filter_stack = WorkingTree._content_filter_stack
+        def restore_real_content_filter_stack():
+            WorkingTree._content_filter_stack = self.real_content_filter_stack
+        self.addCleanup(restore_real_content_filter_stack)
+        def _content_filter_stack(tree, path=None, file_id=None):
+            if path.endswith('.txt'):
+                return [ContentFilter(_swapcase, _swapcase)]
+            else:
+                return []
+        WorkingTree._content_filter_stack = _content_filter_stack
+
+    def assert_basis_content(self, expected_content, branch, file_id):
+        # Note: We need to use try/finally here instead of addCleanup()
+        # as the latter leaves the read lock in place too long
+        basis = branch.basis_tree()
+        basis.lock_read()
+        try:
+            self.assertEqual(expected_content, basis.get_file_text(file_id))
+        finally:
+            basis.unlock()
 
     def test_symmetric_content_filtering(self):
         # test handling when read then write gives back the initial content
@@ -113,10 +161,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        basis = source.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-        self.assertEqual("FOO TXT", basis.get_file_text(txt_fileid))
+        self.assert_basis_content("FOO TXT", source, txt_fileid)
 
         # Now branch it
         self.run_bzr('branch source target')
@@ -134,24 +179,10 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         if not source.supports_content_filtering():
             return
         self.assertFileEqual("Foo Txt", 'source/file1.txt')
-        basis = source.basis_tree()
-        basis.lock_read()
-        self.addCleanup(basis.unlock)
-        self.assertEqual("Foo Txt", basis.get_file_text(txt_fileid))
+        self.assert_basis_content("Foo Txt", source, txt_fileid)
 
-        # Patch in a custom, symmetric content filter stack
-        self.real_content_filter_stack = WorkingTree._content_filter_stack
-        def restore_real_content_filter_stack():
-            WorkingTree._content_filter_stack = self.real_content_filter_stack
-        self.addCleanup(restore_real_content_filter_stack)
-        def _content_filter_stack(tree, path=None, file_id=None):
-            if path.endswith('.txt'):
-                return [ContentFilter(_swapcase, _swapcase)]
-            else:
-                return []
-        WorkingTree._content_filter_stack = _content_filter_stack
-
-        # Now branch it
+        # Now patch in content filtering and branch the source
+        self.patch_in_content_filter()
         self.run_bzr('branch source target')
         target = WorkingTree.open('target')
         # Even though the content in source and target are different
@@ -159,3 +190,75 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assertFileEqual("fOO tXT", 'target/file1.txt')
         changes = target.changes_from(source.basis_tree())
         self.assertFalse(changes.has_changed())
+
+    def test_path_content_summary(self):
+        """path_content_summary should always talk about the canonical form."""
+        # see https://bugs.edge.launchpad.net/bzr/+bug/415508
+        #
+        # set up a tree where the canonical form has a string added to the
+        # end
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_append_text,
+            txt_writer=_remove_appended_text,
+            dir='source')
+        if not source.supports_content_filtering():
+            return
+        source.lock_read()
+        self.addCleanup(source.unlock)
+
+        expected_canonical_form = 'Foo Txt\nend string\n'
+        self.assertEquals(source.get_file(txt_fileid, filtered=True).read(),
+            expected_canonical_form)
+        self.assertEquals(source.get_file(txt_fileid, filtered=False).read(),
+            'Foo Txt')
+
+        # results are: kind, size, executable, sha1_or_link_target
+        result = source.path_content_summary('file1.txt')
+
+        self.assertEquals(result,
+            ('file', None, False, None))
+
+        # we could give back the length of the canonical form, but in general
+        # that will be expensive to compute, so it's acceptable to just return
+        # None.
+
+    def test_content_filtering_applied_on_revert_delete(self):
+        # Create a source branch with content filtering
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo Txt", 'source/file1.txt')
+        self.assert_basis_content("FOO TXT", source, txt_fileid)
+
+        # Now delete the file, revert it and check the content
+        os.unlink('source/file1.txt')
+        self.assertFalse(os.path.exists('source/file1.txt'))
+        source.revert(['file1.txt'])
+        self.assertTrue(os.path.exists('source/file1.txt'))
+        # Note: we don't get back exactly what was in the tree
+        # previously because lower(upper(text)) is a lossy transformation
+        self.assertFileEqual("foo txt", 'source/file1.txt')
+
+    def test_content_filtering_applied_on_revert_rename(self):
+        # Create a source branch with content filtering
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_uppercase, txt_writer=_lowercase, dir='source')
+        if not source.supports_content_filtering():
+            return
+        self.assertFileEqual("Foo Txt", 'source/file1.txt')
+        self.assert_basis_content("FOO TXT", source, txt_fileid)
+
+        # Now modify & rename a file, revert it and check the content
+        self.build_tree_contents([
+            ('source/file1.txt', 'Foo Txt with new content')])
+        source.rename_one('file1.txt', 'file1.bin')
+        self.assertTrue(os.path.exists('source/file1.bin'))
+        self.assertFalse(os.path.exists('source/file1.txt'))
+        self.assertFileEqual("Foo Txt with new content", 'source/file1.bin')
+        source.revert(['file1.bin'])
+        self.assertFalse(os.path.exists('source/file1.bin'))
+        self.assertTrue(os.path.exists('source/file1.txt'))
+        # Note: we don't get back exactly what was in the tree
+        # previously because lower(upper(text)) is a lossy transformation
+        self.assertFileEqual("foo txt", 'source/file1.txt')

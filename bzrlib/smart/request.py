@@ -86,7 +86,7 @@ class SmartServerRequest(object):
     # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
     # *handler* is a different concept to the request.
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/', jail_root=None):
         """Constructor.
 
         :param backing_transport: the base transport to be used when performing
@@ -96,8 +96,13 @@ class SmartServerRequest(object):
             from the client.  Clients will not be able to refer to paths above
             this root.  If root_client_path is None, then no translation will
             be performed on client paths.  Default is '/'.
+        :param jail_root: if specified, the root of the BzrDir.open jail to use
+            instead of backing_transport.
         """
         self._backing_transport = backing_transport
+        if jail_root is None:
+            jail_root = backing_transport
+        self._jail_root = jail_root
         if root_client_path is not None:
             if not root_client_path.startswith('/'):
                 root_client_path = '/' + root_client_path
@@ -155,7 +160,7 @@ class SmartServerRequest(object):
         return self.do_body(body_bytes)
 
     def setup_jail(self):
-        jail_info.transports = [self._backing_transport]
+        jail_info.transports = [self._jail_root]
 
     def teardown_jail(self):
         jail_info.transports = None
@@ -183,7 +188,7 @@ class SmartServerRequest(object):
             relpath = urlutils.joinpath('/', path)
             if not relpath.startswith('/'):
                 raise ValueError(relpath)
-            return '.' + relpath
+            return urlutils.escape('.' + relpath)
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
 
@@ -265,7 +270,8 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    def __init__(self, backing_transport, commands, root_client_path):
+    def __init__(self, backing_transport, commands, root_client_path,
+        jail_root=None):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -275,6 +281,9 @@ class SmartServerRequestHandler(object):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._commands = commands
+        if jail_root is None:
+            jail_root = backing_transport
+        self._jail_root = jail_root
         self.response = None
         self.finished_reading = False
         self._command = None
@@ -291,15 +300,6 @@ class SmartServerRequestHandler(object):
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
-
-    def dispatch_command(self, cmd, args):
-        """Deprecated compatibility method.""" # XXX XXX
-        try:
-            command = self._commands.get(cmd)
-        except LookupError:
-            raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport, self._root_client_path)
-        self._run_handler_code(self._command.execute, args, {})
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
@@ -343,7 +343,8 @@ class SmartServerRequestHandler(object):
             command = self._commands.get(cmd)
         except LookupError:
             raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport)
+        self._command = command(
+            self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
@@ -364,6 +365,9 @@ def _translate_error(err):
         return ('FileExists', err.path)
     elif isinstance(err, errors.DirectoryNotEmpty):
         return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.IncompatibleRepositories):
+        return ('IncompatibleRepositories', str(err.source), str(err.target),
+            str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
@@ -506,6 +510,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
+    'BzrDir.open_2.1', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir_2_1')
+request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')
 request_handlers.register_lazy(
@@ -553,6 +559,8 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.insert_stream', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream')
 request_handlers.register_lazy(
+    'Repository.insert_stream_1.19', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStream_1_19')
+request_handlers.register_lazy(
     'Repository.insert_stream_locked', 'bzrlib.smart.repository', 'SmartServerRepositoryInsertStreamLocked')
 request_handlers.register_lazy(
     'Repository.is_shared', 'bzrlib.smart.repository', 'SmartServerRepositoryIsShared')
@@ -569,6 +577,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'Repository.get_stream', 'bzrlib.smart.repository',
     'SmartServerRepositoryGetStream')
+request_handlers.register_lazy(
+    'Repository.get_stream_1.19', 'bzrlib.smart.repository',
+    'SmartServerRepositoryGetStream_1_19')
 request_handlers.register_lazy(
     'Repository.tarball', 'bzrlib.smart.repository',
     'SmartServerRepositoryTarball')

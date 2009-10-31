@@ -1045,8 +1045,15 @@ class KnitVersionedFiles(VersionedFiles):
     def get_annotator(self):
         return _KnitAnnotator(self)
 
-    def check(self, progress_bar=None):
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        if keys is None:
+            return self._logical_check()
+        else:
+            # At the moment, check does not extra work over get_record_stream
+            return self.get_record_stream(keys, 'unordered', True)
+
+    def _logical_check(self):
         # This doesn't actually test extraction of everything, but that will
         # impact 'bzr check' substantially, and needs to be integrated with
         # care. However, it does check for the obvious problem of a delta with
@@ -1182,6 +1189,19 @@ class KnitVersionedFiles(VersionedFiles):
             return cached_version
         generator = _VFContentMapGenerator(self, [key])
         return generator._get_content(key)
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index.find_ancestry(keys)
+        for fallback in self._fallback_vfs:
+            if not missing_keys:
+                break
+            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
+                                                missing_keys)
+            parent_map.update(f_parent_map)
+            missing_keys = f_missing_keys
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
@@ -1498,10 +1518,10 @@ class KnitVersionedFiles(VersionedFiles):
                 if source is parent_maps[0]:
                     # this KnitVersionedFiles
                     records = [(key, positions[key][1]) for key in keys]
-                    for key, raw_data, sha1 in self._read_records_iter_raw(records):
+                    for key, raw_data in self._read_records_iter_unchecked(records):
                         (record_details, index_memo, _) = positions[key]
                         yield KnitContentFactory(key, global_map[key],
-                            record_details, sha1, raw_data, self._factory.annotated, None)
+                            record_details, None, raw_data, self._factory.annotated, None)
                 else:
                     vf = self._fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
@@ -1576,6 +1596,13 @@ class KnitVersionedFiles(VersionedFiles):
         # key = basis_parent, value = index entry to add
         buffered_index_entries = {}
         for record in stream:
+            kind = record.storage_kind
+            if kind.startswith('knit-') and kind.endswith('-gz'):
+                # Check that the ID in the header of the raw knit bytes matches
+                # the record metadata.
+                raw_data = record._raw_record
+                df, rec = self._parse_record_header(record.key, raw_data)
+                df.close()
             buffered = False
             parents = record.parents
             if record.storage_kind in delta_types:
@@ -1683,10 +1710,12 @@ class KnitVersionedFiles(VersionedFiles):
             # There were index entries buffered at the end of the stream,
             # So these need to be added (if the index supports holding such
             # entries for later insertion)
+            all_entries = []
             for key in buffered_index_entries:
                 index_entries = buffered_index_entries[key]
-                self._index.add_records(index_entries,
-                    missing_compression_parents=True)
+                all_entries.extend(index_entries)
+            self._index.add_records(
+                all_entries, missing_compression_parents=True)
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
@@ -2338,7 +2367,7 @@ class _KndxIndex(object):
     FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
-        that the the compressed data starts at.
+        that the compressed data starts at.
     LENGTH is the ascii representation of the length of the data file.
     PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
         REVISION_ID.
@@ -2553,6 +2582,33 @@ class _KndxIndex(object):
         except KeyError:
             raise RevisionNotPresent(key, self)
 
+    def find_ancestry(self, keys):
+        """See CombinedGraphIndex.find_ancestry()"""
+        prefixes = set(key[:-1] for key in keys)
+        self._load_prefixes(prefixes)
+        result = {}
+        parent_map = {}
+        missing_keys = set()
+        pending_keys = list(keys)
+        # This assumes that keys will not reference parents in a different
+        # prefix, which is accurate so far.
+        while pending_keys:
+            key = pending_keys.pop()
+            if key in parent_map:
+                continue
+            prefix = key[:-1]
+            try:
+                suffix_parents = self._kndx_cache[prefix][0][key[-1]][4]
+            except KeyError:
+                missing_keys.add(key)
+            else:
+                parent_keys = tuple([prefix + (suffix,)
+                                     for suffix in suffix_parents])
+                parent_map[key] = parent_keys
+                pending_keys.extend([p for p in parent_keys
+                                        if p not in parent_map])
+        return parent_map, missing_keys
+
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
 
@@ -2730,9 +2786,20 @@ class _KndxIndex(object):
 
 class _KeyRefs(object):
 
-    def __init__(self):
+    def __init__(self, track_new_keys=False):
         # dict mapping 'key' to 'set of keys referring to that key'
         self.refs = {}
+        if track_new_keys:
+            # set remembering all new keys
+            self.new_keys = set()
+        else:
+            self.new_keys = None
+
+    def clear(self):
+        if self.refs:
+            self.refs.clear()
+        if self.new_keys:
+            self.new_keys.clear()
 
     def add_references(self, key, refs):
         # Record the new references
@@ -2745,19 +2812,28 @@ class _KeyRefs(object):
         # Discard references satisfied by the new key
         self.add_key(key)
 
+    def get_new_keys(self):
+        return self.new_keys
+    
     def get_unsatisfied_refs(self):
         return self.refs.iterkeys()
 
-    def add_key(self, key):
+    def _satisfy_refs_for_key(self, key):
         try:
             del self.refs[key]
         except KeyError:
             # No keys depended on this key.  That's ok.
             pass
 
-    def add_keys(self, keys):
+    def add_key(self, key):
+        # satisfy refs for key, and remember that we've seen this key.
+        self._satisfy_refs_for_key(key)
+        if self.new_keys is not None:
+            self.new_keys.add(key)
+
+    def satisfy_refs_for_keys(self, keys):
         for key in keys:
-            self.add_key(key)
+            self._satisfy_refs_for_key(key)
 
     def get_referrers(self):
         result = set()
@@ -2925,7 +3001,7 @@ class _KnitGraphIndex(object):
         # If updating this, you should also update
         # groupcompress._GCGraphIndex.get_missing_parents
         # We may have false positives, so filter those out.
-        self._key_dependencies.add_keys(
+        self._key_dependencies.satisfy_refs_for_keys(
             self.get_parent_map(self._key_dependencies.get_unsatisfied_refs()))
         return frozenset(self._key_dependencies.get_unsatisfied_refs())
 
@@ -3041,6 +3117,10 @@ class _KnitGraphIndex(object):
         if node[2][0] == 'N':
             options.append('no-eol')
         return options
+
+    def find_ancestry(self, keys):
+        """See CombinedGraphIndex.find_ancestry()"""
+        return self._graph_index.find_ancestry(keys, 0)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -3622,5 +3702,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data

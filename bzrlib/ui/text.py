@@ -27,6 +27,7 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    debug,
     progress,
     osutils,
     symbol_versioning,
@@ -48,10 +49,6 @@ class TextUIFactory(UIFactory):
                  stdout=None,
                  stderr=None):
         """Create a TextUIFactory.
-
-        :param bar_type: The type of progress bar to create. It defaults to
-                         letting the bzrlib.progress.ProgressBar factory auto
-                         select.   Deprecated.
         """
         super(TextUIFactory, self).__init__()
         # TODO: there's no good reason not to pass all three streams, maybe we
@@ -176,6 +173,17 @@ class TextUIFactory(UIFactory):
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
 
+    def show_error(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: error: %s\n" % msg)
+
+    def show_message(self, msg):
+        self.note(msg)
+
+    def show_warning(self, msg):
+        self.clear_term()
+        self.stderr.write("bzr: warning: %s\n" % msg)
+
     def _progress_updated(self, task):
         """A task has been updated and wants to be displayed.
         """
@@ -222,8 +230,10 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._fraction = 0
 
     def _show_line(self, s):
+        # sys.stderr.write("progress %r\n" % s)
         n = self._width - 1
         self._term_file.write('\r%-*.*s\r' % (n, n, s))
 
@@ -245,9 +255,14 @@ class TextProgressView(object):
             cols = 20
             if self._last_task is None:
                 completion_fraction = 0
+                self._fraction = 0
             else:
                 completion_fraction = \
                     self._last_task._overall_completion_fraction() or 0
+            if (completion_fraction < self._fraction and 'progress' in
+                debug.debug_flags):
+                import pdb;pdb.set_trace()
+            self._fraction = completion_fraction
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
@@ -283,9 +298,12 @@ class TextProgressView(object):
             task_msg = self._format_task(self._last_task)
         else:
             task_msg = ''
-        trans = self._last_transport_msg
-        if trans:
-            trans += ' | '
+        if self._last_task and not self._last_task.show_transport_activity:
+            trans = ''
+        else:
+            trans = self._last_transport_msg
+            if trans:
+                trans += ' | '
         return (bar_string + trans + task_msg)
 
     def _repaint(self):
@@ -302,7 +320,7 @@ class TextProgressView(object):
         must_update = task is not self._last_task
         self._last_task = task
         now = time.time()
-        if (not must_update) and (now < self._last_repaint + 0.1):
+        if (not must_update) and (now < self._last_repaint + task.update_latency):
             return
         if now > self._transport_update_time + 10:
             # no recent activity; expire it
@@ -330,6 +348,10 @@ class TextProgressView(object):
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
         now = time.time()
+        if self._total_byte_count < 2000:
+            # a little resistance at first, so it doesn't stay stuck at 0
+            # while connecting...
+            return
         if self._transport_update_time is None:
             self._transport_update_time = now
         elif now >= (self._transport_update_time + 0.5):

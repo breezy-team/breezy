@@ -7,22 +7,27 @@ if [ -z "$UBUNTU_RELEASES" ]; then
     exit 1
 fi
 
-if [ "x$1" = "x" ]; then
+if [ "x$VERSION" = "x" ]; then
     echo "Missing version"
     echo "You want something like:"
-    echo "  update-changelogs.sh 1.6~rc1-1~bazaar1"
+    echo "  VERSION=1.6~rc1-1~bazaar1 update-changelogs.sh"
     echo "or"
-    echo "  update-changelogs.sh 1.6-1~bazaar1"
+    echo "  VERSION=1.6-1~bazaar1 update-changelogs.sh"
     exit
 fi
-VERSION=$1
+
+if [ -z "$1" ]; then
+    MSG="New upstream release"
+else
+    MSG=$1
+fi
 
 for DISTRO in $UBUNTU_RELEASES; do
     PPAVERSION="$VERSION~${DISTRO}1"
     (
         echo "Updating changelog for $DISTRO"
-	cd "packaging-$DISTRO" &&
-	dch -v $PPAVERSION -D $DISTRO -c changelog 'New upstream release.' &&
-	bzr commit -m "New upstream release: $PPAVERSION"
+        cd "$PACKAGE-$DISTRO" &&
+            dch -v $PPAVERSION -D $DISTRO -c changelog "$MSG." &&
+            bzr commit -m "$MSG: $PPAVERSION"
     )
 done
