@@ -36,6 +36,16 @@ Internals
 Testing
 *******
 
+* UnavailableFeature is now handled within the TestCase.run method rather
+  than being looked for within addError. If the Result object does not
+  have an addNotSupported method, addSkip is attempted instead, and
+  failing that addSuccess. (Robert Collins)
+
+* When a TestResult does not have an addSkip method, skipped tests are now
+  reported as successful tests, rather than as errors. This change is
+  to make it possible to get a clean test run with a less capable
+  TestResult. (Robert Collins)
+
 
 
 bzr 2.0.3 (not released yet)

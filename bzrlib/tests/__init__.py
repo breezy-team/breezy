@@ -301,8 +301,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._testConcluded(test)
         if isinstance(err[1], TestNotApplicable):
             return self._addNotApplicable(test, err)
-        elif isinstance(err[1], UnavailableFeature):
-            return self.addNotSupported(test, err[1].args[0])
         else:
             self._post_mortem()
             unittest.TestResult.addError(self, test, err)
@@ -362,11 +360,11 @@ class ExtendedTestResult(unittest._TextTestResult):
         """The test will not be run because of a missing feature.
         """
         # this can be called in two different ways: it may be that the
-        # test started running, and then raised (through addError)
+        # test started running, and then raised (through requireFeature)
         # UnavailableFeature.  Alternatively this method can be called
-        # while probing for features before running the tests; in that
-        # case we will see startTest and stopTest, but the test will never
-        # actually run.
+        # while probing for features before running the test code proper; in
+        # that case we will see startTest and stopTest, but the test will
+        # never actually run.
         self.unsupported.setdefault(str(feature), 0)
         self.unsupported[str(feature)] += 1
         self.report_unsupported(test, feature)
@@ -712,6 +710,8 @@ class KnownFailure(AssertionError):
 
 class UnavailableFeature(Exception):
     """A feature required for this test was not available.
+
+    This can be considered a specialised form of SkippedTest.
 
     The feature should be used to construct the exception.
     """
@@ -1595,84 +1595,95 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, sys.exc_info())
+            result.addSuccess(result)
         else:
             addSkip(self, reason)
 
+    def _do_unsupported_or_skip(self, result, reason):
+        addNotSupported = getattr(result, 'addNotSupported', None)
+        if addNotSupported is not None:
+            result.addNotSupported(self, reason)
+        else:
+            self._do_skip(result, reason)
+
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
+        result.startTest(self)
+        try:
+            self._run(result)
+            return result
+        finally:
+            result.stopTest(self)
+
+    def _run(self, result):
         for feature in getattr(self, '_test_needs_features', []):
             if not feature.available():
-                result.startTest(self)
-                if getattr(result, 'addNotSupported', None):
-                    result.addNotSupported(self, feature)
-                else:
-                    result.addSuccess(self)
-                result.stopTest(self)
-                return result
+                return self._do_unsupported_or_skip(result, feature)
         try:
+            absent_attr = object()
+            # Python 2.5
+            method_name = getattr(self, '_testMethodName', absent_attr)
+            if method_name is absent_attr:
+                # Python 2.4
+                method_name = getattr(self, '_TestCase__testMethodName')
+            testMethod = getattr(self, method_name)
             try:
-                result.startTest(self)
-                absent_attr = object()
-                # Python 2.5
-                method_name = getattr(self, '_testMethodName', absent_attr)
-                if method_name is absent_attr:
-                    # Python 2.4
-                    method_name = getattr(self, '_TestCase__testMethodName')
-                testMethod = getattr(self, method_name)
                 try:
-                    try:
-                        self.setUp()
-                        if not self._bzr_test_setUp_run:
-                            self.fail(
-                                "test setUp did not invoke "
-                                "bzrlib.tests.TestCase's setUp")
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except TestSkipped, e:
-                        self._do_skip(result, e.args[0])
-                        self.tearDown()
-                        return result
-                    except:
-                        result.addError(self, sys.exc_info())
-                        self._runCleanups()
-                        return result
+                    self.setUp()
+                    if not self._bzr_test_setUp_run:
+                        self.fail(
+                            "test setUp did not invoke "
+                            "bzrlib.tests.TestCase's setUp")
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except TestSkipped, e:
+                    self._do_skip(result, e.args[0])
+                    self.tearDown()
+                    return result
+                except UnavailableFeature, e:
+                    self._do_unsupported_or_skip(result, e.args[0])
+                    self.tearDown()
+                    return
+                except:
+                    result.addError(self, sys.exc_info())
+                    self._runCleanups()
+                    return result
 
+                ok = False
+                try:
+                    testMethod()
+                    ok = True
+                except self.failureException:
+                    result.addFailure(self, sys.exc_info())
+                except TestSkipped, e:
+                    if not e.args:
+                        reason = "No reason given."
+                    else:
+                        reason = e.args[0]
+                    self._do_skip(result, reason)
+                except UnavailableFeature, e:
+                    self._do_unsupported_or_skip(result, e.args[0])
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except:
+                    result.addError(self, sys.exc_info())
+
+                try:
+                    self.tearDown()
+                    if not self._bzr_test_tearDown_run:
+                        self.fail(
+                            "test tearDown did not invoke "
+                            "bzrlib.tests.TestCase's tearDown")
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except:
+                    result.addError(self, sys.exc_info())
+                    self._runCleanups()
                     ok = False
-                    try:
-                        testMethod()
-                        ok = True
-                    except self.failureException:
-                        result.addFailure(self, sys.exc_info())
-                    except TestSkipped, e:
-                        if not e.args:
-                            reason = "No reason given."
-                        else:
-                            reason = e.args[0]
-                        self._do_skip(result, reason)
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except:
-                        result.addError(self, sys.exc_info())
-
-                    try:
-                        self.tearDown()
-                        if not self._bzr_test_tearDown_run:
-                            self.fail(
-                                "test tearDown did not invoke "
-                                "bzrlib.tests.TestCase's tearDown")
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except:
-                        result.addError(self, sys.exc_info())
-                        self._runCleanups()
-                        ok = False
-                    if ok: result.addSuccess(self)
-                finally:
-                    result.stopTest(self)
+                if ok: result.addSuccess(self)
                 return result
             except TestNotApplicable:
                 # Not moved from the result [yet].

@@ -926,9 +926,10 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         feature = tests.Feature()
-        def test_function():
-            raise tests.UnavailableFeature(feature)
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.UnavailableFeature(feature)
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'addNotSupported'.
         self.assertEqual(2, len(result._call))
