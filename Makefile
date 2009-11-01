@@ -6,7 +6,7 @@ PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
-TESTS ?= 
+TESTS ?= bzrlib.tests.per_foreign_vcs.*Git bzrlib.plugins.git
 
 all:: build 
 
@@ -31,7 +31,7 @@ $(TMP_PLUGINS_DIR)/git: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: build-inplace $(TMP_PLUGINS_DIR)/git
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.git $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
