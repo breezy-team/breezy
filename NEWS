@@ -21,7 +21,7 @@ New Features
 Bug Fixes
 *********
 
-* ``bzr log -r123`` should not return 123's parents too.
+* ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
   (#325618, Marius Kruger)
 
 Improvements
