@@ -1579,12 +1579,12 @@ class TestCase(unittest.TestCase):
             result.addSuccess(self)
 
     def _do_not_applicable(self, result, e):
+        if not e.args:
+            reason = 'No reason given'
+        else:
+            reason = e.args[0]
         addNotApplicable = getattr(result, 'addNotApplicable', None)
         if addNotApplicable is not None:
-            if not e.args:
-                reason = 'No reason given'
-            else:
-                reason = e.args[0]
             result.addNotApplicable(self, reason)
         else:
             self._do_skip(result, reason)
