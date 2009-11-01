@@ -277,7 +277,7 @@ class TestLogRevSpecs(TestLog):
         # tags don't propagate if we don't merge
         self.run_bzr('merge ../branch1', working_dir='branch2')
         branch2_tree.commit(message='merge branch 1')
-        log = self.run_bzr("log -n0 -r-2..-1", working_dir='branch2')[0]
+        log = self.run_bzr("log -n0 -r-1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -n0 -r3.1.1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'tags: tag1')
@@ -500,6 +500,13 @@ branch nick: level1
 timestamp: Just now
 message:
   merge branch level2
+    ------------------------------------------------------------
+    revno: 1.2.1
+    committer: Lorem Ipsum <test@example.com>
+    branch nick: level2
+    timestamp: Just now
+    message:
+      in branch level2
 """
         self.check_log(expected, ['-n0', '-r1.1.2'])
 
@@ -530,13 +537,16 @@ message:
         self.check_log(expected, ['-n0', '-r1.1.1..1.1.2'])
 
     def test_merges_partial_range_ignore_before_lower_bound(self):
-        """Dont show revisions before the lower bound"""
+        """Dont show revisions before the lower bound's merged revs"""
         expected = """\
     2 Lorem Ipsum\t2005-11-22 [merge]
       merge branch level1
 
           1.1.2 Lorem Ipsum\t2005-11-22 [merge]
                 merge branch level2
+
+              1.2.1 Lorem Ipsum\t2005-11-22
+                    in branch level2
 
 """
         self.check_log(expected, ['--short', '-n0', '-r1.1.2..2'])
@@ -881,7 +891,7 @@ class TestLogFile(tests.TestCaseWithTransport):
         self.assertNotContainsRe(log, 'revno: 1\n')
         self.assertNotContainsRe(log, 'revno: 2\n')
         self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
+        self.assertContainsRe(log, 'revno: 3.1.1\n')
         self.assertContainsRe(log, 'revno: 4 ')
         log = self.run_bzr('log -n0 -r3.. file2')[0]
         self.assertNotContainsRe(log, 'revno: 1\n')
