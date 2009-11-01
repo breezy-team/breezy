@@ -1128,11 +1128,12 @@ class TestRunner(tests.TestCase):
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
-        def not_applicable_test():
-            raise tests.TestNotApplicable('this test never runs')
+        class Test(tests.TestCase):
+            def not_applicable_test(self):
+                raise tests.TestNotApplicable('this test never runs')
         out = StringIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
-        test = unittest.FunctionTestCase(not_applicable_test)
+        test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
         self._log_file.write(out.getvalue())
         self.assertTrue(result.wasSuccessful())

@@ -36,6 +36,11 @@ Internals
 Testing
 *******
 
+* TestNotApplicable is now handled within the TestCase.run method rather
+  than being looked for within ``ExtendedTestResult.addError``. This
+  provides better handling with other ``TestResult`` objects, degrading to
+  sucess rather than error. (Robert Collins)
+
 * The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
   removed - it was empty and unused. (Robert Collins)
 

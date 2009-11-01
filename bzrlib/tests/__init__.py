@@ -298,16 +298,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        if isinstance(err[1], TestNotApplicable):
-            return self._addNotApplicable(test, err)
-        else:
-            self._post_mortem()
-            unittest.TestResult.addError(self, test, err)
-            self.error_count += 1
-            self.report_error(test, err)
-            if self.stop_early:
-                self.stop()
-            self._cleanupLogFile(test)
+        self._post_mortem()
+        unittest.TestResult.addError(self, test, err)
+        self.error_count += 1
+        self.report_error(test, err)
+        if self.stop_early:
+            self.stop()
+        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -364,21 +361,9 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.skip_count += 1
         self.report_skip(test, reason)
 
-    def _addNotApplicable(self, test, skip_excinfo):
-        if isinstance(skip_excinfo[1], TestNotApplicable):
-            self.not_applicable_count += 1
-            self.report_not_applicable(test, skip_excinfo)
-        try:
-            test.tearDown()
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.addError(test, test.exc_info())
-        else:
-            # seems best to treat this as success from point-of-view of unittest
-            # -- it actually does nothing so it barely matters :)
-            unittest.TestResult.addSuccess(self, test)
-            test._log_contents = ''
+    def addNotApplicable(self, test, reason):
+        self.not_applicable_count += 1
+        self.report_not_applicable(test, reason)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -523,7 +508,7 @@ class TextTestResult(ExtendedTestResult):
     def report_skip(self, test, reason):
         pass
 
-    def report_not_applicable(self, test, skip_excinfo):
+    def report_not_applicable(self, test, reason):
         pass
 
     def report_unsupported(self, test, feature):
@@ -590,10 +575,9 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.writeln(' SKIP %s\n%s'
                 % (self._testTimeString(test), reason))
 
-    def report_not_applicable(self, test, skip_excinfo):
-        self.stream.writeln('  N/A %s\n%s'
-                % (self._testTimeString(test),
-                   self._error_summary(skip_excinfo)))
+    def report_not_applicable(self, test, reason):
+        self.stream.writeln('  N/A %s\n    %s'
+                % (self._testTimeString(test), reason))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -1589,6 +1573,17 @@ class TestCase(unittest.TestCase):
         else:
             addSkip(self, reason)
 
+    def _do_not_applicable(self, result, e):
+        addNotApplicable = getattr(result, 'addNotApplicable', None)
+        if addNotApplicable is not None:
+            if not e.args:
+                reason = 'No reason given'
+            else:
+                reason = e.args[0]
+            result.addNotApplicable(self, reason)
+        else:
+            self._do_skip(result, reason)
+
     def _do_unsupported_or_skip(self, result, reason):
         addNotSupported = getattr(result, 'addNotSupported', None)
         if addNotSupported is not None:
@@ -1627,6 +1622,10 @@ class TestCase(unittest.TestCase):
                 except KeyboardInterrupt:
                     self._runCleanups()
                     raise
+                except TestNotApplicable, e:
+                    self._do_not_applicable(result, e)
+                    self.tearDown()
+                    return
                 except TestSkipped, e:
                     self._do_skip(result, e.args[0])
                     self.tearDown()
@@ -1646,6 +1645,8 @@ class TestCase(unittest.TestCase):
                     ok = True
                 except self.failureException:
                     result.addFailure(self, sys.exc_info())
+                except TestNotApplicable, e:
+                    self._do_not_applicable(result, e)
                 except TestSkipped, e:
                     if not e.args:
                         reason = "No reason given."
@@ -1675,10 +1676,6 @@ class TestCase(unittest.TestCase):
                     ok = False
                 if ok: result.addSuccess(self)
                 return result
-            except TestNotApplicable:
-                # Not moved from the result [yet].
-                self._runCleanups()
-                raise
             except KeyboardInterrupt:
                 self._runCleanups()
                 raise
