@@ -128,17 +128,17 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
             " revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
             "(u'data', False, GitInventoryFile('data', u'data',"
             " parent_id='TREE_ROOT',"
-            " sha1='aa785adca3fcdfe1884ae840e13c6d294a2414e8', len=5, revision=git-v1:69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
+            " sha1='aa785adca3fcdfe1884ae840e13c6d294a2414e8', len=5, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
             "(u'executable', True, GitInventoryFile('executable', u'executable',"
             " parent_id='TREE_ROOT',"
-            " sha1='040f06fd774092478d450774f5ba30c5da78acc8', len=7, revision=git-v1:69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
+            " sha1='040f06fd774092478d450774f5ba30c5da78acc8', len=7, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
             "(u'link', False, GitInventoryLink('link', u'link',"
             " parent_id='TREE_ROOT', revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
             "(u'subdir', False, GitInventoryDirectory('subdir', u'subdir',"
             " parent_id='TREE_ROOT', revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
             "(u'subdir/subfile', False, GitInventoryFile('subdir/subfile',"
             " u'subfile', parent_id='subdir',"
-            " sha1='67b75c3e49f31fcadddbf9df6a1d8be8c3e44290', len=12, revision=git-v1:69c39cfa65962f3cf16b9b3eb08a15954e9d8590))")
+            " sha1='67b75c3e49f31fcadddbf9df6a1d8be8c3e44290', len=12, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))")
 
 
 class TestGitRepository(tests.TestCaseWithTransport):
