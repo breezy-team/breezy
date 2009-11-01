@@ -298,7 +298,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._testConcluded(test)
         if isinstance(err[1], TestNotApplicable):
             return self._addNotApplicable(test, err)
         else:
@@ -316,7 +315,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._testConcluded(test)
         if isinstance(err[1], KnownFailure):
             return self._addKnownFailure(test, err)
         else:
@@ -333,7 +331,6 @@ class ExtendedTestResult(unittest._TextTestResult):
 
         Called from the TestCase run()
         """
-        self._testConcluded(test)
         if self._bench_history is not None:
             benchmark_time = self._extractBenchmarkTime(test)
             if benchmark_time is not None:
@@ -344,13 +341,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         self._cleanupLogFile(test)
         unittest.TestResult.addSuccess(self, test)
         test._log_contents = ''
-
-    def _testConcluded(self, test):
-        """Common code when a test has finished.
-
-        Called regardless of whether it succeded, failed, etc.
-        """
-        pass
 
     def _addKnownFailure(self, test, err):
         self.known_failure_count += 1

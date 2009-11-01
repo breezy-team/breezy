@@ -36,6 +36,9 @@ Internals
 Testing
 *******
 
+* The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
+  removed - it was empty and unused. (Robert Collins)
+
 * UnavailableFeature is now handled within the TestCase.run method rather
   than being looked for within addError. If the Result object does not
   have an addNotSupported method, addSkip is attempted instead, and
