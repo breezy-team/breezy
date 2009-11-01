@@ -36,6 +36,9 @@ Internals
 Testing
 *******
 
+* KnownFailure is now signalled to ``ExtendedTestResult`` using the same
+  method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
   provides better handling with other ``TestResult`` objects, degrading to

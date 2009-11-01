@@ -827,9 +827,10 @@ class TestTestResult(tests.TestCase):
             def report_known_failure(self, test, err):
                 self._call = test, err
         result = InstrumentedTestResult(None, None, None, None)
-        def test_function():
-            raise tests.KnownFailure('failed!')
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.KnownFailure('failed!')
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
@@ -952,7 +953,7 @@ class TestTestResult(tests.TestCase):
                                              verbosity=1)
         test = self.get_passing_test()
         err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result._addKnownFailure(test, err)
+        result.addExpectedFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
@@ -1015,10 +1016,11 @@ class TestRunner(tests.TestCase):
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
         # the final output when real failures occur.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                raise tests.KnownFailure('failed')
         test = unittest.TestSuite()
-        test.addTest(unittest.FunctionTestCase(known_failure_test))
+        test.addTest(Test("known_failure_test"))
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
@@ -1042,10 +1044,12 @@ class TestRunner(tests.TestCase):
             )
 
     def test_known_failure_ok_run(self):
-        # run a test that generates a known failure which should be printed in the final output.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
-        test = unittest.FunctionTestCase(known_failure_test)
+        # run a test that generates a known failure which should be printed in
+        # the final output.
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                raise tests.KnownFailure('failed')
+        test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)

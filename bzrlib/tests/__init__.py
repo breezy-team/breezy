@@ -312,16 +312,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        if isinstance(err[1], KnownFailure):
-            return self._addKnownFailure(test, err)
-        else:
-            self._post_mortem()
-            unittest.TestResult.addFailure(self, test, err)
-            self.failure_count += 1
-            self.report_failure(test, err)
-            if self.stop_early:
-                self.stop()
-            self._cleanupLogFile(test)
+        self._post_mortem()
+        unittest.TestResult.addFailure(self, test, err)
+        self.failure_count += 1
+        self.report_failure(test, err)
+        if self.stop_early:
+            self.stop()
+        self._cleanupLogFile(test)
 
     def addSuccess(self, test):
         """Tell result that test completed successfully.
@@ -339,7 +336,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
         test._log_contents = ''
 
-    def _addKnownFailure(self, test, err):
+    def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
 
@@ -1573,6 +1570,14 @@ class TestCase(unittest.TestCase):
         else:
             addSkip(self, reason)
 
+    def _do_known_failure(self, result):
+        err = sys.exc_info()
+        addExpectedFailure = getattr(result, 'addExpectedFailure', None)
+        if addExpectedFailure is not None:
+            addExpectedFailure(self, err)
+        else:
+            result.addSuccess(self)
+
     def _do_not_applicable(self, result, e):
         addNotApplicable = getattr(result, 'addNotApplicable', None)
         if addNotApplicable is not None:
@@ -1622,6 +1627,10 @@ class TestCase(unittest.TestCase):
                 except KeyboardInterrupt:
                     self._runCleanups()
                     raise
+                except KnownFailure:
+                    self._do_known_failure(result)
+                    self.tearDown()
+                    return
                 except TestNotApplicable, e:
                     self._do_not_applicable(result, e)
                     self.tearDown()
@@ -1643,6 +1652,8 @@ class TestCase(unittest.TestCase):
                 try:
                     testMethod()
                     ok = True
+                except KnownFailure:
+                    self._do_known_failure(result)
                 except self.failureException:
                     result.addFailure(self, sys.exc_info())
                 except TestNotApplicable, e:
@@ -3379,8 +3390,8 @@ class BZRTransformingResult(ForwardingResult):
     def addFailure(self, test, err):
         known = self._error_looks_like('KnownFailure: ', err)
         if known is not None:
-            self.result._addKnownFailure(test, [KnownFailure,
-                                                KnownFailure(known), None])
+            self.result.addExpectedFailure(test,
+                [KnownFailure, KnownFailure(known), None])
         else:
             self.result.addFailure(test, err)
 
