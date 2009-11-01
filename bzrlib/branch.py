@@ -503,12 +503,23 @@ class Branch(object):
                 left_parent = stop_rev.parent_ids[0]
             else:
                 left_parent = _mod_revision.NULL_REVISION
+            reached_stop_revision_id = False
+            only_these_parent_ids = []
             for node in rev_iter:
                 rev_id = node.key[-1]
                 if rev_id == left_parent:
+                    # reached the mainline after the stop ref
                     return
-                yield (rev_id, node.merge_depth, node.revno,
+                if not(reached_stop_revision_id and
+                        rev_id not in only_these_parent_ids):
+                    yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
+                    if reached_stop_revision_id or rev_id == stop_revision_id:
+                        # only do the merged revs of rev_id from now on
+                        rev = self.repository.get_revision(rev_id)
+                        if rev.parent_ids:
+                            reached_stop_revision_id = True
+                            only_these_parent_ids.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 

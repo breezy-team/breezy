@@ -400,17 +400,6 @@ class _DefaultLogGenerator(LogGenerator):
                     log_count += 1
                     if log_count >= limit:
                         return
-                # As per Bug #325618 we don't want to show parent revisions
-                # outside of the specified range.
-                # So we need to filter the revisions here again since
-                # the lower levels also return the revision parents,
-                # which is needed for filtering on file_ids.
-                if rqst.get('direction') == 'forward':
-                    if self.end_rev_id == rev_id:
-                        return
-                else:
-                    if self.start_rev_id == rev_id:
-                        return
 
     def _format_diff(self, rev, rev_id):
         diff_type = self.rqst.get('diff_type')
