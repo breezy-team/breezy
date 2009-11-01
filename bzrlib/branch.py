@@ -500,18 +500,18 @@ class Branch(object):
         elif stop_rule == 'with-merges':
             stop_rev = self.repository.get_revision(stop_revision_id)
             if stop_rev.parent_ids:
-                left_parent = stop_rev.parent_ids[0]
+                mainline_stop_rev = stop_rev.parent_ids[0] # left parent
             else:
-                left_parent = _mod_revision.NULL_REVISION
+                mainline_stop_rev = _mod_revision.NULL_REVISION
             reached_stop_revision_id = False
-            only_these_parent_ids = []
+            revision_id_whitelist = []
             for node in rev_iter:
                 rev_id = node.key[-1]
-                if rev_id == left_parent:
-                    # reached the mainline after the stop ref
+                if rev_id == mainline_stop_rev:
+                    # reached the mainline after the stop_revision
                     return
-                if not(reached_stop_revision_id and
-                        rev_id not in only_these_parent_ids):
+                if (not reached_stop_revision_id or
+                        rev_id in revision_id_whitelist):
                     yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
                     if reached_stop_revision_id or rev_id == stop_revision_id:
@@ -519,7 +519,7 @@ class Branch(object):
                         rev = self.repository.get_revision(rev_id)
                         if rev.parent_ids:
                             reached_stop_revision_id = True
-                            only_these_parent_ids.extend(rev.parent_ids)
+                            revision_id_whitelist.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
