@@ -28,9 +28,12 @@ def classify_filename(name):
     :return: One of code, documentation, translation or art. 
         None if determining the file type failed.
     """
-    # FIXME: Use mime types? Ohcount? 
+    # FIXME: Use mime types? Ohcount?
+    # TODO: It will be better move those filters to properties file 
+	# and have possibility to determining own types !?
     extension = os.path.splitext(name)[1]
-    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac"):
+    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac", 
+			            ".java"):
         return "code"
     if extension in (".html", ".xml", ".txt", ".rst", ".TODO"):
         return "documentation"
