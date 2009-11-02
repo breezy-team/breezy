@@ -31,6 +31,9 @@ def expect_static_tuple(obj):
 
     Cast it if necessary, but if the 'static_tuple' debug flag is set, raise an
     error instead.
+
+    As apis are improved, we will probably eventually stop calling this as it
+    adds overhead we shouldn't need.
     """
     if 'static_tuple' not in debug.debug_flags:
         return StaticTuple.from_sequence(obj)
