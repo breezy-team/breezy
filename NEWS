@@ -33,7 +33,7 @@ Bug Fixes
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
 * Launchpad urls can now be resolved from behind proxies.
-  (Gordon Tyler, Vincent Ladeuil, #198920)
+  (Gordon Tyler, Vincent Ladeuil, #186920)
 
 * Reduce the strictness for StaticTuple, instead add a debug flag
   ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
