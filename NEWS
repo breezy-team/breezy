@@ -31,6 +31,11 @@ Bug Fixes
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
+* Reduce the strictness for StaticTuple, instead add a debug flag
+  ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
+  This way, most users won't see failures, but developers can improve
+  internals. (John Arbash Meinel, #471193)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
