@@ -16,9 +16,10 @@ path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
 
 Key highlights in this release are: improved handling of
 failures-during-cleanup for commit, fixing a long-standing bug with
-``bzr+http`` and shared repositories, and a new StaticTuple datatype,
-allowing us to reduce memory consumption (50%) and garbage collector
-overhead (40% faster) for many operations.
+``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+behind proxies, and a new StaticTuple datatype, allowing us to reduce
+memory consumption (50%) and garbage collector overhead (40% faster) for
+many operations.
 
 Bug Fixes
 *********
@@ -30,6 +31,9 @@ Bug Fixes
   are less likely to occur, and will not obscure the original error if
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
+
+* Launchpad urls can now be resolved from behind proxies.
+  (Gordon Tyler, Vincent Ladeuil, #198920)
 
 * Reduce the strictness for StaticTuple, instead add a debug flag
   ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
