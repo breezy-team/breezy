@@ -31,6 +31,9 @@ Bug Fixes
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
+* Launchpad urls can now be resolved from behind proxies.
+  (Gordon Tyler, Vincent Ladeuil, #198920)
+
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
 
