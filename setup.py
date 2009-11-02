@@ -40,7 +40,7 @@ META_INFO = {
     'url':          'http://www.bazaar-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
-    'download_url': 'http://bazaar-vcs.org/Download',
+    'download_url': 'https://launchpad.net/bzr/+download',
     'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
