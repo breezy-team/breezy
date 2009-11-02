@@ -50,6 +50,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    static_tuple,
     trace,
     )
 from bzrlib.static_tuple import StaticTuple
