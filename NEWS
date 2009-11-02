@@ -36,6 +36,27 @@ Internals
 Testing
 *******
 
+* KnownFailure is now signalled to ``ExtendedTestResult`` using the same
+  method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
+* TestNotApplicable is now handled within the TestCase.run method rather
+  than being looked for within ``ExtendedTestResult.addError``. This
+  provides better handling with other ``TestResult`` objects, degrading to
+  sucess rather than error. (Robert Collins)
+
+* The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
+  removed - it was empty and unused. (Robert Collins)
+
+* UnavailableFeature is now handled within the TestCase.run method rather
+  than being looked for within addError. If the Result object does not
+  have an addNotSupported method, addSkip is attempted instead, and
+  failing that addSuccess. (Robert Collins)
+
+* When a TestResult does not have an addSkip method, skipped tests are now
+  reported as successful tests, rather than as errors. This change is
+  to make it possible to get a clean test run with a less capable
+  TestResult. (Robert Collins)
+
 
 
 bzr 2.0.3 (not released yet)
