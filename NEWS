@@ -21,6 +21,9 @@ New Features
 Bug Fixes
 *********
 
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
 Improvements
 ************
 
