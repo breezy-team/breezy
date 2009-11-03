@@ -50,6 +50,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    static_tuple,
     trace,
     )
 from bzrlib.static_tuple import StaticTuple
@@ -720,6 +721,7 @@ class LeafNode(Node):
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_leaf_node(bytes, key,
                                       search_key_func=search_key_func)
 
@@ -1018,9 +1020,7 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
-        if type(key) is not StaticTuple:
-            raise AssertionError('deserialise should be called with a'
-                                 ' StaticTuple not %s' % (type(key),))
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 
