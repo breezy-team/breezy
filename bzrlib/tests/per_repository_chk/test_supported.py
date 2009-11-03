@@ -17,8 +17,10 @@
 """Tests for repositories that support CHK indices."""
 
 from bzrlib import (
+    btree_index,
     errors,
     osutils,
+    repository,
     )
 from bzrlib.versionedfile import VersionedFiles
 from bzrlib.tests.per_repository_chk import TestCaseWithRepositoryCHK
@@ -107,6 +109,39 @@ class TestCHKSupport(TestCaseWithRepositoryCHK):
             self.assertEqual(expected_set, repo.chk_bytes.keys())
         finally:
             repo.unlock()
+
+    def test_chk_bytes_are_fully_buffered(self):
+        repo = self.make_repository('.')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        try:
+            sha1, len, _ = repo.chk_bytes.add_lines((None,),
+                None, ["foo\n", "bar\n"], random_id=True)
+            self.assertEqual('4e48e2c9a3d2ca8a708cb0cc545700544efb5021',
+                sha1)
+            self.assertEqual(
+                set([('sha1:4e48e2c9a3d2ca8a708cb0cc545700544efb5021',)]),
+                repo.chk_bytes.keys())
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            repo.commit_write_group()
+        # This may not always be correct if we change away from BTreeGraphIndex
+        # in the future. But for now, lets check that chk_bytes are fully
+        # buffered
+        index = repo.chk_bytes._index._graph_index._indices[0]
+        self.assertIsInstance(index, btree_index.BTreeGraphIndex)
+        self.assertIs(type(index._leaf_node_cache), dict)
+        # Re-opening the repository should also have a repo with everything
+        # fully buffered
+        repo2 = repository.Repository.open(self.get_url())
+        repo2.lock_read()
+        self.addCleanup(repo2.unlock)
+        index = repo2.chk_bytes._index._graph_index._indices[0]
+        self.assertIsInstance(index, btree_index.BTreeGraphIndex)
+        self.assertIs(type(index._leaf_node_cache), dict)
 
 
 class TestCommitWriteGroupIntegrityCheck(TestCaseWithRepositoryCHK):
