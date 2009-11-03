@@ -492,6 +492,10 @@ class GenericProcessor(processor.ImportProcessor):
         self._revision_count += 1
         self.report_progress("(%s)" % cmd.id)
 
+        if cmd.ref.startswith('refs/tags/'):
+            tag_name = cmd.ref[len('refs/tags/'):]
+            self._set_tag(tag_name, cmd.id)
+
         # Check if we should finish up or automatically checkpoint
         if (self.max_commits is not None and
             self._revision_count >= self.max_commits):
