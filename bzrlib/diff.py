@@ -16,6 +16,7 @@
 
 import difflib
 import os
+from subprocess import call
 import re
 import shutil
 import string
@@ -784,8 +785,9 @@ class DiffFromTool(DiffPath):
         new_abs_path = self._prepare_files(file_id, old_path, new_path,
                                            allow_write_new=True,
                                            force_temp=True)[1]
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        command = self._get_command(osutils.pathjoin('old', old_path),
+                                    osutils.pathjoin('new', new_path))
+        call(command, cwd=self._root)
         new_file = open(new_abs_path, 'r')
         try:
             return new_file.read()
