@@ -366,13 +366,16 @@ class Request(urllib2.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        # We need to set the default port ourselves way before it gets set
-        # in the HTTP[S]Connection object at build time.
-        if self.type == 'https':
-            conn_class = HTTPSConnection
-        else:
-            conn_class = HTTPConnection
-        self.proxied_host = '%s:%s' % (self.get_host(), conn_class.default_port)
+        host, port = urllib.splitport(self.get_host())
+        if port is None:
+            # We need to set the default port ourselves way before it gets set
+            # in the HTTP[S]Connection object at build time.
+            if self.type == 'https':
+                conn_class = HTTPSConnection
+            else:
+                conn_class = HTTPConnection
+            port = conn_class.default_port
+        self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
 
 
