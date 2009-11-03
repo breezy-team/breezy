@@ -170,6 +170,24 @@ class TestCommit(ExternalBase):
         self.assertEqual(err, 'Committing to: %s\n'
                          'Committed revision 2.\n' % expected)
 
+    def test_commit_sanitizes_CR_in_message(self):
+        # See bug #433779, basically Emacs likes to pass '\r\n' style line
+        # endings to 'bzr commit -m ""' which breaks because we don't allow
+        # '\r' in commit messages. (Mostly because of issues where XML style
+        # formats arbitrarily strip it out of the data while parsing.)
+        # To make life easier for users, we just always translate '\r\n' =>
+        # '\n'. And '\r' => '\n'.
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/b'])
+        a_tree.add('b')
+        self.run_bzr(['commit',
+                      '-m', 'a string\r\n\r\nwith mixed\r\rendings\n'],
+                     working_dir='a')
+        rev_id = a_tree.branch.last_revision()
+        rev = a_tree.branch.repository.get_revision(rev_id)
+        self.assertEqualDiff('a string\n\nwith mixed\n\nendings\n',
+                             rev.message)
+
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
         # bzr diff or bzr status when committing, even when they were not

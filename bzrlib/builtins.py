@@ -3025,6 +3025,9 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
+            if my_message is not None and '\r' in my_message:
+                my_message = my_message.replace('\r\n', '\n')
+                my_message = my_message.replace('\r', '\n')
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
