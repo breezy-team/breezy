@@ -133,7 +133,6 @@ class Shelver(object):
         :param manager: The shelf manager to use.
         :param reporter: Object for reporting changes to user.
         """
-        work_tree.lock_tree_write()
         self.work_tree = work_tree
         self.target_tree = target_tree
         self.diff_writer = diff_writer
@@ -152,6 +151,7 @@ class Shelver(object):
         self.reporter = reporter
         config = self.work_tree.branch.get_config()
         self.change_editor = config.get_change_editor(target_tree, work_tree)
+        self.work_tree.lock_tree_write()
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
