@@ -5,6 +5,53 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.0.2
+#########
+
+:Codename: after the scare
+:2.0.2: 2009-11-02
+
+The second in our "let's keep the stable bugfixes flowing" series. As
+expected this has a few (~9) bugfixes relative to 2.0.1, and no major api
+changes or features.
+
+Bug Fixes
+*********
+
+* Avoid "NoneType has no attribute st_mode" error when files disappear
+  from a directory while it's being read.  (Martin Pool, #446033)
+
+* Content filters are now applied correctly after revert.
+  (Ian Clatworthy)
+
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* Fix typos left after test_selftest refactoring.
+  (Vincent Ladeuil, Matt Nordhoff, #461149)
+
+* Fixed ``ObjectNotLocked`` errors during ``bzr log -r NNN somefile``.
+  (Andrew Bennetts, #445171)
+  
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
+Improvements
+************
+
+* ``bzr log`` now read-locks branches exactly once, so makes better use of
+  data caches.  (Andrew Bennetts)
+
+Documentation
+*************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
+
+
 bzr 2.0.1
 #########
 
@@ -10684,6 +10731,39 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
+
+
+bzr ?.?.? (not released yet)
+############################
+
+:Codename: template
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 
 ..
    vim: tw=74 ft=rst ff=unix
