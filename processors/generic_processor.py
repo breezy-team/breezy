@@ -474,6 +474,9 @@ class GenericProcessor(processor.ImportProcessor):
                 pass
             self.cache_mgr._blobs = {}
             self._revision_count += 1
+            if cmd.ref.startswith('refs/tags/'):
+                tag_name = cmd.ref[len('refs/tags/'):]
+                self._set_tag(tag_name, cmd.id)
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
