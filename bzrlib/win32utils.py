@@ -19,8 +19,12 @@
 Only one dependency: ctypes should be installed.
 """
 
+import glob
 import os
+import re
+import shlex
 import struct
+import StringIO
 import sys
 
 
@@ -435,7 +439,6 @@ def glob_expand(file_list):
     """
     if not file_list:
         return []
-    import glob
     expanded_file_list = []
     for possible_glob in file_list:
         # work around bugs in glob.glob()
@@ -509,6 +512,124 @@ def set_file_attr_hidden(path):
         except pywintypes.error, e:
             from bzrlib import trace
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
+
+
+
+class UnicodeShlex(object):
+    """This is a very simplified version of shlex.shlex.
+
+    The main change is that it supports non-ascii input streams. The internal
+    structure is quite simplified relative to shlex.shlex, since we aren't
+    trying to handle multiple input streams, etc. In fact, we don't use a
+    file-like api either.
+    """
+
+    def __init__(self, uni_string):
+        self._input = uni_string
+        self._input_iter = iter(self._input)
+        self._whitespace_match = re.compile(u'\s').match
+        self._word_match = re.compile(u'\S').match
+        self._quote_chars = u'\'"'
+        # self._quote_match = re.compile(u'[\'"]').match
+        self._escape_match = lambda x: None # Never matches
+        self._escape = '\\'
+        # State can be
+        #   ' ' - after whitespace, starting a new token
+        #   'a' - after text, currently working on a token
+        #   '"' - after ", currently in a "-delimited quoted section
+        #   "'" - after ', currently in a '-delimited quotod section
+        #   "\" - after '\', checking the next char
+        self._state = ' '
+        self._token = [] # Current token being parsed
+
+    def _get_token(self):
+        # Were there quote chars as part of this token?
+        quoted = False
+        quoted_state = None
+        for nextchar in self._input_iter:
+            if self._state == ' ':
+                if self._whitespace_match(nextchar):
+                    # if self._token: return token
+                    continue
+                elif nextchar in self._quote_chars:
+                    self._state = nextchar # quoted state
+                elif self._word_match(nextchar):
+                    self._token.append(nextchar)
+                    self._state = 'a'
+                else:
+                    raise AssertionError('wtttf?')
+            elif self._state in self._quote_chars:
+                quoted = True
+                if nextchar == self._state: # End of quote
+                    self._state = 'a' # posix allows 'foo'bar to translate to
+                                      # foobar
+                elif self._state == '"' and nextchar == self._escape:
+                    quoted_state = self._state
+                    self._state = nextchar
+                else:
+                    self._token.append(nextchar)
+            elif self._state == self._escape:
+                if nextchar == '\\':
+                    self._token.append('\\')
+                elif nextchar == '"':
+                    self._token.append(nextchar)
+                else:
+                    self._token.append('\\' + nextchar)
+                self._state = quoted_state
+            elif self._state == 'a':
+                if self._whitespace_match(nextchar):
+                    if self._token:
+                        break # emit this token
+                    else:
+                        continue # no token to emit
+                elif nextchar in self._quote_chars:
+                    # Start a new quoted section
+                    self._state = nextchar
+                # escape?
+                elif (self._word_match(nextchar)
+                      or nextchar in self._quote_chars
+                      # or whitespace_split?
+                      ):
+                    self._token.append(nextchar)
+                else:
+                    raise AssertionError('state == "a", char: %r'
+                                         % (nextchar,))
+            else:
+                raise AssertionError('unknown state: %r' % (self._state,))
+        result = ''.join(self._token)
+        self._token = []
+        if not quoted and result == '':
+            result = None
+        return quoted, result
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        quoted, token = self._get_token()
+        if token is None:
+            raise StopIteration
+        return quoted, token
+
+
+def _command_line_to_argv(command_line):
+    """Convert a Unicode command line into a set of argv arguments.
+
+    This does wildcard expansion, etc. It is intended to make wildcards act
+    closer to how they work in posix shells, versus how they work by default on
+    Windows.
+    """
+    s = UnicodeShlex(command_line)
+    # Now that we've split the content, expand globs
+    # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
+    #       '**/' style globs
+    args = []
+    for is_quoted, arg in s:
+        if is_quoted:
+            args.append(arg)
+        else:
+            args.extend(glob_expand([arg]))
+    return args
 
 
 if has_ctypes and winver != 'Windows 98':
