@@ -39,6 +39,9 @@ Testing
 * KnownFailure is now signalled to ``ExtendedTestResult`` using the same
   method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
 
+* ``--parallel=fork`` is now compatible with --subunit.
+  (Robert Collins, Vincent Ladeuil, #419776)
+
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
   provides better handling with other ``TestResult`` objects, degrading to
