@@ -345,3 +345,9 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/*.c'], '"a/*.c"')
         self.assertCommandLine([u'a/*.c'], "'a/*.c'")
+
+    def test_slashes_changed(self):
+        self.assertCommandLine([u'a/*.c'], '"a\\*.c"')
+        # Expands the glob, but nothing matches
+        self.assertCommandLine([u'a/*.c'], 'a\\*.c')
+        self.assertCommandLine([u'a/foo.c'], 'a\\foo.c')

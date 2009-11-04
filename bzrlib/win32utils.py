@@ -426,6 +426,26 @@ def _undo_ensure_with_dir(path, corrected):
 
 
 
+def glob_one(possible_glob):
+    """Same as glob.glob().
+
+    work around bugs in glob.glob()
+    - Python bug #1001604 ("glob doesn't return unicode with ...")
+    - failing expansion for */* with non-iso-8859-* chars
+    """
+    corrected_glob, corrected = _ensure_with_dir(possible_glob)
+    glob_files = glob.glob(corrected_glob)
+
+    if not glob_files:
+        # special case to let the normal code path handle
+        # files that do not exist, etc.
+        glob_files = [possible_glob]
+    elif corrected:
+        glob_files = [_undo_ensure_with_dir(elem, corrected)
+                      for elem in glob_files]
+    return [elem.replace(u'\\', u'/') for elem in glob_files]
+
+
 def glob_expand(file_list):
     """Replacement for glob expansion by the shell.
 
@@ -441,22 +461,8 @@ def glob_expand(file_list):
         return []
     expanded_file_list = []
     for possible_glob in file_list:
-        # work around bugs in glob.glob()
-        # - Python bug #1001604 ("glob doesn't return unicode with ...")
-        # - failing expansion for */* with non-iso-8859-* chars
-        possible_glob, corrected = _ensure_with_dir(possible_glob)
-        glob_files = glob.glob(possible_glob)
-
-        if glob_files == []:
-            # special case to let the normal code path handle
-            # files that do not exists
-            expanded_file_list.append(
-                _undo_ensure_with_dir(possible_glob, corrected))
-        else:
-            glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
-            expanded_file_list += glob_files
-
-    return [elem.replace(u'\\', u'/') for elem in expanded_file_list]
+        expanded_file_list.extend(glob_one(possible_glob))
+    return expanded_file_list
 
 
 def get_app_path(appname):
@@ -625,10 +631,10 @@ def _command_line_to_argv(command_line):
     #       '**/' style globs
     args = []
     for is_quoted, arg in s:
-        if is_quoted:
-            args.append(arg)
+        if is_quoted or not glob.has_magic(arg):
+            args.append(arg.replace(u'\\', u'/'))
         else:
-            args.extend(glob_expand([arg]))
+            args.extend(glob_one(arg))
     return args
 
 
