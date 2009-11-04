@@ -84,7 +84,9 @@ class BranchUpdater(object):
 
         # Convert the reference names into Bazaar speak. If we haven't
         # already put the 'trunk' first, do it now.
-        git_to_bzr_map = self.name_mapper.git_to_bzr(ref_names)
+        git_to_bzr_map = {}
+        for ref_name in ref_names:
+            git_to_bzr_map[ref_name] = self.name_mapper.git_to_bzr(ref_name)
         if ref_names and self.branch is None:
             trunk = self.select_trunk(ref_names)
             git_bzr_items = [(trunk, git_to_bzr_map[trunk])]

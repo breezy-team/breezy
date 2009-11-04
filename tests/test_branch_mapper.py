@@ -27,62 +27,38 @@ class TestBranchMapper(tests.TestCase):
 
     def test_git_to_bzr(self):
         m = branch_mapper.BranchMapper()
-        git_refs = [
-            'refs/heads/master',
-            'refs/heads/foo',
-            'refs/tags/master',
-            'refs/tags/foo',
-            'refs/remotes/origin/master',
-            'refs/remotes/origin/foo',
-            ]
-        git_to_bzr_map = m.git_to_bzr(git_refs)
-        self.assertEqual(git_to_bzr_map, {
+        for git, bzr in {
             'refs/heads/master':                'trunk',
             'refs/heads/foo':                   'foo',
             'refs/tags/master':                 'trunk.tag',
             'refs/tags/foo':                    'foo.tag',
             'refs/remotes/origin/master':       'trunk.remote',
             'refs/remotes/origin/foo':          'foo.remote',
-            })
+            }.items():
+            self.assertEqual(m.git_to_bzr(git), bzr)
 
     def test_git_to_bzr_with_slashes(self):
         m = branch_mapper.BranchMapper()
-        git_refs = [
-            'refs/heads/master/slave',
-            'refs/heads/foo/bar',
-            'refs/tags/master/slave',
-            'refs/tags/foo/bar',
-            'refs/remotes/origin/master/slave',
-            'refs/remotes/origin/foo/bar',
-            ]
-        git_to_bzr_map = m.git_to_bzr(git_refs)
-        self.assertEqual(git_to_bzr_map, {
+        for git, bzr in {
             'refs/heads/master/slave':              'master/slave',
             'refs/heads/foo/bar':                   'foo/bar',
             'refs/tags/master/slave':               'master/slave.tag',
             'refs/tags/foo/bar':                    'foo/bar.tag',
             'refs/remotes/origin/master/slave':     'master/slave.remote',
             'refs/remotes/origin/foo/bar':          'foo/bar.remote',
-            })
+            }.items():
+            self.assertEqual(m.git_to_bzr(git), bzr)
 
     def test_git_to_bzr_for_trunk(self):
         # As 'master' in git is mapped to trunk in bzr, we need to handle
         # 'trunk' in git in a sensible way.
         m = branch_mapper.BranchMapper()
-        git_refs = [
-            'refs/heads/trunk',
-            'refs/tags/trunk',
-            'refs/remotes/origin/trunk',
-            'refs/heads/git-trunk',
-            'refs/tags/git-trunk',
-            'refs/remotes/origin/git-trunk',
-            ]
-        git_to_bzr_map = m.git_to_bzr(git_refs)
-        self.assertEqual(git_to_bzr_map, {
+        for git, bzr in {
             'refs/heads/trunk':             'git-trunk',
             'refs/tags/trunk':              'git-trunk.tag',
             'refs/remotes/origin/trunk':    'git-trunk.remote',
             'refs/heads/git-trunk':         'git-git-trunk',
             'refs/tags/git-trunk':          'git-git-trunk.tag',
             'refs/remotes/origin/git-trunk':'git-git-trunk.remote',
-            })
+            }.items():
+            self.assertEqual(m.git_to_bzr(git), bzr)

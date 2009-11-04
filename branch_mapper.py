@@ -24,31 +24,25 @@ import re
 class BranchMapper(object):
     _GIT_TRUNK_RE = re.compile('(?:git-)*trunk')
 
-    def git_to_bzr(self, ref_names):
-        """Get the mapping from git reference names to Bazaar branch names.
-        
-        :return: a dictionary with git reference names as keys and
-          the Bazaar branch names as values.
+    def git_to_bzr(self, ref_name):
+        """Map a git reference name to a Bazaar branch name.
         """
-        bazaar_names = {}
-        for ref_name in sorted(ref_names):
-            parts = ref_name.split('/')
-            if parts[0] == 'refs':
+        parts = ref_name.split('/')
+        if parts[0] == 'refs':
+            parts.pop(0)
+        category = parts.pop(0)
+        if category == 'heads':
+            git_name = '/'.join(parts)
+            bazaar_name = self._git_to_bzr_name(git_name)
+        else:
+            if category == 'remotes' and parts[0] == 'origin':
                 parts.pop(0)
-            category = parts.pop(0)
-            if category == 'heads':
-                git_name = '/'.join(parts)
-                bazaar_name = self._git_to_bzr_name(git_name)
-            else:
-                if category == 'remotes' and parts[0] == 'origin':
-                    parts.pop(0)
-                git_name = '/'.join(parts)
-                if category.endswith('s'):
-                    category = category[:-1]
-                name_no_ext = self._git_to_bzr_name(git_name)
-                bazaar_name = "%s.%s" % (name_no_ext, category)
-            bazaar_names[ref_name] = bazaar_name
-        return bazaar_names
+            git_name = '/'.join(parts)
+            if category.endswith('s'):
+                category = category[:-1]
+            name_no_ext = self._git_to_bzr_name(git_name)
+            bazaar_name = "%s.%s" % (name_no_ext, category)
+        return bazaar_name
 
     def _git_to_bzr_name(self, git_name):
         # Make a simple name more bzr-like, by mapping git 'master' to bzr 'trunk'.
