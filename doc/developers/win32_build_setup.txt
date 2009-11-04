@@ -1,0 +1,72 @@
+===============================
+Setting Up A Windows Build Host
+===============================
+
+This document describes the steps taken to set up a Windows build host. It is
+intended to be step-by-step instructions of what packages need to be installed,
+where they can be gotten from, and how they are configured.
+
+
+Baseline
+========
+
+This was written as a step-by-step as I set up the Amazon EC2 'desolation'
+instance. This was based on an Amazon Windows 2003 instance that already had
+Visual Studio 2008 installed. Also note that for Amazon EC2, all programs were
+installed into the "D:" drive, per their guidelines.
+
+
+Install Packages
+================
+
+1) Download cygwin's setup.exe from http://www.cygwin.com
+   At present the current version is 1.5.25-15. This is used primarily to
+   install the build scripts and gcc-mingw. Note that we explicitly *don't*
+   install cygwin's python or bzr package. As we are only interested in
+   running the native version of bzr. For information on running the cygwin
+   port of bzr, look elsewhere.
+
+   Probably not all of these packages are necessary, but they make life easier.
+
+   a) gcc-mingw32
+   b) make
+   c) openssh
+   d) rsync
+   e) wget
+   f) zip
+   g) unzip
+
+
+2) Download the supported versions of python from http://www.python.org
+
+   a) python 2.6.4
+   b) python 2.5.4 http://www.python.org/ftp/python/2.5.4/python-2.5.4.msi
+   c) python 2.4.4 (there is no Windows installer for 2.4.5 or 2.4.6)
+      http://www.python.org/ftp/python/2.4.4/python-2.4.4.msi
+
+   Note that for Amazon EC2, all of these were installed int
+
+3) Configure 'distutils' for the compiler that you will be using. For python
+   2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
+   
+   Edit ``D:\Python25\Lib\disutils\distutils.cfg`` (you have to create the
+   file). You want to add a section like::
+
+     [build]
+     compiler = mingw32
+
+3) Download important python libraries. At the moment, the official Windows
+   all-in-one installer is built using python 2.5. Soon we will switch to
+   python 2.6.
+
+   For starters, install 'setuptools' to make it a little bit easier to
+   install some of the other libraries.
+
+   a) http://pypi.python.org/pypi/setuptools
+   b) pywin32 http://sourceforge.net/projects/pywin32/files/
+   c) 
+
+4) Download the zlib123-dll.zip from http://www.zlib.net/
+   http://www.zlib.net/zlib123-dll.zip
+
+5dddd
