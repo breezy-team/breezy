@@ -14,7 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""An object that maps bzr branch names <-> git ref names."""
+"""An object that maps git ref names to bzr branch names.  Note that it is not
+used to map git ref names to bzr tag names."""
 
 
 import re
@@ -61,11 +62,3 @@ class BranchMapper(object):
         else:
             bazaar_name = git_name
         return bazaar_name
-
-    def bzr_to_git(self, branch_names):
-        """Get the mapping from Bazaar branch names to git reference names.
-        
-        :return: a dictionary with Bazaar branch names as keys and
-          the git reference names as values.
-        """
-        raise NotImplementedError(self.bzr_to_git)
