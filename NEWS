@@ -21,6 +21,9 @@ New Features
 Bug Fixes
 *********
 
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
 * Sanitize commit messages that come in from the '-m' flag. We translate
   '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
   allow those because XML store silently translate it anyway. (The parser
