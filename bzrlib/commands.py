@@ -392,8 +392,8 @@ class Command(object):
         """
         if not file_list:
             file_list = []
-        if sys.platform == 'win32':
-            file_list = win32utils.glob_expand(file_list)
+        # if sys.platform == 'win32':
+        #     file_list = win32utils.glob_expand(file_list)
         return list(file_list)
 
     def _usage(self):

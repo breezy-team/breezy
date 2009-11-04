@@ -647,21 +647,19 @@ if has_ctypes and winver != 'Windows 98':
         GetCommandLine = prototype(("GetCommandLineW",
                                     ctypes.windll.kernel32))
         prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
-        CommandLineToArgv = prototype(("CommandLineToArgvW",
-                                       ctypes.windll.shell32))
-        c = INT(0)
-        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        command_line = GetCommandLine()
         # Skip the first argument, since we only care about parameters
-        argv = [pargv[i] for i in range(1, c.value)]
+        argv = _command_line_to_argv(GetCommandLine())[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
             # we need to get only BZR_OPTIONS part,
-            # so let's using sys.argv[1:] as reference to get the tail
-            # of unicode argv
-            tail_len = len(sys.argv[1:])
-            ix = len(argv) - tail_len
-            argv = argv[ix:]
+            # We already removed 'python.exe' so we remove everything up to and
+            # including the first non-option ('-') argument.
+            for idx in xrange(len(argv)):
+                if argv[idx][:1] != '-':
+                    break
+            argv = argv[idx+1:]
         return argv
 else:
     get_unicode_argv = None
