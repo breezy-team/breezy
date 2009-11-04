@@ -17,7 +17,11 @@
 """An object that maps bzr branch names <-> git ref names."""
 
 
+import re
+
+
 class BranchMapper(object):
+    _GIT_TRUNK_RE = re.compile('(?:git-)*trunk')
 
     def git_to_bzr(self, ref_names):
         """Get the mapping from git reference names to Bazaar branch names.
@@ -46,9 +50,13 @@ class BranchMapper(object):
         return bazaar_names
 
     def _git_to_bzr_name(self, git_name):
+        # Make a simple name more bzr-like, by mapping git 'master' to bzr 'trunk'.
+        # To avoid collision, map git 'trunk' to bzr 'git-trunk'.  Likewise
+        # 'git-trunk' to 'git-git-trunk' and so on, such that the mapping is
+        # one-to-one in both directions.
         if git_name == 'master':
             bazaar_name = 'trunk'
-        elif git_name.endswith('trunk'):
+        elif self._GIT_TRUNK_RE.match(git_name):
             bazaar_name = 'git-%s' % (git_name,)
         else:
             bazaar_name = git_name
