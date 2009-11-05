@@ -64,6 +64,7 @@ up=pull
 
 import os
 import sys
+import stat
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -984,6 +985,7 @@ class AuthenticationConfig(object):
         if _file is None:
             self._filename = authentication_config_filename()
             self._input = self._filename = authentication_config_filename()
+            self._check_permissions()
         else:
             # Tests can provide a string as _file
             self._filename = None
@@ -1003,6 +1005,14 @@ class AuthenticationConfig(object):
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._config
+
+    def _check_permissions(self):
+        mode = stat.S_IMODE(os.stat(self._filename).st_mode)
+        if ( ( stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+                stat.S_IWGRP | stat.S_IRGRP ) & mode ) > 0 :
+            trace.warning("The file '" + self._filename + "' has insecure "
+                    "file permissions. Saved passwords may be accessible by "
+                    "other users.")
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
