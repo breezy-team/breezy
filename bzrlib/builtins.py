@@ -655,7 +655,6 @@ class cmd_add(Command):
         if base_tree:
             base_tree.lock_read()
         try:
-            file_list = self._maybe_expand_globs(file_list)
             tree, file_list = tree_files_for_add(file_list)
             added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
