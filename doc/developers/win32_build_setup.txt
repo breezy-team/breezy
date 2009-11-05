@@ -13,7 +13,8 @@ Baseline
 This was written as a step-by-step as I set up the Amazon EC2 'desolation'
 instance. This was based on an Amazon Windows 2003 instance that already had
 Visual Studio 2008 installed. Also note that for Amazon EC2, all programs were
-installed into the "D:" drive, per their guidelines.
+installed into the "C:" drive, as the "D:" drive is essentially ``/tmp`` and is
+not preserved between launched instances.
 
 
 Install Packages
@@ -32,9 +33,10 @@ Install Packages
    b) make
    c) openssh
    d) rsync
-   e) wget
-   f) zip
-   g) unzip
+   e) vim
+   f) wget
+   g) zip
+   h) unzip
 
 
 2) Download the supported versions of python from http://www.python.org
@@ -55,18 +57,75 @@ Install Packages
      [build]
      compiler = mingw32
 
-3) Download important python libraries. At the moment, the official Windows
-   all-in-one installer is built using python 2.5. Soon we will switch to
-   python 2.6.
+   This also requires 'fixing' the cygwin gcc installation so that distutils
+   can find it. Specifically, it knows to look for ``gcc.exe`` however, the
+   latest versions of cygwin start using "alternatives" and making ``gcc`` just
+   a symlink.
+   
+   You also need to add ``C:\cygwin\bin`` and ``C:\cygwin\lib`` into your
+   environment path. This is generally done with::
 
-   For starters, install 'setuptools' to make it a little bit easier to
-   install some of the other libraries.
+        Right Click My Computer / Properties / Advanced / Environment Variables
+        System Variables / Select 'PATH' / Edit
+
+4) Download important python libraries. At the moment, the official Windows
+   all-in-one installer is built using python 2.5. We will likely soon switch
+   to python 2.6.
 
    a) http://pypi.python.org/pypi/setuptools
+
+      Installing this first should make it easier to install some of the other
+      tools. To install something using easy install, it is generally best to
+      open up a ``cmd.exe`` shell (*not* a cygwin shell) and do::
+
+        cd C:\Python25
+        python.exe Scripts\easy_install-script.py PACKAGE
+
    b) pywin32 http://sourceforge.net/projects/pywin32/files/
-   c) 
+   c) easy_install paramiko
+      This will also bring in PyCrypto and compile it, so it is important to
+      have configured step (3) correctly.
+   d) easy_install Pyrex    (or Cython)
+   e) easy_install cogapp
+   f) install py2exe (easy_install failed)
+      http://sourceforge.net/projects/py2exe/files/
+   g) easy_install docutils
+   h) Install PyQt
+      http://www.riverbankcomputing.co.uk/software/pyqt/download
 
-4) Download the zlib123-dll.zip from http://www.zlib.net/
-   http://www.zlib.net/zlib123-dll.zip
+      Currently they only seem to offer PyQt 4.4.3 for python 2.5 and PyQt
+      4.6.1 for python 2.6. They generally don't make it easy to install old
+      versions of PyQt.
+   i) Install pyreadline
+      https://launchpad.net/pyreadline/+download
 
-5dddd
+5) Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
+   Windows, and paramiko knows how to use keys from Pageant.
+
+   http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
+
+   Note that you probably want to set the environment variable
+   ``BZR_SSH=paramiko`` at this time. Otherwise it will try to use the
+   ``ssh.exe`` that it finds on your PATH (as configured in step 3), and
+   cygwin's openssh does *not* know how to access Pageant.
+
+   I usually get the 'all-in-one' installer, but only because it is easier. You
+   only really need ``pageant.exe`` and possibly ``puttygen.exe``.
+   
+   If you do this, you'll probably also want to install a shortcut to
+   ``pageant.exe`` in Start / Programs / Startup so that it always starts when
+   you log in (though you still have to manually add your ssh keys.)
+
+   Note that on the Amazon EC2 machine, I'm having problems with temp files
+   being created without the permission for the current user to actually read
+   them. They seem to be owned by ``Administrator`` rather than by
+   ``Administrators``.
+   
+6) Install bzr. Usually it is easiest to just get the latest all-in-one
+   installer from https://launchpad.net/bzr/+download
+
+7) Install INNOSetup from:
+   http://www.jrsoftware.org/isdl.php
+
+.. 
+   vim: ft=rst tw=79 et
