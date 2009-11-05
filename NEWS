@@ -37,7 +37,7 @@ Bug Fixes
   (Andrew Bennetts, #437626)
 
 * Launchpad urls can now be resolved from behind proxies.
-  (Gordon Tyler, Vincent Ladeuil, #198920)
+  (Gordon Tyler, Vincent Ladeuil, #186920, #475585)
 
 * PreviewTree file names are not limited by the encoding of the temp
   directory's filesystem. (Aaron Bentley, #436794)
