@@ -56,8 +56,12 @@ class NotLaunchpadBranch(errors.BzrError):
 
 class XMLRPCTransport(xmlrpclib.Transport):
 
-    def __init__(self, scheme, use_datetime=0):
-        xmlrpclib.Transport.__init__(self, use_datetime=use_datetime)
+    def __init__(self, scheme):
+        # In python2.4 xmlrpclib.Transport is a old-style class, and does not
+        # define __init__, so we check first
+        init = getattr(xmlrpclib.Transport, '__init__', None)
+        if init is not None:
+            init(self)
         self._scheme = scheme
         self._opener = _urllib2_wrappers.Opener()
         self.verbose = 0
