@@ -30,6 +30,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Drelock          Emit a message every time a branch or repository object is
                   unlocked then relocked the same way.
 -Dsftp            Trace SFTP internals.
+-Dstatic_tuple    Error when a tuple is used where a StaticTuple is expected
 -Dstream          Trace fetch streams.
 -Dstrict_locks    Trace when OS locks are potentially used in a non-portable
                   manner.
