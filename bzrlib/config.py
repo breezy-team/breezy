@@ -1008,7 +1008,9 @@ class AuthenticationConfig(object):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
+        old_umask = os.umask(0177)
         self._get_config().write(file(self._filename, 'wb'))
+        os.umask(old_umask)
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""
