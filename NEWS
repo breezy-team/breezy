@@ -24,6 +24,14 @@ Bug Fixes
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
 
+* On Windows, do glob expansion at the command-line level (as is usually
+  done in bash, etc.) This means that *all* commands get glob expansion
+  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
+  parser, which allows us to know if a given section was quoted. It means
+  you can now do ``bzr ignore "*.py"``. It also means that single-quotes
+  are now treated as quoted ``bzr ignore '*.py'``.
+  (John Arbash Meinel, #425510, #426410, #194450)
+
 * Sanitize commit messages that come in from the '-m' flag. We translate
   '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
   allow those because XML store silently translate it anyway. (The parser
