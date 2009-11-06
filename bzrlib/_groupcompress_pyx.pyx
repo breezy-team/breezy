@@ -44,19 +44,16 @@ cdef extern from "delta.h":
         unsigned long agg_offset
     struct delta_index:
         pass
-    delta_index * create_delta_index(source_info *src, delta_index *old)
+    delta_index * create_delta_index(source_info *src, delta_index *old) nogil
     delta_index * create_delta_index_from_delta(source_info *delta,
-                                                delta_index *old)
-    void free_delta_index(delta_index *index)
+                                                delta_index *old) nogil
+    void free_delta_index(delta_index *index) nogil
     void *create_delta(delta_index *indexes,
              void *buf, unsigned long bufsize,
-             unsigned long *delta_size, unsigned long max_delta_size)
+             unsigned long *delta_size, unsigned long max_delta_size) nogil
     unsigned long get_delta_hdr_size(unsigned char **datap,
-                                     unsigned char *top)
+                                     unsigned char *top) nogil
     Py_ssize_t DELTA_SIZE_MIN
-    void *patch_delta(void *src_buf, unsigned long src_size,
-                      void *delta_buf, unsigned long delta_size,
-                      unsigned long *dst_size)
 
 
 cdef void *safe_malloc(size_t count) except NULL:
@@ -148,7 +145,8 @@ cdef class DeltaIndex:
         src.buf = c_delta
         src.size = c_delta_size
         src.agg_offset = self._source_offset + unadded_bytes
-        index = create_delta_index_from_delta(src, self._index)
+        with nogil:
+            index = create_delta_index_from_delta(src, self._index)
         self._source_offset = src.agg_offset + src.size
         if index != NULL:
             free_delta_index(self._index)
@@ -188,7 +186,8 @@ cdef class DeltaIndex:
         self._source_offset = src.agg_offset + src.size
         # We delay creating the index on the first insert
         if source_location != 0:
-            index = create_delta_index(src, self._index)
+            with nogil:
+                index = create_delta_index(src, self._index)
             if index != NULL:
                 free_delta_index(self._index)
                 self._index = index
@@ -201,7 +200,8 @@ cdef class DeltaIndex:
 
         # We know that self._index is already NULL, so whatever
         # create_delta_index returns is fine
-        self._index = create_delta_index(&self._source_infos[0], NULL)
+        with nogil:
+            self._index = create_delta_index(&self._source_infos[0], NULL)
         assert self._index != NULL
 
     cdef _expand_sources(self):
@@ -218,6 +218,7 @@ cdef class DeltaIndex:
         cdef Py_ssize_t target_size
         cdef void * delta
         cdef unsigned long delta_size
+        cdef unsigned long c_max_delta_size
 
         if self._index == NULL:
             if len(self._sources) == 0:
@@ -234,9 +235,11 @@ cdef class DeltaIndex:
         # TODO: inline some of create_delta so we at least don't have to double
         #       malloc, and can instead use PyString_FromStringAndSize, to
         #       allocate the bytes into the final string
-        delta = create_delta(self._index,
-                             target, target_size,
-                             &delta_size, max_delta_size)
+        c_max_delta_size = max_delta_size
+        with nogil:
+            delta = create_delta(self._index,
+                                 target, target_size,
+                                 &delta_size, c_max_delta_size)
         result = None
         if delta:
             result = PyString_FromStringAndSize(<char *>delta, delta_size)
@@ -276,7 +279,7 @@ def apply_delta(source_bytes, delta_bytes):
 
 
 cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
-    unsigned char cmd, unsigned int *offset, unsigned int *length):
+    unsigned char cmd, unsigned int *offset, unsigned int *length) nogil:
     """Decode a copy instruction from the next few bytes.
 
     A copy instruction is a variable number of bytes, so we will parse the
