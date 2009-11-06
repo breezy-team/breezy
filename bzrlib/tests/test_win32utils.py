@@ -288,13 +288,14 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_posix_quotations(self):
         self.assertAsTokens([(True, u'foo bar')], u'"foo bar"')
-        self.assertAsTokens([(True, u'foo bar')], u"'foo bar'")
-        self.assertAsTokens([(True, u'foo bar')], u"'fo''o b''ar'")
+        self.assertAsTokens([(False, u"'fo''o"), (False, u"b''ar'")],
+            u"'fo''o b''ar'")
         self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"')
-        self.assertAsTokens([(True, u'foo bar')], u'"fo"\'o b\'"ar"')
+        self.assertAsTokens([(True, u"fo'o"), (True, u"b'ar")],
+            u'"fo"\'o b\'"ar"')
 
     def test_nested_quotations(self):
-        self.assertAsTokens([(True, u'foo"" bar')], u"'foo\"\" bar'")
+        self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
         self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
 
     def test_empty_result(self):
@@ -303,7 +304,7 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_quoted_empty(self):
         self.assertAsTokens([(True, '')], u'""')
-        self.assertAsTokens([(True, '')], u"''")
+        self.assertAsTokens([(False, u"''")], u"''")
 
     def test_unicode_chars(self):
         self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
@@ -311,18 +312,15 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_newline_in_quoted_section(self):
         self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
-        self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u"'foo\nbar\nbaz\n'")
 
     def test_escape_chars(self):
         self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
 
     def test_escape_quote(self):
         self.assertAsTokens([(True, u'foo"bar')], u'"foo\\"bar"')
-        self.assertAsTokens([(True, u'foo\\"bar')], u"'foo\\\"bar'")
 
     def test_double_escape(self):
         self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\bar"')
-        self.assertAsTokens([(True, u'foo\\\\bar')], u"'foo\\\\bar'")
         self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
 
 
@@ -344,10 +342,14 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
     def test_quoted_globs(self):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/*.c'], '"a/*.c"')
-        self.assertCommandLine([u'a/*.c'], "'a/*.c'")
+        self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
 
     def test_slashes_changed(self):
         self.assertCommandLine([u'a/*.c'], '"a\\*.c"')
         # Expands the glob, but nothing matches
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
         self.assertCommandLine([u'a/foo.c'], 'a\\foo.c')
+
+    def test_no_single_quote_supported(self):
+        self.assertCommandLine(["add", "let's-do-it.txt"],
+            "add let's-do-it.txt")
