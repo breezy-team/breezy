@@ -19,6 +19,7 @@ New Features
 
 Bug Fixes
 *********
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 Improvements
 ************
