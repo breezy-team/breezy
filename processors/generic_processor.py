@@ -474,6 +474,9 @@ class GenericProcessor(processor.ImportProcessor):
                 pass
             self.cache_mgr._blobs = {}
             self._revision_count += 1
+            if cmd.ref.startswith('refs/tags/'):
+                tag_name = cmd.ref[len('refs/tags/'):]
+                self._set_tag(tag_name, cmd.id)
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
@@ -491,6 +494,10 @@ class GenericProcessor(processor.ImportProcessor):
         self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
         self._revision_count += 1
         self.report_progress("(%s)" % cmd.id)
+
+        if cmd.ref.startswith('refs/tags/'):
+            tag_name = cmd.ref[len('refs/tags/'):]
+            self._set_tag(tag_name, cmd.id)
 
         # Check if we should finish up or automatically checkpoint
         if (self.max_commits is not None and
