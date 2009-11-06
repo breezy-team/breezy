@@ -1007,12 +1007,15 @@ class AuthenticationConfig(object):
         return self._config
 
     def _check_permissions(self):
+        """Check permission of auth file are user read/write able only."""
         mode = stat.S_IMODE(os.stat(self._filename).st_mode)
-        if ( ( stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
-                stat.S_IWGRP | stat.S_IRGRP ) & mode ) > 0 :
-            trace.warning("The file '" + self._filename + "' has insecure "
-                    "file permissions. Saved passwords may be accessible by "
-                    "other users.")
+        if not GlobalConfig().get_user_option_as_bool(
+                'no_insecure_permissions_warning') :
+            if ( ( stat.S_IXOTH | stat.S_IWOTH | stat.S_IROTH | stat.S_IXGRP |
+                    stat.S_IWGRP | stat.S_IRGRP ) & mode ) > 0 :
+                trace.warning("The file '" + self._filename + "' has insecure "
+                        "file permissions. Saved passwords may be accessible "
+                        "by other users.")
 
     def _save(self):
         """Save the config file, only tests should use it for now."""
