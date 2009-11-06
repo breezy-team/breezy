@@ -31,10 +31,10 @@ cdef extern from "Python.h":
 
 cdef extern from *:
     ctypedef unsigned long size_t
-    void * malloc(size_t)
-    void * realloc(void *, size_t)
-    void free(void *)
-    void memcpy(void *, void *, size_t)
+    void * malloc(size_t) nogil
+    void * realloc(void *, size_t) nogil
+    void free(void *) nogil
+    void memcpy(void *, void *, size_t) nogil
 
 
 cdef extern from "delta.h":
@@ -329,6 +329,7 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
     cdef unsigned char *dst_buf, *out, cmd
     cdef Py_ssize_t size
     cdef unsigned int cp_off, cp_size
+    cdef int failed
 
     data = <unsigned char *>delta
     top = data + delta_size
@@ -338,37 +339,49 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
     result = PyString_FromStringAndSize(NULL, size)
     dst_buf = <unsigned char*>PyString_AS_STRING(result)
 
-    out = dst_buf
-    while (data < top):
-        cmd = data[0]
-        data = data + 1
-        if (cmd & 0x80):
-            # Copy instruction
-            data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
-            if (cp_off + cp_size < cp_size or
-                cp_off + cp_size > source_size or
-                cp_size > size):
-                raise RuntimeError('Something wrong with:'
-                    ' cp_off = %s, cp_size = %s'
-                    ' source_size = %s, size = %s'
-                    % (cp_off, cp_size, source_size, size))
-            memcpy(out, source + cp_off, cp_size)
-            out = out + cp_size
-            size = size - cp_size
-        else:
-            # Insert instruction
-            if cmd == 0:
-                # cmd == 0 is reserved for future encoding
-                # extensions. In the mean time we must fail when
-                # encountering them (might be data corruption).
-                raise RuntimeError('Got delta opcode: 0, not supported')
-            if (cmd > size):
-                raise RuntimeError('Insert instruction longer than remaining'
-                    ' bytes: %d > %d' % (cmd, size))
-            memcpy(out, data, cmd)
-            out = out + cmd
-            data = data + cmd
-            size = size - cmd
+    failed = 0
+    with nogil:
+        out = dst_buf
+        while (data < top):
+            cmd = data[0]
+            data = data + 1
+            if (cmd & 0x80):
+                # Copy instruction
+                data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
+                if (cp_off + cp_size < cp_size or
+                    cp_off + cp_size > source_size or
+                    cp_size > size):
+                    failed = 1
+                    break
+                memcpy(out, source + cp_off, cp_size)
+                out = out + cp_size
+                size = size - cp_size
+            else:
+                # Insert instruction
+                if cmd == 0:
+                    # cmd == 0 is reserved for future encoding
+                    # extensions. In the mean time we must fail when
+                    # encountering them (might be data corruption).
+                    failed = 2
+                    break
+                if cmd > size:
+                    failed = 3
+                    break
+                memcpy(out, data, cmd)
+                out = out + cmd
+                data = data + cmd
+                size = size - cmd
+    if failed:
+        if failed == 1:
+            raise ValueError('Something wrong with:'
+                ' cp_off = %s, cp_size = %s'
+                ' source_size = %s, size = %s'
+                % (cp_off, cp_size, source_size, size))
+        elif failed == 2:
+            raise ValueError('Got delta opcode: 0, not supported')
+        elif failed == 3:
+            raise ValueError('Insert instruction longer than remaining'
+                ' bytes: %d > %d' % (cmd, size))
 
     # sanity check
     if (data != top or size != 0):
