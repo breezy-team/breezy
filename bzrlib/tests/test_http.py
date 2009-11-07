@@ -204,7 +204,7 @@ class RecordingServer(object):
     It records the bytes sent to it, and replies with a 200.
     """
 
-    def __init__(self, expect_body_tail=None):
+    def __init__(self, expect_body_tail=None, scheme=''):
         """Constructor.
 
         :type expect_body_tail: str
@@ -215,6 +215,10 @@ class RecordingServer(object):
         self.host = None
         self.port = None
         self.received_bytes = ''
+        self.scheme = scheme
+
+    def get_url(self):
+        return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
     def setUp(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -304,7 +308,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(BogusRequestHandler)
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
             server.tearDown()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
@@ -312,7 +316,7 @@ class TestHTTPServer(tests.TestCase):
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
             server.tearDown()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
@@ -320,8 +324,10 @@ class TestHTTPServer(tests.TestCase):
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
         server.setUp()
-        self.assertTrue(server._http_running)
-        server.tearDown()
+        try:
+            self.assertTrue(server._http_running)
+        finally:
+            server.tearDown()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -330,8 +336,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.0'
 
         server = http_server.HttpServer(RequestHandlerOneZero)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
@@ -340,8 +345,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.1'
 
         server = http_server.HttpServer(RequestHandlerOneOne)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -352,8 +356,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero,
                                         protocol_version='HTTP/1.1')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -364,8 +367,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne,
                                         protocol_version='HTTP/1.0')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingHTTPServer)
 
@@ -431,8 +433,8 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
         server = self._server()
+        server.setUp()
         try:
-            server.setUp()
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
@@ -543,11 +545,10 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
-        server = RecordingServer(expect_body_tail='end-of-body')
-        server.setUp()
-        self.addCleanup(server.tearDown)
-        scheme = self._qualified_prefix
-        url = '%s://%s:%s/' % (scheme, server.host, server.port)
+        server = RecordingServer(expect_body_tail='end-of-body',
+            scheme=self._qualified_prefix)
+        self.start_server(server)
+        url = server.get_url()
         http_transport = self._transport(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
@@ -625,14 +626,17 @@ class TestWallServer(TestSpecificRequestHandler):
         # for details) make no distinction between a closed
         # socket and badly formatted status line, so we can't
         # just test for ConnectionError, we have to test
-        # InvalidHttpResponse too.
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        # InvalidHttpResponse too. And pycurl may raise ConnectionReset
+        # instead of ConnectionError too.
+        self.assertRaises(( errors.ConnectionError, errors.ConnectionReset,
+                            errors.InvalidHttpResponse),
                           t.has, 'foo/bar')
 
     def test_http_get(self):
         server = self.get_readonly_server()
         t = self._transport(server.get_url())
-        self.assertRaises((errors.ConnectionError, errors.InvalidHttpResponse),
+        self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
+                           errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
 
 
@@ -776,9 +780,8 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.port)
 
     def test_send_receive_bytes(self):
-        server = RecordingServer(expect_body_tail='c')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        server = RecordingServer(expect_body_tail='c', scheme='http')
+        self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
         sock.sendall('abc')
@@ -1953,7 +1956,7 @@ if tests.HTTPSServerFeature.available():
         pass
 
 
-class TestActivity(tests.TestCase):
+class TestActivityMixin(object):
     """Test socket activity reporting.
 
     We use a special purpose server to control the bytes sent and received and
@@ -2097,3 +2100,57 @@ lalala whatever as long as itsssss
         code, f = t._post('abc def end-of-body\n')
         self.assertEqual('lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()
+
+
+class TestActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.server = self._activity_server(self._protocol_version)
+        self.server.setUp()
+        self.activities = {}
+        def report_activity(t, bytes, direction):
+            count = self.activities.get(direction, 0)
+            count += bytes
+            self.activities[direction] = count
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = report_activity
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.tearDown()
+        tests.TestCase.tearDown(self)
+
+
+class TestNoReportActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        # Unlike TestActivity, we are really testing ReportingFileSocket and
+        # ReportingSocket, so we don't need all the parametrization. Since
+        # ReportingFileSocket and ReportingSocket are wrappers, it's easier to
+        # test them through their use by the transport than directly (that's a
+        # bit less clean but far more simpler and effective).
+        self.server = ActivityHTTPServer('HTTP/1.1')
+        self._transport=_urllib.HttpTransport_urllib
+
+        self.server.setUp()
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = None
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.tearDown()
+        tests.TestCase.tearDown(self)
+
+    def assertActivitiesMatch(self):
+        # Nothing to check here
+        pass

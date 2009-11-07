@@ -280,10 +280,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = tests.MemoryServer
+        location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -425,7 +423,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-    def test_push_strict_command_line_override_config(self):
+    def test_send_strict_command_line_override_config(self):
         self.set_config_send_strict('false')
         self.assertSendSucceeds([])
         self.assertSendFails(['--strict'])

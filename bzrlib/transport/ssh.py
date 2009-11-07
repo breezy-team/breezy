@@ -126,9 +126,12 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        # As plink user prompts are not handled currently, don't auto-detect
+        # it by inspection below, but keep this vendor detection for if a path
+        # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -136,12 +139,8 @@ class SSHVendorManager(object):
 
     def _get_vendor_by_inspection(self):
         """Return the vendor or None by checking for known SSH implementations."""
-        for args in (['ssh', '-V'], ['plink', '-V']):
-            version = self._get_ssh_version_string(args)
-            vendor = self._get_vendor_by_version_string(version, args[0])
-            if vendor is not None:
-                return vendor
-        return None
+        version = self._get_ssh_version_string(['ssh', '-V'])
+        return self._get_vendor_by_version_string(version, "ssh")
 
     def _get_vendor_from_path(self, path):
         """Return the vendor or None using the program at the given path"""
@@ -516,7 +515,16 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     except paramiko.SSHException, e:
         # Don't know what happened, but just ignore it
         pass
-    if 'password' not in supported_auth_types:
+    # We treat 'keyboard-interactive' and 'password' auth methods identically,
+    # because Paramiko's auth_password method will automatically try
+    # 'keyboard-interactive' auth (using the password as the response) if
+    # 'password' auth is not available.  Apparently some Debian and Gentoo
+    # OpenSSH servers require this.
+    # XXX: It's possible for a server to require keyboard-interactive auth that
+    # requires something other than a single password, but we currently don't
+    # support that.
+    if ('password' not in supported_auth_types and
+        'keyboard-interactive' not in supported_auth_types):
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
             '\n  %s@%s\nsupported auth types: %s'
             % (username, host, supported_auth_types))

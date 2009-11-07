@@ -32,6 +32,7 @@ import urllib
 from bzrlib import (
     annotate,
     errors,
+    graph as _mod_graph,
     groupcompress,
     index,
     knit,
@@ -929,6 +930,13 @@ class VersionedFiles(object):
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
 
+    def clear_cache(self):
+        """Clear whatever caches this VersionedFile holds.
+
+        This is generally called after an operation has been performed, when we
+        don't expect to be using this versioned file again soon.
+        """
+
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:
@@ -940,6 +948,20 @@ class VersionedFiles(object):
         for line in lines:
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        # most basic implementation is a loop around get_parent_map
+        pending = set(keys)
+        parent_map = {}
+        while pending:
+            this_parent_map = self.get_parent_map(pending)
+            parent_map.update(this_parent_map)
+            pending = set()
+            map(pending.update, this_parent_map.itervalues())
+            pending = pending.difference(parent_map)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1571,13 +1593,14 @@ class NetworkRecordStream(object):
             record.get_bytes_as(record.storage_kind) call.
         """
         self._bytes_iterator = bytes_iterator
-        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
-            'knit-delta-gz':knit.knit_network_to_record,
-            'knit-annotated-ft-gz':knit.knit_network_to_record,
-            'knit-annotated-delta-gz':knit.knit_network_to_record,
-            'knit-delta-closure':knit.knit_delta_closure_to_records,
-            'fulltext':fulltext_network_to_record,
-            'groupcompress-block':groupcompress.network_block_to_records,
+        self._kind_factory = {
+            'fulltext': fulltext_network_to_record,
+            'groupcompress-block': groupcompress.network_block_to_records,
+            'knit-ft-gz': knit.knit_network_to_record,
+            'knit-delta-gz': knit.knit_network_to_record,
+            'knit-annotated-ft-gz': knit.knit_network_to_record,
+            'knit-annotated-delta-gz': knit.knit_network_to_record,
+            'knit-delta-closure': knit.knit_delta_closure_to_records,
             }
 
     def read(self):

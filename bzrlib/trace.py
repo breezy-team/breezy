@@ -59,7 +59,6 @@ import codecs
 import logging
 import os
 import sys
-import re
 import time
 
 from bzrlib.lazy_import import lazy_import
@@ -71,6 +70,11 @@ import traceback
 """)
 
 import bzrlib
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 lazy_import(globals(), """
 from bzrlib import (
@@ -123,15 +127,34 @@ def warning(*args, **kwargs):
     _bzr_logger.warning(*args, **kwargs)
 
 
-# configure convenient aliases for output routines
-#
-# TODO: deprecate them, have one name for each.
-info = note
-log_error = _bzr_logger.error
-error =     _bzr_logger.error
+@deprecated_function(deprecated_in((2, 1, 0)))
+def info(*args, **kwargs):
+    """Deprecated: use trace.note instead."""
+    note(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def log_error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+def show_error(msg):
+    """Show an error message to the user.
+
+    Don't use this for exceptions, use report_exception instead.
+    """
+    _bzr_logger.error(*args, **kwargs)
 
 
 _last_mutter_flush_time = None
+
 
 def mutter(fmt, *args):
     global _last_mutter_flush_time
@@ -432,6 +455,9 @@ def report_exception(exc_info, err_file):
     elif isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
+    elif isinstance(exc_object, MemoryError):
+        err_file.write("bzr: out of memory\n")
+        return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
         report_user_error(exc_info, err_file,
@@ -478,25 +504,5 @@ def report_user_error(exc_info, err_file, advice=None):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    print_exception(exc_info, err_file)
-    err_file.write('\n')
-    err_file.write('bzr %s on python %s (%s)\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        sys.platform))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
-            osutils.get_user_encoding(), sys.getfilesystemencoding(),
-            os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        err_file.write("  %-20s %s [%s]\n" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    err_file.write(
-"""\
-*** Bazaar has encountered an internal error.
-    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
-    including this traceback, and a description of what you
-    were doing when the error occurred.
-""")
+    from bzrlib.crash import report_bug
+    report_bug(exc_info, err_file)

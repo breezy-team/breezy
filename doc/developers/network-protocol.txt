@@ -431,11 +431,13 @@ incoming paths to be under that level (and prevent escaping using ../
 tricks).  The default implementation in bzrlib does this using the
 `bzrlib.transport.chroot` module.
 
-URLs that include ~ should probably be passed across to the server
-verbatim and the server can expand them.  This will proably not be
-meaningful when limited to a directory?  See `bug 109143`_.
+URLs that include ~ are passed across to the server verbatim and the
+server can expand them.  The default implementation in bzrlib does this
+using `bzrlib.transport.pathfilter` and `os.path.expanduser`, taking care
+to respect the virtual root.
 
-.. _bug 109143: https://bugs.launchpad.net/bzr/+bug/109143
+Paths in request arguments are UTF-8 encoded, except for the legacy VFS
+requests which expect escaped (`bzrlib.urlutils.escape`) paths.
 
 
 Requests

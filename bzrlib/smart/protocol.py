@@ -114,9 +114,11 @@ class SmartProtocolBase(object):
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
 
-    def __init__(self, backing_transport, write_func, root_client_path='/'):
+    def __init__(self, backing_transport, write_func, root_client_path='/',
+            jail_root=None):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
+        self._jail_root = jail_root
         self.unused_data = ''
         self._finished = False
         self.in_buffer = ''
@@ -144,8 +146,9 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
                     self._backing_transport, commands=request.request_handlers,
-                    root_client_path=self._root_client_path)
-                self.request.dispatch_command(req_args[0], req_args[1:])
+                    root_client_path=self._root_client_path,
+                    jail_root=self._jail_root)
+                self.request.args_received(req_args)
                 if self.request.finished_reading:
                     # trivial request
                     self.unused_data = self.in_buffer
@@ -858,10 +861,10 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
 
 
 def build_server_protocol_three(backing_transport, write_func,
-                                root_client_path):
+                                root_client_path, jail_root=None):
     request_handler = request.SmartServerRequestHandler(
         backing_transport, commands=request.request_handlers,
-        root_client_path=root_client_path)
+        root_client_path=root_client_path, jail_root=jail_root)
     responder = ProtocolThreeResponder(write_func)
     message_handler = message.ConventionalRequestHandler(request_handler, responder)
     return ProtocolThreeDecoder(message_handler)
@@ -1209,6 +1212,8 @@ def _iter_with_errors(iterable):
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
+            mutter('_iter_with_errors caught error')
+            log_exception_quietly()
             yield sys.exc_info(), None
             return
 

@@ -613,6 +613,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
+        # XXX: this returns the on-disk size; it should probably return the
+        # canonical size
         try:
             return os.path.getsize(self.id2abspath(file_id))
         except OSError, e:
@@ -749,11 +751,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise
         kind = _mapper(stat_result.st_mode)
         if kind == 'file':
-            size = stat_result.st_size
-            # try for a stat cache lookup
-            executable = self._is_executable_from_path_and_stat(path, stat_result)
-            return (kind, size, executable, self._sha_from_stat(
-                path, stat_result))
+            return self._file_content_summary(path, stat_result)
         elif kind == 'directory':
             # perhaps it looks like a plain directory, but it's really a
             # reference.
@@ -765,6 +763,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return ('symlink', None, None, target)
         else:
             return (kind, None, None, None)
+
+    def _file_content_summary(self, path, stat_result):
+        size = stat_result.st_size
+        executable = self._is_executable_from_path_and_stat(path, stat_result)
+        # try for a stat cache lookup
+        return ('file', size, executable, self._sha_from_stat(
+            path, stat_result))
 
     def _check_parents_for_ghosts(self, revision_ids, allow_leftmost_as_ghost):
         """Common ghost checking functionality from set_parent_*.
@@ -891,7 +896,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_write_lock # because merge pulls data into the branch.
     def merge_from_branch(self, branch, to_revision=None, from_revision=None,
-        merge_type=None):
+                          merge_type=None, force=False):
         """Merge from a branch into this working tree.
 
         :param branch: The branch to merge from.
@@ -906,9 +911,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             merger = Merger(self.branch, this_tree=self, pb=pb)
             merger.pp = ProgressPhase("Merge phase", 5, pb)
             merger.pp.next_phase()
-            # check that there are no
-            # local alterations
-            merger.check_basis(check_clean=True, require_commits=False)
+            # check that there are no local alterations
+            if not force and self.has_changes():
+                raise errors.UncommittedChanges(self)
             if to_revision is None:
                 to_revision = _mod_revision.ensure_null(branch.last_revision())
             merger.other_rev_id = to_revision
@@ -1893,8 +1898,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
-                inv = self.branch.repository.deserialise_inventory(
-                    new_revision, xml)
+                inv = self.branch.repository._serializer.read_inventory_from_string(
+                    xml, new_revision)
                 xml = self._create_basis_xml_from_inventory(new_revision, inv)
             self._write_basis_inventory(xml)
         except (errors.NoSuchRevision, errors.RevisionNotPresent):
@@ -3030,10 +3035,10 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat4()
+__default_format = WorkingTreeFormat6()
 WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat6())
 WorkingTreeFormat.register_format(WorkingTreeFormat5())
+WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
