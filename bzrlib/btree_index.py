@@ -31,6 +31,7 @@ from bzrlib import (
     index,
     lru_cache,
     osutils,
+    static_tuple,
     trace,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
@@ -163,8 +164,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
-        # TODO: StaticTuple
-        self._nodes[key] = (node_refs, value)
+        self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
@@ -624,11 +624,11 @@ class _InternalNode(object):
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
+        as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
             if line == '':
                 break
-            # TODO: Switch to StaticTuple here.
-            nodes.append(tuple(map(intern, line.split('\0'))))
+            nodes.append(as_st(map(intern, line.split('\0'))).intern())
         return nodes
 
 

@@ -189,6 +189,7 @@ class GraphIndexBuilder(object):
                                 This may contain duplicates if the same key is
                                 referenced in multiple lists.
         """
+        as_st = StaticTuple.from_sequence
         self._check_key(key)
         if _newline_null_re.search(value) is not None:
             raise errors.BadIndexValue(value)
@@ -203,10 +204,8 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
-            # TODO: StaticTuple
-            node_refs.append(tuple(reference_list))
-        # TODO: StaticTuple
-        return tuple(node_refs), absent_references
+            node_refs.append(as_st(reference_list))
+        return as_st(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
