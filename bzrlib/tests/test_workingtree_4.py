@@ -18,6 +18,7 @@
 """Tests for WorkingTreeFormat4"""
 
 import os
+import sys
 import time
 
 from bzrlib import (
@@ -662,7 +663,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         file_obj, statvalue = tree.get_file_with_stat('foo-id')
         expected = os.lstat('foo')
-        self.assertEqualStat(expected, statvalue)
+        self.assertEqualStat(expected, statvalue,
+                             ignore_ino=(sys.platform == 'win32'))
         self.assertEqual(["contents of foo\n"], file_obj.readlines())
 
 
