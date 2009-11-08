@@ -1713,6 +1713,12 @@ class _PreviewTree(tree.Tree):
         return self.__by_parent
 
     def _comparison_data(self, entry, path):
+        # Win32 TODO:... it seems that if you do 'tree.compare(other_tree,
+        #   want_unversioned=True)' this code path tries to read the
+        #   executable bit from WT, but the file isn't versioned, so the WT
+        #   doesn't know what to do with it... Probably our 'get exec from
+        #   last commit' code needs to just return False for unversioned files.
+        #   I don't know why it is only PreviewTree that is triggering this...
         kind, size, executable, link_or_sha1 = self.path_content_summary(path)
         if kind == 'missing':
             kind = None
