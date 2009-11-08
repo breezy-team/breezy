@@ -1613,7 +1613,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        f = open('foo')
+        f = open('foo', 'rb')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
         self.assertEqual(38, size)
