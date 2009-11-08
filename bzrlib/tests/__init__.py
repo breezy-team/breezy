@@ -3250,10 +3250,6 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
-    try:
-        from subunit.test_results import AutoTimingTestResultDecorator
-    except ImportError:
-        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -3282,7 +3278,7 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = AutoTimingTestResultDecorator(
+                subunit_result = BzrAutoTimingTestResultDecorator(
                     TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
@@ -3410,6 +3406,22 @@ class BZRTransformingResult(ForwardingResult):
                 if lines[-1].startswith(prefix):
                     value = lines[-1][len(prefix):]
         return value
+
+
+try:
+    from subunit.test_results import AutoTimingTestResultDecorator
+    # Expected failure should be seen as a success not a failure Once subunit
+    # provide native support for that, BZRTransformingResult and this class
+    # will become useless.
+    class BzrAutoTimingTestResultDecorator(AutoTimingTestResultDecorator):
+
+        def addExpectedFailure(self, test, err):
+            self._before_event()
+            return self._call_maybe("addExpectedFailure", self._degrade_skip,
+                                    test, err)
+except ImportError:
+    # Let's just define a no-op decorator
+    BzrAutoTimingTestResultDecorator = lambda x:x
 
 
 class ProfileResult(ForwardingResult):
@@ -4394,13 +4406,9 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
-    try:
-        from subunit.test_results import AutoTimingTestResultDecorator
-    except ImportError:
-        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = AutoTimingTestResultDecorator(
+            result = BzrAutoTimingTestResultDecorator(
                 TestProtocolClient(self.stream))
             test.run(result)
             return result
