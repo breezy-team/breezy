@@ -743,13 +743,17 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
     def test_trailing_garbage(self):
         tree, state, expected = self.create_basic_dirstate()
-        # We can modify the file as long as it hasn't been read yet.
+        # On Linux, we can write extra data as long as we haven't read yet, but
+        # on Win32, if you've opened the file with FILE_SHARE_READ, trying to
+        # open it in append mode will fail.
+        state.unlock()
         f = open('dirstate', 'ab')
         try:
             # Add bogus trailing garbage
             f.write('bogus\n')
         finally:
             f.close()
+            state.lock_read()
         e = self.assertRaises(errors.DirstateCorrupt,
                               state._read_dirblocks_if_needed)
         # Make sure we mention the bogus characters in the error
