@@ -32,19 +32,6 @@ from bzrlib.tests import (
 from bzrlib.win32utils import glob_expand, get_app_path
 
 
-# Features
-# --------
-
-class _NeedsGlobExpansionFeature(Feature):
-
-    def _probe(self):
-        return sys.platform == 'win32'
-
-    def feature_name(self):
-        return 'Internally performed glob expansion'
-
-NeedsGlobExpansionFeature = _NeedsGlobExpansionFeature()
-
 
 class _RequiredModuleFeature(Feature):
 
@@ -70,19 +57,9 @@ Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
 # Tests
 # -----
 
-class TestNeedsGlobExpansionFeature(TestCase):
-
-    def test_available(self):
-        self.assertEqual(sys.platform == 'win32',
-                         NeedsGlobExpansionFeature.available())
-
-    def test_str(self):
-        self.assertTrue("performed" in str(NeedsGlobExpansionFeature))
-
-
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
-    _test_needs_features = [NeedsGlobExpansionFeature]
+    _test_needs_features = []
 
     def test_empty_tree(self):
         self.build_tree([])
@@ -126,7 +103,9 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
     def test_tree_unicode(self):
         """Checks behaviour with non-ascii filenames"""
-        self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/', u'\u1235/\u1235'])
+        self.requireFeature(UnicodeFilenameFeature)
+        self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/',
+                         u'\u1235/\u1235'])
         self._run_testset([
             # no wildcards
             [[u'\u1234'], [u'\u1234']],
