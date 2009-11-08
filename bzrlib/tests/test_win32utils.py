@@ -32,6 +32,21 @@ from bzrlib.tests import (
 from bzrlib.win32utils import glob_expand, get_app_path
 
 
+class _BackslashDirSeparatorFeature(tests.Feature):
+
+    def _probe(self):
+        try:
+            os.lstat(os.getcwd() + '\\')
+        except OSError:
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return "Filesystem treats '\\' as a directory separator."
+
+BackslashDirSeparatorFeature = _BackslashDirSeparatorFeature()
+
 
 class _RequiredModuleFeature(Feature):
 
@@ -106,12 +121,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_backslash_globbing(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
         self.build_ascii_tree()
-        try:
-            os.lstat('d\\d2')
-        except OSError:
-            raise tests.TestNotApplicable("filesystem doesn't treat"
-                " \\ as a directory separator")
         self._run_testset([
             [[u'd\\'], [u'd/']],
             [[u'd\\*'], [u'd/d1', u'd/d2', u'd/e']],
@@ -121,7 +132,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_case_insensitive_globbing(self):
-        self.requireFeature(tests.CaseInsensitiveFilesystemFeature)
+        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
         self.build_ascii_tree()
         self._run_testset([
             [[u'A'], [u'A']],
@@ -153,16 +164,12 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_unicode_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
         self.build_unicode_tree()
-        try:
-            os.lstat('\u1235\\\u1235')
-        except OSError:
-            raise tests.TestNotApplicable("filesystem doesn't treat"
-                " \\ as a directory separator")
         self._run_testset([
             # no wildcards
-            [[u'\u1235\\'], [u'\u1235\\']],
-            [[u'\u1235\\\u1235'], [u'\u1235\\\u1235']],
+            [[u'\u1235\\'], [u'\u1235/']],
+            [[u'\u1235\\\u1235'], [u'\u1235/\u1235']],
             [[u'\u1235\\?'], [u'\u1235/\u1235']],
             [[u'\u1235\\*'], [u'\u1235/\u1235']],
             [[u'?\\'], [u'\u1235/']],
@@ -369,3 +376,13 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         # Expands the glob, but nothing matches
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
         self.assertCommandLine([u'a/foo.c'], 'a\\foo.c')
+
+    def test_case_insensitive_globs(self):
+        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'A/b.c'], 'A/B*')
+
+    def test_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/b.c'], 'a\\b*')
