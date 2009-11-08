@@ -278,23 +278,26 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         (optionally decorated with 'readonly+').  BzrServerFactory can
         determine the original --directory from that transport.
         """
+        base_dir = '/a/b/c/'
+        if sys.platform == 'win32':
+            base_dir = 'C:/a/b/c/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
         def capture_transport(transport, host, port, inet):
             self.bzr_serve_transport = transport
         cmd = builtins.cmd_serve()
         # Read-only
-        cmd.run(directory='/a/b/c', protocol=capture_transport)
+        cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            'readonly+file:///a/b/c/', self.bzr_serve_transport.base)
+            'readonly+file:///%s' % base_dir, self.bzr_serve_transport.base)
         self.assertEqual(
-            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+            base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
-        cmd.run(directory='/a/b/c', protocol=capture_transport,
+        cmd.run(directory=base_dir, protocol=capture_transport,
             allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual('file:///a/b/c/', self.bzr_serve_transport.base)
-        self.assertEqual(
-            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+        self.assertEqual('file:///%s' % base_dir, self.bzr_serve_transport.base)
+        self.assertEqual(base_dir,
+            server_maker.get_base_path(self.bzr_serve_transport))
 
