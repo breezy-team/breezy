@@ -55,6 +55,9 @@ Internals
 Testing
 *******
 
+* -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
+  more debugging of VFS access triggers. (Robert Collins)
+
 * KnownFailure is now signalled to ``ExtendedTestResult`` using the same
   method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
 
