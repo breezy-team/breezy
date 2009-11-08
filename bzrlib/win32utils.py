@@ -535,7 +535,7 @@ class UnicodeShlex(object):
         self._input_iter = iter(self._input)
         self._whitespace_match = re.compile(u'\s').match
         self._word_match = re.compile(u'\S').match
-        self._quote_chars = u'\'"'
+        self._quote_chars = u'"'
         # self._quote_match = re.compile(u'[\'"]').match
         self._escape_match = lambda x: None # Never matches
         self._escape = '\\'
@@ -543,7 +543,6 @@ class UnicodeShlex(object):
         #   ' ' - after whitespace, starting a new token
         #   'a' - after text, currently working on a token
         #   '"' - after ", currently in a "-delimited quoted section
-        #   "'" - after ', currently in a '-delimited quotod section
         #   "\" - after '\', checking the next char
         self._state = ' '
         self._token = [] # Current token being parsed

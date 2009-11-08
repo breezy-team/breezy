@@ -28,8 +28,7 @@ Bug Fixes
   done in bash, etc.) This means that *all* commands get glob expansion
   (bzr status, bzr add, bzr mv, etc). It uses a custom command line
   parser, which allows us to know if a given section was quoted. It means
-  you can now do ``bzr ignore "*.py"``. It also means that single-quotes
-  are now treated as quoted ``bzr ignore '*.py'``.
+  you can now do ``bzr ignore "*.py"``.
   (John Arbash Meinel, #425510, #426410, #194450)
 
 * Sanitize commit messages that come in from the '-m' flag. We translate
