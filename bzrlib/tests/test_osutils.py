@@ -58,10 +58,6 @@ def _already_unicode(s):
     return s
 
 
-def _fs_enc_to_unicode(s):
-    return s.decode(osutils._fs_enc)
-
-
 def _utf8_to_unicode(s):
     return s.decode('UTF-8')
 
@@ -87,12 +83,10 @@ def dir_reader_scenarios():
     if test__walkdirs_win32.Win32ReadDirFeature.available():
         try:
             from bzrlib import _walkdirs_win32
-            # TODO: check on windows, it may be that we need to use/add
-            # safe_unicode instead of _fs_enc_to_unicode
             scenarios.append(
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
-                      _native_to_unicode=_fs_enc_to_unicode)))
+                      _native_to_unicode=_already_unicode)))
         except ImportError:
             pass
     return scenarios
@@ -1777,7 +1771,10 @@ class TestDirReader(tests.TestCaseInTempDir):
             dirinfo = (dirinfo[0], self._native_to_unicode(dirinfo[1]))
             details = []
             for line in block:
-                details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
+                try:
+                    details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
+                except UnicodeError:
+                    import pdb; pdb.set_trace()
             filtered_dirblocks.append((dirinfo, details))
         return filtered_dirblocks
 
