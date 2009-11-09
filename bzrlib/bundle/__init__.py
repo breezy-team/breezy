@@ -72,12 +72,19 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         except errors.TooManyRedirections:
             raise errors.NotABundle(transport.clone(filename).base)
 
-        if _do_directive:
-            from bzrlib.merge_directive import MergeDirective
-            directive = MergeDirective.from_lines(f.readlines())
-            return directive, transport
-        else:
-            return _serializer.read_bundle(f), transport
+        bundle = None
+        try:
+            if _do_directive:
+                from bzrlib.merge_directive import MergeDirective
+                try:
+                    return MergeDirective.from_lines(f.readlines()), transport
+                except errors.NotAMergeDirective:
+                    f.seek(0)
+            bundle = _serializer.read_bundle(f)
+        finally:
+            if bundle is None:
+                f.close()
+        return bundle, transport
     except (errors.ConnectionReset, errors.ConnectionError), e:
         raise
     except (errors.TransportError, errors.PathError), e:
@@ -91,6 +98,3 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         # StubSFTPServer does fail during get() (because of prefetch)
         # so it has an opportunity to translate the error.
         raise errors.NotABundle(str(e))
-    except errors.NotAMergeDirective:
-        f.seek(0)
-        return _serializer.read_bundle(f), transport
