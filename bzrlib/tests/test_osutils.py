@@ -133,36 +133,34 @@ class TestRename(tests.TestCaseInTempDir):
         finally:
             f.close()
 
+    def _fancy_rename(self, a, b):
+        osutils.fancy_rename(a, b, rename_func=os.rename,
+                             unlink_func=os.unlink)
+
     def test_fancy_rename(self):
         # This should work everywhere
-        def rename(a, b):
-            osutils.fancy_rename(a, b,
-                    rename_func=os.rename,
-                    unlink_func=os.unlink)
-
         self.create_file('a', 'something in a\n')
-        rename('a', 'b')
+        self._fancy_rename('a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
-        rename('b', 'a')
+        self._fancy_rename('b', 'a')
 
         self.check_file_contents('a', 'something in a\n')
 
     def test_fancy_rename_fails_source_missing(self):
-        def rename(a, b):
-            osutils.fancy_rename(a, b,
-                    rename_func=os.rename,
-                    unlink_func=os.unlink)
-
         # An exception should be raised, and the target should be left in place
         self.create_file('target', 'data in target\n')
-        self.assertRaises((IOError, OSError), rename,
+        self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
         self.failUnlessExists('target')
         self.check_file_contents('target', 'data in target\n')
+
+    def test_fancy_rename_fails_if_source_and_target_missing(self):
+        self.assertRaises((IOError, OSError), self._fancy_rename,
+                          'missingsource', 'missingtarget')
 
     def test_rename(self):
         # Rename should be semi-atomic on all platforms

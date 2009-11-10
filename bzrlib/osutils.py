@@ -250,8 +250,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
-                if failure_exc is not None:
-                    raise failure_exc[0], failure_exc[1], failure_exc[2]
+    if failure_exc is not None:
+        raise failure_exc[0], failure_exc[1], failure_exc[2]
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
