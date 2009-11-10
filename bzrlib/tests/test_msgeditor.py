@@ -290,7 +290,10 @@ if len(sys.argv) == 2:
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
         def warning(*args):
-            warnings.append(args[0] % args[1:])
+            if len(args) > 1:
+                warnings.append(args[0] % args[1:])
+            else:
+                warnings.append(args[0])
         _warning = trace.warning
         trace.warning = warning
         try:
