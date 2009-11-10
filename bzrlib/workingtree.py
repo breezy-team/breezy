@@ -636,6 +636,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         file_id = self.path2id(path)
+        if file_id is None:
+            # For unversioned files on win32, we just assume they are not
+            # executable
+            return False
         return self._inventory[file_id].executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
