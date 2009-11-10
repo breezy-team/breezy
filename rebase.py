@@ -190,7 +190,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         if len(oldparents) > 1:
             additional_parents = heads_cache.heads(oldparents[1:])
             parents = [new_parent]
-            for parent in parents:
+            for parent in oldparents:
                 if parent in additional_parents and parent not in parents:
                     # Use as a parent
                     parent = replace_map.get(parent, (parent,))[0]

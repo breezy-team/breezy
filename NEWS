@@ -4,6 +4,9 @@
 
    * Mark as compatible with Bazaar 2.1.
 
+   * rebasing of merges was discarding the merged parents.
+     (Robert Collins, #266897)
+
   FEATURES
 
    * Add hidden 'pseudonyms' command for finding revision pseudonyms.
