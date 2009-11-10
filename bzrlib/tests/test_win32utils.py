@@ -329,7 +329,8 @@ class TestUnicodeShlex(tests.TestCase):
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def assertCommandLine(self, expected, line):
-        self.assertEqual(expected, win32utils._command_line_to_argv(line))
+        self.assertEqual(expected,
+                         sorted(win32utils._command_line_to_argv(line)))
 
     def test_glob_paths(self):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
