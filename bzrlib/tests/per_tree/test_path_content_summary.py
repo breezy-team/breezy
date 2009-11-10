@@ -21,6 +21,7 @@ import os
 from bzrlib import (
     osutils,
     tests,
+    transform,
     )
 
 from bzrlib.tests import per_tree
@@ -78,13 +79,13 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         self.assertEqual(('missing', None, None, None), summary)
 
     def test_file_content_summary_executable(self):
-        if not osutils.supports_executable():
-            raise tests.TestNotApplicable()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add(['path'])
-        current_mode = os.stat('tree/path').st_mode
-        os.chmod('tree/path', current_mode | 0100)
+        tt = transform.TreeTransform(tree)
+        self.addCleanup(tt.finalize)
+        tt.set_executability(True, tt.trans_id_tree_path('path'))
+        tt.apply()
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('file', summary[0])

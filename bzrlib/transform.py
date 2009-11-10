@@ -1979,7 +1979,7 @@ class _PreviewTree(tree.Tree):
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
                 if not supports_executable():
-                    executable = None
+                    executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
             else:
@@ -1987,8 +1987,7 @@ class _PreviewTree(tree.Tree):
                 executable = None
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
+        executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
