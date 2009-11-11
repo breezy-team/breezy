@@ -36,6 +36,9 @@ Bug Fixes
   allow those because XML store silently translate it anyway. (The parser
   auto-translates \r\n => \n in ways that are hard for us to catch.)
 
+* Show correct branch and repository format descriptions in 
+  ``bzr info -v`` on a smart server location.  (Andrew Bennetts, #196080)
+
 * The fix for bug #186920 accidentally broke compatibility with python
   2.4.  (Vincent Ladeuil, #475585)
 
