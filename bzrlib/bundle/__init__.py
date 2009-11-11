@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from cStringIO import StringIO
+
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -22,6 +24,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.bundle import serializer as _serializer
+from bzrlib.merge_directive import MergeDirective
 from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
@@ -51,40 +54,22 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
 
 
 def read_mergeable_from_transport(transport, filename, _do_directive=True):
-    # All of this must be in the try/except
-    # Some transports cannot detect that we are trying to read a
-    # directory until we actually issue read() on the handle.
+    def get_bundle(transport):
+        return transport.get_bytes(filename), transport
+
+    def redirected_transport(transport, exception, redirection_notice):
+        note(redirection_notice)
+        url, filename = urlutils.split(exception.target,
+                                       exclude_trailing_slash=False)
+        if not filename:
+            raise errors.NotABundle('A directory cannot be a bundle')
+        return get_transport(url)
+
     try:
-        def get_bundle(transport):
-            return transport.get(filename), transport
-
-        def redirected_transport(transport, exception, redirection_notice):
-            note(redirection_notice)
-            url, filename = urlutils.split(exception.target,
-                                           exclude_trailing_slash=False)
-            if not filename:
-                raise errors.NotABundle('A directory cannot be a bundle')
-            return get_transport(url)
-
-        try:
-            f, transport = do_catching_redirections(get_bundle, transport,
+        bytes, transport = do_catching_redirections(get_bundle, transport,
                                                     redirected_transport)
-        except errors.TooManyRedirections:
-            raise errors.NotABundle(transport.clone(filename).base)
-
-        bundle = None
-        try:
-            if _do_directive:
-                from bzrlib.merge_directive import MergeDirective
-                try:
-                    return MergeDirective.from_lines(f.readlines()), transport
-                except errors.NotAMergeDirective:
-                    f.seek(0)
-            bundle = _serializer.read_bundle(f)
-        finally:
-            if bundle is None:
-                f.close()
-        return bundle, transport
+    except errors.TooManyRedirections:
+        raise errors.NotABundle(transport.clone(filename).base)
     except (errors.ConnectionReset, errors.ConnectionError), e:
         raise
     except (errors.TransportError, errors.PathError), e:
@@ -98,3 +83,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         # StubSFTPServer does fail during get() (because of prefetch)
         # so it has an opportunity to translate the error.
         raise errors.NotABundle(str(e))
+
+    if _do_directive:
+        try:
+            return MergeDirective.from_lines(bytes.splitlines(True)), transport
+        except errors.NotAMergeDirective:
+            pass
+
+    return _serializer.read_bundle(StringIO(bytes)), transport
