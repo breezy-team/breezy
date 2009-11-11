@@ -262,30 +262,19 @@ def _register_directory():
 _register_directory()
 
 
-def test_suite():
-    """Called by bzrlib to fetch tests for this plugin"""
-    from unittest import TestSuite, TestLoader
-    from bzrlib.plugins.launchpad import (
-        test_account,
-        test_lp_directory,
-        test_lp_login,
-        test_lp_open,
-        test_lp_service,
-        test_register,
-        )
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_account',
+        'test_register',
+        'test_lp_directory',
+        'test_lp_login',
+        'test_lp_open',
+        'test_lp_service',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 
-    loader = TestLoader()
-    suite = TestSuite()
-    for module in [
-        test_account,
-        test_register,
-        test_lp_directory,
-        test_lp_login,
-        test_lp_open,
-        test_lp_service,
-        ]:
-        suite.addTests(loader.loadTestsFromModule(module))
-    return suite
 
 _launchpad_help = """Integration with Launchpad.net
 

@@ -53,6 +53,7 @@ import warnings
 from bzrlib import (
     branchbuilder,
     bzrdir,
+    chk_map,
     config,
     debug,
     errors,
@@ -297,19 +298,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._testConcluded(test)
-        if isinstance(err[1], TestNotApplicable):
-            return self._addNotApplicable(test, err)
-        elif isinstance(err[1], UnavailableFeature):
-            return self.addNotSupported(test, err[1].args[0])
-        else:
-            self._post_mortem()
-            unittest.TestResult.addError(self, test, err)
-            self.error_count += 1
-            self.report_error(test, err)
-            if self.stop_early:
-                self.stop()
-            self._cleanupLogFile(test)
+        self._post_mortem()
+        unittest.TestResult.addError(self, test, err)
+        self.error_count += 1
+        self.report_error(test, err)
+        if self.stop_early:
+            self.stop()
+        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -317,24 +312,19 @@ class ExtendedTestResult(unittest._TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._testConcluded(test)
-        if isinstance(err[1], KnownFailure):
-            return self._addKnownFailure(test, err)
-        else:
-            self._post_mortem()
-            unittest.TestResult.addFailure(self, test, err)
-            self.failure_count += 1
-            self.report_failure(test, err)
-            if self.stop_early:
-                self.stop()
-            self._cleanupLogFile(test)
+        self._post_mortem()
+        unittest.TestResult.addFailure(self, test, err)
+        self.failure_count += 1
+        self.report_failure(test, err)
+        if self.stop_early:
+            self.stop()
+        self._cleanupLogFile(test)
 
     def addSuccess(self, test):
         """Tell result that test completed successfully.
 
         Called from the TestCase run()
         """
-        self._testConcluded(test)
         if self._bench_history is not None:
             benchmark_time = self._extractBenchmarkTime(test)
             if benchmark_time is not None:
@@ -346,14 +336,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         unittest.TestResult.addSuccess(self, test)
         test._log_contents = ''
 
-    def _testConcluded(self, test):
-        """Common code when a test has finished.
-
-        Called regardless of whether it succeded, failed, etc.
-        """
-        pass
-
-    def _addKnownFailure(self, test, err):
+    def addExpectedFailure(self, test, err):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
 
@@ -361,11 +344,11 @@ class ExtendedTestResult(unittest._TextTestResult):
         """The test will not be run because of a missing feature.
         """
         # this can be called in two different ways: it may be that the
-        # test started running, and then raised (through addError)
+        # test started running, and then raised (through requireFeature)
         # UnavailableFeature.  Alternatively this method can be called
-        # while probing for features before running the tests; in that
-        # case we will see startTest and stopTest, but the test will never
-        # actually run.
+        # while probing for features before running the test code proper; in
+        # that case we will see startTest and stopTest, but the test will
+        # never actually run.
         self.unsupported.setdefault(str(feature), 0)
         self.unsupported[str(feature)] += 1
         self.report_unsupported(test, feature)
@@ -375,21 +358,9 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.skip_count += 1
         self.report_skip(test, reason)
 
-    def _addNotApplicable(self, test, skip_excinfo):
-        if isinstance(skip_excinfo[1], TestNotApplicable):
-            self.not_applicable_count += 1
-            self.report_not_applicable(test, skip_excinfo)
-        try:
-            test.tearDown()
-        except KeyboardInterrupt:
-            raise
-        except:
-            self.addError(test, test.exc_info())
-        else:
-            # seems best to treat this as success from point-of-view of unittest
-            # -- it actually does nothing so it barely matters :)
-            unittest.TestResult.addSuccess(self, test)
-            test._log_contents = ''
+    def addNotApplicable(self, test, reason):
+        self.not_applicable_count += 1
+        self.report_not_applicable(test, reason)
 
     def printErrorList(self, flavour, errors):
         for test, err in errors:
@@ -534,7 +505,7 @@ class TextTestResult(ExtendedTestResult):
     def report_skip(self, test, reason):
         pass
 
-    def report_not_applicable(self, test, skip_excinfo):
+    def report_not_applicable(self, test, reason):
         pass
 
     def report_unsupported(self, test, feature):
@@ -601,10 +572,9 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.writeln(' SKIP %s\n%s'
                 % (self._testTimeString(test), reason))
 
-    def report_not_applicable(self, test, skip_excinfo):
-        self.stream.writeln('  N/A %s\n%s'
-                % (self._testTimeString(test),
-                   self._error_summary(skip_excinfo)))
+    def report_not_applicable(self, test, reason):
+        self.stream.writeln('  N/A %s\n    %s'
+                % (self._testTimeString(test), reason))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
@@ -711,6 +681,8 @@ class KnownFailure(AssertionError):
 
 class UnavailableFeature(Exception):
     """A feature required for this test was not available.
+
+    This can be considered a specialised form of SkippedTest.
 
     The feature should be used to construct the exception.
     """
@@ -1594,89 +1566,127 @@ class TestCase(unittest.TestCase):
     def _do_skip(self, result, reason):
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
-            result.addError(self, sys.exc_info())
+            result.addSuccess(result)
         else:
             addSkip(self, reason)
 
+    def _do_known_failure(self, result):
+        err = sys.exc_info()
+        addExpectedFailure = getattr(result, 'addExpectedFailure', None)
+        if addExpectedFailure is not None:
+            addExpectedFailure(self, err)
+        else:
+            result.addSuccess(self)
+
+    def _do_not_applicable(self, result, e):
+        if not e.args:
+            reason = 'No reason given'
+        else:
+            reason = e.args[0]
+        addNotApplicable = getattr(result, 'addNotApplicable', None)
+        if addNotApplicable is not None:
+            result.addNotApplicable(self, reason)
+        else:
+            self._do_skip(result, reason)
+
+    def _do_unsupported_or_skip(self, result, reason):
+        addNotSupported = getattr(result, 'addNotSupported', None)
+        if addNotSupported is not None:
+            result.addNotSupported(self, reason)
+        else:
+            self._do_skip(result, reason)
+
     def run(self, result=None):
         if result is None: result = self.defaultTestResult()
+        result.startTest(self)
+        try:
+            self._run(result)
+            return result
+        finally:
+            result.stopTest(self)
+
+    def _run(self, result):
         for feature in getattr(self, '_test_needs_features', []):
             if not feature.available():
-                result.startTest(self)
-                if getattr(result, 'addNotSupported', None):
-                    result.addNotSupported(self, feature)
-                else:
-                    result.addSuccess(self)
-                result.stopTest(self)
-                return result
+                return self._do_unsupported_or_skip(result, feature)
         try:
+            absent_attr = object()
+            # Python 2.5
+            method_name = getattr(self, '_testMethodName', absent_attr)
+            if method_name is absent_attr:
+                # Python 2.4
+                method_name = getattr(self, '_TestCase__testMethodName')
+            testMethod = getattr(self, method_name)
             try:
-                result.startTest(self)
-                absent_attr = object()
-                # Python 2.5
-                method_name = getattr(self, '_testMethodName', absent_attr)
-                if method_name is absent_attr:
-                    # Python 2.4
-                    method_name = getattr(self, '_TestCase__testMethodName')
-                testMethod = getattr(self, method_name)
                 try:
-                    try:
-                        self.setUp()
-                        if not self._bzr_test_setUp_run:
-                            self.fail(
-                                "test setUp did not invoke "
-                                "bzrlib.tests.TestCase's setUp")
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except TestSkipped, e:
-                        self._do_skip(result, e.args[0])
-                        self.tearDown()
-                        return result
-                    except:
-                        result.addError(self, sys.exc_info())
-                        self._runCleanups()
-                        return result
+                    self.setUp()
+                    if not self._bzr_test_setUp_run:
+                        self.fail(
+                            "test setUp did not invoke "
+                            "bzrlib.tests.TestCase's setUp")
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except KnownFailure:
+                    self._do_known_failure(result)
+                    self.tearDown()
+                    return
+                except TestNotApplicable, e:
+                    self._do_not_applicable(result, e)
+                    self.tearDown()
+                    return
+                except TestSkipped, e:
+                    self._do_skip(result, e.args[0])
+                    self.tearDown()
+                    return result
+                except UnavailableFeature, e:
+                    self._do_unsupported_or_skip(result, e.args[0])
+                    self.tearDown()
+                    return
+                except:
+                    result.addError(self, sys.exc_info())
+                    self._runCleanups()
+                    return result
 
+                ok = False
+                try:
+                    testMethod()
+                    ok = True
+                except KnownFailure:
+                    self._do_known_failure(result)
+                except self.failureException:
+                    result.addFailure(self, sys.exc_info())
+                except TestNotApplicable, e:
+                    self._do_not_applicable(result, e)
+                except TestSkipped, e:
+                    if not e.args:
+                        reason = "No reason given."
+                    else:
+                        reason = e.args[0]
+                    self._do_skip(result, reason)
+                except UnavailableFeature, e:
+                    self._do_unsupported_or_skip(result, e.args[0])
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except:
+                    result.addError(self, sys.exc_info())
+
+                try:
+                    self.tearDown()
+                    if not self._bzr_test_tearDown_run:
+                        self.fail(
+                            "test tearDown did not invoke "
+                            "bzrlib.tests.TestCase's tearDown")
+                except KeyboardInterrupt:
+                    self._runCleanups()
+                    raise
+                except:
+                    result.addError(self, sys.exc_info())
+                    self._runCleanups()
                     ok = False
-                    try:
-                        testMethod()
-                        ok = True
-                    except self.failureException:
-                        result.addFailure(self, sys.exc_info())
-                    except TestSkipped, e:
-                        if not e.args:
-                            reason = "No reason given."
-                        else:
-                            reason = e.args[0]
-                        self._do_skip(result, reason)
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except:
-                        result.addError(self, sys.exc_info())
-
-                    try:
-                        self.tearDown()
-                        if not self._bzr_test_tearDown_run:
-                            self.fail(
-                                "test tearDown did not invoke "
-                                "bzrlib.tests.TestCase's tearDown")
-                    except KeyboardInterrupt:
-                        self._runCleanups()
-                        raise
-                    except:
-                        result.addError(self, sys.exc_info())
-                        self._runCleanups()
-                        ok = False
-                    if ok: result.addSuccess(self)
-                finally:
-                    result.stopTest(self)
+                if ok: result.addSuccess(self)
                 return result
-            except TestNotApplicable:
-                # Not moved from the result [yet].
-                self._runCleanups()
-                raise
             except KeyboardInterrupt:
                 self._runCleanups()
                 raise
@@ -1790,6 +1800,9 @@ class TestCase(unittest.TestCase):
 
     def _run_bzr_core(self, args, retcode, encoding, stdin,
             working_dir):
+        # Clear chk_map page cache, because the contents are likely to mask
+        # locking errors.
+        chk_map.clear_cache()
         if encoding is None:
             encoding = osutils.get_user_encoding()
         stdout = StringIOWrapper()
@@ -3237,10 +3250,6 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
-    try:
-        from subunit.test_results import AutoTimingTestResultDecorator
-    except ImportError:
-        AutoTimingTestResultDecorator = lambda x:x
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -3269,7 +3278,7 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = AutoTimingTestResultDecorator(
+                subunit_result = BzrAutoTimingTestResultDecorator(
                     TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
@@ -3377,8 +3386,8 @@ class BZRTransformingResult(ForwardingResult):
     def addFailure(self, test, err):
         known = self._error_looks_like('KnownFailure: ', err)
         if known is not None:
-            self.result._addKnownFailure(test, [KnownFailure,
-                                                KnownFailure(known), None])
+            self.result.addExpectedFailure(test,
+                [KnownFailure, KnownFailure(known), None])
         else:
             self.result.addFailure(test, err)
 
@@ -3397,6 +3406,22 @@ class BZRTransformingResult(ForwardingResult):
                 if lines[-1].startswith(prefix):
                     value = lines[-1][len(prefix):]
         return value
+
+
+try:
+    from subunit.test_results import AutoTimingTestResultDecorator
+    # Expected failure should be seen as a success not a failure Once subunit
+    # provide native support for that, BZRTransformingResult and this class
+    # will become useless.
+    class BzrAutoTimingTestResultDecorator(AutoTimingTestResultDecorator):
+
+        def addExpectedFailure(self, test, err):
+            self._before_event()
+            return self._call_maybe("addExpectedFailure", self._degrade_skip,
+                                    test, err)
+except ImportError:
+    # Let's just define a no-op decorator
+    BzrAutoTimingTestResultDecorator = lambda x:x
 
 
 class ProfileResult(ForwardingResult):
@@ -3722,6 +3747,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_chk_serializer',
         'bzrlib.tests.test_chunk_writer',
         'bzrlib.tests.test_clean_tree',
+        'bzrlib.tests.test_cleanup',
         'bzrlib.tests.test_commands',
         'bzrlib.tests.test_commit',
         'bzrlib.tests.test_commit_merge',
@@ -4378,13 +4404,9 @@ SubUnitFeature = _SubUnitFeature()
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
-    try:
-        from subunit.test_results import AutoTimingTestResultDecorator
-    except ImportError:
-        AutoTimingTestResultDecorator = lambda x:x
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = AutoTimingTestResultDecorator(
+            result = BzrAutoTimingTestResultDecorator(
                 TestProtocolClient(self.stream))
             test.run(result)
             return result
