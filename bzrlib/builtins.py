@@ -3023,6 +3023,15 @@ class cmd_commit(Command):
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
+        if message is not None:
+            if os.path.exists(message):
+                confirmed = ui.ui_factory.get_boolean('The commit'
+                    ' message is a file name: \'%s\'. Is the commit'
+                    ' message right' % message)
+                if not confirmed:
+                    ui.ui_factory.show_message('Commit aborted')
+                    return 0;
+
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
