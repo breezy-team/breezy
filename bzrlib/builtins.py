@@ -655,7 +655,6 @@ class cmd_add(Command):
         if base_tree:
             base_tree.lock_read()
         try:
-            file_list = self._maybe_expand_globs(file_list)
             tree, file_list = tree_files_for_add(file_list)
             added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
@@ -3027,6 +3026,9 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
+            if my_message is not None and '\r' in my_message:
+                my_message = my_message.replace('\r\n', '\n')
+                my_message = my_message.replace('\r', '\n')
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,

@@ -6,12 +6,11 @@ Bazaar Release Notes
    :depth: 1
 
 
-bzr 2.1.0b2 (not released yet)
+bzr 2.1.0b3 (not released yet)
 ##############################
 
 :Codename:
-:2.1.0b2: ???
-
+:2.1.0b3: ???
 
 Compatibility Breaks
 ********************
@@ -22,22 +21,137 @@ New Features
 Bug Fixes
 *********
 
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* On Windows, do glob expansion at the command-line level (as is usually
+  done in bash, etc.) This means that *all* commands get glob expansion
+  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
+  parser, which allows us to know if a given section was quoted. It means
+  you can now do ``bzr ignore "*.py"``.
+  (John Arbash Meinel, #425510, #426410, #194450)
+
+* Sanitize commit messages that come in from the '-m' flag. We translate
+  '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
+  allow those because XML store silently translate it anyway. (The parser
+  auto-translates \r\n => \n in ways that are hard for us to catch.)
+
+* Show correct branch and repository format descriptions in 
+  ``bzr info -v`` on a smart server location.  (Andrew Bennetts, #196080)
+
+* The fix for bug #186920 accidentally broke compatibility with python
+  2.4.  (Vincent Ladeuil, #475585)
+
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+* -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
+  more debugging of VFS access triggers. (Robert Collins)
+
+* KnownFailure is now signalled to ``ExtendedTestResult`` using the same
+  method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
+* ``--parallel=fork`` is now compatible with --subunit.
+  (Robert Collins, Vincent Ladeuil, #419776)
+
+* TestNotApplicable is now handled within the TestCase.run method rather
+  than being looked for within ``ExtendedTestResult.addError``. This
+  provides better handling with other ``TestResult`` objects, degrading to
+  sucess rather than error. (Robert Collins)
+
+* The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
+  removed - it was empty and unused. (Robert Collins)
+
+* UnavailableFeature is now handled within the TestCase.run method rather
+  than being looked for within addError. If the Result object does not
+  have an addNotSupported method, addSkip is attempted instead, and
+  failing that addSuccess. (Robert Collins)
+
+* When a TestResult does not have an addSkip method, skipped tests are now
+  reported as successful tests, rather than as errors. This change is
+  to make it possible to get a clean test run with a less capable
+  TestResult. (Robert Collins)
+
+
+
+bzr 2.0.3 (not released yet)
+############################
+
+:Codename: template
+:2.0.3: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b2
+###########
+
+:Codename: a load off my mind
+:2.1.0b2: 2009-11-02
+
+This is our second feature-filled release since 2.0, pushing us down the
+path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
+
+Key highlights in this release are: improved handling of
+failures-during-cleanup for commit, fixing a long-standing bug with
+``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+behind proxies, and a new StaticTuple datatype, allowing us to reduce
+memory consumption (50%) and garbage collector overhead (40% faster) for
+many operations.
+
+Bug Fixes
+*********
+
 * ``bzr+http`` servers no longer give spurious jail break errors when
   serving branches inside a shared repository.  (Andrew Bennetts, #348308)
-
-* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
 
 * Errors during commit are handled more robustly so that knock-on errors
   are less likely to occur, and will not obscure the original error if
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
-* Fetching from stacked pre-2a repository via a smart server no longer
-  fails intermittently with "second push failed to complete".
-  (Andrew Bennetts, #437626)
+* Launchpad urls can now be resolved from behind proxies.
+  (Gordon Tyler, Vincent Ladeuil, #186920)
 
-* PreviewTree file names are not limited by the encoding of the temp
-  directory's filesystem. (Aaron Bentley, #436794)
+* Reduce the strictness for StaticTuple, instead add a debug flag
+  ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
+  This way, most users won't see failures, but developers can improve
+  internals. (John Arbash Meinel, #471193)
 
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
@@ -106,21 +220,15 @@ Internals
   peak memory for initial copies (~200MB). (John Arbash Meinel)
 
 
-Testing
-*******
+bzr 2.0.2
+#########
 
+:Codename: after the scare
+:2.0.2: 2009-11-02
 
-bzr 2.0.2 (not released yet)
-############################
-
-:Codename:
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
+The second in our "let's keep the stable bugfixes flowing" series. As
+expected this has a few (~9) bugfixes relative to 2.0.1, and no major api
+changes or features.
 
 Bug Fixes
 *********
@@ -157,15 +265,6 @@ Documentation
 
 * Filtered views user documentation upgraded to refer to format 2a
   instead of pre-2.0 formats. (Ian Clatworthy)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b1

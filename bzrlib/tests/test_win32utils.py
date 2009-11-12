@@ -17,7 +17,11 @@
 import os
 import sys
 
-from bzrlib import osutils
+from bzrlib import (
+    osutils,
+    tests,
+    win32utils,
+    )
 from bzrlib.tests import (
     Feature,
     TestCase,
@@ -26,7 +30,6 @@ from bzrlib.tests import (
     UnicodeFilenameFeature,
     )
 from bzrlib.win32utils import glob_expand, get_app_path
-from bzrlib import win32utils
 
 
 # Features
@@ -261,3 +264,95 @@ class TestSetHidden(TestCaseInTempDir):
         os.makedirs(u'\u1234\\.bzr')
         path = osutils.abspath(u'\u1234\\.bzr')
         win32utils.set_file_attr_hidden(path)
+
+
+
+class TestUnicodeShlex(tests.TestCase):
+
+    def assertAsTokens(self, expected, line):
+        s = win32utils.UnicodeShlex(line)
+        self.assertEqual(expected, list(s))
+
+    def test_simple(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar'), (False, u'baz')],
+                            u'foo bar baz')
+
+    def test_ignore_multiple_spaces(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo  bar')
+
+    def test_ignore_leading_space(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'  foo bar')
+
+    def test_ignore_trailing_space(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo bar  ')
+
+    def test_posix_quotations(self):
+        self.assertAsTokens([(True, u'foo bar')], u'"foo bar"')
+        self.assertAsTokens([(False, u"'fo''o"), (False, u"b''ar'")],
+            u"'fo''o b''ar'")
+        self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"')
+        self.assertAsTokens([(True, u"fo'o"), (True, u"b'ar")],
+            u'"fo"\'o b\'"ar"')
+
+    def test_nested_quotations(self):
+        self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
+        self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
+
+    def test_empty_result(self):
+        self.assertAsTokens([], u'')
+        self.assertAsTokens([], u'    ')
+
+    def test_quoted_empty(self):
+        self.assertAsTokens([(True, '')], u'""')
+        self.assertAsTokens([(False, u"''")], u"''")
+
+    def test_unicode_chars(self):
+        self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
+                             u'f\xb5\xee \u1234\u3456')
+
+    def test_newline_in_quoted_section(self):
+        self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
+
+    def test_escape_chars(self):
+        self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
+
+    def test_escape_quote(self):
+        self.assertAsTokens([(True, u'foo"bar')], u'"foo\\"bar"')
+
+    def test_double_escape(self):
+        self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\bar"')
+        self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
+
+
+class Test_CommandLineToArgv(tests.TestCaseInTempDir):
+
+    def assertCommandLine(self, expected, line):
+        # Strictly speaking we should respect parameter order versus glob
+        # expansions, but it's not really worth the effort here
+        self.assertEqual(expected,
+                         sorted(win32utils._command_line_to_argv(line)))
+
+    def test_glob_paths(self):
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/b.c', u'a/c.c'], 'a/*.c')
+        self.build_tree(['b/', 'b/b.c', 'b/d.c', 'b/d.h'])
+        self.assertCommandLine([u'a/b.c', u'b/b.c'], '*/b.c')
+        self.assertCommandLine([u'a/b.c', u'a/c.c', u'b/b.c', u'b/d.c'],
+                               '*/*.c')
+        # Bash style, just pass through the argument if nothing matches
+        self.assertCommandLine([u'*/*.qqq'], '*/*.qqq')
+
+    def test_quoted_globs(self):
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/*.c'], '"a/*.c"')
+        self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
+
+    def test_slashes_changed(self):
+        self.assertCommandLine([u'a/*.c'], '"a\\*.c"')
+        # Expands the glob, but nothing matches
+        self.assertCommandLine([u'a/*.c'], 'a\\*.c')
+        self.assertCommandLine([u'a/foo.c'], 'a\\foo.c')
+
+    def test_no_single_quote_supported(self):
+        self.assertCommandLine(["add", "let's-do-it.txt"],
+            "add let's-do-it.txt")
