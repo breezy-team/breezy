@@ -197,6 +197,11 @@ class GitWorkingTree(workingtree.WorkingTree):
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
+    @property
+    def _matchingbzrdir(self):
+        from bzrlib.plugins.git import LocalGitBzrDirFormat
+        return LocalGitBzrDirFormat()
+
     def get_format_description(self):
         return "Git Working Tree"
 
