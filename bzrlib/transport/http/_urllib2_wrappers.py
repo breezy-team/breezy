@@ -342,7 +342,7 @@ class Request(urllib2.Request):
     def __init__(self, method, url, data=None, headers={},
                  origin_req_host=None, unverifiable=False,
                  connection=None, parent=None,
-                 accepted_errors=None):
+                 accepted_errors=None, existing_auth={}):
         urllib2.Request.__init__(self, url, data, headers,
                                  origin_req_host, unverifiable)
         self.method = method
@@ -357,7 +357,7 @@ class Request(urllib2.Request):
         # (scheme, host, port, realm, user, password, protocol, path).
         # The dict entries are mostly handled by the AuthHandler.
         # Some authentication schemes may add more entries.
-        self.auth = {}
+        self.auth = existing_auth
         self.proxy_auth = {}
         self.proxied_host = None
 
@@ -777,6 +777,7 @@ class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
                            # share the same connection...
                            connection = None,
                            parent = req,
+                           existing_auth = req.auth,
                            )
         else:
             raise urllib2.HTTPError(req.get_full_url(), code, msg, headers, fp)

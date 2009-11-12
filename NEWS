@@ -45,6 +45,9 @@ Bug Fixes
 * The fix for bug #186920 accidentally broke compatibility with python
   2.4.  (Vincent Ladeuil, #475585)
 
+* Fixed bug with redirected URLs over authenticated HTTP.  (Glen Mailer,
+  Neil Martinsen-Burrell, #395714)
+
 
 Improvements
 ************
