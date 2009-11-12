@@ -18,6 +18,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Users can define a shelve editor to provide shelf functionality at a
+  granularity finer than per-patch-hunk. (Aaron Bentley)
+
 Bug Fixes
 *********
 
