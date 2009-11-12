@@ -71,9 +71,9 @@ class GenericCommitHandler(processor.CommitHandler):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
         # cache of texts for this commit, indexed by file-id
-        self.lines_for_commit = {}
+        self.data_for_commit = {}
         #if self.rev_store.expects_rich_root():
-        self.lines_for_commit[inventory.ROOT_ID] = []
+        self.data_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
         parents = self.cache_mgr.track_heads(self.command)
@@ -126,9 +126,13 @@ class GenericCommitHandler(processor.CommitHandler):
             self.cache_mgr.inventories[revision_id] = inv
         return inv
 
+    def _get_data(self, file_id):
+        """Get the data bytes for a file-id."""
+        return self.data_for_commit[file_id]
+
     def _get_lines(self, file_id):
         """Get the lines for a file-id."""
-        return self.lines_for_commit[file_id]
+        return osutils.split_lines(self._get_data(file_id))
 
     def _get_per_file_parents(self, file_id):
         """Get the lines for a file-id."""
@@ -285,20 +289,20 @@ class GenericCommitHandler(processor.CommitHandler):
         ie.revision = self.revision_id
         if kind == 'file':
             ie.executable = is_executable
-            lines = osutils.split_lines(data)
-            ie.text_sha1 = osutils.sha_strings(lines)
-            ie.text_size = sum(map(len, lines))
-            self.lines_for_commit[file_id] = lines
+            # lines = osutils.split_lines(data)
+            ie.text_sha1 = osutils.sha_string(data)
+            ie.text_size = len(data)
+            self.data_for_commit[file_id] = data
         elif kind == 'directory':
             self.directory_entries[path] = ie
             # There are no lines stored for a directory so
             # make sure the cache used by get_lines knows that
-            self.lines_for_commit[file_id] = []
+            self.data_for_commit[file_id] = ''
         elif kind == 'symlink':
             ie.symlink_target = data.encode('utf8')
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
-            self.lines_for_commit[file_id] = []
+            self.data_for_commit[file_id] = ''
         else:
             self.warning("Cannot import items of kind '%s' yet - ignoring '%s'"
                 % (kind, path))
@@ -342,7 +346,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.directory_entries[dirname] = ie
         # There are no lines stored for a directory so
         # make sure the cache used by get_lines knows that
-        self.lines_for_commit[dir_file_id] = []
+        self.data_for_commit[dir_file_id] = ''
 
         # It's possible that a file or symlink with that file-id
         # already exists. If it does, we need to delete it.
@@ -412,7 +416,7 @@ class GenericCommitHandler(processor.CommitHandler):
         kind = ie.kind
         if kind == 'file':
             if newly_changed:
-                content = ''.join(self.lines_for_commit[file_id])
+                content = self.data_for_commit[file_id]
             else:
                 content = self.rev_store.get_file_text(self.parents[0], file_id)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
@@ -448,7 +452,7 @@ class GenericCommitHandler(processor.CommitHandler):
         # that means the loader then needs to know what the "new" text is.
         # We therefore must go back to the revision store to get it.
         lines = self.rev_store.get_file_lines(rev_id, file_id)
-        self.lines_for_commit[file_id] = lines
+        self.data_for_commit[file_id] = ''.join(lines)
 
     def _delete_all_items(self, inv):
         for name, root_item in inv.root.children.iteritems():
@@ -496,7 +500,7 @@ class InventoryCommitHandler(GenericCommitHandler):
         """Save the revision."""
         self.cache_mgr.inventories[self.revision_id] = self.inventory
         self.rev_store.load(self.revision, self.inventory, None,
-            lambda file_id: self._get_lines(file_id),
+            lambda file_id: self._get_data(file_id),
             lambda file_id: self._get_per_file_parents(file_id),
             lambda revision_ids: self._get_inventories(revision_ids))
 
@@ -595,9 +599,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         delta = self._get_final_delta()
         inv = self.rev_store.load_using_delta(self.revision,
             self.basis_inventory, delta, None,
-            lambda file_id: self._get_lines(file_id),
-            lambda file_id: self._get_per_file_parents(file_id),
-            lambda revision_ids: self._get_inventories(revision_ids))
+            self._get_data,
+            self._get_per_file_parents,
+            self._get_inventories)
         self.cache_mgr.inventories[self.revision_id] = inv
         #print "committed %s" % self.revision_id
 

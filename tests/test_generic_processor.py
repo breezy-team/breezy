@@ -1845,10 +1845,10 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
         # |/
         # D     merge 'foo'
         def command_list():
-            committer_a = ['', 'elmer@a.com', time.time(), time.timezone]
-            committer_b = ['', 'elmer@b.com', time.time(), time.timezone]
-            committer_c = ['', 'elmer@c.com', time.time(), time.timezone]
-            committer_d = ['', 'elmer@d.com', time.time(), time.timezone]
+            committer_a = ['', 'a@elmer.com', time.time(), time.timezone]
+            committer_b = ['', 'b@elmer.com', time.time(), time.timezone]
+            committer_c = ['', 'c@elmer.com', time.time(), time.timezone]
+            committer_d = ['', 'd@elmer.com', time.time(), time.timezone]
             def files_one():
                 yield commands.FileModifyCommand('foo', 'file', False,
                         None, "content A\n")
@@ -1864,19 +1864,22 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
                         None, "content A\n")
             yield commands.CommitCommand('head', '3', None,
                 committer_c, "commit 3", ":2", [], files_three)
-            def files_four():
-                if False:
-                    yield None
             yield commands.CommitCommand('head', '4', None,
-                committer_d, "commit 4", ":1", [':3'], files_four)
+                committer_d, "commit 4", ":1", [':3'], lambda: [])
         return command_list
 
     def test_modify_revert(self):
         handler, branch = self.get_handler()
         handler.process(self.file_command_iter())
-        last_rev = branch.last_revision()
-        rtree = branch.repository.revision_tree(last_rev)
-        parent_ids = rtree.get_parent_ids()
-        self.assertEqual(2, len(parent_ids))
-        foo_id = rtree.path2id('foo')
-        self.assertEqual(parent_ids[1], rtree.inventory[foo_id].revision)
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        rev_d = branch.last_revision()
+        rev_a, rev_c = branch.repository.get_parent_map([rev_d])[rev_d]
+        rev_b = branch.repository.get_parent_map([rev_c])[rev_c][0]
+        rtree_a, rtree_b, rtree_c, rtree_d = branch.repository.revision_trees([
+            rev_a, rev_b, rev_c, rev_d])
+        foo_id = rtree_a.path2id('foo')
+        self.assertEqual(rev_a, rtree_a.inventory[foo_id].revision)
+        self.assertEqual(rev_b, rtree_b.inventory[foo_id].revision)
+        self.assertEqual(rev_c, rtree_c.inventory[foo_id].revision)
+        self.assertEqual(rev_c, rtree_d.inventory[foo_id].revision)

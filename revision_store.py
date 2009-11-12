@@ -16,9 +16,93 @@
 
 """An abstraction of a repository providing just the bits importing needs."""
 
+import cStringIO
 
 from bzrlib import errors, inventory, knit, lru_cache, osutils, trace
 from bzrlib import revision as _mod_revision
+
+
+class _TreeShim(object):
+    """Fake a Tree implementation.
+
+    This implements just enough of the tree api to make commit builder happy.
+    """
+
+    def __init__(self, basis_inv, inv_delta, content_provider):
+        self._content_provider = content_provider
+        self._basis_inv = basis_inv
+        self._inv_delta = inv_delta
+        self._new_info_by_id = dict([(file_id, (new_path, ie))
+                                    for _, new_path, file_id, ie in inv_delta])
+
+    def id2path(self, file_id):
+        if file_id in self._new_info_by_id:
+            new_path = self._new_info_by_id[file_id][0]
+            if new_path is None:
+                raise errors.NoSuchId()
+        return self._basis_inv.id2path(file_id)
+
+    def path2id(self, path):
+        if path != '':
+            raise NotImplementedError(_TreeShim.path2id)
+        # TODO: Handle root renames?
+        return self._basis_inv.root.file_id
+
+    def get_file_with_stat(self, file_id, path=None):
+        content = self._content_provider(file_id)
+        sio = cStringIO.StringIO(content)
+        return sio, None
+
+    def get_symlink_target(self, file_id):
+        if file_id in self._new_info_by_id:
+            ie = self._new_info_by_id[file_id][1]
+            return ie.symlink_target
+        return self._basis_inv[file_id].symlink_target
+
+    def get_reference_revision(self, file_id, path=None):
+        raise NotImplementedError(_TreeShim.get_reference_revision)
+
+
+    def _delta_to_iter_changes(self):
+        """Convert the inv_delta into an iter_changes repr."""
+        # iter_changes is:
+        #   (file_id,
+        #    (old_path, new_path),
+        #    content_changed,
+        #    (old_versioned, new_versioned),
+        #    (old_parent_id, new_parent_id),
+        #    (old_name, new_name),
+        #    (old_kind, new_kind),
+        #    (old_exec, new_exec),
+        #   )
+        basis_inv = self._basis_inv
+        for old_path, new_path, file_id, ie in self._inv_delta:
+            try:
+                old_ie = basis_inv[file_id]
+            except errors.NoSuchId:
+                old_ie = None
+                change = (file_id,
+                    (old_path, new_path),
+                    True,
+                    (False, True),
+                    (None, ie.parent_id),
+                    (None, ie.name),
+                    (None, ie.kind),
+                    (None, ie.executable),
+                    )
+            else:
+                content_modified = (ie.text_sha1 != old_ie.text_sha1
+                                    or ie.text_size != old_ie.text_size)
+                change = (file_id,
+                    (old_path, new_path),
+                    content_modified,
+                    (True, True),
+                    (old_ie.parent_id, ie.parent_id),
+                    (old_ie.name, ie.name),
+                    (old_ie.kind, ie.kind),
+                    (old_ie.executable, ie.executable),
+                    )
+            yield change
 
 
 class AbstractRevisionStore(object):
@@ -224,29 +308,34 @@ class AbstractRevisionStore(object):
                 including an empty inventory for the missing revisions
             If None, a default implementation is provided.
         """
-        # Get the non-ghost parents and their inventories
-        if inventories_provider is None:
-            inventories_provider = self._default_inventories_provider
-        present_parents, parent_invs = inventories_provider(rev.parent_ids)
+        # TODO: set revision_id = rev.revision_id
+        builder = self.repo._commit_builder_class(self.repo,
+            parents=rev.parent_ids, config=None, timestamp=rev.timestamp,
+            timezone=rev.timezone, committer=rev.committer,
+            revprops=rev.properties, revision_id=rev.revision_id)
 
-        # Load the inventory
-        try:
-            rev_id = rev.revision_id
-            rev.inventory_sha1, inv = self._add_inventory_by_delta(
-                rev_id, basis_inv, inv_delta, present_parents, parent_invs)
-        except errors.RevisionAlreadyPresent:
+        if rev.parent_ids:
+            basis_rev_id = rev.parent_ids[0]
+        else:
+            basis_rev_id = _mod_revision.NULL_REVISION
+        tree = _TreeShim(basis_inv, inv_delta, text_provider)
+        changes = tree._delta_to_iter_changes()
+        for (file_id, path, fs_hash) in builder.record_iter_changes(
+                tree, basis_rev_id, changes):
+            # So far, we don't *do* anything with the result
             pass
+        builder.finish_inventory()
+        # This is a duplicate of Builder.commit() since we already have the
+        # Revision object, and we *don't* want to call commit_write_group()
+        rev.inv_sha1 = builder.inv_sha1
+        builder.repository.add_revision(builder._new_revision_id, rev,
+            builder.new_inventory, builder._config)
 
-        # Load the texts, signature and revision
-        file_rev_ids_needing_texts = [(id, ie.revision)
-            for _, n, id, ie in inv_delta
-            if n is not None and ie.revision == rev_id]
-        self._load_texts_for_file_rev_ids(file_rev_ids_needing_texts,
-            text_provider, parents_provider)
         if signature is not None:
+            raise AssertionError('signatures not guaranteed yet')
             self.repo.add_signature_text(rev_id, signature)
-        self._add_revision(rev, inv)
-        return inv
+        # self._add_revision(rev, inv)
+        return builder.new_inventory
 
     def _non_root_entries_iter(self, inv, revision_id):
         if hasattr(inv, 'iter_non_root_entries'):
