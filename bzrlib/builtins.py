@@ -3028,7 +3028,12 @@ class cmd_commit(Command):
                 confirmed = ui.ui_factory.get_boolean('The commit'
                     ' message is a file name: \'%s\'. Is the commit'
                     ' message right' % message)
-                if not confirmed:
+                if confirmed is None:
+                    # running non-interactively, maybe launched by a cron task
+                    trace.warning("The commit message is a file name: \'%s\'."
+                        " Maybe the commit message has been"
+                        " forgotten?" % message)
+                elif not confirmed:
                     ui.ui_factory.show_message('Commit aborted')
                     return 0;
 
