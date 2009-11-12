@@ -132,6 +132,10 @@ def changes_from_git_changes(changes, mapping, specific_file=None,
 class InterGitRevisionTrees(tree.InterTree):
     """InterTree that works between two git revision trees."""
 
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+    _test_mutable_trees_to_test_trees = None
+
     @classmethod
     def is_compatible(cls, source, target):
         return (isinstance(source, GitRevisionTree) and 
