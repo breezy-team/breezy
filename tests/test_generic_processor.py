@@ -31,6 +31,22 @@ from bzrlib.plugins.fastimport.processors import (
     )
 
 
+def load_tests(standard_tests, module, loader):
+    """Parameterize tests for all versions of groupcompress."""
+    scenarios = [
+        ('pack-0.92', {'branch_format': 'pack-0.92'}),
+        ('1.9-rich-root', {'branch_format': '1.9-rich-root'}),
+    ]
+    try:
+        from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+        scenarios.append(('2a', {'branch_format': '2a'}))
+    except ImportError:
+        pass
+    suite = loader.suiteClass()
+    result = tests.multiply_tests(standard_tests, scenarios, suite)
+    return result
+
+
 class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
     branch_format = "pack-0.92"
@@ -1816,138 +1832,3 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
     def test_import_symlink(self):
         handler, branch = self.get_handler()
         handler.process(self.get_command_iter('foo', 'symlink', 'bar'))
-
-
-### TODO: Parameterise tests rather than below hack
-
-class TestImportToRichRootModify(TestImportToPackModify):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootModifyTwice(TestImportToPackModifyTwice):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootModifyTricky(TestImportToPackModifyTricky):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDelete(TestImportToPackDelete):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDeleteNew(TestImportToPackDeleteNew):
-    branch_format = "1.9-rich-root"
-    
-class TestImportToRichRootDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDeleteThenAdd(TestImportToPackDeleteThenAdd):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDeleteDirectory(TestImportToPackDeleteDirectory):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDeleteDirectoryThenAddFile(TestImportToPackDeleteDirectoryThenAddFile):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRename(TestImportToPackRename):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRenameNew(TestImportToPackRenameNew):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRenameToDeleted(TestImportToPackRenameToDeleted):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRenameModified(TestImportToPackRenameModified):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRenameThenModify(TestImportToPackRenameThenModify):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootDeleteRenameThenModify(TestImportToPackDeleteRenameThenModify):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootRenameTricky(TestImportToPackRenameTricky):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootCopy(TestImportToPackCopy):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootCopyNew(TestImportToPackCopyNew):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootCopyToDeleted(TestImportToPackCopyToDeleted):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootCopyModified(TestImportToPackCopyModified):
-    branch_format = "1.9-rich-root"
-
-class TestImportToRichRootFileKinds(TestImportToPackFileKinds):
-    branch_format = "1.9-rich-root"
-
-try:
-    from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
-
-    class TestImportToChkModify(TestImportToPackModify):
-        branch_format = "2a"
-
-    class TestImportToChkModifyTwice(TestImportToPackModifyTwice):
-        branch_format = "2a"
-
-    class TestImportToChkModifyTricky(TestImportToPackModifyTricky):
-        branch_format = "2a"
-
-    class TestImportToChkDelete(TestImportToPackDelete):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteNew(TestImportToPackDeleteNew):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteMultiLevel(TestImportToPackDeleteMultiLevel):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteThenAdd(TestImportToPackDeleteThenAdd):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteDirectory(TestImportToPackDeleteDirectory):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteDirectoryThenAddFile(TestImportToPackDeleteDirectoryThenAddFile):
-        branch_format = "2a"
-
-    class TestImportToChkRename(TestImportToPackRename):
-        branch_format = "2a"
-
-    class TestImportToChkRenameNew(TestImportToPackRenameNew):
-        branch_format = "2a"
-
-    class TestImportToChkRenameToDeleted(TestImportToPackRenameToDeleted):
-        branch_format = "2a"
-
-    class TestImportToChkRenameModified(TestImportToPackRenameModified):
-        branch_format = "2a"
-
-    class TestImportToChkRenameThenModify(TestImportToPackRenameThenModify):
-        branch_format = "2a"
-
-    class TestImportToChkDeleteRenameThenModify(TestImportToPackDeleteRenameThenModify):
-        branch_format = "2a"
-
-    class TestImportToChkRenameTricky(TestImportToPackRenameTricky):
-        branch_format = "2a"
-
-    class TestImportToChkCopy(TestImportToPackCopy):
-        branch_format = "2a"
-
-    class TestImportToChkCopyNew(TestImportToPackCopyNew):
-        branch_format = "2a"
-
-    class TestImportToChkCopyToDeleted(TestImportToPackCopyToDeleted):
-        branch_format = "2a"
-
-    class TestImportToChkCopyModified(TestImportToPackCopyModified):
-        branch_format = "2a"
-
-    class TestImportToChkFileKinds(TestImportToPackFileKinds):
-        branch_format = "2a"
-
-except ImportError:
-    pass
