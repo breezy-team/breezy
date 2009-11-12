@@ -58,6 +58,10 @@ Internals
 Testing
 *******
 
+* ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
+  This permits features in testtools such as getUniqueInteger and
+  getUniqueString to be used. (Robert Collins)
+
 * -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
   more debugging of VFS access triggers. (Robert Collins)
 

@@ -49,6 +49,7 @@ import time
 import unittest
 import warnings
 
+import testtools
 
 from bzrlib import (
     branchbuilder,
@@ -758,7 +759,7 @@ class TestUIFactory(TextUIFactory):
         return NullProgressView()
 
 
-class TestCase(unittest.TestCase):
+class TestCase(testtools.TestCase):
     """Base class for bzr unit tests.
 
     Tests that need access to disk resources should subclass

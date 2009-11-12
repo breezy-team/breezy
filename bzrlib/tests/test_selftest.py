@@ -2931,14 +2931,12 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def test_load_tests(self):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
         loader = self._create_loader(test_list)
-
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals(test_list, _test_ids(suite))
 
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
-
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))
 
