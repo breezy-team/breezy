@@ -242,5 +242,9 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
 
+    def get_foreign_tests_repository_factory(self):
+        from bzrlib.plugins.git.tests.test_repository import ForeignTestsRepositoryFactory
+        return ForeignTestsRepositoryFactory()
+
     def network_name(self):
         return "git"

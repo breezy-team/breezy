@@ -226,3 +226,9 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
                 self.import_rev(revid))
         self.assertEquals("2caa8094a5b794961cd9bf582e3e2bb090db0b14", 
                 self.import_rev(revid))
+
+
+class ForeignTestsRepositoryFactory(object):
+
+    def make_repository(self, transport):
+        return dir.LocalGitBzrDirFormat().initialize_on_transport(transport).open_repository()
