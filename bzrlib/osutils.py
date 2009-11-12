@@ -1946,6 +1946,7 @@ else:
 
 
 _cached_local_concurrency = None
+_local_concurrency_override = None
 
 def local_concurrency(use_cache=True):
     """Return how many processes can be run concurrently.
@@ -1954,16 +1955,17 @@ def local_concurrency(use_cache=True):
     anything goes wrong.
     """
     global _cached_local_concurrency
+
+    if _local_concurrency_override is not None:
+        return _local_concurrency_override
+
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    if 'BZR_CONCURRENCY' in os.environ:
-        concurrency = os.environ['BZR_CONCURRENCY']
-    else:
-        try:
-            concurrency = _local_concurrency()
-        except (OSError, IOError):
-            concurrency = None
+    try:
+        concurrency = _local_concurrency()
+    except (OSError, IOError):
+        concurrency = None
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

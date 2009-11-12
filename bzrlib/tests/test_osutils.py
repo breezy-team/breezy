@@ -1835,17 +1835,25 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
+    def setUp(self):
+        super(TestConcurrency, self).setUp()
+        self.saved_concurrency_override = osutils._local_concurrency_override
+        self.addCleanup(self.restore_concurrency_override)
+
+    def restore_concurrency_override(self):
+        osutils._local_concurrency_override = self.saved_concurrency_override
+
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
 
-    def test_local_concurrency_environment_variable(self):
-        os.environ['BZR_CONCURRENCY'] = '2'
+    def test_local_concurrency_option(self):
+        osutils._local_concurrency_override = 2
         self.assertEqual(2, osutils.local_concurrency(False))
-        os.environ['BZR_CONCURRENCY'] = '3'
+        osutils._local_concurrency_override = 3
         self.assertEqual(3, osutils.local_concurrency(False))
-        os.environ['BZR_CONCURRENCY'] = 'foo'
-        self.assertEqual(1, osutils.local_concurrency(False))
+        #os.environ['BZR_CONCURRENCY'] = 'foo'
+        #self.assertEqual(1, osutils.local_concurrency(False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):

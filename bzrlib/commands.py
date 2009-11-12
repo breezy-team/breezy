@@ -945,7 +945,7 @@ def run_bzr(argv):
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
                 opt_no_aliases = False
-    opt_lsprof_file = opt_coverage_dir = None
+    opt_lsprof_file = opt_coverage_dir = opt_concurrency = None
 
     # --no-plugins is handled specially at a very early stage. We need
     # to load plugins before doing other command parsing so that they
@@ -969,6 +969,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--concurrency':
+            opt_concurrency = int(argv[i + 1])
+            i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
@@ -977,6 +980,9 @@ def run_bzr(argv):
         else:
             argv_copy.append(a)
         i += 1
+
+    if opt_concurrency is not None:
+        osutils._force_local_concurrency = opt_concurrency
 
     debug.set_debug_flags_from_config()
 
