@@ -970,7 +970,14 @@ def run_bzr(argv):
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
-            opt_concurrency = int(argv[i + 1])
+            try:
+                opt_concurrency = int(argv[i + 1])
+            except ValueError:
+                raise errors.BzrCommandError(
+                    "--concurrency must be a number")
+            if opt_concurrency < 0:
+                raise errors.BzrCommandError(
+                    "--concurrency cannot be negative")
             i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
