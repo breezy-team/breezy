@@ -3034,8 +3034,8 @@ class cmd_commit(Command):
                         " Maybe the commit message has been"
                         " forgotten?" % message)
                 elif not confirmed:
-                    ui.ui_factory.show_message('Commit aborted')
-                    return 0;
+                    ui.ui_factory.show_message("Commit cancelled")
+                    return 1;
 
         def get_message(commit_obj):
             """Callback to get commit message"""
