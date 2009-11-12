@@ -1832,3 +1832,51 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
     def test_import_symlink(self):
         handler, branch = self.get_handler()
         handler.process(self.get_command_iter('foo', 'symlink', 'bar'))
+
+
+class TestModifyRevertInBranch(TestCaseForGenericProcessor):
+
+    def file_command_iter(self):
+        # A     add 'foo'
+        # |\
+        # | B   modify 'foo'
+        # | |
+        # | C   revert 'foo' back to A
+        # |/
+        # D     merge 'foo'
+        def command_list():
+            committer_a = ['', 'elmer@a.com', time.time(), time.timezone]
+            committer_b = ['', 'elmer@b.com', time.time(), time.timezone]
+            committer_c = ['', 'elmer@c.com', time.time(), time.timezone]
+            committer_d = ['', 'elmer@d.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand('foo', 'file', False,
+                        None, "content A\n")
+            yield commands.CommitCommand('head', '1', None,
+                committer_a, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileModifyCommand('foo', 'file', False,
+                        None, "content B\n")
+            yield commands.CommitCommand('head', '2', None,
+                committer_b, "commit 2", ":1", [], files_two)
+            def files_three():
+                yield commands.FileModifyCommand('foo', 'file', False,
+                        None, "content A\n")
+            yield commands.CommitCommand('head', '3', None,
+                committer_c, "commit 3", ":2", [], files_three)
+            def files_four():
+                if False:
+                    yield None
+            yield commands.CommitCommand('head', '4', None,
+                committer_d, "commit 4", ":1", [':3'], files_four)
+        return command_list
+
+    def test_modify_revert(self):
+        handler, branch = self.get_handler()
+        handler.process(self.file_command_iter())
+        last_rev = branch.last_revision()
+        rtree = branch.repository.revision_tree(last_rev)
+        parent_ids = rtree.get_parent_ids()
+        self.assertEqual(2, len(parent_ids))
+        foo_id = rtree.path2id('foo')
+        self.assertEqual(parent_ids[1], rtree.inventory[foo_id].revision)
