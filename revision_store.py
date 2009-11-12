@@ -325,6 +325,13 @@ class AbstractRevisionStore(object):
             # So far, we don't *do* anything with the result
             pass
         builder.finish_inventory()
+        # TODO: This is working around a bug in the bzrlib code base.
+        # 'builder.finish_inventory()' ends up doing:
+        # self.inv_sha1 = self.repository.add_inventory_by_delta(...)
+        # However, add_inventory_by_delta returns (sha1, inv)
+        # And we *want* to keep a handle on both of those objects
+        if isinstance(builder.inv_sha1, tuple):
+            builder.inv_sha1, builder.new_inventory = builder.inv_sha1
         # This is a duplicate of Builder.commit() since we already have the
         # Revision object, and we *don't* want to call commit_write_group()
         rev.inv_sha1 = builder.inv_sha1
