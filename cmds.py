@@ -729,7 +729,7 @@ class cmd_import_dsc(Command):
                         raise BzrCommandError("Unable to find the tag for "
                                 "the previous upstream version, %s, in the "
                                 "branch: %s" % (last_version,
-                                    db.upstream_tag_name(last_version)))
+                                    db.upstream_tag_name(str(last_version))))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version)
                     db.extract_upstream_tree(upstream_tip, tempdir)
