@@ -3026,9 +3026,12 @@ class cmd_commit(Command):
 
         if message is not None:
             if os.path.exists(message):
-                confirmed = ui.ui_factory.get_boolean('The commit'
-                    ' message is a file name: \'%s\'. Is the commit'
-                    ' message right' % message)
+                ui.ui_factory.show_warning("The commit message is a file"
+                    " name \"%s\"." % message)
+                ui.ui_factory.show_message("(use --file \"%s\" to take commit"
+                    " message from that file)" % message)
+                confirmed = ui.ui_factory.get_boolean("Do you want to commit"
+                    " with this message")
                 if confirmed is None:
                     # running non-interactively, maybe launched by a cron task
                     trace.warning("The commit message is a file name: \'%s\'."
