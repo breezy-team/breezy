@@ -18,13 +18,13 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-import commands
 import os
 
 from debian_bundle import deb822
 
 from bzrlib.trace import mutter
 
+from bzrlib.plugins.builddeb import commands
 from bzrlib.plugins.builddeb.errors import DebianError, MissingChanges
 
 class DebianChanges(deb822.Changes):
