@@ -42,7 +42,8 @@ class _Cleanup(object):
     def finalize(self):
         if self.disk_blobs is not None:
             for info in self.disk_blobs.itervalues():
-                info[-1].close()
+                if info[-1] is not None:
+                    os.unlink(info[-1])
             self.disk_blobs = None
         if self.small_blobs is not None:
             self.small_blobs.close()
@@ -53,8 +54,8 @@ class _Cleanup(object):
 
 class CacheManager(object):
     
-    _small_blob_threshold = 100*1024
-    _sticky_cache_size = 200*1024*1024
+    _small_blob_threshold = 75*1024
+    _sticky_cache_size = 300*1024*1024
     _sticky_flushed_size = 100*1024*1024
 
     def __init__(self, info=None, verbose=False, inventory_cache_size=10):
@@ -74,9 +75,14 @@ class CacheManager(object):
         # if we overflow our memory cache, then we will dump large blobs to
         # disk in this directory
         self._tempdir = None
-        # id => TemporaryFile
+        # id => (offset, n_bytes, fname)
+        #   if fname is None, then the content is stored in the small file
         self._disk_blobs = {}
         self._cleanup = _Cleanup(self._disk_blobs)
+        # atexit.register(self._cleanup.finalize)
+        # The main problem is that it won't let cleanup go away 'normally', so
+        # we really need a weakref callback...
+        # Perhaps just registering the shutil.rmtree?
 
         # revision-id -> Inventory cache
         # these are large and we probably don't need too many as
@@ -154,12 +160,13 @@ class CacheManager(object):
     def _flush_blobs_to_disk(self):
         blobs = self._sticky_blobs.keys()
         sticky_blobs = self._sticky_blobs
+        total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k:len(sticky_blobs[k]))
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp(prefix='bzr_fastimport_blobs-')
             self._cleanup.tempdir = self._tempdir
             self._cleanup.small_blobs = tempfile.TemporaryFile(
-                prefix='small-blobs-')
+                prefix='small-blobs-', dir=self._tempdir)
         count = 0
         bytes = 0
         n_small_bytes = 0
@@ -171,17 +178,19 @@ class CacheManager(object):
             if n_bytes < self._small_blob_threshold:
                 f = self._cleanup.small_blobs
                 f.seek(0, os.SEEK_END)
-                self._disk_blobs[id] = (True, f.tell(), n_bytes, f)
+                self._disk_blobs[id] = (f.tell(), n_bytes, None)
+                f.write(blob)
                 n_small_bytes += n_bytes
             else:
-                f = tempfile.TemporaryFile(prefix='blob-', dir=self._tempdir)
-                self._disk_blobs[id] = (False, 0, n_bytes, f)
-            f.write(blob)
+                fd, name = tempfile.mkstemp(prefix='blob-', dir=self._tempdir)
+                os.write(fd, blob)
+                os.close(fd)
+                self._disk_blobs[id] = (0, n_bytes, name)
             bytes += n_bytes
             del blob
             count += 1
-        trace.note('flushed %d blobs w/ %.1fMB (%.1fMB small) to disk'
-                   % (count, bytes / 1024. / 1024,
+        trace.note('flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk'
+                   % (count, total_blobs, bytes / 1024. / 1024,
                       n_small_bytes / 1024. / 1024))
         
 
@@ -199,33 +208,43 @@ class CacheManager(object):
         else:
             self._blobs[id] = data
 
-    def _decref(self, id, cache, f):
+    def _decref(self, id, cache, fn):
         if not self._blob_ref_counts:
-            return
+            return False
         count = self._blob_ref_counts.get(id, None)
         if count is not None:
             count -= 1
             if count <= 0:
                 del cache[id]
-                if f is not None:
-                    f.close()
+                if fn is not None:
+                    os.unlink(fn)
                 del self._blob_ref_counts[id]
+                return True
             else:
                 self._blob_ref_counts[id] = count
+        return False
 
     def fetch_blob(self, id):
         """Fetch a blob of data."""
         if id in self._blobs:
             return self._blobs.pop(id)
         if id in self._disk_blobs:
-            (is_small, offset, n_bytes, f) = self._disk_blobs[id]
-            f.seek(offset)
-            content = f.read(n_bytes)
-            self._decref(id, self._disk_blobs, f)
+            (offset, n_bytes, fn) = self._disk_blobs[id]
+            if fn is None:
+                f = self._cleanup.small_blobs
+                f.seek(offset)
+                content = f.read(n_bytes)
+            else:
+                fp = open(fn, 'rb')
+                try:
+                    content = fp.read()
+                finally:
+                    fp.close()
+            self._decref(id, self._disk_blobs, fn)
             return content
         content = self._sticky_blobs[id]
-        self._sticky_memory_bytes -= len(content)
-        self._decref(id, self._sticky_blobs, None)
+        if self._decref(id, self._sticky_blobs, None):
+            self._sticky_memory_bytes -= len(content)
         return content
 
     def track_heads(self, cmd):
