@@ -206,7 +206,9 @@ class CommitBuilder(object):
             # an inventory delta was accumulated without creating a new
             # inventory.
             basis_id = self.basis_delta_revision
-            self.inv_sha1 = self.repository.add_inventory_by_delta(
+            # TODO: Broken
+            (self.inv_sha1,
+             self.new_inventory) = self.repository.add_inventory_by_delta(
                 basis_id, self._basis_delta, self._new_revision_id,
                 self.parents)
         else:
