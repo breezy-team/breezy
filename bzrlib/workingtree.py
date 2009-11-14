@@ -65,7 +65,6 @@ from bzrlib import (
     merge,
     revision as _mod_revision,
     revisiontree,
-    textui,
     trace,
     transform,
     ui,
