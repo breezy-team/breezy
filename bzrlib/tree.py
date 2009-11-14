@@ -954,8 +954,6 @@ class InterTree(InterObject):
             a PathsNotVersionedError will be thrown.
         :param want_unversioned: Scan for unversioned paths.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)
