@@ -1927,6 +1927,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._set_inventory(result, dirty=False)
         return result
 
+    def _show_removed_file(self, state, kind, name, to_file):
+        if kind == 'directory':
+            # use this even on windows?
+            kind_ch = '/'
+        elif kind == 'symlink':
+            kind_ch = '->'
+        elif kind == 'file':
+            kind_ch = ''
+        else:
+            raise ValueError(kind)
+        to_file.write(state + '       ' + name + kind_ch + '\n')
+
     @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
@@ -1944,6 +1956,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         new_files=set()
         unknown_nested_files=set()
+        if to_file is None:
+            to_file = sys.stdout
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2019,8 +2033,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, self.kind(fid), f,
-                                       to_file=to_file)
+                    # XXX: Really should be a more abstract reporter interface
+                    self._show_removed_file(new_status, self.kind(fid), f,
+                        to_file)
                 # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)

@@ -19,22 +19,3 @@
 import sys
 
 
-def show_status(state, kind, name, to_file=None):
-    if kind == 'directory':
-        # use this even on windows?
-        kind_ch = '/'
-    elif kind == 'symlink':
-        kind_ch = '->'
-    elif kind == 'file':
-        kind_ch = ''
-    else:
-        raise ValueError(kind)
-
-    if len(state) != 1:
-        raise ValueError(state)
-
-    if to_file is None:
-        to_file = sys.stdout
-
-    to_file.write(state + '       ' + name + kind_ch + '\n')
-

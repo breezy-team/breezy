@@ -49,6 +49,8 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
+
 Internals
 *********
 
