@@ -1927,18 +1927,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._set_inventory(result, dirty=False)
         return result
 
-    def _show_removed_file(self, state, kind, name, to_file):
-        if kind == 'directory':
-            # use this even on windows?
-            kind_ch = '/'
-        elif kind == 'symlink':
-            kind_ch = '->'
-        elif kind == 'file':
-            kind_ch = ''
-        else:
-            raise ValueError(kind)
-        to_file.write(state + '       ' + name + kind_ch + '\n')
-
     @needs_tree_write_lock
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
@@ -2034,8 +2022,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     else:
                         new_status = '?'
                     # XXX: Really should be a more abstract reporter interface
-                    self._show_removed_file(new_status, self.kind(fid), f,
-                        to_file)
+                    kind_ch = osutils.kind_marker(self.kind(fid))
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)
