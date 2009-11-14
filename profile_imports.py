@@ -96,8 +96,9 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals, locals, fromlist):
+def timed_import(name, globals, locals, fromlist, level=None):
     """Wrap around standard importer to log import time"""
+    # level is only passed by python2.6
 
     scope_name = globals.get('__name__', None)
     if scope_name is None:
