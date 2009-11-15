@@ -50,7 +50,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # show path to python interpreter
     # (bzr.exe use python interpreter from pythonXY.dll
     # but sys.executable point to bzr.exe itself)
-    if not hasattr(sys, 'frozen'):  # check for bzr.exe
+    if not getattr(sys, 'frozen', False):  # check for bzr.exe
         # python executable
         to_file.write(sys.executable + ' ')
     else:
