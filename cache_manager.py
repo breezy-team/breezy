@@ -16,10 +16,12 @@
 
 """A manager of caches."""
 
+import atexit
 import os
 import shutil
 import tempfile
 import time
+import weakref
 
 from bzrlib import lru_cache, trace
 from bzrlib.plugins.fastimport import helpers
@@ -54,7 +56,7 @@ class _Cleanup(object):
 
 class CacheManager(object):
     
-    _small_blob_threshold = 75*1024
+    _small_blob_threshold = 25*1024
     _sticky_cache_size = 300*1024*1024
     _sticky_flushed_size = 100*1024*1024
 
@@ -79,10 +81,6 @@ class CacheManager(object):
         #   if fname is None, then the content is stored in the small file
         self._disk_blobs = {}
         self._cleanup = _Cleanup(self._disk_blobs)
-        # atexit.register(self._cleanup.finalize)
-        # The main problem is that it won't let cleanup go away 'normally', so
-        # we really need a weakref callback...
-        # Perhaps just registering the shutil.rmtree?
 
         # revision-id -> Inventory cache
         # these are large and we probably don't need too many as
@@ -163,10 +161,22 @@ class CacheManager(object):
         total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k:len(sticky_blobs[k]))
         if self._tempdir is None:
-            self._tempdir = tempfile.mkdtemp(prefix='bzr_fastimport_blobs-')
+            tempdir = tempfile.mkdtemp(prefix='bzr_fastimport_blobs-')
+            self._tempdir = tempdir
             self._cleanup.tempdir = self._tempdir
             self._cleanup.small_blobs = tempfile.TemporaryFile(
                 prefix='small-blobs-', dir=self._tempdir)
+            small_blob_ref = weakref.ref(self._cleanup.small_blobs)
+            # Even though we add it to _Cleanup it seems that the object can be
+            # destroyed 'too late' for cleanup to actually occur. Probably a
+            # combination of bzr's "die directly, don't clean up" and how
+            # exceptions close the running stack.
+            def exit_cleanup():
+                small_blob = small_blob_ref()
+                if small_blob is not None:
+                    small_blob.close()
+                shutil.rmtree(tempdir, ignore_errors=True)
+            atexit.register(exit_cleanup)
         count = 0
         bytes = 0
         n_small_bytes = 0
