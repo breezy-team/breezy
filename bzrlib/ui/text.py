@@ -365,3 +365,25 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+
+class TextUIOutputStream(object):
+    """Decorates an output stream so that the terminal is cleared before writing.
+
+    This is supposed to ensure that the progress bar does not conflict with bulk
+    text output.
+    """
+    # XXX: this does not handle the case of writing part of a line, then doing
+    # progress bar output: the progress bar will probably write over it.
+    # one option is just to buffer that text until we have a full line;
+    # another is to save and restore it
+
+    # XXX: might need to wrap more methods
+
+    def __init__(self, ui_factory, wrapped_stream):
+        self.ui_factory = ui_factory
+        self.wrapped_stream = wrapped_stream
+
+    def write(self, to_write):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.write(to_write)

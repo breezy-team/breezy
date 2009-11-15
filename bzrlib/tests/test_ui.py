@@ -50,6 +50,7 @@ from bzrlib.ui.text import (
     NullProgressView,
     TextProgressView,
     TextUIFactory,
+    TextUIOutputStream,
     )
 
 
@@ -251,6 +252,29 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
+
+
+class TestTextUIOutputStream(TestCase):
+    """Tests for output stream that synchronizes with progress bar."""
+
+    def test_output_clears_terminal(self):
+        stdout = StringIO()
+        stderr = StringIO()
+        clear_calls = []
+
+        uif = TextUIFactory(None, stdout, stderr)
+        uif.clear_term = lambda: clear_calls.append('clear')
+
+        stream = TextUIOutputStream(uif, uif.stdout)
+        stream.write("Hello world!\n")
+        stream.write("there's more...\n")
+        
+        self.assertEqual(stdout.getvalue(),
+            "Hello world!\n"
+            "there's more...\n")
+        self.assertEqual(['clear', 'clear'],
+            clear_calls)
+
 
 
 class UITests(tests.TestCase):
