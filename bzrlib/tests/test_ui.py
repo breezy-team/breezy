@@ -277,6 +277,7 @@ class TestTextUIOutputStream(TestCase):
         self.assertEqual(['clear', 'clear', 'clear'],
             clear_calls)
 
+        stream.flush()
 
 
 class UITests(tests.TestCase):
