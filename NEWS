@@ -8,7 +8,7 @@ Bazaar Release Notes
 bzr 2.1.0b4 (not released yet)
 ##############################
 
-:Codename: san franscisco airport
+:Codename: san francisco airport
 :2.1.0b4: ???
 
 Compatibility Breaks
@@ -19,6 +19,13 @@ New Features
 
 Bug Fixes
 *********
+* After renaming a file, the dirstate could accidentally reference
+  ``source\\path`` rather than ``source/path`` on Windows. This might be a
+  source of some dirstate-related failures. (John Arbash Meinel)
+
+* Lots of bugfixes for the test suite on Windows. We should once again
+  have a test suite with no failures on Windows. (Once all the patches
+  have landed, remove this line.) (John Arbash Meinel)
 
 Improvements
 ************

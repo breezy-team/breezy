@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    urlutils,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -278,23 +279,26 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         (optionally decorated with 'readonly+').  BzrServerFactory can
         determine the original --directory from that transport.
         """
+        # URLs always include the trailing slash, and get_base_path returns it
+        base_dir = osutils.abspath('/a/b/c') + '/'
+        base_url = urlutils.local_path_to_url(base_dir) + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
         def capture_transport(transport, host, port, inet):
             self.bzr_serve_transport = transport
         cmd = builtins.cmd_serve()
         # Read-only
-        cmd.run(directory='/a/b/c', protocol=capture_transport)
+        cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            'readonly+file:///a/b/c/', self.bzr_serve_transport.base)
+            'readonly+%s' % base_url, self.bzr_serve_transport.base)
         self.assertEqual(
-            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+            base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
-        cmd.run(directory='/a/b/c', protocol=capture_transport,
+        cmd.run(directory=base_dir, protocol=capture_transport,
             allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual('file:///a/b/c/', self.bzr_serve_transport.base)
-        self.assertEqual(
-            u'/a/b/c/', server_maker.get_base_path(self.bzr_serve_transport))
+        self.assertEqual(base_url, self.bzr_serve_transport.base)
+        self.assertEqual(base_dir,
+            server_maker.get_base_path(self.bzr_serve_transport))
 

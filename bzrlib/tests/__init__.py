@@ -4321,7 +4321,9 @@ class _BreakinFeature(Feature):
             # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
-            if not have_ctypes:
+            try:
+                import ctypes
+            except OSError:
                 return False
         return True
 
