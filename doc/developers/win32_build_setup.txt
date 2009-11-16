@@ -49,7 +49,7 @@ Install Packages
    Note that for Amazon EC2, all of these were installed int
 
 3) Configure 'distutils' for the compiler that you will be using. For python
-   2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
+   2.4 and 2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
    
    Edit ``D:\Python25\Lib\disutils\distutils.cfg`` (you have to create the
    file). You want to add a section like::
@@ -79,13 +79,20 @@ Install Packages
       open up a ``cmd.exe`` shell (*not* a cygwin shell) and do::
 
         cd C:\Python25
-        python.exe Scripts\easy_install-script.py PACKAGE
+        python.exe Scripts\easy_install-script.py -Z -O1 PACKAGE
+
+      The '-Z' tells it to install as a regular directory. This generally works
+      better with py2exe.
 
    b) pywin32 http://sourceforge.net/projects/pywin32/files/
    c) easy_install paramiko
       This will also bring in PyCrypto and compile it, so it is important to
       have configured step (3) correctly.
    d) easy_install Pyrex    (or Cython)
+      Note, you should probably install pyrex for all versions of python. All
+      of them need to run 'setup.py bdist_wininst' and so it is good to have it
+      build automatically, rather than setting up an explicit build order based
+      on which one has pyrex.
    e) easy_install cogapp
    f) install py2exe (easy_install failed)
       http://sourceforge.net/projects/py2exe/files/
@@ -126,6 +133,20 @@ Install Packages
 
 7) Install INNOSetup from:
    http://www.jrsoftware.org/isdl.php
+
+8) Fix distutils for the specific version of gcc. Distutils in python2.4.4 has
+   a bug where it assumes version strings have only 3 digits. The fix is to
+   just change one '?' in the regex into a '*'::
+
+        --- version.py	2009-11-05 14:41:47.497212900 -0800
+        +++ version.py	2009-11-05 14:39:57.684712900 -0800
+        @@ -97,7 +97,7 @@
+             in the distutils documentation.
+             """
+
+        -    version_re = re.compile(r'^(\d+) \. (\d+) (\. (\d+))? ([ab](\d+))?$',
+        +    version_re = re.compile(r'^(\d+) \. (\d+) (\. (\d+))* ([ab](\d+))?$',
+                                     re.VERBOSE)
 
 .. 
    vim: ft=rst tw=79 et
