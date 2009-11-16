@@ -134,14 +134,16 @@ class UIFactory(object):
         version of stdout, but in a GUI it might be appropriate to send it to a 
         window displaying the text.
      
-        :param encoding: Unicode encoding for output; default is the user encoding.
+        :param encoding: Unicode encoding for output; default is the 
+            terminal encoding, which may be different from the user encoding.
+            (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
             replace/strict/escape/exact.  Default is replace.
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            encoding = osutils.get_user_encoding()
+            encoding = osutils.get_terminal_encoding()
         if encoding_type is None:
             encoding_type = 'replace'
         # For whatever reason codecs.getwriter() does not advertise its encoding
