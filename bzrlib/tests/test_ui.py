@@ -268,11 +268,13 @@ class TestTextUIOutputStream(TestCase):
         stream = TextUIOutputStream(uif, uif.stdout)
         stream.write("Hello world!\n")
         stream.write("there's more...\n")
+        stream.writelines(["1\n", "2\n", "3\n"])
         
         self.assertEqual(stdout.getvalue(),
             "Hello world!\n"
-            "there's more...\n")
-        self.assertEqual(['clear', 'clear'],
+            "there's more...\n"
+            "1\n2\n3\n")
+        self.assertEqual(['clear', 'clear', 'clear'],
             clear_calls)
 
 

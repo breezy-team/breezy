@@ -393,3 +393,7 @@ class TextUIOutputStream(object):
     def write(self, to_write):
         self.ui_factory.clear_term()
         self.wrapped_stream.write(to_write)
+
+    def writelines(self, lines):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.writelines(lines)
