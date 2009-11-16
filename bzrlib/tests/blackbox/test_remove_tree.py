@@ -43,6 +43,12 @@ class TestRemoveTree(ExternalBase):
         self.run_bzr('remove-tree branch1')
         self.failIfExists('branch1/foo')
 
+    def test_remove_tree_multiple_branch_explicit(self):
+        self.tree.bzrdir.sprout('branch2')
+        self.run_bzr('remove-tree branch1 branch2')
+        self.failIfExists('branch1/foo')
+        self.failIfExists('branch2/foo')
+
     def test_remove_tree_sprouted_branch(self):
         self.tree.bzrdir.sprout('branch2')
         self.failUnlessExists('branch2/foo')

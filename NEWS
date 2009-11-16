@@ -49,6 +49,9 @@ Bug Fixes
 Improvements
 ************
 
+* ``bzr remove-tree`` can now remove multiple working trees.
+  (Jared Hance, Andrew Bennetts, #253137)
+
 Documentation
 *************
 

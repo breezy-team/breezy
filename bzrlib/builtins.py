@@ -454,7 +454,6 @@ class cmd_remove_tree(Command):
         ]
 
     def run(self, location_list, force=False):
-
         if not location_list:
             location_list=['.']
 
@@ -472,13 +471,13 @@ class cmd_remove_tree(Command):
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
 
-                working_path = working.bzrdir.root_transport.base
-                branch_path = working.branch.bzrdir.root_transport.base
-                if working_path != branch_path:
-                    raise errors.BzrCommandError("You cannot remove the working tree"
-                                                 " from a lightweight checkout")
+            working_path = working.bzrdir.root_transport.base
+            branch_path = working.branch.bzrdir.root_transport.base
+            if working_path != branch_path:
+                raise errors.BzrCommandError("You cannot remove the working tree"
+                                             " from a lightweight checkout")
 
-                d.destroy_workingtree()
+            d.destroy_workingtree()
 
 
 class cmd_revno(Command):
