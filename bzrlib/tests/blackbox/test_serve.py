@@ -30,6 +30,7 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    urlutils,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
@@ -280,6 +281,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         """
         # URLs always include the trailing slash, and get_base_path returns it
         base_dir = osutils.abspath('/a/b/c') + '/'
+        base_url = urlutils.local_path_to_url(base_dir) + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
         def capture_transport(transport, host, port, inet):
@@ -289,14 +291,14 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         cmd.run(directory=base_dir, protocol=capture_transport)
         server_maker = BzrServerFactory()
         self.assertEqual(
-            'readonly+file:///%s' % base_dir, self.bzr_serve_transport.base)
+            'readonly+%s' % base_url, self.bzr_serve_transport.base)
         self.assertEqual(
             base_dir, server_maker.get_base_path(self.bzr_serve_transport))
         # Read-write
         cmd.run(directory=base_dir, protocol=capture_transport,
             allow_writes=True)
         server_maker = BzrServerFactory()
-        self.assertEqual('file:///%s' % base_dir, self.bzr_serve_transport.base)
+        self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
             server_maker.get_base_path(self.bzr_serve_transport))
 
