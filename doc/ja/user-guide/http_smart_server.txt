@@ -1,0 +1,221 @@
+FastCGIでBazaarを提供する
+==========================
+
+このドキュメントでは、Apache 2.0とFastCGIもしくはmod_pythonを利用して
+Bazaar HTTPスマートサーバーをセットアップする1つの方法を説明します。
+
+スマートサーバーに関する詳細な情報とそれを設定する他の方法に関しては、
+メインのスマートサーバーのドキュメントを参照してください。
+
+例
+---
+
+プレーンなHTTPで `/srv/example.com/www/code` を `http://example.com/code/...` として
+すでに公開しているとします。これはbzrのブランチと `/srv/example.com/www/code/branch-one`
+と `/srv/example.com/www/code/my-repo/branch-two` のようなディレクトリを含みます。
+既存のHTTP形式のアクセス権限に加えてリードオンリーのスマートサーバーのアクセス権限を
+これらのディレクトリに提供したい場合を考えます。
+
+Apache 2.0を設定する
+--------------------
+
+FastCGI
+~~~~~~~
+
+最初に、mod_fastcgiを設定します。たとえば次の行をhttpd.confに追加します::
+
+    LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
+    FastCgiIpcDir /var/lib/apache2/fastcgi
+    
+我々の例では、`http://example.com/code` で `/srv/example.com/www/code` をすでに提供しているので
+既存のApacheの設定は次のようになります::
+
+    Alias /code /srv/example.com/www/code
+    <Directory /srv/example.com/www/code>
+        Options Indexes
+        # ...
+    </Directory>
+
+.bzr/smartの形式で終わるURLに対するすべてのリクエストを扱うために
+次のように変更する必要があります::
+
+    Alias /code /srv/example.com/www/code
+    <Directory /srv/example.com/www/code>
+        Options Indexes FollowSymLinks
+        RewriteEngine On
+        RewriteBase /code
+        RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+    </Directory>
+    
+    # bzr-smart.fcgiはDocumentRootの元に存在しないので、実行されるように
+    # AliasはこれをURLの名前空間のエイリアスにする。
+    Alias /srv/example.com/scripts/bzr-smart.fcgi /srv/example.com/scripts/bzr-smart.fcgi
+    <Directory /srv/example.com/scripts>
+        Options ExecCGI
+        <Files bzr-smart.fcgi>
+            SetHandler fastcgi-script
+        </Files>
+    </Directory>
+    
+この設定はFastCGIを通して `/code` 内部の `/.bzr/smart` で終わるURLに対する
+Bazaarのスマートサーバーへのリクエストを扱うようにApacheに指示します。
+
+詳細な情報は mod_rewrite_ と mod_fastcgi_ のドキュメントを参照してください。
+
+.. _mod_rewrite: http://httpd.apache.org/docs/2.0/mod/mod_rewrite.html
+.. _mod_fastcgi: http://www.fastcgi.com/mod_fastcgi/docs/mod_fastcgi.html
+
+mod_python
+~~~~~~~~~~
+
+最初に、次のようなコードをhttpd.confに追加してmod_pythonを設定します::
+
+    LoadModule python_module /usr/lib/apache2/modules/mod_python.so
+
+FastCGIと同じ方法でmod_rewriteを用いて書き換えルールを定義します::
+
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+
+変更は次のようになります::
+
+    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+
+mod_fastcgiのように、スクリプトがどのように扱われるのかも定義します::
+
+    Alias /srv/example.com/scripts/bzr-smart.py /srv/example.com/scripts/bzr-smart.py
+    <Directory /srv/example.com/scripts>
+        <Files bzr-smart.py>
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+            AddHandler python-program .py
+            PythonHandler bzr-smart::handler
+        </Files>
+    </Directory>
+
+この設定はmod_pythonを通して `/code` 内部の `/.bzr/smart` で終わるURLに対するリクエストを
+Bazaarのスマートサーバーに渡すように指示します。
+
+注: bzrlibがPATHの中に存在しない場合、次の行を変更する必要があります::
+
+            PythonPath "sys.path+['/srv/example.com/scripts']"
+
+変更後は次のようになります::
+
+            PythonPath "['/path/to/bzr']+sys.path+['/srv/example.com/scripts']"
+
+
+詳細な情報は mod_python_ のドキュメントを参照してください。
+
+.. _mod_python: http://www.modpython.org/
+
+
+Bazaarを設定する
+-----------------
+
+FastCGI
+~~~~~~~
+
+`/srv/example.com/scripts/bzr-smart.fcgi` でスマートサーバーを実行するためにApacheを設定しました。
+これはスマートサーバーを設定するために書く必要のある単なるシンプルなスクリプトで
+サーバーをFastCGIのゲートウェイに結びつけます。次のようになります::
+
+    import fcgi
+    from bzrlib.transport.http import wsgi
+
+    smart_server_app = wsgi.make_app(
+        root='/srv/example.com/www/code',
+        prefix='/code/',
+        path_var='REQUEST_URI',
+        readonly=True,
+        load_plugins=True, 
+        enable_logging=True)
+
+    fcgi.WSGIServer(smart_server_app).run()
+        
+　`fcgi`のモジュールはhttp://svn.saddi.com/py-lib/trunk/fcgi.pyで見つかります。
+これは flup_ の一部です。
+
+.. _flup: http://www.saddi.com/software/flup/
+
+mod_python
+~~~~~~~~~~
+
+`/srv/example.com/scripts/bzr-smart.py` でスマートサーバーを実行するためにApacheを設定しました。
+これはスマートサーバーを設定するために書く必要のあるシンプルなスクリプトでサーバーをmod_pythonの
+ゲートウェイに結びつけます。次のようになります::
+
+    import modpywsgi
+    from bzrlib.transport.http import wsgi
+
+    smart_server_app = wsgi.make_app(
+        root='/srv/example.com/www/code',
+        prefix='/code/',
+        path_var='REQUEST_URI',
+        readonly=True,
+        load_plugins=True, 
+        enable_logging=True)
+
+    def handler(request):
+        """Handle a single request."""
+        wsgi_server = modpywsgi.WSGIServer(smart_server_app)
+        return wsgi_server.run(request)
+        
+`modpywsgi` モジュールは
+`http://dev.pocoo.org/projects/pocoo/browser/pocoo/wrappers/modpy.py` で見つかります。
+これは pocoo_ の一部です。modpywsgi.pyをbzr-smart.pyと同じディレクトリ
+(すなわち/srv/example.com/scripts/)に設置していることを確認してください。
+
+.. _pocoo: http://dev.pocoo.org/projects/pocoo/
+
+クライアント
+------------
+
+これで `bzr+http://` 形式のURLを利用できます::
+
+    bzr log bzr+http://example.com/code/my-branch
+
+プレーンなHTTP形式のアクセスも持続します::
+
+    bzr log http://example.com/code/my-branch
+
+
+高度な設定
+-----------
+
+BazaarのHTTPスマートサーバーはWSGIアプリケーションなので、
+WSGI標準に準拠するサードパーティのWSGIのミドルウェアもしくはサーバーで利用できます。
+唯一の要件は以下のとおりです:
+
+  * 　`SmartWSGIApp` をコンストラクトするためには、それが提供する **root transport** を指定する必要があります。
+  * それぞれのリクエストの `environ` dict は **'bzrlib.relpath'** 変数の設定を持たなければなりません。
+
+この例で使われている `make_app` ヘルパーは それに渡される `root` パスに基づいたトランスポートを伴う
+`SmartWSGIApp` をコンストラクトし、引数 `prefix` と`path_var` に基づくそれぞれのリクエストに対する
+　`bzrlib.relpath` を算出します。
+上記の例において、これは (Apacheによって設定される)'REQUEST_URI' を取り、接頭辞の '/code/' と接尾辞の '/.bzr/smart' 
+をはぎ取り、それを 'bzrlib.relpath' として設定するので、 '/code/foo/bar/.bzr/smart' に対するリクエストは
+'foo/bzr' の 'bzrlib.relpath' になります。
+
+`SmartWSGIApp` を直接コンストラクトすることで、ローカルではないトランスポートに対して
+スマートサーバーを設定するもしくは任意任意のパスの変換を行うことは可能です。
+詳細な情報に関しては `bzrlib.transport.http.wsgi` のdocstringsと `WSGI標準`_ を参照してください。
+
+.. _WSGI標準: http://www.python.org/dev/peps/pep-0333/
+
+
+``bzr+http://`` を通してpushする
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+httpスマートサーバーを通してデータをプッシュすることは可能です。
+これを行うための最も簡単な方法は、 ``wsgi.make_app()`` コールに ``readonly=False`` を
+提供するだけです。ただし、スマートプロトコルは認証機能が含まれないので注意してください。
+書き込みのサポートを有効にする場合、
+実際にシステム上のデータを書き込みできる人を制限するために、 ``.bzr/smart`` URLへの権限を制限するとよいでしょう。
+
+現時点では、同じURLに対して読み込み限定の人と読み込みと書き込みの人を分けることはできません。
+(認証を行う)HTTPレイヤーにおいて、すべては単なるPOSTリクエストだからです。
+しかしながら、HTTPSアクセスの場合に認証が必要な書き込みサーバーを使い、
+プレーンなHTTPは読み込み限定のアクセスを許可することは確実にできます。
+
+
+.. 
+   vim: ft=rst tw=74 et
