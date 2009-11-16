@@ -22,8 +22,6 @@ the test suite now conforms to python's trunk enhanced semantics (skip,
 etc.), and ``bzr info -v`` will now report the correct branch and repo
 formats for Remote objects.
 
-Compatibility Breaks
-********************
 
 New Features
 ************
@@ -60,19 +58,10 @@ Bug Fixes
   2.4.  (Vincent Ladeuil, #475585)
 
 
-Improvements
-************
-
 Documentation
 *************
 
 * Include Japanese translations for documentation (Inada Naoki)
-
-API Changes
-***********
-
-Internals
-*********
 
 Testing
 *******
@@ -104,37 +93,6 @@ Testing
   to make it possible to get a clean test run with a less capable
   TestResult. (Robert Collins)
 
-
-
-bzr 2.0.3 (not released yet)
-############################
-
-:Codename: template
-:2.0.3: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b2
