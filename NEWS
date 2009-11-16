@@ -6,14 +6,22 @@ Bazaar Release Notes
    :depth: 1
 
 
-bzr 2.1.0b3 (not released yet)
-##############################
+bzr 2.1.0b3
+###########
 
-:Codename:
-:2.1.0b3: ???
+:Codename: after sprint recovery
+:2.1.0b3: 2009-11-16
 
-Compatibility Breaks
-********************
+This release was pushed up from its normal release cycle due to a
+regression in python 2.4 compatibility in 2.1.0b2.  Since this regression
+was caught before 2.1.0b2 was officially announced, the full changelog
+includes both 2.1.0b3 and 2.1.0b2 changes.
+
+Highlights of 2.1.0b3 are: new globbing code for all commands on Windows,
+the test suite now conforms to python's trunk enhanced semantics (skip,
+etc.), and ``bzr info -v`` will now report the correct branch and repo
+formats for Remote objects.
+
 
 New Features
 ************
@@ -24,8 +32,12 @@ New Features
 Bug Fixes
 *********
 
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 * On Windows, do glob expansion at the command-line level (as is usually
   done in bash, etc.) This means that *all* commands get glob expansion
@@ -46,17 +58,10 @@ Bug Fixes
   2.4.  (Vincent Ladeuil, #475585)
 
 
-Improvements
-************
-
 Documentation
 *************
 
-API Changes
-***********
-
-Internals
-*********
+* Include Japanese translations for documentation (Inada Naoki)
 
 Testing
 *******
@@ -88,37 +93,6 @@ Testing
   to make it possible to get a clean test run with a less capable
   TestResult. (Robert Collins)
 
-
-
-bzr 2.0.3 (not released yet)
-############################
-
-:Codename: template
-:2.0.3: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b2
