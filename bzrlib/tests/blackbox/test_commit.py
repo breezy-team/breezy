@@ -25,6 +25,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
@@ -263,6 +264,9 @@ class TestCommit(ExternalBase):
         self.run_bzr('commit -m ""', retcode=3)
 
     def test_unsupported_encoding_commit_message(self):
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable('Win32 parses arguments directly'
+                ' as Unicode, so we can\'t pass invalid non-ascii')
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
@@ -273,10 +277,6 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
-        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
-        #       guess is that the change to use Unicode command lines means
-        #       that we no longer pay any attention to LANG=C when decoding the
-        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
