@@ -18,6 +18,7 @@
 """Text UI, write output to the console.
 """
 
+import codecs
 import getpass
 import os
 import sys
@@ -145,6 +146,11 @@ class TextUIFactory(UIFactory):
             return TextProgressView(self.stderr)
         else:
             return NullProgressView()
+
+    def _make_output_stream_explicit(self, encoding, encoding_errors):
+        encoded_stdout = codecs.getwriter(encoding)(self.stdout,
+            errors=encoding_errors)
+        return TextUIOutputStream(self, encoded_stdout)
 
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
