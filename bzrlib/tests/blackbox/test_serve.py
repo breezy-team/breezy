@@ -278,9 +278,8 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         (optionally decorated with 'readonly+').  BzrServerFactory can
         determine the original --directory from that transport.
         """
-        base_dir = '/a/b/c/'
-        if sys.platform == 'win32':
-            base_dir = 'C:/a/b/c/'
+        # URLs always include the trailing slash, and get_base_path returns it
+        base_dir = osutils.abspath('/a/b/c') + '/'
         # Define a fake 'protocol' to capture the transport that cmd_serve
         # passes to serve_bzr.
         def capture_transport(transport, host, port, inet):
