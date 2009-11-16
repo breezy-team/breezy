@@ -34,8 +34,12 @@ New Features
 Bug Fixes
 *********
 
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 * On Windows, do glob expansion at the command-line level (as is usually
   done in bash, etc.) This means that *all* commands get glob expansion
@@ -61,6 +65,8 @@ Improvements
 
 Documentation
 *************
+
+* Include Japanese translations for documentation (Inada Naoki)
 
 API Changes
 ***********
