@@ -19,6 +19,9 @@ New Features
 
 Bug Fixes
 *********
+* Lots of bugfixes for the test suite on Windows. We should once again
+  have a test suite with no failures on Windows. (Once all the patches
+  have landed, remove this line.) (John Arbash Meinel)
 
 Improvements
 ************
