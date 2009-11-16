@@ -657,8 +657,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # wire-to-wire, using the whole stack, with a UTF-8 filename.
         transport = memory.MemoryTransport('memory:///')
         utf8_filename = u'testfile\N{INTERROBANG}'.encode('utf-8')
+        # VFS requests use filenames, not raw UTF-8.
+        hpss_path = urlutils.escape(utf8_filename)
         transport.put_bytes(utf8_filename, 'contents\nof\nfile\n')
-        to_server = StringIO('get\001' + utf8_filename + '\n')
+        to_server = StringIO('get\001' + hpss_path + '\n')
         from_server = StringIO()
         server = medium.SmartServerPipeStreamMedium(
             to_server, from_server, transport)

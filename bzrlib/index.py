@@ -232,6 +232,13 @@ class GraphIndexBuilder(object):
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()
+
+        This is a no-op, but we need the api to conform to a generic 'Index'
+        abstraction.
+        """
+        
     def finish(self):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
@@ -460,6 +467,14 @@ class GraphIndex(object):
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
 
     def external_references(self, ref_list_num):
         """Return references that are not present in this index.
@@ -1155,7 +1170,7 @@ class GraphIndex(object):
             self._parsed_key_map.insert(index + 1, new_key)
 
     def _read_and_parse(self, readv_ranges):
-        """Read the the ranges and parse the resulting data.
+        """Read the ranges and parse the resulting data.
 
         :param readv_ranges: A prepared readv range list.
         """
@@ -1225,6 +1240,11 @@ class CombinedGraphIndex(object):
         return "%s(%s)" % (
                 self.__class__.__name__,
                 ', '.join(map(repr, self._indices)))
+
+    def clear_cache(self):
+        """See GraphIndex.clear_cache()"""
+        for index in self._indices:
+            index.clear_cache()
 
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""

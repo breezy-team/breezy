@@ -6,12 +6,95 @@ Bazaar Release Notes
    :depth: 1
 
 
-bzr 2.1.0b2 (not released yet)
+bzr 2.1.0b3 (not released yet)
 ##############################
 
 :Codename:
-:2.1.0b2: ???
+:2.1.0b3: ???
 
+Compatibility Breaks
+********************
+
+New Features
+************
+
+* Users can define a shelve editor to provide shelf functionality at a
+  granularity finer than per-patch-hunk. (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* On Windows, do glob expansion at the command-line level (as is usually
+  done in bash, etc.) This means that *all* commands get glob expansion
+  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
+  parser, which allows us to know if a given section was quoted. It means
+  you can now do ``bzr ignore "*.py"``.
+  (John Arbash Meinel, #425510, #426410, #194450)
+
+* Sanitize commit messages that come in from the '-m' flag. We translate
+  '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
+  allow those because XML store silently translate it anyway. (The parser
+  auto-translates \r\n => \n in ways that are hard for us to catch.)
+
+* Show correct branch and repository format descriptions in 
+  ``bzr info -v`` on a smart server location.  (Andrew Bennetts, #196080)
+
+* The fix for bug #186920 accidentally broke compatibility with python
+  2.4.  (Vincent Ladeuil, #475585)
+
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+* -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
+  more debugging of VFS access triggers. (Robert Collins)
+
+* KnownFailure is now signalled to ``ExtendedTestResult`` using the same
+  method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
+* ``--parallel=fork`` is now compatible with --subunit.
+  (Robert Collins, Vincent Ladeuil, #419776)
+
+* TestNotApplicable is now handled within the TestCase.run method rather
+  than being looked for within ``ExtendedTestResult.addError``. This
+  provides better handling with other ``TestResult`` objects, degrading to
+  sucess rather than error. (Robert Collins)
+
+* The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
+  removed - it was empty and unused. (Robert Collins)
+
+* UnavailableFeature is now handled within the TestCase.run method rather
+  than being looked for within addError. If the Result object does not
+  have an addNotSupported method, addSkip is attempted instead, and
+  failing that addSuccess. (Robert Collins)
+
+* When a TestResult does not have an addSkip method, skipped tests are now
+  reported as successful tests, rather than as errors. This change is
+  to make it possible to get a clean test run with a less capable
+  TestResult. (Robert Collins)
+
+
+
+bzr 2.0.3 (not released yet)
+############################
+
+:Codename: template
+:2.0.3: ???
 
 Compatibility Breaks
 ********************
@@ -22,11 +105,65 @@ New Features
 Bug Fixes
 *********
 
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b2
+###########
+
+:Codename: a load off my mind
+:2.1.0b2: 2009-11-02
+
+This is our second feature-filled release since 2.0, pushing us down the
+path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
+
+Key highlights in this release are: improved handling of
+failures-during-cleanup for commit, fixing a long-standing bug with
+``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+behind proxies, and a new StaticTuple datatype, allowing us to reduce
+memory consumption (50%) and garbage collector overhead (40% faster) for
+many operations.
+
+Bug Fixes
+*********
+
+* ``bzr+http`` servers no longer give spurious jail break errors when
+  serving branches inside a shared repository.  (Andrew Bennetts, #348308)
+
+* Errors during commit are handled more robustly so that knock-on errors
+  are less likely to occur, and will not obscure the original error if
+  they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
+  and similar errors.  (Andrew Bennetts, #429747, #243391)
+
+* Launchpad urls can now be resolved from behind proxies.
+  (Gordon Tyler, Vincent Ladeuil, #186920)
+
+* Reduce the strictness for StaticTuple, instead add a debug flag
+  ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
+  This way, most users won't see failures, but developers can improve
+  internals. (John Arbash Meinel, #471193)
+
 * Added support for removing multiple working trees to "bzr remove-tree"
   (Jared Hance, #253137)
 
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
+
+* Unicode paths are now handled correctly and consistently by the smart
+  server.  (Andrew Bennetts, Michael Hudson, #458762)
 
 Improvements
 ************
@@ -37,10 +174,14 @@ Improvements
   (John Arbash Meinel)
 
 * Peak memory under certain operations has been reduced significantly.
+  (eg, 'bzr branch launchpad standalone' is cut in half)
   (John Arbash Meinel)
 
 Documentation
 *************
+
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 API Changes
 ***********
@@ -61,14 +202,15 @@ Internals
   used as the interning structure for StaticTuple objects.
   (John Arbash Meinel)
 
-* ``bzrlib._static_tuple_pyx.StaticTuple`` is now available and used by
-  the btree index parser. This class functions similarly to ``tuple``
-  objects. However, it can only point at other ``StaticTuple`` instances
-  or strings. This allows us to remove it from the garbage collector (it
-  cannot be in a cycle), it also allows us to intern the objects. In
-  testing, this can reduce peak memory by 20-40%, and significantly
-  improve performance by removing objects from being inspected by the
-  garbage collector. (John Arbash Meinel)
+* ``bzrlib._static_tuple_c.StaticTuple`` is now available and used by
+  the btree index parser and the chk map parser. This class functions
+  similarly to ``tuple`` objects. However, it can only point to a limited
+  collection of types.  (Currently StaticTuple, str, unicode, None, bool,
+  int, long, float, but not subclasses).  This allows us to remove it from
+  the garbage collector (it cannot be in a cycle), it also allows us to
+  intern the objects. In testing, this can reduce peak memory by 20-40%,
+  and significantly improve performance by removing objects from being
+  inspected by the garbage collector.  (John Arbash Meinel)
 
 * ``GroupCompressBlock._ensure_content()`` will now release the
   ``zlib.decompressobj()`` when the first request is for all of the
@@ -78,22 +220,21 @@ Internals
   of internal state and buffers. (For branching bzr.dev this drops peak
   memory from 382MB => 345MB.) (John Arbash Meinel)
 
+* When streaming content between ``2a`` format repositories, we now clear
+  caches from earlier versioned files. (So 'revisions' is cleared when we
+  start reading 'inventories', etc.) This can have a significant impact on
+  peak memory for initial copies (~200MB). (John Arbash Meinel)
 
-Testing
-*******
 
+bzr 2.0.2
+#########
 
-bzr 2.0.2 (not released yet)
-############################
+:Codename: after the scare
+:2.0.2: 2009-11-02
 
-:Codename:
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
+The second in our "let's keep the stable bugfixes flowing" series. As
+expected this has a few (~9) bugfixes relative to 2.0.1, and no major api
+changes or features.
 
 Bug Fixes
 *********
@@ -101,20 +242,35 @@ Bug Fixes
 * Avoid "NoneType has no attribute st_mode" error when files disappear
   from a directory while it's being read.  (Martin Pool, #446033)
 
+* Content filters are now applied correctly after revert.
+  (Ian Clatworthy)
+
+* Diff parsing handles "Binary files differ" hunks.  (Aaron Bentley, #436325)
+
+* Fetching from stacked pre-2a repository via a smart server no longer
+  fails intermittently with "second push failed to complete".
+  (Andrew Bennetts, #437626)
+
+* Fix typos left after test_selftest refactoring.
+  (Vincent Ladeuil, Matt Nordhoff, #461149)
+
+* Fixed ``ObjectNotLocked`` errors during ``bzr log -r NNN somefile``.
+  (Andrew Bennetts, #445171)
+  
+* PreviewTree file names are not limited by the encoding of the temp
+  directory's filesystem. (Aaron Bentley, #436794)
+
 Improvements
 ************
+
+* ``bzr log`` now read-locks branches exactly once, so makes better use of
+  data caches.  (Andrew Bennetts)
 
 Documentation
 *************
 
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
+* Filtered views user documentation upgraded to refer to format 2a
+  instead of pre-2.0 formats. (Ian Clatworthy)
 
 
 bzr 2.1.0b1
@@ -222,6 +378,10 @@ Bug Fixes
 
 Improvements
 ************
+
+* Revision specifiers can now be given in a more DWIM form, without
+  needing explicit prefixes for specifiers like tags or revision id's.
+  See ``bzr help revisionspec`` for full details.  (Matthew Fuller)
 
 * Bazaar gives a warning before exiting, and writes into ``.bzr.log``, if 
   compiled extensions can't be loaded.  This typically indicates a
@@ -601,7 +761,7 @@ Improvements
 * ``bzr shelve`` and ``bzr unshelve`` now work on windows.
   (Robert Collins, #305006)
 
-* Commit of specific files no longer prevents using the the iter_changes
+* Commit of specific files no longer prevents using the iter_changes
   codepath. On 2a repositories, commit of specific files should now be as
   fast, or slightly faster, than a full commit. (Robert Collins)
 
@@ -1370,7 +1530,7 @@ New Features
 ************
 
 * A new repository format ``2a`` has been added.  This is a beta release
-  of the the brisbane-core (aka group-compress) project.  This format now
+  of the brisbane-core (aka group-compress) project.  This format now
   suitable for wider testing by advanced users willing to deal with some
   bugs.  We would appreciate test reports, either positive or negative.
   Format 2a is substantially smaller and faster for many operations on
@@ -2099,7 +2259,7 @@ Internals
 
 * Added ``bzrlib.inventory_delta`` module.  This will be used for
   serializing and deserializing inventory deltas for more efficient
-  streaming on the the network.  (Robert Collins, Andrew Bennetts)
+  streaming on the network.  (Robert Collins, Andrew Bennetts)
 
 * ``Branch._get_config`` has been added, which splits out access to the
   specific config file from the branch. This is used to let RemoteBranch
@@ -4823,7 +4983,7 @@ Testing
   exception. (Andrew Bennetts)
 
 * New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
-  options for debugging tests, these are complementary to the the -D
+  options for debugging tests, these are complementary to the -D
   options.  The ``-Dselftest_debug`` global option has been replaced by the
   ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
 
