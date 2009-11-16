@@ -147,10 +147,21 @@ class TextUIFactory(UIFactory):
         else:
             return NullProgressView()
 
-    def _make_output_stream_explicit(self, encoding, encoding_errors):
-        encoded_stdout = codecs.getwriter(encoding)(self.stdout,
-            errors=encoding_errors)
-        return TextUIOutputStream(self, encoded_stdout)
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        if encoding_type == 'exact':
+            # force sys.stdout to be binary stream on win32; 
+            # NB: this leaves the file set in that mode; may cause problems if
+            # one process tries to do binary and then text output
+            if sys.platform == 'win32':
+                fileno = getattr(self.stdout, 'fileno', None)
+                if fileno:
+                    import msvcrt
+                    msvcrt.setmode(fileno(), os.O_BINARY)
+            return TextUIOutputStream(self, self.stdout)
+        else:
+            encoded_stdout = codecs.getwriter(encoding)(self.stdout,
+                errors=encoding_type)
+            return TextUIOutputStream(self, encoded_stdout)
 
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""

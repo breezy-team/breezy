@@ -125,7 +125,7 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_password)
 
-    def make_output_stream(self, encoding=None, encoding_errors=None):
+    def make_output_stream(self, encoding=None, encoding_type=None):
         """Get a stream for sending out bulk text data.
 
         This is used for commands that produce bulk text, such as log or diff
@@ -136,18 +136,23 @@ class UIFactory(object):
      
         :param encoding: Unicode encoding for output; default is the user encoding.
 
-        :param encoding_errors: How to handle encoding errors:
-            replace/strict/escape.  Default is replace, so that the user gets some 
-            output.
+        :param encoding_type: How to handle encoding errors:
+            replace/strict/escape/exact.  Default is replace.
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
             encoding = osutils.get_user_encoding()
-        if encoding_errors is None:
-            encoding_errors = 'replace'
-        return self._make_output_stream_explicit(encoding, encoding_errors)
+        if encoding_type is None:
+            encoding_type = 'replace'
+        # For whatever reason codecs.getwriter() does not advertise its encoding
+        # it just returns the encoding of the wrapped file, which is completely
+        # bogus. So set the attribute, so we can find the correct encoding later.
+        out_stream = self._make_output_stream_explicit(encoding, encoding_type)
+        if not getattr(out_stream, 'encoding', None):
+            out_stream.encoding = encoding
+        return out_stream
 
-    def _make_output_stream_explicit(self, encoding, encoding_errors):
+    def _make_output_stream_explicit(self, encoding, encoding_type):
         raise NotImplementedError("%s doesn't support make_output_stream"
             % (self.__class__.__name__))
 
