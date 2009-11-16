@@ -401,6 +401,10 @@ class TextUIOutputStream(object):
         self.ui_factory = ui_factory
         self.wrapped_stream = wrapped_stream
 
+    def flush(self):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.flush()
+
     def write(self, to_write):
         self.ui_factory.clear_term()
         self.wrapped_stream.write(to_write)
