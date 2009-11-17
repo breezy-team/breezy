@@ -2470,8 +2470,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertIs(None, summary[3])
 
     def test_change_executability(self):
-        if not osutils.supports_executable():
-            raise TestNotApplicable()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add('path')
@@ -2491,10 +2489,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         # size must be known
         self.assertEqual(len('contents'), summary[1])
         # not executable
-        if osutils.supports_executable():
-            self.assertEqual(False, summary[2])
-        else:
-            self.assertEqual(None, summary[2])
+        self.assertEqual(False, summary[2])
         # will not have hash (not cheap to determine)
         self.assertIs(None, summary[3])
 

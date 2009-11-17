@@ -5671,7 +5671,7 @@ class cmd_shelve(Command):
             try:
                 shelver.run()
             finally:
-                shelver.work_tree.unlock()
+                shelver.finalize()
         except errors.UserAbort:
             return 0
 
