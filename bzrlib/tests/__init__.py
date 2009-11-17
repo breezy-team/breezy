@@ -3321,18 +3321,23 @@ def reinvoke_for_tests(suite):
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
+        bzr_path = [bzr_path]
+        if sys.platform == "win32":
+            # if we're on windows, we can't execute the bzr script directly
+            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
             test_list_file.write(test.id() + '\n')
         test_list_file.close()
         try:
-            argv = [bzr_path, 'selftest', '--load-list', test_list_file_name,
+            argv = bzr_path + ['selftest', '--load-list', test_list_file_name,
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
             # stderr=STDOUT would be ideal, but until we prevent noise on
             # stderr it can interrupt the subunit protocol.
+            bzrlib.trace.mutter("executing subprocess argv=%s", repr(argv))
             process = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE,
                 bufsize=1)
             test = TestInSubprocess(process, test_list_file_name)
