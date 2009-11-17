@@ -3025,7 +3025,7 @@ class cmd_commit(Command):
             raise errors.LocalRequiresBoundBranch()
 
         if message is not None:
-            if os.path.exists(message):
+            if osutils.lexists(message):
                 ui.ui_factory.show_warning("The commit message is a file"
                     " name \"%s\"." % message)
                 ui.ui_factory.show_message("(use --file \"%s\" to take commit"
