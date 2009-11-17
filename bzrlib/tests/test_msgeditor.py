@@ -373,14 +373,18 @@ if len(sys.argv) == 2:
 # GZ 2009-11-17: This wants moving to osutils when the errno checking code is
 class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
     """Ensuring workarounds enshrined in code actually serve a purpose"""
-    def test_windows(self):
+
+    def test_subprocess_call_bad_file(self):
         if sys.platform != "win32":
-            raise TestSkipped("Workarounds for windows only")
+            raise TestNotApplicable("Workarounds for windows only")
         import subprocess, errno
         ERROR_BAD_EXE_FORMAT = 193
         file("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
-        if sys.version_info > (2, 5):
+        # Python2.4 used the 'winerror' as the errno, which confuses a lot of
+        # our error trapping code. Make sure that we understand the mapping
+        # correctly.
+        if sys.version_info >= (2, 5):
             self.assertEqual(e.errno, errno.ENOEXEC)
             self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)
         else:
