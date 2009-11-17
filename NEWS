@@ -19,9 +19,12 @@ New Features
 
 Bug Fixes
 *********
+
 * After renaming a file, the dirstate could accidentally reference
   ``source\\path`` rather than ``source/path`` on Windows. This might be a
   source of some dirstate-related failures. (John Arbash Meinel)
+
+* ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
 
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (Once all the patches
