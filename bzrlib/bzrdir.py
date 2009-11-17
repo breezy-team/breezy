@@ -3113,7 +3113,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
     def get_format_description(self):
         if self._network_name:
             real_format = network_format_registry.get(self._network_name)
-            return 'Remote:' + real_format.get_format_description()
+            return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
     def get_format_string(self):
