@@ -849,8 +849,9 @@ class cmd_mv(Command):
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
             rel_names = tree.get_canonical_inventory_paths(rel_names)
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
-                self.outf.write("%s => %s\n" % pair)
+            for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
+                if not is_quiet():
+                    self.outf.write("%s => %s\n" % (src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
@@ -900,7 +901,8 @@ class cmd_mv(Command):
             dest = osutils.pathjoin(dest_parent, dest_tail)
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
-            self.outf.write("%s => %s\n" % (src, dest))
+            if not is_quiet():
+                self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):

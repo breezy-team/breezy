@@ -26,6 +26,8 @@ Bug Fixes
 
 * ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
 
+* ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
+
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (Once all the patches
   have landed, remove this line.) (John Arbash Meinel)
