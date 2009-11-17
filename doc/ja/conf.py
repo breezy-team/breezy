@@ -45,7 +45,7 @@ html_short_title = bzr_title(u"Table of Contents (%s)") % (release,)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-html_additional_pages = {'index': 'index.html'}
+# html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'bzr-%s' % (bzr_locale,)
