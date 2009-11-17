@@ -445,6 +445,9 @@ def report_exception(exc_info, err_file):
 
     :return: The appropriate exit code for this error.
     """
+    if 'error' in debug.debug_flags:
+        print_exception(exc_info, err_file)
+        return errors.EXIT_ERROR
     exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
@@ -494,9 +497,6 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    if 'error' in debug.debug_flags:
-        print_exception(exc_info, err_file)
-        return
     err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
     if advice:
         err_file.write("%s\n" % (advice,))
