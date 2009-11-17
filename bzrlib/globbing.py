@@ -238,11 +238,15 @@ class _OrderedGlobster(Globster):
                     prefix=r'(?:.*/)?(?!.*/)')
 
 
+_slashes = re.compile(r'[\\/]+')
 def normalize_pattern(pattern):
     """Converts backslashes in path patterns to forward slashes.
 
     Doesn't normalize regular expressions - they may contain escapes.
     """
+
     if not pattern.startswith('RE:'):
-        pattern = pattern.replace('\\','/')
-    return pattern.rstrip('/')
+        pattern = _slashes.sub('/', pattern)
+    if len(pattern) > 1:
+        pattern = pattern.rstrip('/')
+    return pattern
