@@ -64,7 +64,7 @@ def _run_editor(filename):
             x = call(edargs + [filename])
         except OSError, e:
             # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, errno.EACCES):
+            if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOEXEC, 193):
                 if candidate_source is not None:
                     # We tried this editor because some user configuration (an
                     # environment variable or config file) said to try it.  Let
