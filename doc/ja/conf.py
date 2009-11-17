@@ -10,12 +10,10 @@ import sys, os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path = [os.path.abspath('../..')] + sys.path
-sys.path = [os.path.abspath('.')] + sys.path
+sys.path = [os.path.abspath('../..')] + sys.path
 
 # Most of the configuration for Bazaar docs is defined here ...
-#from bzrlib.doc_generate.sphinx_conf import *
-from sphinx_conf import *
+from bzrlib.doc_generate.sphinx_conf import *
 
 
 ## Configuration specific to this site ##
@@ -47,7 +45,7 @@ html_short_title = bzr_title(u"Table of Contents (%s)") % (release,)
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
-#html_additional_pages = {'index': 'index.html'}
+html_additional_pages = {'index': 'index.html'}
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'bzr-%s' % (bzr_locale,)
@@ -86,6 +84,10 @@ unused_docs = [
     #'user-guide/resolving_conflicts',
     #'user-guide/version_info',
     # Plain-style documentation generation stuff
-    #'user-guide/index-plain',
+    'release-notes/NEWS',
+    'user-reference/bzr_man',
+    'user-guide/index-plain',
+    # Miscellaneous
+    'user-reference/readme',
 ]
 
