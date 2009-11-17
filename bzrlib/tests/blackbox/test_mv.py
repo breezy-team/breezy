@@ -487,6 +487,14 @@ class TestMove(TestCaseWithTransport):
         self.assertEqual('bzr: ERROR: --after cannot be specified with'
                          ' --auto.\n', err)
 
+    def test_mv_quiet(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['aaa'])
+        tree.add(['aaa'])
+        out, err = self.run_bzr('mv --quiet aaa bbb')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+
     def test_mv_readonly_lightweight_checkout(self):
         branch = self.make_branch('foo')
         branch = bzrlib.branch.Branch.open(self.get_readonly_url('foo'))
