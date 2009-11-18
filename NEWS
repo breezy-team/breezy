@@ -5,12 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-
-bzr 2.1.0b3 (not released yet)
+bzr 2.1.0b4 (not released yet)
 ##############################
 
-:Codename:
-:2.1.0b3: ???
+:Codename: san francisco airport
+:2.1.0b4: ???
 
 Compatibility Breaks
 ********************
@@ -21,25 +20,17 @@ New Features
 Bug Fixes
 *********
 
-* Hooks daughter classes should always call the base constructor.
-  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+* After renaming a file, the dirstate could accidentally reference
+  ``source\\path`` rather than ``source/path`` on Windows. This might be a
+  source of some dirstate-related failures. (John Arbash Meinel)
 
-* On Windows, do glob expansion at the command-line level (as is usually
-  done in bash, etc.) This means that *all* commands get glob expansion
-  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
-  parser, which allows us to know if a given section was quoted. It means
-  you can now do ``bzr ignore "*.py"``. It also means that single-quotes
-  are now treated as quoted ``bzr ignore '*.py'``.
-  (John Arbash Meinel, #425510, #426410, #194450)
+* ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
 
-* Sanitize commit messages that come in from the '-m' flag. We translate
-  '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
-  allow those because XML store silently translate it anyway. (The parser
-  auto-translates \r\n => \n in ways that are hard for us to catch.)
+* ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
 
-* The fix for bug #186920 accidentally broke compatibility with python
-  2.4.  (Vincent Ladeuil, #475585)
-
+* Lots of bugfixes for the test suite on Windows. We should once again
+  have a test suite with no failures on Windows. (Once all the patches
+  have landed, remove this line.) (John Arbash Meinel)
 
 Improvements
 ************
@@ -56,8 +47,111 @@ Internals
 Testing
 *******
 
+
+bzr 2.0.3 (not released yet)
+############################
+
+:Codename: 
+:2.0.3: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
+
+Improvements
+************
+
+Documentation
+*************
+* Include Japanese translations for documentation (Inada Naoki)
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+
+bzr 2.1.0b3
+###########
+
+:Codename: after sprint recovery
+:2.1.0b3: 2009-11-16
+
+This release was pushed up from its normal release cycle due to a
+regression in python 2.4 compatibility in 2.1.0b2.  Since this regression
+was caught before 2.1.0b2 was officially announced, the full changelog
+includes both 2.1.0b3 and 2.1.0b2 changes.
+
+Highlights of 2.1.0b3 are: new globbing code for all commands on Windows,
+the test suite now conforms to python's trunk enhanced semantics (skip,
+etc.), and ``bzr info -v`` will now report the correct branch and repo
+formats for Remote objects.
+
+
+New Features
+************
+
+* Users can define a shelve editor to provide shelf functionality at a
+  granularity finer than per-patch-hunk. (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
+
+* On Windows, do glob expansion at the command-line level (as is usually
+  done in bash, etc.) This means that *all* commands get glob expansion
+  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
+  parser, which allows us to know if a given section was quoted. It means
+  you can now do ``bzr ignore "*.py"``.
+  (John Arbash Meinel, #425510, #426410, #194450)
+
+* Sanitize commit messages that come in from the '-m' flag. We translate
+  '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
+  allow those because XML store silently translate it anyway. (The parser
+  auto-translates \r\n => \n in ways that are hard for us to catch.)
+
+* Show correct branch and repository format descriptions in 
+  ``bzr info -v`` on a smart server location.  (Andrew Bennetts, #196080)
+
+* The fix for bug #186920 accidentally broke compatibility with python
+  2.4.  (Vincent Ladeuil, #475585)
+
+
+Documentation
+*************
+
+* Include Japanese translations for documentation (Inada Naoki)
+
+Testing
+*******
+
+* -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
+  more debugging of VFS access triggers. (Robert Collins)
+
 * KnownFailure is now signalled to ``ExtendedTestResult`` using the same
   method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
+* ``--parallel=fork`` is now compatible with --subunit.
+  (Robert Collins, Vincent Ladeuil, #419776)
 
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
@@ -77,37 +171,6 @@ Testing
   to make it possible to get a clean test run with a less capable
   TestResult. (Robert Collins)
 
-
-
-bzr 2.0.3 (not released yet)
-############################
-
-:Codename: template
-:2.0.3: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.1.0b2
