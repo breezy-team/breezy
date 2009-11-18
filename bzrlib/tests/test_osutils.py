@@ -58,10 +58,6 @@ def _already_unicode(s):
     return s
 
 
-def _fs_enc_to_unicode(s):
-    return s.decode(osutils._fs_enc)
-
-
 def _utf8_to_unicode(s):
     return s.decode('UTF-8')
 
@@ -87,12 +83,10 @@ def dir_reader_scenarios():
     if test__walkdirs_win32.Win32ReadDirFeature.available():
         try:
             from bzrlib import _walkdirs_win32
-            # TODO: check on windows, it may be that we need to use/add
-            # safe_unicode instead of _fs_enc_to_unicode
             scenarios.append(
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
-                      _native_to_unicode=_fs_enc_to_unicode)))
+                      _native_to_unicode=_already_unicode)))
         except ImportError:
             pass
     return scenarios
@@ -1631,7 +1625,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        f = open('foo')
+        f = open('foo', 'rb')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
         self.assertEqual(38, size)
