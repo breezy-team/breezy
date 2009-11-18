@@ -106,6 +106,23 @@ class TestCommit(ExternalBase):
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
 
+    def test_cancel_forgotten_commit_message(self):
+        """Test that the lack of -m parameter is caught"""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['one', 'two'])
+        wt.add(['two'])
+        out, err = self.run_bzr('commit -m one two', retcode=1, stdin="n\n")
+        self.assertEquals(wt.branch.revno(), 0)
+        self.assertEqual(out, "Commit cancelled\n")
+
+    def test_force_forgotten_commit_message(self):
+        """Test that we can force commit even with a suspect commit message"""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['one', 'two'])
+        wt.add(['two'])
+        self.run_bzr('commit -m one two', stdin="y\n")
+        self.assertEquals(wt.branch.revno(), 1)
+
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
         wt = self.prepare_simple_history()
