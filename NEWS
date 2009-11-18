@@ -40,6 +40,14 @@ Bug Fixes
 * The fix for bug #186920 accidentally broke compatibility with python
   2.4.  (Vincent Ladeuil, #475585)
 
+* Using ``Repository.get_commit_builder().record_iter_changes()`` now
+  correctly sets ``self.inv_sha1`` to a sha1 string and
+  ``self.new_inventory`` to an Inventory instance after calling
+  ``self.finish_inventory()``. (Previously it accidently set both values
+  as a tuple on ``self.inv_sha1``. This was missed because
+  ``repo.add_revision`` ignores the supplied inventory sha1 and recomputes
+  the sha1 from the repo directly. (John Arbash Meinel)
+
 
 Improvements
 ************
