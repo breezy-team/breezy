@@ -1121,7 +1121,7 @@ class TestCase(unittest.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        if sys.platform == 'win32':
+        if sys.platform != 'win32':
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
             # odd. Regardless we shouldn't actually try to assert anything
