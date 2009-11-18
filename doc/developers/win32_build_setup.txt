@@ -148,5 +148,33 @@ Install Packages
         +    version_re = re.compile(r'^(\d+) \. (\d+) (\. (\d+))* ([ab](\d+))?$',
                                      re.VERBOSE)
 
+
+9) If you want to build in the source tree, you need the zlib dll and
+   associated libraries, put somewhere on your path. The buildout routines grab
+   this directly and add it to the build path, but that doesn't work for
+   ``setup.py``.
+   http://www.zlib.net/zlib123-dll.zip
+
+   I usually download and extract this to something like ``C:\local\`` so that
+   I end up with a ``C:\local\lib`` and ``C:\local\include`` directory. I then
+   modify the ``distutils.cfg`` file to tell the compiler where to find these
+   headers and libraries::
+
+      [build_ext]
+      include-dirs = C:/local/include
+      library-dirs = C:/local/lib
+
+   Note that you'll probably want to put the ``zlib1.dll`` into your path. You
+   can:
+
+     1) Add ``C:\local`` to your PATH variable in
+        "My Computer/Properties/Advanced/Environment Variables"
+     2) More logically, move ``zlib1.dll`` to either 'lib' or 'bin'
+        subdirectories and add that.
+     3) Copy it to ``C:\Windows\``.
+
+   I recommend 3, mostly because lots of apps will want to use zlib1.dll in the
+   long run. (You may already have it.)
+
 .. 
    vim: ft=rst tw=79 et
