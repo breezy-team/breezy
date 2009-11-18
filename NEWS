@@ -14,6 +14,12 @@ bzr 2.1.0b4 (not released yet)
 Compatibility Breaks
 ********************
 
+* The BZR_SSH environmental variable may now be set to the path of a secure
+  shell client. If currently set to the value ``ssh`` it will now guess the
+  vendor of the program with that name, to restore the old behaviour that
+  indicated the SSH Corporation client use ``sshcorp`` instead as the magic
+  string. (Martin <gzlist@googlemail.com>, #176292)
+
 New Features
 ************
 
