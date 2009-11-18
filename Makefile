@@ -187,6 +187,7 @@ doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
