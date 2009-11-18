@@ -155,7 +155,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _generate_git_svn_metadata(self, rev):
         try:
-            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"]
+            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode("utf-8")
         except KeyError:
             return ""
 
@@ -171,7 +171,9 @@ class BzrGitMapping(foreign.VcsMapping):
             elif name == 'hg:renames':
                 renames = bencode.bdecode(base64.b64decode(rev.properties['hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
-        return format_hg_metadata(renames, branch, extra)
+        ret = format_hg_metadata(renames, branch, extra)
+        assert isinstance(ret, str)
+        return ret
 
     def _extract_git_svn_metadata(self, rev, message):
         lines = message.split("\n")
@@ -181,7 +183,9 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.properties['git-svn-id'] = git_svn_id
         (url, rev, uuid) = parse_git_svn_id(git_svn_id)
         # FIXME: Convert this to converted-from property somehow..
-        return "\n".join(lines[:-2])
+        ret = "\n".join(lines[:-2])
+        assert isinstance(ret, str)
+        return ret
 
     def _extract_hg_metadata(self, rev, message):
         (message, renames, branch, extra) = extract_hg_metadata(message)
