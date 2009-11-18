@@ -1178,7 +1178,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         if self._testing_pycurl():
             # Oh my ! pycurl does not check for the port as part of
             # no_proxy :-( So we just test the host part
-            self.no_proxy_host = 'localhost'
+            self.no_proxy_host = self.server.host
         else:
             self.no_proxy_host = self.proxy_address
         # The secondary server is the proxy
