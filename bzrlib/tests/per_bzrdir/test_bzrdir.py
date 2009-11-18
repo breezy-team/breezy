@@ -1250,6 +1250,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         if control is None:
             # uninitialisable format
             return
+        self.addCleanup(made_repo.unlock)
         if not isinstance(control._format, (bzrdir.BzrDirFormat5,
             bzrdir.BzrDirFormat6,)):
             self.assertEqual(repo.bzrdir.root_transport.base,
@@ -1295,6 +1296,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo_name = repo_fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
+        self.addCleanup(repo.unlock)
         if control is None:
             # uninitialisable format
             return
