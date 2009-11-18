@@ -1115,12 +1115,23 @@ class TestCase(unittest.TestCase):
         :raises AssertionError: If the expected and actual stat values differ
             other than by atime.
         """
-        self.assertEqual(expected.st_size, actual.st_size)
-        self.assertEqual(expected.st_mtime, actual.st_mtime)
-        self.assertEqual(expected.st_ctime, actual.st_ctime)
-        self.assertEqual(expected.st_dev, actual.st_dev)
-        self.assertEqual(expected.st_ino, actual.st_ino)
-        self.assertEqual(expected.st_mode, actual.st_mode)
+        self.assertEqual(expected.st_size, actual.st_size,
+                         'st_size did not match')
+        self.assertEqual(expected.st_mtime, actual.st_mtime,
+                         'st_mtime did not match')
+        self.assertEqual(expected.st_ctime, actual.st_ctime,
+                         'st_ctime did not match')
+        if sys.platform != 'win32':
+            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
+            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
+            # odd. Regardless we shouldn't actually try to assert anything
+            # about their values
+            self.assertEqual(expected.st_dev, actual.st_dev,
+                             'st_dev did not match')
+            self.assertEqual(expected.st_ino, actual.st_ino,
+                             'st_ino did not match')
+        self.assertEqual(expected.st_mode, actual.st_mode,
+                         'st_mode did not match')
 
     def assertLength(self, length, obj_with_len):
         """Assert that obj_with_len is of length length."""
