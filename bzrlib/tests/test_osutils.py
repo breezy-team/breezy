@@ -1771,10 +1771,7 @@ class TestDirReader(tests.TestCaseInTempDir):
             dirinfo = (dirinfo[0], self._native_to_unicode(dirinfo[1]))
             details = []
             for line in block:
-                try:
-                    details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
-                except UnicodeError:
-                    import pdb; pdb.set_trace()
+                details.append(line[0:3] + (self._native_to_unicode(line[4]), ))
             filtered_dirblocks.append((dirinfo, details))
         return filtered_dirblocks
 
