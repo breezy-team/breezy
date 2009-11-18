@@ -3028,7 +3028,7 @@ class cmd_commit(Command):
             if osutils.lexists(message):
                 ui.ui_factory.show_warning("The commit message is a file"
                     " name \"%s\"." % message)
-                ui.ui_factory.show_message("(use --file \"%s\" to take commit"
+                ui.ui_factory.show_warning("(use --file \"%s\" to take commit"
                     " message from that file)" % message)
                 confirmed = ui.ui_factory.get_boolean("Do you want to commit"
                     " with this message")
