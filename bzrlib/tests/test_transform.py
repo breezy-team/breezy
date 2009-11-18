@@ -2456,9 +2456,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(('missing', None, None, None), summary)
 
     def test_file_content_summary_executable(self):
-        if not osutils.supports_executable():
-            raise tests.TestNotApplicable('platform does not track the'
-                                          ' executable bit')
         preview = self.get_empty_preview()
         path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
         preview.set_executability(True, path_id)
@@ -2757,6 +2754,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
         foo_id = tt.new_directory('', ROOT_PARENT)
         bar_id = tt.new_file(u'\u1234bar', foo_id, 'contents')
         limbo_path = tt._limbo_name(bar_id)
