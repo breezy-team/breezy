@@ -34,14 +34,14 @@ with your contribution on the IRC channel, mailing list, or on Launchpad
 
 
 Current Bazaar Mentors
-======================
+----------------------
 
 See the roster at http://bazaar-vcs.org/PatchPilot, although other
 developers may help too!
 
 
 Bazaar Mentors FAQ
-==================
+------------------
 
 1.  Why is this "Bazaar process" in HACKING.txt so complicated?
 
