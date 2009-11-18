@@ -490,9 +490,9 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertEqualStat(real, fake)
 
     def test_assertEqualStat_notequal(self):
-        self.build_tree(["foo", "bar"])
+        self.build_tree(["foo", "longname"])
         self.assertRaises(AssertionError, self.assertEqualStat,
-            os.lstat("foo"), os.lstat("bar"))
+            os.lstat("foo"), os.lstat("longname"))
 
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
