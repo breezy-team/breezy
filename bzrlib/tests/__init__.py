@@ -1107,14 +1107,11 @@ class TestCase(unittest.TestCase):
         self.assertEqual(mode, mode_test,
                          'mode mismatch %o != %o' % (mode, mode_test))
 
-    def assertEqualStat(self, expected, actual, ignore_ino=False):
+    def assertEqualStat(self, expected, actual):
         """assert that expected and actual are the same stat result.
 
         :param expected: A stat result.
         :param actual: A stat result.
-        :param ignore_ino: On Windows os.fstat() returns a value for st_ino,
-            but os.lstat() returns 0 for st_ino. As such, we can't trust the
-            value.
         :raises AssertionError: If the expected and actual stat values differ
             other than by atime.
         """
@@ -1124,9 +1121,13 @@ class TestCase(unittest.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        self.assertEqual(expected.st_dev, actual.st_dev,
-                         'st_dev did not match')
-        if not ignore_ino:
+        if sys.platform == 'win32':
+            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
+            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
+            # odd. Regardless we shouldn't actually try to assert anything
+            # about their values
+            self.assertEqual(expected.st_dev, actual.st_dev,
+                             'st_dev did not match')
             self.assertEqual(expected.st_ino, actual.st_ino,
                              'st_ino did not match')
         self.assertEqual(expected.st_mode, actual.st_mode,
