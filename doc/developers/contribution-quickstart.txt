@@ -10,7 +10,7 @@ In brief, a contribution should include:
 1.  A brief rationale, including expected audience and use cases,
     for inclusion in Bazaar.
 
-2.  A branch registered as a branch on LaunchPad, and submitted as
+2.  A branch registered as a branch on Launchpad, and submitted as
     a merge proposal.
 
 3.  The branch should include:
