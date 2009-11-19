@@ -2943,8 +2943,8 @@ class cmd_commit(Command):
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
              Option('commit-time', type=str,
-                    help="Manually set a commit time using commit date format, e.g."
-                    "'2009-10-10 08:00:00 +0100'"),
+                    help="Manually set a commit time using commit date "
+                    "format, e.g. '2009-10-10 08:00:00 +0100'."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
@@ -2996,9 +2996,13 @@ class cmd_commit(Command):
             make_commit_message_template_encoded
         )
 
-        commit_stamp = None
+        commit_stamp = offset = None
         if commit_time is not None:
+            try:
                 commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+            except ValueError, e:
+                raise errors.BzrCommandError(
+                    "Could not parse --commit-time: " + str(e))
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -3058,6 +3062,7 @@ class cmd_commit(Command):
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
+                        timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
