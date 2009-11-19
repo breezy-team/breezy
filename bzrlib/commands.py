@@ -989,7 +989,7 @@ def run_bzr(argv):
         i += 1
 
     if opt_concurrency is not None:
-        osutils._force_local_concurrency = opt_concurrency
+        osutils._local_concurrency_override = opt_concurrency
 
     debug.set_debug_flags_from_config()
 
