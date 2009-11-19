@@ -3027,9 +3027,9 @@ class cmd_commit(Command):
         if message is not None:
             if osutils.lexists(message):
                 ui.ui_factory.show_warning("The commit message is a file"
-                    " name \"%s\"." % message)
-                ui.ui_factory.show_warning("(use --file \"%s\" to take commit"
-                    " message from that file)" % message)
+                    " name \"%(filename)s\".\n"
+                    "(use --file \"%(filename)s\" to take commit message from"
+                    " that file)" % { 'filename': message })
                 confirmed = ui.ui_factory.get_boolean("Do you want to commit"
                     " with this message")
                 if confirmed is None:
