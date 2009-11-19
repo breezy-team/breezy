@@ -46,7 +46,11 @@ from dulwich.pack import (
     PackData,
     write_pack_index_v2,
     )
-
+from dulwich.objects import (
+    ShaFile,
+    sha_to_hex,
+    hex_to_sha,
+    )
 
 class BzrBackend(Backend):
 
@@ -83,20 +87,32 @@ class BzrBackend(Backend):
 
         p = PackData(path)
         entries = p.sorted_entries()
+        heads = []
+        for e in entries:
+            sha = e[0]
+            offset = e[1]
+            t, o = p.get_object_at (offset)
+            if t == 1 or t == 4:
+                heads.append(sha)
         write_pack_index_v2(path[:-5]+".idx", entries, p.calculate_checksum())
 
-        def get_objects():
-            pack = Pack(path[:-5])
-            for obj in pack.iterobjects():
-                yield obj
+        repo_dir = BzrDir.open_from_transport(self.transport)
+        target = repo_dir.find_repository()
 
-        target = Repository.open_from_transport(self.transport)
+        objects = {}
+        for tup in p.iterobjects():
+            obj_type, obj = p.get_object_at (tup[0])
+            if obj_type in range(1, 4):
+                sf = ShaFile.from_raw_string (obj_type, obj)
+                objects[hex_to_sha(sf.id)] = sf
 
         target.lock_write()
         try:
             target.start_write_group()
             try:
-                import_git_objects(target, self.mapping, iter(get_objects()))
+                import_git_objects(target, self.mapping, objects,
+                                   BazaarObjectStore (target, self.mapping),
+                                   heads)
             finally:
                 target.commit_write_group()
         finally:
