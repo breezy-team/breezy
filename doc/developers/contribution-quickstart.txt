@@ -24,7 +24,7 @@ In brief, a contribution should include:
     c.  tests to ensure the specification is correctly
         implemented.
 
-For more information, see the :doc:`HACKING`.
+For more information, see the `Bazaar Developer Guide <HACKING.html>`_.
 
 If you are not an experienced Bazaar contributor, why not ask for
 mentoring?  When you submit your merge proposal on Launchpad, simply say
