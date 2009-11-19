@@ -37,6 +37,7 @@ Install Packages
    f) wget
    g) zip
    h) unzip
+   i) patch
 
 
 2) Download the supported versions of python from http://www.python.org
@@ -105,6 +106,7 @@ Install Packages
       versions of PyQt.
    i) Install pyreadline
       https://launchpad.net/pyreadline/+download
+   j) easy_install pygments
 
 5) Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
    Windows, and paramiko knows how to use keys from Pageant.
@@ -133,6 +135,9 @@ Install Packages
 
 7) Install INNOSetup from:
    http://www.jrsoftware.org/isdl.php
+
+   After installing, you'll want to add ``C:\Program Files\Inno Setup 5`` to
+   your PATH.
 
 8) Fix distutils for the specific version of gcc. Distutils in python2.4.4 has
    a bug where it assumes version strings have only 3 digits. The fix is to
