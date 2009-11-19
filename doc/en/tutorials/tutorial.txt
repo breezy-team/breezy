@@ -404,7 +404,7 @@ of the branch see the same patterns::
 
 
 bzr ignore
---------------
+----------
 
 As an alternative to editing the ``.bzrignore`` file, you can use the 
 ``bzr ignore`` command. The ``bzr ignore`` command takes filenames and/or
