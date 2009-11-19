@@ -900,7 +900,7 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             inv_sha1 = tree.branch.repository.inventories.get_sha1s(
                             [inv_key])[inv_key]
             self.assertEqual(inv_sha1, builder.inv_sha1)
-            self.assertIsNot(None, builder.new_inventory)
+            self.assertIs(None, builder.new_inventory)
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
