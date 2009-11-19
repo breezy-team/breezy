@@ -11,10 +11,9 @@ Baseline
 ========
 
 This was written as a step-by-step as I set up the Amazon EC2 'desolation'
-instance. This was based on an Amazon Windows 2003 instance that already had
-Visual Studio 2008 installed. Also note that for Amazon EC2, all programs were
-installed into the "C:" drive, as the "D:" drive is essentially ``/tmp`` and is
-not preserved between launched instances.
+instance. This was based on an Amazon Windows 2003 instance. Also note that for
+Amazon EC2, all programs were installed into the "C:" drive, as the "D:" drive
+is essentially ``/tmp`` and is not preserved between launched instances.
 
 
 Install Packages
@@ -180,6 +179,30 @@ Install Packages
 
    I recommend 3, mostly because lots of apps will want to use zlib1.dll in the
    long run. (You may already have it.)
+
+10) Install Visual Studio 2008 Professional
+    http://www.microsoft.com/downloads/details.aspx?FamilyId=83C3A1EC-ED72-4A79-8961-25635DB0192B&displaylang=en
+
+    This is a 3GB DVD iso image. You can mount it directly with Microsofts
+    iso mounting utility:
+    http://download.microsoft.com/download/7/b/6/7b6abd84-7841-4978-96f5-bd58df02efa2/winxpvirtualcdcontrolpanel_21.exe
+
+    You need at least Windows XP (which introduced direct iso support, I
+    believe.)
+
+    Note that there is a Service Pack 1 for Visual Studio. The ISO can be
+    downloaded here:
+    http://www.microsoft.com/downloads/thankyou.aspx?familyId=27673c47-b3b5-4c67-bd99-84e525b5ce61&displayLang=en
+
+    However, on EC2, there isn't enough room on C: to actually run the
+    installer. You need approx 6GB of free disk space. And EC2 only gives your
+    10GB and Windows itself takes up about 5GB. So we are currently running
+    stock VS 2008 with no service packs. (Even installing VS 2008 to a
+    different drive doesn't leave enough room on C: to run the upgrader.)
+
+    When installing on EC2, it seems their 2003 Server comes with a Visual
+    Studio key already supplied. There is also the possibility of using Visual
+    Studio Express Edition, but it is currently unable to compile TortoiseBzr.
 
 .. 
    vim: ft=rst tw=79 et
