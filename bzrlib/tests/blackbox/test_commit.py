@@ -608,6 +608,26 @@ class TestCommit(ExternalBase):
         properties = last_rev.properties
         self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
+    def test_commit_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Sat 2009-10-10 08:00:00 +0100',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+        
+    def test_commit_time_bad_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='NOT A TIME' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')

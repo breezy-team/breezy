@@ -23,6 +23,9 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr commit`` now has a ``--commit-time`` option.
+  (Alexander Sack, #459276)
+
 Bug Fixes
 *********
 
