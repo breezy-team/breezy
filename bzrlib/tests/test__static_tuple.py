@@ -16,11 +16,13 @@
 
 """Tests for the StaticTuple type."""
 
+import cPickle
 import gc
 import sys
 
 from bzrlib import (
     _static_tuple_py,
+    debug,
     errors,
     osutils,
     static_tuple,
@@ -570,12 +572,45 @@ class TestStaticTuple(tests.TestCase):
     def test_from_sequence_not_sequence(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object())
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, 10)
 
     def test_from_sequence_incorrect_args(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(['foo', 'bar']))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_generator(self):
+        def generate_tuple():
+            yield 'foo'
+            yield 'bar'
+        st = self.module.StaticTuple.from_sequence(generate_tuple())
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_pickle(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
+
+    def test_pickle_empty(self):
+        st = self.module.StaticTuple()
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertIs(st, unpickled)
+
+    def test_pickle_nested(self):
+        st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
 
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from
@@ -586,3 +621,28 @@ class TestStaticTuple(tests.TestCase):
                 return
         self.assertIs(static_tuple.StaticTuple,
                       self.module.StaticTuple)
+
+
+class TestEnsureStaticTuple(tests.TestCase):
+
+    def test_is_static_tuple(self):
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_is_tuple(self):
+        t = ('foo',)
+        st = static_tuple.expect_static_tuple(t)
+        self.assertIsInstance(st, static_tuple.StaticTuple)
+        self.assertEqual(t, st)
+
+    def test_flagged_is_static_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_flagged_is_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        t = ('foo',)
+        self.assertRaises(TypeError, static_tuple.expect_static_tuple, t)

@@ -656,7 +656,6 @@ class cmd_add(Command):
         if base_tree:
             base_tree.lock_read()
         try:
-            file_list = self._maybe_expand_globs(file_list)
             tree, file_list = tree_files_for_add(file_list)
             added, ignored = tree.smart_add(file_list, not
                 no_recurse, action=action, save=not dry_run)
@@ -851,8 +850,9 @@ class cmd_mv(Command):
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
             rel_names = tree.get_canonical_inventory_paths(rel_names)
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
-                self.outf.write("%s => %s\n" % pair)
+            for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
+                if not is_quiet():
+                    self.outf.write("%s => %s\n" % (src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
@@ -902,7 +902,8 @@ class cmd_mv(Command):
             dest = osutils.pathjoin(dest_parent, dest_tail)
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
-            self.outf.write("%s => %s\n" % (src, dest))
+            if not is_quiet():
+                self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):
@@ -2277,50 +2278,51 @@ class cmd_log(Command):
 
         file_ids = []
         filter_by_dir = False
-        if file_list:
-            # find the file ids to log and check for directory filtering
-            b, file_info_list, rev1, rev2 = _get_info_for_log_files(revision,
-                file_list)
-            for relpath, file_id, kind in file_info_list:
-                if file_id is None:
-                    raise errors.BzrCommandError(
-                        "Path unknown at end or start of revision range: %s" %
-                        relpath)
-                # If the relpath is the top of the tree, we log everything
-                if relpath == '':
-                    file_ids = []
-                    break
-                else:
-                    file_ids.append(file_id)
-                filter_by_dir = filter_by_dir or (
-                    kind in ['directory', 'tree-reference'])
-        else:
-            # log everything
-            # FIXME ? log the current subdir only RBC 20060203
-            if revision is not None \
-                    and len(revision) > 0 and revision[0].get_branch():
-                location = revision[0].get_branch()
-            else:
-                location = '.'
-            dir, relpath = bzrdir.BzrDir.open_containing(location)
-            b = dir.open_branch()
-            rev1, rev2 = _get_revision_range(revision, b, self.name())
-
-        # Decide on the type of delta & diff filtering to use
-        # TODO: add an --all-files option to make this configurable & consistent
-        if not verbose:
-            delta_type = None
-        else:
-            delta_type = 'full'
-        if not show_diff:
-            diff_type = None
-        elif file_ids:
-            diff_type = 'partial'
-        else:
-            diff_type = 'full'
-
-        b.lock_read()
+        b = None
         try:
+            if file_list:
+                # find the file ids to log and check for directory filtering
+                b, file_info_list, rev1, rev2 = _get_info_for_log_files(
+                    revision, file_list)
+                for relpath, file_id, kind in file_info_list:
+                    if file_id is None:
+                        raise errors.BzrCommandError(
+                            "Path unknown at end or start of revision range: %s" %
+                            relpath)
+                    # If the relpath is the top of the tree, we log everything
+                    if relpath == '':
+                        file_ids = []
+                        break
+                    else:
+                        file_ids.append(file_id)
+                    filter_by_dir = filter_by_dir or (
+                        kind in ['directory', 'tree-reference'])
+            else:
+                # log everything
+                # FIXME ? log the current subdir only RBC 20060203
+                if revision is not None \
+                        and len(revision) > 0 and revision[0].get_branch():
+                    location = revision[0].get_branch()
+                else:
+                    location = '.'
+                dir, relpath = bzrdir.BzrDir.open_containing(location)
+                b = dir.open_branch()
+                b.lock_read()
+                rev1, rev2 = _get_revision_range(revision, b, self.name())
+
+            # Decide on the type of delta & diff filtering to use
+            # TODO: add an --all-files option to make this configurable & consistent
+            if not verbose:
+                delta_type = None
+            else:
+                delta_type = 'full'
+            if not show_diff:
+                diff_type = None
+            elif file_ids:
+                diff_type = 'partial'
+            else:
+                diff_type = 'full'
+
             # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
@@ -2356,7 +2358,8 @@ class cmd_log(Command):
                 diff_type=diff_type, _match_using_deltas=match_using_deltas)
             Logger(b, rqst).show(lf)
         finally:
-            b.unlock()
+            if b is not None:
+                b.unlock()
 
 
 def _get_revision_range(revisionspec_list, branch, command_name):
@@ -2426,10 +2429,15 @@ class cmd_touching_revisions(Command):
     @display_command
     def run(self, filename):
         tree, relpath = WorkingTree.open_containing(filename)
-        b = tree.branch
         file_id = tree.path2id(relpath)
-        for revno, revision_id, what in log.find_touching_revisions(b, file_id):
-            self.outf.write("%6d %s\n" % (revno, what))
+        b = tree.branch
+        b.lock_read()
+        try:
+            touching_revs = log.find_touching_revisions(b, file_id)
+            for revno, revision_id, what in touching_revs:
+                self.outf.write("%6d %s\n" % (revno, what))
+        finally:
+            b.unlock()
 
 
 class cmd_ls(Command):
@@ -3032,6 +3040,9 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
+            if my_message is not None and '\r' in my_message:
+                my_message = my_message.replace('\r\n', '\n')
+                my_message = my_message.replace('\r', '\n')
             if my_message is None and not file:
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
@@ -4524,7 +4535,7 @@ class cmd_bind(Command):
     before they will be applied to the local branch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case binding will update the the local nickname to be
+    locally, in which case binding will update the local nickname to be
     that of the master.
     """
 
@@ -5375,7 +5386,7 @@ class cmd_switch(Command):
     /path/to/newbranch.
 
     Bound branches use the nickname of its master branch unless it is set
-    locally, in which case switching will update the the local nickname to be
+    locally, in which case switching will update the local nickname to be
     that of the master.
     """
 
@@ -5675,7 +5686,7 @@ class cmd_shelve(Command):
             try:
                 shelver.run()
             finally:
-                shelver.work_tree.unlock()
+                shelver.finalize()
         except errors.UserAbort:
             return 0
 

@@ -462,7 +462,7 @@ class HttpServer(transport.Server):
                 raise httplib.UnknownProtocol(proto_vers)
             else:
                 self._httpd = self.create_httpd(serv_cls, rhandler)
-            host, self.port = self._httpd.socket.getsockname()
+            self.host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):

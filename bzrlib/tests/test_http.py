@@ -1178,7 +1178,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         if self._testing_pycurl():
             # Oh my ! pycurl does not check for the port as part of
             # no_proxy :-( So we just test the host part
-            self.no_proxy_host = 'localhost'
+            self.no_proxy_host = self.server.host
         else:
             self.no_proxy_host = self.proxy_address
         # The secondary server is the proxy
@@ -1956,7 +1956,7 @@ if tests.HTTPSServerFeature.available():
         pass
 
 
-class TestActivity(tests.TestCase):
+class TestActivityMixin(object):
     """Test socket activity reporting.
 
     We use a special purpose server to control the bytes sent and received and
@@ -2100,3 +2100,57 @@ lalala whatever as long as itsssss
         code, f = t._post('abc def end-of-body\n')
         self.assertEqual('lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()
+
+
+class TestActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.server = self._activity_server(self._protocol_version)
+        self.server.setUp()
+        self.activities = {}
+        def report_activity(t, bytes, direction):
+            count = self.activities.get(direction, 0)
+            count += bytes
+            self.activities[direction] = count
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = report_activity
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.tearDown()
+        tests.TestCase.tearDown(self)
+
+
+class TestNoReportActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        # Unlike TestActivity, we are really testing ReportingFileSocket and
+        # ReportingSocket, so we don't need all the parametrization. Since
+        # ReportingFileSocket and ReportingSocket are wrappers, it's easier to
+        # test them through their use by the transport than directly (that's a
+        # bit less clean but far more simpler and effective).
+        self.server = ActivityHTTPServer('HTTP/1.1')
+        self._transport=_urllib.HttpTransport_urllib
+
+        self.server.setUp()
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = None
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.tearDown()
+        tests.TestCase.tearDown(self)
+
+    def assertActivitiesMatch(self):
+        # Nothing to check here
+        pass

@@ -1710,10 +1710,12 @@ class KnitVersionedFiles(VersionedFiles):
             # There were index entries buffered at the end of the stream,
             # So these need to be added (if the index supports holding such
             # entries for later insertion)
+            all_entries = []
             for key in buffered_index_entries:
                 index_entries = buffered_index_entries[key]
-                self._index.add_records(index_entries,
-                    missing_compression_parents=True)
+                all_entries.extend(index_entries)
+            self._index.add_records(
+                all_entries, missing_compression_parents=True)
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
@@ -2365,7 +2367,7 @@ class _KndxIndex(object):
     FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
-        that the the compressed data starts at.
+        that the compressed data starts at.
     LENGTH is the ascii representation of the length of the data file.
     PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
         REVISION_ID.

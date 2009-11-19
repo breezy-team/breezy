@@ -2,6 +2,16 @@
 Bazaar Developer Document Catalog
 =================================
 
+
+Introduction
+============
+
+.. toctree::
+   :maxdepth: 1
+
+   contribution-quickstart
+
+
 Enhancing Bazaar
 ================
 

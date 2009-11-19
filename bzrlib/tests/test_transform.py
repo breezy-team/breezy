@@ -1951,14 +1951,16 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, 'contents', 'file-id')
         trans_id = tt.new_directory('dir', tt.root, 'dir-id')
-        tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
+        if SymlinkFeature.available():
+            tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
         rev = tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path('file-id'))
         self.assertEqual('contents', tree.get_file_text('file-id'))
         self.assertEqual('dir', tree.id2path('dir-id'))
-        self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
-        self.assertEqual('target', tree.get_symlink_target('symlink-id'))
+        if SymlinkFeature.available():
+            self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
+            self.assertEqual('target', tree.get_symlink_target('symlink-id'))
 
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
@@ -2454,8 +2456,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(('missing', None, None, None), summary)
 
     def test_file_content_summary_executable(self):
-        if not osutils.supports_executable():
-            raise TestNotApplicable()
         preview = self.get_empty_preview()
         path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
         preview.set_executability(True, path_id)
@@ -2470,8 +2470,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertIs(None, summary[3])
 
     def test_change_executability(self):
-        if not osutils.supports_executable():
-            raise TestNotApplicable()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add('path')
@@ -2491,10 +2489,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         # size must be known
         self.assertEqual(len('contents'), summary[1])
         # not executable
-        if osutils.supports_executable():
-            self.assertEqual(False, summary[2])
-        else:
-            self.assertEqual(None, summary[2])
+        self.assertEqual(False, summary[2])
         # will not have hash (not cheap to determine)
         self.assertIs(None, summary[3])
 
@@ -2753,6 +2748,17 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         rev2_id = builder.commit('rev2')
         rev2_tree = tree.branch.repository.revision_tree(rev2_id)
         self.assertEqual('contents', rev2_tree.get_file_text('file_id'))
+
+    def test_ascii_limbo_paths(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        branch = self.make_branch('any')
+        tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        foo_id = tt.new_directory('', ROOT_PARENT)
+        bar_id = tt.new_file(u'\u1234bar', foo_id, 'contents')
+        limbo_path = tt._limbo_name(bar_id)
+        self.assertEqual(limbo_path.encode('ascii', 'replace'), limbo_path)
 
 
 class FakeSerializer(object):

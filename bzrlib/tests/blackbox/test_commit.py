@@ -25,6 +25,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
@@ -170,6 +171,24 @@ class TestCommit(ExternalBase):
         self.assertEqual(err, 'Committing to: %s\n'
                          'Committed revision 2.\n' % expected)
 
+    def test_commit_sanitizes_CR_in_message(self):
+        # See bug #433779, basically Emacs likes to pass '\r\n' style line
+        # endings to 'bzr commit -m ""' which breaks because we don't allow
+        # '\r' in commit messages. (Mostly because of issues where XML style
+        # formats arbitrarily strip it out of the data while parsing.)
+        # To make life easier for users, we just always translate '\r\n' =>
+        # '\n'. And '\r' => '\n'.
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/b'])
+        a_tree.add('b')
+        self.run_bzr(['commit',
+                      '-m', 'a string\r\n\r\nwith mixed\r\rendings\n'],
+                     working_dir='a')
+        rev_id = a_tree.branch.last_revision()
+        rev = a_tree.branch.repository.get_revision(rev_id)
+        self.assertEqualDiff('a string\n\nwith mixed\n\nendings\n',
+                             rev.message)
+
     def test_commit_merge_reports_all_modified_files(self):
         # the commit command should show all the files that are shown by
         # bzr diff or bzr status when committing, even when they were not
@@ -245,6 +264,9 @@ class TestCommit(ExternalBase):
         self.run_bzr('commit -m ""', retcode=3)
 
     def test_unsupported_encoding_commit_message(self):
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable('Win32 parses arguments directly'
+                ' as Unicode, so we can\'t pass invalid non-ascii')
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
@@ -255,10 +277,6 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
-        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
-        #       guess is that the change to use Unicode command lines means
-        #       that we no longer pay any attention to LANG=C when decoding the
-        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})

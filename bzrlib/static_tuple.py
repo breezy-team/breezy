@@ -16,6 +16,8 @@
 
 """Interface thunk for a StaticTuple implementation."""
 
+from bzrlib import debug
+
 try:
     from bzrlib._static_tuple_c import StaticTuple
 except ImportError, e:
@@ -23,3 +25,18 @@ except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib._static_tuple_py import StaticTuple
 
+
+def expect_static_tuple(obj):
+    """Check if the passed object is a StaticTuple.
+
+    Cast it if necessary, but if the 'static_tuple' debug flag is set, raise an
+    error instead.
+
+    As apis are improved, we will probably eventually stop calling this as it
+    adds overhead we shouldn't need.
+    """
+    if 'static_tuple' not in debug.debug_flags:
+        return StaticTuple.from_sequence(obj)
+    if type(obj) is not StaticTuple:
+        raise TypeError('We expected a StaticTuple not a %s' % (type(obj),))
+    return obj

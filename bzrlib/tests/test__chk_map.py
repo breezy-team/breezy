@@ -20,6 +20,8 @@ from bzrlib import (
     chk_map,
     tests,
     )
+from bzrlib.static_tuple import StaticTuple
+stuple = StaticTuple
 
 
 def load_tests(standard_tests, module, loader):
@@ -67,25 +69,25 @@ class TestSearchKeys(tests.TestCase):
         self.assertEqual(expected, actual, 'actual: %r' % (actual,))
 
     def test_simple_16(self):
-        self.assertSearchKey16('8C736521', ('foo',))
-        self.assertSearchKey16('8C736521\x008C736521', ('foo', 'foo'))
-        self.assertSearchKey16('8C736521\x0076FF8CAA', ('foo', 'bar'))
-        self.assertSearchKey16('ED82CD11', ('abcd',))
+        self.assertSearchKey16('8C736521', stuple('foo',))
+        self.assertSearchKey16('8C736521\x008C736521', stuple('foo', 'foo'))
+        self.assertSearchKey16('8C736521\x0076FF8CAA', stuple('foo', 'bar'))
+        self.assertSearchKey16('ED82CD11', stuple('abcd',))
 
     def test_simple_255(self):
-        self.assertSearchKey255('\x8cse!', ('foo',))
-        self.assertSearchKey255('\x8cse!\x00\x8cse!', ('foo', 'foo'))
-        self.assertSearchKey255('\x8cse!\x00v\xff\x8c\xaa', ('foo', 'bar'))
+        self.assertSearchKey255('\x8cse!', stuple('foo',))
+        self.assertSearchKey255('\x8cse!\x00\x8cse!', stuple('foo', 'foo'))
+        self.assertSearchKey255('\x8cse!\x00v\xff\x8c\xaa', stuple('foo', 'bar'))
         # The standard mapping for these would include '\n', so it should be
         # mapped to '_'
-        self.assertSearchKey255('\xfdm\x93_\x00P_\x1bL', ('<', 'V'))
+        self.assertSearchKey255('\xfdm\x93_\x00P_\x1bL', stuple('<', 'V'))
 
     def test_255_does_not_include_newline(self):
         # When mapping via _search_key_255, we should never have the '\n'
         # character, but all other 255 values should be present
         chars_used = set()
         for char_in in range(256):
-            search_key = self.module._search_key_255((chr(char_in),))
+            search_key = self.module._search_key_255(stuple(chr(char_in),))
             chars_used.update(search_key)
         all_chars = set([chr(x) for x in range(256)])
         unused_chars = all_chars.symmetric_difference(chars_used)
@@ -113,10 +115,11 @@ class TestDeserialiseLeafNode(tests.TestCase):
 
     def test_deserialise_empty(self):
         node = self.module._deserialise_leaf_node(
-            "chkleaf:\n10\n1\n0\n\n", ("sha1:1234",))
+            "chkleaf:\n10\n1\n0\n\n", stuple("sha1:1234",))
         self.assertEqual(0, len(node))
         self.assertEqual(10, node.maximum_size)
         self.assertEqual(("sha1:1234",), node.key())
+        self.assertIsInstance(node.key(), StaticTuple)
         self.assertIs(None, node._search_prefix)
         self.assertIs(None, node._common_serialised_prefix)
 
@@ -194,7 +197,8 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def assertDeserialiseErrors(self, text):
         self.assertRaises((ValueError, IndexError),
-            self.module._deserialise_internal_node, text, 'not-a-real-sha')
+            self.module._deserialise_internal_node, text,
+                stuple('not-a-real-sha',))
 
     def test_raises_on_non_internal(self):
         self.assertDeserialiseErrors('')
@@ -211,7 +215,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def test_deserialise_one(self):
         node = self.module._deserialise_internal_node(
-            "chknode:\n10\n1\n1\n\na\x00sha1:abcd\n", ('sha1:1234',))
+            "chknode:\n10\n1\n1\n\na\x00sha1:abcd\n", stuple('sha1:1234',))
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
         self.assertEqual(10, node.maximum_size)
@@ -221,7 +225,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def test_deserialise_with_prefix(self):
         node = self.module._deserialise_internal_node(
-            "chknode:\n10\n1\n1\npref\na\x00sha1:abcd\n", ('sha1:1234',))
+            "chknode:\n10\n1\n1\npref\na\x00sha1:abcd\n", stuple('sha1:1234',))
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
         self.assertEqual(10, node.maximum_size)
@@ -230,7 +234,7 @@ class TestDeserialiseInternalNode(tests.TestCase):
         self.assertEqual({'prefa': ('sha1:abcd',)}, node._items)
 
         node = self.module._deserialise_internal_node(
-            "chknode:\n10\n1\n1\npref\n\x00sha1:abcd\n", ('sha1:1234',))
+            "chknode:\n10\n1\n1\npref\n\x00sha1:abcd\n", stuple('sha1:1234',))
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
         self.assertEqual(10, node.maximum_size)
@@ -240,7 +244,8 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def test_deserialise_pref_with_null(self):
         node = self.module._deserialise_internal_node(
-            "chknode:\n10\n1\n1\npref\x00fo\n\x00sha1:abcd\n", ('sha1:1234',))
+            "chknode:\n10\n1\n1\npref\x00fo\n\x00sha1:abcd\n",
+            stuple('sha1:1234',))
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
         self.assertEqual(10, node.maximum_size)
@@ -250,7 +255,8 @@ class TestDeserialiseInternalNode(tests.TestCase):
 
     def test_deserialise_with_null_pref(self):
         node = self.module._deserialise_internal_node(
-            "chknode:\n10\n1\n1\npref\x00fo\n\x00\x00sha1:abcd\n", ('sha1:1234',))
+            "chknode:\n10\n1\n1\npref\x00fo\n\x00\x00sha1:abcd\n",
+            stuple('sha1:1234',))
         self.assertIsInstance(node, chk_map.InternalNode)
         self.assertEqual(1, len(node))
         self.assertEqual(10, node.maximum_size)

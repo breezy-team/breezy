@@ -262,14 +262,6 @@ $ cat >
 2>: No such file or directory
 """)
 
-    def test_echo_bogus_input_file(self):
-        # We need a backing file sysytem for that test so it can't be in
-        # TestEcho
-        self.run_script("""
-$ echo <file
-2>file: No such file or directory
-""")
-
     def test_echo_bogus_output_file(self):
         # We need a backing file sysytem for that test so it can't be in
         # TestEcho
@@ -337,6 +329,11 @@ $ echo foo
 <bar
 """
         self.assertRaises(SyntaxError, self.run_script, story)
+
+    def test_echo_input(self):
+        self.assertRaises(SyntaxError, self.run_script, """
+            $ echo <foo
+            """)
 
     def test_echo_to_output(self):
         retcode, out, err = self.run_command(['echo'], None, '\n', None)

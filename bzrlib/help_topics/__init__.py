@@ -152,10 +152,16 @@ def _help_on_revisionspec(name):
     out.append(
 """Revision Identifiers
 
-A revision identifier refers to a specific state of a branch's history. It can
-be a revision number, or a keyword followed by ':' and often other
-parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
-and 'submit:'.
+A revision identifier refers to a specific state of a branch's history.  It
+can be expressed in several ways.  It can begin with a keyword to
+unambiguously specify a given lookup type; some examples are 'last:1',
+'before:yesterday' and 'submit:'.
+
+Alternately, it can be given without a keyword, in which case it will be
+checked as a revision number, a tag, a revision id, a date specification, or a
+branch specification, in that order.  For example, 'date:today' could be
+written as simply 'today', though if you have a tag called 'today' that will
+be found first.
 
 If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
 revision range. Examples: '3647..3649', 'date:yesterday..-1' and
@@ -555,7 +561,7 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
 ================ =================================================================

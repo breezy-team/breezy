@@ -436,6 +436,9 @@ server can expand them.  The default implementation in bzrlib does this
 using `bzrlib.transport.pathfilter` and `os.path.expanduser`, taking care
 to respect the virtual root.
 
+Paths in request arguments are UTF-8 encoded, except for the legacy VFS
+requests which expect escaped (`bzrlib.urlutils.escape`) paths.
+
 
 Requests
 ========
