@@ -403,6 +403,26 @@ of the branch see the same patterns::
     % bzr commit -m "Add ignore patterns"
 
 
+bzr ignore
+--------------
+
+As an alternative to editing the ``.bzrignore`` file, you can use the 
+``bzr ignore`` command. The ``bzr ignore`` command takes filenames and/or
+patterns as arguments and then adds them to the ``.bzrignore`` file. If a
+``.bzrignore`` file does not exist the ``bzr ignore`` command will 
+automatically create one for you, and implicitly add it to be versioned::
+
+    % bzr ignore tags
+    % bzr status
+    added:
+      .bzrignore
+
+Just like when editing the ``.bzrignore`` file on your own, you should
+commit the automatically created ``.bzrignore`` file::
+
+    % bzr commit -m "Added tags to ignore file"
+
+
 Global ignores
 --------------
 

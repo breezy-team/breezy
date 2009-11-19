@@ -2574,6 +2574,12 @@ class cmd_ignore(Command):
 
     See ``bzr help patterns`` for details on the syntax of patterns.
 
+    In the case that a .bzrignore file does not exist, the ignore command
+    will create one and add the specified files or patterns to the newly
+    created file. The ignore command will also automatically add the 
+    .bzrignore file to be versioned. If creating a .bzrignore file without
+    the use of the ignore command will require an explicit add command.
+
     To remove patterns from the ignore list, edit the .bzrignore file.
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
