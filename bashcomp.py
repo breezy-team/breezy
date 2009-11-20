@@ -2,6 +2,7 @@
 
 from bzrlib import plugin
 from bzrlib import commands
+from bzrlib import help_topics
 
 head="""\
 # Programmable completion for the Bazaar-NG bzr command under bash. Source
@@ -69,10 +70,11 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
     aliases = []
     cases = ""
     reqarg = {}
-    for name in sorted(commands.all_command_names()):
-        cmd = commands.get_cmd_object(name)
-        cases += "\t" + name
-        aliases.append(name)
+    all_cmds = sorted(commands.all_command_names())
+    for cmdname in all_cmds:
+        cmd = commands.get_cmd_object(cmdname)
+        cases += "\t" + cmdname
+        aliases.append(cmdname)
         for alias in cmd.aliases:
             cases += "|" + alias
             aliases.append(alias)
@@ -89,6 +91,9 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
                     switches.append("-" + short_name)
                 if name is not None:
                     switches.append("--" + name)
+        if 'help' == cmdname or 'help' in cmd.aliases:
+            switches.extend(sorted(help_topics.topic_registry.keys()))
+            switches.extend(all_cmds)
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
         cases += "\t\t;;\n"
     if function_only:
