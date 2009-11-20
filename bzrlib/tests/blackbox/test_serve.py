@@ -24,6 +24,7 @@ import subprocess
 import sys
 import thread
 import threading
+import time
 
 from bzrlib import (
     builtins,
@@ -119,6 +120,16 @@ class TestBzrServe(TestCaseWithTransport):
         url = 'bzr://localhost:%d/' % port
         self.permit_url(url)
         return process, url
+    
+    def test_bzr_serve_quiet(self):
+        self.make_branch('.')
+        args = ['serve', '--port', 'localhost:0', '--quiet']
+        process = self.start_bzr_subprocess(args)
+        time.sleep(1) # wait for subprocess to (possibly) write to stdout/err
+        out, err = self.finish_bzr_subprocess(process, retcode=None,
+                                              send_signal=signal.SIGTERM)
+        self.assertEqual([], out.splitlines())
+        self.assertEqual([], err.splitlines())
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
