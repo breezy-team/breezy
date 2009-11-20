@@ -165,7 +165,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
 
 
 class SubmodulesRequireSubtrees(BzrError):
-    _fmt = """The repository you are fetching from contains submodules. Please run 'bzr upgrade --development-subtree'."""
+    _fmt = """The repository you are fetching from contains submodules. To continue, upgrade your Bazaar repository to a format that supports nested trees, such as 'development-subtree'."""
     internal = False
 
 
@@ -200,7 +200,7 @@ def remove_disappeared_children(path, base_children, existing_children):
 
 
 def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
-    revision_id, parent_invs, shagitmap, lookup_object):
+    revision_id, parent_invs, shagitmap, lookup_object, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -249,12 +249,15 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
                     texts, mapping, child_path, child_hexsha, base_inv,
-                    base_children.get(basename), file_id, revision_id, parent_invs, shagitmap,
-                    lookup_object)
+                    base_children.get(basename), file_id, revision_id,
+                    parent_invs, shagitmap, lookup_object,
+                    allow_submodules=allow_submodules)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
+            if not allow_submodules:
+                raise SubmodulesRequireSubtrees()
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
                     texts, mapping, child_path, child_hexsha, base_inv, base_children.get(basename),
                     file_id, revision_id, parent_invs, shagitmap, lookup_object)
@@ -351,7 +354,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             base_ie = base_inv.root
         inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
                 mapping, "", root_trees[revid], base_inv, base_ie, None, revid,
-                parent_invs, target_git_object_retriever._idmap, lookup_object)
+                parent_invs, target_git_object_retriever._idmap, lookup_object,
+                allow_submodules=getattr(repo._format, "supports_tree_reference", False))
         target_git_object_retriever._idmap.add_entries(shamap)
         if unusual_modes != {}:
             for path, mode in unusual_modes.iteritems():
