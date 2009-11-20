@@ -387,6 +387,9 @@ def object_mode(kind, executable):
         if executable:
             mode |= 0111
         return mode
+    elif kind == 'tree-reference':
+        from dulwich.objects import S_IFGITLINK
+        return S_IFGITLINK
     else:
         raise AssertionError
 
