@@ -27,6 +27,9 @@
   * Support for parsing --HG-- metadata in git commit messages, for 
     better interoperability with bzr-hg.
 
+  * Submodules are now imported. This requires the use of the 
+    development-subtree format in bzrlib though. (#402814, Jelmer Vernooij)
+
 0.4.2	2009-10-01
 
  BUG FIXES
