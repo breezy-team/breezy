@@ -19,6 +19,10 @@ New Features
 
 Bug Fixes
 *********
+
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
+
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 Improvements
