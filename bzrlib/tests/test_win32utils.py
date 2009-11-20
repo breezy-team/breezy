@@ -373,10 +373,13 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
 
     def test_slashes_changed(self):
-        self.assertCommandLine([u'a/*.c'], '"a\\*.c"')
-        # Expands the glob, but nothing matches
+        # Quoting doesn't change the supplied args
+        self.assertCommandLine([u'a\\*.c'], '"a\\*.c"')
+        # Expands the glob, but nothing matches, swaps slashes
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
-        self.assertCommandLine([u'a/foo.c'], 'a\\foo.c')
+        self.assertCommandLine([u'a/?.c'], 'a\\?.c')
+        # No glob, doesn't touch slashes
+        self.assertCommandLine([u'a\\foo.c'], 'a\\foo.c')
 
     def test_no_single_quote_supported(self):
         self.assertCommandLine(["add", "let's-do-it.txt"],

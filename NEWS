@@ -40,6 +40,11 @@ Bug Fixes
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
+* The new glob expansion on Windows would replace all ``\`` characters
+  with ``/`` even if it there wasn't a glob to expand, the arg was quoted,
+  etc. Now only change slashes if there is something being glob expanded.
+  (John Arbash Meinel, #485771)
+
 Improvements
 ************
 
