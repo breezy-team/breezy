@@ -135,6 +135,8 @@ class GitInventoryTreeReference(GitInventoryEntry):
 
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
         super(GitInventoryTreeReference, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        self.hexsha = hexsha
+        self.reference_revision = inv.mapping.revision_id_foreign_to_bzr(hexsha)
         self.text_sha1 = None
         self.text_size = None
         self.symlink_target = None

@@ -127,11 +127,13 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
 
-    def _get_ie_object(self, entry, inv, unusual_modes):  
+    def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
-        else:
+        elif entry.kind == "file":
             return self._get_blob(entry.file_id, entry.revision)
+        else:
+            raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
     def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
@@ -145,13 +147,15 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = ret.id
                 self._idmap.add_entry(hexsha, "tree", (entry.file_id, inv.revision_id))
                 return hexsha, ret
-        else:
+        elif entry.kind == "file":
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 self._idmap.add_entry(ret.id, "blob", (entry.file_id, entry.revision))
                 return ret.id, ret
+        else:
+            raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
     def _get_ie_sha1(self, entry, inv, unusual_modes):
         return self._get_ie_object_or_sha1(entry, inv, unusual_modes)[0]

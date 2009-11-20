@@ -133,6 +133,8 @@ class GitWorkingTree(workingtree.WorkingTree):
                     from posix import stat_result
                     stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
                 blob.set_raw_string(entry.symlink_target)
+            else:
+                raise AssertionError("unknown kind '%s'" % entry.kind)
             # Add object to the repository if it didn't exist yet
             if not blob.id in self.repository._git.object_store:
                 self.repository._git.object_store.add_object(blob)

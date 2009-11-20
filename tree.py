@@ -57,7 +57,8 @@ class GitRevisionTree(revisiontree.RevisionTree):
             entry = self._inventory._get_ie(path)
         else:
             entry = self._inventory[file_id]
-        if entry.kind == 'directory': return ""
+        if entry.kind in ('directory', 'tree-reference'):
+            return ""
         return entry.object.data
 
 

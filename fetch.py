@@ -41,6 +41,7 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryFile,
     InventoryLink,
+    TreeReference,
     )
 from bzrlib.lru_cache import (
     LRUCache,
@@ -72,13 +73,13 @@ from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
     )
 from bzrlib.plugins.git.repository import (
-    GitRepository, 
+    GitRepository,
     GitRepositoryFormat,
     LocalGitRepository,
     )
 
 
-def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
+def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     revision_id, parent_invs, shagitmap, lookup_object, executable, symlink):
     """Import a git blob object into a bzr repository.
 
@@ -153,7 +154,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     else:
         shamap = []
     invdelta = []
-    if base_ie is not None: 
+    if base_ie is not None:
         old_path = base_inv.id2path(file_id)
         if base_ie.kind == "directory":
             invdelta.extend(remove_disappeared_children(old_path, base_ie.children, []))
@@ -163,15 +164,27 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     return (invdelta, shamap)
 
 
-class SubmodulesNotSupported(BzrError):
-
-    _fmt = """Submodules can not yet be imported (requires nested tree support in Bazaar)."""
+class SubmodulesRequireSubtrees(BzrError):
+    _fmt = """The repository you are fetching from contains submodules. Please run 'bzr upgrade --development-subtree'."""
     internal = False
 
 
-def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie, 
+def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie,
     parent_id, revision_id, parent_invs, shagitmap, lookup_object):
-    raise SubmodulesNotSupported()
+    file_id = mapping.generate_file_id(path)
+    ie = TreeReference(file_id, urlutils.basename(path.decode("utf-8")),
+        parent_id)
+    ie.revision = revision_id
+    if base_ie is None:
+        oldpath = None
+    else:
+        oldpath = path
+        if base_ie.kind == ie.kind and base_ie.reference_revision == ie.reference_revision:
+            ie.revision = base_ie.revision
+    ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
+    texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
+    invdelta = [(oldpath, path, file_id, ie)]
+    return invdelta, {}, {}
 
 
 def remove_disappeared_children(path, base_children, existing_children):
@@ -186,7 +199,7 @@ def remove_disappeared_children(path, base_children, existing_children):
     return ret
 
 
-def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id, 
+def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     revision_id, parent_invs, shagitmap, lookup_object):
     """Import a git tree object into a bzr repository.
 
@@ -199,7 +212,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     invdelta = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
-    ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")), 
+    ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")),
         parent_id)
     if base_ie is None:
         # Newly appeared here
@@ -235,7 +248,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         child_path = osutils.pathjoin(path, name)
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
-                    texts, mapping, child_path, child_hexsha, base_inv, 
+                    texts, mapping, child_path, child_hexsha, base_inv,
                     base_children.get(basename), file_id, revision_id, parent_invs, shagitmap,
                     lookup_object)
             invdelta.extend(subinvdelta)
@@ -249,9 +262,9 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
             child_modes.update(grandchildmodes)
             shamap.extend(subshamap)
         else:
-            subinvdelta, subshamap = import_git_blob(texts, mapping, 
+            subinvdelta, subshamap = import_git_blob(texts, mapping,
                     child_path, child_hexsha, base_inv, base_children.get(basename), file_id,
-                    revision_id, parent_invs, shagitmap, lookup_object, 
+                    revision_id, parent_invs, shagitmap, lookup_object,
                     mode_is_executable(mode), stat.S_ISLNK(mode))
             invdelta.extend(subinvdelta)
             shamap.extend(subshamap)
@@ -260,13 +273,13 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
             child_modes[child_path] = mode
     # Remove any children that have disappeared
     if base_ie is not None and base_ie.kind == "directory":
-        invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id), 
+        invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id),
             base_children, existing_children))
     shamap.append((hexsha, "tree", (file_id, revision_id)))
     return invdelta, child_modes, shamap
 
 
-def import_git_objects(repo, mapping, object_iter, target_git_object_retriever, 
+def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         heads, pb=None):
     """Import a set of git objects into a bzr repository.
 
@@ -305,7 +318,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             root_trees[rev.revision_id] = o.tree
             revisions[rev.revision_id] = rev
             graph.append((rev.revision_id, rev.parent_ids))
-            target_git_object_retriever._idmap.add_entry(o.id, "commit", 
+            target_git_object_retriever._idmap.add_entry(o.id, "commit",
                     (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
@@ -319,8 +332,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         if pb is not None:
             pb.update("fetching revisions", i, len(graph))
         rev = revisions[revid]
-        # We have to do this here, since we have to walk the tree and 
-        # we need to make sure to import the blobs / trees with the right 
+        # We have to do this here, since we have to walk the tree and
+        # we need to make sure to import the blobs / trees with the right
         # path; this may involve adding them more than once.
         parent_invs = []
         for parent_id in rev.parent_ids:
@@ -336,8 +349,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         else:
             base_inv = parent_invs[0]
             base_ie = base_inv.root
-        inv_delta, unusual_modes, shamap = import_git_tree(repo.texts, 
-                mapping, "", root_trees[revid], base_inv, base_ie, None, revid, 
+        inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
+                mapping, "", root_trees[revid], base_inv, base_ie, None, revid,
                 parent_invs, target_git_object_retriever._idmap, lookup_object)
         target_git_object_retriever._idmap.add_entries(shamap)
         if unusual_modes != {}:
@@ -387,10 +400,10 @@ class InterGitRepository(InterRepository):
 
 
 class InterGitNonGitRepository(InterGitRepository):
-    """Base InterRepository that copies revisions from a Git into a non-Git 
+    """Base InterRepository that copies revisions from a Git into a non-Git
     repository."""
 
-    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
+    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None):
         if mapping is None:
             mapping = self.source.get_mapping()
@@ -431,7 +444,7 @@ def report_git_progress(pb, text):
 
 
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
-    """InterRepository that copies revisions from a remote Git into a non-Git 
+    """InterRepository that copies revisions from a remote Git into a non-Git
     repository."""
 
     def get_target_heads(self):
@@ -457,7 +470,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 wants = determine_wants(heads)
                 recorded_wants.extend(wants)
                 return wants
-        
+
             create_pb = None
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
@@ -465,9 +478,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 self.target.start_write_group()
                 try:
                     objects_iter = self.source.fetch_objects(
-                                record_determine_wants, graph_walker, 
+                                record_determine_wants, graph_walker,
                                 store.get_raw, progress)
-                    import_git_objects(self.target, mapping, objects_iter, 
+                    import_git_objects(self.target, mapping, objects_iter,
                             store, recorded_wants, pb)
                 finally:
                     pack_hint = self.target.commit_write_group()
@@ -482,13 +495,13 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return (isinstance(source, RemoteGitRepository) and 
+        return (isinstance(source, RemoteGitRepository) and
                 target.supports_rich_root() and
                 not isinstance(target, GitRepository))
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
-    """InterRepository that copies revisions from a local Git into a non-Git 
+    """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None):
@@ -502,8 +515,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             try:
                 self.target.start_write_group()
                 try:
-                    import_git_objects(self.target, mapping, 
-                            self.source._git.object_store, 
+                    import_git_objects(self.target, mapping,
+                            self.source._git.object_store,
                             target_git_object_retriever, wants, pb)
                 finally:
                     pack_hint = self.target.commit_write_group()
@@ -518,7 +531,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
         # FIXME: Also check target uses VersionedFile
-        return (isinstance(source, LocalGitRepository) and 
+        return (isinstance(source, LocalGitRepository) and
                 target.supports_rich_root() and
                 not isinstance(target, GitRepository))
 
@@ -531,7 +544,7 @@ class InterGitGitRepository(InterGitRepository):
             trace.note("git: %s", text)
         graphwalker = self.target._git.get_graph_walker()
         if isinstance(self.source, LocalGitRepository) and isinstance(self.target, LocalGitRepository):
-            return self.source._git.fetch(self.target._git, determine_wants, 
+            return self.source._git.fetch(self.target._git, determine_wants,
                 progress)
         elif isinstance(self.source, LocalGitRepository) and isinstance(self.target, RemoteGitRepository):
             raise NotImplementedError
@@ -548,7 +561,7 @@ class InterGitGitRepository(InterGitRepository):
         else:
             raise AssertionError
 
-    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False, 
+    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
             mapping = self.source.get_mapping()
@@ -569,5 +582,5 @@ class InterGitGitRepository(InterGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        return (isinstance(source, GitRepository) and 
+        return (isinstance(source, GitRepository) and
                 isinstance(target, GitRepository))
