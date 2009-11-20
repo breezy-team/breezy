@@ -124,12 +124,12 @@ class TestBzrServe(TestCaseWithTransport):
     def test_bzr_serve_quiet(self):
         self.make_branch('.')
         args = ['serve', '--port', 'localhost:0', '--quiet']
-        process = self.start_bzr_subprocess(args)
+        process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
         time.sleep(1) # wait for subprocess to (possibly) write to stdout/err
         out, err = self.finish_bzr_subprocess(process, retcode=None,
                                               send_signal=signal.SIGTERM)
-        self.assertEqual([], out.splitlines())
-        self.assertEqual([], err.splitlines())
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
