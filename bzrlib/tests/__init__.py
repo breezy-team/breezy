@@ -2402,6 +2402,8 @@ class TestCaseWithMemoryTransport(TestCase):
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
             root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
                                                     suffix='.tmp'))
+            if isinstance(root, unicode):
+                root = root.encode(sys.getfilesystemencoding())
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
