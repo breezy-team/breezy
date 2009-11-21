@@ -636,6 +636,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         file_id = self.path2id(path)
+        if file_id is None:
+            # For unversioned files on win32, we just assume they are not
+            # executable
+            return False
         return self._inventory[file_id].executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
@@ -2580,7 +2584,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:

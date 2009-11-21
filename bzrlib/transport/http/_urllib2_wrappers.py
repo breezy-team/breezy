@@ -80,10 +80,13 @@ class _ReportingFileSocket(object):
         self.filesock = filesock
         self._report_activity = report_activity
 
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
 
     def read(self, size=1):
         s = self.filesock.read(size)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def readline(self):
@@ -93,7 +96,7 @@ class _ReportingFileSocket(object):
         #  don't *need* the size parameter we'll stay with readline(self)
         #  --  vila 20090209
         s = self.filesock.readline()
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def __getattr__(self, name):
@@ -106,13 +109,17 @@ class _ReportingSocket(object):
         self.sock = sock
         self._report_activity = report_activity
 
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
+
     def sendall(self, s, *args):
         self.sock.sendall(s, *args)
-        self._report_activity(len(s), 'write')
+        self.report_activity(len(s), 'write')
 
     def recv(self, *args):
         s = self.sock.recv(*args)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def makefile(self, mode='r', bufsize=-1):
@@ -219,8 +226,7 @@ class AbstractHTTPConnection:
     # we want to warn. But not below a given thresold.
     _range_warning_thresold = 1024 * 1024
 
-    def __init__(self,
-                 report_activity=None):
+    def __init__(self, report_activity=None):
         self._response = None
         self._report_activity = report_activity
         self._ranges_received_whole_file = None
@@ -360,7 +366,16 @@ class Request(urllib2.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        self.proxied_host = self.get_host()
+        host, port = urllib.splitport(self.get_host())
+        if port is None:
+            # We need to set the default port ourselves way before it gets set
+            # in the HTTP[S]Connection object at build time.
+            if self.type == 'https':
+                conn_class = HTTPSConnection
+            else:
+                conn_class = HTTPConnection
+            port = conn_class.default_port
+        self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
 
 

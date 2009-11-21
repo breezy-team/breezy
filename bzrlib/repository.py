@@ -206,7 +206,10 @@ class CommitBuilder(object):
             # an inventory delta was accumulated without creating a new
             # inventory.
             basis_id = self.basis_delta_revision
-            self.inv_sha1 = self.repository.add_inventory_by_delta(
+            # We ignore the 'inventory' returned by add_inventory_by_delta
+            # because self.new_inventory is used to hint to the rest of the
+            # system what code path was taken
+            self.inv_sha1, _ = self.repository.add_inventory_by_delta(
                 basis_id, self._basis_delta, self._new_revision_id,
                 self.parents)
         else:

@@ -171,7 +171,7 @@ man_preamble = """\
 man_head = """\
 .TH bzr 1 "%(datestamp)s" "%(version)s" "Bazaar"
 .SH "NAME"
-Bazaar (%(bzrcmd)s) - next-generation distributed version control
+%(bzrcmd)s - Bazaar next-generation distributed version control
 .SH "SYNOPSIS"
 .B "%(bzrcmd)s"
 .I "command"

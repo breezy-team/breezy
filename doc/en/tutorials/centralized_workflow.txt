@@ -83,7 +83,7 @@ called ``centralhost``. Again, we will use a
   % bzr init-repo --no-trees sftp://centralhost/srv/bzr/
 
 You can think of this step as similar to setting up a new cvsroot, or
-subversion repository.  The {{{--no-trees}}} option tells bzr to not
+subversion repository.  The ``--no-trees`` option tells bzr to not
 populate the directory with a working tree.  This is appropriate,
 since no one will be making changes directly in the branches within
 the central repository.

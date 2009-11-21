@@ -1,0 +1,275 @@
+=================
+5分でわかるBazaar
+=================
+
+.. _introduction:
+
+イントロダクション
+===================
+
+Bazaarは分散型バージョン管理システムで、ソフトウェアプロジェクトの共同作業を楽にしてくれます。
+
+これから5分ほどで、ファイルをバージョン管理下に置き、変更をそれらに記録して、\
+作業内容を確認し、公開して作業内容をマージしてもらうためにプロジェクトのtrunkに\
+送る方法などを学びます。
+
+詳細な紹介内容を望むのであれば、 `さらに学ぶ`_ をご覧ください。
+
+
+インストール方法
+=================
+
+このガイドではBazaarをインストールする方法を説明しませんが、通常はとても簡単です。
+インストール方法の手引きは次の通りです:
+
+- **GNU/Linux:** おそらくBazaarはあなたのGNU/Linuxディストリビューションに含まれています。
+- **Windows:** `Windowsのためのインストールの手引き`_.
+- **Mac OS X:** `Mac OS Xのためのインストールの手引き`_.
+
+別のプラットフォームとソースコードからインストールする方法に関しては、 ダウンロード_
+と インストール方法_ のページを参照してください。
+
+.. _Windowsのためのインストールの手引き: http://bazaar-vcs.org/WindowsDownloads
+.. _Mac OS Xのためのインストールの手引き: http://bazaar-vcs.org/MacOSXBundle
+.. _ダウンロード: http://bazaar-vcs.org/Download
+.. _インストール方法: http://bazaar-vcs.org/InstallationFaq
+
+
+まずは自己紹介
+=================
+
+作業にとりかかる前に、まずあなたが誰なのかをBazaarに教えてあげましょう。
+そうすることで、履歴の中からあなたの作業を正確に識別することができます。
+
+次のように入力してください(もちろん、あなたの名前とEメールアドレスで)::
+
+  $ bzr whoami "John Doe <john.doe@gmail.com>"
+
+こうするとBazaarは、あなたの名前やEメールアドレスが入った設定ファイルを作成\
+もしくは修正します。
+
+名前とEメールアドレスが正しく登録されているか確認しましょう ::
+
+  $ bzr whoami
+  John Doe <john.doe@gmail.com>
+
+
+ファイルをバージョン管理する
+=============================
+
+Bazaarで扱うディレクトリといくつかのファイルを作りましょう::
+
+ $ mkdir myproject
+ $ cd myproject
+ $ mkdir subdirectory
+ $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
+
+**Windowsユーザーのための注意:** Windows Explorerを使ってディレクトリを作成し、\
+そのディレクトリの中で右クリックをして ``新規作成`` を選択し、ファイルを作成します。
+
+Bazaarにあなたのプロジェクトディレクトリを初期化させましょう::
+
+  $ bzr init
+
+何も起きていないように見えても心配しないでください。
+Bazaarはファイルとリビジョンの履歴を保存する branch_ を作りました。
+
+.. _branch: http://bazaar-vcs.org/Branch
+
+次のステップはBazaarに管理して欲しいファイルを教えることです。
+``bzr add`` を実行するとすべてのディレクトリとファイルがプロジェクトに\
+再帰的に追加されます::
+
+ $ bzr add
+ added subdirectory
+ added test1.txt
+ added test2.txt
+ added test3.txt
+ added subdirectory/test4.txt
+
+次に、これらをブランチにコミットしてスナップショットをとります。
+コミットを行った理由を説明するメッセージを追加します::
+
+  $ bzr commit -m "Initial import"
+
+Bazaarは分散型バージョン管理システムなので、コミットするために\
+サーバーに接続する必要はありません。
+代わりに、Bazaarはブランチとすべてのコミットをあなたが作業している\
+ディレクトリ内部に保存します;
+``.bzr`` というサブディレクトリをご覧ください。
+
+
+ファイルを変更する
+===================
+
+ファイルを変更してブランチにその変更をコミットしてみましょう。
+
+好きなエディタで ``test1.txt`` を編集し、何を行ったのかを確認します::
+
+ $ bzr diff
+ === modified file 'test1.txt'
+ --- test1.txt   2007-10-08 17:56:14 +0000
+ +++ test1.txt   2007-10-08 17:46:22 +0000
+ @@ -0,0 +1,1 @@
+ +test test test
+
+作業をBazaarのブランチにコミットします::
+
+  $ bzr commit -m "Added first line of text"
+  Committed revision 2.
+
+
+リビジョンのログを眺める
+=========================
+
+ログを閲覧することでブランチの履歴がわかります::
+
+  $ bzr log
+  ------------------------------------------------------------
+  revno: 2
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: myproject
+  timestamp: Mon 2007-10-08 17:56:14 +0000
+  message:
+    Added first line of text
+  ------------------------------------------------------------
+  revno: 1
+  committer: John Doe <john.doe@gmail.com>
+  branch nick: myproject
+  timestamp: Mon 2006-10-08 17:46:22 +0000
+  message:
+    Initial import
+
+
+sftpでブランチを公開する
+=========================
+
+ブランチを公開する方法は複数あります。
+SFTPサーバーがすでにあるもしくは容易にセットアップできるのであれば、\
+ブランチをそこで公開できます。
+
+そうでなければ、このセクションをとばして、Bazaarのための無料ホスティング\
+サービスである、 Launchpad_ で公開しましょう。
+
+.. _Launchpad: https://launchpad.net/
+
+``www.example.com/myproject`` でブランチを公開することを前提とします::
+
+ $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
+ 2 revision(s) pushed.
+
+Bazaarはリモートサーバー上で ``myproject`` ディレクトリを作りブランチを\
+そこにpushします。
+
+これで誰でも次のコマンドを入力すればあなたのブランチをコピーできます::
+
+ $ bzr branch http://www.example.com/myproject
+
+**注:** sftpを使うためには、 ``paramiko`` と ``pyCrypto`` をインストールする必要があります。
+詳細は http://bazaar-vcs.org/InstallationFaq を参照してください。
+
+
+Launchpadでブランチを公開する
+==============================
+
+Launchpadはフリーソフトウェアのための開発とホスティングのためのツールが\
+ひとまとめになったものです。これをブランチを公開するために利用できます。
+
+Launchpadのアカウントを持っていなければ、 `アカウントのサインアップのガイド`_
+に従ってアカウントを作り、 `SSHキーを登録`_ してください。
+
+.. _アカウントのサインアップのガイド: https://help.launchpad.net/CreatingYourLaunchpadAccount
+.. _SSHキーを登録: https://launchpad.net/people/+me/+editsshkeys
+
+次のコマンドを(``john.doe`` を自分のLaunchpadアカウント名に変更して)実行してください::
+
+ $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/myproject
+
+**注:** ``+junk`` はこのブランチがLaunchpad上の特定のプロジェクトに関連していないことを意味します。
+
+これで、誰でも次のコマンドを入力することでブランチのコピーを作ることができます::
+
+ $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/myproject
+
+ブランチとリビジョンの履歴に関する情報は https://code.launchpad.net/people/+me/+junk/myproject
+でも見ることができます。
+
+別のブランチから自分用のコピーを作る
+=====================================
+
+他人のコードに取り組むために、ブランチのコピーを作ることができます。
+実際の世界の例として、BazaarのGTKインターフェイスを見てみましょう::
+
+  $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
+  Branched 292 revision(s).
+
+Bazaarはbzr-gtkのtrunkブランチからすべてのファイルをダウンロードして\
+リビジョンの履歴をそろえ、bzr-gtk.johnというコピーを作ります。
+
+これで、ブランチのコピーを手に入れたのでネットの接続のあるなしに\
+関わらず変更をコミットできます。
+ブランチはいつでも公開することで共有でき、bzr-gtkチームがあなたの作品を\
+使いたいと思ったときにBazaarは彼らがあなたのブランチから彼らのブランチに\
+マージし直す作業を簡単にしてくれます。
+
+
+メインのブランチから自分のブランチを更新する
+=============================================
+
+変更を自分のブランチにコミットする一方で、他の人がコードを親のブランチに\
+コミットしているということもよくあります。
+
+自分のブランチを最新に維持するには、親ブランチから自分のブランチへと変更を\
+マージします::
+
+  $ bzr merge
+  Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+  All changes applied successfully.
+
+何が変更されたのか確認します::
+
+  $ bzr diff
+
+変更に満足したら、それらを自分のブランチにコミットします::
+
+  $ bzr commit -m "Merge from main branch"
+  Committed revision 295.
+
+
+作業を親のブランチにマージする
+==============================
+
+bzr-gtkの個人ブランチに取り組んだ後で、あなたの変更を上流のプロジェクトに\
+戻したいことがあるかもしれません。
+最も簡単な方法はマージディレクティブを使うことです。
+
+マージディレクティブ(merge directive)とは、コンピュータに特定のマージを実行\
+させるためのリクエストです。
+マージディレクティブは大抵、マージをレビューするためのパッチと、マージを実行する\
+のに必要となるリビジョン、もしくはリビジョンを取得できるブランチを含みます。
+
+次のコマンドの ``mycode.patch`` を適当な名前に書き換えて、マージのディレクティブを作ります::
+
+ $ bzr send -o mycode.patch
+ Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
+
+これでbzr-gtkのプロジェクトにマージディレクティブをEメールで送ることが可能に\
+なりました。彼らが納得すれば、親ブランチにマージすることができます。
+
+
+さらに学ぶ
+==========
+
+Bazaarに関する詳細な内容は `Bazaarのユーザーガイド <../user-guide/index.html>`_ で調べることができます。
+
+コマンドラインでBazaarを学ぶには::
+
+  $ bzr help
+
+Bazaarのコマンドを学ぶには::
+
+  $ bzr help commands
+
+''foo'' トピックもしくはコマンドを学ぶには::
+
+  $ bzr help foo

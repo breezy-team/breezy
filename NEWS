@@ -5,24 +5,48 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-
-bzr 2.1.0b3 (not released yet)
+bzr 2.1.0b4 (not released yet)
 ##############################
 
-:Codename:
-:2.1.0b3: ???
+:Codename: san francisco airport
+:2.1.0b4: ???
 
 Compatibility Breaks
 ********************
 
+* The BZR_SSH environmental variable may now be set to the path of a secure
+  shell client. If currently set to the value ``ssh`` it will now guess the
+  vendor of the program with that name, to restore the old behaviour that
+  indicated the SSH Corporation client use ``sshcorp`` instead as the magic
+  string. (Martin <gzlist@googlemail.com>, #176292)
+
 New Features
 ************
+
+* ``bzr commit`` now has a ``--commit-time`` option.
+  (Alexander Sack, #459276)
 
 Bug Fixes
 *********
 
+* After renaming a file, the dirstate could accidentally reference
+  ``source\\path`` rather than ``source/path`` on Windows. This might be a
+  source of some dirstate-related failures. (John Arbash Meinel)
+
+* ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
+
 * ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
   (#325618, Marius Kruger)
+
+* ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
+
+* Lots of bugfixes for the test suite on Windows. We should once again
+  have a test suite with no failures on Windows. (John Arbash Meinel)
+
+* The new glob expansion on Windows would replace all ``\`` characters
+  with ``/`` even if it there wasn't a glob to expand, the arg was quoted,
+  etc. Now only change slashes if there is something being glob expanded.
+  (John Arbash Meinel, #485771)
 
 Improvements
 ************
@@ -40,11 +64,10 @@ Testing
 *******
 
 
-
 bzr 2.0.3 (not released yet)
 ############################
 
-:Codename: template
+:Codename: 
 :2.0.3: ???
 
 Compatibility Breaks
@@ -55,12 +78,16 @@ New Features
 
 Bug Fixes
 *********
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 Improvements
 ************
 
 Documentation
 *************
+* Include Japanese translations for documentation (Inada Naoki)
 
 API Changes
 ***********
@@ -70,6 +97,108 @@ Internals
 
 Testing
 *******
+
+
+
+bzr 2.1.0b3
+###########
+
+:Codename: after sprint recovery
+:2.1.0b3: 2009-11-16
+
+This release was pushed up from its normal release cycle due to a
+regression in python 2.4 compatibility in 2.1.0b2.  Since this regression
+was caught before 2.1.0b2 was officially announced, the full changelog
+includes both 2.1.0b3 and 2.1.0b2 changes.
+
+Highlights of 2.1.0b3 are: new globbing code for all commands on Windows,
+the test suite now conforms to python's trunk enhanced semantics (skip,
+etc.), and ``bzr info -v`` will now report the correct branch and repo
+formats for Remote objects.
+
+
+New Features
+************
+
+* Users can define a shelve editor to provide shelf functionality at a
+  granularity finer than per-patch-hunk. (Aaron Bentley)
+
+Bug Fixes
+*********
+
+* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* Hooks daughter classes should always call the base constructor.
+  (Alexander Belchenko, Vincent Ladeuil, #389648) 
+
+* Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
+
+* On Windows, do glob expansion at the command-line level (as is usually
+  done in bash, etc.) This means that *all* commands get glob expansion
+  (bzr status, bzr add, bzr mv, etc). It uses a custom command line
+  parser, which allows us to know if a given section was quoted. It means
+  you can now do ``bzr ignore "*.py"``.
+  (John Arbash Meinel, #425510, #426410, #194450)
+
+* Sanitize commit messages that come in from the '-m' flag. We translate
+  '\r\n' => '\n' and a plain '\r' => '\n'. The storage layer doesn't
+  allow those because XML store silently translate it anyway. (The parser
+  auto-translates \r\n => \n in ways that are hard for us to catch.)
+
+* Show correct branch and repository format descriptions in 
+  ``bzr info -v`` on a smart server location.  (Andrew Bennetts, #196080)
+
+* The fix for bug #186920 accidentally broke compatibility with python
+  2.4.  (Vincent Ladeuil, #475585)
+
+* Using ``Repository.get_commit_builder().record_iter_changes()`` now
+  correctly sets ``self.inv_sha1`` to a sha1 string and
+  ``self.new_inventory`` to an Inventory instance after calling
+  ``self.finish_inventory()``. (Previously it accidently set both values
+  as a tuple on ``self.inv_sha1``. This was missed because
+  ``repo.add_revision`` ignores the supplied inventory sha1 and recomputes
+  the sha1 from the repo directly. (John Arbash Meinel)
+
+
+Documentation
+*************
+
+* Include Japanese translations for documentation (Inada Naoki)
+
+* Some of the core groupcompress functionality now releases the GIL before
+  operation. Similar to how zlib and bz2 operate without the GIL in the
+  core compression and decompression routines. (John Arbash Meinel)
+
+Testing
+*******
+
+* -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
+  more debugging of VFS access triggers. (Robert Collins)
+
+* KnownFailure is now signalled to ``ExtendedTestResult`` using the same
+  method that Python 2.7 uses - ``addExpectedFailure``. (Robert Collins)
+
+* ``--parallel=fork`` is now compatible with --subunit.
+  (Robert Collins, Vincent Ladeuil, #419776)
+
+* TestNotApplicable is now handled within the TestCase.run method rather
+  than being looked for within ``ExtendedTestResult.addError``. This
+  provides better handling with other ``TestResult`` objects, degrading to
+  sucess rather than error. (Robert Collins)
+
+* The private method ``_testConcluded`` on ``ExtendedTestResult`` has been
+  removed - it was empty and unused. (Robert Collins)
+
+* UnavailableFeature is now handled within the TestCase.run method rather
+  than being looked for within addError. If the Result object does not
+  have an addNotSupported method, addSkip is attempted instead, and
+  failing that addSuccess. (Robert Collins)
+
+* When a TestResult does not have an addSkip method, skipped tests are now
+  reported as successful tests, rather than as errors. This change is
+  to make it possible to get a clean test run with a less capable
+  TestResult. (Robert Collins)
+
 
 
 bzr 2.1.0b2
@@ -83,9 +212,10 @@ path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
 
 Key highlights in this release are: improved handling of
 failures-during-cleanup for commit, fixing a long-standing bug with
-``bzr+http`` and shared repositories, and a new StaticTuple datatype,
-allowing us to reduce memory consumption (50%) and garbage collector
-overhead (40% faster) for many operations.
+``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+behind proxies, and a new StaticTuple datatype, allowing us to reduce
+memory consumption (50%) and garbage collector overhead (40% faster) for
+many operations.
 
 Bug Fixes
 *********
@@ -97,6 +227,14 @@ Bug Fixes
   are less likely to occur, and will not obscure the original error if
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
+
+* Launchpad urls can now be resolved from behind proxies.
+  (Gordon Tyler, Vincent Ladeuil, #186920)
+
+* Reduce the strictness for StaticTuple, instead add a debug flag
+  ``-Dstatic_tuple`` which will change apis to be strict and raise errors.
+  This way, most users won't see failures, but developers can improve
+  internals. (John Arbash Meinel, #471193)
 
 * TreeTransform.adjust_path updates the limbo paths of descendants of adjusted
   files.  (Aaron Bentley)
