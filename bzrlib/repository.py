@@ -2668,8 +2668,8 @@ class Repository(_RelockDebugMixin):
         for ((revision_id,), parent_keys) in \
                 self.revisions.get_parent_map(query_keys).iteritems():
             if parent_keys:
-                result[revision_id] = tuple(parent_revid
-                    for (parent_revid,) in parent_keys)
+                result[revision_id] = tuple([parent_revid
+                    for (parent_revid,) in parent_keys])
             else:
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
