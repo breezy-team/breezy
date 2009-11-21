@@ -24,7 +24,6 @@ import subprocess
 import sys
 import thread
 import threading
-import time
 
 from bzrlib import (
     builtins,
