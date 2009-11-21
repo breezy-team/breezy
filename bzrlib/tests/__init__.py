@@ -1840,6 +1840,17 @@ class TestCase(unittest.TestCase):
                 stdout, stderr,
                 bzrlib.commands.run_bzr_catch_user_errors,
                 args)
+        except KeyboardInterrupt:
+            # Reraise KeyboardInterrupt with contents of redirected stdout and 
+            # stderr as arguments, for tests which are interested in stdout and
+            # stderr and are expecting the exception.
+            out = stdout.getvalue()
+            err = stderr.getvalue()
+            if out:
+                self.log('output:\n%r', out)
+            if err:
+                self.log('errors:\n%r', err)
+            raise KeyboardInterrupt(out, err)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
