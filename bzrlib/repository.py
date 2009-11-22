@@ -38,6 +38,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     tsort,
     ui,
@@ -3819,7 +3820,7 @@ class InterDifferingSerializer(InterRepository):
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
 
-    def _fetch_batch(self, revision_ids, basis_id, cache):
+    def _fetch_batch(self, revision_ids, basis_id, cache, graph=None):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
@@ -3898,7 +3899,7 @@ class InterDifferingSerializer(InterRepository):
             from bzrlib.fetch import _new_root_data_stream
             root_stream = _new_root_data_stream(
                 root_keys_to_create, self._revision_id_to_root_id, parent_map,
-                self.source)
+                self.source, graph=graph)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
@@ -3961,13 +3962,30 @@ class InterDifferingSerializer(InterRepository):
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
         hints = []
+        if self._converting_to_rich_root:
+            st = static_tuple.StaticTuple
+            revision_keys = [st(r_id).intern() for r_id in revision_ids]
+            known_graph = self.source.revisions.get_known_graph_ancestry(
+                            revision_keys)
+            class ThunkIdsToKeysHeads(object):
+                def __init__(self, kg):
+                    self.kg = kg
+                def heads(self, revision_ids):
+                    revision_keys = [(r,) for r in revision_ids]
+                    heads = self.kg.heads(revision_keys)
+                    return set([h[0] for h in heads])
+            graph = ThunkIdsToKeysHeads(known_graph)
+        else:
+            graph = None
+
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id = self._fetch_batch(batch, basis_id, cache)
+                basis_id = self._fetch_batch(batch, basis_id, cache,
+                                             graph=graph)
             except:
                 self.target.abort_write_group()
                 raise
