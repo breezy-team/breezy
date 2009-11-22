@@ -172,7 +172,6 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         if lca == set([NULL_REVISION]):
             raise UnrelatedBranches()
         start_revid = order[0]
-    new_parent = onto_revid
     todo = order[order.index(start_revid):order.index(stop_revid)+1]
     heads_cache = FrozenHeadsCache(graph)
     # XXX: The output replacemap'd parents should get looked up in some manner
@@ -180,24 +179,37 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        parents = []
+        # Left parent:
+        if len(heads_cache.heads((oldparents[0], onto_revid))) == 1:
+            parents.append(onto_revid)
+        elif oldparents[0] in replace_map:
+            parents.append(replace_map[oldparents[0]][0])
+        else:
+            parents.append(onto_revid)
+            parents.append(oldparents[0])
+        # Other parents:
         if len(oldparents) > 1:
             additional_parents = heads_cache.heads(oldparents[1:])
-            parents = [new_parent]
-            for parent in oldparents:
-                if parent in additional_parents and parent not in parents:
-                    # Use as a parent
-                    parent = replace_map.get(parent, (parent,))[0]
-                    parents.append(parent)
-            parents = tuple(parents)
+            for oldparent in oldparents[1:]:
+                if oldparent in additional_parents:
+                    if len(heads_cache.heads((oldparent, onto_revid))) == 1:
+                        pass
+                    elif oldparent in replace_map:
+                        newparent = replace_map[oldparent][0]
+                        if parents[0] == onto_revid:
+                            parents[0] = newparent
+                        else:
+                            parents.append(newparent)
+                    else:
+                        parents.append(oldparent)
             if len(parents) == 1 and skip_full_merged:
                 continue
-        else:
-            parents = (new_parent,)
+        parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
         assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
         assert isinstance(parents, tuple), "parents not tuple: %r" % parents
         replace_map[oldrevid] = (newrevid, parents)
-        new_parent = newrevid
     return replace_map
 
 
