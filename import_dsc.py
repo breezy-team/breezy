@@ -54,6 +54,7 @@ from bzrlib.errors import (
         AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
+        NoWorkingTree,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
@@ -1551,7 +1552,11 @@ class DistributionBranch(object):
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
-        self.upstream_tree = dir_to.open_workingtree()
+        try:
+            self.upstream_tree = dir_to.open_workingtree()
+        except NoWorkingTree:
+            # Handle shared treeless repo's.
+            self.upstream_tree = dir_to.create_workingtree()
         self.upstream_branch = self.upstream_tree.branch
 
     _extract_upstream_tree = extract_upstream_tree
