@@ -4047,6 +4047,14 @@ class cmd_revert(Command):
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
+
+    Using "bzr revert --forget-merges", it is possible to apply the changes
+    from an arbitrary merge as a single revision.  To do this, perform the
+    merge as desired.  Then doing revert with the "--forget-merges" option will
+    keep the content of the tree as it was, but it will clear the list of
+    pending merges.  The next commit will then contain all of the changes that
+    would have been in the merge, but without any mention of the other parent
+    revisions.
     """
 
     _see_also = ['cat', 'export']
