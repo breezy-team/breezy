@@ -516,6 +516,12 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
 
+    def test_BZR_HOME_and_HOME_are_bytestrings(self):
+        """The $BZR_HOME and $HOME environment variables should not be unicode.
+        """
+        self.assertIsInstance(os.environ['BZR_HOME'], str)
+        self.assertIsInstance(os.environ['HOME'], str)
+
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
 
