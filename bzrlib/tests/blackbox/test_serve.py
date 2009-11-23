@@ -89,7 +89,7 @@ class _TestBzrServeBase(TestCaseWithTransport):
 class TestBzrServe(_TestBzrServeBase):
 
     def setUp(self):
-        super(_TestBzrServeBase, self).setUp()
+        super(TestBzrServe, self).setUp()
         self.disable_missing_extensions_warning()
 
     def assertInetServerShutsdownCleanly(self, process):
