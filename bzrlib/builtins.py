@@ -1837,6 +1837,10 @@ class cmd_diff(Command):
 
             bzr diff -r1..2 xxx
 
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
+
         Show just the differences for file NEWS::
 
             bzr diff NEWS
