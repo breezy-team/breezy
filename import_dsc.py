@@ -35,6 +35,7 @@ except ImportError:
     import md5
 import os
 import shutil
+import signal
 import stat
 from subprocess import Popen, PIPE
 from StringIO import StringIO
@@ -1588,8 +1589,13 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            assert os.system("tar xzf %s -C %s --strip-components 1"
-                    % (tarball_filename, tempdir)) == 0
+            old_sig = signal.getsignal(signal.SIGPIPE)
+            signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+            try:
+                assert os.system("tar xzf %s -C %s --strip-components 1"
+                        % (tarball_filename, tempdir)) == 0
+            finally:
+                signal.signal(signal.SIGPIPE, old_sig)
             return tempdir
         except:
             shutil.rmtree(tempdir)
