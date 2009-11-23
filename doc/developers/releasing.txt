@@ -9,7 +9,7 @@ go.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
-good reasons to do that, I may also have missed some parts.
+good reasons to do that but he may also have missed some parts.
 
 Follow the document yourself and don't hesitate to create the missing
 milestones for example (we tend to forget these ones a lot).
@@ -307,17 +307,15 @@ at any time.
 Releases until the final one
 ----------------------------
 
-Congratulations, you made it. Have a beer or a fruit juice, it's on the
-house and don't force you to drink alcohol.
+Congratulations - you have made your first release.  Have a beer
+or fruit juice - it's on the house! If it was a beta, or
+candidate, you're not finished yet. Another beta or candidate or
+hopefully a final release is still to come.
 
-You have made your first release, that's great. If it was a beta, or
-candidate, you're not finished, another beta or candidate or hopefully a
-final release is still to come.
-
-The process is the same as for the first release, go to `Starting the
-release phase`_ and follow the instructions again. Some details changed
+The process is the same as for the first release. Goto `Starting the
+release phase`_ and follow the instructions again. Some details change
 between beta, candidate and final releases, but they should be
-documented. If they aren't clear enough to your taste, fix them.
+documented. If the instructions aren't clear enough, please fix them.
 
 
 See also
