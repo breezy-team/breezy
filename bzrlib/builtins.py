@@ -1832,13 +1832,23 @@ class cmd_diff(Command):
 
             bzr diff -r1
 
-        Difference between revision 2 and revision 1::
+        Difference between revision 3 and revision 1::
 
-            bzr diff -r1..2
+            bzr diff -r1..3
 
-        Difference between revision 2 and revision 1 for branch xxx::
+        Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..2 xxx
+            bzr diff -r1..3 xxx
+
+        To see the changes introduced in revision X::
+        
+            bzr diff -cX
+
+        Note that in the case of a merge, the -c option shows the changes
+        compared to the left hand parent. To see the changes against
+        another parent, use::
+
+            bzr diff -r<chosen_parent>..X
 
         Show just the differences for file NEWS::
 
