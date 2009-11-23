@@ -21,7 +21,6 @@ from operator import itemgetter
 from bzrlib import bzrdir, errors, osutils, transport
 from bzrlib.trace import error, note
 
-import branch_mapper
 import helpers
 
 
@@ -40,7 +39,6 @@ class BranchUpdater(object):
         self.heads_by_ref = heads_by_ref
         self.last_ref = last_ref
         self.tags = tags
-        self.name_mapper = branch_mapper.BranchMapper()
         self._branch_format = \
             helpers.best_format_for_objects_in_a_repository(repo)
 
@@ -84,7 +82,9 @@ class BranchUpdater(object):
 
         # Convert the reference names into Bazaar speak. If we haven't
         # already put the 'trunk' first, do it now.
-        git_to_bzr_map = self.name_mapper.git_to_bzr(ref_names)
+        git_to_bzr_map = {}
+        for ref_name in ref_names:
+            git_to_bzr_map[ref_name] = self.cache_mgr.branch_mapper.git_to_bzr(ref_name)
         if ref_names and self.branch is None:
             trunk = self.select_trunk(ref_names)
             git_bzr_items = [(trunk, git_to_bzr_map[trunk])]

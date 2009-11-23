@@ -18,7 +18,7 @@
 
 
 from bzrlib import lru_cache, trace
-from bzrlib.plugins.fastimport import helpers
+from bzrlib.plugins.fastimport import branch_mapper, helpers
 
 class CacheManager(object):
 
@@ -65,6 +65,10 @@ class CacheManager(object):
             except KeyError:
                 # info not in file - possible when no blobs used
                 pass
+
+        # BranchMapper has no state (for now?), but we keep it around rather
+        # than reinstantiate on every usage
+        self.branch_mapper = branch_mapper.BranchMapper()
 
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
