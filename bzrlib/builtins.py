@@ -4034,9 +4034,10 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
 
-    Any files that have been newly added since that revision will be deleted,
-    with a backup kept if appropriate.  Directories containing unknown files
-    will not be deleted.
+    If you have newly added files since the target revision, the will be
+    removed.  If the files to be removed have been changed, backups will be
+    created as above.  Directories containing unknown files will not be
+    deleted.
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
