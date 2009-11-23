@@ -262,7 +262,9 @@ class cmd_status(Command):
 
     Note that --short or -S gives status flags for each item, similar
     to Subversion's status command. To get output similar to svn -q,
-    use bzr status -SV.
+    use bzr status -SV.  Additionally for directories, symlinks and
+    files with executable bit changes, Bazaar indicates this with a
+    trailing '/', '@ or '*' respectively.
 
     If no arguments are specified, the status of the entire working
     directory is shown.  Otherwise, only the status of the specified
