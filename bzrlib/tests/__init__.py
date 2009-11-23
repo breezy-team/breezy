@@ -2402,8 +2402,6 @@ class TestCaseWithMemoryTransport(TestCase):
             # Watch out for tricky test dir (on OSX /tmp -> /private/tmp)
             root = osutils.realpath(osutils.mkdtemp(prefix='testbzr-',
                                                     suffix='.tmp'))
-            if isinstance(root, unicode):
-                root = root.encode(sys.getfilesystemencoding())
             TestCaseWithMemoryTransport.TEST_ROOT = root
 
             self._create_safety_net()
@@ -2477,8 +2475,11 @@ class TestCaseWithMemoryTransport(TestCase):
         return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
-        os.environ['HOME'] = self.test_home_dir
-        os.environ['BZR_HOME'] = self.test_home_dir
+        test_home_dir = self.test_home_dir
+        if isinstance(test_home_dir, unicode):
+            test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
+        os.environ['HOME'] = test_home_dir
+        os.environ['BZR_HOME'] = test_home_dir
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
