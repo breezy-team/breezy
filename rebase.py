@@ -181,7 +181,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
         parents = []
         # Left parent:
-        if len(heads_cache.heads((oldparents[0], onto_revid))) == 1:
+        if heads_cache.heads((oldparents[0], onto_revid)) == set((onto_revid,)):
             parents.append(onto_revid)
         elif oldparents[0] in replace_map:
             parents.append(replace_map[oldparents[0]][0])
@@ -193,7 +193,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
             additional_parents = heads_cache.heads(oldparents[1:])
             for oldparent in oldparents[1:]:
                 if oldparent in additional_parents:
-                    if len(heads_cache.heads((oldparent, onto_revid))) == 1:
+                    if heads_cache.heads((oldparent, onto_revid)) == set((onto_revid,)):
                         pass
                     elif oldparent in replace_map:
                         newparent = replace_map[oldparent][0]
