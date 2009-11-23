@@ -210,10 +210,11 @@ def suite_to_distribution(suite):
     :return: "debian", "ubuntu", or None if the distribution couldn't be inferred.
     """
     debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
-            'testing', 'unstable', 'experimental', 'frozen')
+            'testing', 'unstable', 'experimental', 'frozen', 'sid')
     debian_targets = ('', '-security', '-proposed-updates', '-backports')
     ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
-            'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic')
+            'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
+            'lucid')
     ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
     all_debian = [r + t for r in debian_releases for t in debian_targets]
     all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]

@@ -78,8 +78,8 @@ class TestMarkUploaded(BuilddebTestCase):
         finally:
             f.close()
         self.wt.commit("two")
-        self.run_bzr_error(["Unknown target distribution: UNRELEASED"],
-                "mark-uploaded")
+        self.run_bzr_error(["The changelog still targets 'UNRELEASED', so "
+                "apparently hasn't been uploaded."], "mark-uploaded")
 
     def test_mark_uploaded_already(self):
         self.make_unuploaded()

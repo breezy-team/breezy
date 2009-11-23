@@ -87,7 +87,6 @@ from bzrlib.plugins.builddeb.util import (
         lookup_distribution,
         open_file,
         open_file_via_transport,
-        suite_to_distribution,
         tarball_name,
         )
 
@@ -864,12 +863,11 @@ class cmd_mark_uploaded(Command):
             if not merge:
                 merge = config.merge
             (changelog, larstiq) = find_changelog(t, merge)
-            distributions = changelog.distributions.strip()
-            target_dist = distributions.split()[0]
-            distribution_name = suite_to_distribution(target_dist)
-            if distribution_name is None:
-                raise BzrCommandError("Unknown target distribution: %s" \
-                        % target_dist)
+            if changelog.distributions == 'UNRELEASED':
+                if not force:
+                    raise BzrCommandError("The changelog still targets "
+                            "'UNRELEASED', so apparently hasn't been "
+                            "uploaded.")
             db = DistributionBranch(t.branch, None)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
