@@ -79,6 +79,26 @@ combine the changes manually.  When you are satisfied, run "bzr resolve
 FILE".  Bazaar cannot auto-detect when conflicts of this kind have been
 resolved.
 
+Tag conflicts
+-------------
+
+Typical message::
+
+  Conflicting tags:
+      version-0.1
+
+When pulling from or pushing to another branch, Bazaar informs you about tags
+that conflict between the two branches; that is the same tag points to two
+different revisions.  You need not resolve these conflicts, but subsequent
+uses of pull or push will result in the same message.
+
+To resolve the conflict, you must apply the existing tags in the target branch
+to the revisions that they point to in the merge source.  Use "bzr tags
+--show-ids -d SOURCE_URL" to see the tags in the source branch.  Then, in the
+target branch do "bzr tag --force -r revid:REVISION_ID CONFLICTING_TAG" for
+each of the CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in
+the source branch.  You need not call "bzr resolve" after doing this.
+
 Duplicate paths
 ---------------
 
