@@ -3337,7 +3337,6 @@ def reinvoke_for_tests(suite):
                 argv.append('--no-plugins')
             # stderr=STDOUT would be ideal, but until we prevent noise on
             # stderr it can interrupt the subunit protocol.
-            bzrlib.trace.mutter("executing subprocess argv=%s", repr(argv))
             process = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE,
                 bufsize=1)
             test = TestInSubprocess(process, test_list_file_name)
