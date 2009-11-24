@@ -37,7 +37,7 @@ from bzrlib.trace import mutter
 # Or it won't consider the entry a directory
 ZIP_DIRECTORY_BIT = (1 << 4)
 
-_FILE_ATTR = stat.S_IFREG
+_FILE_ATTR = stat.S_IFREG | (0644 << 16)
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
