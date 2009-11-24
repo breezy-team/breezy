@@ -60,6 +60,8 @@ Internals
 Testing
 *******
 
+* TestCaseWithMemoryTransport no longer sets $HOME and $BZR_HOME to
+  unicode strings. (Michael Hudson, #464174)
 
 bzr 2.0.3 (not released yet)
 ############################

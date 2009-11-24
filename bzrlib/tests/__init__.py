@@ -2475,8 +2475,11 @@ class TestCaseWithMemoryTransport(TestCase):
         return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
-        os.environ['HOME'] = self.test_home_dir
-        os.environ['BZR_HOME'] = self.test_home_dir
+        test_home_dir = self.test_home_dir
+        if isinstance(test_home_dir, unicode):
+            test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
+        os.environ['HOME'] = test_home_dir
+        os.environ['BZR_HOME'] = test_home_dir
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
