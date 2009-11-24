@@ -4757,8 +4757,8 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
-        RegistryOption('protocol', 
-               help="Protocol to serve.", 
+        RegistryOption('protocol',
+               help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
         Option('port',
@@ -4773,7 +4773,11 @@ class cmd_serve(Command):
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
-                    'the served directory and below.'
+                    'the served directory and below.  Note that ``bzr serve`` '
+                    'does not perform authentication, so unless some form of '
+                    'external authentication is arranged supplying this '
+                    'option leads to global uncontrolled write access to your '
+                    'file system.'
                 ),
         ]
 
