@@ -631,7 +631,7 @@ def _command_line_to_argv(command_line):
     args = []
     for is_quoted, arg in s:
         if is_quoted or not glob.has_magic(arg):
-            args.append(arg.replace(u'\\', u'/'))
+            args.append(arg)
         else:
             args.extend(glob_one(arg))
     return args

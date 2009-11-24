@@ -1832,13 +1832,23 @@ class cmd_diff(Command):
 
             bzr diff -r1
 
-        Difference between revision 2 and revision 1::
+        Difference between revision 3 and revision 1::
 
-            bzr diff -r1..2
+            bzr diff -r1..3
 
-        Difference between revision 2 and revision 1 for branch xxx::
+        Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..2 xxx
+            bzr diff -r1..3 xxx
+
+        To see the changes introduced in revision X::
+        
+            bzr diff -cX
+
+        Note that in the case of a merge, the -c option shows the changes
+        compared to the left hand parent. To see the changes against
+        another parent, use::
+
+            bzr diff -r<chosen_parent>..X
 
         Show just the differences for file NEWS::
 
@@ -2576,6 +2586,12 @@ class cmd_ignore(Command):
     """Ignore specified files or patterns.
 
     See ``bzr help patterns`` for details on the syntax of patterns.
+
+    If a .bzrignore file does not exist, the ignore command
+    will create one and add the specified files or patterns to the newly
+    created file. The ignore command will also automatically add the 
+    .bzrignore file to be versioned. Creating a .bzrignore file without
+    the use of the ignore command will require an explicit add command.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
     After adding, editing or deleting that file either indirectly by
@@ -3629,7 +3645,7 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
     """
