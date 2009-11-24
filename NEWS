@@ -22,6 +22,10 @@
   * Provide custom InterTree for faster deltas between git revision trees.
     (Jelmer Vernooij)
 
+  * Fix several places where a lot of memory was being consumed, especially
+    for repositories with a large number of revisions or big trees.
+    (#486076, Jelmer Vernooij
+
  FEATURES
 
   * Support for parsing --HG-- metadata in git commit messages, for 
