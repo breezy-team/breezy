@@ -171,8 +171,6 @@ Now anyone can create their own copy of your branch by typing::
 Publishing your branch with Launchpad
 =====================================
 
-**Note:** Many features in this section require bzr 0.92 or later.
-
 Launchpad is a suite of development and hosting tools for free 
 software projects. You can use it to publish your branch.
 
@@ -182,7 +180,9 @@ and `register an SSH key`_ in your new Launchpad account.
 .. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
 .. _register an SSH key: https://launchpad.net/people/+me/+editsshkeys
 
-Replacing ``john.doe`` with your own Launchpad username, type::
+Replacing ``john.doe`` with your own Launchpad username, type [#]_::
+
+.. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
 
  $ bzr push lp:~john.doe/+junk/myproject
 
