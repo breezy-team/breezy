@@ -174,12 +174,12 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         from bzrlib.transport.local import LocalTransport
 
         if not isinstance(transport, LocalTransport):
-            raise NotImplementedError(self.initialize, 
+            raise NotImplementedError(self.initialize,
                 "Can't create Git Repositories/branches on "
                 "non-local transports")
         lazy_check_versions()
         from dulwich.repo import Repo
-        Repo.create(transport.local_abspath(".").encode(osutils._fs_enc)) 
+        Repo.create(transport.local_abspath(".").encode(osutils._fs_enc))
         return self.open(transport)
 
     def is_supported(self):

@@ -48,7 +48,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
-        raise NotImplementedError(self.record_entry_contents)        
+        raise NotImplementedError(self.record_entry_contents)
 
     def record_delete(self, path, file_id):
         self._blobs[path] = None
@@ -69,7 +69,7 @@ class GitCommitBuilder(CommitBuilder):
                 blob = Blob()
                 blob.data = workingtree.get_file_text(file_id, path)
                 return blob.id
-        for (file_id, path, changed_content, versioned, parent, name, kind, 
+        for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
             if kind[1] in ("directory",):
                 if kind[0] in ("file", "symlink"):
@@ -117,7 +117,7 @@ class GitCommitBuilder(CommitBuilder):
     def commit(self, message):
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
-        c.tree = commit_tree(self.store, 
+        c.tree = commit_tree(self.store,
                 [(path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems()])
         c.committer = self._committer
         c.author = self._revprops.get('author', self._committer)

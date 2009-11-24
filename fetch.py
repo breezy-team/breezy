@@ -27,6 +27,7 @@ import stat
 
 from bzrlib import (
     debug,
+    lru_cache,
     osutils,
     trace,
     ui,
@@ -42,9 +43,6 @@ from bzrlib.inventory import (
     InventoryFile,
     InventoryLink,
     TreeReference,
-    )
-from bzrlib.lru_cache import (
-    LRUCache,
     )
 from bzrlib.repository import (
     InterRepository,
@@ -77,6 +75,9 @@ from bzrlib.plugins.git.repository import (
     GitRepositoryFormat,
     LocalGitRepository,
     )
+
+
+MAX_INV_CACHE_SIZE = 50 * 1024 * 1024
 
 
 def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
@@ -282,6 +283,11 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     return invdelta, child_modes, shamap
 
 
+def approx_inv_size(inv):
+    # Very rough estimate, 1k per inventory entry
+    return len(inv) * 1024
+
+
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         heads, pb=None):
     """Import a set of git objects into a bzr repository.
@@ -297,11 +303,10 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             return target_git_object_retriever[sha]
     # TODO: a more (memory-)efficient implementation of this
     graph = []
-    root_trees = {}
-    revisions = {}
     checked = set()
     heads = list(heads)
-    parent_invs_cache = LRUCache(50)
+    parent_invs_cache = lru_cache.LRUSizeCache(compute_size=approx_inv_size,
+                                               max_size=MAX_INV_CACHE_SIZE)
     # Find and convert commit objects
     while heads:
         if pb is not None:
@@ -318,9 +323,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             if repo.has_revision(rev.revision_id):
                 continue
             squash_revision(repo, rev)
-            root_trees[rev.revision_id] = o.tree
-            revisions[rev.revision_id] = rev
-            graph.append((rev.revision_id, rev.parent_ids))
+            graph.append((o.id, o.parents))
             target_git_object_retriever._idmap.add_entry(o.id, "commit",
                     (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
@@ -328,13 +331,15 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             heads.append(o.object[1])
         else:
             trace.warning("Unable to import head object %r" % o)
-        checked.add(head)
+        checked.add(o.id)
+    del checked
     # Order the revisions
     # Create the inventory objects
-    for i, revid in enumerate(topo_sort(graph)):
+    for i, head in enumerate(topo_sort(graph)):
         if pb is not None:
             pb.update("fetching revisions", i, len(graph))
-        rev = revisions[revid]
+        o = lookup_object(head)
+        rev = mapping.import_commit(o)
         # We have to do this here, since we have to walk the tree and
         # we need to make sure to import the blobs / trees with the right
         # path; this may involve adding them more than once.
@@ -353,7 +358,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             base_inv = parent_invs[0]
             base_ie = base_inv.root
         inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-                mapping, "", root_trees[revid], base_inv, base_ie, None, revid,
+                mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
                 parent_invs, target_git_object_retriever._idmap, lookup_object,
                 allow_submodules=getattr(repo._format, "supports_tree_reference", False))
         target_git_object_retriever._idmap.add_entries(shamap)
@@ -378,7 +383,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
             for sha1, newobj, path in objs:
                 assert path is not None
-                oldobj = tree_lookup_path(lookup_object, root_trees[revid], path)
+                oldobj = tree_lookup_path(lookup_object, o.tree, path)
                 if oldobj != newobj:
                     raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
 
