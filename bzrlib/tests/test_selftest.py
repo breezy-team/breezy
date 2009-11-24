@@ -518,6 +518,8 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
 
     def test_BZR_HOME_and_HOME_are_bytestrings(self):
         """The $BZR_HOME and $HOME environment variables should not be unicode.
+
+        See https://bugs.launchpad.net/bzr/+bug/464174.
         """
         self.assertIsInstance(os.environ['BZR_HOME'], str)
         self.assertIsInstance(os.environ['HOME'], str)
