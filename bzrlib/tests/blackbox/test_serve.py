@@ -45,7 +45,7 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
-class _TestBzrServeBase(TestCaseWithTransport):
+class TestBzrServeBase(TestCaseWithTransport):
 
     def run_bzr_serve_then_func(self, serve_args, retcode=0, func=None,
                                 *func_args, **func_kwargs):
@@ -81,12 +81,13 @@ class _TestBzrServeBase(TestCaseWithTransport):
             'run_bzr_serve_then_func hook')
         # start a TCP server
         try:
-            self.run_bzr(['serve'] + list(serve_args))
-        except KeyboardInterrupt as e:
-            return e.args
+            out, err = self.run_bzr(['serve'] + list(serve_args))
+        except KeyboardInterrupt, e:
+            out, err = e.args
+        return out, err
 
 
-class TestBzrServe(_TestBzrServeBase):
+class TestBzrServe(TestBzrServeBase):
 
     def setUp(self):
         super(TestBzrServe, self).setUp()
@@ -215,7 +216,7 @@ class TestBzrServe(_TestBzrServeBase):
         self.assertServerFinishesCleanly(process)
 
 
-class TestCmdServeChrooting(_TestBzrServeBase):
+class TestCmdServeChrooting(TestBzrServeBase):
 
     def test_serve_tcp(self):
         """'bzr serve' wraps the given --directory in a ChrootServer.
