@@ -638,12 +638,28 @@ def os_specific_subprocess_params():
                 'close_fds': True,
                 }
 
+import weakref
+_subproc_weakrefs = set()
+
+def _close_ssh_proc(proc):
+    for func in [proc.stdin.close, proc.stdout.close, proc.wait]:
+        try:
+            func()
+        except OSError:
+            pass
+
 
 class SSHSubprocess(object):
     """A socket-like object that talks to an ssh subprocess via pipes."""
 
     def __init__(self, proc):
         self.proc = proc
+        # Add a weakref to proc that will attempt to do the same as self.close
+        # to avoid leaving processes lingering indefinitely.
+        def terminate(ref):
+            _subproc_weakrefs.remove(ref)
+            _close_ssh_proc(proc)
+        _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
@@ -652,9 +668,7 @@ class SSHSubprocess(object):
         return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
-        self.proc.stdin.close()
-        self.proc.stdout.close()
-        self.proc.wait()
+        _close_ssh_proc(self.proc)
 
     def get_filelike_channels(self):
         return (self.proc.stdout, self.proc.stdin)
