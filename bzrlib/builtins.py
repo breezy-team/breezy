@@ -4054,7 +4054,9 @@ class cmd_revert(Command):
     keep the content of the tree as it was, but it will clear the list of
     pending merges.  The next commit will then contain all of the changes that
     would have been in the merge, but without any mention of the other parent
-    revisions.
+    revisions.  Because this technique forgets where these changes originated,
+    it may cause additional conflicts on later merges involving the source and
+    target branches.
     """
 
     _see_also = ['cat', 'export']

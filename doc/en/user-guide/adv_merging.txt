@@ -65,7 +65,10 @@ all of those changes without any record of the merged revisions.
 This is desired by some users to make their history "cleaner", but you should
 be careful that the loss of history does not outweigh the value of cleanliness,
 particularly given Bazaar's capabilities for progressively disclosing merged
-revisions.
+revisions.  In particular, because this will include the changes from the
+source branch, but without attribution to that branch, it can lead to
+additional conflicts on later merges that involve the same source and
+target branches.
 
 
 Reverse cherrypicking
