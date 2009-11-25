@@ -1308,7 +1308,8 @@ class BasicAuthHandler(AbstractAuthHandler):
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth['user'] is None or auth['password'] is None:
+            if (auth.get('user', None) is None
+                or auth.get('password', None) is None):
                 user, password = self.get_user_password(auth)
                 self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
@@ -1373,7 +1374,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         self.update_auth(auth, 'scheme', scheme)
         self.update_auth(auth, 'realm', realm)
-        if auth['user'] is None or auth['password'] is None:
+        if auth.get('user', None) is None or auth.get('password', None) is None:
             user, password = self.get_user_password(auth)
             self.update_auth(auth, 'user', user)
             self.update_auth(auth, 'password', password)
