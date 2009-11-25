@@ -326,7 +326,8 @@ class TestPush(tests.TestCaseWithTransport):
         tree = self.create_simple_tree()
         self.build_tree(['target/', 'target/.bzr/'])
         self.run_bzr_error(
-            ['Target directory ../target already contains a .bzr directory'],
+            ['Target directory ../target already contains a .bzr directory, '
+             'but it is not valid.'],
             'push ../target --use-existing-dir', working_dir='tree')
 
     def test_push_onto_repo(self):
