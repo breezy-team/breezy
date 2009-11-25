@@ -87,7 +87,6 @@ from bzrlib.plugins.builddeb.util import (
         lookup_distribution,
         open_file,
         open_file_via_transport,
-        suite_to_distribution,
         tarball_name,
         )
 
@@ -426,8 +425,11 @@ class cmd_builddeb(Command):
                         'dpkg-architecture -qDEB_BUILD_ARCH')
                     if status > 0:
                         raise BzrCommandError("Could not find the build architecture")
+                non_epoch_version = changelog.version.upstream_version
+                if changelog.version.debian_version is not None:
+                    non_epoch_version += "-%s" % changelog.version.debian_version
                 changes = "%s_%s_%s.changes" % (changelog.package,
-                        str(changelog.version), arch)
+                        non_epoch_version, arch)
                 changes_path = os.path.join(build_dir, changes)
                 if not os.path.exists(changes_path):
                     if result_dir is not None:
@@ -729,7 +731,7 @@ class cmd_import_dsc(Command):
                         raise BzrCommandError("Unable to find the tag for "
                                 "the previous upstream version, %s, in the "
                                 "branch: %s" % (last_version,
-                                    db.upstream_tag_name(str(last_version))))
+                                    db.upstream_tag_name(last_version.upstream_version)))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version.upstream_version)
                     db.extract_upstream_tree(upstream_tip, tempdir)
@@ -861,12 +863,11 @@ class cmd_mark_uploaded(Command):
             if not merge:
                 merge = config.merge
             (changelog, larstiq) = find_changelog(t, merge)
-            distributions = changelog.distributions.strip()
-            target_dist = distributions.split()[0]
-            distribution_name = suite_to_distribution(target_dist)
-            if distribution_name is None:
-                raise BzrCommandError("Unknown target distribution: %s" \
-                        % target_dist)
+            if changelog.distributions == 'UNRELEASED':
+                if not force:
+                    raise BzrCommandError("The changelog still targets "
+                            "'UNRELEASED', so apparently hasn't been "
+                            "uploaded.")
             db = DistributionBranch(t.branch, None)
             dbs = DistributionBranchSet()
             dbs.add_branch(db)
