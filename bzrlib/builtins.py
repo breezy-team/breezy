@@ -1850,6 +1850,10 @@ class cmd_diff(Command):
 
             bzr diff -r<chosen_parent>..X
 
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
+
         Show just the differences for file NEWS::
 
             bzr diff NEWS
@@ -4065,9 +4069,10 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
 
-    Any files that have been newly added since that revision will be deleted,
-    with a backup kept if appropriate.  Directories containing unknown files
-    will not be deleted.
+    If you have newly added files since the target revision, they will be
+    removed.  If the files to be removed have been changed, backups will be
+    created as above.  Directories containing unknown files will not be
+    deleted.
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
