@@ -260,11 +260,11 @@ allowing URLs such as::
 
   http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
 
-For bzr+ssh:// URLs, Bazaar also supports paths that begin with '~' as
-meaning that the rest of the path should be interpreted relative to the
-remote user's home directory.  For example if the user ``remote`` has a 
-home directory of ``/home/remote`` on the server shell.example.com, 
-then::
+For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
 
   bzr+ssh://remote@shell.example.com/~/myproject/trunk
 
