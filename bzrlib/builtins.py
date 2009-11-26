@@ -44,6 +44,7 @@ from bzrlib import (
     rename_map,
     revision as _mod_revision,
     symbol_versioning,
+    timestamp,
     transport,
     ui,
     urlutils,
@@ -849,8 +850,9 @@ class cmd_mv(Command):
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
             rel_names = tree.get_canonical_inventory_paths(rel_names)
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
-                self.outf.write("%s => %s\n" % pair)
+            for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
+                if not is_quiet():
+                    self.outf.write("%s => %s\n" % (src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
@@ -900,7 +902,8 @@ class cmd_mv(Command):
             dest = osutils.pathjoin(dest_parent, dest_tail)
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
-            self.outf.write("%s => %s\n" % (src, dest))
+            if not is_quiet():
+                self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):
@@ -1829,13 +1832,27 @@ class cmd_diff(Command):
 
             bzr diff -r1
 
-        Difference between revision 2 and revision 1::
+        Difference between revision 3 and revision 1::
 
-            bzr diff -r1..2
+            bzr diff -r1..3
 
-        Difference between revision 2 and revision 1 for branch xxx::
+        Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..2 xxx
+            bzr diff -r1..3 xxx
+
+        To see the changes introduced in revision X::
+        
+            bzr diff -cX
+
+        Note that in the case of a merge, the -c option shows the changes
+        compared to the left hand parent. To see the changes against
+        another parent, use::
+
+            bzr diff -r<chosen_parent>..X
+
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
 
         Show just the differences for file NEWS::
 
@@ -2574,6 +2591,12 @@ class cmd_ignore(Command):
 
     See ``bzr help patterns`` for details on the syntax of patterns.
 
+    If a .bzrignore file does not exist, the ignore command
+    will create one and add the specified files or patterns to the newly
+    created file. The ignore command will also automatically add the 
+    .bzrignore file to be versioned. Creating a .bzrignore file without
+    the use of the ignore command will require an explicit add command.
+
     To remove patterns from the ignore list, edit the .bzrignore file.
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
@@ -2947,6 +2970,9 @@ class cmd_commit(Command):
              Option('strict',
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
+             Option('commit-time', type=str,
+                    help="Manually set a commit time using commit date "
+                    "format, e.g. '2009-10-10 08:00:00 +0100'."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
@@ -2959,9 +2985,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-              Option('show-diff',
-                     help='When no message is supplied, show the diff along'
-                     ' with the status summary in the message editor.'),
+             Option('show-diff',
+                    help='When no message is supplied, show the diff along'
+                    ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2986,7 +3012,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None):
+            author=None, show_diff=False, exclude=None, commit_time=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2997,6 +3023,14 @@ class cmd_commit(Command):
             generate_commit_message_template,
             make_commit_message_template_encoded
         )
+
+        commit_stamp = offset = None
+        if commit_time is not None:
+            try:
+                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+            except ValueError, e:
+                raise errors.BzrCommandError(
+                    "Could not parse --commit-time: " + str(e))
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -3058,7 +3092,8 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        authors=author,
+                        authors=author, timestamp=commit_stamp,
+                        timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -3614,7 +3649,7 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
     """
@@ -4034,9 +4069,10 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
 
-    Any files that have been newly added since that revision will be deleted,
-    with a backup kept if appropriate.  Directories containing unknown files
-    will not be deleted.
+    If you have newly added files since the target revision, they will be
+    removed.  If the files to be removed have been changed, backups will be
+    created as above.  Directories containing unknown files will not be
+    deleted.
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
@@ -4726,8 +4762,8 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
-        RegistryOption('protocol', 
-               help="Protocol to serve.", 
+        RegistryOption('protocol',
+               help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
         Option('port',
@@ -4742,7 +4778,11 @@ class cmd_serve(Command):
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
-                    'the served directory and below.'
+                    'the served directory and below.  Note that ``bzr serve`` '
+                    'does not perform authentication, so unless some form of '
+                    'external authentication is arranged supplying this '
+                    'option leads to global uncontrolled write access to your '
+                    'file system.'
                 ),
         ]
 
@@ -5671,7 +5711,7 @@ class cmd_shelve(Command):
             try:
                 shelver.run()
             finally:
-                shelver.work_tree.unlock()
+                shelver.finalize()
         except errors.UserAbort:
             return 0
 

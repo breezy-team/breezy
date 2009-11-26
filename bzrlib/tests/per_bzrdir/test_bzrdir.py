@@ -778,13 +778,16 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
         try:
+            local_inventory = dir.transport.local_abspath('inventory')
+        except errors.NotLocalUrl:
+            return
+        try:
             # If we happen to have a tree, we'll guarantee everything
             # except for the tree root is the same.
-            inventory_f = file(dir.transport.base+'inventory', 'rb')
+            inventory_f = file(local_inventory, 'rb')
+            self.addCleanup(inventory_f.close)
             self.assertContainsRe(inventory_f.read(),
-                                  '<inventory file_id="TREE_ROOT[^"]*"'
-                                  ' format="5">\n</inventory>\n')
-            inventory_f.close()
+                                  '<inventory format="5">\n</inventory>\n')
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise

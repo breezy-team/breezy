@@ -601,7 +601,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._fetch_reconcile
 
     def get_format_description(self):
-        return 'bzr remote repository'
+        self._ensure_real()
+        return 'Remote: ' + self._custom_format.get_format_description()
 
     def __eq__(self, other):
         return self.__class__ is other.__class__
@@ -1999,7 +2000,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                 self._network_name)
 
     def get_format_description(self):
-        return 'Remote BZR Branch'
+        self._ensure_real()
+        return 'Remote: ' + self._custom_format.get_format_description()
 
     def network_name(self):
         return self._network_name

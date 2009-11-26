@@ -490,9 +490,9 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertEqualStat(real, fake)
 
     def test_assertEqualStat_notequal(self):
-        self.build_tree(["foo", "bar"])
+        self.build_tree(["foo", "longname"])
         self.assertRaises(AssertionError, self.assertEqualStat,
-            os.lstat("foo"), os.lstat("bar"))
+            os.lstat("foo"), os.lstat("longname"))
 
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
@@ -515,6 +515,14 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
+
+    def test_BZR_HOME_and_HOME_are_bytestrings(self):
+        """The $BZR_HOME and $HOME environment variables should not be unicode.
+
+        See https://bugs.launchpad.net/bzr/+bug/464174
+        """
+        self.assertIsInstance(os.environ['BZR_HOME'], str)
+        self.assertIsInstance(os.environ['HOME'], str)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.

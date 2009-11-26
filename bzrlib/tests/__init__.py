@@ -1115,12 +1115,23 @@ class TestCase(unittest.TestCase):
         :raises AssertionError: If the expected and actual stat values differ
             other than by atime.
         """
-        self.assertEqual(expected.st_size, actual.st_size)
-        self.assertEqual(expected.st_mtime, actual.st_mtime)
-        self.assertEqual(expected.st_ctime, actual.st_ctime)
-        self.assertEqual(expected.st_dev, actual.st_dev)
-        self.assertEqual(expected.st_ino, actual.st_ino)
-        self.assertEqual(expected.st_mode, actual.st_mode)
+        self.assertEqual(expected.st_size, actual.st_size,
+                         'st_size did not match')
+        self.assertEqual(expected.st_mtime, actual.st_mtime,
+                         'st_mtime did not match')
+        self.assertEqual(expected.st_ctime, actual.st_ctime,
+                         'st_ctime did not match')
+        if sys.platform != 'win32':
+            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
+            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
+            # odd. Regardless we shouldn't actually try to assert anything
+            # about their values
+            self.assertEqual(expected.st_dev, actual.st_dev,
+                             'st_dev did not match')
+            self.assertEqual(expected.st_ino, actual.st_ino,
+                             'st_ino did not match')
+        self.assertEqual(expected.st_mode, actual.st_mode,
+                         'st_mode did not match')
 
     def assertLength(self, length, obj_with_len):
         """Assert that obj_with_len is of length length."""
@@ -2464,8 +2475,11 @@ class TestCaseWithMemoryTransport(TestCase):
         return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
-        os.environ['HOME'] = self.test_home_dir
-        os.environ['BZR_HOME'] = self.test_home_dir
+        test_home_dir = self.test_home_dir
+        if isinstance(test_home_dir, unicode):
+            test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
+        os.environ['HOME'] = test_home_dir
+        os.environ['BZR_HOME'] = test_home_dir
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
@@ -3321,13 +3335,17 @@ def reinvoke_for_tests(suite):
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
+        bzr_path = [bzr_path]
+        if sys.platform == "win32":
+            # if we're on windows, we can't execute the bzr script directly
+            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
             test_list_file.write(test.id() + '\n')
         test_list_file.close()
         try:
-            argv = [bzr_path, 'selftest', '--load-list', test_list_file_name,
+            argv = bzr_path + ['selftest', '--load-list', test_list_file_name,
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
@@ -4321,7 +4339,9 @@ class _BreakinFeature(Feature):
             # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
-            if not have_ctypes:
+            try:
+                import ctypes
+            except OSError:
                 return False
         return True
 
