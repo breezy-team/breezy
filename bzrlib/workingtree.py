@@ -65,7 +65,6 @@ from bzrlib import (
     merge,
     revision as _mod_revision,
     revisiontree,
-    textui,
     trace,
     transform,
     ui,
@@ -1948,6 +1947,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         new_files=set()
         unknown_nested_files=set()
+        if to_file is None:
+            to_file = sys.stdout
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2023,8 +2024,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, self.kind(fid), f,
-                                       to_file=to_file)
+                    # XXX: Really should be a more abstract reporter interface
+                    kind_ch = osutils.kind_marker(self.kind(fid))
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)

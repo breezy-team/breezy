@@ -60,6 +60,8 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
+
 Internals
 *********
 
@@ -169,6 +171,9 @@ Documentation
 *************
 
 * Include Japanese translations for documentation (Inada Naoki)
+
+Internals
+*********
 
 * Some of the core groupcompress functionality now releases the GIL before
   operation. Similar to how zlib and bz2 operate without the GIL in the
