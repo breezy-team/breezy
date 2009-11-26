@@ -17,6 +17,7 @@ if __name__ == '__main__':
           url="https://launchpad.net/bzr-fastimport",
           scripts=[],
           packages=['bzrlib.plugins.fastimport',
+                    'bzrlib.plugins.fastimport.exporters',
                     'bzrlib.plugins.fastimport.processors',
                     'bzrlib.plugins.fastimport.tests',
                     ],
