@@ -5662,8 +5662,6 @@ class cmd_shelve(Command):
             writer=None, list=False, destroy=False):
         if list:
             return self.run_for_list()
-        if not sys.stdin.isatty():
-            raise errors.BzrError("shelve must be run from command line only.")
         from bzrlib.shelf_ui import Shelver
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
