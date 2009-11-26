@@ -171,6 +171,9 @@ Bug Fixes
   the sha1 from the repo directly. (John Arbash Meinel)
 
 
+* Shelve command refuse to run if there is no real terminal.
+  (Alexander Belchenko)
+
 Documentation
 *************
 
