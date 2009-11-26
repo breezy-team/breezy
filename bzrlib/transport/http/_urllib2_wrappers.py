@@ -1167,8 +1167,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             and then during dialog with the server).
         """
         auth_conf = config.AuthenticationConfig()
-        user = auth['user']
-        password = auth['password']
+        user = auth.get('user', None)
+        password = auth.get('password', None)
         realm = auth['realm']
 
         if user is None:
