@@ -54,6 +54,10 @@ Bug Fixes
 Improvements
 ************
 
+* ``bzrlib.urlutils.local_path_from_url`` now accepts
+  'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
+  Hudson)
+
 Documentation
 *************
 
