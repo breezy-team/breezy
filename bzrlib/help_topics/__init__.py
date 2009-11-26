@@ -251,6 +251,26 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// URLs, Bazaar also supports paths that begin with '~' as
+meaning that the rest of the path should be interpreted relative to the
+remote user's home directory.  For example if the user ``remote`` has a 
+home directory of ``/home/remote`` on the server shell.example.com, 
+then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+"""
+
     return out
 
 
