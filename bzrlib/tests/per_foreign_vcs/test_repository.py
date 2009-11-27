@@ -27,7 +27,7 @@ from bzrlib.tests import (
 class TestRepositoryFormat(TestCase):
 
     def test_format_string(self):
-        self.assertRaises(NotImplementedError, 
+        self.assertRaises(NotImplementedError,
             self.repository_format.get_format_string)
 
     def test_network_name(self):
@@ -43,7 +43,7 @@ class ForeignRepositoryFactory(object):
     """Factory of repository for ForeignRepositoryTests."""
 
     def make_repository(self, transport):
-        """Create a new, valid, repository. May or may not contain 
+        """Create a new, valid, repository. May or may not contain
         data."""
         raise NotImplementedError(self.make_repository)
 
@@ -52,9 +52,13 @@ class ForeignRepositoryTests(TestCaseWithTransport):
     """Basic tests for foreign repository implementations.
 
     These tests mainly make sure that the implementation covers the required
-    bits of the API and returns semi-reasonable values, that are 
+    bits of the API and returns semi-reasonable values, that are
     at least of the expected types and in the expected ranges.
     """
+
+    # XXX: Some of these tests could be moved into a common testcase for
+    # both native and foreign repositories.
+
     repository_factory = None # Set to an instance of ForeignRepositoryFactory by the scenario
 
     def make_repository(self):
@@ -76,7 +80,7 @@ class ForeignRepositoryTests(TestCaseWithTransport):
         self.assertIsInstance(repo.is_shared(), bool)
 
     def test_gather_stats(self):
-        """Test that gather_stats() will at least return a dictionary 
+        """Test that gather_stats() will at least return a dictionary
         with the required keys."""
         repo = self.make_repository()
         stats = repo.gather_stats()
