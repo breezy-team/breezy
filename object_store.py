@@ -130,7 +130,7 @@ class BazaarObjectStore(BaseObjectStore):
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
-        elif entry.kind == "file":
+        elif entry.kind in ("file", "symlink"):
             return self._get_blob(entry.file_id, entry.revision)
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
