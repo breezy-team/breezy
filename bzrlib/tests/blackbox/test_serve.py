@@ -45,8 +45,49 @@ from bzrlib.tests import (
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
+class TestBzrServeBase(TestCaseWithTransport):
 
-class TestBzrServe(TestCaseWithTransport):
+    def run_bzr_serve_then_func(self, serve_args, retcode=0, func=None,
+                                *func_args, **func_kwargs):
+        """Run 'bzr serve', and run the given func in a thread once the server
+        has started.
+        
+        When 'func' terminates, the server will be terminated too.
+        
+        Returns stdout and stderr.
+        """
+        # install hook
+        def on_server_start(backing_urls, tcp_server):
+            t = threading.Thread(
+                target=on_server_start_thread, args=(tcp_server,))
+            t.start()
+        def on_server_start_thread(tcp_server):
+            try:
+                # Run func if set
+                self.tcp_server = tcp_server
+                if not func is None:
+                    try:
+                        func(*func_args, **func_kwargs)
+                    except Exception, e:
+                        # Log errors to make some test failures a little less
+                        # mysterious.
+                        mutter('func broke: %r', e)
+            finally:
+                # Then stop the server
+                mutter('interrupting...')
+                thread.interrupt_main()
+        SmartTCPServer.hooks.install_named_hook(
+            'server_started_ex', on_server_start,
+            'run_bzr_serve_then_func hook')
+        # start a TCP server
+        try:
+            out, err = self.run_bzr(['serve'] + list(serve_args))
+        except KeyboardInterrupt, e:
+            out, err = e.args
+        return out, err
+
+
+class TestBzrServe(TestBzrServeBase):
 
     def setUp(self):
         super(TestBzrServe, self).setUp()
@@ -119,6 +160,13 @@ class TestBzrServe(TestCaseWithTransport):
         url = 'bzr://localhost:%d/' % port
         self.permit_url(url)
         return process, url
+    
+    def test_bzr_serve_quiet(self):
+        self.make_branch('.')
+        args = ['--port', 'localhost:0', '--quiet']
+        out, err = self.run_bzr_serve_then_func(args, retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
@@ -168,7 +216,7 @@ class TestBzrServe(TestCaseWithTransport):
         self.assertServerFinishesCleanly(process)
 
 
-class TestCmdServeChrooting(TestCaseWithTransport):
+class TestCmdServeChrooting(TestBzrServeBase):
 
     def test_serve_tcp(self):
         """'bzr serve' wraps the given --directory in a ChrootServer.
@@ -183,46 +231,11 @@ class TestCmdServeChrooting(TestCaseWithTransport):
             ['--port', '127.0.0.1:0',
              '--directory', t.local_abspath('server-root'),
              '--allow-writes'],
-            self.when_server_started)
+            func=self.when_server_started)
         # The when_server_started method issued a find_repositoryV3 that should
         # fail with 'norepository' because there are no repositories inside the
         # --directory.
         self.assertEqual(('norepository',), self.client_resp)
-
-    def run_bzr_serve_then_func(self, serve_args, func, *func_args,
-            **func_kwargs):
-        """Run 'bzr serve', and run the given func in a thread once the server
-        has started.
-        
-        When 'func' terminates, the server will be terminated too.
-        """
-        # install hook
-        def on_server_start(backing_urls, tcp_server):
-            t = threading.Thread(
-                target=on_server_start_thread, args=(tcp_server,))
-            t.start()
-        def on_server_start_thread(tcp_server):
-            try:
-                # Run func
-                self.tcp_server = tcp_server
-                try:
-                    func(*func_args, **func_kwargs)
-                except Exception, e:
-                    # Log errors to make some test failures a little less
-                    # mysterious.
-                    mutter('func broke: %r', e)
-            finally:
-                # Then stop the server
-                mutter('interrupting...')
-                thread.interrupt_main()
-        SmartTCPServer.hooks.install_named_hook(
-            'server_started_ex', on_server_start,
-            'run_bzr_serve_then_func hook')
-        # start a TCP server
-        try:
-            self.run_bzr(['serve'] + list(serve_args))
-        except KeyboardInterrupt:
-            pass
 
     def when_server_started(self):
         # Connect to the TCP server and issue some requests and see what comes
