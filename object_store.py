@@ -147,7 +147,7 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = ret.id
                 self._idmap.add_entry(hexsha, "tree", (entry.file_id, inv.revision_id))
                 return hexsha, ret
-        elif entry.kind == "file":
+        elif entry.kind in ("file", "symlink"):
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
@@ -162,7 +162,7 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
-        
+
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
@@ -237,7 +237,7 @@ class BazaarObjectStore(BaseObjectStore):
         try:
             return self._idmap.lookup_git_sha(sha)
         except KeyError:
-            # if not, see if there are any unconverted revisions and add them 
+            # if not, see if there are any unconverted revisions and add them
             # to the map, search for sha in map again
             self._update_sha_map()
             return self._idmap.lookup_git_sha(sha)
