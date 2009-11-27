@@ -40,6 +40,8 @@ Bug Fixes
 * ``bzr serve`` is more clear about the risk of supplying --allow-writes.
   (Robert Collins, #84659)
 
+* ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
+
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
