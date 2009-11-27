@@ -1447,21 +1447,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
-                # If content filtering is supported, do not use the accelerator
-                # tree - the cost of transforming the content both ways and
-                # checking for changed content can outweight the gains it gives.
-                # Note: do NOT move this logic up higher - using the basis from
-                # the accelerator tree is still desirable because that can save
-                # a minute or more of processing on large trees!
-                # The original tree may not have the same content filters
-                # applied so we can't safely build the inventory delta from
-                # the source tree.
                 if wt.supports_content_filtering():
-#                    if hardlink:
-#                        # see https://bugs.edge.launchpad.net/bzr/+bug/408193
-#                        trace.warning("hardlinking working copy files is not currently "
-#                            "supported in %r" % (wt,))
-#                    accelerator_tree = None
+                    # The original tree may not have the same content filters
+                    # applied so we can't safely build the inventory delta from
+                    # the source tree.
                     delta_from_tree = False
                 else:
                     delta_from_tree = True
