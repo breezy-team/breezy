@@ -1842,9 +1842,9 @@ class TestCase(unittest.TestCase):
                     bzrlib.commands.run_bzr_catch_user_errors,
                     args)
             except KeyboardInterrupt:
-                # Reraise KeyboardInterrupt with contents of redirected stdout and 
-                # stderr as arguments, for tests which are interested in stdout and
-                # stderr and are expecting the exception.
+                # Reraise KeyboardInterrupt with contents of redirected stdout
+                # and stderr as arguments, for tests which are interested in
+                # stdout and stderr and are expecting the exception.
                 out = stdout.getvalue()
                 err = stderr.getvalue()
                 if out:
