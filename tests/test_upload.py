@@ -449,6 +449,15 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertUpFileEqual('baz', 'dir/goodbye')
         self.assertUpFileEqual('foo', 'dir/hello')
 
+    def test_ignore_file(self):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload','foo')
+        self.add_file('foo', 'bar')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('foo')
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
