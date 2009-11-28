@@ -115,6 +115,14 @@ central branch, rather than when you commit to your local branch.
 Note that you will consume more bandwith this way than uploading from a local
 branch.
 
+Ignoring certain files
+-----------------------
+
+If you want to version a file, but not upload it, you can create a file called
+.bzrignore-upload, which works in the same way as the regular .bzrignore file,
+but only applies to bzr-upload.
+
+
 Collaborating
 -------------
 
@@ -122,8 +130,7 @@ While we don't have any platform setup, you can branch from trunk:
 
     bzr branch lp:bzr-upload
 
-And change anything you'd like, and get in touch with any of the authors to 
-review and add the changes.
+And change anything you'd like, and file a merge proposal on Launchpad.
 
 
 Known Issues
