@@ -55,7 +55,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
 
 def read_mergeable_from_transport(transport, filename, _do_directive=True):
     def get_bundle(transport):
-        return transport.get_bytes(filename), transport
+        return StringIO(transport.get_bytes(filename)), transport
 
     def redirected_transport(transport, exception, redirection_notice):
         note(redirection_notice)
@@ -66,7 +66,7 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
         return get_transport(url)
 
     try:
-        bytes, transport = do_catching_redirections(get_bundle, transport,
+        bytef, transport = do_catching_redirections(get_bundle, transport,
                                                     redirected_transport)
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
@@ -86,8 +86,8 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
 
     if _do_directive:
         try:
-            return MergeDirective.from_lines(bytes.splitlines(True)), transport
+            return MergeDirective.from_lines(bytef), transport
         except errors.NotAMergeDirective:
-            pass
+            bytef.seek(0)
 
-    return _serializer.read_bundle(StringIO(bytes)), transport
+    return _serializer.read_bundle(bytef), transport
