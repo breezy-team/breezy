@@ -281,8 +281,11 @@ class BzrUploader(object):
 
     def get_ignored(self):
         """Get upload-specific ignored files from the current branch"""
-        ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
-        return ignores.parse_ignore_file(ignore_file)
+        try:
+            ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
+            return ignores.parse_ignore_file(ignore_file)
+        except errors.NoSuchId:
+            return []
 
     def upload_file(self, relpath, id, mode=None):
         ignored_files = self.get_ignored()
