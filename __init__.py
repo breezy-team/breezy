@@ -407,7 +407,7 @@ class BzrUploader(object):
         # If we can't find the revid file on the remote location, upload the
         # full tree instead
         rev_id = self.get_uploaded_revid()
-        
+
         if rev_id == revision.NULL_REVISION:
             if not self.quiet:
                 self.outf.write('No uploaded revision id found,'
@@ -528,7 +528,7 @@ class cmd_upload(commands.Command):
 
         (wt, branch,
          relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        
+
         if wt:
             wt.lock_read()
         else:
@@ -536,10 +536,10 @@ class cmd_upload(commands.Command):
         try:
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
-    
+
                 if revision is None and  changes.has_changed():
                     raise errors.UncommittedChanges(wt)
-    
+
             if location is None:
                 stored_loc = get_upload_location(branch)
                 if stored_loc is None:
@@ -551,9 +551,9 @@ class cmd_upload(commands.Command):
                             self.outf.encoding)
                     self.outf.write("Using saved location: %s\n" % display_url)
                     location = stored_loc
-    
+
             to_transport = transport.get_transport(location)
-    
+
             # Check that we are not uploading to a existing working tree.
             try:
                 to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -563,10 +563,10 @@ class cmd_upload(commands.Command):
             except errors.NotLocalUrl:
                 # The exception raised is a bit weird... but that's life.
                 has_wt = True
-    
+
             if has_wt:
                 raise CannotUploadToWorkingTreeError(url=location)
-    
+
             if revision is None:
                 rev_id = branch.last_revision()
             else:
@@ -574,18 +574,18 @@ class cmd_upload(commands.Command):
                     raise errors.BzrCommandError(
                         'bzr upload --revision takes exactly 1 argument')
                 rev_id = revision[0].in_history(branch).rev_id
-    
+
             tree = branch.repository.revision_tree(rev_id)
-    
+
             uploader = BzrUploader(branch, to_transport, self.outf, tree,
                                    rev_id, quiet=quiet)
-            
+
             if not overwrite:
                 prev_uploaded_rev_id = uploader.get_uploaded_revid()
                 graph = branch.repository.get_graph()
                 if not graph.is_ancestor(prev_uploaded_rev_id, rev_id):
                     raise DivergedError(rev_id, prev_uploaded_rev_id)
-    
+
             if full:
                 uploader.upload_full_tree()
             else:
@@ -622,7 +622,7 @@ class DivergedError(errors.BzrError):
 
     _fmt = ("The revision upload to this location is from a branch that is "
             "diverged from this branch: %(upload_revid)s")
-    
+
     # We should probably tell the user to use merge on the diverged branch,
     # but how do we explan which branch they need to merge from!
 
