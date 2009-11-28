@@ -290,7 +290,6 @@ class BzrUploader(object):
     def upload_file(self, relpath, id, mode=None):
         ignored_files = self.get_ignored()
         if relpath not in ignored_files:
-            self.get_ignored()
             if mode is None:
                 if self.tree.is_executable(id):
                     mode = 0775
