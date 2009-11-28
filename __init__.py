@@ -157,6 +157,7 @@ import stat
 from bzrlib import (
     bzrdir,
     errors,
+    ignores,
     revisionspec,
     transport,
     osutils,
@@ -271,7 +272,16 @@ class BzrUploader(object):
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
 
+    def get_ignored(self):
+        """Get upload-specific ignored files from the current branch"""
+        ignore_file_id = self.tree.path2id('.bzrignore-upload')
+        ignore_file = self.tree.get_file_text(ignore_file_id)
+        ignored_files = ignores.parse_ignore_file(ignore_file)
+        print ignored_files
+        blah
+
     def upload_file(self, relpath, id, mode=None):
+        self.get_ignored()
         if mode is None:
             if self.tree.is_executable(id):
                 mode = 0775
