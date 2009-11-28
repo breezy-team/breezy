@@ -274,22 +274,24 @@ class BzrUploader(object):
 
     def get_ignored(self):
         """Get upload-specific ignored files from the current branch"""
-        ignore_file_id = self.tree.path2id('.bzrignore-upload')
-        ignore_file = self.tree.get_file_text(ignore_file_id)
-        ignored_files = ignores.parse_ignore_file(ignore_file)
-        print ignored_files
-        blah
+        ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
+        return ignores.parse_ignore_file(ignore_file)
 
     def upload_file(self, relpath, id, mode=None):
-        self.get_ignored()
-        if mode is None:
-            if self.tree.is_executable(id):
-                mode = 0775
-            else:
-                mode = 0664
-        if not self.quiet:
-            self.outf.write('Uploading %s\n' % relpath)
-        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
+        ignored_files = self.get_ignored()
+        if relpath not in ignored_files:
+            self.get_ignored()
+            if mode is None:
+                if self.tree.is_executable(id):
+                    mode = 0775
+                else:
+                    mode = 0664
+            if not self.quiet:
+                self.outf.write('Uploading %s\n' % relpath)
+            self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
+        else:
+            if not self.quiet:
+                self.outf.write('Ignoring %s\n' % relpath)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
@@ -398,7 +400,7 @@ class BzrUploader(object):
         self.tree.lock_read()
         try:
             for relpath, ie in self.tree.inventory.iter_entries():
-                if relpath in ('', '.bzrignore'):
+                if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
                     # .bzrignore has no meaning outside of a working tree
                     # so do not upload it

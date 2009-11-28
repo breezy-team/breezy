@@ -459,6 +459,7 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.failIfUpFileExists('foo')
 
+
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
     do_upload = TestUploadMixin.do_full_upload
