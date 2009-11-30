@@ -258,6 +258,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
+    Additionally for directories, symlinks and files with an executable
+    bit, Bazaar indicates their type using a trailing character: '/', '@'
+    or '*' respectively.
+
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
 
