@@ -62,6 +62,7 @@ from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
+from bzrlib.config import GlobalConfig
 
 
 # Old formats display a warning, but only once
@@ -2783,6 +2784,8 @@ class Repository(_RelockDebugMixin):
         if _deprecation_warning_done:
             return
         _deprecation_warning_done = True
+        if GlobalConfig().get_user_option('deprecation-warning'):
+            return
         warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
                 % (self._format, self.bzrdir.transport.base))
 
