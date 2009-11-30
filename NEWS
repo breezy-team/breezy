@@ -43,7 +43,8 @@ Bug Fixes
 Improvements
 ************
 
-* Avoid unnecessarily flushing of trace file.  (Martin Pool)
+* Avoid unnecessarily flushing of trace file; it's now unbuffered at the
+  Python level.  (Martin Pool)
 
 Documentation
 *************

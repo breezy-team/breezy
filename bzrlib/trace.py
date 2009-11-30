@@ -241,7 +241,7 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', 1) # line buffered
+        bzr_log_file = open(_bzr_log_filename, 'at', buffering=0) # unbuffered
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
