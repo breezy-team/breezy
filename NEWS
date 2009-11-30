@@ -45,6 +45,10 @@ Bug Fixes
   etc. Now only change slashes if there is something being glob expanded.
   (John Arbash Meinel, #485771)
 
+* Use our faster ``KnownGraph.heads()`` functionality when computing the
+  new rich-root heads. This can cut a conversion time in half (mysql from
+  13.5h => 6.2h) (John Arbash Meinel, #487632)
+
 Improvements
 ************
 
