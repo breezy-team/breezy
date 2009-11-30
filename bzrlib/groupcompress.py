@@ -31,6 +31,7 @@ from bzrlib import (
     knit,
     osutils,
     pack,
+    static_tuple,
     trace,
     )
 from bzrlib.btree_index import BTreeBuilder
@@ -1877,8 +1878,11 @@ class _GCGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
-                if node_refs != keys[key][1]:
-                    details = '%s %s %s' % (key, (value, node_refs), keys[key])
+                # Sometimes these are passed as a list rather than a tuple
+                node_refs = static_tuple.as_tuples(node_refs)
+                passed = static_tuple.as_tuples(keys[key])
+                if node_refs != passed[1]:
+                    details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise errors.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
