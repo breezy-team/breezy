@@ -651,16 +651,22 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def _get_proposed_inventory(self, delta):
         if len(self.parents):
-            new_inv = self.basis_inventory._get_mutable_inventory()
+            # new_inv = self.basis_inventory._get_mutable_inventory()
+            # Note that this will create unreferenced chk pages if we end up
+            # deleting entries, because this 'test' inventory won't end up
+            # used. However, it is cheaper than having to create a full copy of
+            # the inventory for every commit.
+            new_inv = self.basis_inventory.create_by_apply_delta(delta,
+                'not-a-valid-revision-id:')
         else:
             new_inv = inventory.Inventory(revision_id=self.revision_id)
             # This is set in the delta so remove it to prevent a duplicate
             del new_inv[inventory.ROOT_ID]
-        try:
-            new_inv.apply_delta(delta)
-        except errors.InconsistentDelta:
-            self.mutter("INCONSISTENT DELTA IS:\n%s" % "\n".join([str(de) for de in delta]))
-            raise
+            try:
+                new_inv.apply_delta(delta)
+            except errors.InconsistentDelta:
+                self.mutter("INCONSISTENT DELTA IS:\n%s" % "\n".join([str(de) for de in delta]))
+                raise
         return new_inv
 
     def _add_entry(self, entry):
