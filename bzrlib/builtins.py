@@ -2513,7 +2513,7 @@ class cmd_ls(Command):
         if from_root:
             if relpath:
                 prefix = relpath + '/'
-        elif fs_path != '.':
+        elif fs_path != '.' and not fs_path.endswith('/'):
             prefix = fs_path + '/'
 
         if revision is not None or tree is None:
