@@ -266,7 +266,7 @@ def _get_rich_root_heads_graph(source_repo, revision_ids):
     revision_keys = [st(r_id).intern() for r_id in revision_ids]
     known_graph = source_repo.revisions.get_known_graph_ancestry(
                     revision_keys)
-    a_graph = graph.GraphThunkIdsToKeys(known_graph)
+    return graph.GraphThunkIdsToKeys(known_graph)
 
 
 def _new_root_data_stream(

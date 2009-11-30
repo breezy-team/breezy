@@ -3975,7 +3975,7 @@ class InterDifferingSerializer(InterRepository):
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
                 basis_id = self._fetch_batch(batch, basis_id, cache,
-                                             a_graph=the_graph)
+                                             a_graph=a_graph)
             except:
                 self.target.abort_write_group()
                 raise
