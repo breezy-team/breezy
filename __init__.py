@@ -321,9 +321,14 @@ class BzrUploader(object):
         self.upload_file(relpath, id, mode)
 
     def make_remote_dir(self, relpath, mode=None):
-        if mode is None:
-            mode = 0775
-        self.to_transport.mkdir(relpath, mode)
+        ignored_files = self.get_ignored()
+        if relpath not in ignored_files:
+            if mode is None:
+                mode = 0775
+            self.to_transport.mkdir(relpath, mode)
+        else:
+            if not self.quiet:
+                self.outf.write('Ignoring %s\n' % relpath)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
