@@ -3026,20 +3026,14 @@ class cmd_commit(Command):
 
         if message is not None:
             if osutils.lexists(message):
-                ui.ui_factory.show_warning("The commit message is a file"
-                    " name \"%(filename)s\".\n"
+                warning_msg = ("The commit message is a file"
+                    " name: \"%(filename)s\".\n"
                     "(use --file \"%(filename)s\" to take commit message from"
                     " that file)" % { 'filename': message })
-                confirmed = ui.ui_factory.get_boolean("Do you want to commit"
-                    " with this message")
-                if confirmed is None:
-                    # running non-interactively, maybe launched by a cron task
-                    trace.warning("The commit message is a file name: \'%s\'."
-                        " Maybe the commit message has been"
-                        " forgotten?" % message)
-                elif not confirmed:
-                    ui.ui_factory.show_message("Commit cancelled")
-                    return 1
+                if ui.ui_factory.is_interactive():
+                    ui.ui_factory.show_warning(warning_msg)
+                else:
+                    trace.warning(warning_msg)
 
         def get_message(commit_obj):
             """Callback to get commit message"""
