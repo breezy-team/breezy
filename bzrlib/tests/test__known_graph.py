@@ -161,6 +161,13 @@ class TestKnownGraph(TestCaseWithKnownGraph):
         self.assertGDFO(graph, 'rev4', 5)
         graph.add_node('rev4', ['rev3', 'rev2b'])
         self.assertGDFO(graph, 'rev4', 5)
+        # This also works if we use a tuple rather than a list
+        graph.add_node('rev4', ('rev3', 'rev2b'))
+
+    def test_add_existing_node_mismatched_parents(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertRaises(ValueError, graph.add_node, 'rev4',
+                          ['rev2b', 'rev3'])
 
     def test_add_node_with_ghost_parent(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -319,6 +326,16 @@ class TestKnownGraphHeads(TestCaseWithKnownGraph):
         self.assertEqual(set(['c']), graph.heads(['c', 'b', 'd', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'e', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))
+
+    def test_filling_in_ghosts_resets_head_cache(self):
+        if not self.do_cache:
+            raise tests.TestNotApplicable('testing the cache behavior')
+        graph = self.make_known_graph(test_graph.with_ghost)
+        self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
+        # 'g' is filled in, and decends from 'e', so the heads result is now
+        # different
+        graph.add_node('g', ['e'])
+        self.assertEqual(set(['g']), graph.heads(['e', 'g']))
 
 
 class TestKnownGraphTopoSort(TestCaseWithKnownGraph):
