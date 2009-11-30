@@ -102,12 +102,12 @@ Starting the release phase
 
 #. Add the date and release number to ``./NEWS``
 
-   What order to we keep here ? By major release or by date ? The bugfix
-   release are likely to occur after the next major release has
-   occurred. The workflow says that we should keep them sorted by release
-   but that may be a bit disturbing for users reading the NEWS. Anyaw we
-   should chose one and document it.
-  
+   Depending on whether you're doing a beta or a bugfix release, you'll
+   have to create a NEWS section for you release in the right
+   place. Most of the time, the new section is at the top of the file
+   (look what have been done for the various 2.0x and 2.1.0bx releases).
+   The rule is to keep the sections sorte by date. You'll need to be
+   cautious when merging back to trunk to respect that.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
