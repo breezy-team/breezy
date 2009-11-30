@@ -2784,7 +2784,7 @@ class Repository(_RelockDebugMixin):
         if _deprecation_warning_done:
             return
         _deprecation_warning_done = True
-        if GlobalConfig().get_user_option('deprecation-warning'):
+        if GlobalConfig().get_user_option('format_deprecation_warning'):
             return
         warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
                 % (self._format, self.bzrdir.transport.base))
