@@ -61,7 +61,7 @@ class TestVersion(TestCase):
         # contains a "guessed" path to the python DLL, so we test that
         # the path actually exists
         m = re.search(r"Python interpreter: (.*) [0-9]", out)
-        self.assertTrue(not m is None)
+        self.assertIsNot(m, None)
         self.failUnlessExists(m.group(1))
 
     def test_version_short(self):
