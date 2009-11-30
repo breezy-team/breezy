@@ -154,6 +154,66 @@ class TestKnownGraph(TestCaseWithKnownGraph):
         self.assertGDFO(graph, 'a', 5)
         self.assertGDFO(graph, 'c', 5)
 
+    def test_add_existing_node(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        # Add a node that already exists with identical content
+        # This is a 'no-op'
+        self.assertGDFO(graph, 'rev4', 5)
+        graph.add_node('rev4', ['rev3', 'rev2b'])
+        self.assertGDFO(graph, 'rev4', 5)
+
+    def test_add_node_with_ghost_parent(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', ['rev2b', 'revGhost'])
+        self.assertGDFO(graph, 'rev5', 4)
+        self.assertGDFO(graph, 'revGhost', 1)
+
+    def test_add_new_root(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', [])
+        self.assertGDFO(graph, 'rev5', 1)
+
+    def test_add_with_all_ghost_parents(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', ['ghost'])
+        self.assertGDFO(graph, 'rev5', 2)
+        self.assertGDFO(graph, 'ghost', 1)
+
+    def test_gdfo_after_add_node(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertEqual([], graph.get_child_keys('rev4'))
+        graph.add_node('rev5', ['rev4'])
+        self.assertEqual(['rev4'], graph.get_parent_keys('rev5'))
+        self.assertEqual(['rev5'], graph.get_child_keys('rev4'))
+        self.assertEqual([], graph.get_child_keys('rev5'))
+        self.assertGDFO(graph, 'rev5', 6)
+        graph.add_node('rev6', ['rev2b'])
+        graph.add_node('rev7', ['rev6'])
+        graph.add_node('rev8', ['rev7', 'rev5'])
+        self.assertGDFO(graph, 'rev5', 6)
+        self.assertGDFO(graph, 'rev6', 4)
+        self.assertGDFO(graph, 'rev7', 5)
+        self.assertGDFO(graph, 'rev8', 7)
+
+    def test_fill_in_ghost(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        # Add in a couple nodes and then fill in the 'ghost' so that it should
+        # cause renumbering of children nodes
+        graph.add_node('x', [])
+        graph.add_node('y', ['x'])
+        graph.add_node('z', ['y'])
+        graph.add_node('g', ['z'])
+        self.assertGDFO(graph, 'f', 2)
+        self.assertGDFO(graph, 'e', 3)
+        self.assertGDFO(graph, 'x', 1)
+        self.assertGDFO(graph, 'y', 2)
+        self.assertGDFO(graph, 'z', 3)
+        self.assertGDFO(graph, 'g', 4)
+        self.assertGDFO(graph, 'b', 4)
+        self.assertGDFO(graph, 'd', 5)
+        self.assertGDFO(graph, 'a', 5)
+        self.assertGDFO(graph, 'c', 6)
+
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
 
