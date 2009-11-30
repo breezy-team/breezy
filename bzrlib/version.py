@@ -51,6 +51,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # (bzr.exe use python interpreter from pythonXY.dll
     # but sys.executable point to bzr.exe itself)
     # however, sys.frozen exists if running from bzr.exe
+    # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
     if getattr(sys, 'frozen', None) is None: # if not bzr.exe
         to_file.write(sys.executable + ' ')
     else:
