@@ -2948,7 +2948,7 @@ class _KnitGraphIndex(object):
                 parents = node_refs[:1]
                 # Sometimes these are passed as a list rather than a tuple
                 passed = static_tuple.as_tuples(keys[key])
-                passed_parents = passed([1][:1])
+                passed_parents = passed[1][:1]
                 if (value[0] != keys[key][0][0] or
                     parents != passed_parents):
                     node_refs = static_tuple.as_tuples(node_refs)
