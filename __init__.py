@@ -115,6 +115,14 @@ central branch, rather than when you commit to your local branch.
 Note that you will consume more bandwith this way than uploading from a local
 branch.
 
+Ignoring certain files
+-----------------------
+
+If you want to version a file, but not upload it, you can create a file called
+.bzrignore-upload, which works in the same way as the regular .bzrignore file,
+but only applies to bzr-upload.
+
+
 Collaborating
 -------------
 
@@ -122,8 +130,7 @@ While we don't have any platform setup, you can branch from trunk:
 
     bzr branch lp:bzr-upload
 
-And change anything you'd like, and get in touch with any of the authors to 
-review and add the changes.
+And change anything you'd like, and file a merge proposal on Launchpad.
 
 
 Known Issues
@@ -157,6 +164,7 @@ import stat
 from bzrlib import (
     bzrdir,
     errors,
+    ignores,
     revisionspec,
     transport,
     osutils,
@@ -271,15 +279,28 @@ class BzrUploader(object):
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
 
+    def get_ignored(self):
+        """Get upload-specific ignored files from the current branch"""
+        try:
+            ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
+            return ignores.parse_ignore_file(ignore_file)
+        except errors.NoSuchId:
+            return []
+
     def upload_file(self, relpath, id, mode=None):
-        if mode is None:
-            if self.tree.is_executable(id):
-                mode = 0775
-            else:
-                mode = 0664
-        if not self.quiet:
-            self.outf.write('Uploading %s\n' % relpath)
-        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
+        ignored_files = self.get_ignored()
+        if relpath not in ignored_files:
+            if mode is None:
+                if self.tree.is_executable(id):
+                    mode = 0775
+                else:
+                    mode = 0664
+            if not self.quiet:
+                self.outf.write('Uploading %s\n' % relpath)
+            self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
+        else:
+            if not self.quiet:
+                self.outf.write('Ignoring %s\n' % relpath)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
@@ -300,9 +321,14 @@ class BzrUploader(object):
         self.upload_file(relpath, id, mode)
 
     def make_remote_dir(self, relpath, mode=None):
-        if mode is None:
-            mode = 0775
-        self.to_transport.mkdir(relpath, mode)
+        ignored_files = self.get_ignored()
+        if relpath not in ignored_files:
+            if mode is None:
+                mode = 0775
+            self.to_transport.mkdir(relpath, mode)
+        else:
+            if not self.quiet:
+                self.outf.write('Ignoring %s\n' % relpath)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
@@ -388,7 +414,7 @@ class BzrUploader(object):
         self.tree.lock_read()
         try:
             for relpath, ie in self.tree.inventory.iter_entries():
-                if relpath in ('', '.bzrignore'):
+                if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
                     # .bzrignore has no meaning outside of a working tree
                     # so do not upload it
@@ -407,7 +433,7 @@ class BzrUploader(object):
         # If we can't find the revid file on the remote location, upload the
         # full tree instead
         rev_id = self.get_uploaded_revid()
-        
+
         if rev_id == revision.NULL_REVISION:
             if not self.quiet:
                 self.outf.write('No uploaded revision id found,'
@@ -528,7 +554,7 @@ class cmd_upload(commands.Command):
 
         (wt, branch,
          relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        
+
         if wt:
             wt.lock_read()
         else:
@@ -536,10 +562,10 @@ class cmd_upload(commands.Command):
         try:
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
-    
+
                 if revision is None and  changes.has_changed():
                     raise errors.UncommittedChanges(wt)
-    
+
             if location is None:
                 stored_loc = get_upload_location(branch)
                 if stored_loc is None:
@@ -551,9 +577,9 @@ class cmd_upload(commands.Command):
                             self.outf.encoding)
                     self.outf.write("Using saved location: %s\n" % display_url)
                     location = stored_loc
-    
+
             to_transport = transport.get_transport(location)
-    
+
             # Check that we are not uploading to a existing working tree.
             try:
                 to_bzr_dir = bzrdir.BzrDir.open_from_transport(to_transport)
@@ -563,10 +589,10 @@ class cmd_upload(commands.Command):
             except errors.NotLocalUrl:
                 # The exception raised is a bit weird... but that's life.
                 has_wt = True
-    
+
             if has_wt:
                 raise CannotUploadToWorkingTreeError(url=location)
-    
+
             if revision is None:
                 rev_id = branch.last_revision()
             else:
@@ -574,18 +600,18 @@ class cmd_upload(commands.Command):
                     raise errors.BzrCommandError(
                         'bzr upload --revision takes exactly 1 argument')
                 rev_id = revision[0].in_history(branch).rev_id
-    
+
             tree = branch.repository.revision_tree(rev_id)
-    
+
             uploader = BzrUploader(branch, to_transport, self.outf, tree,
                                    rev_id, quiet=quiet)
-            
+
             if not overwrite:
                 prev_uploaded_rev_id = uploader.get_uploaded_revid()
                 graph = branch.repository.get_graph()
                 if not graph.is_ancestor(prev_uploaded_rev_id, rev_id):
                     raise DivergedError(rev_id, prev_uploaded_rev_id)
-    
+
             if full:
                 uploader.upload_full_tree()
             else:
@@ -622,7 +648,7 @@ class DivergedError(errors.BzrError):
 
     _fmt = ("The revision upload to this location is from a branch that is "
             "diverged from this branch: %(upload_revid)s")
-    
+
     # We should probably tell the user to use merge on the diverged branch,
     # but how do we explan which branch they need to merge from!
 
