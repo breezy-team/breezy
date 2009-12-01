@@ -182,6 +182,9 @@ Bug Fixes
 * Shelve command refuse to run if there is no real terminal.
   (Alexander Belchenko)
 
+* Avoid unnecessarily flushing of trace file; it's now unbuffered at the
+  Python level.  (Martin Pool)
+
 Documentation
 *************
 
