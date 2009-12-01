@@ -364,13 +364,19 @@ class AbstractRevisionStore(object):
                 self._graph = self.repo.revisions.get_known_graph_ancestry(
                     [(r,) for r in rev.parent_ids])
         if self._graph is not None:
+            orig_heads = builder._heads
             def thunked_heads(file_id, revision_ids):
                 # self._graph thinks in terms of keys, not ids, so translate
                 # them
+                # old_res = orig_heads(file_id, revision_ids)
                 if len(revision_ids) < 2:
-                    return set(revision_ids)
-                return set([h[0] for h in
-                            self._graph.heads([(r,) for r in revision_ids])])
+                    res = set(revision_ids)
+                else:
+                    res = set([h[0] for h in
+                              self._graph.heads([(r,) for r in revision_ids])])
+                # if old_res != res:
+                #     import pdb; pdb.set_trace()
+                return res
             builder._heads = thunked_heads
 
         if rev.parent_ids:
