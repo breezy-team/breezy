@@ -94,9 +94,11 @@ class GitTexts(VersionedFiles):
             root_tree = self.object_store[commit_id].tree
             path = mapping.parse_file_id(fileid)
             try:
-                (mode, item_id) = tree_lookup_path(
+                obj = tree_lookup_path(
                     self.object_store.__getitem__, root_tree, path)
-                obj = self.object_store[item_id]
+                if isinstance(obj, tuple):
+                    (mode, item_id) = obj
+                    obj = self.object_store[item_id]
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
