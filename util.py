@@ -22,6 +22,7 @@ try:
     import hashlib as md5
 except ImportError:
     import md5
+import signal
 import shutil
 import tempfile
 import os
@@ -455,3 +456,10 @@ def find_last_distribution(changelog):
         if distribution != "UNRELEASED":
             return distribution
     return None
+
+
+def subprocess_setup():
+    # Python installs a SIGPIPE handler by default. This is usually not what
+    # non-Python subprocesses expect.
+    # Many, many thanks to Colin Watson
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)

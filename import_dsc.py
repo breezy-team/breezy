@@ -53,6 +53,7 @@ from bzrlib.errors import (
         AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
+        NoWorkingTree,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
@@ -71,6 +72,7 @@ from bzrlib.plugins.bzrtools.upstream_import import (
 
 from bzrlib.plugins.builddeb.errors import (
                 PristineTarError,
+                TarFailed,
                 UnknownType,
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
@@ -80,6 +82,7 @@ from bzrlib.plugins.builddeb.util import (
     get_snapshot_revision,
     open_file_via_transport,
     open_transport,
+    subprocess_setup,
     )
 
 
@@ -1374,7 +1377,8 @@ class DistributionBranch(object):
         tempdir = tempfile.mkdtemp()
         dsc_filename = os.path.abspath(dsc_filename)
         proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
-                cwd=tempdir, stdout=PIPE, stderr=PIPE)
+                cwd=tempdir, stdout=PIPE, stderr=PIPE,
+                preexec_fn=subprocess_setup)
         (stdout, stderr) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
                     (stdout, stderr)
@@ -1550,7 +1554,11 @@ class DistributionBranch(object):
         dir_to = self.branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
-        self.upstream_tree = dir_to.open_workingtree()
+        try:
+            self.upstream_tree = dir_to.open_workingtree()
+        except NoWorkingTree:
+            # Handle shared treeless repo's.
+            self.upstream_tree = dir_to.create_workingtree()
         self.upstream_branch = self.upstream_tree.branch
 
     _extract_upstream_tree = extract_upstream_tree
@@ -1582,8 +1590,12 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            assert os.system("tar xzf %s -C %s --strip-components 1"
-                    % (tarball_filename, tempdir)) == 0
+            proc = Popen(["/usr/bin/tar", "xzf", tarball_filename, "-C",
+                    tempdir, "--strip-components", "1"],
+                    preexec_fn=subprocess_setup)
+            proc.communicate()
+            if proc.returncode != 0:
+                raise TarFailed("extract", tarball_filename)
             return tempdir
         except:
             shutil.rmtree(tempdir)
@@ -1706,7 +1718,8 @@ class DistributionBranch(object):
             delta = self.pristine_tar_delta(revid)
             command = ["/usr/bin/pristine-tar", "gentar", "-",
                        os.path.abspath(dest_filename)]
-            proc = Popen(command, stdin=PIPE, cwd=dest)
+            proc = Popen(command, stdin=PIPE, cwd=dest,
+                    preexec_fn=subprocess_setup)
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
                 raise PristineTarError("Generating tar from delta failed: %s" % stderr)
@@ -1728,7 +1741,8 @@ class DistributionBranch(object):
                 tree.unlock()
             command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
             note(" ".join(command))
-            proc = Popen(command, stdout=PIPE, cwd=dest)
+            proc = Popen(command, stdout=PIPE, cwd=dest,
+                    preexec_fn=subprocess_setup)
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
                 raise PristineTarError("Generating delta from tar failed: %s" % stderr)

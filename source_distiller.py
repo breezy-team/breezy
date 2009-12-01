@@ -20,7 +20,6 @@
 import glob
 import os
 import shutil
-import signal
 import subprocess
 import tempfile
 
@@ -33,14 +32,8 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.util import (
         get_parent_dir,
         recursive_copy,
+        subprocess_setup,
         )
-
-
-def subprocess_setup():
-    # Python installs a SIGPIPE handler by default. This is usually not what
-    # non-Python subprocesses expect.
-    # Many, many thanks to Colin Watson
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 class SourceDistiller(object):
