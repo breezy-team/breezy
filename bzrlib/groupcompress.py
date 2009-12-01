@@ -1747,8 +1747,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 key = record.key
             self._unadded_refs[key] = record.parents
             yield found_sha1
-            keys_to_add.append((key, '%d %d' % (start_point, end_point),
-                (record.parents,)))
+            as_st = static_tuple.StaticTuple.from_sequence
+            if record.parents is not None:
+                parents = as_st([as_st(p) for p in record.parents])
+            else:
+                parents = None
+            refs = static_tuple.StaticTuple(parents)
+            keys_to_add.append((key, '%d %d' % (start_point, end_point), refs))
         if len(keys_to_add):
             flush()
         self._compressor = None
