@@ -57,6 +57,10 @@ class TestVersion(TestCase):
         self.assertContainsRe(out, r"(?m)^  bzrlib:")
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration:")
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
+        
+    def test_version_python_interpreter_exists(self):
+        self.permit_source_tree_branch_repo()
+        out = self.run_bzr("version")[0]
         # for the py2exe frozen bzr.exe on windows, the version info
         # contains a "guessed" path to the python DLL, so we test that
         # the path actually exists
