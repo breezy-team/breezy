@@ -39,6 +39,8 @@ from bzrlib import (
     timestamp,
     views,
     )
+
+from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.symbol_versioning import (
@@ -722,6 +724,9 @@ class DiffFromTool(DiffPath):
 
     def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
                     allow_write=False):
+        if isinstance(tree, WorkingTree):
+            return tree.abspath(tree.id2path(file_id))
+        
         full_path = osutils.pathjoin(self._root, prefix, relpath)
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
@@ -766,9 +771,9 @@ class DiffFromTool(DiffPath):
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
-        self._prepare_files(file_id, old_path, new_path)
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        (old_disk_path, new_disk_path) = self._prepare_files(
+                                                file_id, old_path, new_path)
+        self._execute(old_disk_path, new_disk_path)
 
     def edit_file(self, file_id):
         """Use this tool to edit a file.
