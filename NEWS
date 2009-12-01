@@ -57,6 +57,12 @@ Bug Fixes
   new rich-root heads. This can cut a conversion time in half (mysql from
   13.5h => 6.2h) (John Arbash Meinel, #487632)
 
+* When launching a external diff tool via bzr diff --using, temporary files
+  are no longer created, rather, the path to the file in the working tree is
+  passed to the external diff tool. This allows the file to be edited if the
+  diff tool provides for this. (Gary van der Merwe, #490738)
+  
+
 Improvements
 ************
 
