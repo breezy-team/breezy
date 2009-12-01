@@ -328,8 +328,6 @@ class TestKnownGraphHeads(TestCaseWithKnownGraph):
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))
 
     def test_filling_in_ghosts_resets_head_cache(self):
-        if not self.do_cache:
-            raise tests.TestNotApplicable('testing the cache behavior')
         graph = self.make_known_graph(test_graph.with_ghost)
         self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
         # 'g' is filled in, and decends from 'e', so the heads result is now
