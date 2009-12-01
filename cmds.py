@@ -37,11 +37,9 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
 from bzrlib.errors import (BzrCommandError,
-                           NoWorkingTree,
                            NotBranchError,
                            FileExists,
                            )
-from bzrlib.export import export
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note, warning

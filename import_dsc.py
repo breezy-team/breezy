@@ -47,7 +47,6 @@ from bzrlib import (
                     bzrdir,
                     generate_ids,
                     osutils,
-                    urlutils,
                     )
 from bzrlib.config import ConfigObj
 from bzrlib.errors import (
