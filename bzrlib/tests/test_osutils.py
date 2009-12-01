@@ -1837,23 +1837,29 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        self.saved_concurrency_override = osutils._local_concurrency_override
-        self.addCleanup(self.restore_concurrency_override)
-
-    def restore_concurrency_override(self):
-        osutils._local_concurrency_override = self.saved_concurrency_override
+        orig = osutils._cached_local_concurrency
+        def restore():
+            osutils._cached_local_concurrency = orig
+        self.addCleanup(restore)
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
 
-    def test_local_concurrency_option(self):
-        osutils._local_concurrency_override = 2
-        self.assertEqual(2, osutils.local_concurrency(False))
-        osutils._local_concurrency_override = 3
-        self.assertEqual(3, osutils.local_concurrency(False))
-        #os.environ['BZR_CONCURRENCY'] = 'foo'
-        #self.assertEqual(1, osutils.local_concurrency(False))
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(use_cache=False))
+
+    def test_option_concurrency(self):
+        os.environ['BZR_CONCURRENCY'] = '1'
+        self.run_bzr('rocks --concurrency 42')
+        # Command line overrides envrionment variable
+        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):
