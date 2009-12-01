@@ -20,7 +20,7 @@
 
 import subprocess
 
-from bzrlib.trace import info
+from bzrlib.trace import note
 
 from bzrlib.plugins.builddeb.errors import HookFailedError
 
@@ -29,7 +29,7 @@ def run_hook(tree, hook_name, config, wd="."):
   hook = config.get_hook(hook_name)
   if hook is None:
     return
-  info("Running %s as %s hook" % (hook, hook_name))
+  note("Running %s as %s hook" % (hook, hook_name))
   proc = subprocess.Popen(hook, shell=True, 
                           cwd=tree.abspath(wd))
   proc.wait()

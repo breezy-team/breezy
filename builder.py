@@ -23,7 +23,7 @@ import signal
 import subprocess
 import os
 
-from bzrlib.trace import info
+from bzrlib.trace import note
 
 from bzrlib.plugins.builddeb.errors import (
                     NoSourceDirError,
@@ -69,10 +69,10 @@ class DebBuild(object):
             os.makedirs(parent_dir)
         if os.path.exists(self.target_dir):
             if not self.use_existing:
-                info("Purging the build dir: %s", self.target_dir)
+                note("Purging the build dir: %s", self.target_dir)
                 shutil.rmtree(self.target_dir)
             else:
-                info("Not purging build dir as requested: %s",
+                note("Not purging build dir as requested: %s",
                         self.target_dir)
         else:
             if self.use_existing:
@@ -83,7 +83,7 @@ class DebBuild(object):
 
     def build(self):
         """This builds the package using the supplied command."""
-        info("Building the package in %s, using %s", self.target_dir,
+        note("Building the package in %s, using %s", self.target_dir,
                 self.builder)
         proc = subprocess.Popen(self.builder, shell=True, cwd=self.target_dir,
                 preexec_fn=subprocess_setup)
@@ -93,5 +93,5 @@ class DebBuild(object):
 
     def clean(self):
         """This removes the build directory."""
-        info("Cleaning build dir: %s", self.target_dir)
+        note("Cleaning build dir: %s", self.target_dir)
         shutil.rmtree(self.target_dir)

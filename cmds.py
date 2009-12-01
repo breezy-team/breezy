@@ -44,7 +44,7 @@ from bzrlib.errors import (BzrCommandError,
 from bzrlib.export import export
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.trace import info, warning
+from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
 
 from bzrlib.plugins.builddeb import (
@@ -223,7 +223,7 @@ class cmd_builddeb(Command):
 
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
-            info("Building using working tree")
+            note("Building using working tree")
             working_tree = True
         else:
             if revision is None:
@@ -233,7 +233,7 @@ class cmd_builddeb(Command):
             else:
                 raise BzrCommandError('bzr builddeb --revision takes exactly one '
                                       'revision specifier.')
-            info("Building branch from revision %s", revid)
+            note("Building branch from revision %s", revid)
             tree = branch.repository.revision_tree(revid)
             working_tree = False
         return tree, working_tree
@@ -242,20 +242,20 @@ class cmd_builddeb(Command):
         if not merge:
             merge = config.merge
         if merge:
-            info("Running in merge mode")
+            note("Running in merge mode")
             native = False
             split = False
         else:
             if not native:
                 native = config.native
             if native:
-                info("Running in native mode")
+                note("Running in native mode")
                 split = False
             else:
                 if not split:
                     split = config.split
                 if split:
-                    info("Running in split mode")
+                    note("Running in split mode")
         return merge, native, split
 
     def _get_build_command(self, config, builder, quick, build_options):
@@ -367,7 +367,7 @@ class cmd_builddeb(Command):
         try:
             config = debuild_config(tree, working_tree, no_user_config)
             if reuse:
-                info("Reusing existing build dir")
+                note("Reusing existing build dir")
                 dont_purge = True
                 use_existing = True
             merge, native, split = self._build_type(config, merge, native, split)
@@ -535,11 +535,11 @@ class cmd_merge_upstream(Command):
                 if distribution is None:
                     distribution = find_last_distribution(changelog)
                     if distribution is not None:
-                        info("Using distribution %s" % distribution)
+                        note("Using distribution %s" % distribution)
             except MissingChangelogError:
                 current_version = None
             if distribution is None:
-                info("No distribution specified, and no changelog, "
+                note("No distribution specified, and no changelog, "
                         "assuming 'debian'")
                 distribution = "debian"
 
@@ -583,7 +583,7 @@ class cmd_merge_upstream(Command):
                     version = upstream_branch_version(upstream_branch,
                             upstream_revision, package,
                             current_version.upstream_version)
-                    info("Using version string %s for upstream branch." % (version))
+                    note("Using version string %s for upstream branch." % (version))
                 else:
                     raise BzrCommandError("You must specify the "
                             "version number using --version.")
@@ -622,11 +622,11 @@ class cmd_merge_upstream(Command):
                     package)
         finally:
             tree.unlock()
-        info("The new upstream version has been imported.")
+        note("The new upstream version has been imported.")
         if conflicts:
-            info("You should now resolve the conflicts, review the changes, and then commit.")
+            note("You should now resolve the conflicts, review the changes, and then commit.")
         else:
-            info("You should now review the changes and then commit.")
+            note("You should now review the changes and then commit.")
 
 
 class cmd_import_dsc(Command):
@@ -810,16 +810,16 @@ class cmd_bd_do(Command):
         builder.prepare()
         run_hook(t, 'pre-export', config)
         builder.export()
-        info('Running "%s" in the exported directory.' % (command))
+        note('Running "%s" in the exported directory.' % (command))
         if give_instruction:
-            info('If you want to cancel your changes then exit with a non-zero '
+            note('If you want to cancel your changes then exit with a non-zero '
                  'exit code, e.g. run "exit 1".')
         try:
             builder.build()
         except BuildFailedError:
             raise BzrCommandError('Not updating the working tree as the '
                     'command failed.')
-        info("Copying debian/ back")
+        note("Copying debian/ back")
         if larstiq:
             destination = ''
         else:
@@ -834,7 +834,7 @@ class cmd_bd_do(Command):
             if proc.returncode != 0:
                 raise BzrCommandError('Copying back debian/ failed')
         builder.clean()
-        info('If any files were added or removed you should run "bzr add" or '
+        note('If any files were added or removed you should run "bzr add" or '
              '"bzr rm" as appropriate.')
 
 
@@ -914,10 +914,10 @@ class cmd_merge_package(Command):
         # Merge source packaging branch in to the target packaging branch.
         conflicts = tree.merge_from_branch(source_branch)
         if conflicts > 0:
-            info('The merge resulted in %s conflicts. Please resolve these '
+            note('The merge resulted in %s conflicts. Please resolve these '
                  'and commit the changes with "bzr commit".' % conflicts)
         else:
-            info('The merge resulted in no conflicts. You may commit the '
+            note('The merge resulted in no conflicts. You may commit the '
             'changes by running "bzr commit".')
 
 
