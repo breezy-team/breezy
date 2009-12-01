@@ -26,6 +26,11 @@ class Serializer(object):
 
     squashes_xml_invalid_characters = False
 
+    # Setting this true will return InventoryEntry items directly from the
+    # cache, rather than copying them. It can be much faster for some
+    # operations, but the callers must not mutate the returned objects
+    safe_to_use_cache_items = False
+
     def write_inventory(self, inv, f):
         """Write inventory to a file.
 

@@ -433,9 +433,10 @@ class Serializer_v8(XMLSerializer):
                 pass
             else:
                 # Only copying directory entries drops us 2.85s => 2.35s
-                # if cached_ie.kind == 'directory':
-                #     return cached_ie.copy()
-                # return cached_ie
+                if self.safe_to_use_cache_items:
+                    if cached_ie.kind == 'directory':
+                        return cached_ie.copy()
+                    return cached_ie
                 return cached_ie.copy()
 
         kind = elt.tag

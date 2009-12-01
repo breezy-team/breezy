@@ -3840,6 +3840,7 @@ class InterDifferingSerializer(InterRepository):
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
         self._fetch_parent_invs_for_stacking(parent_map, cache)
+        self.source._format._serializer.safe_to_use_cache_items = True
         for tree in self.source.revision_trees(revision_ids):
             # Find a inventory delta for this revision.
             # Find text entries that need to be copied, too.
@@ -3893,6 +3894,7 @@ class InterDifferingSerializer(InterRepository):
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
+        self.source._format._serializer.safe_to_use_cache_items = False
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
@@ -3977,6 +3979,7 @@ class InterDifferingSerializer(InterRepository):
                 basis_id = self._fetch_batch(batch, basis_id, cache,
                                              a_graph=a_graph)
             except:
+                self.source._format._serializer.safe_to_use_cache_items = False
                 self.target.abort_write_group()
                 raise
             else:
