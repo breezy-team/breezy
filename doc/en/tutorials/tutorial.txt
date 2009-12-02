@@ -330,6 +330,30 @@ read it as you write the message, but the diff itself wont be seen in the
 commit message when you have finished. If you would like parts to be
 included in the message you can copy and paste them above the separator.
 
+Marking bugs as fixed
+---------------------
+
+Many changes to a project are as a result of fixing bugs. Bazaar can keep
+metadata about bugs you fixed when you commit them. To do this you use the
+``--fixes`` option. This option takes an argument that looks like this::
+
+    %bzr commit --fixes <tracker>:<id>
+
+Where ``<tracker>`` is an identifier for for a bug tracker and ``<id>`` is an
+identifier for a bug that is tracked in that bug tracker. ``<id>`` is usually
+a number. Bazaar already knows about a few popular bug trackers. They are 
+www.launchpad.net, bugs.debian.org, and bugzilla.gnome.org. These trackers
+have their own identifiers; lp, deb, and gnome respectively. For example,
+if, you made a change to fix the bug #1234 on www.launchpad.net, you would
+use the following command to commit your fix::
+
+    % bzr commit -m "fixed my first bug" --fixes lp:1234
+
+For more information on this topic or for information on how to configure
+other bug trackers please read `Bug Tracker Settings`_.
+
+.. _Bug Tracker Settings: ../user-reference/index.html#bug-tracker-settings
+
 Selective commit
 ----------------
 
