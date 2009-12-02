@@ -4182,7 +4182,7 @@ class cmd_missing(Command):
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
             
-    Exit values:
+    :Exit values:
         1 - some missing revisions
         0 - no missing revisions
 
