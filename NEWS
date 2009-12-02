@@ -20,6 +20,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr push --use-existing-dir`` no longer crashes if the directory
+  exists but contains an invalid ``.bzr`` directory.
+  (Andrew Bennetts, #423563)
+
 * Content filters are now applied correctly after pull, merge and switch.
   (Ian Clatworthy, #385879)
 
