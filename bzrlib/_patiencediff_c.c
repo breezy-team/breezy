@@ -298,7 +298,7 @@ unique_lcs(struct matching_line *answer,
         apos = SENTINEL;
         /* loop through all lines in the linked list */
         for (i = h[equiv].a_pos; i != SENTINEL; i = lines_a[i].next) {
-            /* the index is lower than alo, the the next line */
+            /* the index is lower than alo, continue to the next line */
             if (i < alo) {
                 h[equiv].a_pos = i;
                 continue;
@@ -319,7 +319,7 @@ unique_lcs(struct matching_line *answer,
         /* check for duplicates of this line in lines_b[blo:bhi] */
         /* loop through all lines in the linked list */
         for (i = h[equiv].b_pos; i != SENTINEL; i = lines_b[i].next) {
-            /* the index is lower than blo, the the next line */
+            /* the index is lower than blo, continue to the next line */
             if (i < blo) {
                 h[equiv].b_pos = i;
                 continue;

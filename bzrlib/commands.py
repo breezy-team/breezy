@@ -56,6 +56,7 @@ from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
+    deprecated_method,
     suppress_deprecation_warnings,
     )
 
@@ -383,18 +384,18 @@ class Command(object):
         # List of standard options directly supported
         self.supported_std_options = []
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
+
+        Not used anymore, now that the bzr command-line parser globs on
+        Windows.
 
         :return: A possibly empty list of unicode paths.
 
         Introduced in bzrlib 0.18.
         """
-        if not file_list:
-            file_list = []
-        if sys.platform == 'win32':
-            file_list = win32utils.glob_expand(file_list)
-        return list(file_list)
+        return file_list
 
     def _usage(self):
         """Return single-line grammar for this command.
@@ -939,6 +940,9 @@ def run_bzr(argv):
 
     --coverage
         Generate line coverage report in the specified directory.
+
+    --concurrency
+        Specify the number of processes that can be run concurrently (selftest).
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
@@ -969,6 +973,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--concurrency':
+            os.environ['BZR_CONCURRENCY'] = argv[i + 1]
+            i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1

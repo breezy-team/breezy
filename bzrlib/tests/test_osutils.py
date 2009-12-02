@@ -59,10 +59,6 @@ def _already_unicode(s):
     return s
 
 
-def _fs_enc_to_unicode(s):
-    return s.decode(osutils._fs_enc)
-
-
 def _utf8_to_unicode(s):
     return s.decode('UTF-8')
 
@@ -88,12 +84,10 @@ def dir_reader_scenarios():
     if test__walkdirs_win32.Win32ReadDirFeature.available():
         try:
             from bzrlib import _walkdirs_win32
-            # TODO: check on windows, it may be that we need to use/add
-            # safe_unicode instead of _fs_enc_to_unicode
             scenarios.append(
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
-                      _native_to_unicode=_fs_enc_to_unicode)))
+                      _native_to_unicode=_already_unicode)))
         except ImportError:
             pass
     return scenarios
@@ -127,33 +121,51 @@ class TestContainsWhitespace(tests.TestCase):
 
 class TestRename(tests.TestCaseInTempDir):
 
+    def create_file(self, filename, content):
+        f = open(filename, 'wb')
+        try:
+            f.write(content)
+        finally:
+            f.close()
+
+    def _fancy_rename(self, a, b):
+        osutils.fancy_rename(a, b, rename_func=os.rename,
+                             unlink_func=os.unlink)
+
     def test_fancy_rename(self):
         # This should work everywhere
-        def rename(a, b):
-            osutils.fancy_rename(a, b,
-                    rename_func=os.rename,
-                    unlink_func=os.unlink)
-
-        open('a', 'wb').write('something in a\n')
-        rename('a', 'b')
+        self.create_file('a', 'something in a\n')
+        self._fancy_rename('a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
         self.check_file_contents('b', 'something in a\n')
 
-        open('a', 'wb').write('new something in a\n')
-        rename('b', 'a')
+        self.create_file('a', 'new something in a\n')
+        self._fancy_rename('b', 'a')
 
         self.check_file_contents('a', 'something in a\n')
 
+    def test_fancy_rename_fails_source_missing(self):
+        # An exception should be raised, and the target should be left in place
+        self.create_file('target', 'data in target\n')
+        self.assertRaises((IOError, OSError), self._fancy_rename,
+                          'missingsource', 'target')
+        self.failUnlessExists('target')
+        self.check_file_contents('target', 'data in target\n')
+
+    def test_fancy_rename_fails_if_source_and_target_missing(self):
+        self.assertRaises((IOError, OSError), self._fancy_rename,
+                          'missingsource', 'missingtarget')
+
     def test_rename(self):
         # Rename should be semi-atomic on all platforms
-        open('a', 'wb').write('something in a\n')
+        self.create_file('a', 'something in a\n')
         osutils.rename('a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
         self.check_file_contents('b', 'something in a\n')
 
-        open('a', 'wb').write('new something in a\n')
+        self.create_file('a', 'new something in a\n')
         osutils.rename('b', 'a')
 
         self.check_file_contents('a', 'something in a\n')
@@ -366,6 +378,14 @@ class TestDateTime(tests.TestCase):
         # duplicating the code from format_date is difficult.
         # Instead blackbox.test_locale should check for localized
         # dates once they do occur in output strings.
+
+    def test_format_date_with_offset_in_original_timezone(self):
+        self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
+            osutils.format_date_with_offset_in_original_timezone(0))
+        self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
+            osutils.format_date_with_offset_in_original_timezone(100000))
+        self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
+            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
 
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
@@ -1614,7 +1634,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        f = open('foo')
+        f = open('foo', 'rb')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
         self.assertEqual(38, size)
@@ -1836,9 +1856,31 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
+    def setUp(self):
+        super(TestConcurrency, self).setUp()
+        orig = osutils._cached_local_concurrency
+        def restore():
+            osutils._cached_local_concurrency = orig
+        self.addCleanup(restore)
+
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
+
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(use_cache=False))
+
+    def test_option_concurrency(self):
+        os.environ['BZR_CONCURRENCY'] = '1'
+        self.run_bzr('rocks --concurrency 42')
+        # Command line overrides envrionment variable
+        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):

@@ -224,6 +224,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     else:
         file_existed = True
 
+    failure_exc = None
     success = False
     try:
         try:
@@ -235,8 +236,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # source and target may be aliases of each other (e.g. on a
             # case-insensitive filesystem), so we may have accidentally renamed
             # source by when we tried to rename target
-            if not (file_existed and e.errno in (None, errno.ENOENT)):
-                raise
+            failure_exc = sys.exc_info()
+            if (file_existed and e.errno in (None, errno.ENOENT)
+                and old.lower() == new.lower()):
+                # source and target are the same file on a case-insensitive
+                # filesystem, so we don't generate an exception
+                failure_exc = None
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -245,6 +250,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
+    if failure_exc is not None:
+        raise failure_exc[0], failure_exc[1], failure_exc[2]
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -688,6 +695,8 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
+
 
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -707,6 +716,32 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     date_str = time.strftime(date_fmt, tt)
     return date_str + offset_str
 
+
+# Cache of formatted offset strings
+_offset_cache = {}
+
+
+def format_date_with_offset_in_original_timezone(t, offset=0,
+    _cache=_offset_cache):
+    """Return a formatted date string in the original timezone.
+
+    This routine may be faster then format_date.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    """
+    if offset is None:
+        offset = 0
+    tt = time.gmtime(t + offset)
+    date_fmt = _default_format_by_weekday_num[tt[6]]
+    date_str = time.strftime(date_fmt, tt)
+    offset_str = _cache.get(offset, None)
+    if offset_str is None:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+        _cache[offset] = offset_str
+    return date_str + offset_str
+
+
 def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                       show_offset=True):
     """Return an unicode date string formatted according to the current locale.
@@ -725,6 +760,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     if not isinstance(date_str, unicode):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
+
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
@@ -1970,13 +2006,16 @@ def local_concurrency(use_cache=True):
     anything goes wrong.
     """
     global _cached_local_concurrency
+
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    try:
-        concurrency = _local_concurrency()
-    except (OSError, IOError):
-        concurrency = None
+    concurrency = os.environ.get('BZR_CONCURRENCY', None)
+    if concurrency is None:
+        try:
+            concurrency = _local_concurrency()
+        except (OSError, IOError):
+            pass
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

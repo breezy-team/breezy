@@ -8,6 +8,13 @@ but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
 
+If you're helping the Release Manager (RM) for one reason or another, you
+may notice that he didn't follow that document scrupulously. He may have
+good reasons to do that but he may also have missed some parts.
+
+Follow the document yourself and don't hesitate to create the missing
+milestones for example (we tend to forget these ones a lot).
+
 .. contents::
 
 
@@ -45,25 +52,14 @@ To start a new release cycle:
    and their expected dates.
 
 #. Update the version number in the ``bzr`` script, and the
-   ``bzrlib/__init__.py`` file.
+   ``bzrlib/__init__.py`` file. Make sure there is always a corresponding
+   milestone when you change that version number.
 
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,
    or that interact with other changes. This is called the metronome mail
-   and as RM you're supposed to send other metronome mails at your rythm.
-
-
-Starting the release phase
---------------------------
-
-When it's time to make the first beta release or release candidate:
-
-#. Make a beta release or release candidate. The milestone for this
-   candidate will already exist (see Starting a cycle above).
-
-Preparing the tree for release
-------------------------------
+   and is described in `Development cycles <cycle.html>`_.
 
 #. Make a local branch for preparing this release.  (Only for the first 
    release in a series, otherwise you should already have a branch.) ::
@@ -77,6 +73,7 @@ Preparing the tree for release
 	[/home/mbp/bzr/prepare-x.y]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
 	submit_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
+	parent_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
 	public_branch = http://bazaar.example.com/prepare-x.y
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
@@ -85,6 +82,7 @@ Preparing the tree for release
     for more details on PQM
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+   Make sure the corresponding milestone exists.
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
    the output of ``bzr --version``.
 
@@ -98,7 +96,20 @@ Preparing the tree for release
        version_info = (2, 0, 1, 'candidate', 1)
 
 
+Starting the release phase
+--------------------------
+
+#. Create a new milestone at <https://launchpad.net/bzr/x.y/+addmilestone>
+   for the beta release or release candidate if you haven't already.
+
 #. Add the date and release number to ``./NEWS``
+
+   Depending on whether you're doing a beta or a bugfix release, you'll
+   have to create a NEWS section for your release in the right
+   place. Most of the time, the new section is at the top of the file
+   (look what have been done for the various 2.0x and 2.1.0bx releases).
+   The rule is to keep the sections sorted by date. You'll need to be
+   cautious when merging back to trunk to respect that.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
@@ -308,9 +319,28 @@ were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
 back into pqm for bzr.dev.
 
+As soon as you change the version number in trunk, make sure you have
+created the corresponding milestone to ensure the continuity in bug
+targeting or nominating. Depending on the change, you may even have to
+create a new series (if your change the major or minor release number), in
+that case go to `Starting a cycle` and follow the instructions from there.
+
 You should also merge (not pull) the release branch into
 ``lp:~bzr/bzr/current``, so that branch contains the current released code
 at any time.
+
+Releases until the final one
+----------------------------
+
+Congratulations - you have made your first release.  Have a beer
+or fruit juice - it's on the house! If it was a beta, or
+candidate, you're not finished yet. Another beta or candidate or
+hopefully a final release is still to come.
+
+The process is the same as for the first release. Goto `Starting the
+release phase`_ and follow the instructions again. Some details change
+between beta, candidate and final releases, but they should be
+documented. If the instructions aren't clear enough, please fix them.
 
 
 See also

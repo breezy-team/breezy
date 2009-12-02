@@ -226,95 +226,6 @@ class UIFactory(object):
 
 
 
-class CLIUIFactory(UIFactory):
-    """Deprecated in favor of TextUIFactory."""
-
-    @deprecated_method(deprecated_in((1, 18, 0)))
-    def __init__(self, stdin=None, stdout=None, stderr=None):
-        UIFactory.__init__(self)
-        self.stdin = stdin or sys.stdin
-        self.stdout = stdout or sys.stdout
-        self.stderr = stderr or sys.stderr
-
-    _accepted_boolean_strings = dict(y=True, n=False, yes=True, no=False)
-
-    def get_boolean(self, prompt):
-        while True:
-            self.prompt(prompt + "? [y/n]: ")
-            line = self.stdin.readline()
-            line = line.rstrip('\n')
-            val = bool_from_string(line, self._accepted_boolean_strings)
-            if val is not None:
-                return val
-
-    def get_non_echoed_password(self):
-        isatty = getattr(self.stdin, 'isatty', None)
-        if isatty is not None and isatty():
-            # getpass() ensure the password is not echoed and other
-            # cross-platform niceties
-            password = getpass.getpass('')
-        else:
-            # echo doesn't make sense without a terminal
-            password = self.stdin.readline()
-            if not password:
-                password = None
-            elif password[-1] == '\n':
-                password = password[:-1]
-        return password
-
-    def get_password(self, prompt='', **kwargs):
-        """Prompt the user for a password.
-
-        :param prompt: The prompt to present the user
-        :param kwargs: Arguments which will be expanded into the prompt.
-                       This lets front ends display different things if
-                       they so choose.
-        :return: The password string, return None if the user
-                 canceled the request.
-        """
-        prompt += ': '
-        self.prompt(prompt, **kwargs)
-        # There's currently no way to say 'i decline to enter a password'
-        # as opposed to 'my password is empty' -- does it matter?
-        return self.get_non_echoed_password()
-
-    def get_username(self, prompt, **kwargs):
-        """Prompt the user for a username.
-
-        :param prompt: The prompt to present the user
-        :param kwargs: Arguments which will be expanded into the prompt.
-                       This lets front ends display different things if
-                       they so choose.
-        :return: The username string, return None if the user
-                 canceled the request.
-        """
-        prompt += ': '
-        self.prompt(prompt, **kwargs)
-        username = self.stdin.readline()
-        if not username:
-            username = None
-        elif username[-1] == '\n':
-            username = username[:-1]
-        return username
-
-    def prompt(self, prompt, **kwargs):
-        """Emit prompt on the CLI.
-        
-        :param kwargs: Dictionary of arguments to insert into the prompt,
-            to allow UIs to reformat the prompt.
-        """
-        if kwargs:
-            # See <https://launchpad.net/bugs/365891>
-            prompt = prompt % kwargs
-        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
-        self.clear_term()
-        self.stderr.write(prompt)
-
-    def note(self, msg):
-        """Write an already-formatted message."""
-        self.stdout.write(msg + '\n')
-
-
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.
 
@@ -366,13 +277,6 @@ class CannedInputUIFactory(SilentUIFactory):
         if self.responses:
             raise AssertionError("expected all input in %r to be consumed"
                 % (self,))
-
-
-@deprecated_function(deprecated_in((1, 18, 0)))
-def clear_decorator(func, *args, **kwargs):
-    """Decorator that clears the term"""
-    ui_factory.clear_term()
-    func(*args, **kwargs)
 
 
 ui_factory = SilentUIFactory()

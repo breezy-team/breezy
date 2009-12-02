@@ -152,10 +152,16 @@ def _help_on_revisionspec(name):
     out.append(
 """Revision Identifiers
 
-A revision identifier refers to a specific state of a branch's history. It can
-be a revision number, or a keyword followed by ':' and often other
-parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
-and 'submit:'.
+A revision identifier refers to a specific state of a branch's history.  It
+can be expressed in several ways.  It can begin with a keyword to
+unambiguously specify a given lookup type; some examples are 'last:1',
+'before:yesterday' and 'submit:'.
+
+Alternately, it can be given without a keyword, in which case it will be
+checked as a revision number, a tag, a revision id, a date specification, or a
+branch specification, in that order.  For example, 'date:today' could be
+written as simply 'today', though if you have a tag called 'today' that will
+be found first.
 
 If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
 revision range. Examples: '3647..3649', 'date:yesterday..-1' and
@@ -245,6 +251,26 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// URLs, Bazaar also supports paths that begin with '~' as
+meaning that the rest of the path should be interpreted relative to the
+remote user's home directory.  For example if the user ``remote`` has a 
+home directory of ``/home/remote`` on the server shell.example.com, 
+then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+"""
+
     return out
 
 
@@ -287,6 +313,7 @@ command.  (e.g. "bzr --profile help").
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -555,10 +582,11 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
 BZR_COLUMNS      Override implicit terminal width.
+BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
 ================ =================================================================
 """
 
