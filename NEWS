@@ -77,6 +77,13 @@ API Changes
 Internals
 *********
 
+* Several code paths that were calling ``Transport.get().read()`` have
+  been changed to the equalivent ``Transport.get_bytes()``. The main
+  difference is that the latter will explicitly call ``file.close()``,
+  rather than expecting the garbage collector to handle it. This helps
+  with some race conditions on Windows during the test suite and sftp
+  tests. (John Arbash Meinel)
+
 Testing
 *******
 
