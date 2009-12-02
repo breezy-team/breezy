@@ -941,7 +941,7 @@ def run_bzr(argv):
         Generate line coverage report in the specified directory.
 
     --concurrency
-        Specify the number of processes that can be run concurrently.
+        Specify the number of processes that can be run concurrently (selftest).
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
