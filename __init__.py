@@ -509,9 +509,15 @@ class BzrUploader(object):
             self.tree.unlock()
 
 
-class CannotUploadToWorkingTreeError(errors.BzrCommandError):
+class CannotUploadToWorkingTree(errors.BzrCommandError):
 
     _fmt = 'Cannot upload to a bzr managed working tree: %(url)s".'
+
+
+class DivergedUploadedTree(errors.BzrCommandError):
+
+    _fmt = ("Your branch (%(revid)s)"
+            " and the uploaded tree (%(uploaded_revid)s) have diverged: ")
 
 
 class cmd_upload(commands.Command):
@@ -557,8 +563,10 @@ class cmd_upload(commands.Command):
 
         if wt:
             wt.lock_read()
+            locked = wt
         else:
             branch.lock_read()
+            locked = branch
         try:
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
@@ -591,8 +599,7 @@ class cmd_upload(commands.Command):
                 has_wt = True
 
             if has_wt:
-                raise CannotUploadToWorkingTreeError(url=location)
-
+                raise CannotUploadToWorkingTree(url=location)
             if revision is None:
                 rev_id = branch.last_revision()
             else:
@@ -610,17 +617,14 @@ class cmd_upload(commands.Command):
                 prev_uploaded_rev_id = uploader.get_uploaded_revid()
                 graph = branch.repository.get_graph()
                 if not graph.is_ancestor(prev_uploaded_rev_id, rev_id):
-                    raise DivergedError(rev_id, prev_uploaded_rev_id)
-
+                    raise DivergedUploadedTree(
+                        revid=rev_id, uploaded_revid=prev_uploaded_rev_id)
             if full:
                 uploader.upload_full_tree()
             else:
                 uploader.upload_tree()
         finally:
-            if wt:
-                wt.unlock()
-            else:
-                branch.unlock()
+            locked.unlock()
 
         # We uploaded successfully, remember it
         if get_upload_location(branch) is None or remember:
@@ -630,6 +634,7 @@ class cmd_upload(commands.Command):
 
 
 commands.register_command(cmd_upload)
+
 
 def install_auto_upload_hook():
     from bzrlib.plugins.upload import auto_upload_hook
@@ -644,17 +649,6 @@ if hasattr(branch.Branch.hooks, "install_named_hook"):
 else:
     auto_hook_available = False
 
-class DivergedError(errors.BzrError):
-
-    _fmt = ("The revision upload to this location is from a branch that is "
-            "diverged from this branch: %(upload_revid)s")
-
-    # We should probably tell the user to use merge on the diverged branch,
-    # but how do we explan which branch they need to merge from!
-
-    def __init__(self, revid, upload_revid):
-        self.revid = revid
-        self.upload_revid = upload_revid
 
 def load_tests(basic_tests, module, loader):
     # This module shouldn't define any tests but I don't know how to report

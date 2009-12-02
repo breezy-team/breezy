@@ -22,6 +22,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     errors,
     osutils,
     remote,
@@ -40,15 +41,7 @@ from bzrlib.transport import (
     ftp,
     sftp,
     )
-
-
 from bzrlib.plugins import upload
-from bzrlib.plugins.upload import (
-    cmd_upload,
-    get_upload_auto,
-    CannotUploadToWorkingTreeError,
-    DivergedError,
-    )
 
 
 def get_transport_scenarios():
@@ -206,12 +199,12 @@ class UploadUtilsMixin(object):
         self.tree.commit('change %s from file to dir' % path)
 
     def _get_cmd_upload(self):
-        upload = cmd_upload()
+        cmd = upload.cmd_upload()
         # We don't want to use run_bzr here because redirected output are a
         # pain to debug. But we need to provides a valid outf.
         # XXX: Should a bug against bzr be filled about that ?
-        upload._setup_outf()
-        return upload
+        cmd._setup_outf()
+        return cmd
 
     def do_full_upload(self, *args, **kwargs):
         upload = self._get_cmd_upload()
@@ -385,7 +378,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.assertUpPathModeEqual('hello', 0775)
 
     def get_upload_auto(self):
-        return get_upload_auto(self.tree.branch)
+        return upload.get_upload_auto(self.tree.branch)
 
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
@@ -591,27 +584,29 @@ class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, config.get_user_option('upload_location'))
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
+        config.ensure_config_dir_exists()
+        fn = config.locations_config_filename()
         b = self.get_branch()
         open(fn, 'wt').write(("[%s]\n"
                                   "upload_location=foo\n" %
                                   b.base[:-1]))
-        config = b.get_config()
-        self.assertEqual("foo", config.get_user_option('upload_location'))
+        conf = b.get_config()
+        self.assertEqual("foo", conf.get_user_option('upload_location'))
 
     def test_set_push_location(self):
-        config = self.get_branch().get_config()
-        config.set_user_option('upload_location', 'foo')
-        self.assertEqual('foo', config.get_user_option('upload_location'))
+        conf = self.get_branch().get_config()
+        conf.set_user_option('upload_location', 'foo')
+        self.assertEqual('foo', conf.get_user_option('upload_location'))
 
 
 class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
                                  UploadUtilsMixin):
 
     remote_branch_dir = 'remote_branch'
+
+    def setUp(self):
+        super(TestUploadFromRemoteBranch, self).setUp()
+        self.remote_branch_url = self.make_remote_branch_without_working_tree()
 
     def make_remote_branch_without_working_tree(self):
         """Creates a branch without working tree to upload from.
@@ -626,40 +621,38 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         if self.transport_server is sftp.SFTPHomeDirServer:
             # FIXME: Some policy search ends up above the user home directory
             # and are seen as attemps to escape test isolation
-            raise tests.KnownFailure('Escaping test isolation')
+            raise tests.TestNotApplicable('Escaping test isolation')
         self.run_bzr(['push', remote_branch_url,
                       '--directory', self.branch_dir])
         return remote_branch_url
 
     def test_no_upload_to_remote_working_tree(self):
-        remote_branch_url = self.make_remote_branch_without_working_tree()
-        upload = self._get_cmd_upload()
+        cmd = self._get_cmd_upload()
         up_url = self.get_url(self.branch_dir)
         # Let's try to upload from the just created remote branch into the
         # branch (which has a working tree).
-        self.assertRaises(CannotUploadToWorkingTreeError,
-                          upload.run, up_url, directory=remote_branch_url)
+        self.assertRaises(upload.CannotUploadToWorkingTree,
+                          cmd.run, up_url, directory=self.remote_branch_url)
 
     def test_upload_without_working_tree(self):
-        remote_branch_url = self.make_remote_branch_without_working_tree()
-        self.do_full_upload(directory=remote_branch_url)
+        self.do_full_upload(directory=self.remote_branch_url)
         self.assertUpFileEqual('foo', 'hello')
+
 
 class TestUploadDiverged(tests.TestCaseWithTransport,
                          UploadUtilsMixin):
-    
+
     def setUp(self):
         super(TestUploadDiverged, self).setUp()
-        self.diverged_tree = self.create_diverged_tree_and_upload_location()
-    
-    def create_diverged_tree_and_upload_location(self):
+        self.diverged_tree = self.make_diverged_tree_and_upload_location()
+
+    def make_diverged_tree_and_upload_location(self):
         tree_a = self.make_branch_and_tree('tree_a')
         tree_a.commit('message 1', rev_id='rev1')
         tree_a.commit('message 2', rev_id='rev2a')
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         uncommit.uncommit(tree_b.branch, tree=tree_b)
         tree_b.commit('message 2', rev_id='rev2b')
-        
         # upload tree a
         self.do_full_upload(directory=tree_a.basedir)
         return tree_b
@@ -668,9 +661,10 @@ class TestUploadDiverged(tests.TestCaseWithTransport,
         t = self.get_transport(self.upload_dir)
         uploaded_revid = t.get_bytes('.bzr-upload.revid')
         self.assertEqual(revid, uploaded_revid)
-    
+
     def test_cant_upload_diverged(self):
-        self.assertRaises(DivergedError, self.do_incremental_upload,
+        self.assertRaises(upload.DivergedUploadedTree,
+                          self.do_incremental_upload,
                           directory=self.diverged_tree.basedir)
         self.assertRevidUploaded('rev2a')
 
