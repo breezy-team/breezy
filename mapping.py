@@ -149,7 +149,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def export_unusual_file_modes(self, rev):
         try:
-            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(rev.properties['file-modes'])])
+            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(rev.properties['file-modes'].encode("utf-8"))])
         except KeyError:
             return {}
 
