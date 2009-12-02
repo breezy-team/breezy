@@ -547,7 +547,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except errors.NoSuchFile:
             pass
         else:
-            for l in osutils.split_lines(merges_bytes)):
+            for l in osutils.split_lines(merges_bytes):
                 revision_id = l.rstrip('\n')
                 parents.append(revision_id)
         return parents
