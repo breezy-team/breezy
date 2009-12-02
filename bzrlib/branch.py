@@ -1440,7 +1440,7 @@ class BranchFormat(object):
         """Return the format for the branch object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_branch_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
@@ -1979,7 +1979,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
-        return transport.get('location').read()
+        return transport.get_bytes('location')
 
     def set_reference(self, a_bzrdir, to_branch):
         """See BranchFormat.set_reference()."""
