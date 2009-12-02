@@ -1472,8 +1472,7 @@ class TransportConfig(object):
 
     def _get_config_file(self):
         try:
-            return osutils.split_lines(
-                self._transport.get_bytes(self._filename))
+            return StringIO(self._transport.get_bytes(self._filename))
         except errors.NoSuchFile:
             return StringIO()
 
