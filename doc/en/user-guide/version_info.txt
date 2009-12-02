@@ -104,5 +104,5 @@ packaged, or if there was a local modification. By supplying either
 set the ``clean`` flag in ``version_info``, as well as set entries in
 ``file_revisions`` as ``modified`` where appropriate.
 
-.. 
+..
    vim: tw=74 ft=rst spell spelllang=en_us
