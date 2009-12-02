@@ -19,14 +19,20 @@ Compatibility Breaks
 New Features
 ************
 
+* The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
+  respect a given terminal width. This can be useful when output is
+  redirected or in obscure cases where the default value is not
+  appropriate.
+  (Vincent Ladeuil)
+
 Bug Fixes
 *********
 
-* ``osutils.terminal_width()`` obeys the COLUMNS envrionment variable
-  but returns None if the terminal is not a tty (when output is
+* ``osutils.terminal_width()`` obeys the BZR_COLUMNS envrionment
+  variable but returns None if the terminal is not a tty (when output is
   redirected for example). Also fixes its usage under OSes that doesn't
-  provide termios.TIOCGWINSZ.
- (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
+  provide termios.TIOCGWINSZ.  
+  (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
 
 Improvements
 ************

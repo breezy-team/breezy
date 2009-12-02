@@ -1888,13 +1888,19 @@ class TestTerminalWidth(tests.TestCase):
     def test_default_values(self):
         self.assertEquals(80, osutils.default_terminal_width)
 
-    def test_defaults_to_COLUMNS(self):
-        # COLUMNS is set by the test framework
-        self.assertEquals('80', os.environ['COLUMNS'])
-        os.environ['COLUMNS'] = '12'
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertEquals('80', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
         self.assertEquals(12, osutils.terminal_width())
 
+    def test_falls_back_to_COLUMNS(self):
+        del os.environ['BZR_COLUMNS']
+        os.environ['COLUMNS'] = '42'
+        self.assertEquals(42, osutils.terminal_width())
+
     def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
         orig_stdout = sys.stdout
         def restore():
@@ -1909,6 +1915,7 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEquals(None, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
         orig_stdout = sys.stdout
         def restore():
@@ -1931,5 +1938,6 @@ class TestTerminalWidth(tests.TestCase):
         self.addCleanup(restore)
 
         del termios.TIOCGWINSZ
+        del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
         self.assertEquals(None, osutils.terminal_width())

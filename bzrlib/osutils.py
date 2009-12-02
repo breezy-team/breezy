@@ -1308,7 +1308,13 @@ def terminal_width():
     None is returned if the width can't established precisely.
     """
 
-    # If the env var is set, take it, user is always right
+    # If BZR_COLUMNS is set, take it, user is always right
+    try:
+        return int(os.environ['BZR_COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
+    # If COLUMNS is set, take it, the terminal knows better
     try:
         return int(os.environ['COLUMNS'])
     except (KeyError, ValueError):
@@ -1316,7 +1322,7 @@ def terminal_width():
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if  isatty is None or not isatty():
-        # Don't guess, setting COLUMNS is the recommended way to override.
+        # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
     if sys.platform == 'win32':

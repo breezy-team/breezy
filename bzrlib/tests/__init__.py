@@ -1552,6 +1552,7 @@ class TestCase(unittest.TestCase):
             'TERM': 'dumb',
             'LINES': '25',
             'COLUMNS': '80',
+            'BZR_COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
