@@ -87,7 +87,7 @@ revid
 ~~~~~
 
 **revid** allows specifying a an internal revision ID, as shown by ``bzr
-log`` and some other commands.
+log --show-ids`` and some other commands.
 
 For example::
 
