@@ -129,7 +129,7 @@ Addressing records
 ------------------
 
 There is a requirement that each object can be given an arbitrary name.
-Some revision control systems address all content by the SHA-1 digest of
+Some version control systems address all content by the SHA-1 digest of
 that content, but this scheme is unsatisfactory for Bazaar's revision
 objects.  We can still allow addressing by SHA-1 digest for those content
 types where it makes sense.

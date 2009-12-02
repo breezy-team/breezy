@@ -15,14 +15,14 @@ Bazaar Tutorial
 Introduction
 ============
 
-If you are already familiar with decentralized revision control, then
+If you are already familiar with decentralized version control, then
 please feel free to skip ahead to "Introducing Yourself to Bazaar". If,
-on the other hand, you are familiar with revision control but not
-decentralized revision control, then please start at "How DRCS is
+on the other hand, you are familiar with version control but not
+decentralized version control, then please start at "How DVCS is
 different." Otherwise, get some coffee or tea, get comfortable and get
 ready to catch up. 
 
-The purpose of revision control
+The purpose of version control
 ===============================
 
 Odds are that you have worked on some sort of textual data -- the sources
@@ -34,7 +34,7 @@ source code for a pet project. Whatever happened, you have just deleted
 important information that you would desperately like to get back. If this
 has ever happened to you, then you are probably ready for Bazaar.
 
-Revision control systems (which I'll henceforth call RCS) such as
+Version control systems (which I'll henceforth call VCS) such as
 Bazaar give you the ability to track changes for a directory by turning
 it into something slightly more complicated than a directory that we call
 a **branch**. The branch not only stores how the directory looks right
@@ -42,7 +42,7 @@ now, but also how it looked at various points in the past. Then, when you
 do something you wish you hadn't, you can restore the directory to the way
 it looked at some point in the past.
 
-Revision control systems give users the ability to save changes to a
+Version control systems give users the ability to save changes to a
 branch by "committing a **revision**". The revision created is essentially
 a summary of the changes that were made since the last time the tree was
 saved. 
@@ -55,23 +55,23 @@ the web template to close the table" and "Added sftp suppport. Fixes #595"
 We keep these logs so that if later there is some sort of problem with
 sftp, we can figure out when the problem probably happened. 
 
-How DRCS is different
+How DVCS is different
 =====================
 
-Many Revision Control Systems (RCS) are stored on servers. If one wants to
-work on the code stored within an RCS, then one needs to connect to the
+Many Version Control Systems (VCS) are stored on servers. If one wants to
+work on the code stored within a VCS, then one needs to connect to the
 server and "checkout" the code. Doing so gives one a directory in which a
-person can make changes and then commit. The RCS client then connects to
-the RCS server and stores the changes. This method is known as the
+person can make changes and then commit. The VCS client then connects to
+the VCS server and stores the changes. This method is known as the
 centralized model. 
 
-The centralized model can have some drawbacks. A centralized RCS requires
+The centralized model can have some drawbacks. A centralized VCS requires
 that one is able to connect to the server whenever one wants to do version
 control work. This can be a bit of a problem if your server is on some other
 machine on the internet and you are not. Or, worse yet, you **are** on the
 internet but the server is missing!
 
-Decentralized Revision Control Systems (which I'll call DRCS after this
+Decentralized Version Control Systems (which I'll call DVCS after this
 point) deal with this problem by keeping branches on the same machine as
 the client. In Bazaar's case, the branch is kept in the same place as
 the code that is being version controlled. This allows the user to save
@@ -87,7 +87,7 @@ becomes unwieldy. That is, until one considers version control tools such
 as Bazaar. These tools automate the process of storing data by creating
 a **revision** of the directory tree whenever the user asks. 
 
-Revision control software such as Bazaar can do much more than just
+Version control software such as Bazaar can do much more than just
 storage and performing undo.  For example, with Bazaar a developer can
 take the modifications in one branch of software and apply them to a
 related branch -- even if those changes exist in a branch owned by
