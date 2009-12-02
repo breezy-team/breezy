@@ -17,7 +17,6 @@
 """Black-box tests for bzr version."""
 
 import os
-import re
 import sys
 
 import bzrlib
