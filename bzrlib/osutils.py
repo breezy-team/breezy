@@ -1294,12 +1294,19 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
-default_tty_width = 80
-"""The default terminal width for ttys."""
-default_non_tty_width = 256
-"""The default terminal width for non-ttys."""
+default_terminal_width = 80
+"""The default terminal width for ttys.
+
+This is defined so that higher levels can share a common fallback value when
+terminal_width() returns None.
+"""
+
+
 def terminal_width():
-    """Return estimated terminal width."""
+    """Return terminal width.
+
+    None is returned if the width can't established precisely.
+    """
 
     # If the env var is set, take it, user is always right
     try:
@@ -1309,18 +1316,11 @@ def terminal_width():
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if  isatty is None or not isatty():
-        # If it's not a tty, there is no way to acquire a value
-        # automatically. Yet, bzrlib expect a reasonable value here since it's
-        # used for both truncating lines or filling them. As such we need to
-        # use a reasonable default.  When the output is redirected, the pagers
-        # can then handle that themselves (or set COLUMNS if needed). A cleaner
-        # implementation would be to fix the callers to not try to format at
-        # all in these circumstances, but not formmatting when filling lines
-        # does not always make sense.
-        return default_non_tty_width
+        # Don't guess, setting COLUMNS is the recommended way to override.
+        return None
 
     if sys.platform == 'win32':
-        return win32utils.get_console_size(default_tty_width)[0]
+        return win32utils.get_console_size(defaultx=None)[0]
 
     try:
         import struct, fcntl, termios
@@ -1328,10 +1328,10 @@ def terminal_width():
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         width = struct.unpack('HHHH', x)[1]
     except (IOError, AttributeError):
-        width = -1
+        return None
 
     if width <= 0:
-        width = default_tty_width
+        return None
 
     return width
 

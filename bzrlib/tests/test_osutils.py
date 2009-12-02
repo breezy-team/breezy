@@ -1886,8 +1886,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def test_default_values(self):
-        self.assertEquals(80, osutils.default_tty_width)
-        self.assertEquals(256, osutils.default_non_tty_width)
+        self.assertEquals(80, osutils.default_terminal_width)
 
     def test_defaults_to_COLUMNS(self):
         # COLUMNS is set by the test framework
@@ -1907,7 +1906,7 @@ class TestTerminalWidth(tests.TestCase):
                 return True
 
         sys.stdout = I_am_a_tty()
-        self.assertEquals(osutils.default_tty_width, osutils.terminal_width())
+        self.assertEquals(None, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
         del os.environ['COLUMNS']
@@ -1916,8 +1915,7 @@ class TestTerminalWidth(tests.TestCase):
             sys.stdout = orig_stdout
         self.addCleanup(restore)
         sys.stdout = None
-        self.assertEquals(osutils.default_non_tty_width,
-                          osutils.terminal_width())
+        self.assertEquals(None, osutils.terminal_width())
 
     def test_TIOCGWINSZ(self):
         # bug 63539 is about a termios without TIOCGWINSZ attribute
@@ -1931,5 +1929,7 @@ class TestTerminalWidth(tests.TestCase):
             if exist:
                 termios.TIOCGWINSZ = orig
         self.addCleanup(restore)
+
         del termios.TIOCGWINSZ
-        self.assertEquals(osutils.default_tty_width, osutils.terminal_width())
+        del os.environ['COLUMNS']
+        self.assertEquals(None, osutils.terminal_width())
