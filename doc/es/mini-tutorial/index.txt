@@ -8,9 +8,9 @@ Introducción
 Bazaar es un sistema de control de versiones distribuido que facilita que
 varias personas puedan trabajar de forma conjunta en proyectos de software.
 
-A lo largo de los próximos cinco minutos, aprenderá cómo poner sus archivos 
-bajo control de versiones, como registrar cambios en ellos, examinar su 
-trabajo, publicarlo y enviar su trabajo para que sea integrado en el trunk de 
+A lo largo de los próximos cinco minutos, aprenderá cómo poner sus archivos
+bajo control de versiones, como registrar cambios en ellos, examinar su
+trabajo, publicarlo y enviar su trabajo para que sea integrado en el trunk de
 un proyecto.
 
 Si prefiere una introducción más detallada, eche un vistazo a
@@ -39,14 +39,14 @@ páginas de Descarga_ e Instalación_.
 Preséntese
 ==========
 
-Antes de empezar a trabajar, es conveniente que le diga a Bazaar quién es 
-usted. De ese modo su trabajo será identificando correctamente en los logs 
+Antes de empezar a trabajar, es conveniente que le diga a Bazaar quién es
+usted. De ese modo su trabajo será identificando correctamente en los logs
 de revisión.
 
 Utilice su nombre y dirección de email en lugar de John Doe, teclee::
 
   $ bzr whoami "John Doe <john.doe@gmail.com>"
-  
+
 Bazaar creará o modificará ahora un archivo de configuración, incluyendo su
 nombre y dirección de email.
 
@@ -65,7 +65,7 @@ Vamos a crear un directorio y algunos archivos para utilizar con Bazaar::
  $ cd miproyecto
  $ mkdir subdirectorio
  $ touch test1.txt test2.txt test3.txt subdirectorio/test4.txt
- 
+
 **Nota para usuarios de Windows:** utilice Windows Explorer para crear sus
 directorios, luego haga click derecho en dichos directorios y seleccione
 ``Nuevo archivo`` para crear sus archivos.
@@ -73,14 +73,14 @@ directorios, luego haga click derecho en dichos directorios y seleccione
 Ahora vamos a hacer que Bazaar se inicialize en el directorio de su proyecto::
 
   $ bzr init
-  
+
 Si parece que no ha ocurrido nada no se preocupe. Bazaar ha creado un
 branch_ dónde guardará sus archivos y su histórico de revisiones.
 
 .. _branch: http://bazaar-vcs.org/Branch
 
 El siguiente paso es decirle a Bazaar a que archivos desea seguirles la pista.
-Ejecutando ``bzr add`` agregará recursivamente todos los elementos dentro del 
+Ejecutando ``bzr add`` agregará recursivamente todos los elementos dentro del
 proyecto::
 
  $ bzr add
@@ -90,11 +90,11 @@ proyecto::
  added test3.txt
  added subdirectorio/test4.txt
 
-A continuación tome una instantánea de sus archivos agregándolos a su branch. 
+A continuación tome una instantánea de sus archivos agregándolos a su branch.
 Agregue un mensaje para explicar por qué hace el commit::
 
   $ bzr commit -m "Importación inicial"
-  
+
 Como Bazaar es un sistema de control de versiones distribuido, no necesita
 conectar con un servidor central para hacer el commit. Bazaar guarda su
 branch y todos sus commits dentro del directorio con el que está trabajando,
@@ -158,14 +158,14 @@ Vamos a suponer que desea publicar su branch en ``www.example.com/miproyecto``::
 
  $ bzr push --create-prefix sftp://su.nombre@example.com/~/public_html/miproyecto
  2 revision(s) pushed.
- 
+
 Bazaar creará un directorio ``miproyecto`` en el servidor remoto e
 introducirá su branch en él.
- 
+
 Ahora cualquiera podrá crear su propia copia de su branch tecleando::
 
  $ bzr branch http://www.example.com/miproyecto
- 
+
 **Nota:** para utilizar sftp deberá instalar ``paramiko`` y
 ``pyCrypto``. Vea http://bazaar-vcs.org/InstallationFaq para más información.
 
@@ -186,13 +186,13 @@ Cambie ``john.doe`` por su nombre de usuario de Launchpad, teclee::
 
  $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/miproyecto
 
-**Nota:** ``+junk`` significa que este branch no está asociado con ningún proyecto 
+**Nota:** ``+junk`` significa que este branch no está asociado con ningún proyecto
 concreto en Launchpad.
 
 Ahora cualquiera podrá crear su propia copia de su branch tecleando::
 
  $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/miproyecto
- 
+
 También puede ver información sobre su branch, histórico de revisiones
 incluido, en https://code.launchpad.net/people/+me/+junk/miproyecto
 
@@ -204,7 +204,7 @@ Para trabajar con el código de otra persona, tendrá que hacer su propia
 copia de su branch. Vamos a coger un ejemplo real, la interfaz GTK de Bazaar::
 
   $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
-  Branched 292 revision(s).                                                        
+  Branched 292 revision(s).
 
 Bazaar descargará todos los archivos y el histórico de revisiones completo
 del trunk branch del proyecto bzr-gtk y creará una copia llamada
@@ -228,11 +228,11 @@ desde el principal dentro de su branch personal::
   $ bzr merge
   Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
-            
+
 Compruebe qué ha cambiado::
 
   $ bzr diff
- 
+
 Si está contento con los cambios puede añadirlos en su branch personal::
 
   $ bzr commit -m "Integración desde el branch principal"
@@ -255,12 +255,12 @@ Sustituyendo ``mycode.patch``, cree su instrucción merge::
 
  $ bzr send -o mycode.patch
  Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
- 
+
 Ahora puede enviar por email la instruccion merge al proyecto bzr-gtk
 quien, si así lo quieren, pueden utilizarla para integrar su trabajo
 dentro del branch principal.
- 
- 
+
+
 Aprendiendo más
 ===============
 

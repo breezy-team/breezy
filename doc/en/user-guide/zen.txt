@@ -56,7 +56,7 @@ with Mary's changes and Bill's changes interleaved. It might look like this::
   102: Add code and tests for X
   101: Add tests for Y
   100: ...
-  
+
 Many teams use this approach because their tools make branching and merging
 difficult. As a consequence, developers update from and commit to the trunk
 frequently, minimizing integration pain by spreading it over every commit.

@@ -11,7 +11,7 @@ Overall developer documentation
 * `Architectural Overview <overview.html>`_ |--| describes some of the
   most important classes and concepts.
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_
   (external link)
   |--| automatically generated API reference information
 
@@ -24,7 +24,7 @@ Overall developer documentation
 
 * `Testing <testing.html>`_ |--| Guide to writing tests for Bazaar.
 
-* `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki) 
+* `Writing plugins <http://bazaar-vcs.org/WritingPlugins>`_ (wiki)
   |--| specific advice on writing Bazaar plugins.
 
 Process
@@ -32,8 +32,8 @@ Process
 
 * `The Bazaar Development Cycle <cycle.html>`_ |--| The monthly
   development cycle and how to run it.
-  
-* `Releasing Bazaar <releasing.html>`_ |--| 
+
+* `Releasing Bazaar <releasing.html>`_ |--|
   Checklist to make a release of Bazaar.
 
 * `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
@@ -41,19 +41,19 @@ Process
 * `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
   your changes to Bazaar integrated into a release.
 
-* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile 
+* `Profiling notes <profiling.html>`_ |--| Instructions on how to profile
   bzr code and visualize the results.
 
-* `EC2 resources <ec2.html>`_ |--| A team resource for 
+* `EC2 resources <ec2.html>`_ |--| A team resource for
   Windows packaging and testing, and Ubuntu testing.
 
-* `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug 
+* `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug
   tracker.
 
 Plans
 =====
 
-* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
+* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap
   for fixing performance in bzr over the next few releases.
 
 * `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
@@ -114,7 +114,7 @@ Specifications
 Data formats
 ============
 
-* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories 
+* `Knit pack repositories <packrepo.html>`_ |--| KnitPack repositories
   (new in Bazaar 0.92).
 
 Implementation notes
