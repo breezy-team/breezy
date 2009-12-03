@@ -104,7 +104,13 @@ New Features
 
 Bug Fixes
 *********
-* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* ``bzr push --use-existing-dir`` no longer crashes if the directory
+  exists but contains an invalid ``.bzr`` directory.
+  (Andrew Bennetts, #423563)
+
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
@@ -343,6 +349,21 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 
 bzr 2.0.2
