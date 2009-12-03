@@ -724,7 +724,7 @@ class DiffFromTool(DiffPath):
 
     def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
                     allow_write=False):
-        if isinstance(tree, WorkingTree):
+        if not force_temp and isinstance(tree, WorkingTree):
             return tree.abspath(tree.id2path(file_id))
         
         full_path = osutils.pathjoin(self._root, prefix, relpath)
