@@ -497,14 +497,7 @@ class TestLongLogFormatter(TestCaseForLogFormatter):
 
         bug #4676
         """
-        wt = self.make_branch_and_tree('.')
-        self.build_tree(['a'])
-        wt.add('a')
-        wt.branch.nick = 'test_verbose_log'
-        wt.commit(message='add a',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>')
+        wt = self.make_standard_commit('test_verbose_log', authors=[])
         self.assertFormatterResult('''\
 ------------------------------------------------------------
 revno: 1
