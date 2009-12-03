@@ -17,6 +17,7 @@
 """guess - when a bzr command is mispelt, prompt for the nearest match."""
 
 
+import traceback
 from bzrlib import commands, patiencediff, ui
 
 
@@ -27,6 +28,8 @@ _overrides = {
 
 
 def guess_command(cmd_name):
+    if not cmd_name:
+        return
     names = set()
     for name in commands.all_command_names():
         names.add(name)
@@ -53,6 +56,9 @@ def guess_command(cmd_name):
     costs = sorted((value, key) for key, value in costs.iteritems())
     if not costs:
         return
+    for tr in traceback.format_stack(limit=6):
+        if "in help" in str(tr):
+            return
     candidate = costs[0][1]
     prompt = "Command '%s' not found, perhaps you meant '%s'" % (
         cmd_name, candidate)
