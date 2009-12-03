@@ -43,6 +43,7 @@ from bzrlib import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     timestamp,
     transport,
@@ -258,6 +259,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
+    Additionally for directories, symlinks and files with an executable
+    bit, Bazaar indicates their type using a trailing character: '/', '@'
+    or '*' respectively.
+
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
 
@@ -432,8 +437,7 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
-                                   for ref_list in node[3]])
+            refs_as_tuples = static_tuple.as_tuples(node[3])
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -1748,16 +1752,22 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to hold branches.
+    """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
-    revisions in the repository, not in the branch directory.
+    revisions in the repository, not in the branch directory.  For branches
+    with shared history, this reduces the amount of storage needed and 
+    speeds up the creation of new branches.
 
-    If the --no-trees option is used then the branches in the repository
-    will not have working trees by default.
+    If the --no-trees option is given then the branches in the repository
+    will not have working trees by default.  They will still exist as 
+    directories on disk, but they will not have separate copies of the 
+    files at a certain revision.  This can be useful for repositories that
+    store branches which are interacted with through checkouts or remote
+    branches, such as on a server.
 
     :Examples:
-        Create a shared repositories holding just branches::
+        Create a shared repository holding just branches::
 
             bzr init-repo --no-trees repo
             bzr init repo/trunk
@@ -2506,7 +2516,7 @@ class cmd_ls(Command):
         if from_root:
             if relpath:
                 prefix = relpath + '/'
-        elif fs_path != '.':
+        elif fs_path != '.' and not fs_path.endswith('/'):
             prefix = fs_path + '/'
 
         if revision is not None or tree is None:
@@ -4078,6 +4088,16 @@ class cmd_revert(Command):
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
+
+    Using "bzr revert --forget-merges", it is possible to apply the changes
+    from an arbitrary merge as a single revision.  To do this, perform the
+    merge as desired.  Then doing revert with the "--forget-merges" option will
+    keep the content of the tree as it was, but it will clear the list of
+    pending merges.  The next commit will then contain all of the changes that
+    would have been in the merge, but without any mention of the other parent
+    revisions.  Because this technique forgets where these changes originated,
+    it may cause additional conflicts on later merges involving the source and
+    target branches.
     """
 
     _see_also = ['cat', 'export']
@@ -4164,6 +4184,10 @@ class cmd_missing(Command):
     To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+            
+    :Exit values:
+        1 - some missing revisions
+        0 - no missing revisions
 
     :Examples:
 

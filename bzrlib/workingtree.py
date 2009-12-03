@@ -65,7 +65,6 @@ from bzrlib import (
     merge,
     revision as _mod_revision,
     revisiontree,
-    textui,
     trace,
     transform,
     ui,
@@ -544,11 +543,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._transport.get('pending-merges')
+            merges_bytes = self._transport.get_bytes('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
-            for l in merges_file.readlines():
+            for l in osutils.split_lines(merges_bytes):
                 revision_id = l.rstrip('\n')
                 parents.append(revision_id)
         return parents
@@ -1845,7 +1844,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        result = self._deserialize(self._transport.get('inventory'))
+        f = self._transport.get('inventory')
+        try:
+            result = self._deserialize(f)
+        finally:
+            f.close()
         self._set_inventory(result, dirty=False)
 
     @needs_tree_write_lock
@@ -1927,7 +1930,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = self._deserialize(self._transport.get('inventory'))
+        f = self._transport.get('inventory')
+        try:
+            result = self._deserialize(f)
+        finally:
+            f.close()
         self._set_inventory(result, dirty=False)
         return result
 
@@ -1948,6 +1955,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         new_files=set()
         unknown_nested_files=set()
+        if to_file is None:
+            to_file = sys.stdout
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2023,8 +2032,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, self.kind(fid), f,
-                                       to_file=to_file)
+                    # XXX: Really should be a more abstract reporter interface
+                    kind_ch = osutils.kind_marker(self.kind(fid))
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)
@@ -2768,7 +2778,7 @@ class WorkingTreeFormat(object):
         """Return the format for the working tree object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_workingtree_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)

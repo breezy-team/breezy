@@ -1524,6 +1524,7 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            'BZR_CONCURRENCY': None,
             # Make sure that any text ui tests are consistent regardless of
             # the environment the test case is run in; you may want tests that
             # test other combinations.  'dumb' is a reasonable guess for tests
@@ -1836,10 +1837,22 @@ class TestCase(unittest.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(ui.ui_factory.stdin,
-                stdout, stderr,
-                bzrlib.commands.run_bzr_catch_user_errors,
-                args)
+            try:
+                result = self.apply_redirected(ui.ui_factory.stdin,
+                    stdout, stderr,
+                    bzrlib.commands.run_bzr_catch_user_errors,
+                    args)
+            except KeyboardInterrupt:
+                # Reraise KeyboardInterrupt with contents of redirected stdout
+                # and stderr as arguments, for tests which are interested in
+                # stdout and stderr and are expecting the exception.
+                out = stdout.getvalue()
+                err = stderr.getvalue()
+                if out:
+                    self.log('output:\n%r', out)
+                if err:
+                    self.log('errors:\n%r', err)
+                raise KeyboardInterrupt(out, err)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2393,7 +2406,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
             # import pdb; pdb.set_trace()
-            _rmtree_temp_dir(root + '/.bzr')
+            _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
             self._create_safety_net()
             raise AssertionError('%s/.bzr should not be modified' % root)
 
@@ -2591,7 +2604,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
-        _rmtree_temp_dir(self.test_base_dir)
+        _rmtree_temp_dir(self.test_base_dir, test_id=self.id())
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
@@ -4119,7 +4132,7 @@ def clone_test(test, new_id):
     return new_test
 
 
-def _rmtree_temp_dir(dirname):
+def _rmtree_temp_dir(dirname, test_id=None):
     # If LANG=C we probably have created some bogus paths
     # which rmtree(unicode) will fail to delete
     # so make sure we are using rmtree(str) to delete everything
@@ -4137,6 +4150,9 @@ def _rmtree_temp_dir(dirname):
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.
+        if test_id != None:
+            ui.ui_factory.clear_term()
+            sys.stderr.write('While running: %s\n' % (test_id,))
         sys.stderr.write('Unable to remove testing dir %s\n%s'
                          % (os.path.basename(dirname), e))
 

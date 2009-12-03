@@ -235,7 +235,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node(('2-key', ), '', (references, ))
         stream = builder.finish()
         contents = stream.read()
-        self.assertEqual(
+        self.assertEqualDiff(
             "Bazaar Graph Index 1\nnode_ref_lists=1\nkey_elements=1\nlen=1\n"
             "0\x00a\x00\x00\n"
             "1\x00a\x00\x00\n"

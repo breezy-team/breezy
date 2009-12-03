@@ -378,6 +378,14 @@ class TestDateTime(tests.TestCase):
         # Instead blackbox.test_locale should check for localized
         # dates once they do occur in output strings.
 
+    def test_format_date_with_offset_in_original_timezone(self):
+        self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
+            osutils.format_date_with_offset_in_original_timezone(0))
+        self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
+            osutils.format_date_with_offset_in_original_timezone(100000))
+        self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
+            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
+
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
         offset = osutils.local_time_offset()
@@ -1847,9 +1855,31 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
+    def setUp(self):
+        super(TestConcurrency, self).setUp()
+        orig = osutils._cached_local_concurrency
+        def restore():
+            osutils._cached_local_concurrency = orig
+        self.addCleanup(restore)
+
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
+
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(use_cache=False))
+
+    def test_option_concurrency(self):
+        os.environ['BZR_CONCURRENCY'] = '1'
+        self.run_bzr('rocks --concurrency 42')
+        # Command line overrides envrionment variable
+        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):

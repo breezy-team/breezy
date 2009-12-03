@@ -2016,8 +2016,6 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)
