@@ -42,11 +42,8 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
 
     def assertFormatterResult(self, result, branch, formatter_class,
                               formatter_kwargs=None, show_log_kwargs=None,
-                              normalize=False, utf8=True):
-        if utf8:
-            logfile = self.make_utf8_encoded_stringio()
-        else:
-            logfile = StringIO()
+                              normalize=False):
+        logfile = self.make_utf8_encoded_stringio()
         if formatter_kwargs is None:
             formatter_kwargs = {}
         formatter = formatter_class(to_file=logfile, **formatter_kwargs)
@@ -510,8 +507,7 @@ added:
   a
 ''',
             wt.branch, log.LongLogFormatter,
-            show_log_kwargs=dict(verbose=True),
-            utf8=False)
+            show_log_kwargs=dict(verbose=True))
 
     def test_merges_are_indented_by_level(self):
         wt = self.make_branch_and_tree('parent')
@@ -669,7 +665,7 @@ timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
   add a
 """,
-        wt.branch, log.LongLogFormatter, utf8=False)
+        wt.branch, log.LongLogFormatter)
 
     def test_properties_in_log(self):
         """Log includes the custom properties returned by the registered
@@ -694,7 +690,7 @@ timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
   add a
 """,
-            wt.branch, log.LongLogFormatter, utf8=False)
+            wt.branch, log.LongLogFormatter)
 
     def test_properties_in_short_log(self):
         """Log includes the custom properties returned by the registered
@@ -721,7 +717,7 @@ message:
         """
         wt = self.make_standard_commit('error_in_properties_handler',
             revprops={'first_prop':'first_value'})
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def trivial_custom_prop_handler(revision):
             raise StandardError("a test error")
@@ -734,7 +730,7 @@ message:
     def test_properties_handler_bad_argument(self):
         wt = self.make_standard_commit('bad_argument',
               revprops={'a_prop':'test_value'})
-        sio = StringIO()
+        sio = self.make_utf8_encoded_stringio()
         formatter = log.LongLogFormatter(to_file=sio)
         def bad_argument_prop_handler(revision):
             return {'custom_prop_name':revision.properties['a_prop']}
@@ -773,8 +769,7 @@ added:
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=1),
-            show_log_kwargs=dict(verbose=True),
-            utf8=False)
+            show_log_kwargs=dict(verbose=True))
 
     def test_long_verbose_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
