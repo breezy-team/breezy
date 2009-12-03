@@ -294,7 +294,7 @@ Shared Repository
 -----------------
 
 Bazaar_ has the concept of a "Shared Repository". This is similar to
-the traditional concept of a repository in other RCSs like CVS and
+the traditional concept of a repository in other VCSs like CVS and
 Subversion. For example, in Subversion you have a remote repository,
 which is where all of the history is stored, and locally you don't
 have any history information, only a checkout of the working tree
