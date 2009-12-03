@@ -482,7 +482,7 @@ bzr может контролировать файлы и каталоги, от
 готовой ветки. Так как эта копия может быть потенциальной новой веткой эта
 команда называется **branch**::
 
-    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev 
+    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev
     % cd bzr.dev
 
 Эта команда копирует полную историю ветки и после этого вы можете делать все
@@ -553,7 +553,7 @@ bzr может контролировать файлы и каталоги, от
 
   ::
 
-    % bzr push sftp://servername.com/path/to/directory 
+    % bzr push sftp://servername.com/path/to/directory
 
   (Каталог назначения должна быть создан заранее, если только не указана
   опция ``--create-prefix``)

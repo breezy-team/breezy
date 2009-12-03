@@ -205,7 +205,9 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
-            node_refs.append(as_st(reference_list))
+            reference_list = as_st([as_st(ref).intern()
+                                    for ref in reference_list])
+            node_refs.append(reference_list)
         return as_st(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
@@ -453,6 +455,7 @@ class GraphIndex(object):
         trailers = 0
         pos = stream.tell()
         lines = stream.read().split('\n')
+        stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in self._keys_by_offset.itervalues():

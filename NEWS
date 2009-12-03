@@ -77,6 +77,13 @@ API Changes
 Internals
 *********
 
+* Several code paths that were calling ``Transport.get().read()`` have
+  been changed to the equalivent ``Transport.get_bytes()``. The main
+  difference is that the latter will explicitly call ``file.close()``,
+  rather than expecting the garbage collector to handle it. This helps
+  with some race conditions on Windows during the test suite and sftp
+  tests. (John Arbash Meinel)
+
 Testing
 *******
 
@@ -97,7 +104,13 @@ New Features
 
 Bug Fixes
 *********
-* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* ``bzr push --use-existing-dir`` no longer crashes if the directory
+  exists but contains an invalid ``.bzr`` directory.
+  (Andrew Bennetts, #423563)
+
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
@@ -245,6 +258,13 @@ behind proxies, and a new StaticTuple datatype, allowing us to reduce
 memory consumption (50%) and garbage collector overhead (40% faster) for
 many operations.
 
+* A new ``--concurrency`` option has been added as well as an associated
+  BZR_CONCURRENCY environment variable to specify the number of
+  processes that can be run concurrently when running ``bzr selftest``. The
+  command-line option overrides the environment variable if both are
+  specified. If none is specified. the number of processes is obtained
+  from the OS as before.  (Matt Nordhoff, Vincent Ladeuil)
+
 Bug Fixes
 *********
 
@@ -329,6 +349,21 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 
 bzr 2.0.2

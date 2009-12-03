@@ -1285,16 +1285,9 @@ class Branch(object):
         # clone call. Or something. 20090224 RBC/spiv.
         if revision_id is None:
             revision_id = self.last_revision()
-        try:
-            dir_to = self.bzrdir.clone_on_transport(to_transport,
-                revision_id=revision_id, stacked_on=stacked_on,
-                create_prefix=create_prefix, use_existing_dir=use_existing_dir)
-        except errors.FileExists:
-            if not use_existing_dir:
-                raise
-        except errors.NoSuchFile:
-            if not create_prefix:
-                raise
+        dir_to = self.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on,
+            create_prefix=create_prefix, use_existing_dir=use_existing_dir)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
@@ -1440,7 +1433,7 @@ class BranchFormat(object):
         """Return the format for the branch object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_branch_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
@@ -1979,7 +1972,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
-        return transport.get('location').read()
+        return transport.get_bytes('location')
 
     def set_reference(self, a_bzrdir, to_branch):
         """See BranchFormat.set_reference()."""

@@ -50,7 +50,7 @@ Install Packages
 
 3) Configure 'distutils' for the compiler that you will be using. For python
    2.4 and 2.5 we use gcc-mingw32, for 2.6 we use Visual Studio 2008.
-   
+
    Edit ``D:\Python25\Lib\disutils\distutils.cfg`` (you have to create the
    file). You want to add a section like::
 
@@ -61,7 +61,7 @@ Install Packages
    can find it. Specifically, it knows to look for ``gcc.exe`` however, the
    latest versions of cygwin start using "alternatives" and making ``gcc`` just
    a symlink.
-   
+
    You also need to add ``C:\cygwin\bin`` and ``C:\cygwin\lib`` into your
    environment path. This is generally done with::
 
@@ -119,7 +119,7 @@ Install Packages
 
    I usually get the 'all-in-one' installer, but only because it is easier. You
    only really need ``pageant.exe`` and possibly ``puttygen.exe``.
-   
+
    If you do this, you'll probably also want to install a shortcut to
    ``pageant.exe`` in Start / Programs / Startup so that it always starts when
    you log in (though you still have to manually add your ssh keys.)
@@ -128,7 +128,7 @@ Install Packages
    being created without the permission for the current user to actually read
    them. They seem to be owned by ``Administrator`` rather than by
    ``Administrators``.
-   
+
 6) Install bzr. Usually it is easiest to just get the latest all-in-one
    installer from https://launchpad.net/bzr/+download
 
@@ -204,5 +204,5 @@ Install Packages
     Studio key already supplied. There is also the possibility of using Visual
     Studio Express Edition, but it is currently unable to compile TortoiseBzr.
 
-.. 
+..
    vim: ft=rst tw=79 et

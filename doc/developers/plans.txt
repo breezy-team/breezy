@@ -10,7 +10,7 @@ Plans
    improved_chk_index
 
 
-* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap 
+* `Performance roadmap <performance-roadmap.html>`_ |--| The roadmap
   for fixing performance in bzr over the next few releases.
 
 * `Co-located branches <colocated-branches.html>`_ |--| Planned(?) support
