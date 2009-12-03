@@ -1366,6 +1366,14 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         self.follow_redirections = True
 
 
+def install_redirected_request(test):
+    test.original_class = _urllib2_wrappers.Request
+    def restore():
+        _urllib2_wrappers.Request = test.original_class
+    _urllib2_wrappers.Request = RedirectedRequest
+    test.addCleanup(restore)
+
+
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirections.
 
@@ -1385,8 +1393,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
             raise tests.TestNotApplicable(
                 "pycurl doesn't redirect silently annymore")
         super(TestHTTPSilentRedirections, self).setUp()
-        self.setup_redirected_request()
-        self.addCleanup(self.cleanup_redirected_request)
+        install_redirected_request(self)
         self.build_tree_contents([('a','a'),
                                   ('1/',),
                                   ('1/a', 'redirected once'),
@@ -1402,13 +1409,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
         self.old_transport = self._transport(self.old_server.get_url())
 
-    def setup_redirected_request(self):
-        self.original_class = _urllib2_wrappers.Request
-        _urllib2_wrappers.Request = RedirectedRequest
-
-    def cleanup_redirected_request(self):
-        _urllib2_wrappers.Request = self.original_class
-
     def create_transport_secondary_server(self):
         """Create the secondary server, redirections are defined in the tests"""
         return http_utils.HTTPServerRedirecting(
@@ -1418,7 +1418,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self.old_transport
 
         req = RedirectedRequest('GET', t.abspath('a'))
-        req.follow_redirections = True
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = \
@@ -1429,7 +1428,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self.old_transport
 
         req = RedirectedRequest('GET', t.abspath('a'))
-        req.follow_redirections = True
         old_prefix = 'http://%s:%s' % (self.old_server.host,
                                        self.old_server.port)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -1638,7 +1636,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
         ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
-                                            stdout=tests.StringIOWrapper())
+                                            stderr=tests.StringIOWrapper())
         # Create a minimal config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update(
@@ -2154,3 +2152,79 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
     def assertActivitiesMatch(self):
         # Nothing to check here
         pass
+
+
+class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
+    """Test authentication on the redirected http server."""
+
+    _auth_header = 'Authorization'
+    _password_prompt_prefix = ''
+    _username_prompt_prefix = ''
+    _auth_server = http_utils.HTTPBasicAuthServer
+    _transport = _urllib.HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return self._auth_server()
+
+    def create_transport_secondary_server(self):
+        """Create the secondary server redirecting to the primary server"""
+        new = self.get_readonly_server()
+
+        redirecting = http_utils.HTTPServerRedirecting()
+        redirecting.redirect_to(new.host, new.port)
+        return redirecting
+
+    def setUp(self):
+        super(TestAuthOnRedirected, self).setUp()
+        self.build_tree_contents([('a','a'),
+                                  ('1/',),
+                                  ('1/a', 'redirected once'),
+                                  ],)
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = [
+            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+        self.old_transport = self._transport(self.old_server.get_url())
+        self.new_server.add_user('joe', 'foo')
+
+    def get_a(self, transport):
+        return transport.get('a')
+
+    def test_auth_on_redirected_via_do_catching_redirections(self):
+        self.redirections = 0
+
+        def redirected(transport, exception, redirection_notice):
+            self.redirections += 1
+            dir, file = urlutils.split(exception.target)
+            return self._transport(dir)
+
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
+        self.assertEquals('redirected once',
+                          transport.do_catching_redirections(
+                self.get_a, self.old_transport, redirected).read())
+        self.assertEquals(1, self.redirections)
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        self.assertEquals('', stdout.getvalue())
+
+    def test_auth_on_redirected_via_following_redirections(self):
+        self.new_server.add_user('joe', 'foo')
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
+        t = self.old_transport
+        req = RedirectedRequest('GET', t.abspath('a'))
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = [
+            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+        self.assertEquals('redirected once',t._perform(req).read())
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        self.assertEquals('', stdout.getvalue())
+
+

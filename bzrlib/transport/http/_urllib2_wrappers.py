@@ -71,6 +71,7 @@ from bzrlib import (
     trace,
     transport,
     ui,
+    urlutils,
     )
 
 
@@ -1066,6 +1067,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
         auth = self.get_auth(request)
         auth['modified'] = False
+        # Put some common info in auth if the caller didn't
+        if auth.get('path', None) is None:
+            (protocol, _, _,
+             host, port, path) = urlutils.parse_url(request.get_full_url())
+            self.update_auth(auth, 'protocol', protocol)
+            self.update_auth(auth, 'host', host)
+            self.update_auth(auth, 'port', port)
+            self.update_auth(auth, 'path', path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.

@@ -46,7 +46,7 @@ Bug Fixes
   2.4.  (Vincent Ladeuil, #475585)
 
 * Fixed bug with redirected URLs over authenticated HTTP.
-  (Glen Mailer, Neil Martinsen-Burrell, #395714)
+  (Glen Mailer, Neil Martinsen-Burrell, Vincent Ladeuil, #395714)
 
 
 Improvements
