@@ -58,6 +58,23 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
             log_content = normalize_log(log_content)
         self.assertEqualDiff(result, log_content)
 
+    def make_standard_commit(self, branch_nick, **kwargs):
+        wt = self.make_branch_and_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        self.build_tree(['a'])
+        wt.add(['a'])
+        wt.branch.nick = branch_nick
+        kwargs = dict(kwargs)
+        kwargs.setdefault('message', 'add a')
+        kwargs.setdefault('timestamp', 1132711707)
+        kwargs.setdefault('timezone', 36000)
+        kwargs.setdefault('committer', 'Lorem Ipsum <test@example.com>')
+        kwargs.setdefault('authors', ['John Doe <jdoe@example.com>'])
+        wt.commit(**kwargs)
+        return wt
+        
+
 
 class LogCatcher(log.LogFormatter):
     """Pull log messages into a list rather than displaying them.
@@ -645,14 +662,9 @@ message:
         """Log includes the author name if it's set in
         the revision properties
         """
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_author_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>',
-                           'Jane Rey <jrey@example.com>'])
+        wt = self.make_standard_commit('test_author_log',
+            authors=['John Doe <jdoe@example.com>',
+                     'Jane Rey <jrey@example.com>'])
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 1
@@ -661,7 +673,7 @@ committer: Lorem Ipsum <test@example.com>
 branch nick: test_author_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
-  initial
+  add a
 """,
         wt.branch, log.LongLogFormatter, utf8=False)
 
@@ -669,13 +681,7 @@ message:
         """Log includes the custom properties returned by the registered
         handlers.
         """
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_properties_in_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'])
+        wt = self.make_standard_commit('test_properties_in_log')
         def trivial_custom_prop_handler(revision):
             return {'test_prop':'test_value'}
 
@@ -692,7 +698,7 @@ committer: Lorem Ipsum <test@example.com>
 branch nick: test_properties_in_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
-  initial
+  add a
 """,
             wt.branch, log.LongLogFormatter, utf8=False)
 
@@ -700,13 +706,7 @@ message:
         """Log includes the custom properties returned by the registered
         handlers.
         """
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_properties_in_short_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'])
+        wt = self.make_standard_commit('test_properties_in_short_log')
         def trivial_custom_prop_handler(revision):
             return {'test_prop':'test_value'}
 
@@ -716,7 +716,7 @@ message:
         self.assertFormatterResult("""\
     1 John Doe\t2005-11-23
       test_prop: test_value
-      initial
+      add a
 
 """,
             wt.branch, log.ShortLogFormatter)
@@ -725,36 +725,21 @@ message:
         """Log includes the custom properties returned by the registered
         handlers.
         """
-        wt = self.make_branch_and_tree('.')
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'],
-                  revprops={'first_prop':'first_value'})
+        wt = self.make_standard_commit('error_in_properties_handler',
+            revprops={'first_prop':'first_value'})
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
-        try:
-            def trivial_custom_prop_handler(revision):
-                raise StandardError("a test error")
+        def trivial_custom_prop_handler(revision):
+            raise StandardError("a test error")
 
-            log.properties_handler_registry.register(
-                'trivial_custom_prop_handler',
-                trivial_custom_prop_handler)
-            self.assertRaises(StandardError, log.show_log, wt.branch, formatter,)
-        finally:
-            log.properties_handler_registry.remove(
-                'trivial_custom_prop_handler')
+        log.properties_handler_registry.register(
+            'trivial_custom_prop_handler',
+            trivial_custom_prop_handler)
+        self.assertRaises(StandardError, log.show_log, wt.branch, formatter,)
 
     def test_properties_handler_bad_argument(self):
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_author_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'],
-                  revprops={'a_prop':'test_value'})
+        wt = self.make_standard_commit('bad_argument',
+              revprops={'a_prop':'test_value'})
         sio = StringIO()
         formatter = log.LongLogFormatter(to_file=sio)
         def bad_argument_prop_handler(revision):
@@ -780,19 +765,12 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseWithoutPropsHandler):
 
         bug #4676
         """
-        wt = self.make_branch_and_tree('.')
-        self.build_tree(['a'])
-        wt.add('a')
-        wt.branch.nick = 'test_verbose_log'
-        wt.commit(message='add a',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>')
+        wt = self.make_standard_commit('test_long_verbose_log', authors=[])
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 1
 committer: Lorem Ipsum <test@example.com>
-branch nick: test_verbose_log
+branch nick: test_long_verbose_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
   add a
@@ -879,13 +857,7 @@ message:
         """Log includes the author name if it's set in
         the revision properties
         """
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_author_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'])
+        wt = self.make_standard_commit('test_author_log')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 1
@@ -894,7 +866,7 @@ committer: Lorem Ipsum <test@example.com>
 branch nick: test_author_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
-  initial
+  add a
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=1))
@@ -903,13 +875,7 @@ message:
         """Log includes the custom properties returned by the registered
         handlers.
         """
-        wt = self.make_branch_and_tree('.')
-        wt.branch.nick = 'test_properties_in_log'
-        wt.commit(message='initial',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Lorem Ipsum <test@example.com>',
-                  authors=['John Doe <jdoe@example.com>'])
+        wt = self.make_standard_commit('test_properties_in_log')
         def trivial_custom_prop_handler(revision):
             return {'test_prop':'test_value'}
 
@@ -925,7 +891,7 @@ committer: Lorem Ipsum <test@example.com>
 branch nick: test_properties_in_log
 timestamp: Wed 2005-11-23 12:08:27 +1000
 message:
-  initial
+  add a
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=1))
