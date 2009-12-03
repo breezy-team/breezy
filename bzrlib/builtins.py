@@ -913,16 +913,18 @@ class cmd_mv(Command):
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
-    This command only works on branches that have not diverged.  Branches are
-    considered diverged if the destination branch's most recent commit is one
-    that has not been merged (directly or indirectly) into the parent.
+    By default, this command only works on branches that have not diverged.
+    Branches are considered diverged if the destination branch's most recent 
+    commit is one that has not been merged (directly or indirectly) into the 
+    parent.
 
     If branches have diverged, you can use 'bzr merge' to integrate the changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If you want to forget your local changes and just update your branch to
-    match the remote one, use pull --overwrite.
+    If you want to replace your local changes and just want your branch to
+    match the remote one, use pull --overwrite. This will work even if the two
+    branches have diverged.
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
