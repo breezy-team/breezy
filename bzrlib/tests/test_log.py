@@ -27,10 +27,10 @@ from bzrlib import (
     )
 
 
-class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
+class TestCaseForLogFormatter(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCaseWithoutPropsHandler, self).setUp()
+        super(TestCaseForLogFormatter, self).setUp()
         # keep a reference to the "current" custom prop. handler registry
         self.properties_handler_registry = log.properties_handler_registry
         # Use a clean registry for log
@@ -73,6 +73,33 @@ class TestCaseWithoutPropsHandler(tests.TestCaseWithTransport):
         kwargs.setdefault('authors', ['John Doe <jdoe@example.com>'])
         wt.commit(**kwargs)
         return wt
+
+    def _prepare_tree_with_merges(self, with_tags=False):
+        wt = self.make_branch_and_memory_tree('.')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        wt.add('')
+        wt.commit('rev-1', rev_id='rev-1',
+                  timestamp=1132586655, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.commit('rev-merged', rev_id='rev-2a',
+                  timestamp=1132586700, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        wt.set_parent_ids(['rev-1', 'rev-2a'])
+        wt.branch.set_last_revision_info(1, 'rev-1')
+        wt.commit('rev-2', rev_id='rev-2b',
+                  timestamp=1132586800, timezone=36000,
+                  committer='Joe Foo <joe@foo.com>')
+        if with_tags:
+            branch = wt.branch
+            branch.tags.set_tag('v0.2', 'rev-2b')
+            wt.commit('rev-3', rev_id='rev-3',
+                      timestamp=1132586900, timezone=36000,
+                      committer='Jane Foo <jane@foo.com>')
+            branch.tags.set_tag('v1.0rc1', 'rev-3')
+            branch.tags.set_tag('v1.0', 'rev-3')
+        return wt
+
         
 
 
@@ -277,7 +304,7 @@ def normalize_log(log):
     return ''.join(lines)
 
 
-class TestShortLogFormatter(TestCaseWithoutPropsHandler):
+class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -296,32 +323,6 @@ class TestShortLogFormatter(TestCaseWithoutPropsHandler):
 
 """,
             b, log.ShortLogFormatter)
-
-    def _prepare_tree_with_merges(self, with_tags=False):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        if with_tags:
-            branch = wt.branch
-            branch.tags.set_tag('v0.2', 'rev-2b')
-            wt.commit('rev-3', rev_id='rev-3',
-                      timestamp=1132586900, timezone=36000,
-                      committer='Jane Foo <jane@foo.com>')
-            branch.tags.set_tag('v1.0rc1', 'rev-3')
-            branch.tags.set_tag('v1.0', 'rev-3')
-        return wt
 
     def test_short_log_with_merges(self):
         wt = self._prepare_tree_with_merges()
@@ -426,7 +427,7 @@ Use --include-merges or -n0 to see merged revisions.
             show_log_kwargs=dict(start_revision=rev, end_revision=rev))
 
 
-class TestShortLogFormatterWithMergeRevisions(TestCaseWithoutPropsHandler):
+class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_short_merge_revs_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -489,7 +490,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseWithoutPropsHandler):
             show_log_kwargs=dict(start_revision=rev, end_revision=rev))
 
 
-class TestLongLogFormatter(TestCaseWithoutPropsHandler):
+class TestLongLogFormatter(TestCaseForLogFormatter):
 
     def test_verbose_log(self):
         """Verbose log includes changed files
@@ -758,7 +759,7 @@ message:
                              sio.getvalue())
 
 
-class TestLongLogFormatterWithoutMergeRevisions(TestCaseWithoutPropsHandler):
+class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
 
     def test_long_verbose_log(self):
         """Verbose log includes changed files
@@ -897,113 +898,65 @@ message:
             formatter_kwargs=dict(levels=1))
 
 
-class TestLineLogFormatter(tests.TestCaseWithTransport):
+class TestLineLogFormatter(TestCaseForLogFormatter):
 
     def test_line_log(self):
         """Line log should show revno
 
         bug #5162
         """
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        self.build_tree(['a'])
-        wt.add('a')
-        b.nick = 'test-line-log'
-        wt.commit(message='add a',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Line-Log-Formatter Tester <test@line.log>')
-        logfile = StringIO()
-        formatter = log.LineLogFormatter(to_file=logfile)
-        log.show_log(b, formatter)
-        self.assertEqualDiff('1: Line-Log-Formatte... 2005-11-23 add a\n',
-                             logfile.getvalue())
+        wt = self.make_standard_commit('test-line-log',
+                committer='Line-Log-Formatter Tester <test@line.log>',
+                authors=[])
+        self.assertFormatterResult("""\
+1: Line-Log-Formatte... 2005-11-23 add a
+""",
+            wt.branch, log.LineLogFormatter)
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
         b = make_commits_with_trailing_newlines(wt)
-        sio = self.make_utf8_encoded_stringio()
-        lf = log.LineLogFormatter(to_file=sio)
-        log.show_log(b, lf)
-        self.assertEqualDiff("""\
+        self.assertFormatterResult("""\
 3: Joe Foo 2005-11-21 single line with trailing newline
 2: Joe Bar 2005-11-21 multiline
 1: Joe Foo 2005-11-21 simple log message
 """,
-                             sio.getvalue())
-
-    def _prepare_tree_with_merges(self, with_tags=False):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        if with_tags:
-            branch = wt.branch
-            branch.tags.set_tag('v0.2', 'rev-2b')
-            wt.commit('rev-3', rev_id='rev-3',
-                      timestamp=1132586900, timezone=36000,
-                      committer='Jane Foo <jane@foo.com>')
-            branch.tags.set_tag('v1.0rc1', 'rev-3')
-            branch.tags.set_tag('v1.0', 'rev-3')
-        return wt
+            b, log.LineLogFormatter)
 
     def test_line_log_single_merge_revision(self):
         wt = self._prepare_tree_with_merges()
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile)
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-        wtb = wt.branch
-        rev = revspec.in_history(wtb)
-        log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-        self.assertEqualDiff("""\
+        rev = revspec.in_history(wt.branch)
+        self.assertFormatterResult("""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
-                             logfile.getvalue())
+            wt.branch, log.LineLogFormatter,
+            show_log_kwargs=dict(start_revision=rev, end_revision=rev))
 
     def test_line_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile)
-        log.show_log(wt.branch, formatter)
-        self.assertEqualDiff("""\
+        self.assertFormatterResult("""\
 3: Jane Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
 2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
 """,
-                             logfile.getvalue())
+            wt.branch, log.LineLogFormatter)
 
-class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
+
+class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_line_merge_revs_log(self):
         """Line log should show revno
 
         bug #5162
         """
-        wt = self.make_branch_and_tree('.')
-        b = wt.branch
-        self.build_tree(['a'])
-        wt.add('a')
-        b.nick = 'test-line-log'
-        wt.commit(message='add a',
-                  timestamp=1132711707,
-                  timezone=36000,
-                  committer='Line-Log-Formatter Tester <test@line.log>')
-        logfile = StringIO()
-        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
-        log.show_log(b, formatter)
-        self.assertEqualDiff('1: Line-Log-Formatte... 2005-11-23 add a\n',
-                             logfile.getvalue())
+        wt = self.make_standard_commit('test-line-log',
+                committer='Line-Log-Formatter Tester <test@line.log>',
+                authors=[])
+        self.assertFormatterResult("""\
+1: Line-Log-Formatte... 2005-11-23 add a
+""",
+            wt.branch, log.LineLogFormatter)
 
     def test_line_merge_revs_log_single_merge_revision(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -1021,16 +974,14 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
-        wtb = wt.branch
-        rev = revspec.in_history(wtb)
-        log.show_log(wtb, formatter, start_revision=rev, end_revision=rev)
-        self.assertEqualDiff("""\
+        rev = revspec.in_history(wt.branch)
+        self.assertFormatterResult("""\
 1.1.1: Joe Foo 2005-11-22 rev-merged
 """,
-                             logfile.getvalue())
+            wt.branch, log.LineLogFormatter,
+            formatter_kwargs=dict(levels=0),
+            show_log_kwargs=dict(start_revision=rev, end_revision=rev))
 
     def test_line_merge_revs_log_with_merges(self):
         wt = self.make_branch_and_memory_tree('.')
@@ -1048,15 +999,14 @@ class TestLineLogFormatterWithMergeRevisions(tests.TestCaseWithTransport):
         wt.commit('rev-2', rev_id='rev-2b',
                   timestamp=1132586800, timezone=36000,
                   committer='Joe Foo <joe@foo.com>')
-        logfile = self.make_utf8_encoded_stringio()
-        formatter = log.LineLogFormatter(to_file=logfile, levels=0)
-        log.show_log(wt.branch, formatter)
-        self.assertEqualDiff("""\
+        self.assertFormatterResult("""\
 2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
 1: Joe Foo 2005-11-22 rev-1
 """,
-                             logfile.getvalue())
+            wt.branch, log.LineLogFormatter,
+            formatter_kwargs=dict(levels=0))
+
 
 class TestGetViewRevisions(tests.TestCaseWithTransport):
 
