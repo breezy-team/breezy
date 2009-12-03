@@ -21,6 +21,6 @@ for the selected scopes, for each element in the wt:
  1. Use the hash tree data to tune the work done in finding matching paths/ids which are different in the two trees.
 
 For each thing that needs to change - group by target directory?
- 
+
  1. Extract new content.
  1. Backup old content or replace-in-place (except windows where we move and replace).
