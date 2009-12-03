@@ -26,11 +26,6 @@ class Serializer(object):
 
     squashes_xml_invalid_characters = False
 
-    # Setting this true will return InventoryEntry items directly from the
-    # cache, rather than copying them. It can be much faster for some
-    # operations, but the callers must not mutate the returned objects
-    safe_to_use_cache_items = False
-
     def write_inventory(self, inv, f):
         """Write inventory to a file.
 
@@ -55,7 +50,7 @@ class Serializer(object):
         raise NotImplementedError(self.write_inventory_to_string)
 
     def read_inventory_from_string(self, string, revision_id=None,
-                                   entry_cache=None):
+                                   entry_cache=None, return_from_cache=False):
         """Read string into an inventory object.
 
         :param string: The serialized inventory to read.
@@ -69,6 +64,10 @@ class Serializer(object):
         :param entry_cache: An optional cache of InventoryEntry objects. If
             supplied we will look up entries via (file_id, revision_id) which
             should map to a valid InventoryEntry (File/Directory/etc) object.
+        :param return_from_cache: Return entries directly from the cache,
+            rather than copying them first. This is only safe if the caller
+            promises not to mutate the returned inventory entries, but it can
+            make some operations significantly faster.
         """
         raise NotImplementedError(self.read_inventory_from_string)
 

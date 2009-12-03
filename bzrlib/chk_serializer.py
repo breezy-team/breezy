@@ -139,7 +139,7 @@ class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml7.Serializer_v7):
     revision_format_num = None
     support_altered_by_hack = False
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         kind = elt.tag
         if not kind in self.supported_kinds:
             raise AssertionError('unsupported entry kind %s' % kind)
@@ -152,7 +152,8 @@ class CHKSerializerSubtree(BEncodeRevisionSerializer1, xml7.Serializer_v7):
             return inventory.TreeReference(file_id, name, parent_id, revision,
                                            reference_revision)
         else:
-            return xml7.Serializer_v7._unpack_entry(self, elt)
+            return xml7.Serializer_v7._unpack_entry(self, elt,
+                entry_cache=entry_cache, return_from_cache=return_from_cache)
 
     def __init__(self, node_size, search_key_name):
         self.maximum_size = node_size
