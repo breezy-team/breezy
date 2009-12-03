@@ -182,9 +182,9 @@ and `register an SSH key`_ in your new Launchpad account.
 
 Replacing ``john.doe`` with your own Launchpad username, type [#]_::
 
-.. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
-
  $ bzr push lp:~john.doe/+junk/myproject
+
+.. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
 
 **Note:** ``+junk`` means that this branch isn't associated with any particular
 project in Launchpad.
