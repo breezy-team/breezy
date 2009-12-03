@@ -1427,6 +1427,7 @@ class TestNewPack(TestCaseWithTransport):
             index_class=BTreeGraphIndex,
             use_chk_index=False)
         pack = pack_repo.NewPack(collection)
+        self.addCleanup(pack.abort) # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
@@ -1485,6 +1486,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
+        self.addCleanup(new_pack.abort) # ensure cleanup
         self.assertIsInstance(new_pack, pack_repo.NewPack)
         self.assertTrue(new_pack.revision_index._optimize_for_size)
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
