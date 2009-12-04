@@ -1358,17 +1358,21 @@ def terminal_width():
     if sys.platform == 'win32':
         return win32utils.get_console_size(defaultx=None)[0]
 
+    # If COLUMNS is set, take it, the terminal knows better (at least under
+    # emacs, COLUMNS gives an accurate answer while the fcntl.ioctl call below
+    # doesn't) -- vila 20091204
+    try:
+        return int(os.environ['COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
     try:
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         width = struct.unpack('HHHH', x)[1]
     except (IOError, AttributeError):
-        # If COLUMNS is set, take it
-        try:
-            return int(os.environ['COLUMNS'])
-        except (KeyError, ValueError):
-            return None
+        return None
 
     if width <= 0:
         # Consider invalid values as meaning no width
