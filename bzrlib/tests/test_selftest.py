@@ -922,8 +922,10 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP        0ms',
-                                 "    The feature 'Feature' is not available."])
+        # We don't check for the final '0ms' since it may fail on slow hosts
+        self.assertStartsWith(lines[0], 'NODEP')
+        self.assertEqual(lines[1],
+                         "    The feature 'Feature' is not available.")
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
