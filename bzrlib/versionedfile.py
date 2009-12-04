@@ -1512,6 +1512,12 @@ class PlanWeaveMerge(TextMerge):
             #      2) Exclude them in .BASE, because they aren't in all BASEs.
             #         diff3 then sees 'b' being added by both sides before and
             #         after 'a'. Which gives MbabN (no conflicts)
+            #      Also note that --weave output isn't a great representation,
+            #      as it produces a 'clean' flip-flop. If you merge MabN =>
+            #      MbaN you get MabN, if you reverse it you get the reverse.
+            #      The BASE in both cases is just the current text, with the
+            #      'other' 'b' line shown as killed-in-other. Which is why it
+            #      merges cleanly.
             if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged',
                          'conflicted-a', 'conflicted-b'):
                 # If unchanged, then this line is straight from base. If a or b
