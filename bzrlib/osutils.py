@@ -1330,25 +1330,49 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+default_terminal_width = 80
+"""The default terminal width for ttys.
+
+This is defined so that higher levels can share a common fallback value when
+terminal_width() returns None.
+"""
+
+
 def terminal_width():
-    """Return estimated terminal width."""
+    """Return terminal width.
+
+    None is returned if the width can't established precisely.
+    """
+
+    # If BZR_COLUMNS is set, take it, user is always right
+    try:
+        return int(os.environ['BZR_COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
+    isatty = getattr(sys.stdout, 'isatty', None)
+    if  isatty is None or not isatty():
+        # Don't guess, setting BZR_COLUMNS is the recommended way to override.
+        return None
+
     if sys.platform == 'win32':
-        return win32utils.get_console_size()[0]
-    width = 0
+        return win32utils.get_console_size(defaultx=None)[0]
+
     try:
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         width = struct.unpack('HHHH', x)[1]
-    except IOError:
-        pass
-    if width <= 0:
+    except (IOError, AttributeError):
+        # If COLUMNS is set, take it
         try:
-            width = int(os.environ['COLUMNS'])
-        except:
-            pass
+            return int(os.environ['COLUMNS'])
+        except (KeyError, ValueError):
+            return None
+
     if width <= 0:
-        width = 80
+        # Consider invalid values as meaning no width
+        return None
 
     return width
 
