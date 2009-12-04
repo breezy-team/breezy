@@ -4157,7 +4157,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
         # possible info to the test runner is even worse.
         if test_id != None:
             ui.ui_factory.clear_term()
-            sys.stderr.write('While running: %s\n' % (test_id,))
+            sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         sys.stderr.write('Unable to remove testing dir %s\n%s'
                          % (os.path.basename(dirname), e))
 

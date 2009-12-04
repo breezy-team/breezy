@@ -1378,7 +1378,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(0, os.stat(old_path).st_mtime)
-        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():

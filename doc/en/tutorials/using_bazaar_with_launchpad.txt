@@ -423,7 +423,7 @@ localise your project into many languages.
 Summary
 =======
 
-The communities we join, whether off-line or on-line, 
+The communities we join, whether off-line or on-line,
 say a lot about the sort of people we are. The flip-side
 to this is that the tools you choose for your community - particularly
 the CDE and version control tool - can have a large impact on who

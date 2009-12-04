@@ -70,6 +70,12 @@ Bug Fixes
   new rich-root heads. This can cut a conversion time in half (mysql from
   13.5h => 6.2h) (John Arbash Meinel, #487632)
 
+* When launching a external diff tool via bzr diff --using, temporary files
+  are no longer created, rather, the path to the file in the working tree is
+  passed to the external diff tool. This allows the file to be edited if the
+  diff tool provides for this. (Gary van der Merwe, #490738)
+  
+
 Improvements
 ************
 
@@ -89,6 +95,13 @@ API Changes
 
 Internals
 *********
+
+* Several code paths that were calling ``Transport.get().read()`` have
+  been changed to the equalivent ``Transport.get_bytes()``. The main
+  difference is that the latter will explicitly call ``file.close()``,
+  rather than expecting the garbage collector to handle it. This helps
+  with some race conditions on Windows during the test suite and sftp
+  tests. (John Arbash Meinel)
 
 Testing
 *******
@@ -110,7 +123,13 @@ New Features
 
 Bug Fixes
 *********
-* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* ``bzr push --use-existing-dir`` no longer crashes if the directory
+  exists but contains an invalid ``.bzr`` directory.
+  (Andrew Bennetts, #423563)
+
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
@@ -349,6 +368,21 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 
 bzr 2.0.2

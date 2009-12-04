@@ -17,7 +17,7 @@ Rationale
 Allowing multiple branches to live under the same directory in the file
 system means that it is possible to very easily share the same working
 tree and repository between those branches, without having a lot of fs
-infrastructure. 
+infrastructure.
 
 Git and Mercurial (can) store multiple branches under a single directory
 in the file system - per repository, so to speak. In order for this to
@@ -47,20 +47,20 @@ UI Changes
 ~~~~~~~~~~
 
 Bazaar URLs need to have some way to specify a colocated branch other
-than the current HEAD. Several options have been discussed, each with 
+than the current HEAD. Several options have been discussed, each with
 its own advantages and disadvantages: This was discussed on the mailing
 list, most notably the use of a ";branch=NAME" suffix as well as a special
-separation character (+, =, etc), but no final conclusion was reached. 
+separation character (+, =, etc), but no final conclusion was reached.
 
 https://lists.ubuntu.com/archives/bazaar/2008q4/050105.html
 
 Code Changes
 ~~~~~~~~~~~~
 
-BzrDir should support a BzrDir.supports_colocated_branches() call as well as 
+BzrDir should support a BzrDir.supports_colocated_branches() call as well as
 BzrDir.colocated_branches property that contains a colocated branch container,
-that can be used to add / remove colocated branches as well as change the 
-currently active colocated branch. 
+that can be used to add / remove colocated branches as well as change the
+currently active colocated branch.
 
 ::
 
@@ -87,11 +87,11 @@ currently active colocated branch.
 	   def destroy_branch(self, name):
 		 """Destroy the specified branch.
 			
-		This will remove the branch from disk.""" 
+		This will remove the branch from disk."""
 
 If the particular BzrDir implementation doesn't support colocated
 branches, it can just return a dummy container that just contains a
-HEAD branch. 
+HEAD branch.
 
 Looms can of course return a container with all their threads.
 
@@ -106,7 +106,7 @@ provides the right infrastructure it doesn't have to support this
 feature in its own file formats.
 
 Eventually, Bazaar could easily support colocated branches by just
-creating a new branch transport for each colocated branch and have a 
+creating a new branch transport for each colocated branch and have a
 "regular" branch live there. This would require something like
 BzrDirMeta2 though.
 
