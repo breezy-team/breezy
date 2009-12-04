@@ -1419,7 +1419,7 @@ class PlanWeaveMerge(TextMerge):
     def __init__(self, plan, a_marker=TextMerge.A_MARKER,
                  b_marker=TextMerge.B_MARKER):
         TextMerge.__init__(self, a_marker, b_marker)
-        self.plan = plan
+        self.plan = list(plan)
 
     def _merge_struct(self):
         lines_a = []
@@ -1482,6 +1482,56 @@ class PlanWeaveMerge(TextMerge):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
+
+    def base_from_plan(self):
+        """Construct a BASE file from the plan text."""
+        base_lines = []
+        for state, line in self.plan:
+            # XXX: We need to figure out what to do for 'conflicted-a' and
+            #      'conflicted-b' lines. Here is a rough outline of the
+            #      options. Also, I tested this using the 'weave' failure.
+            #      Where you have a criss-cross merge, where both a & b
+            #      introduce a line in the same place. The merge conflicts, and
+            #      both include both lines, but put themselves first.
+            #           MN
+            #          /   \
+            #        MaN   MbN
+            #         |  X  |
+            #        MabN MbaN
+            #          \   /
+            #           ???
+            #      1) Include them in .BASE, as they are present in one LCA
+            #         (but not in all of them). In my test, that led to all
+            #         LCA's getting merged together into a big text, which
+            #         seems correct.
+            #         In testing, this gives BASE of MbabN, and the standard
+            #         3-way diff then looks like BASE => THIS is deleting the
+            #         first line 'b', and BASE => OTHER is deleting the second
+            #         line 'b'. Which means that diff3 of THIS BASE OTHER gives
+            #         MaN (no conflicts)
+            #      2) Exclude them in .BASE, because they aren't in all BASEs.
+            #         diff3 then sees 'b' being added by both sides before and
+            #         after 'a'. Which gives MbabN (no conflicts)
+            if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged',
+                         'conflicted-a', 'conflicted-b'):
+                # If unchanged, then this line is straight from base. If a or b
+                # or both killed the line, then it *used* to be in base.
+                # If 'conflicted-a' or b, then it is new vs one base, but old
+                # versus another base. Which means it was present in *one* of
+                # the bases, so we'll include it.
+                base_lines.append(line)
+            else:
+                if state not in ('killed-base', 'irrelevant',
+                                 'ghost-a', 'ghost-b',
+                                 'new-a', 'new-b'):
+                    # killed-base, irrelevant means it doesn't apply
+                    # ghost-a/ghost-b are harder to say for sure, but they
+                    # aren't in the 'inc_c' which means they aren't in the
+                    # shared base of a & b. So we don't include them.
+                    # And obviously if the line is newly inserted, it isn't in
+                    # base
+                    raise AssertionError('Unknown state: %s' % (state,))
+        return base_lines
 
 
 class WeaveMerge(PlanWeaveMerge):
