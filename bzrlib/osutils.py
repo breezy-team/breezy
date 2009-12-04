@@ -1350,12 +1350,6 @@ def terminal_width():
     except (KeyError, ValueError):
         pass
 
-    # If COLUMNS is set, take it, the terminal knows better
-    try:
-        return int(os.environ['COLUMNS'])
-    except (KeyError, ValueError):
-        pass
-
     isatty = getattr(sys.stdout, 'isatty', None)
     if  isatty is None or not isatty():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
@@ -1370,9 +1364,14 @@ def terminal_width():
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         width = struct.unpack('HHHH', x)[1]
     except (IOError, AttributeError):
-        return None
+        # If COLUMNS is set, take it
+        try:
+            return int(os.environ['COLUMNS'])
+        except (KeyError, ValueError):
+            return None
 
     if width <= 0:
+        # Consider invalid values as meaning no width
         return None
 
     return width

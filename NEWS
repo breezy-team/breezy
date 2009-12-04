@@ -29,7 +29,8 @@ New Features
 * The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
   respect a given terminal width. This can be useful when output is
   redirected or in obscure cases where the default value is not
-  appropriate.
+  appropriate. Pagers can use it to get a better control of the line
+  lengths. 
   (Vincent Ladeuil)
 
 Bug Fixes
