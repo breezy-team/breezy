@@ -1879,7 +1879,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         filters.register_filter_stack_map('rot13', {'yes': [rot13filter]}.get)
         os.mkdir(self.test_home_dir + '/.bazaar')
         rules_filename = self.test_home_dir + '/.bazaar/rules'
-        f = open(rules_filename, 'w')
+        f = open(rules_filename, 'wb')
         f.write('[name %s]\nrot13=yes\n' % (pattern,))
         f.close()
         def uninstall_rules():
@@ -1909,7 +1909,7 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertNotEqual(source_stat, target_stat)
         source_stat = os.stat('source/file2')
         target_stat = os.stat('target/file2')
-        self.assertEqual(source_stat, target_stat)
+        self.assertEqualStat(source_stat, target_stat)
 
     def test_case_insensitive_build_tree_inventory(self):
         if (tests.CaseInsensitiveFilesystemFeature.available()
