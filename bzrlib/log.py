@@ -1573,12 +1573,16 @@ class LineLogFormatter(LogFormatter):
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)
-        self._max_chars = terminal_width() - 1
+        width = terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+        self._max_chars = width
 
     def truncate(self, str, max_len):
-        if len(str) <= max_len:
+        if max_len is None or len(str) <= max_len:
             return str
-        return str[:max_len-3]+'...'
+        return str[:max_len-3] + '...'
 
     def date_string(self, rev):
         return format_date(rev.timestamp, rev.timezone or 0,

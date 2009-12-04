@@ -533,11 +533,15 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus an
-        # 11-char time string, plus a trailing blank
-        # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
-        self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-18))
+        width = osutils.terminal_width()
+        if width is not None:
+            # width needs space for 6 char status, plus 1 for slash, plus an
+            # 11-char time string, plus a trailing blank
+            # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on
+            # space
+            self.stream.write(self._ellipsize_to_right(name, width-18))
+        else:
+            self.stream.write(name)
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -1532,6 +1536,7 @@ class TestCase(unittest.TestCase):
             'TERM': 'dumb',
             'LINES': '25',
             'COLUMNS': '80',
+            'BZR_COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies

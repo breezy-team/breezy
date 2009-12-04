@@ -23,6 +23,7 @@ import re
 import socket
 import stat
 import sys
+import termios
 import time
 
 from bzrlib import (
@@ -1922,3 +1923,58 @@ class TestFailedToLoadExtension(tests.TestCase):
             r"bzr: warning: some compiled extensions could not be loaded; "
             "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
             )
+
+
+class TestTerminalWidth(tests.TestCase):
+
+    def test_default_values(self):
+        self.assertEquals(80, osutils.default_terminal_width)
+
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertEquals('80', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
+        self.assertEquals(12, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+
+        class I_am_a_tty(object):
+            def isatty(self):
+                return True
+
+        sys.stdout = I_am_a_tty()
+        self.assertEquals(None, osutils.terminal_width())
+
+    def test_non_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+        sys.stdout = None
+        self.assertEquals(None, osutils.terminal_width())
+
+    def test_TIOCGWINSZ(self):
+        # bug 63539 is about a termios without TIOCGWINSZ attribute
+        exist = True
+        try:
+            orig = termios.TIOCGWINSZ
+        except AttributeError:
+            exist = False
+
+        def restore():
+            if exist:
+                termios.TIOCGWINSZ = orig
+        self.addCleanup(restore)
+
+        del termios.TIOCGWINSZ
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        self.assertEquals(None, osutils.terminal_width())

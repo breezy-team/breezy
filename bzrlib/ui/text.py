@@ -234,8 +234,10 @@ class TextProgressView(object):
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        n = self._width - 1
-        self._term_file.write('\r%-*.*s\r' % (n, n, s))
+        if self._width is not None:
+            n = self._width - 1
+            s = '%-*.*s' % (n, n, s)
+        self._term_file.write('\r' + s + '\r')
 
     def clear(self):
         if self._have_output:
