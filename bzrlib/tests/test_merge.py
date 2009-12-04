@@ -920,7 +920,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdhghef') + '\n',
+        self.assertEqualDiff('\n'.join('abcdgef') + '\n',
                              ''.join(pwm.base_from_plan()))
         # Reversing it changes what line is doubled, but still gives a
         # double-conflict
@@ -937,7 +937,7 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'f\n'),
                          ], plan)
         pwm = versionedfile.PlanWeaveMerge(plan)
-        self.assertEqualDiff('\n'.join('abcdghgef') + '\n',
+        self.assertEqualDiff('\n'.join('abcdhef') + '\n',
                              ''.join(pwm.base_from_plan()))
 
     def assertRemoveExternalReferences(self, filtered_parent_map,

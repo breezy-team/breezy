@@ -1518,24 +1518,26 @@ class PlanWeaveMerge(TextMerge):
             #      The BASE in both cases is just the current text, with the
             #      'other' 'b' line shown as killed-in-other. Which is why it
             #      merges cleanly.
-            if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged',
-                         'conflicted-a', 'conflicted-b'):
+            if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged'):
                 # If unchanged, then this line is straight from base. If a or b
                 # or both killed the line, then it *used* to be in base.
-                # If 'conflicted-a' or b, then it is new vs one base, but old
-                # versus another base. Which means it was present in *one* of
-                # the bases, so we'll include it.
                 base_lines.append(line)
             else:
                 if state not in ('killed-base', 'irrelevant',
                                  'ghost-a', 'ghost-b',
-                                 'new-a', 'new-b'):
+                                 'new-a', 'new-b',
+                                 'conflicted-a', 'conflicted-b'):
                     # killed-base, irrelevant means it doesn't apply
                     # ghost-a/ghost-b are harder to say for sure, but they
                     # aren't in the 'inc_c' which means they aren't in the
                     # shared base of a & b. So we don't include them.
                     # And obviously if the line is newly inserted, it isn't in
                     # base
+                    # If 'conflicted-a' or b, then it is new vs one base, but old
+                    # versus another base. However, if we make it present in
+                    # the base, it will be deleted from the target, and it
+                    # seems better to get a line doubled in the merge result,
+                    # rather than have it deleted entirely.
                     raise AssertionError('Unknown state: %s' % (state,))
         return base_lines
 
