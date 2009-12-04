@@ -59,10 +59,6 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
         
-    def is_interactive(self):
-        isatty = getattr(self.stdin, 'isatty', None)
-        return (isatty is not None and isatty())
-
     def clear_term(self):
         """Prepare the terminal for output.
 

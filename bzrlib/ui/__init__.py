@@ -110,18 +110,6 @@ class UIFactory(object):
     def __init__(self):
         self._task_stack = []
 
-    def is_interactive(self):
-        """Returns whether a user interface allows interactive commands
-        
-        User interfaces like GUI or textual interfaces generally allow
-        interaction with the user. Other interfaces used in batch tasks
-        like cron jobs do not allow interaction with the user.
-        
-        :return: True if the the user interface allows interaction with
-                 the user, False otherwise. 
-        """
-        raise NotImplementedError(self.is_interactive)
-
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
 

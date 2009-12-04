@@ -45,7 +45,6 @@ from bzrlib import (
     revision as _mod_revision,
     symbol_versioning,
     transport,
-    trace,
     ui,
     urlutils,
     views,
@@ -3030,10 +3029,7 @@ class cmd_commit(Command):
                     " name: \"%(filename)s\".\n"
                     "(use --file \"%(filename)s\" to take commit message from"
                     " that file)" % { 'filename': message })
-                if ui.ui_factory.is_interactive():
-                    ui.ui_factory.show_warning(warning_msg)
-                else:
-                    trace.warning(warning_msg)
+                ui.ui_factory.show_warning(warning_msg)
 
         def get_message(commit_obj):
             """Callback to get commit message"""
