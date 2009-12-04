@@ -1373,6 +1373,7 @@ def terminal_width():
         return None
 
     if width <= 0:
+        # Consider invalid values as meaning no width
         return None
 
     return width
