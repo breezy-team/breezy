@@ -503,12 +503,25 @@ class Branch(object):
                 left_parent = stop_rev.parent_ids[0]
             else:
                 left_parent = _mod_revision.NULL_REVISION
+            # left_parent is the actual revision we want to stop logging at,
+            # since we want to show the merged revisions after the stop_rev too
+            reached_stop_revision_id = False
+            revision_id_whitelist = []
             for node in rev_iter:
                 rev_id = node.key[-1]
                 if rev_id == left_parent:
+                    # reached the left parent after the stop_revision
                     return
-                yield (rev_id, node.merge_depth, node.revno,
+                if (not reached_stop_revision_id or
+                        rev_id in revision_id_whitelist):
+                    yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
+                    if reached_stop_revision_id or rev_id == stop_revision_id:
+                        # only do the merged revs of rev_id from now on
+                        rev = self.repository.get_revision(rev_id)
+                        if rev.parent_ids:
+                            reached_stop_revision_id = True
+                            revision_id_whitelist.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 

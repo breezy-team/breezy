@@ -42,6 +42,9 @@ Bug Fixes
 
 * ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
 
+* ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
+  (#325618, #484109, Marius Kruger)
+
 * ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
 
 * ``bzr serve`` is more clear about the risk of supplying --allow-writes.
