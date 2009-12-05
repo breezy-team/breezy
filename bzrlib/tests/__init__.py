@@ -50,6 +50,7 @@ import unittest
 import warnings
 
 import testtools
+from testtools import content
 
 from bzrlib import (
     branchbuilder,
@@ -783,7 +784,6 @@ class TestCase(testtools.TestCase):
     _leaking_threads_tests = 0
     _first_thread_leaker_id = None
     _log_file_name = None
-    _log_contents = ''
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
@@ -798,6 +798,10 @@ class TestCase(testtools.TestCase):
             (TestNotApplicable, self._do_not_applicable))
         self.exception_handlers.insert(0,
             (KnownFailure, self._do_known_failure))
+        self._log_contents = ''
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            lambda:[self._get_log(keep_log_file=True)]))
 
     def setUp(self):
         super(TestCase, self).setUp()

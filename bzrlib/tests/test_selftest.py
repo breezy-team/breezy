@@ -17,6 +17,7 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
+from doctest import ELLIPSIS
 import os
 import signal
 import sys
@@ -24,8 +25,13 @@ import time
 import unittest
 import warnings
 
-import testtools.tests.helpers
 from testtools import MultiTestResult
+from testtools.content_type import ContentType
+from testtools.matchers import (
+    DocTestMatches,
+    Equals,
+    )
+import testtools.tests.helpers
 
 import bzrlib
 from bzrlib import (
@@ -81,14 +87,18 @@ class SelftestTests(tests.TestCase):
                           TestUtil._load_module_by_name,
                           'bzrlib.no-name-yet')
 
+
 class MetaTestLog(tests.TestCase):
 
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'a test message\n')
+        details = self.getDetails()
+        log = details['log']
+        self.assertThat(log.content_type, Equals(ContentType(
+            "text", "plain", {"charset": "utf8"})))
+        self.assertThat(u"".join(log.iter_text()),
+            DocTestMatches(u"...a test message\n", ELLIPSIS))
 
 
 class TestUnicodeFilename(tests.TestCase):
