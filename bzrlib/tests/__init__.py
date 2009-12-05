@@ -657,8 +657,7 @@ def iter_suite_tests(suite):
                         % (type(suite), suite))
 
 
-class TestSkipped(Exception):
-    """Indicates that a test was intentionally skipped, rather than failing."""
+TestSkipped = testtools.testcase.TestSkipped
 
 
 class TestNotApplicable(TestSkipped):
@@ -788,20 +787,22 @@ class TestCase(testtools.TestCase):
     _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
-    attrs_to_keep = ('id', '_testMethodName', '_testMethodDoc',
-                     '_log_contents', '_log_file_name', '_benchtime',
-                     '_TestCase__testMethodName', '_TestCase__testMethodDoc',)
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
-        self._bzr_test_setUp_run = False
-        self._bzr_test_tearDown_run = False
         self._directory_isolation = True
+        self.exception_handlers.insert(0,
+            (UnavailableFeature, self._do_unsupported_or_skip))
+        self.exception_handlers.insert(0,
+            (TestNotApplicable, self._do_not_applicable))
+        self.exception_handlers.insert(0,
+            (KnownFailure, self._do_known_failure))
 
     def setUp(self):
-        unittest.TestCase.setUp(self)
-        self._bzr_test_setUp_run = True
+        super(TestCase, self).setUp()
+        for feature in getattr(self, '_test_needs_features', []):
+            self.requireFeature(feature)
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1571,7 +1572,8 @@ class TestCase(testtools.TestCase):
         else:
             addSkip(self, reason)
 
-    def _do_known_failure(self, result):
+    @staticmethod
+    def _do_known_failure(self, result, e):
         err = sys.exc_info()
         addExpectedFailure = getattr(result, 'addExpectedFailure', None)
         if addExpectedFailure is not None:
@@ -1579,6 +1581,7 @@ class TestCase(testtools.TestCase):
         else:
             result.addSuccess(self)
 
+    @staticmethod
     def _do_not_applicable(self, result, e):
         if not e.args:
             reason = 'No reason given'
@@ -1590,14 +1593,16 @@ class TestCase(testtools.TestCase):
         else:
             self._do_skip(result, reason)
 
-    def _do_unsupported_or_skip(self, result, reason):
+    @staticmethod
+    def _do_unsupported_or_skip(self, result, e):
+        reason = e.args[0]
         addNotSupported = getattr(result, 'addNotSupported', None)
         if addNotSupported is not None:
             result.addNotSupported(self, reason)
         else:
             self._do_skip(result, reason)
 
-    def run(self, result=None):
+    def _run(self, result=None):
         if result is None: result = self.defaultTestResult()
         result.startTest(self)
         try:
@@ -1607,9 +1612,6 @@ class TestCase(testtools.TestCase):
             result.stopTest(self)
 
     def _run(self, result):
-        for feature in getattr(self, '_test_needs_features', []):
-            if not feature.available():
-                return self._do_unsupported_or_skip(result, feature)
         try:
             absent_attr = object()
             # Python 2.5
@@ -1692,17 +1694,11 @@ class TestCase(testtools.TestCase):
                 self._runCleanups()
                 raise
         finally:
-            saved_attrs = {}
-            for attr_name in self.attrs_to_keep:
-                if attr_name in self.__dict__:
-                    saved_attrs[attr_name] = self.__dict__[attr_name]
-            self.__dict__ = saved_attrs
+            pass
 
     def tearDown(self):
-        self._runCleanups()
         self._log_contents = ''
-        self._bzr_test_tearDown_run = True
-        unittest.TestCase.tearDown(self)
+        super(TestCase, self).tearDown()
 
     def time(self, callable, *args, **kwargs):
         """Run callable and accrue the time it takes to the benchmark time.
@@ -1726,7 +1722,7 @@ class TestCase(testtools.TestCase):
         finally:
             self._benchtime += time.time() - start
 
-    def _runCleanups(self):
+    def __runCleanups(self):
         """Run registered cleanup functions.
 
         This should only be called from TestCase.tearDown.

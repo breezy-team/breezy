@@ -24,6 +24,9 @@ import time
 import unittest
 import warnings
 
+import testtools.tests.helpers
+from testtools import MultiTestResult
+
 import bzrlib
 from bzrlib import (
     branchbuilder,
@@ -679,7 +682,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = unittest.TestResult()
+        terminal = testtools.tests.helpers.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -687,11 +690,11 @@ class TestProfileResult(tests.TestCase):
             def sample_function(self):
                 pass
         test = Sample("a")
-        test.attrs_to_keep = test.attrs_to_keep + ('_benchcalls',)
         test.run(result)
-        self.assertLength(1, test._benchcalls)
+        case = terminal._events[0][1]
+        self.assertLength(1, case._benchcalls)
         # We must be able to unpack it as the test reporting code wants
-        (_, _, _), stats = test._benchcalls[0]
+        (_, _, _), stats = case._benchcalls[0]
         self.assertTrue(callable(stats.pprint))
 
 
@@ -702,8 +705,10 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        test_case.run(result)
-        timed_string = result._testTimeString(test_case)
+        capture = testtools.tests.helpers.ExtendedTestResult()
+        test_case.run(MultiTestResult(result, capture))
+        run_case = capture._events[0][1]
+        timed_string = result._testTimeString(run_case)
         self.assertContainsRe(timed_string, expected_re)
 
     def test_test_reporting(self):
@@ -834,7 +839,7 @@ class TestTestResult(tests.TestCase):
         test.run(result)
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
-        self.assertEqual(test, result._call[0])
+        self.assertEqual(test.id(), result._call[0].id())
         self.assertEqual(tests.KnownFailure, result._call[1][0])
         self.assertIsInstance(result._call[1][1], tests.KnownFailure)
         # we dont introspec the traceback, if the rest is ok, it would be
@@ -934,7 +939,7 @@ class TestTestResult(tests.TestCase):
         test.run(result)
         # it should invoke 'addNotSupported'.
         self.assertEqual(2, len(result._call))
-        self.assertEqual(test, result._call[0])
+        self.assertEqual(test.id(), result._call[0].id())
         self.assertEqual(feature, result._call[1])
         # and not count as an error
         self.assertEqual(0, result.error_count)
@@ -1268,8 +1273,8 @@ class TestRunner(tests.TestCase):
 
         self.assertLogDeleted(test)
 
-    def test_fail_log_kept(self):
-        """Failed tests have their log kept"""
+    def test_fail_log_shown(self):
+        """Failed tests have their log shown"""
 
         class LogTester(tests.TestCase):
 
@@ -1286,12 +1291,8 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(text, 'this will be kept')
         self.assertContainsRe(text, 'this test fails')
 
-        log = test._get_log()
-        self.assertContainsRe(log, 'this will be kept')
-        self.assertEqual(log, test._log_contents)
-
-    def test_error_log_kept(self):
-        """Tests with errors have their log kept"""
+    def test_error_log_shown(self):
+        """Tests with errors have their log shown"""
 
         class LogTester(tests.TestCase):
 
@@ -1307,10 +1308,6 @@ class TestRunner(tests.TestCase):
         text = sio.getvalue()
         self.assertContainsRe(text, 'this will be kept')
         self.assertContainsRe(text, 'random exception raised')
-
-        log = test._get_log()
-        self.assertContainsRe(log, 'this will be kept')
-        self.assertEqual(log, test._log_contents)
 
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
@@ -1494,6 +1491,7 @@ class TestTestCase(tests.TestCase):
         result = self.make_test_result()
         self.inner_test.run(result)
         note("outer finish")
+        self.addCleanup(osutils.delete_any, self._log_file_name)
 
     def test_trace_nesting(self):
         # this tests that each test case nests its trace facility correctly.
@@ -1511,7 +1509,6 @@ class TestTestCase(tests.TestCase):
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
-        self.addCleanup(osutils.delete_any, outer_test._log_file_name)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
     def method_that_times_a_bit_twice(self):
@@ -1632,6 +1629,8 @@ class TestTestCase(tests.TestCase):
         """Test disabled tests behaviour with support aware results."""
         test = SampleTestCase('_test_pass')
         class DisabledFeature(object):
+            def __eq__(self, other):
+                return isinstance(other, DisabledFeature)
             def available(self):
                 return False
         the_feature = DisabledFeature()
@@ -1648,10 +1647,11 @@ class TestTestCase(tests.TestCase):
                 self.calls.append(('addNotSupported', test, feature))
         result = InstrumentedTestResult()
         test.run(result)
+        case = result.calls[0][1]
         self.assertEqual([
-            ('startTest', test),
-            ('addNotSupported', test, the_feature),
-            ('stopTest', test),
+            ('startTest', case),
+            ('addNotSupported', case, the_feature),
+            ('stopTest', case),
             ],
             result.calls)
 
