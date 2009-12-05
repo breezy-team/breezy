@@ -798,7 +798,7 @@ class TestCase(testtools.TestCase):
             (TestNotApplicable, self._do_not_applicable))
         self.exception_handlers.insert(0,
             (KnownFailure, self._do_known_failure))
-        self._log_contents = ''
+        self._log_contents = None
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             lambda:[self._get_log(keep_log_file=True)]))
@@ -1606,10 +1606,6 @@ class TestCase(testtools.TestCase):
         else:
             self._do_skip(result, reason)
 
-    def tearDown(self):
-        self._log_contents = ''
-        super(TestCase, self).tearDown()
-
     def time(self, callable, *args, **kwargs):
         """Run callable and accrue the time it takes to the benchmark time.
 
@@ -1644,14 +1640,12 @@ class TestCase(testtools.TestCase):
             self._log_contents.
         :return: A string containing the log.
         """
-        # flush the log file, to get all content
+        if self._log_contents is not None:
+            return self._log_contents
         import bzrlib.trace
         if bzrlib.trace._trace_file:
+            # flush the log file, to get all content
             bzrlib.trace._trace_file.flush()
-        if self._log_contents:
-            # XXX: this can hardly contain the content flushed above --vila
-            # 20080128
-            return self._log_contents
         if self._log_file_name is not None:
             logfile = open(self._log_file_name)
             try:
@@ -1659,6 +1653,7 @@ class TestCase(testtools.TestCase):
             finally:
                 logfile.close()
             if not keep_log_file:
+                # Permit multiple calls to get_log.
                 self._log_contents = log_contents
                 try:
                     os.remove(self._log_file_name)
@@ -1670,7 +1665,7 @@ class TestCase(testtools.TestCase):
                         raise
             return log_contents
         else:
-            return "DELETED log file to reduce memory footprint"
+            return "No log file content and no log file name."
 
     def requireFeature(self, feature):
         """This test requires a specific feature is available.

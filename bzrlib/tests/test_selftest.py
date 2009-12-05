@@ -1214,111 +1214,6 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(output_string, "--date [0-9.]+")
         self.assertLength(1, self._get_source_tree_calls)
 
-    def assertLogDeleted(self, test):
-        log = test._get_log()
-        self.assertEqual("DELETED log file to reduce memory footprint", log)
-        self.assertEqual('', test._log_contents)
-        self.assertIs(None, test._log_file_name)
-
-    def test_success_log_deleted(self):
-        """Successful tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_success(self):
-                self.log('this will be removed\n')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_success')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_skipped_log_deleted(self):
-        """Skipped tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_skipped(self):
-                self.log('this will be removed\n')
-                raise tests.TestSkipped()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_skipped')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_not_aplicable_log_deleted(self):
-        """Not applicable tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_not_applicable(self):
-                self.log('this will be removed\n')
-                raise tests.TestNotApplicable()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_not_applicable')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_known_failure_log_deleted(self):
-        """Know failure tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_known_failure(self):
-                self.log('this will be removed\n')
-                raise tests.KnownFailure()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_known_failure')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_fail_log_shown(self):
-        """Failed tests have their log shown"""
-
-        class LogTester(tests.TestCase):
-
-            def test_fail(self):
-                self.log('this will be kept\n')
-                self.fail('this test fails')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_fail')
-        result = self.run_test_runner(runner, test)
-
-        text = sio.getvalue()
-        self.assertContainsRe(text, 'this will be kept')
-        self.assertContainsRe(text, 'this test fails')
-
-    def test_error_log_shown(self):
-        """Tests with errors have their log shown"""
-
-        class LogTester(tests.TestCase):
-
-            def test_error(self):
-                self.log('this will be kept\n')
-                raise ValueError('random exception raised')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_error')
-        result = self.run_test_runner(runner, test)
-
-        text = sio.getvalue()
-        self.assertContainsRe(text, 'this will be kept')
-        self.assertContainsRe(text, 'random exception raised')
-
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
@@ -1488,6 +1383,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
 
     def make_test_result(self):
+        """Get a test result that writes to the test log file."""
         return tests.TextTestResult(self._log_file, descriptions=0, verbosity=1)
 
     def inner_test(self):
@@ -2681,8 +2577,8 @@ class TestBlackboxSupport(tests.TestCase):
         # the test framework
         self.assertEquals('always fails', str(e))
         # check that there's no traceback in the test log
-        self.assertNotContainsRe(self._get_log(keep_log_file=True),
-            r'Traceback')
+        log = u"".join(self.getDetails()['log'].iter_text())
+        self.assertNotContainsRe(log, r'Traceback')
 
     def test_run_bzr_user_error_caught(self):
         # Running bzr in blackbox mode, normal/expected/user errors should be
@@ -2997,8 +2893,8 @@ class TestTestPrefixRegistry(tests.TestCase):
         tpr.register('bar', 'bbb.aaa.rrr')
         tpr.register('bar', 'bBB.aAA.rRR')
         self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              r'.*bar.*bbb.aaa.rrr.*bBB.aAA.rRR')
+        self.assertThat(u"".join(self.getDetails()['log'].iter_text()),
+            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR", ELLIPSIS))
 
     def test_get_unknown_prefix(self):
         tpr = self._get_registry()
