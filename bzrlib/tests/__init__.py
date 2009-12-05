@@ -1628,20 +1628,6 @@ class TestCase(testtools.TestCase):
         finally:
             self._benchtime += time.time() - start
 
-    def __runCleanups(self):
-        """Run registered cleanup functions.
-
-        This should only be called from TestCase.tearDown.
-        """
-        # TODO: Perhaps this should keep running cleanups even if
-        # one of them fails?
-
-        # Actually pop the cleanups from the list so tearDown running
-        # twice is safe (this happens for skipped tests).
-        while self._cleanups:
-            cleanup, args, kwargs = self._cleanups.pop()
-            cleanup(*args, **kwargs)
-
     def log(self, *args):
         mutter(*args)
 
