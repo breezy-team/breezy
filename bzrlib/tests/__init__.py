@@ -46,6 +46,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 import unittest
 import warnings
 
@@ -364,26 +365,6 @@ class ExtendedTestResult(unittest._TextTestResult):
         self.not_applicable_count += 1
         self.report_not_applicable(test, reason)
 
-    def printErrorList(self, flavour, errors):
-        for test, err in errors:
-            self.stream.writeln(self.separator1)
-            self.stream.write("%s: " % flavour)
-            self.stream.writeln(self.getDescription(test))
-            if getattr(test, '_get_log', None) is not None:
-                log_contents = test._get_log()
-                if log_contents:
-                    self.stream.write('\n')
-                    self.stream.write(
-                            ('vvvv[log from %s]' % test.id()).ljust(78,'-'))
-                    self.stream.write('\n')
-                    self.stream.write(log_contents)
-                    self.stream.write('\n')
-                    self.stream.write(
-                            ('^^^^[log from %s]' % test.id()).ljust(78,'-'))
-                    self.stream.write('\n')
-            self.stream.writeln(self.separator2)
-            self.stream.writeln("%s" % err)
-
     def _post_mortem(self):
         """Start a PDB post mortem session."""
         if os.environ.get('BZR_TEST_PDB', None):
@@ -602,6 +583,13 @@ class TextTestRunner(object):
             applied left to right - the first element in the list is the 
             innermost decorator.
         """
+        # stream may know claim to know to write unicode strings, but in older
+        # pythons this goes sufficiently wrong that it is a bad idea. (
+        # specifically a built in file with encoding 'UTF-8' will still try
+        # to encode using ascii.
+        new_encoding = osutils.get_terminal_encoding()
+        stream = codecs.getwriter(new_encoding)(stream)
+        stream.encoding = new_encoding
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
         self.verbosity = verbosity
@@ -668,6 +656,22 @@ class TestNotApplicable(TestSkipped):
     the instance they're constructed upon does not support one aspect
     of its interface.
     """
+
+
+# traceback._some_str fails to format exceptions that have the default
+# __str__ which does an implicit ascii conversion. However, repr() on those
+# objects works, for all that its not quite what the doctor may have ordered.
+def _clever_some_str(value):
+    try:
+        return str(value)
+    except:
+        try:
+            return repr(value).replace('\\n', '\n')
+        except:
+            return '<unprintable %s object>' % type(value).__name__
+
+traceback._some_str = _clever_some_str
+
 
 
 class KnownFailure(AssertionError):
@@ -798,15 +802,15 @@ class TestCase(testtools.TestCase):
             (TestNotApplicable, self._do_not_applicable))
         self.exception_handlers.insert(0,
             (KnownFailure, self._do_known_failure))
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
 
     def setUp(self):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
+        self._log_contents = None
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            lambda:[self._get_log(keep_log_file=True, _utf8=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1631,16 +1635,24 @@ class TestCase(testtools.TestCase):
     def log(self, *args):
         mutter(*args)
 
-    def _get_log(self, keep_log_file=False):
+    def _get_log(self, keep_log_file=False, _utf8=False):
         """Get the log from bzrlib.trace calls from this test.
 
         :param keep_log_file: When True, if the log is still a file on disk
             leave it as a file on disk. When False, if the log is still a file
             on disk, the log file is deleted and the log preserved as
             self._log_contents.
+        :param _utf8: Private for the getDetails callback; used to ensure that
+            the returned content is valid utf8.
         :return: A string containing the log.
         """
         if self._log_contents is not None:
+            if _utf8:
+                try:
+                    self._log_contents.decode('utf8')
+                except UnicodeDecodeError:
+                    unicodestr = self._log_contents.decode('utf8', 'replace')
+                    self._log_contents = unicodestr.encode('utf8')
             return self._log_contents
         import bzrlib.trace
         if bzrlib.trace._trace_file:
@@ -1652,6 +1664,12 @@ class TestCase(testtools.TestCase):
                 log_contents = logfile.read()
             finally:
                 logfile.close()
+            if _utf8:
+                try:
+                    log_contents.decode('utf8')
+                except UnicodeDecodeError:
+                    unicodestr = log_contents.decode('utf8', 'replace')
+                    log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
                 # Permit multiple calls to get_log.
                 self._log_contents = log_contents
@@ -3075,7 +3093,7 @@ class RandomDecorator(TestDecorator):
         if self.randomised:
             return iter(self._tests)
         self.randomised = True
-        self.stream.writeln("Randomizing test order using seed %s\n" %
+        self.stream.write("Randomizing test order using seed %s\n" %
             (self.actual_seed()))
         # Initialise the random number generator.
         random.seed(self.actual_seed())

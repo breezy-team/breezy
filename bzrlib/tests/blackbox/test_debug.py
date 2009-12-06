@@ -38,5 +38,5 @@ class TestDebugOption(TestCaseInTempDir):
     def test_dash_dlock(self):
         # With -Dlock, locking and unlocking is recorded into the log
         self.run_bzr("-Dlock init foo")
-        trace_messages = self._get_log(keep_log_file=True)
-        self.assertContainsRe(trace_messages, "lock_write")
+        log = u"".join(self.getDetails()['log'].iter_text())
+        self.assertContainsRe(log, "lock_write")
