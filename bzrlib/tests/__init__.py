@@ -788,7 +788,6 @@ class TestCase(testtools.TestCase):
     _leaking_threads_tests = 0
     _first_thread_leaker_id = None
     _log_file_name = None
-    _keep_log_file = False
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
@@ -810,7 +809,7 @@ class TestCase(testtools.TestCase):
         self._log_contents = None
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True, _utf8=True)]))
+            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1474,18 +1473,12 @@ class TestCase(testtools.TestCase):
 
         Close the file and delete it, unless setKeepLogfile was called.
         """
-        if self._log_file is None:
-            return
+        if bzrlib.trace._trace_file:
+            # flush the log file, to get all content
+            bzrlib.trace._trace_file.flush()
         bzrlib.trace.pop_log_file(self._log_memento)
-        self._log_file.close()
-        self._log_file = None
-        if not self._keep_log_file:
-            os.remove(self._log_file_name)
-            self._log_file_name = None
-
-    def setKeepLogfile(self):
-        """Make the logfile not be deleted when _finishLogFile is called."""
-        self._keep_log_file = True
+        # Cache the log result and delete the file on disk
+        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1635,24 +1628,21 @@ class TestCase(testtools.TestCase):
     def log(self, *args):
         mutter(*args)
 
-    def _get_log(self, keep_log_file=False, _utf8=False):
+    def _get_log(self, keep_log_file=False):
         """Get the log from bzrlib.trace calls from this test.
 
         :param keep_log_file: When True, if the log is still a file on disk
             leave it as a file on disk. When False, if the log is still a file
             on disk, the log file is deleted and the log preserved as
             self._log_contents.
-        :param _utf8: Private for the getDetails callback; used to ensure that
-            the returned content is valid utf8.
         :return: A string containing the log.
         """
         if self._log_contents is not None:
-            if _utf8:
-                try:
-                    self._log_contents.decode('utf8')
-                except UnicodeDecodeError:
-                    unicodestr = self._log_contents.decode('utf8', 'replace')
-                    self._log_contents = unicodestr.encode('utf8')
+            try:
+                self._log_contents.decode('utf8')
+            except UnicodeDecodeError:
+                unicodestr = self._log_contents.decode('utf8', 'replace')
+                self._log_contents = unicodestr.encode('utf8')
             return self._log_contents
         import bzrlib.trace
         if bzrlib.trace._trace_file:
@@ -1664,14 +1654,16 @@ class TestCase(testtools.TestCase):
                 log_contents = logfile.read()
             finally:
                 logfile.close()
-            if _utf8:
-                try:
-                    log_contents.decode('utf8')
-                except UnicodeDecodeError:
-                    unicodestr = log_contents.decode('utf8', 'replace')
-                    log_contents = unicodestr.encode('utf8')
+            try:
+                log_contents.decode('utf8')
+            except UnicodeDecodeError:
+                unicodestr = log_contents.decode('utf8', 'replace')
+                log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
-                # Permit multiple calls to get_log.
+                self._log_file.close()
+                self._log_file = None
+                # Permit multiple calls to get_log until we clean it up in
+                # finishLogFile
                 self._log_contents = log_contents
                 try:
                     os.remove(self._log_file_name)
@@ -1681,6 +1673,7 @@ class TestCase(testtools.TestCase):
                                              ' %r\n' % self._log_file_name))
                     else:
                         raise
+                self._log_file_name = None
             return log_contents
         else:
             return "No log file content and no log file name."
@@ -3093,7 +3086,7 @@ class RandomDecorator(TestDecorator):
         if self.randomised:
             return iter(self._tests)
         self.randomised = True
-        self.stream.write("Randomizing test order using seed %s\n" %
+        self.stream.write("Randomizing test order using seed %s\n\n" %
             (self.actual_seed()))
         # Initialise the random number generator.
         random.seed(self.actual_seed())
