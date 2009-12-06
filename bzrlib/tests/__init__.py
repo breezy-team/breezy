@@ -231,8 +231,10 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%d non-main threads were left active in the end.\n'
                 % (TestCase._active_threads - 1))
 
-    def _extractBenchmarkTime(self, testCase):
+    def _extractBenchmarkTime(self, testCase, details=None):
         """Add a benchmark time for the current test case."""
+        if details and 'benchtime' in details:
+            return float(''.join(details['benchtime'].iter_bytes()))
         return getattr(testCase, "_benchtime", None)
 
     def _elapsedTestTimeString(self):
@@ -323,13 +325,13 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stop()
         self._cleanupLogFile(test)
 
-    def addSuccess(self, test):
+    def addSuccess(self, test, details=None):
         """Tell result that test completed successfully.
 
         Called from the TestCase run()
         """
         if self._bench_history is not None:
-            benchmark_time = self._extractBenchmarkTime(test)
+            benchmark_time = self._extractBenchmarkTime(test, details)
             if benchmark_time is not None:
                 self._bench_history.write("%s %s\n" % (
                     self._formatTime(benchmark_time),
@@ -1611,6 +1613,8 @@ class TestCase(testtools.TestCase):
         self._benchcalls.
         """
         if self._benchtime is None:
+            self.addDetail('benchtime', content.Content(content.ContentType(
+                "text", "plain"), lambda:[str(self._benchtime)]))
             self._benchtime = 0
         start = time.time()
         try:
