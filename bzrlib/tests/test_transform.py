@@ -15,18 +15,18 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 from StringIO import StringIO
 import sys
 
 from bzrlib import (
     bencode,
     errors,
+    filters,
     generate_ids,
     osutils,
     progress,
     revision as _mod_revision,
-    symbol_versioning,
+    rules,
     tests,
     urlutils,
     )
@@ -1867,6 +1867,49 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
         self.assertTrue(source.is_executable('file1-id'))
+
+    def install_rot13_content_filter(self, pattern):
+        original_registry = filters._reset_registry()
+        def restore_registry():
+            filters._reset_registry(original_registry)
+        self.addCleanup(restore_registry)
+        def rot13(chunks, context=None):
+            return [''.join(chunks).encode('rot13')]
+        rot13filter = filters.ContentFilter(rot13, rot13)
+        filters.register_filter_stack_map('rot13', {'yes': [rot13filter]}.get)
+        os.mkdir(self.test_home_dir + '/.bazaar')
+        rules_filename = self.test_home_dir + '/.bazaar/rules'
+        f = open(rules_filename, 'wb')
+        f.write('[name %s]\nrot13=yes\n' % (pattern,))
+        f.close()
+        def uninstall_rules():
+            os.remove(rules_filename)
+            rules.reset_rules()
+        self.addCleanup(uninstall_rules)
+        rules.reset_rules()
+
+    def test_build_tree_content_filtered_files_are_not_hardlinked(self):
+        """build_tree will not hardlink files that have content filtering rules
+        applied to them (but will still hardlink other files from the same tree
+        if it can).
+        """
+        self.requireFeature(HardlinkFeature)
+        self.install_rot13_content_filter('file1')
+        source = self.create_ab_tree()
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertNotEqual(source_stat, target_stat)
+        source_stat = os.stat('source/file2')
+        target_stat = os.stat('target/file2')
+        self.assertEqualStat(source_stat, target_stat)
 
     def test_case_insensitive_build_tree_inventory(self):
         if (tests.CaseInsensitiveFilesystemFeature.available()

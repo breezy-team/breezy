@@ -67,6 +67,10 @@ Bug Fixes
 * Terminate ssh subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
   
+* The ``--hardlink`` option of ``bzr branch`` and ``bzr checkout`` now
+  works for 2a format trees.  Only files unaffected by content filters
+  will be hardlinked.  (Andrew Bennetts, #408193)
+
 * The new glob expansion on Windows would replace all ``\`` characters
   with ``/`` even if it there wasn't a glob to expand, the arg was quoted,
   etc. Now only change slashes if there is something being glob expanded.

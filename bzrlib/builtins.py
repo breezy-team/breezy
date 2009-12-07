@@ -1209,9 +1209,6 @@ class cmd_branch(Command):
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        if (accelerator_tree is not None and
-            accelerator_tree.supports_content_filtering()):
-            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
