@@ -17,6 +17,7 @@
 """Tests for the launchpad-open command."""
 
 from bzrlib.tests import TestCaseWithTransport
+import os
 
 
 class TestLaunchpadOpen(TestCaseWithTransport):
@@ -87,3 +88,15 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz'))
+
+    def test_launchpad_branch_subdirectory(self):
+        # lp-open in a subdirectory of a registered branch should work
+        wt = self.make_branch_and_tree('lp')
+        wt.branch.set_push_location(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.build_tree(['lp/a/'])
+        os.chdir('lp/a')
+        self.assertEqual(
+            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+             'browser'],
+            self.run_open('.'))
