@@ -24,6 +24,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr commit`` now detects commit messages that looks like file names
+  and issues a warning.
+  (Gioele Barabucci, #73073)
+
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
 
