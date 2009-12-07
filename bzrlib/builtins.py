@@ -3819,7 +3819,10 @@ class cmd_merge(Command):
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
                                    diff_writer=writer(sys.stdout))
-        shelver.run()
+        try:
+            shelver.run()
+        finally:
+            shelver.finalize()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and

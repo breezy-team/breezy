@@ -589,6 +589,14 @@ class TestMerge(tests.TestCaseWithTransport):
         self.run_bzr('merge -d this other -r0..')
         self.failUnlessExists('this/other_file')
 
+    def test_merge_interactive_unlocks_branch(self):
+        this = self.make_branch_and_tree('this')
+        other = self.make_branch_and_tree('other')
+        other.commit('empty commit')
+        self.run_bzr('merge -i -d this other')
+        this.lock_write()
+        this.unlock()
+
 
 class TestMergeForce(tests.TestCaseWithTransport):
 

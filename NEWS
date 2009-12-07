@@ -42,6 +42,8 @@ Bug Fixes
 
 * ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
 
+* Interactive merge doesn't leave branch locks behind.  (Aaron Bentley)
+
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
