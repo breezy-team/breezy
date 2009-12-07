@@ -25,7 +25,6 @@ from bzrlib import (
     osutils,
     patiencediff,
     progress,
-    registry,
     revision as _mod_revision,
     textfile,
     trace,
@@ -240,7 +239,7 @@ class Merger(object):
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
             if other_basis_tree.has_changes(self.other_tree):
-                raise WorkingTreeNotRevision(self.this_tree)
+                raise errors.WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
