@@ -43,6 +43,7 @@ from bzrlib import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     timestamp,
     transport,
@@ -258,6 +259,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
+    Additionally for directories, symlinks and files with an executable
+    bit, Bazaar indicates their type using a trailing character: '/', '@'
+    or '*' respectively.
+
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
 
@@ -432,8 +437,7 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
-                                   for ref_list in node[3]])
+            refs_as_tuples = static_tuple.as_tuples(node[3])
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -909,16 +913,18 @@ class cmd_mv(Command):
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
-    This command only works on branches that have not diverged.  Branches are
-    considered diverged if the destination branch's most recent commit is one
-    that has not been merged (directly or indirectly) into the parent.
+    By default, this command only works on branches that have not diverged.
+    Branches are considered diverged if the destination branch's most recent 
+    commit is one that has not been merged (directly or indirectly) into the 
+    parent.
 
     If branches have diverged, you can use 'bzr merge' to integrate the changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If you want to forget your local changes and just update your branch to
-    match the remote one, use pull --overwrite.
+    If you want to replace your local changes and just want your branch to
+    match the remote one, use pull --overwrite. This will work even if the two
+    branches have diverged.
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
@@ -1203,9 +1209,6 @@ class cmd_branch(Command):
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        if (accelerator_tree is not None and
-            accelerator_tree.supports_content_filtering()):
-            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -1751,16 +1754,22 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to hold branches.
+    """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
-    revisions in the repository, not in the branch directory.
+    revisions in the repository, not in the branch directory.  For branches
+    with shared history, this reduces the amount of storage needed and 
+    speeds up the creation of new branches.
 
-    If the --no-trees option is used then the branches in the repository
-    will not have working trees by default.
+    If the --no-trees option is given then the branches in the repository
+    will not have working trees by default.  They will still exist as 
+    directories on disk, but they will not have separate copies of the 
+    files at a certain revision.  This can be useful for repositories that
+    store branches which are interacted with through checkouts or remote
+    branches, such as on a server.
 
     :Examples:
-        Create a shared repositories holding just branches::
+        Create a shared repository holding just branches::
 
             bzr init-repo --no-trees repo
             bzr init repo/trunk
@@ -2509,7 +2518,7 @@ class cmd_ls(Command):
         if from_root:
             if relpath:
                 prefix = relpath + '/'
-        elif fs_path != '.':
+        elif fs_path != '.' and not fs_path.endswith('/'):
             prefix = fs_path + '/'
 
         if revision is not None or tree is None:
@@ -3056,6 +3065,14 @@ class cmd_commit(Command):
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
+
+        if message is not None:
+            if osutils.lexists(message):
+                warning_msg = ("The commit message is a file"
+                    " name: \"%(filename)s\".\n"
+                    "(use --file \"%(filename)s\" to take commit message from"
+                    " that file)" % { 'filename': message })
+                ui.ui_factory.show_warning(warning_msg)
 
         def get_message(commit_obj):
             """Callback to get commit message"""
@@ -4084,6 +4101,16 @@ class cmd_revert(Command):
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
+
+    Using "bzr revert --forget-merges", it is possible to apply the changes
+    from an arbitrary merge as a single revision.  To do this, perform the
+    merge as desired.  Then doing revert with the "--forget-merges" option will
+    keep the content of the tree as it was, but it will clear the list of
+    pending merges.  The next commit will then contain all of the changes that
+    would have been in the merge, but without any mention of the other parent
+    revisions.  Because this technique forgets where these changes originated,
+    it may cause additional conflicts on later merges involving the source and
+    target branches.
     """
 
     _see_also = ['cat', 'export']
@@ -4170,6 +4197,10 @@ class cmd_missing(Command):
     To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+            
+    :Exit values:
+        1 - some missing revisions
+        0 - no missing revisions
 
     :Examples:
 

@@ -87,7 +87,7 @@ revid
 ~~~~~
 
 **revid** allows specifying a an internal revision ID, as shown by ``bzr
-log`` and some other commands.
+log --show-ids`` and some other commands.
 
 For example::
 
@@ -134,7 +134,7 @@ Ancestor
 ~~~~~~~~
 
 **ancestor**:*path*
-    specifies the common ancestor between the current branch and a 
+    specifies the common ancestor between the current branch and a
     different branch. This is the same ancestor that would be used for
     merging purposes.
 

@@ -533,11 +533,15 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus an
-        # 11-char time string, plus a trailing blank
-        # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
-        self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-18))
+        width = osutils.terminal_width()
+        if width is not None:
+            # width needs space for 6 char status, plus 1 for slash, plus an
+            # 11-char time string, plus a trailing blank
+            # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on
+            # space
+            self.stream.write(self._ellipsize_to_right(name, width-18))
+        else:
+            self.stream.write(name)
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -1524,6 +1528,7 @@ class TestCase(unittest.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            'BZR_CONCURRENCY': None,
             # Make sure that any text ui tests are consistent regardless of
             # the environment the test case is run in; you may want tests that
             # test other combinations.  'dumb' is a reasonable guess for tests
@@ -1531,6 +1536,7 @@ class TestCase(unittest.TestCase):
             'TERM': 'dumb',
             'LINES': '25',
             'COLUMNS': '80',
+            'BZR_COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -2405,7 +2411,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
             # import pdb; pdb.set_trace()
-            _rmtree_temp_dir(root + '/.bzr')
+            _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
             self._create_safety_net()
             raise AssertionError('%s/.bzr should not be modified' % root)
 
@@ -2603,7 +2609,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
-        _rmtree_temp_dir(self.test_base_dir)
+        _rmtree_temp_dir(self.test_base_dir, test_id=self.id())
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
@@ -4131,7 +4137,7 @@ def clone_test(test, new_id):
     return new_test
 
 
-def _rmtree_temp_dir(dirname):
+def _rmtree_temp_dir(dirname, test_id=None):
     # If LANG=C we probably have created some bogus paths
     # which rmtree(unicode) will fail to delete
     # so make sure we are using rmtree(str) to delete everything
@@ -4149,6 +4155,9 @@ def _rmtree_temp_dir(dirname):
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.
+        if test_id != None:
+            ui.ui_factory.clear_term()
+            sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         sys.stderr.write('Unable to remove testing dir %s\n%s'
                          % (os.path.basename(dirname), e))
 

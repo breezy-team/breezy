@@ -32,7 +32,6 @@ import bzrlib.bzrdir as bzrdir
 from bzrlib.errors import BzrCommandError
 from bzrlib.osutils import (
     pathjoin,
-    terminal_width,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase

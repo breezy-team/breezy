@@ -23,6 +23,7 @@ import re
 import socket
 import stat
 import sys
+import termios
 import time
 
 from bzrlib import (
@@ -377,6 +378,14 @@ class TestDateTime(tests.TestCase):
         # duplicating the code from format_date is difficult.
         # Instead blackbox.test_locale should check for localized
         # dates once they do occur in output strings.
+
+    def test_format_date_with_offset_in_original_timezone(self):
+        self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
+            osutils.format_date_with_offset_in_original_timezone(0))
+        self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
+            osutils.format_date_with_offset_in_original_timezone(100000))
+        self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
+            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
 
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
@@ -1847,9 +1856,31 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
+    def setUp(self):
+        super(TestConcurrency, self).setUp()
+        orig = osutils._cached_local_concurrency
+        def restore():
+            osutils._cached_local_concurrency = orig
+        self.addCleanup(restore)
+
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
+
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(use_cache=False))
+
+    def test_option_concurrency(self):
+        os.environ['BZR_CONCURRENCY'] = '1'
+        self.run_bzr('rocks --concurrency 42')
+        # Command line overrides envrionment variable
+        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):
@@ -1892,3 +1923,58 @@ class TestFailedToLoadExtension(tests.TestCase):
             r"bzr: warning: some compiled extensions could not be loaded; "
             "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
             )
+
+
+class TestTerminalWidth(tests.TestCase):
+
+    def test_default_values(self):
+        self.assertEquals(80, osutils.default_terminal_width)
+
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertEquals('80', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
+        self.assertEquals(12, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+
+        class I_am_a_tty(object):
+            def isatty(self):
+                return True
+
+        sys.stdout = I_am_a_tty()
+        self.assertEquals(None, osutils.terminal_width())
+
+    def test_non_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+        sys.stdout = None
+        self.assertEquals(None, osutils.terminal_width())
+
+    def test_TIOCGWINSZ(self):
+        # bug 63539 is about a termios without TIOCGWINSZ attribute
+        exist = True
+        try:
+            orig = termios.TIOCGWINSZ
+        except AttributeError:
+            exist = False
+
+        def restore():
+            if exist:
+                termios.TIOCGWINSZ = orig
+        self.addCleanup(restore)
+
+        del termios.TIOCGWINSZ
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        self.assertEquals(None, osutils.terminal_width())

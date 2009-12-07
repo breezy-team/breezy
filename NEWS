@@ -26,6 +26,13 @@ New Features
 * ``bzr commit`` now has a ``--commit-time`` option.
   (Alexander Sack, #459276)
 
+* The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
+  respect a given terminal width. This can be useful when output is
+  redirected or in obscure cases where the default value is not
+  appropriate. Pagers can use it to get a better control of the line
+  lengths. 
+  (Vincent Ladeuil)
+
 Bug Fixes
 *********
 
@@ -33,12 +40,22 @@ Bug Fixes
   ``source\\path`` rather than ``source/path`` on Windows. This might be a
   source of some dirstate-related failures. (John Arbash Meinel)
 
+* ``bzr commit`` now detects commit messages that looks like file names
+  and issues a warning.
+  (Gioele Barabucci, #73073)
+
 * ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
+
+* ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
+  (#325618, #484109, Marius Kruger)
 
 * ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
 
 * ``bzr serve`` is more clear about the risk of supplying --allow-writes.
   (Robert Collins, #84659)
+
+* Fix bug with redirected URLs over authenticated HTTP.
+  (Glen Mailer, Neil Martinsen-Burrell, Vincent Ladeuil, #395714)
 
 * ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
 
@@ -47,16 +64,38 @@ Bug Fixes
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
+* ``osutils.terminal_width()`` obeys the BZR_COLUMNS envrionment
+  variable but returns None if the terminal is not a tty (when output is
+  redirected for example). Also fixes its usage under OSes that doesn't
+  provide termios.TIOCGWINSZ.  
+  (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
+
 * Terminate ssh subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
   
+* The ``--hardlink`` option of ``bzr branch`` and ``bzr checkout`` now
+  works for 2a format trees.  Only files unaffected by content filters
+  will be hardlinked.  (Andrew Bennetts, #408193)
+
 * The new glob expansion on Windows would replace all ``\`` characters
   with ``/`` even if it there wasn't a glob to expand, the arg was quoted,
   etc. Now only change slashes if there is something being glob expanded.
   (John Arbash Meinel, #485771)
 
+* Use our faster ``KnownGraph.heads()`` functionality when computing the
+  new rich-root heads. This can cut a conversion time in half (mysql from
+  13.5h => 6.2h) (John Arbash Meinel, #487632)
+
+* When launching a external diff tool via bzr diff --using, temporary files
+  are no longer created, rather, the path to the file in the working tree is
+  passed to the external diff tool. This allows the file to be edited if the
+  diff tool provides for this. (Gary van der Merwe, #490738)
+  
+
 Improvements
 ************
+
+* ``bzr log`` is now faster. (Ian Clatworthy)
 
 * ``bzrlib.urlutils.local_path_from_url`` now accepts
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
@@ -72,6 +111,13 @@ API Changes
 
 Internals
 *********
+
+* Several code paths that were calling ``Transport.get().read()`` have
+  been changed to the equalivent ``Transport.get_bytes()``. The main
+  difference is that the latter will explicitly call ``file.close()``,
+  rather than expecting the garbage collector to handle it. This helps
+  with some race conditions on Windows during the test suite and sftp
+  tests. (John Arbash Meinel)
 
 Testing
 *******
@@ -93,7 +139,13 @@ New Features
 
 Bug Fixes
 *********
-* Fix for shell completion and short options.  (Benoît PIERRE)
+
+* ``bzr push --use-existing-dir`` no longer crashes if the directory
+  exists but contains an invalid ``.bzr`` directory.
+  (Andrew Bennetts, #423563)
+
+* Content filters are now applied correctly after pull, merge and switch.
+  (Ian Clatworthy, #385879)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
@@ -174,9 +226,11 @@ Bug Fixes
   ``repo.add_revision`` ignores the supplied inventory sha1 and recomputes
   the sha1 from the repo directly. (John Arbash Meinel)
 
-
 * Shelve command refuse to run if there is no real terminal.
   (Alexander Belchenko)
+
+* Avoid unnecessarily flushing of trace file; it's now unbuffered at the
+  Python level.  (Martin Pool)
 
 Documentation
 *************
@@ -237,6 +291,13 @@ failures-during-cleanup for commit, fixing a long-standing bug with
 behind proxies, and a new StaticTuple datatype, allowing us to reduce
 memory consumption (50%) and garbage collector overhead (40% faster) for
 many operations.
+
+* A new ``--concurrency`` option has been added as well as an associated
+  BZR_CONCURRENCY environment variable to specify the number of
+  processes that can be run concurrently when running ``bzr selftest``. The
+  command-line option overrides the environment variable if both are
+  specified. If none is specified. the number of processes is obtained
+  from the OS as before.  (Matt Nordhoff, Vincent Ladeuil)
 
 Bug Fixes
 *********
@@ -322,6 +383,21 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 
 bzr 2.0.2

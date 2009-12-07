@@ -597,6 +597,18 @@ class TestMerge(tests.TestCaseWithTransport):
         this.lock_write()
         this.unlock()
 
+    def test_merge_reversed_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        for f in ("a", "b"):
+            self.build_tree([f])
+            tree.add(f)
+            tree.commit("added "+f)
+        for context in (".", "", "a"):
+            self.run_bzr("merge -r 1..0 " + context)
+            self.failIfExists("a")
+            tree.revert()
+            self.failUnlessExists("a")
+
 
 class TestMergeForce(tests.TestCaseWithTransport):
 

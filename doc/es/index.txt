@@ -24,7 +24,7 @@ Mudandose a Bazaar (enlances web):
 * `Guias de Migracion <http://doc.bazaar-vcs.org/migration/en/>`_
   - para equipos que mudan el historial de otros SCV
 
-* `Guias de Plugins <http://doc.bazaar-vcs.org/plugins/en/>`_ 
+* `Guias de Plugins <http://doc.bazaar-vcs.org/plugins/en/>`_
 
 Otros Documentos (enlances web):
 

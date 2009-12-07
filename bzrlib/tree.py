@@ -851,6 +851,12 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
+    # Formats that will be used to test this InterTree. If both are
+    # None, this InterTree will not be tested (e.g. because a complex
+    # setup is required)
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+
     _optimisers = []
 
     def _changes_from_entries(self, source_entry, target_entry,

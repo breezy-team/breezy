@@ -1235,9 +1235,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertNotEqual(repo.bzrdir.root_transport.base,
             made_repo.bzrdir.root_transport.base)
-        # New repositories are write locked.
-        self.assertTrue(made_repo.is_write_locked())
-        made_repo.unlock()
 
     def test_format_initialize_on_transport_ex_force_new_repo_False(self):
         t = self.get_transport('repo')
@@ -1270,9 +1267,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             # uninitialisable format
             return
         self.assertLength(1, repo._fallback_repositories)
-        # New repositories are write locked.
-        self.assertTrue(repo.is_write_locked())
-        repo.unlock()
 
     def test_format_initialize_on_transport_ex_default_stack_on(self):
         # When initialize_on_transport_ex uses a stacked-on branch because of
@@ -1295,6 +1289,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo_name = repo_fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
+        # self.addCleanup(repo.unlock)
         if control is None:
             # uninitialisable format
             return
@@ -1326,9 +1321,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
-        # New repositories are write locked.
-        self.assertTrue(repo.is_write_locked())
-        repo.unlock()
 
     def assertInitializeEx(self, t, need_meta=False, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
@@ -1346,6 +1338,10 @@ class TestBzrDir(TestCaseWithBzrDir):
             return None, None
         repo, control, require_stacking, repo_policy = \
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        if repo is not None:
+            # Repositories are open write-locked
+            self.assertTrue(repo.is_write_locked())
+            self.addCleanup(repo.unlock)
         self.assertIsInstance(control, bzrdir.BzrDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
