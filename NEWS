@@ -40,6 +40,10 @@ Bug Fixes
   ``source\\path`` rather than ``source/path`` on Windows. This might be a
   source of some dirstate-related failures. (John Arbash Meinel)
 
+* ``bzr commit`` now detects commit messages that looks like file names
+  and issues a warning.
+  (Gioele Barabucci, #73073)
+
 * ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
 
 * ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.

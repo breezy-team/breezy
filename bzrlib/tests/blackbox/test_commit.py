@@ -107,6 +107,14 @@ class TestCommit(ExternalBase):
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
 
+    def test_warn_about_forgotten_commit_message(self):
+        """Test that the lack of -m parameter is caught"""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['one', 'two'])
+        wt.add(['two'])
+        out, err = self.run_bzr('commit -m one two')
+        self.assertContainsRe(err, "The commit message is a file name")
+
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
         wt = self.prepare_simple_history()

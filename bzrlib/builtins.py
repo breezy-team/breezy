@@ -3066,6 +3066,14 @@ class cmd_commit(Command):
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
+        if message is not None:
+            if osutils.lexists(message):
+                warning_msg = ("The commit message is a file"
+                    " name: \"%(filename)s\".\n"
+                    "(use --file \"%(filename)s\" to take commit message from"
+                    " that file)" % { 'filename': message })
+                ui.ui_factory.show_warning(warning_msg)
+
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
