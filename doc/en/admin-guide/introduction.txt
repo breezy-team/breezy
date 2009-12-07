@@ -3,9 +3,9 @@ Introduction
 
 Welcome to the Bazaar Version Control System's guide for system
 administrators.  Bazaar is a flexible system that provides many possible
-options for serving projects, in ways that will hopefully meet your needs.  If
+options for serving projects in ways that will hopefully meet your needs.  If
 you have requirements that are not met by the current state of the Bazaar
-ecosystem, please let us know at bazaar@lists.canonical.com on on Launchpad at
+ecosystem, please let us know at bazaar@lists.canonical.com or on Launchpad at
 https://launchpad.net/bzr.
 
 Scope of this guide

@@ -81,6 +81,7 @@ unused_docs = [
     'release-notes/NEWS',
     'user-reference/bzr_man',
     'user-guide/index-plain',
+    'admin-guide/index-plain',
     # Miscellaneous
     'user-reference/readme',
 ]

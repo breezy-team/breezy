@@ -87,4 +87,7 @@ to refer to one of his bug fix branches and::
 
   $ bzr log bzr+ssh://server.example.com/~alice/fix-2047
   
-to refer to one of Alice's branches.
+to refer to one of Alice's branches. [#]_
+
+.. [#] The version of Bazaar installed on the server must be at least 2.1.0b1 
+       or newer to support ``/~/`` in bzr+ssh URLs.
