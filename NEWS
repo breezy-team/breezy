@@ -78,6 +78,9 @@ Bug Fixes
   passed to the external diff tool. This allows the file to be edited if the
   diff tool provides for this. (Gary van der Merwe, #490738)
   
+* The launchpad-open command can now be used from a subdirectory of a
+  branch, not just from the root of the branch. (Neil Martinsen-Burrell)
+
 
 Improvements
 ************
