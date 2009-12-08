@@ -17,14 +17,14 @@
 """Tests for the launchpad-open command."""
 
 from bzrlib.tests import TestCaseWithTransport
-import os
 
 
 class TestLaunchpadOpen(TestCaseWithTransport):
 
-    def run_open(self, location, retcode=0):
-        out, err = self.run_bzr(
-            ['launchpad-open', '--dry-run', location], retcode=retcode)
+    def run_open(self, location, retcode=0, working_dir='.'):
+        out, err = self.run_bzr(['launchpad-open', '--dry-run', location],
+                                retcode=retcode,
+                                working_dir=working_dir)
         return err.splitlines()
 
     def test_non_branch(self):
@@ -95,8 +95,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         wt.branch.set_push_location(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.build_tree(['lp/a/'])
-        os.chdir('lp/a')
         self.assertEqual(
             ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
              'browser'],
-            self.run_open('.'))
+            self.run_open('.', working_dir='lp/a'))
