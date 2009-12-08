@@ -1487,37 +1487,6 @@ class PlanWeaveMerge(TextMerge):
         """Construct a BASE file from the plan text."""
         base_lines = []
         for state, line in self.plan:
-            # XXX: We need to figure out what to do for 'conflicted-a' and
-            #      'conflicted-b' lines. Here is a rough outline of the
-            #      options. Also, I tested this using the 'weave' failure.
-            #      Where you have a criss-cross merge, where both a & b
-            #      introduce a line in the same place. The merge conflicts, and
-            #      both include both lines, but put themselves first.
-            #           MN
-            #          /   \
-            #        MaN   MbN
-            #         |  X  |
-            #        MabN MbaN
-            #          \   /
-            #           ???
-            #      1) Include them in .BASE, as they are present in one LCA
-            #         (but not in all of them). In my test, that led to all
-            #         LCA's getting merged together into a big text, which
-            #         seems correct.
-            #         In testing, this gives BASE of MbabN, and the standard
-            #         3-way diff then looks like BASE => THIS is deleting the
-            #         first line 'b', and BASE => OTHER is deleting the second
-            #         line 'b'. Which means that diff3 of THIS BASE OTHER gives
-            #         MaN (no conflicts)
-            #      2) Exclude them in .BASE, because they aren't in all BASEs.
-            #         diff3 then sees 'b' being added by both sides before and
-            #         after 'a'. Which gives MbabN (no conflicts)
-            #      Also note that --weave output isn't a great representation,
-            #      as it produces a 'clean' flip-flop. If you merge MabN =>
-            #      MbaN you get MabN, if you reverse it you get the reverse.
-            #      The BASE in both cases is just the current text, with the
-            #      'other' 'b' line shown as killed-in-other. Which is why it
-            #      merges cleanly.
             if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged'):
                 # If unchanged, then this line is straight from base. If a or b
                 # or both killed the line, then it *used* to be in base.
@@ -1530,14 +1499,41 @@ class PlanWeaveMerge(TextMerge):
                     # killed-base, irrelevant means it doesn't apply
                     # ghost-a/ghost-b are harder to say for sure, but they
                     # aren't in the 'inc_c' which means they aren't in the
-                    # shared base of a & b. So we don't include them.
-                    # And obviously if the line is newly inserted, it isn't in
-                    # base
-                    # If 'conflicted-a' or b, then it is new vs one base, but old
-                    # versus another base. However, if we make it present in
-                    # the base, it will be deleted from the target, and it
+                    # shared base of a & b. So we don't include them.  And
+                    # obviously if the line is newly inserted, it isn't in base
+
+                    # If 'conflicted-a' or b, then it is new vs one base, but
+                    # old versus another base. However, if we make it present
+                    # in the base, it will be deleted from the target, and it
                     # seems better to get a line doubled in the merge result,
                     # rather than have it deleted entirely.
+                    # Example, each node is the 'text' at that point:
+                    #           MN
+                    #          /   \
+                    #        MaN   MbN
+                    #         |  X  |
+                    #        MabN MbaN
+                    #          \   /
+                    #           ???
+                    # There was a criss-cross conflict merge. Both sides
+                    # include the other, but put themselves first.
+                    # Weave marks this as a 'clean' merge, picking OTHER over
+                    # THIS. (Though the details depend on order inserted into
+                    # weave, etc.)
+                    # LCA generates a plan:
+                    # [('unchanged', M),
+                    #  ('conflicted-b', b),
+                    #  ('unchanged', a),
+                    #  ('conflicted-a', b),
+                    #  ('unchanged', N)]
+                    # If you mark 'conflicted-*' as part of BASE, then a 3-way
+                    # merge tool will cleanly generate "MaN" (as BASE vs THIS
+                    # removes one 'b', and BASE vs OTHER removes the other)
+                    # If you include neither, 3-way creates a clean "MbabN" as
+                    # THIS adds one 'b', and OTHER does too.
+                    # It seems that having the line 2 times is better than
+                    # having it omitted. (Easier to manually delete than notice
+                    # it needs to be added.)
                     raise AssertionError('Unknown state: %s' % (state,))
         return base_lines
 
