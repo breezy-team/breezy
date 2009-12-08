@@ -1313,6 +1313,9 @@ class LogFormatter(object):
         if to_exact_file is not None:
             self.to_exact_file = to_exact_file
         else:
+            # XXX: somewhat hacky; this assumes it's a codec writer; it's better
+            # for code that expects to get diffs to pass in the exact file
+            # stream
             self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
