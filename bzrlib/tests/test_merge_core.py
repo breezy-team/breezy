@@ -467,17 +467,14 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
 
     def test_conflicts(self):
-        os.mkdir('a')
         wta = self.make_branch_and_tree('a')
-        a = wta.branch
-        file('a/file', 'wb').write('contents\n')
+        self.build_tree_contents([('a/file', 'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        d_b = a.bzrdir.clone('b')
-        b = d_b.open_branch()
-        file('a/file', 'wb').write('other contents\n')
+        d_b = wta.branch.bzrdir.clone('b')
+        self.build_tree_contents([('a/file', 'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
-        file('b/file', 'wb').write('this contents contents\n')
+        self.build_tree_contents([('b/file', 'this contents contents\n')])
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
