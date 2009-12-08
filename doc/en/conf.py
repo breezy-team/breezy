@@ -73,8 +73,6 @@ latex_documents = [
 
 # List of documents that shouldn't be included in the build.
 unused_docs = [
-    # Placeholder for later
-    'admin-guide/index',
     # Subtopics that get included
     'upgrade-guide/overview',
     'upgrade-guide/data_migration',
