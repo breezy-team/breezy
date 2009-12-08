@@ -481,16 +481,16 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
-        self.assert_(os.path.lexists('b/file.THIS'))
-        self.assert_(os.path.lexists('b/file.BASE'))
-        self.assert_(os.path.lexists('b/file.OTHER'))
+        self.failUnlessExists('b/file.THIS')
+        self.failUnlessExists('b/file.BASE')
+        self.failUnlessExists('b/file.OTHER')
         wtb.revert()
         self.assertEqual(1, wtb.merge_from_branch(wta.branch,
                                                   merge_type=WeaveMerger))
-        self.assert_(os.path.lexists('b/file'))
-        self.assert_(os.path.lexists('b/file.THIS'))
-        self.assert_(not os.path.lexists('b/file.BASE'))
-        self.assert_(os.path.lexists('b/file.OTHER'))
+        self.failUnlessExists('b/file')
+        self.failUnlessExists('b/file.THIS')
+        self.failUnlessExists('b/file.BASE')
+        self.failUnlessExists('b/file.OTHER')
 
     def test_merge_unrelated(self):
         """Sucessfully merges unrelated branches with no common names"""
