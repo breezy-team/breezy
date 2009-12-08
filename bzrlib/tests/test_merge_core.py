@@ -434,6 +434,7 @@ y
         self.assertEqual('text2', builder.this.get_file('1').read())
         builder.cleanup()
 
+
 class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
@@ -492,6 +493,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
     def test_weave_conflicts_not_in_base(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
+        # See bug #494197
         #  A        base revision (before criss-cross)
         #  |\
         #  B C      B does nothing, C adds 'foo'
