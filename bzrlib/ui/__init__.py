@@ -146,12 +146,7 @@ class UIFactory(object):
             encoding = osutils.get_terminal_encoding()
         if encoding_type is None:
             encoding_type = 'replace'
-        # For whatever reason codecs.getwriter() does not advertise its encoding
-        # it just returns the encoding of the wrapped file, which is completely
-        # bogus. So set the attribute, so we can find the correct encoding later.
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
-        if not getattr(out_stream, 'encoding', None):
-            out_stream.encoding = encoding
         return out_stream
 
     def _make_output_stream_explicit(self, encoding, encoding_type):

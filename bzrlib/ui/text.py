@@ -161,6 +161,10 @@ class TextUIFactory(UIFactory):
         else:
             encoded_stdout = codecs.getwriter(encoding)(self.stdout,
                 errors=encoding_type)
+            # For whatever reason codecs.getwriter() does not advertise its encoding
+            # it just returns the encoding of the wrapped file, which is completely
+            # bogus. So set the attribute, so we can find the correct encoding later.
+            encoded_stdout.encoding = encoding
             return TextUIOutputStream(self, encoded_stdout)
 
     def note(self, msg):
