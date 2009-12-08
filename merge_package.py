@@ -24,6 +24,8 @@ import os
 import shutil
 import tempfile
 
+from debian_bundle.changelog import Version
+
 from bzrlib.plugins.builddeb.errors import (
     SharedUpstreamConflictsWithTargetPackaging)
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
@@ -53,7 +55,8 @@ def _upstream_version_data(source, target):
     for branch in (source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
-        results.append((uver, db.revid_of_upstream_version_from_branch(uver)))
+        results.append((Version(uver),
+                    db.revid_of_upstream_version_from_branch(uver)))
 
     return results
 

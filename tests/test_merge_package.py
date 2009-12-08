@@ -24,7 +24,6 @@ import unittest
 
 from debian_bundle.changelog import Version
 
-from bzrlib.errors import ConflictsInTree
 from bzrlib.tests import TestCaseWithTransport
 
 from bzrlib.plugins.builddeb import merge_package as MP
@@ -67,10 +66,10 @@ class MergePackageTests(TestCaseWithTransport):
         ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
         # Ubuntu upstream.
         self.assertEquals(
-            MP._latest_version(ubup_o).upstream_version, '1.1.2')
+            MP._latest_version(ubup_o).upstream_version, '1.2')
         # Debian upstream.
         self.assertEquals(
-            MP._latest_version(debp_n).upstream_version, '2.0')
+            MP._latest_version(debp_n).upstream_version, '1.10')
 
         ubuntup, debianp = self._setup_upstreams_not_diverged()
         # Ubuntu upstream.
@@ -79,6 +78,12 @@ class MergePackageTests(TestCaseWithTransport):
         # Debian upstream.
         self.assertEquals(
             MP._latest_version(debianp).upstream_version, '2.2')
+
+    def test__upstream_version_data(self):
+        ubup_o, debp_n, _ubuu, _debu = self._setup_debian_upstream_newer()
+        vdata = MP._upstream_version_data(debp_n.branch, ubup_o.branch)
+        self.assertEquals(vdata[0][0], Version('1.10'))
+        self.assertEquals(vdata[1][0], Version('1.2'))
 
     def test_debian_upstream_newer(self):
         """Diverging upstreams (debian newer) don't cause merge conflicts.
@@ -108,8 +113,8 @@ class MergePackageTests(TestCaseWithTransport):
         ubup.revert()
 
         # Check the versions present in the tree with the fixed ancestry.
-        v3 = "1.1.2"
-        v4 = "2.0"
+        v3 = "1.2"
+        v4 = "1.10"
         db1 = DistributionBranch(ubup.branch, ubup.branch)
         self.assertEqual(db1.has_upstream_version(v3), True)
         # This version is in the diverged debian upstream tree and will
@@ -284,16 +289,16 @@ class MergePackageTests(TestCaseWithTransport):
         where:
              - A = 1.0
              - B = 1.1
-             - H = 2.0
+             - H = 1.10
 
-             - G = 1.1.2
+             - G = 1.2
 
              - C = 1.0-1
              - D = 1.1-1
-             - J = 2.0-1
+             - J = 1.10-1
 
              - E = 1.0-1ubuntu1
-             - I = 1.1.2-0ubuntu1
+             - I = 1.2-0ubuntu1
 
         Please note that the debian and ubuntu *upstream* branches will
         have a conflict with respect to the file 'c'.
@@ -303,7 +308,7 @@ class MergePackageTests(TestCaseWithTransport):
         vdata = [
             ('upstream-1.0', ('a',), None, None),
             ('upstream-1.1', ('b',), None, None),
-            ('upstream-2.0', ('c',), None, None),
+            ('upstream-1.10', ('c',), None, None),
             ]
         debu_n = self._setup_branch(name, vdata)
 
@@ -315,7 +320,7 @@ class MergePackageTests(TestCaseWithTransport):
         vdata = [
             ('1.0-1', ('debian/', 'debian/changelog'), None, None),
             ('1.1-1', ('o',), debu_n, self.revid_debu_n_B),
-            ('2.0-1', ('p',), debu_n, self.revid_debu_n_C),
+            ('1.10-1', ('p',), debu_n, self.revid_debu_n_C),
             ]
         self._setup_branch(name, vdata, debp_n, 'd')
 
@@ -325,7 +330,7 @@ class MergePackageTests(TestCaseWithTransport):
             name, revision_id=self.revid_debu_n_B).open_workingtree()
 
         vdata = [
-            ('upstream-1.1.2', ('c',), None, None),
+            ('upstream-1.2', ('c',), None, None),
             ]
         self._setup_branch(name, vdata, ubuu_o)
 
@@ -336,7 +341,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         vdata = [
             ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
-            ('1.1.2-0ubuntu1', (), ubuu_o, self.revid_ubuu_o_A),
+            ('1.2-0ubuntu1', (), ubuu_o, self.revid_ubuu_o_A),
             ]
         self._setup_branch(name, vdata, ubup_o, 'u')
 
@@ -358,16 +363,16 @@ class MergePackageTests(TestCaseWithTransport):
         where:
              - A = 1.0
              - B = 1.1
-             - H = 2.0
+             - H = 1.10
 
-             - G = 1.1.2
+             - G = 1.2
 
              - C = 1.0-1
              - D = 1.1-1
-             - J = 2.0-1
+             - J = 1.10-1
 
              - E = 1.0-1ubuntu1
-             - I = 1.1.2-0ubuntu1
+             - I = 1.2-0ubuntu1
 
         Please note that the debian upstream and the ubuntu packaging
         branches will have a conflict with respect to the file 'c'.
@@ -377,7 +382,7 @@ class MergePackageTests(TestCaseWithTransport):
         vdata = [
             ('upstream-1.0', ('a',), None, None),
             ('upstream-1.1', ('b',), None, None),
-            ('upstream-2.0', ('c',), None, None),
+            ('upstream-1.10', ('c',), None, None),
             ]
         debu_n = self._setup_branch(name, vdata)
 
@@ -389,7 +394,7 @@ class MergePackageTests(TestCaseWithTransport):
         vdata = [
             ('1.0-1', ('debian/', 'debian/changelog'), None, None),
             ('1.1-1', ('o',), debu_n, self.revid_debu_n_B),
-            ('2.0-1', ('p',), debu_n, self.revid_debu_n_C),
+            ('1.10-1', ('p',), debu_n, self.revid_debu_n_C),
             ]
         self._setup_branch(name, vdata, debp_n, 'd')
 
@@ -399,7 +404,7 @@ class MergePackageTests(TestCaseWithTransport):
             name, revision_id=self.revid_debu_n_B).open_workingtree()
 
         vdata = [
-            ('upstream-1.1.2', (), None, None),
+            ('upstream-1.2', (), None, None),
             ]
         self._setup_branch(name, vdata, ubuu_o)
 
@@ -410,7 +415,7 @@ class MergePackageTests(TestCaseWithTransport):
 
         vdata = [
             ('1.0-1ubuntu1', (), debp_n, self.revid_debp_n_A),
-            ('1.1.2-0ubuntu1', ('c',), ubuu_o, self.revid_ubuu_o_A),
+            ('1.2-0ubuntu1', ('c',), ubuu_o, self.revid_ubuu_o_A),
             ]
         self._setup_branch(name, vdata, ubup_o, 'u')
 
