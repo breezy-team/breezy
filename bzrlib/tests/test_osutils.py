@@ -23,7 +23,6 @@ import re
 import socket
 import stat
 import sys
-import termios
 import time
 
 from bzrlib import (
@@ -53,6 +52,8 @@ class _UTF8DirReaderFeature(tests.Feature):
         return 'bzrlib._readdir_pyx'
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
+
+TermIOSFeature = tests._ModuleFeature('termios')
 
 
 def _already_unicode(s):
@@ -1961,20 +1962,20 @@ class TestTerminalWidth(tests.TestCase):
         sys.stdout = None
         self.assertEquals(None, osutils.terminal_width())
 
-    def test_TIOCGWINSZ(self):
+    def test_no_TIOCGWINSZ(self):
+        self.requireFeature(TermIOSFeature)
+        termios = TermIOSFeature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
-        exist = True
         try:
             orig = termios.TIOCGWINSZ
         except AttributeError:
-            exist = False
-
-        def restore():
-            if exist:
+            # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
+            pass
+        else:
+            def restore():
                 termios.TIOCGWINSZ = orig
-        self.addCleanup(restore)
-
-        del termios.TIOCGWINSZ
+            self.addCleanup(restore)
+            del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
-        self.assertEquals(None, osutils.terminal_width())
+        self.assertIs(None, osutils.terminal_width())
