@@ -53,7 +53,7 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
-TermIOSFeature = tests._ModuleFeature('termios')
+TermIOSFeature = tests.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):

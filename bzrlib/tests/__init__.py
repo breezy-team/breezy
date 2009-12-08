@@ -4247,7 +4247,7 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
-class _ModuleFeature(Feature):
+class ModuleAvailableFeature(Feature):
     """This is a feature than describes a module we want to be available.
 
     Declare the name of the module in __init__(), and then after probing, the
@@ -4257,7 +4257,7 @@ class _ModuleFeature(Feature):
     """
 
     def __init__(self, module_name):
-        super(_ModuleFeature, self).__init__()
+        super(ModuleAvailableFeature, self).__init__()
         self.module_name = module_name
 
     def _probe(self):
