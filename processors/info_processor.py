@@ -79,49 +79,42 @@ class InfoProcessor(processor.ImportProcessor):
         # Dump statistics
         cmd_names = commands.COMMAND_NAMES
         fc_names = commands.FILE_COMMAND_NAMES
-        cmd_values = [self.cmd_counts[c] for c in cmd_names]
-        fc_values = [self.file_cmd_counts[c] for c in fc_names]
-        self._dump_stats_group("Command counts", cmd_names, cmd_values, str)
-        self._dump_stats_group("File command counts", fc_names, fc_values, str)
+        self._dump_stats_group("Command counts",
+            [(c, self.cmd_counts[c]) for c in cmd_names], str)
+        self._dump_stats_group("File command counts", 
+            [(c, self.file_cmd_counts[c]) for c in fc_names], str)
 
         # Commit stats
         if self.cmd_counts['commit']:
-            p_names = []
-            p_values = []
+            p_items = []
             for i in xrange(0, self.max_parent_count + 1):
                 if i in self.parent_counts:
                     count = self.parent_counts[i]
-                    p_names.append("parents-%d" % i)
-                    p_values.append(count)
+                    p_items.append(("parents-%d" % i, count))
             merges_count = len(self.merges.keys())
-            p_names.append('total revisions merged')
-            p_values.append(merges_count)
+            p_items.append(('total revisions merged', merges_count))
             flags = {
                 'separate authors found': self.separate_authors_found,
                 'executables': self.executables_found,
                 'symlinks': self.symlinks_found,
                 'blobs referenced by SHA': self.sha_blob_references,
                 }
-            self._dump_stats_group("Parent counts", p_names, p_values, str)
-            self._dump_stats_group("Commit analysis", flags.keys(),
-                flags.values(), _found)
+            self._dump_stats_group("Parent counts", p_items, str)
+            self._dump_stats_group("Commit analysis", flags.iteritems(), _found)
             heads = helpers.invert_dictset(self.cache_mgr.heads)
-            self._dump_stats_group("Head analysis", heads.keys(),
-                heads.values(), None, _iterable_as_config_list)
+            self._dump_stats_group("Head analysis", heads.iteritems(), None,
+                                    _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
-            self._dump_stats_group("Merges", self.merges.keys(),
-                self.merges.values(), None)
+            self._dump_stats_group("Merges", self.merges.iteritems(), None)
             # We only show the rename old path and copy source paths when -vv
             # (verbose=2) is specified. The output here for mysql's data can't
             # be parsed currently so this bit of code needs more work anyhow ..
             if self.verbose >= 2:
                 self._dump_stats_group("Rename old paths",
-                    self.rename_old_paths.keys(),
-                    self.rename_old_paths.values(), len,
+                    self.rename_old_paths.iteritems(), len,
                     _iterable_as_config_list)
                 self._dump_stats_group("Copy source paths",
-                    self.copy_source_paths.keys(),
-                    self.copy_source_paths.values(), len,
+                    self.copy_source_paths.iteritems(), len,
                     _iterable_as_config_list)
 
         # Blob stats
@@ -129,23 +122,23 @@ class InfoProcessor(processor.ImportProcessor):
             # In verbose mode, don't list every blob used
             if self.verbose:
                 del self.blobs['used']
-            self._dump_stats_group("Blob usage tracking", self.blobs.keys(),
-                self.blobs.values(), len, _iterable_as_config_list)
+            self._dump_stats_group("Blob usage tracking",
+                self.blobs.iteritems(), len, _iterable_as_config_list)
         if self.blob_ref_counts:
             blobs_by_count = helpers.invert_dict(self.blob_ref_counts)
+            blob_items = blobs_by_count.items()
+            blob_items.sort()
             self._dump_stats_group("Blob reference counts",
-                blobs_by_count.keys(),
-                blobs_by_count.values(), len, _iterable_as_config_list)
+                blob_items, len, _iterable_as_config_list)
 
         # Other stats
         if self.cmd_counts['reset']:
             reset_stats = {
                 'lightweight tags': self.lightweight_tags,
                 }
-            self._dump_stats_group("Reset analysis", reset_stats.keys(),
-                reset_stats.values())
+            self._dump_stats_group("Reset analysis", reset_stats.iteritems())
 
-    def _dump_stats_group(self, title, names, values, normal_formatter=None,
+    def _dump_stats_group(self, title, items, normal_formatter=None,
         verbose_formatter=None):
         """Dump a statistics group.
         
@@ -158,7 +151,7 @@ class InfoProcessor(processor.ImportProcessor):
         """
         if self.verbose:
             self.outf.write("[%s]\n" % (title,))
-            for name, value in zip(names, values):
+            for name, value in items:
                 if verbose_formatter is not None:
                     value = verbose_formatter(value)
                 if type(name) == str:
@@ -167,7 +160,7 @@ class InfoProcessor(processor.ImportProcessor):
             self.outf.write("\n")
         else:
             self.outf.write("%s:\n" % (title,))
-            for name, value in zip(names, values):
+            for name, value in items:
                 if normal_formatter is not None:
                     value = normal_formatter(value)
                 self.outf.write("\t%s\t%s\n" % (value, name))
