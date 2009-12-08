@@ -489,6 +489,39 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.failUnlessExists('b/file.BASE')
         self.failUnlessExists('b/file.OTHER')
 
+    def test_weave_conflicts_not_in_base(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        #  A        base revision (before criss-cross)
+        #  |\
+        #  B C      B does nothing, C adds 'foo'
+        #  |X|
+        #  D E      D and E modify foo in incompatible ways
+        #
+        # Merging will conflict, with C as a clean base text. However, the
+        # current code uses A as the global base and 'foo' doesn't exist there.
+        # It isn't trivial to create foo.BASE because it tries to look up
+        # attributes like 'executable' in A.
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [
+            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))])
+        builder.finish_series()
+        tree = builder.get_branch().create_checkout('tree', lightweight=True)
+        self.assertEqual(1, tree.merge_from_branch(tree.branch,
+                                                   to_revision='D-id',
+                                                   merge_type=WeaveMerger))
+        self.failUnlessExists('tree/foo.THIS')
+        self.failUnlessExists('tree/foo.OTHER')
+        self.expectFailure('fail to create .BASE in some criss-cross merges',
+            self.failUnlessExists, 'tree/foo.BASE')
+        self.failUnlessExists('tree/foo.BASE')
+
     def test_merge_unrelated(self):
         """Sucessfully merges unrelated branches with no common names"""
         wta = self.make_branch_and_tree('a')
