@@ -404,6 +404,10 @@ class TextUIOutputStream(object):
     def __init__(self, ui_factory, wrapped_stream):
         self.ui_factory = ui_factory
         self.wrapped_stream = wrapped_stream
+        # this does no transcoding, but it must expose the underlying encoding
+        # because some callers need to know what can be written - see for
+        # example unescape_for_display.
+        self.encoding = wrapped_stream.encoding
 
     def flush(self):
         self.ui_factory.clear_term()
