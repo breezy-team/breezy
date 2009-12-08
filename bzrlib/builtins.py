@@ -2323,7 +2323,10 @@ class cmd_log(Command):
             # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
+            # Make a non-encoding output to include the diffs - bug 328007
+            unencoded_output = ui.ui_factory.make_output_stream(encoding_type='exact')
             lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            to_exact_file=unencoded_output,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
                             levels=levels,
