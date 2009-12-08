@@ -1,0 +1,14 @@
+Extending Bazaar with Hooks and Plugins
+=======================================
+
+Email Notification
+------------------
+
+Feed Generation
+---------------
+
+Mirroring
+---------
+
+Other Useful Plugins
+--------------------
