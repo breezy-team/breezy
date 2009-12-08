@@ -3067,11 +3067,18 @@ class cmd_commit(Command):
             raise errors.LocalRequiresBoundBranch()
 
         if message is not None:
-            if osutils.lexists(message):
-                warning_msg = ("The commit message is a file"
-                    " name: \"%(filename)s\".\n"
-                    "(use --file \"%(filename)s\" to take commit message from"
-                    " that file)" % { 'filename': message })
+            try:
+                file_exists = os.path.exists(message)
+            except UnicodeError:
+                # The commit message contains unicode characters that can't be
+                # represented in the filesystem encoding, so that can't be a
+                # file.
+                file_exists = False
+            if file_exists:
+                warning_msg = (
+                    'The commit message is a file name: "%(f)s".\n'
+                    '(use --file "%(f)s" to take commit message from that file)'
+                    % { 'f': message })
                 ui.ui_factory.show_warning(warning_msg)
 
         def get_message(commit_obj):
