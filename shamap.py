@@ -46,8 +46,8 @@ def check_pysqlite_version(sqlite3):
     """Check that sqlite library is compatible.
 
     """
-    if (sqlite3.sqlite_version_info[0] < 3 or 
-            (sqlite3.sqlite_version_info[0] == 3 and 
+    if (sqlite3.sqlite_version_info[0] < 3 or
+            (sqlite3.sqlite_version_info[0] == 3 and
              sqlite3.sqlite_version_info[1] < 3)):
         trace.warning('Needs at least sqlite 3.3.x')
         raise bzrlib.errors.BzrError("incompatible sqlite library")
@@ -56,7 +56,7 @@ try:
     try:
         import sqlite3
         check_pysqlite_version(sqlite3)
-    except (ImportError, bzrlib.errors.BzrError), e: 
+    except (ImportError, bzrlib.errors.BzrError), e:
         from pysqlite2 import dbapi2 as sqlite3
         check_pysqlite_version(sqlite3)
 except:
@@ -159,7 +159,7 @@ class SqliteGitShaMap(GitShaMap):
         else:
             if not mapdbs().has_key(path):
                 mapdbs()[path] = sqlite3.connect(path)
-            self.db = mapdbs()[path]    
+            self.db = mapdbs()[path]
         self.db.executescript("""
         create table if not exists commits(sha1 text, revid text, tree_sha text);
         create index if not exists commit_sha1 on commits(sha1);
