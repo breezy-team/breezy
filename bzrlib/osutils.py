@@ -1398,7 +1398,7 @@ def _ioctl_terminal_size(width, height):
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        width, height = struct.unpack('HHHH', x)[0:2]
+        height, width = struct.unpack('HHHH', x)[0:2]
     except (IOError, AttributeError):
         pass
     return width, height
