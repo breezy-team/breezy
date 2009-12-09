@@ -1415,8 +1415,7 @@ class WeaveMerger(Merge3Merger):
             base = self.base_tree
         else:
             base = None
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
-                                              base=base)
+        plan = self._plan_weave_merge(file_id, base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
@@ -1426,6 +1425,10 @@ class WeaveMerger(Merge3Merger):
         textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
                                                  '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
+
+    def _plan_weave_merge(self, file_id, base):
+        return self.this_tree.plan_file_merge(
+            file_id, self.other_tree, base=base)
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
@@ -1449,26 +1452,9 @@ class WeaveMerger(Merge3Merger):
 
 class LCAMerger(WeaveMerger):
 
-    def _merged_lines(self, file_id):
-        """Generate the merged lines.
-        There is no distinction between lines that are meant to contain <<<<<<<
-        and conflicts.
-        """
-        if self.cherrypick:
-            base = self.base_tree
-        else:
-            base = None
-        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
-                                                  base=base)
-        if 'merge' in debug.debug_flags:
-            plan = list(plan)
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
-            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-                                                 '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
+    def _plan_weave_merge(self, file_id, base):
+        return self.this_tree.plan_file_lca_merge(
+            file_id, self.other_tree, base=base)
 
 
 class Diff3Merger(Merge3Merger):
