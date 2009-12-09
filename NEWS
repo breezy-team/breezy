@@ -105,6 +105,12 @@ Improvements
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
 
+* The progress bar now shows only a spinner and per-operation counts,
+  not an overall progress bar.  The previous bar was often not correlated
+  with real overall operation progress, either because the operations take
+  nonlinear time, or because at the start of the operation Bazaar couldn't
+  estimate how much work there was to do.  (Martin Pool)
+
 Documentation
 *************
 
