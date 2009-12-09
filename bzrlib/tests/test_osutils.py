@@ -1942,6 +1942,14 @@ class TestTerminalWidth(tests.TestCase):
         self.addCleanup(restore)
         osutils._terminal_size = new
 
+    def set_fake_tty(self):
+
+        class I_am_a_tty(object):
+            def isatty(self):
+                return True
+
+        self.replace_stdout(I_am_a_tty())
+
     def test_default_values(self):
         self.assertEqual(80, osutils.default_terminal_width)
 
@@ -1954,6 +1962,7 @@ class TestTerminalWidth(tests.TestCase):
     def test_falls_back_to_COLUMNS(self):
         del os.environ['BZR_COLUMNS']
         self.assertNotEqual('42', os.environ['COLUMNS'])
+        self.set_fake_tty()
         os.environ['COLUMNS'] = '42'
         self.assertEqual(42, osutils.terminal_width())
 
@@ -1961,14 +1970,10 @@ class TestTerminalWidth(tests.TestCase):
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
 
-        class I_am_a_tty(object):
-            def isatty(self):
-                return True
-
         def terminal_size(w, h):
             return 42, 42
 
-        self.replace_stdout(I_am_a_tty())
+        self.set_fake_tty()
         # We need to override the osutils definition as it depends on the
         # running environment that we can't control (PQM running without a
         # controlling terminal is one example).
