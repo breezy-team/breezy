@@ -53,7 +53,7 @@ API Changes
   (rather than user-interaction) data to stdout.  This automatically
   coordinates with progress bars or other terminal activity, and can be
   overridden by GUIs.
-  (Martin Pool)
+  (Martin Pool, 493944)
 
 Internals
 *********
