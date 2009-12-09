@@ -19,6 +19,7 @@ import re
 import stat
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+import signal
 import sys
 import time
 import warnings
@@ -1398,7 +1399,7 @@ def _ioctl_terminal_size(width, height):
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        width, height = struct.unpack('HHHH', x)[0:2]
+        height, width = struct.unpack('HHHH', x)[0:2]
     except (IOError, AttributeError):
         pass
     return width, height
@@ -1416,6 +1417,14 @@ if sys.platform == 'win32':
     _terminal_size = _win32_terminal_size
 else:
     _terminal_size = _ioctl_terminal_size
+
+
+def _terminal_size_changed(signum, frame):
+    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
+    width, height = _terminal_size(None, None)
+    if width is not None:
+        os.environ['COLUMNS'] = str(width)
+signal.signal(signal.SIGWINCH, _terminal_size_changed)
 
 
 def supports_executable():

@@ -234,6 +234,7 @@ class TextProgressView(object):
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
+        self._width = osutils.terminal_width()
         if self._width is not None:
             n = self._width - 1
             s = '%-*.*s' % (n, n, s)
