@@ -1342,6 +1342,23 @@ def terminal_width():
     """Return terminal width.
 
     None is returned if the width can't established precisely.
+
+    The rules are:
+    - if BZR_COLUMNS is set, returns its value
+    - if there is no controlling terminal, returns None
+    - if COLUMNS is set, returns its value,
+
+    From there, we need to query the OS to get the size of the controlling
+    terminal.
+
+    Unices:
+    - get termios.TIOCGWINSZ
+    - if an error occurs or a negative value is obtained, returns None
+
+    Windows:
+    
+    - win32utils.get_console_size() decides,
+    - returns None on error (provided default value)
     """
 
     # If BZR_COLUMNS is set, take it, user is always right
@@ -1355,26 +1372,50 @@ def terminal_width():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
-    if sys.platform == 'win32':
-        return win32utils.get_console_size(defaultx=None)[0]
-
+    # If COLUMNS is set, take it, the terminal knows better (even inside a
+    # given terminal, the application can decide to set COLUMNS to a lower
+    # value (splitted screen) or a bigger value (scroll bars))
     try:
-        import struct, fcntl, termios
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        width = struct.unpack('HHHH', x)[1]
-    except (IOError, AttributeError):
-        # If COLUMNS is set, take it
-        try:
-            return int(os.environ['COLUMNS'])
-        except (KeyError, ValueError):
-            return None
+        return int(os.environ['COLUMNS'])
+    except (KeyError, ValueError):
+        pass
 
+    width, height = _terminal_size(None, None)
     if width <= 0:
         # Consider invalid values as meaning no width
         return None
 
     return width
+
+
+def _win32_terminal_size(width, height):
+    width, height = win32utils.get_console_size(defaultx=width, defaulty=height)
+    return width, height
+
+
+def _ioctl_terminal_size(width, height):
+    try:
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        height, width = struct.unpack('HHHH', x)[0:2]
+    except (IOError, AttributeError):
+        pass
+    return width, height
+
+_terminal_size = None
+"""Returns the terminal size as (width, height).
+
+:param width: Default value for width.
+:param height: Default value for height.
+
+This is defined specifically for each OS and query the size of the controlling
+terminal. If any error occurs, the provided default values should be returned.
+"""
+if sys.platform == 'win32':
+    _terminal_size = _win32_terminal_size
+else:
+    _terminal_size = _ioctl_terminal_size
 
 
 def supports_executable():

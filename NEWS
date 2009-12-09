@@ -64,11 +64,13 @@ Bug Fixes
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
-* ``osutils.terminal_width()`` obeys the BZR_COLUMNS envrionment
+* ``osutils.terminal_width()`` obeys the BZR_COLUMNS environment
   variable but returns None if the terminal is not a tty (when output is
   redirected for example). Also fixes its usage under OSes that doesn't
-  provide termios.TIOCGWINSZ.  
+  provide termios.TIOCGWINSZ. Make sure the corresponding tests runs on
+  windows too.
   (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
+  (John Arbash Meinel, Vincent Ladeuil, #492561)
 
 * Terminate ssh subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
