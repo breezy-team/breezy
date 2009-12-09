@@ -1209,9 +1209,6 @@ class cmd_branch(Command):
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        if (accelerator_tree is not None and
-            accelerator_tree.supports_content_filtering()):
-            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -3069,6 +3066,14 @@ class cmd_commit(Command):
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
+        if message is not None:
+            if osutils.lexists(message):
+                warning_msg = ("The commit message is a file"
+                    " name: \"%(filename)s\".\n"
+                    "(use --file \"%(filename)s\" to take commit message from"
+                    " that file)" % { 'filename': message })
+                ui.ui_factory.show_warning(warning_msg)
+
         def get_message(commit_obj):
             """Callback to get commit message"""
             my_message = message
@@ -3831,7 +3836,10 @@ class cmd_merge(Command):
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
                                    diff_writer=writer(sys.stdout))
-        shelver.run()
+        try:
+            shelver.run()
+        finally:
+            shelver.finalize()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and

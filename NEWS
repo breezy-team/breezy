@@ -40,14 +40,26 @@ Bug Fixes
   ``source\\path`` rather than ``source/path`` on Windows. This might be a
   source of some dirstate-related failures. (John Arbash Meinel)
 
+* ``bzr commit`` now detects commit messages that looks like file names
+  and issues a warning.
+  (Gioele Barabucci, #73073)
+
 * ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
+
+* ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
+  (#325618, #484109, Marius Kruger)
 
 * ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
 
 * ``bzr serve`` is more clear about the risk of supplying --allow-writes.
   (Robert Collins, #84659)
 
+* Fix bug with redirected URLs over authenticated HTTP.
+  (Glen Mailer, Neil Martinsen-Burrell, Vincent Ladeuil, #395714)
+
 * ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
+
+* Interactive merge doesn't leave branch locks behind.  (Aaron Bentley)
 
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
@@ -61,6 +73,10 @@ Bug Fixes
 * Terminate ssh subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
   
+* The ``--hardlink`` option of ``bzr branch`` and ``bzr checkout`` now
+  works for 2a format trees.  Only files unaffected by content filters
+  will be hardlinked.  (Andrew Bennetts, #408193)
+
 * The new glob expansion on Windows would replace all ``\`` characters
   with ``/`` even if it there wasn't a glob to expand, the arg was quoted,
   etc. Now only change slashes if there is something being glob expanded.
@@ -75,6 +91,10 @@ Bug Fixes
   passed to the external diff tool. This allows the file to be edited if the
   diff tool provides for this. (Gary van der Merwe, #490738)
   
+* The launchpad-open command can now be used from a subdirectory of a
+  branch, not just from the root of the branch. 
+  (Neil Martinsen-Burrell, #489102)
+
 
 Improvements
 ************
@@ -209,7 +229,6 @@ Bug Fixes
   as a tuple on ``self.inv_sha1``. This was missed because
   ``repo.add_revision`` ignores the supplied inventory sha1 and recomputes
   the sha1 from the repo directly. (John Arbash Meinel)
-
 
 * Shelve command refuse to run if there is no real terminal.
   (Alexander Belchenko)

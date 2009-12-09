@@ -170,7 +170,7 @@ class cmd_launchpad_open(Command):
         """Yield possible external locations for the branch at 'location'."""
         yield location
         try:
-            branch = _mod_branch.Branch.open(location)
+            branch = _mod_branch.Branch.open_containing(location)[0]
         except NotBranchError:
             return
         branch_url = branch.get_public_branch()

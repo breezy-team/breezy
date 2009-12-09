@@ -922,8 +922,10 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP        0ms',
-                                 "    The feature 'Feature' is not available."])
+        # We don't check for the final '0ms' since it may fail on slow hosts
+        self.assertStartsWith(lines[0], 'NODEP')
+        self.assertEqual(lines[1],
+                         "    The feature 'Feature' is not available.")
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
@@ -2493,6 +2495,22 @@ class TestUnavailableFeature(tests.TestCase):
         feature = tests.Feature()
         exception = tests.UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+class TestModuleAvailableFeature(tests.TestCase):
+
+    def test_available_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.tests')
+        self.assertEqual('bzrlib.tests', feature.module_name)
+        self.assertEqual('bzrlib.tests', str(feature))
+        self.assertTrue(feature.available())
+        self.assertIs(tests, feature.module)
+
+    def test_unavailable_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
+        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
+        self.assertFalse(feature.available())
+        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):
