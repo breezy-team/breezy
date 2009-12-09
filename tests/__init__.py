@@ -21,15 +21,16 @@ from bzrlib.tests.TestUtil import TestLoader, TestSuite
 
 
 def test_suite():
-    module_names = [
-        'bzrlib.plugins.fastimport.tests.test_branch_mapper',
-        'bzrlib.plugins.fastimport.tests.test_commands',
-        'bzrlib.plugins.fastimport.tests.test_errors',
-        'bzrlib.plugins.fastimport.tests.test_filter_processor',
-        'bzrlib.plugins.fastimport.tests.test_generic_processor',
-        'bzrlib.plugins.fastimport.tests.test_head_tracking',
-        'bzrlib.plugins.fastimport.tests.test_helpers',
-        'bzrlib.plugins.fastimport.tests.test_parser',
-        ]
+    module_names = [__name__ + '.' + x for x in [
+        'test_branch_mapper',
+        'test_commands',
+        'test_errors',
+        'test_filter_processor',
+        'test_generic_processor',
+        'test_head_tracking',
+        'test_helpers',
+        'test_parser',
+        'test_revision_store',
+        ]]
     loader = TestLoader()
     return loader.loadTestsFromModuleNames(module_names)

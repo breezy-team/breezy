@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,10 +40,16 @@ class _TreeShim(object):
         if file_id in self._new_info_by_id:
             new_path = self._new_info_by_id[file_id][0]
             if new_path is None:
-                raise errors.NoSuchId()
+                raise errors.NoSuchId(self, file_id)
+            return new_path
         return self._basis_inv.id2path(file_id)
 
     def path2id(self, path):
+        # CommitBuilder currently only requires access to the root id. We don't
+        # build a map of renamed files, etc. One possibility if we ever *do*
+        # need more than just root, is to defer to basis_inv.path2id() and then
+        # check if the file_id is in our _new_info_by_id dict. And in that
+        # case, return _new_info_by_id[file_id][0]
         if path != '':
             raise NotImplementedError(_TreeShim.path2id)
         # TODO: Handle root renames?
@@ -72,7 +78,6 @@ class _TreeShim(object):
     def get_reference_revision(self, file_id, path=None):
         raise NotImplementedError(_TreeShim.get_reference_revision)
 
-
     def _delta_to_iter_changes(self):
         """Convert the inv_delta into an iter_changes repr."""
         # iter_changes is:
@@ -87,6 +92,9 @@ class _TreeShim(object):
         #   )
         basis_inv = self._basis_inv
         for old_path, new_path, file_id, ie in self._inv_delta:
+            # Perf: Would this be faster if we did 'if file_id in basis_inv'?
+            # Since the *very* common case is that the file already exists, it
+            # probably is better to optimize for that
             try:
                 old_ie = basis_inv[file_id]
             except errors.NoSuchId:
@@ -126,6 +134,7 @@ class _TreeShim(object):
                     content_modified = (ie.text_sha1 != old_ie.text_sha1
                                         or ie.text_size != old_ie.text_size)
                     # TODO: ie.kind != old_ie.kind
+                    # TODO: symlinks changing targets, content_modified?
                     change = (file_id,
                         (old_path, new_path),
                         content_modified,
