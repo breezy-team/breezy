@@ -86,13 +86,13 @@ def lazy_check_versions():
         if dulwich_version < dulwich_minimum_version:
             raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
 
-bzrdir.format_registry.register_lazy('git', 
+bzrdir.format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
     help='GIT repository.', native=False, experimental=True,
     )
 
 from bzrlib.revisionspec import revspec_registry
-revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec", 
+revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
 
 try:
@@ -149,7 +149,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         if not isinstance(transport, LocalTransport):
             raise bzr_errors.NotBranchError(path=transport.base)
 
-        # This should quickly filter out most things that are not 
+        # This should quickly filter out most things that are not
         # git repositories, saving us the trouble from loading dulwich.
         if not transport.has(".git") and not transport.has("objects"):
             raise bzr_errors.NotBranchError(path=transport.base)
@@ -201,8 +201,7 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        if (not url.startswith("git://") and 
-            not url.startswith("git+")):
+        if (not url.startswith("git://") and not url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
         from bzrlib.plugins.git.remote import RemoteGitDir, GitSmartTransport
         if not isinstance(transport, GitSmartTransport):
@@ -217,8 +216,7 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         url = transport.base
         if url.startswith('readonly+'):
             url = url[len('readonly+'):]
-        if (not url.startswith("git://") and 
-            not url.startswith("git+")):
+        if (not url.startswith("git://") and not url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
         # little ugly, but works
         format = klass()
@@ -240,9 +238,9 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
 bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
 bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
 
-register_transport_proto('git://', 
+register_transport_proto('git://',
         help="Access using the Git smart server protocol.")
-register_transport_proto('git+ssh://', 
+register_transport_proto('git+ssh://',
         help="Access using the Git smart server protocol over SSH.")
 
 register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
@@ -250,11 +248,11 @@ register_lazy_transport("git://", 'bzrlib.plugins.git.remote',
 register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
                         'SSHGitSmartTransport')
 
-foreign_vcs_registry.register_lazy("git", 
+foreign_vcs_registry.register_lazy("git",
     "bzrlib.plugins.git.mapping", "foreign_git", "Stupid content tracker")
 
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
-plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"], 
+plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
     "bzrlib.plugins.git.commands")
 
 def update_stanza(rev, stanza):
@@ -270,13 +268,13 @@ if rio_hooks is not None:
 
 from bzrlib.transport import transport_server_registry
 transport_server_registry.register_lazy('git',
-    'bzrlib.plugins.git.server', 
+    'bzrlib.plugins.git.server',
     'serve_git',
     'Git Smart server protocol over TCP. (default port: 9418)')
 
 
 from bzrlib.repository import network_format_registry as repository_network_format_registry
-repository_network_format_registry.register_lazy('git', 
+repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
 
 from bzrlib.bzrdir import network_format_registry as bzrdir_network_format_registry
