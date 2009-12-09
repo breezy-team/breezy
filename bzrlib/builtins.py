@@ -3068,7 +3068,7 @@ class cmd_commit(Command):
 
         if message is not None:
             try:
-                file_exists = os.path.exists(message)
+                file_exists = osutils.lexists(message)
             except UnicodeError:
                 # The commit message contains unicode characters that can't be
                 # represented in the filesystem encoding, so that can't be a
