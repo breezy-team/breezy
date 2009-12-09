@@ -407,7 +407,7 @@ class TextUIOutputStream(object):
         # this does no transcoding, but it must expose the underlying encoding
         # because some callers need to know what can be written - see for
         # example unescape_for_display.
-        self.encoding = wrapped_stream.encoding
+        self.encoding = getattr(wrapped_stream, 'encoding', None)
 
     def flush(self):
         self.ui_factory.clear_term()
