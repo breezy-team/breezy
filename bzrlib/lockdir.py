@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,8 +110,10 @@ from bzrlib import (
     debug,
     errors,
     lock,
+    osutils,
     )
 import bzrlib.config
+from bzrlib.decorators import only_raises
 from bzrlib.errors import (
         DirectoryNotEmpty,
         FileExists,
@@ -286,6 +288,7 @@ class LockDir(lock.Lock):
                                             info_bytes)
         return tmpname
 
+    @only_raises(LockNotHeld, LockBroken)
     def unlock(self):
         """Release a held lock
         """
@@ -293,7 +296,7 @@ class LockDir(lock.Lock):
             self._fake_read_lock = False
             return
         if not self._lock_held:
-            raise LockNotHeld(self)
+            return lock.cant_unlock_not_held(self)
         if self._locked_via_token:
             self._locked_via_token = False
             self._lock_held = False
@@ -414,7 +417,7 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return self._parse_info(self.transport.get(path))
+        return self._parse_info(self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -447,8 +450,9 @@ class LockDir(lock.Lock):
                    )
         return s.to_string()
 
-    def _parse_info(self, info_file):
-        return rio.read_stanza(info_file.readlines()).as_dict()
+    def _parse_info(self, info_bytes):
+        # TODO: Handle if info_bytes is empty
+        return rio.read_stanza(osutils.split_lines(info_bytes)).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.

@@ -16,7 +16,7 @@
 
 """Tests for the BzrDir facility and any format specific tests.
 
-For interface contract tests, see tests/bzr_dir_implementations.
+For interface contract tests, see tests/per_bzr_dir.
 """
 
 import os
@@ -1152,7 +1152,9 @@ class TestHTTPRedirections_urllib(TestHTTPRedirections,
     _transport = HttpTransport_urllib
 
     def _qualified_url(self, host, port):
-        return 'http+urllib://%s:%s' % (host, port)
+        result = 'http+urllib://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 
@@ -1162,7 +1164,9 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
     """Tests redirections for pycurl implementation"""
 
     def _qualified_url(self, host, port):
-        return 'http+pycurl://%s:%s' % (host, port)
+        result = 'http+pycurl://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestHTTPRedirections_nosmart(TestHTTPRedirections,
@@ -1172,7 +1176,9 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirections,
     _transport = NoSmartTransportDecorator
 
     def _qualified_url(self, host, port):
-        return 'nosmart+http://%s:%s' % (host, port)
+        result = 'nosmart+http://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestHTTPRedirections_readonly(TestHTTPRedirections,
@@ -1182,7 +1188,9 @@ class TestHTTPRedirections_readonly(TestHTTPRedirections,
     _transport = ReadonlyTransportDecorator
 
     def _qualified_url(self, host, port):
-        return 'readonly+http://%s:%s' % (host, port)
+        result = 'readonly+http://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestDotBzrHidden(TestCaseWithTransport):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,7 +59,6 @@ import codecs
 import logging
 import os
 import sys
-import re
 import time
 
 from bzrlib.lazy_import import lazy_import
@@ -71,6 +70,11 @@ import traceback
 """)
 
 import bzrlib
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 lazy_import(globals(), """
 from bzrlib import (
@@ -123,20 +127,37 @@ def warning(*args, **kwargs):
     _bzr_logger.warning(*args, **kwargs)
 
 
-# configure convenient aliases for output routines
-#
-# TODO: deprecate them, have one name for each.
-info = note
-log_error = _bzr_logger.error
-error =     _bzr_logger.error
+@deprecated_function(deprecated_in((2, 1, 0)))
+def info(*args, **kwargs):
+    """Deprecated: use trace.note instead."""
+    note(*args, **kwargs)
 
 
-_last_mutter_flush_time = None
+@deprecated_function(deprecated_in((2, 1, 0)))
+def log_error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+def show_error(msg):
+    """Show an error message to the user.
+
+    Don't use this for exceptions, use report_exception instead.
+    """
+    _bzr_logger.error(*args, **kwargs)
+
 
 def mutter(fmt, *args):
-    global _last_mutter_flush_time
     if _trace_file is None:
         return
+    # XXX: Don't check this every time; instead anyone who closes the file
+    # ought to deregister it.  We can tolerate None.
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
@@ -159,15 +180,7 @@ def mutter(fmt, *args):
     timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
     out = timestamp + out + '\n'
     _trace_file.write(out)
-    # We flush if we haven't flushed for a few seconds. We don't want to flush
-    # on every mutter, but when a command takes a while, it can be nice to see
-    # updates in the debug log.
-    if (_last_mutter_flush_time is None
-        or (now - _last_mutter_flush_time) > 2.0):
-        flush = getattr(_trace_file, 'flush', None)
-        if flush is not None:
-            flush()
-        _last_mutter_flush_time = now
+    # there's no explicit flushing; the file is typically line buffered.
 
 
 def mutter_callsite(stacklevel, fmt, *args):
@@ -228,7 +241,7 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', 1) # line buffered
+        bzr_log_file = open(_bzr_log_filename, 'at', buffering=0) # unbuffered
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
@@ -422,15 +435,21 @@ def report_exception(exc_info, err_file):
 
     :return: The appropriate exit code for this error.
     """
-    exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
+    if 'error' in debug.debug_flags:
+        print_exception(exc_info, err_file)
+        return errors.EXIT_ERROR
+    exc_type, exc_object, exc_tb = exc_info
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         err_file.write("bzr: broken pipe\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
+        return errors.EXIT_ERROR
+    elif isinstance(exc_object, MemoryError):
+        err_file.write("bzr: out of memory\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
@@ -468,9 +487,6 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    if 'error' in debug.debug_flags:
-        print_exception(exc_info, err_file)
-        return
     err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
     if advice:
         err_file.write("%s\n" % (advice,))
@@ -478,25 +494,5 @@ def report_user_error(exc_info, err_file, advice=None):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    print_exception(exc_info, err_file)
-    err_file.write('\n')
-    err_file.write('bzr %s on python %s (%s)\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        sys.platform))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
-            osutils.get_user_encoding(), sys.getfilesystemencoding(),
-            os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        err_file.write("  %-20s %s [%s]\n" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    err_file.write(
-"""\
-*** Bazaar has encountered an internal error.
-    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
-    including this traceback, and a description of what you
-    were doing when the error occurred.
-""")
+    from bzrlib.crash import report_bug
+    report_bug(exc_info, err_file)

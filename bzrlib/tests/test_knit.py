@@ -73,13 +73,13 @@ class _CompiledKnitFeature(Feature):
 
     def _probe(self):
         try:
-            import bzrlib._knit_load_data_c
+            import bzrlib._knit_load_data_pyx
         except ImportError:
             return False
         return True
 
     def feature_name(self):
-        return 'bzrlib._knit_load_data_c'
+        return 'bzrlib._knit_load_data_pyx'
 
 CompiledKnitFeature = _CompiledKnitFeature()
 
@@ -366,16 +366,25 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         :return: (versioned_file, reload_counter)
             versioned_file  a KnitVersionedFiles using the packs for access
         """
-        tree = self.make_branch_and_memory_tree('tree')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        tree.add([''], ['root-id'])
-        tree.commit('one', rev_id='rev-1')
-        tree.commit('two', rev_id='rev-2')
-        tree.commit('three', rev_id='rev-3')
+        builder = self.make_branch_builder('.', format="1.9")
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
+            ])
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('file-id', 'content\nrev 2\n')),
+            ])
+        builder.build_snapshot('rev-3', ['rev-2'], [
+            ('modify', ('file-id', 'content\nrev 3\n')),
+            ])
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_write()
+        self.addCleanup(b.unlock)
         # Pack these three revisions into another pack file, but don't remove
         # the originals
-        repo = tree.branch.repository
+        repo = b.repository
         collection = repo._pack_collection
         collection.ensure_loaded()
         orig_packs = collection.packs
@@ -384,7 +393,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         # forget about the new pack
         collection.reset()
         repo.refresh_data()
-        vf = tree.branch.repository.revisions
+        vf = repo.revisions
         # Set up a reload() function that switches to using the new pack file
         new_index = new_pack.revision_index
         access_tuple = new_pack.access_tuple()
@@ -1307,10 +1316,172 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
         def reset():
             knit._load_data = orig
         self.addCleanup(reset)
-        from bzrlib._knit_load_data_c import _load_data_c
+        from bzrlib._knit_load_data_pyx import _load_data_c
         knit._load_data = _load_data_c
         allow_writes = lambda: mode == 'w'
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+
+
+class Test_KnitAnnotator(TestCaseWithMemoryTransport):
+
+    def make_annotator(self):
+        factory = knit.make_pack_factory(True, True, 1)
+        vf = factory(self.get_transport())
+        return knit._KnitAnnotator(vf)
+
+    def test__expand_fulltext(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        ann._num_compression_children[rev_key] = 1
+        res = ann._expand_record(rev_key, (('parent-id',),), None,
+                           ['line1\n', 'line2\n'], ('fulltext', True))
+        # The content object and text lines should be cached appropriately
+        self.assertEqual(['line1\n', 'line2'], res)
+        content_obj = ann._content_objects[rev_key]
+        self.assertEqual(['line1\n', 'line2\n'], content_obj._lines)
+        self.assertEqual(res, content_obj.text())
+        self.assertEqual(res, ann._text_cache[rev_key])
+
+    def test__expand_delta_comp_parent_not_available(self):
+        # Parent isn't available yet, so we return nothing, but queue up this
+        # node for later processing
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        res = ann._expand_record(rev_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertEqual(None, res)
+        self.assertTrue(parent_key in ann._pending_deltas)
+        pending = ann._pending_deltas[parent_key]
+        self.assertEqual(1, len(pending))
+        self.assertEqual((rev_key, (parent_key,), record, details), pending[0])
+
+    def test__expand_record_tracks_num_children(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        rev2_key = ('rev2-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        ann._num_compression_children[parent_key] = 2
+        ann._expand_record(parent_key, (), None, ['line1\n', 'line2\n'],
+                           ('fulltext', False))
+        res = ann._expand_record(rev_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertEqual({parent_key: 1}, ann._num_compression_children)
+        # Expanding the second child should remove the content object, and the
+        # num_compression_children entry
+        res = ann._expand_record(rev2_key, (parent_key,), parent_key,
+                                 record, details)
+        self.assertFalse(parent_key in ann._content_objects)
+        self.assertEqual({}, ann._num_compression_children)
+        # We should not cache the content_objects for rev2 and rev, because
+        # they do not have compression children of their own.
+        self.assertEqual({}, ann._content_objects)
+
+    def test__expand_delta_records_blocks(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', True)
+        ann._num_compression_children[parent_key] = 2
+        ann._expand_record(parent_key, (), None,
+                           ['line1\n', 'line2\n', 'line3\n'],
+                           ('fulltext', False))
+        ann._expand_record(rev_key, (parent_key,), parent_key, record, details)
+        self.assertEqual({(rev_key, parent_key): [(1, 1, 1), (3, 3, 0)]},
+                         ann._matching_blocks)
+        rev2_key = ('rev2-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        ann._expand_record(rev2_key, (parent_key,), parent_key, record, details)
+        self.assertEqual([(1, 1, 2), (3, 3, 0)],
+                         ann._matching_blocks[(rev2_key, parent_key)])
+
+    def test__get_parent_ann_uses_matching_blocks(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        parent_key = ('parent-id',)
+        parent_ann = [(parent_key,)]*3
+        block_key = (rev_key, parent_key)
+        ann._annotations_cache[parent_key] = parent_ann
+        ann._matching_blocks[block_key] = [(0, 1, 1), (3, 3, 0)]
+        # We should not try to access any parent_lines content, because we know
+        # we already have the matching blocks
+        par_ann, blocks = ann._get_parent_annotations_and_matches(rev_key,
+                                        ['1\n', '2\n', '3\n'], parent_key)
+        self.assertEqual(parent_ann, par_ann)
+        self.assertEqual([(0, 1, 1), (3, 3, 0)], blocks)
+        self.assertEqual({}, ann._matching_blocks)
+
+    def test__process_pending(self):
+        ann = self.make_annotator()
+        rev_key = ('rev-id',)
+        p1_key = ('p1-id',)
+        p2_key = ('p2-id',)
+        record = ['0,1,1\n', 'new-line\n']
+        details = ('line-delta', False)
+        p1_record = ['line1\n', 'line2\n']
+        ann._num_compression_children[p1_key] = 1
+        res = ann._expand_record(rev_key, (p1_key,p2_key), p1_key,
+                                 record, details)
+        self.assertEqual(None, res)
+        # self.assertTrue(p1_key in ann._pending_deltas)
+        self.assertEqual({}, ann._pending_annotation)
+        # Now insert p1, and we should be able to expand the delta
+        res = ann._expand_record(p1_key, (), None, p1_record,
+                                 ('fulltext', False))
+        self.assertEqual(p1_record, res)
+        ann._annotations_cache[p1_key] = [(p1_key,)]*2
+        res = ann._process_pending(p1_key)
+        self.assertEqual([], res)
+        self.assertFalse(p1_key in ann._pending_deltas)
+        self.assertTrue(p2_key in ann._pending_annotation)
+        self.assertEqual({p2_key: [(rev_key, (p1_key, p2_key))]},
+                         ann._pending_annotation)
+        # Now fill in parent 2, and pending annotation should be satisfied
+        res = ann._expand_record(p2_key, (), None, [], ('fulltext', False))
+        ann._annotations_cache[p2_key] = []
+        res = ann._process_pending(p2_key)
+        self.assertEqual([rev_key], res)
+        self.assertEqual({}, ann._pending_annotation)
+        self.assertEqual({}, ann._pending_deltas)
+
+    def test_record_delta_removes_basis(self):
+        ann = self.make_annotator()
+        ann._expand_record(('parent-id',), (), None,
+                           ['line1\n', 'line2\n'], ('fulltext', False))
+        ann._num_compression_children['parent-id'] = 2
+
+    def test_annotate_special_text(self):
+        ann = self.make_annotator()
+        vf = ann._vf
+        rev1_key = ('rev-1',)
+        rev2_key = ('rev-2',)
+        rev3_key = ('rev-3',)
+        spec_key = ('special:',)
+        vf.add_lines(rev1_key, [], ['initial content\n'])
+        vf.add_lines(rev2_key, [rev1_key], ['initial content\n',
+                                            'common content\n',
+                                            'content in 2\n'])
+        vf.add_lines(rev3_key, [rev1_key], ['initial content\n',
+                                            'common content\n',
+                                            'content in 3\n'])
+        spec_text = ('initial content\n'
+                     'common content\n'
+                     'content in 2\n'
+                     'content in 3\n')
+        ann.add_special_text(spec_key, [rev2_key, rev3_key], spec_text)
+        anns, lines = ann.annotate(spec_key)
+        self.assertEqual([(rev1_key,),
+                          (rev2_key, rev3_key),
+                          (rev2_key,),
+                          (rev3_key,),
+                         ], anns)
+        self.assertEqualDiff(spec_text, ''.join(lines))
 
 
 class KnitTests(TestCaseWithTransport):
@@ -2059,7 +2230,7 @@ class TestStacking(KnitTests):
         # self.assertEqual([("annotate", key_basis)], basis.calls)
         self.assertEqual([('get_parent_map', set([key_basis])),
             ('get_parent_map', set([key_basis])),
-            ('get_record_stream', [key_basis], 'unordered', True)],
+            ('get_record_stream', [key_basis], 'topological', True)],
             basis.calls)
 
     def test_check(self):
@@ -2171,9 +2342,9 @@ class TestStacking(KnitTests):
         # ask which fallbacks have which parents.
         self.assertEqual([
             ("get_parent_map", set([key_basis, key_basis_2, key_missing])),
-            # unordered is asked for by the underlying worker as it still
-            # buffers everything while answering - which is a problem!
-            ("get_record_stream", [key_basis_2, key_basis], 'unordered', True)],
+            # topological is requested from the fallback, because that is what
+            # was requested at the top level.
+            ("get_record_stream", [key_basis_2, key_basis], 'topological', True)],
             calls)
 
     def test_get_record_stream_unordered_deltas(self):
@@ -2400,7 +2571,7 @@ class TestStacking(KnitTests):
         last_call = basis.calls[-1]
         self.assertEqual('get_record_stream', last_call[0])
         self.assertEqual(set([key_left, key_right]), set(last_call[1]))
-        self.assertEqual('unordered', last_call[2])
+        self.assertEqual('topological', last_call[2])
         self.assertEqual(True, last_call[3])
 
 

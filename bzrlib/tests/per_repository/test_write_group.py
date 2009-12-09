@@ -28,9 +28,8 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.branch import BzrBranchFormat7
-from bzrlib.inventory import InventoryDirectory
 from bzrlib.transport import local, memory
-from bzrlib.tests import KnownFailure, TestNotApplicable
+from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -85,7 +84,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # don't need a specific exception for now - this is
         # really to be sure it's used right, not for signalling
         # semantic information.
-        self.assertRaises(errors.BzrError, repo.unlock)
+        self.assertLogsError(errors.BzrError, repo.unlock)
         # after this error occurs, the repository is unlocked, and the write
         # group is gone.  you've had your chance, and you blew it. ;-)
         self.assertFalse(repo.is_locked())
@@ -130,6 +129,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # exception was not generated, or the exception was caught and
         # suppressed.  See also test_pack_repository's test of the same name.
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
+
 
 class TestGetMissingParentInventories(TestCaseWithRepository):
 
@@ -332,8 +332,10 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
 
     def test_insert_stream_passes_resume_info(self):
         repo = self.make_repository('test-repo')
-        if not repo._format.supports_external_lookups:
-            raise TestNotApplicable('only valid in resumable repos')
+        if (not repo._format.supports_external_lookups or
+            isinstance(repo, remote.RemoteRepository)):
+            raise TestNotApplicable(
+                'only valid for direct connections to resumable repos')
         # log calls to get_missing_parent_inventories, so that we can assert it
         # is called with the correct parameters
         call_log = []

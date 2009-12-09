@@ -39,8 +39,8 @@ class Serializer_v5(xml6.Serializer_v6):
         format = elt.get('format')
         if format is not None:
             if format != '5':
-                raise BzrError("invalid format version %r on inventory"
-                                % format)
+                raise errors.BzrError("invalid format version %r on inventory"
+                                      % format)
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
             revision_id = cache_utf8.encode(data_revision_id)

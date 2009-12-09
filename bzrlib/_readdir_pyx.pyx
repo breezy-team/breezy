@@ -155,7 +155,7 @@ cdef class _Stat:
         (mode, ino, dev, nlink, uid, gid, size, None(atime), mtime, ctime)
         """
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, None,
-                     self._mtime, self._ctime))
+                     self.st_mtime, self.st_ctime))
 
 
 from bzrlib import osutils
@@ -343,8 +343,10 @@ cdef _read_dir(path):
                             raise OSError(errno, "lstat: " + strerror(errno),
                                 path + "/" + entry.d_name)
                         else:
-                            kind = _missing
-                            statvalue = None
+                            # the file seems to have disappeared after being
+                            # seen by readdir - perhaps a transient temporary
+                            # file.  there's no point returning it.
+                            continue
                     # We append a 5-tuple that can be modified in-place by the C
                     # api:
                     # inode to sort on (to replace with top_path)

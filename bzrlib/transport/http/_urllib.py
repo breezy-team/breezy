@@ -87,8 +87,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
             self._update_credentials((request.auth, request.proxy_auth))
 
         code = response.code
-        if request.follow_redirections is False \
-                and code in (301, 302, 303, 307):
+        if (request.follow_redirections is False
+            and code in (301, 302, 303, 307)):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
                                            is_permanent=(code == 301))

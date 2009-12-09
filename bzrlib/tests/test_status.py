@@ -53,7 +53,7 @@ class TestStatus(TestCaseWithTransport):
         tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
         tree3.commit('commit 3c', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)
-        tree.merge_from_branch(tree3.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
         return tree
 
     def test_multiple_pending(self):

@@ -25,17 +25,13 @@ active, in which case aftp:// will be your friend.
 """
 
 from cStringIO import StringIO
-import errno
 import ftplib
 import getpass
 import os
-import os.path
-import urlparse
 import random
 import socket
 import stat
 import time
-from warnings import warn
 
 from bzrlib import (
     config,
@@ -51,8 +47,6 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     )
-from bzrlib.transport.local import LocalURLServer
-import bzrlib.ui
 
 
 register_urlparse_netloc_protocol('aftp')
@@ -100,6 +94,10 @@ class FtpTransport(ConnectedTransport):
         else:
             self.is_active = False
 
+        # Most modern FTP servers support the APPE command. If ours doesn't, we
+        # (re)set this flag accordingly later.
+        self._has_append = True
+
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
         # Ensures that a connection is established
@@ -109,6 +107,8 @@ class FtpTransport(ConnectedTransport):
             connection, credentials = self._create_connection()
             self._set_connection(connection, credentials)
         return connection
+
+    connection_class = ftplib.FTP
 
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
@@ -135,13 +135,9 @@ class FtpTransport(ConnectedTransport):
                ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
-            connection = ftplib.FTP()
+            connection = self.connection_class()
             connection.connect(host=self._host, port=self._port)
-            if user and user != 'anonymous' and \
-                    password is None: # '' is a valid password
-                password = auth.get_password('ftp', self._host, user,
-                                             port=self._port)
-            connection.login(user=user, passwd=password)
+            self._login(connection, auth, user, password)
             connection.set_pasv(not self.is_active)
             # binary mode is the default
             connection.voidcmd('TYPE I')
@@ -153,6 +149,13 @@ class FtpTransport(ConnectedTransport):
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
+
+    def _login(self, connection, auth, user, password):
+        # '' is a valid password
+        if user and user != 'anonymous' and password is None:
+            password = auth.get_password('ftp', self._host,
+                                         user, port=self._port)
+        connection.login(user=user, passwd=password)
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""
@@ -387,6 +390,7 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
+        text = f.read()
         abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
@@ -394,8 +398,11 @@ class FtpTransport(ConnectedTransport):
         else:
             result = 0
 
-        mutter("FTP appe to %s", abspath)
-        self._try_append(relpath, f.read(), mode)
+        if self._has_append:
+            mutter("FTP appe to %s", abspath)
+            self._try_append(relpath, text, mode)
+        else:
+            self._fallback_append(relpath, text, mode)
 
         return result
 
@@ -416,16 +423,31 @@ class FtpTransport(ConnectedTransport):
             self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='error appending',
-                unknown_exc=errors.NoSuchFile)
+            # Check whether the command is not supported (reply code 502)
+            if str(e).startswith('502 '):
+                warning("FTP server does not support file appending natively. "
+                        "Performance may be severely degraded! (%s)", e)
+                self._has_append = False
+                self._fallback_append(relpath, text, mode)
+            else:
+                self._translate_perm_error(e, abspath, extra='error appending',
+                    unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise errors.TransportError("FTP temporary error during APPEND %s." \
-                        "Aborting." % abspath, orig_error=e)
+                raise errors.TransportError(
+                    "FTP temporary error during APPEND %s. Aborting."
+                    % abspath, orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
                 self._try_append(relpath, text, mode, retries+1)
+
+    def _fallback_append(self, relpath, text, mode = None):
+        remote = self.get(relpath)
+        remote.seek(0, os.SEEK_END)
+        remote.write(text)
+        remote.seek(0)
+        return self.put_file(relpath, remote, mode)
 
     def _setmode(self, relpath, mode):
         """Set permissions on a path.

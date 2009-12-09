@@ -8,17 +8,17 @@ en la pagina de  Bazaar, http://doc.bazaar-vcs.org.
 Documentacion Principal
 =======================
 
-* `Mini Tutorial <es/mini-tutorial/index.html>`_ 
+* `Mini Tutorial <es/mini-tutorial/index.html>`_
 
-* `Referencia Rapida <es/referencia-rapida/referencia-rapida.svg>`_
+* `Referencia Rapida <es/_static/es/bzr-es-quick-reference.svg>`_
 
-* `Guia de Usuario <es/guia-usuario/index.html>`_ 
+* `Guia de Usuario <es/user-guide/index-plain.html>`_
 
-* `Referencia <es/referencia/bzr_man.html>`_ 
+* `Referencia <en/user-reference/bzr_man.html>`_
 
-* `Notas sobre la Version <es/notas-version/NOTICIAS.html>`_
+* `Notas sobre la Version <en/release-notes/NEWS.html>`_
 
-* `Guia del Desarrollador <es/guia-desarrollador/HACKING.html>`_
+* `Guia del Desarrollador <developers/HACKING.html>`_
 
 
 Otra Documentacion
@@ -26,7 +26,7 @@ Otra Documentacion
 
 Mudandose a Bazaar (enlances web):
 
-* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_ 
+* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_
   - para los usuarios que se mudan de otros SCV
 
 * `Guias de Migracion <http://bazaar-vcs.org/BzrMigration>`_

@@ -197,7 +197,7 @@ with no feedback::
 
   from bzrlib import branch
 
-  b = branch.Branch.open('http://bazaar-vcs.org/bzr/bzr.dev')
+  b = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
   nb = b.bzrdir.sprout('/tmp/newBzrBranch').open_branch()
 
 
@@ -213,7 +213,7 @@ just call push with the other branch as a parameter::
   from bzrlib import branch
 
   b1 = branch.Branch.open('file:///home/user/mybranch')
-  b2 = branch.Branch.open('http://bazaar-vcs.org/bzr/bzr.dev')
+  b2 = branch.Branch.open('http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev')
   b1.push(b2)
 
 
@@ -244,12 +244,12 @@ To make a heavyweight checkout, change the last line to::
 
   source.create_checkout('/tmp/newBzrCheckout', None, False, accelerator_tree
 
-==================
+
 History Operations
 ==================
 
 Finding the last revision number or id
-======================================
+--------------------------------------
 
 To get the last revision number and id of a branch use::
 
@@ -263,7 +263,7 @@ method::
 
 
 Getting the list of revision ids that make up a branch
-======================================================
+------------------------------------------------------
 
 IMPORTANT: This should be avoided wherever possible, as it scales with the
 length of history::
@@ -277,7 +277,7 @@ it is vastly more efficient.
 
 
 Getting a Revision object from a revision id
-============================================
+--------------------------------------------
 
 The Revision object has attributes like "message" to get the information
 about the revision::
@@ -287,7 +287,7 @@ about the revision::
 
 
 Accessing the files from a revision
-===================================
+-----------------------------------
 
 To get the file contents and tree shape for a specific revision you need
 a RevisionTree. These are supplied by the repository for a specific

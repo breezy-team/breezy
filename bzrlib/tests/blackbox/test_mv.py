@@ -18,6 +18,7 @@
 
 import os
 
+import bzrlib.branch
 from bzrlib import (
     osutils,
     workingtree,
@@ -485,3 +486,21 @@ class TestMove(TestCaseWithTransport):
                                 retcode=3)
         self.assertEqual('bzr: ERROR: --after cannot be specified with'
                          ' --auto.\n', err)
+
+    def test_mv_quiet(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['aaa'])
+        tree.add(['aaa'])
+        out, err = self.run_bzr('mv --quiet aaa bbb')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+
+    def test_mv_readonly_lightweight_checkout(self):
+        branch = self.make_branch('foo')
+        branch = bzrlib.branch.Branch.open(self.get_readonly_url('foo'))
+        tree = branch.create_checkout('tree', lightweight=True)
+        self.build_tree(['tree/path'])
+        tree.add('path')
+        # If this fails, the tree is trying to acquire a branch lock, which it
+        # shouldn't.
+        self.run_bzr(['mv', 'tree/path', 'tree/path2'])

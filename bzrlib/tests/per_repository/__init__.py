@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -21,7 +21,7 @@
 
 These test the conformance of all the repository variations to the expected API.
 Specific tests for individual formats are in the tests/test_repository.py file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
@@ -43,7 +43,7 @@ from bzrlib.tests import (
                           multiply_scenarios,
                           multiply_tests,
                           )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
@@ -867,6 +867,7 @@ def load_tests(standard_tests, module, loader):
         'test_has_revisions',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
+        'test_merge_directive',
         'test_pack',
         'test_reconcile',
         'test_refresh_data',

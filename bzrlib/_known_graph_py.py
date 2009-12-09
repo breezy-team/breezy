@@ -17,7 +17,9 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
+from collections import deque
 from bzrlib import (
+    errors,
     revision,
     )
 
@@ -40,6 +42,18 @@ class _KnownGraphNode(object):
             self.parent_keys, self.child_keys)
 
 
+class _MergeSortNode(object):
+    """Information about a specific node in the merge graph."""
+
+    __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
+
+    def __init__(self, key, merge_depth, revno, end_of_merge):
+        self.key = key
+        self.merge_depth = merge_depth
+        self.revno = revno
+        self.end_of_merge = end_of_merge
+
+
 class KnownGraph(object):
     """This is a class which assumes we already know the full graph."""
 
@@ -49,7 +63,7 @@ class KnownGraph(object):
         :param parent_map: A dictionary mapping key => parent_keys
         """
         self._nodes = {}
-        # Maps {sorted(revision_id, revision_id): heads}
+        # Maps {frozenset(revision_id, revision_id): heads}
         self._known_heads = {}
         self.do_cache = do_cache
         self._initialize_nodes(parent_map)
@@ -63,18 +77,12 @@ class KnownGraph(object):
         - ghosts will have a parent_keys = None,
         - all nodes found will also have .child_keys populated with all known
           child_keys,
-        - self._tails will list all the nodes without parents.
         """
-        tails = self._tails = set()
         nodes = self._nodes
         for key, parent_keys in parent_map.iteritems():
             if key in nodes:
                 node = nodes[key]
                 node.parent_keys = parent_keys
-                if parent_keys:
-                    # This node has been added before being seen in parent_map
-                    # (see below)
-                    tails.remove(node)
             else:
                 node = _KnownGraphNode(key, parent_keys)
                 nodes[key] = node
@@ -84,17 +92,22 @@ class KnownGraph(object):
                 except KeyError:
                     parent_node = _KnownGraphNode(parent_key, None)
                     nodes[parent_key] = parent_node
-                    # Potentially a tail, if we're wrong we'll remove it later
-                    # (see above)
-                    tails.add(parent_node)
                 parent_node.child_keys.append(key)
+
+    def _find_tails(self):
+        return [node for node in self._nodes.itervalues()
+                if not node.parent_keys]
+
+    def _find_tips(self):
+        return [node for node in self._nodes.itervalues()
+                      if not node.child_keys]
 
     def _find_gdfo(self):
         nodes = self._nodes
         known_parent_gdfos = {}
         pending = []
 
-        for node in self._tails:
+        for node in self._find_tails():
             node.gdfo = 1
             pending.append(node)
 
@@ -120,6 +133,71 @@ class KnownGraph(object):
                     # Update known_parent_gdfos for a key we couldn't process
                     known_parent_gdfos[child_key] = known_gdfo
 
+    def add_node(self, key, parent_keys):
+        """Add a new node to the graph.
+
+        If this fills in a ghost, then the gdfos of all children will be
+        updated accordingly.
+        
+        :param key: The node being added. If this is a duplicate, this is a
+            no-op.
+        :param parent_keys: The parents of the given node.
+        :return: None (should we return if this was a ghost, etc?)
+        """
+        nodes = self._nodes
+        if key in nodes:
+            node = nodes[key]
+            if node.parent_keys is None:
+                node.parent_keys = parent_keys
+                # A ghost is being added, we can no-longer trust the heads
+                # cache, so clear it
+                self._known_heads.clear()
+            else:
+                # Make sure we compare a list to a list, as tuple != list.
+                parent_keys = list(parent_keys)
+                existing_parent_keys = list(node.parent_keys)
+                if parent_keys == existing_parent_keys:
+                    return # Identical content
+                else:
+                    raise ValueError('Parent key mismatch, existing node %s'
+                        ' has parents of %s not %s'
+                        % (key, existing_parent_keys, parent_keys))
+        else:
+            node = _KnownGraphNode(key, parent_keys)
+            nodes[key] = node
+        parent_gdfo = 0
+        for parent_key in parent_keys:
+            try:
+                parent_node = nodes[parent_key]
+            except KeyError:
+                parent_node = _KnownGraphNode(parent_key, None)
+                # Ghosts and roots have gdfo 1
+                parent_node.gdfo = 1
+                nodes[parent_key] = parent_node
+            if parent_gdfo < parent_node.gdfo:
+                parent_gdfo = parent_node.gdfo
+            parent_node.child_keys.append(key)
+        node.gdfo = parent_gdfo + 1
+        # Now fill the gdfo to all children
+        # Note that this loop is slightly inefficient, in that we may visit the
+        # same child (and its decendents) more than once, however, it is
+        # 'efficient' in that we only walk to nodes that would be updated,
+        # rather than all nodes
+        # We use a deque rather than a simple list stack, to go for BFD rather
+        # than DFD. So that if a longer path is possible, we walk it before we
+        # get to the final child
+        pending = deque([node])
+        while pending:
+            node = pending.popleft()
+            next_gdfo = node.gdfo + 1
+            for child_key in node.child_keys:
+                child = nodes[child_key]
+                if child.gdfo < next_gdfo:
+                    # This child is being updated, we need to check its
+                    # children
+                    child.gdfo = next_gdfo
+                    pending.append(child)
+
     def heads(self, keys):
         """Return the heads from amongst keys.
 
@@ -144,9 +222,6 @@ class KnownGraph(object):
             # No or only one candidate
             return frozenset(candidate_nodes)
         heads_key = frozenset(candidate_nodes)
-        if heads_key != frozenset(keys):
-            # Mention duplicates
-            note('%s != %s', heads_key, frozenset(keys))
         # Do we have a cached result ?
         try:
             heads = self._known_heads[heads_key]
@@ -179,3 +254,119 @@ class KnownGraph(object):
             self._known_heads[heads_key] = heads
         return heads
 
+    def topo_sort(self):
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        for node in self._nodes.itervalues():
+            if node.gdfo is None:
+                raise errors.GraphCycleError(self._nodes)
+        pending = self._find_tails()
+        pending_pop = pending.pop
+        pending_append = pending.append
+
+        topo_order = []
+        topo_order_append = topo_order.append
+
+        num_seen_parents = dict.fromkeys(self._nodes, 0)
+        while pending:
+            node = pending_pop()
+            if node.parent_keys is not None:
+                # We don't include ghost parents
+                topo_order_append(node.key)
+            for child_key in node.child_keys:
+                child_node = self._nodes[child_key]
+                seen_parents = num_seen_parents[child_key] + 1
+                if seen_parents == len(child_node.parent_keys):
+                    # All parents have been processed, enqueue this child
+                    pending_append(child_node)
+                    # This has been queued up, stop tracking it
+                    del num_seen_parents[child_key]
+                else:
+                    num_seen_parents[child_key] = seen_parents
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
+
+    def gc_sort(self):
+        """Return a reverse topological ordering which is 'stable'.
+
+        There are a few constraints:
+          1) Reverse topological (all children before all parents)
+          2) Grouped by prefix
+          3) 'stable' sorting, so that we get the same result, independent of
+             machine, or extra data.
+        To do this, we use the same basic algorithm as topo_sort, but when we
+        aren't sure what node to access next, we sort them lexicographically.
+        """
+        tips = self._find_tips()
+        # Split the tips based on prefix
+        prefix_tips = {}
+        for node in tips:
+            if node.key.__class__ is str or len(node.key) == 1:
+                prefix = ''
+            else:
+                prefix = node.key[0]
+            prefix_tips.setdefault(prefix, []).append(node)
+
+        num_seen_children = dict.fromkeys(self._nodes, 0)
+
+        result = []
+        for prefix in sorted(prefix_tips):
+            pending = sorted(prefix_tips[prefix], key=lambda n:n.key,
+                             reverse=True)
+            while pending:
+                node = pending.pop()
+                if node.parent_keys is None:
+                    # Ghost node, skip it
+                    continue
+                result.append(node.key)
+                for parent_key in sorted(node.parent_keys, reverse=True):
+                    parent_node = self._nodes[parent_key]
+                    seen_children = num_seen_children[parent_key] + 1
+                    if seen_children == len(parent_node.child_keys):
+                        # All children have been processed, enqueue this parent
+                        pending.append(parent_node)
+                        # This has been queued up, stop tracking it
+                        del num_seen_children[parent_key]
+                    else:
+                        num_seen_children[parent_key] = seen_children
+        return result
+
+    def merge_sort(self, tip_key):
+        """Compute the merge sorted graph output."""
+        from bzrlib import tsort
+        as_parent_map = dict((node.key, node.parent_keys)
+                             for node in self._nodes.itervalues()
+                              if node.parent_keys is not None)
+        # We intentionally always generate revnos and never force the
+        # mainline_revisions
+        # Strip the sequence_number that merge_sort generates
+        return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
+                for _, key, merge_depth, revno, end_of_merge
+                 in tsort.merge_sort(as_parent_map, tip_key,
+                                     mainline_revisions=None,
+                                     generate_revno=True)]
+    
+    def get_parent_keys(self, key):
+        """Get the parents for a key
+        
+        Returns a list containg the parents keys. If the key is a ghost,
+        None is returned. A KeyError will be raised if the key is not in
+        the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of parents
+        """
+        return self._nodes[key].parent_keys
+
+    def get_child_keys(self, key):
+        """Get the children for a key
+        
+        Returns a list containg the children keys. A KeyError will be raised
+        if the key is not in the graph.
+        
+        :param keys: Key to check (eg revision_id)
+        :return: A list of children
+        """
+        return self._nodes[key].child_keys

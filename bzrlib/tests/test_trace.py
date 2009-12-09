@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,6 +48,10 @@ def _format_exception():
 class TestTrace(TestCase):
 
     def test_format_sys_exception(self):
+        # Test handling of an internal/unexpected error that probably
+        # indicates a bug in bzr.  The details of the message may vary
+        # depending on whether apport is available or not.  See test_crash for
+        # more.
         try:
             raise NotImplementedError, "time travel"
         except NotImplementedError:
@@ -56,7 +60,7 @@ class TestTrace(TestCase):
         self.assertEqualDiff(err.splitlines()[0],
                 'bzr: ERROR: exceptions.NotImplementedError: time travel')
         self.assertContainsRe(err,
-                r'File.*test_trace.py')
+            'Bazaar has encountered an internal error.')
 
     def test_format_interrupt_exception(self):
         try:
@@ -68,14 +72,24 @@ class TestTrace(TestCase):
         self.assertTrue(len(msg) > 0)
         self.assertEqualDiff(msg, 'bzr: interrupted\n')
 
+    def test_format_memory_error(self):
+        try:
+            raise MemoryError()
+        except MemoryError:
+            pass
+        msg = _format_exception()
+        self.assertEquals(msg,
+            "bzr: out of memory\n")
+
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
-        except OSError:
-            pass
+        except OSError, e:
+            e_str = str(e)
         msg = _format_exception()
-        self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+        # Linux seems to give "No such file" but Windows gives "The system
+        # cannot find the file specified".
+        self.assertEqual('bzr: ERROR: %s\n' % (e_str,), msg)
 
     def test_format_io_error(self):
         try:
@@ -83,7 +97,10 @@ class TestTrace(TestCase):
         except IOError:
             pass
         msg = _format_exception()
-        self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+        # Even though Windows and Linux differ for 'os.rmdir', they both give
+        # 'No such file' for open()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
     def test_format_unicode_error(self):
         try:
@@ -122,7 +139,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertContainsRe(msg,
-            r"Traceback \(most recent call last\)")
+            r'Bazaar has encountered an internal error')
 
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
@@ -255,7 +272,7 @@ class TestBzrLog(TestCaseInTempDir):
     def test_log_rollover(self):
         temp_log_name = 'test-log'
         trace_file = open(temp_log_name, 'at')
-        trace_file.write('test_log_rollover padding\n' * 1000000)
+        trace_file.writelines(['test_log_rollover padding\n'] * 200000)
         trace_file.close()
         _rollover_trace_maybe(temp_log_name)
         # should have been rolled over

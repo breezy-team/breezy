@@ -16,7 +16,7 @@
 
 """Tests for the Branch facility that are not interface  tests.
 
-For interface tests see tests/branch_implementations/*.py.
+For interface tests see tests/per_branch/*.py.
 
 For concrete class tests see this file, and for meta-branch tests
 also see this file.
@@ -40,6 +40,7 @@ from bzrlib.branch import (
     BzrBranch5,
     BzrBranchFormat5,
     BzrBranchFormat6,
+    BzrBranchFormat7,
     PullResult,
     _run_with_write_locked_target,
     )
@@ -60,7 +61,7 @@ class TestDefaultFormat(TestCase):
     def test_default_format(self):
         # update this if you change the default branch format
         self.assertIsInstance(BranchFormat.get_default_format(),
-                BzrBranchFormat6)
+                BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
         # XXX: it might be nice if there was only one place the default was
@@ -503,6 +504,23 @@ class TestPullResult(TestCase):
         a = "%d revisions pulled" % r
         self.assertEqual(a, "10 revisions pulled")
 
+    def test_report_changed(self):
+        r = PullResult()
+        r.old_revid = "old-revid"
+        r.old_revno = 10
+        r.new_revid = "new-revid"
+        r.new_revno = 20
+        f = StringIO()
+        r.report(f)
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
+
+    def test_report_unchanged(self):
+        r = PullResult()
+        r.old_revid = "same-revid"
+        r.new_revid = "same-revid"
+        f = StringIO()
+        r.report(f)
+        self.assertEqual("No revisions to pull.\n", f.getvalue())
 
 
 class _StubLockable(object):

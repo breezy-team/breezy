@@ -239,6 +239,36 @@ class TestPush(tests.TestCaseWithTransport):
         remote = branch.Branch.open('public')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
 
+    def test_push_smart_tags_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id = t.commit(allow_pointless=True, message='first commit')
+        t.branch.tags.set_tag('new-tag', rev_id)
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
+    def test_push_smart_incremental_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id1 = t.commit(allow_pointless=True, message='first commit')
+        rev_id2 = t.commit(allow_pointless=True, message='second commit')
+        self.run_bzr(
+            ['push', self.get_url('to-one'), '-r1'], working_dir='from')
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
         # we push there over the smart server are stacked and their
@@ -304,6 +334,17 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         # The push should have created target/a
         self.failUnlessExists('target/a')
+
+    def test_push_use_existing_into_empty_bzrdir(self):
+        """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
+        fails.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/', 'target/.bzr/'])
+        self.run_bzr_error(
+            ['Target directory ../target already contains a .bzr directory, '
+             'but it is not valid.'],
+            'push ../target --use-existing-dir', working_dir='tree')
 
     def test_push_onto_repo(self):
         """We should be able to 'bzr push' into an existing bzrdir."""
@@ -512,7 +553,6 @@ class TestPush(tests.TestCaseWithTransport):
 class RedirectingMemoryTransport(memory.MemoryTransport):
 
     def mkdir(self, relpath, mode=None):
-        from bzrlib.trace import mutter
         if self._cwd == '/source/':
             raise errors.RedirectRequested(self.abspath(relpath),
                                            self.abspath('../target'),
@@ -524,6 +564,14 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
         else:
             return super(RedirectingMemoryTransport, self).mkdir(
                 relpath, mode)
+
+    def get(self, relpath):
+        if self.clone(relpath)._cwd == '/infinite-loop/':
+            raise errors.RedirectRequested(self.abspath(relpath),
+                                           self.abspath('../infinite-loop'),
+                                           is_permanent=True)
+        else:
+            return super(RedirectingMemoryTransport, self).get(relpath)
 
     def _redirected_to(self, source, target):
         # We do accept redirections
@@ -555,9 +603,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -660,6 +706,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
+        # Apply the changes defined in load_tests: one of _uncommitted_changes,
+        # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
 
     def _uncommitted_changes(self):

@@ -109,6 +109,9 @@ the full list.
 | bzr_repository_formats | {}      | As bzr_checkout_formats but for        |
 |                        |         | repositories.                          |
 +------------------------+---------+----------------------------------------+
+| bzr_transports         | []      | URL prefixes for which this plugin     |
+|                        |         | will register transports.              |
++------------------------+---------+----------------------------------------+
 
 Control Formats
 ---------------
@@ -125,7 +128,7 @@ the content of the file. Thus::
 
   # (look for a .hg directory)
   bzr_control_formats = {"Mercurial":{'.hg/': None}}
-  
+
   # (look for a file called .svn/format with contents 4\n).
   bzr_control_formats = {"Subversion":{'.svn/format': '4\n'}}
 
@@ -134,24 +137,26 @@ Example
 -------
 
 An example setup.py follows::
-  
+
   #!/usr/bin/env python2.4
   from distutils.core import setup
-  
+
   bzr_plugin_name = 'demo'
   bzr_commands = [
       'new-command',
       ]
-  
+
   bzr_branch_formats = {
       "Branch label on disk\n":"demo branch",
       }
 
   bzr_control_formats = {"Subversion":{'.svn/format': '4\n'}}
-  
+
+  bzr_transports = ["hg+ssh://"]
+
   bzr_plugin_version = (1, 3, 0, 'dev', 0)
   bzr_minimum_version = (1, 0, 0)
-  
+
   if __name__ == 'main':
       setup(name="Demo",
             version="1.3.0dev0",

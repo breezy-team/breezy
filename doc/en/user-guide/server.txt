@@ -36,18 +36,24 @@ The alternative ways of configuring a smart server are explained below.
 SSH
 ~~~
 
-Using Bazaar over SSH requires no special configuration on the server::
+Using Bazaar over SSH requires no special configuration on the server; so long
+as Bazaar is installed on the server you can use ``bzr+ssh`` URLs, e.g.::
+
+    bzr log bzr+ssh://host/path/to/branch
+
+If `bzr` is not installed system-wide on the server you may need to explicitly
+tell the local `bzr` where to find the remote `bzr`::
 
     BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
 
 The ``BZR_REMOTE_PATH`` environment variable adjusts how `bzr` will be
 invoked on the remote system.  By default, just `bzr` will be invoked,
-which requires the `bzr` executable to be on the default search path.
+which requires the `bzr` executable to be on the default search path.  You can
+also set this permanently per-location in ``locations.conf``.
 
-The ``bzr+ssh://`` URL scheme only supports absolute paths from the
-root of the filesystem.  Future versions are expected to support ``~``
-in the same way as ``sftp://`` URLs
-(https://bugs.launchpad.net/bzr/+bug/109143).
+Like SFTP, paths starting with ``~`` are relative to your home directory, e.g.
+``bzr+ssh://example.com/~/code/proj``.  Additionally, paths starting with
+``~user`` will be relative to that user's home directory.
 
 inetd
 ~~~~~
@@ -64,6 +70,10 @@ When running client commands, the URL you supply is a `bzr://` URL relative to
 the ``--directory`` option given in inetd.conf::
 
     bzr log bzr://host/branchname
+
+If possible, paths starting with ``~`` and ``~user`` will be expanded as for
+``bzr+ssh``.  Home directories outside the ``--directory`` specified to ``bzr
+serve`` will not be accessible.
 
 Dedicated
 ~~~~~~~~~
@@ -88,7 +98,7 @@ This example runs ``bzr serve`` on `localhost` port `1234`.
 server::
 
     bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
-    
+
 client::
 
     bzr log bzr://localhost:1234/branchname

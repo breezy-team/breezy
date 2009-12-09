@@ -1,0 +1,108 @@
+@echo off
+setlocal
+
+set ROOT=${buildout:directory}
+
+set RELEASE=%ROOT%\release\bzr.${settings:bzr-release}
+set DEV=%ROOT%\dev\bzr.dev
+set TARGET=
+set BZR_TARGET=
+set PLUGIN_TARGET=
+
+set SVN_DEV=${buildout:directory}/${svn-dev:destination}
+set SVN_BDB=${buildout:directory}/${svn-db4:destination}
+set SVN_LIBINTL=${buildout:directory}/${svn-libintl:destination}
+set TBZR=${buildout:directory}/tbzr/trunk
+set INSTALLERS=%ROOT%\installers
+set PYTHON=${buildout:executable}
+
+set ORIGINAL_PYTHONPATH=%PYTHONPATH%
+set ORIGINAL_DIRECTORY=%CD%
+
+set BUILD_ERROR=0
+
+set TORTOISE_OVERLAYS_MSI_WIN32_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-win32-url}
+FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_WIN32_CMD%') DO set BASENAME=%%G
+set TORTOISE_OVERLAYS_MSI_WIN32=${buildout:directory}/tortoise-overlays/%BASENAME%
+
+set TORTOISE_OVERLAYS_MSI_X64_CMD=%PYTHON% %ROOT%/ostools.py basename ${settings:tortoise-overlays-x64-url}
+FOR /f "tokens=1 delims= " %%G IN ('%TORTOISE_OVERLAYS_MSI_X64_CMD%') DO set BASENAME=%%G
+set TORTOISE_OVERLAYS_MSI_X64=${buildout:directory}/tortoise-overlays/%BASENAME%
+
+FOR /f "tokens=1 delims= " %%G IN ('cygpath %PYTHON%') DO set CYG_PYTHON=%%G
+
+:ARGS
+if "%1"=="release" (set TARGET=%RELEASE%) & (set BZR_TARGET=release) & shift & goto ARGS
+if "%1"=="dev" (set TARGET=%DEV%) & (set BZR_TARGET=trunk) & shift & goto ARGS
+if "%1"=="plugin-release" (set PLUGIN_TARGET=release) & shift & goto ARGS
+if "%1"=="plugin-dev" (set PLUGIN_TARGET=trunk) & shift & goto ARGS
+
+if not defined TARGET (set TARGET=%RELEASE%) & (set BZR_TARGET=release)
+if not defined PLUGIN_TARGET (set PLUGIN_TARGET=release)
+
+%PYTHON% %ROOT%/ostools.py remove %TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py makedir %TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py makedir %INSTALLERS%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+rem Use %COMSPEC% /c in case bzr is actually a .bat file
+%COMSPEC% /c bzr co %ROOT%/bzr/%BZR_TARGET% %TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+rem Build the python installers first, because we don't want to
+rem include any of the 3rd-party plugins, because we don't bundle
+rem their dependencies.
+cd %TARGET%
+
+rem This is slightly redundant with 'make installer-all'
+rem except in that case we have to do cygwin path translations for all the
+rem different versions of python
+${settings:python24} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python25} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+${settings:python26} setup.py bdist_wininst --install-script="bzr-win32-bdist-postinstall.py" -d .
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/subvertpy/%PLUGIN_TARGET%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzrtools/%PLUGIN_TARGET%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/qbzr/%PLUGIN_TARGET%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzr-svn/%PLUGIN_TARGET%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %ROOT%/bzr-rewrite/%PLUGIN_TARGET%
+%PYTHON% setup.py install -O1 --install-lib=%TARGET%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+set PYTHONPATH=%PYTHONPATH%;%TARGET%
+cd %ROOT%/tbzr/trunk
+%PYTHON% setup.py build
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+cd %TARGET%
+make installer PYTHON=%CYG_PYTHON%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+%PYTHON% %ROOT%/ostools.py copytodir %TARGET%/bzr*.exe %INSTALLERS%
+@if %ERRORLEVEL% NEQ 0 (set BUILD_ERROR=%ERRORLEVEL%) & goto End
+
+:End
+set PYTHONPATH=%ORIGINAL_PYTHONPATH%
+cd %ORIGINAL_DIRECTORY%
+exit /b %BUILD_ERROR%

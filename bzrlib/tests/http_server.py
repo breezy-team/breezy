@@ -382,6 +382,23 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
         # lying around.
         self.daemon_threads = True
 
+    def process_request_thread(self, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Under some circumstances (as in bug #383920), we need to force the
+        # shutdown as python delays it until gc occur otherwise and the client
+        # may hang.
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            request.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
+
 
 class HttpServer(transport.Server):
     """A test server for http transports.
@@ -445,7 +462,7 @@ class HttpServer(transport.Server):
                 raise httplib.UnknownProtocol(proto_vers)
             else:
                 self._httpd = self.create_httpd(serv_cls, rhandler)
-            host, self.port = self._httpd.socket.getsockname()
+            self.host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
@@ -477,13 +494,16 @@ class HttpServer(transport.Server):
             except socket.timeout:
                 pass
             except (socket.error, select.error), e:
-               if e[0] == errno.EBADF:
-                   # Starting with python-2.6, handle_request may raise socket
-                   # or select exceptions when the server is shut down (as we
-                   # do).
-                   pass
-               else:
-                   raise
+                if (e[0] == errno.EBADF
+                    or (sys.platform == 'win32' and e[0] == 10038)):
+                    # Starting with python-2.6, handle_request may raise socket
+                    # or select exceptions when the server is shut down (as we
+                    # do).
+                    # 10038 = WSAENOTSOCK
+                    # http://msdn.microsoft.com/en-us/library/ms740668%28VS.85%29.aspx
+                    pass
+                else:
+                    raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)

@@ -30,7 +30,9 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
+    graph as _mod_graph,
     groupcompress,
     index,
     knit,
@@ -173,6 +175,12 @@ class AbsentContentFactory(ContentFactory):
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
+
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
 
 
 class AdapterFactory(ContentFactory):
@@ -906,12 +914,28 @@ class VersionedFiles(object):
         raise NotImplementedError(self.annotate)
 
     def check(self, progress_bar=None):
-        """Check this object for integrity."""
+        """Check this object for integrity.
+        
+        :param progress_bar: A progress bar to output as the check progresses.
+        :param keys: Specific keys within the VersionedFiles to check. When
+            this parameter is not None, check() becomes a generator as per
+            get_record_stream. The difference to get_record_stream is that
+            more or deeper checks will be performed.
+        :return: None, or if keys was supplied a generator as per
+            get_record_stream.
+        """
         raise NotImplementedError(self.check)
 
     @staticmethod
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
+
+    def clear_cache(self):
+        """Clear whatever caches this VersionedFile holds.
+
+        This is generally called after an operation has been performed, when we
+        don't expect to be using this versioned file again soon.
+        """
 
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
@@ -924,6 +948,20 @@ class VersionedFiles(object):
         for line in lines:
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        # most basic implementation is a loop around get_parent_map
+        pending = set(keys)
+        parent_map = {}
+        while pending:
+            this_parent_map = self.get_parent_map(pending)
+            parent_map.update(this_parent_map)
+            pending = set()
+            map(pending.update, this_parent_map.itervalues())
+            pending = pending.difference(parent_map)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1122,10 +1160,18 @@ class ThunkedVersionedFiles(VersionedFiles):
             result.append((prefix + (origin,), line))
         return result
 
-    def check(self, progress_bar=None):
+    def get_annotator(self):
+        return annotate.Annotator(self)
+
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        # XXX: This is over-enthusiastic but as we only thunk for Weaves today
+        # this is tolerable. Ideally we'd pass keys down to check() and 
+        # have the older VersiondFile interface updated too.
         for prefix, vf in self._iter_all_components():
             vf.check()
+        if keys is not None:
+            return self.get_record_stream(keys, 'unordered', True)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1547,13 +1593,14 @@ class NetworkRecordStream(object):
             record.get_bytes_as(record.storage_kind) call.
         """
         self._bytes_iterator = bytes_iterator
-        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
-            'knit-delta-gz':knit.knit_network_to_record,
-            'knit-annotated-ft-gz':knit.knit_network_to_record,
-            'knit-annotated-delta-gz':knit.knit_network_to_record,
-            'knit-delta-closure':knit.knit_delta_closure_to_records,
-            'fulltext':fulltext_network_to_record,
-            'groupcompress-block':groupcompress.network_block_to_records,
+        self._kind_factory = {
+            'fulltext': fulltext_network_to_record,
+            'groupcompress-block': groupcompress.network_block_to_records,
+            'knit-ft-gz': knit.knit_network_to_record,
+            'knit-delta-gz': knit.knit_network_to_record,
+            'knit-annotated-ft-gz': knit.knit_network_to_record,
+            'knit-annotated-delta-gz': knit.knit_network_to_record,
+            'knit-delta-closure': knit.knit_delta_closure_to_records,
             }
 
     def read(self):

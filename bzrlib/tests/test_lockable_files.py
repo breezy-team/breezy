@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,79 +46,6 @@ from bzrlib.transport import get_transport
 # so won't modernize them now. - mbp 20080430
 class _TestLockableFiles_mixin(object):
 
-    def test_read_write(self):
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            deprecated_in((1, 5, 0)),
-            self.lockable.get, 'foo')
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            deprecated_in((1, 5, 0)),
-            self.lockable.get_utf8, 'foo')
-        self.lockable.lock_write()
-        self.addCleanup(self.lockable.unlock)
-        unicode_string = u'bar\u1234'
-        self.assertEqual(4, len(unicode_string))
-        byte_string = unicode_string.encode('utf-8')
-        self.assertEqual(6, len(byte_string))
-        self.assertRaises(UnicodeEncodeError,
-            self.applyDeprecated,
-            deprecated_in((1, 6, 0)),
-            self.lockable.put, 'foo',
-            StringIO(unicode_string))
-        self.applyDeprecated(
-            deprecated_in((1, 6, 0)),
-            self.lockable.put,
-            'foo', StringIO(byte_string))
-        byte_stream = self.applyDeprecated(
-            deprecated_in((1, 5, 0)),
-            self.lockable.get,
-            'foo')
-        self.assertEqual(byte_string, byte_stream.read())
-        unicode_stream = self.applyDeprecated(
-            deprecated_in((1, 5, 0)),
-            self.lockable.get_utf8,
-            'foo')
-        self.assertEqual(unicode_string,
-            unicode_stream.read())
-        self.assertRaises(BzrBadParameterNotString,
-            self.applyDeprecated,
-            deprecated_in((1, 6, 0)),
-            self.lockable.put_utf8,
-            'bar',
-            StringIO(unicode_string))
-        self.applyDeprecated(
-            deprecated_in((1, 6, 0)),
-            self.lockable.put_utf8,
-            'bar',
-            unicode_string)
-        unicode_stream = self.applyDeprecated(
-            deprecated_in((1, 5, 0)),
-            self.lockable.get_utf8,
-            'bar')
-        self.assertEqual(unicode_string,
-            unicode_stream.read())
-        byte_stream = self.applyDeprecated(
-            deprecated_in((1, 5, 0)),
-            self.lockable.get,
-            'bar')
-        self.assertEqual(byte_string, byte_stream.read())
-        self.applyDeprecated(
-            deprecated_in((1, 6, 0)),
-            self.lockable.put_bytes,
-            'raw', 'raw\xffbytes')
-        byte_stream = self.applyDeprecated(
-            deprecated_in((1, 5, 0)),
-            self.lockable.get,
-            'raw')
-        self.assertEqual('raw\xffbytes', byte_stream.read())
-
-    def test_locks(self):
-        self.lockable.lock_read()
-        self.addCleanup(self.lockable.unlock)
-        self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
-                          StringIO('bar\u1234'))
-
     def test_transactions(self):
         self.assertIs(self.lockable.get_transaction().__class__,
                       PassThroughTransaction)
@@ -157,8 +84,7 @@ class _TestLockableFiles_mixin(object):
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             l2.break_lock()
         finally:

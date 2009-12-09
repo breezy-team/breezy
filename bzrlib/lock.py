@@ -37,8 +37,10 @@ unlock() method.
 import errno
 import os
 import sys
+import warnings
 
 from bzrlib import (
+    debug,
     errors,
     osutils,
     trace,
@@ -84,6 +86,23 @@ class LockResult(object):
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
+
+
+def cant_unlock_not_held(locked_object):
+    """An attempt to unlock failed because the object was not locked.
+
+    This provides a policy point from which we can generate either a warning 
+    or an exception.
+    """
+    # This is typically masking some other error and called from a finally
+    # block, so it's useful to have the option not to generate a new error
+    # here.  You can use -Werror to make it fatal.  It should possibly also
+    # raise LockNotHeld.
+    if 'unlock' in debug.debug_flags:
+        warnings.warn("%r is already unlocked" % (locked_object,),
+            stacklevel=3)
+    else:
+        raise errors.LockNotHeld(locked_object)
 
 
 try:
@@ -171,6 +190,13 @@ if have_fcntl:
             if self.filename in _fcntl_WriteLock._open_locks:
                 self._clear_f()
                 raise errors.LockContention(self.filename)
+            if self.filename in _fcntl_ReadLock._open_locks:
+                if 'strict_locks' in debug.debug_flags:
+                    self._clear_f()
+                    raise errors.LockContention(self.filename)
+                else:
+                    trace.mutter('Write lock taken w/ an open read lock on: %s'
+                                 % (self.filename,))
 
             self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
@@ -201,6 +227,14 @@ if have_fcntl:
         def __init__(self, filename):
             super(_fcntl_ReadLock, self).__init__()
             self.filename = osutils.realpath(filename)
+            if self.filename in _fcntl_WriteLock._open_locks:
+                if 'strict_locks' in debug.debug_flags:
+                    # We raise before calling _open so we don't need to
+                    # _clear_f
+                    raise errors.LockContention(self.filename)
+                else:
+                    trace.mutter('Read lock taken w/ an open write lock on: %s'
+                                 % (self.filename,))
             _fcntl_ReadLock._open_locks.setdefault(self.filename, 0)
             _fcntl_ReadLock._open_locks[self.filename] += 1
             self._open(filename, 'rb')
@@ -301,13 +335,19 @@ if have_fcntl:
 
 
 if have_pywin32 and sys.platform == 'win32':
+    if os.path.supports_unicode_filenames:
+        # for Windows NT/2K/XP/etc
+        win32file_CreateFile = win32file.CreateFileW
+    else:
+        # for Windows 98
+        win32file_CreateFile = win32file.CreateFile
 
     class _w32c_FileLock(_OSLock):
 
         def _open(self, filename, access, share, cflags, pymode):
             self.filename = osutils.realpath(filename)
             try:
-                self._handle = win32file.CreateFile(filename, access, share,
+                self._handle = win32file_CreateFile(filename, access, share,
                     None, win32file.OPEN_ALWAYS,
                     win32file.FILE_ATTRIBUTE_NORMAL, None)
             except pywintypes.error, e:
@@ -393,15 +433,15 @@ if have_ctypes_win32:
             DWORD,                 # dwFlagsAndAttributes
             HANDLE                 # hTemplateFile
         )((_function_name, ctypes.windll.kernel32))
-    
+
     INVALID_HANDLE_VALUE = -1
-    
+
     GENERIC_READ = 0x80000000
     GENERIC_WRITE = 0x40000000
     FILE_SHARE_READ = 1
     OPEN_ALWAYS = 4
     FILE_ATTRIBUTE_NORMAL = 128
-    
+
     ERROR_ACCESS_DENIED = 5
     ERROR_SHARING_VIOLATION = 32
 
@@ -477,4 +517,25 @@ if len(_lock_classes) == 0:
 
 # We default to using the first available lock class.
 _lock_type, WriteLock, ReadLock = _lock_classes[0]
+
+
+class _RelockDebugMixin(object):
+    """Mixin support for -Drelock flag.
+
+    Add this as a base class then call self._note_lock with 'r' or 'w' when
+    acquiring a read- or write-lock.  If this object was previously locked (and
+    locked the same way), and -Drelock is set, then this will trace.note a
+    message about it.
+    """
+    
+    _prev_lock = None
+
+    def _note_lock(self, lock_type):
+        if 'relock' in debug.debug_flags and self._prev_lock == lock_type:
+            if lock_type == 'r':
+                type_name = 'read'
+            else:
+                type_name = 'write'
+            trace.note('%r was %s locked again', self, type_name)
+        self._prev_lock = lock_type
 

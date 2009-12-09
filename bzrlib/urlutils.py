@@ -75,9 +75,9 @@ def file_relpath(base, path):
     This assumes that both paths are already fully specified file:// URLs.
     """
     if len(base) < MIN_ABS_FILEURL_LENGTH:
-        raise ValueError('Length of base must be equal or'
+        raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
-            MIN_ABS_FILEURL_LENGTH)
+            (base, MIN_ABS_FILEURL_LENGTH))
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))
@@ -217,10 +217,16 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    file_localhost_prefix = 'file://localhost/'
+    if url.startswith(file_localhost_prefix):
+        path = url[len(file_localhost_prefix) - 1:]
+    elif not url.startswith('file:///'):
+        raise errors.InvalidURL(
+            url, 'local urls must start with file:/// or file://localhost/')
+    else:
+        path = url[len('file://'):]
     # We only strip off 2 slashes
-    return unescape(url[len('file://'):])
+    return unescape(path)
 
 
 def _posix_local_path_to_url(path):

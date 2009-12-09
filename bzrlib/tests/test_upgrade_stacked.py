@@ -19,6 +19,7 @@
 
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     tests,
     )
@@ -56,13 +57,14 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
             self.assertRaises(errors.IncompatibleRepositories,
                 stacked.open_branch)
         else:
-            stacked.open_branch().check()
+            check.check_dwim('stacked', False, True, True)
         stacked = bzrdir.BzrDir.open('stacked')
         # but we can upgrade the stacked repository
         upgrade('stacked', new_format)
-        # and now it's ok
+        # and now it opens ok
         stacked = bzrdir.BzrDir.open('stacked')
-        stacked.open_branch().check()
+        # And passes check.
+        check.check_dwim('stacked', False, True, True)
 
 
 def load_tests(basic_tests, module, loader):

@@ -25,16 +25,23 @@ branch.
 
 import operator
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    graph as _mod_graph,
+    static_tuple,
+    tsort,
+    versionedfile,
+    )
+""")
 import bzrlib
 from bzrlib import (
     errors,
     symbol_versioning,
+    ui,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tsort import topo_sort
 from bzrlib.trace import mutter
-import bzrlib.ui
-from bzrlib.versionedfile import FulltextContentFactory
 
 
 class RepoFetcher(object):
@@ -59,11 +66,8 @@ class RepoFetcher(object):
                 symbol_versioning.deprecated_in((1, 14, 0))
                 % "pb parameter to RepoFetcher.__init__")
             # and for simplicity it is in fact ignored
-        if to_repository.has_same_location(from_repository):
-            # repository.fetch should be taking care of this case.
-            raise errors.BzrError('RepoFetcher run '
-                    'between two objects at the same location: '
-                    '%r and %r' % (to_repository, from_repository))
+        # repository.fetch has the responsibility for short-circuiting
+        # attempts to copy between a repository and itself.
         self.to_repository = to_repository
         self.from_repository = from_repository
         self.sink = to_repository._get_sink()
@@ -94,7 +98,7 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         pb.show_pct = pb.show_count = False
         try:
             pb.update("Finding revisions", 0, 2)
@@ -121,7 +125,7 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             pb.update("Get stream source")
             source = self.from_repository._get_source(
@@ -216,11 +220,9 @@ class Inter1and2Helper(object):
 
     def _find_root_ids(self, revs, parent_map, graph):
         revision_root = {}
-        planned_versions = {}
         for tree in self.iter_rev_trees(revs):
             revision_id = tree.inventory.root.revision
             root_id = tree.get_root_id()
-            planned_versions.setdefault(root_id, []).append(revision_id)
             revision_root[revision_id] = root_id
         # Find out which parents we don't already know root ids for
         parents = set()
@@ -232,7 +234,7 @@ class Inter1and2Helper(object):
         for tree in self.iter_rev_trees(parents):
             root_id = tree.get_root_id()
             revision_root[tree.get_revision_id()] = root_id
-        return revision_root, planned_versions
+        return revision_root
 
     def generate_root_texts(self, revs):
         """Generate VersionedFiles for all root ids.
@@ -241,9 +243,8 @@ class Inter1and2Helper(object):
         """
         graph = self.source.get_graph()
         parent_map = graph.get_parent_map(revs)
-        rev_order = topo_sort(parent_map)
-        rev_id_to_root_id, root_id_to_rev_ids = self._find_root_ids(
-            revs, parent_map, graph)
+        rev_order = tsort.topo_sort(parent_map)
+        rev_id_to_root_id = self._find_root_ids(revs, parent_map, graph)
         root_id_order = [(rev_id_to_root_id[rev_id], rev_id) for rev_id in
             rev_order]
         # Guaranteed stable, this groups all the file id operations together
@@ -252,20 +253,102 @@ class Inter1and2Helper(object):
         # yet, and are unlikely to in non-rich-root environments anyway.
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
-        def yield_roots():
-            for key in root_id_order:
-                root_id, rev_id = key
-                rev_parents = parent_map[rev_id]
-                # We drop revision parents with different file-ids, because
-                # that represents a rename of the root to a different location
-                # - its not actually a parent for us. (We could look for that
-                # file id in the revision tree at considerably more expense,
-                # but for now this is sufficient (and reconcile will catch and
-                # correct this anyway).
-                # When a parent revision is a ghost, we guess that its root id
-                # was unchanged (rather than trimming it from the parent list).
-                parent_keys = tuple((root_id, parent) for parent in rev_parents
-                    if parent != NULL_REVISION and
-                        rev_id_to_root_id.get(parent, root_id) == root_id)
-                yield FulltextContentFactory(key, parent_keys, None, '')
-        return [('texts', yield_roots())]
+        if len(revs) > 100:
+            graph = _get_rich_root_heads_graph(self.source_repo, revs)
+        new_roots_stream = _new_root_data_stream(
+            root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
+        return [('texts', new_roots_stream)]
+
+
+def _get_rich_root_heads_graph(source_repo, revision_ids):
+    """Get a Graph object suitable for asking heads() for new rich roots."""
+    st = static_tuple.StaticTuple
+    revision_keys = [st(r_id).intern() for r_id in revision_ids]
+    known_graph = source_repo.revisions.get_known_graph_ancestry(
+                    revision_keys)
+    return _mod_graph.GraphThunkIdsToKeys(known_graph)
+
+
+def _new_root_data_stream(
+    root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
+    """Generate a texts substream of synthesised root entries.
+
+    Used in fetches that do rich-root upgrades.
+    
+    :param root_keys_to_create: iterable of (root_id, rev_id) pairs describing
+        the root entries to create.
+    :param rev_id_to_root_id_map: dict of known rev_id -> root_id mappings for
+        calculating the parents.  If a parent rev_id is not found here then it
+        will be recalculated.
+    :param parent_map: a parent map for all the revisions in
+        root_keys_to_create.
+    :param graph: a graph to use instead of repo.get_graph().
+    """
+    for root_key in root_keys_to_create:
+        root_id, rev_id = root_key
+        parent_keys = _parent_keys_for_root_version(
+            root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph)
+        yield versionedfile.FulltextContentFactory(
+            root_key, parent_keys, None, '')
+
+
+def _parent_keys_for_root_version(
+    root_id, rev_id, rev_id_to_root_id_map, parent_map, repo, graph=None):
+    """Get the parent keys for a given root id.
+    
+    A helper function for _new_root_data_stream.
+    """
+    # Include direct parents of the revision, but only if they used the same
+    # root_id and are heads.
+    rev_parents = parent_map[rev_id]
+    parent_ids = []
+    for parent_id in rev_parents:
+        if parent_id == NULL_REVISION:
+            continue
+        if parent_id not in rev_id_to_root_id_map:
+            # We probably didn't read this revision, go spend the extra effort
+            # to actually check
+            try:
+                tree = repo.revision_tree(parent_id)
+            except errors.NoSuchRevision:
+                # Ghost, fill out rev_id_to_root_id in case we encounter this
+                # again.
+                # But set parent_root_id to None since we don't really know
+                parent_root_id = None
+            else:
+                parent_root_id = tree.get_root_id()
+            rev_id_to_root_id_map[parent_id] = None
+            # XXX: why not:
+            #   rev_id_to_root_id_map[parent_id] = parent_root_id
+            # memory consumption maybe?
+        else:
+            parent_root_id = rev_id_to_root_id_map[parent_id]
+        if root_id == parent_root_id:
+            # With stacking we _might_ want to refer to a non-local revision,
+            # but this code path only applies when we have the full content
+            # available, so ghosts really are ghosts, not just the edge of
+            # local data.
+            parent_ids.append(parent_id)
+        else:
+            # root_id may be in the parent anyway.
+            try:
+                tree = repo.revision_tree(parent_id)
+            except errors.NoSuchRevision:
+                # ghost, can't refer to it.
+                pass
+            else:
+                try:
+                    parent_ids.append(tree.inventory[root_id].revision)
+                except errors.NoSuchId:
+                    # not in the tree
+                    pass
+    # Drop non-head parents
+    if graph is None:
+        graph = repo.get_graph()
+    heads = graph.heads(parent_ids)
+    selected_ids = []
+    for parent_id in parent_ids:
+        if parent_id in heads and parent_id not in selected_ids:
+            selected_ids.append(parent_id)
+    parent_keys = [(root_id, parent_id) for parent_id in selected_ids]
+    return parent_keys

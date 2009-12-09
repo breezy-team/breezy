@@ -16,6 +16,7 @@
 
 
 import os
+import socket
 from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
@@ -26,6 +27,7 @@ from bzrlib import (
     urlutils,
     __version__ as _bzrlib_version,
     )
+from bzrlib.transport.http import _urllib2_wrappers
 
 
 # for testing, do
@@ -47,6 +49,33 @@ class NotLaunchpadBranch(errors.BzrError):
 
     def __init__(self, url):
         errors.BzrError.__init__(self, url=url)
+
+
+class XMLRPCTransport(xmlrpclib.Transport):
+
+    def __init__(self, scheme):
+        # In python2.4 xmlrpclib.Transport is a old-style class, and does not
+        # define __init__, so we check first
+        init = getattr(xmlrpclib.Transport, '__init__', None)
+        if init is not None:
+            init(self)
+        self._scheme = scheme
+        self._opener = _urllib2_wrappers.Opener()
+        self.verbose = 0
+
+    def request(self, host, handler, request_body, verbose=0):
+        self.verbose = verbose
+        url = self._scheme + "://" + host + handler
+        request = _urllib2_wrappers.Request("POST", url, request_body)
+        # FIXME: _urllib2_wrappers will override user-agent with its own
+        # request.add_header("User-Agent", self.user_agent)
+        request.add_header("Content-Type", "text/xml")
+
+        response = self._opener.open(request)
+        if response.code != 200:
+            raise xmlrpclib.ProtocolError(host + handler, response.code,
+                                          response.msg, response.info())
+        return self.parse_response(response)
 
 
 class LaunchpadService(object):
@@ -86,10 +115,7 @@ class LaunchpadService(object):
         self._lp_instance = lp_instance
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
-            if uri_type == 'https':
-                transport = xmlrpclib.SafeTransport()
-            else:
-                transport = xmlrpclib.Transport()
+            transport = XMLRPCTransport(uri_type)
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
                     % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
@@ -183,6 +209,10 @@ class LaunchpadService(object):
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
+        except socket.gaierror, e:
+            raise errors.ConnectionError(
+                "Could not resolve '%s'" % self.domain,
+                orig_error=e)
         return result
 
     @property

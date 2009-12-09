@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +25,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    diff,
     errors,
     osutils,
     mail_client,
@@ -43,6 +43,7 @@ sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
+change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
@@ -209,6 +210,10 @@ class InstrumentedConfig(config.Config):
         self._calls.append('_get_signature_checking')
         return self._signatures
 
+    def _get_change_editor(self):
+        self._calls.append('_get_change_editor')
+        return 'vimdiff -fo @new_path @old_path'
+
 
 bool_config = """[DEFAULT]
 active = true
@@ -315,12 +320,21 @@ class TestConfig(tests.TestCase):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
 
+    def test_get_change_editor(self):
+        my_config = InstrumentedConfig()
+        change_editor = my_config.get_change_editor('old_tree', 'new_tree')
+        self.assertEqual(['_get_change_editor'], my_config._calls)
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual(['vimdiff', '-fo', '@new_path', '@old_path'],
+                         change_editor.command_template)
+
 
 class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
         os.environ['HOME'] = '/home/bogus'
+        os.environ['XDG_CACHE_DIR'] = ''
         if sys.platform == 'win32':
             os.environ['BZR_HOME'] = \
                 r'C:\Documents and Settings\bogus\Application Data'
@@ -348,6 +362,10 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
 
+    def test_xdg_cache_dir(self):
+        self.assertEqual(config.xdg_cache_dir(),
+            '/home/bogus/.cache')
+
 
 class TestIniConfig(tests.TestCase):
 
@@ -367,6 +385,20 @@ class TestIniConfig(tests.TestCase):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+    def test_get_user_option_as_bool(self):
+        config_file = StringIO("""
+a_true_bool = true
+a_false_bool = 0
+an_invalid_bool = maybe
+a_list = hmm, who knows ? # This interpreted as a list !
+""".encode('utf-8'))
+        my_config = config.IniBasedConfig(None)
+        parser = my_config._get_parser(file=config_file)
+        get_option = my_config.get_user_option_as_bool
+        self.assertEqual(True, get_option('a_true_bool'))
+        self.assertEqual(False, get_option('a_false_bool'))
+        self.assertIs(None, get_option('an_invalid_bool'))
+        self.assertIs(None, get_option('not_defined_in_this_config'))
 
 class TestGetConfig(tests.TestCase):
 
@@ -606,6 +638,18 @@ class TestGlobalConfigItems(tests.TestCase):
     def test_get_long_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
+
+    def test_get_change_editor(self):
+        my_config = self._get_sample_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual('vimdiff -of @new_path @old_path',
+                         ' '.join(change_editor.command_template))
+
+    def test_get_no_change_editor(self):
+        my_config = self._get_empty_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(None, change_editor)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
@@ -1547,8 +1591,9 @@ password=jimpass
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -1568,8 +1613,10 @@ user=jim
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout,
+                                            stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted

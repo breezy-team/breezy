@@ -40,7 +40,7 @@ META_INFO = {
     'url':          'http://www.bazaar-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
-    'download_url': 'http://bazaar-vcs.org/Download',
+    'download_url': 'https://launchpad.net/bzr/+download',
     'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
@@ -65,6 +65,9 @@ PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
+                                        'tests/ssl_certs/server_without_pass.key',
+                                        'tests/ssl_certs/server_with_pass.key',
+                                        'tests/ssl_certs/server.crt'
                                        ]},
            }
 
@@ -93,6 +96,7 @@ def get_bzrlib_packages():
 BZRLIB['packages'] = get_bzrlib_packages()
 
 
+from distutils import log
 from distutils.core import setup
 from distutils.command.install_scripts import install_scripts
 from distutils.command.install_data import install_data
@@ -163,7 +167,13 @@ from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
-    from Pyrex.Distutils import build_ext
+    try:
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print "No Pyrex, trying Cython..."
+        from Cython.Distutils import build_ext
+        from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -176,7 +186,6 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    from Pyrex.Compiler.Version import version as pyrex_version
 
 
 class build_ext_if_possible(build_ext):
@@ -259,8 +268,8 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
         define_macros=define_macros, libraries=libraries))
 
 
+add_pyrex_extension('bzrlib._annotator_pyx')
 add_pyrex_extension('bzrlib._bencode_pyx')
-add_pyrex_extension('bzrlib._btree_serializer_pyx')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
@@ -290,6 +299,10 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
+add_pyrex_extension('bzrlib._simple_set_pyx')
+ext_modules.append(Extension('bzrlib._static_tuple_c',
+                             ['bzrlib/_static_tuple_c.c']))
+add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:
@@ -322,9 +335,6 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # Ensure tbzrlib itself is on sys.path
     sys.path.append(tbzr_root)
 
-    # Ensure our COM "entry-point" is on sys.path
-    sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
-
     packages.append("tbzrlib")
 
     # collect up our icons.
@@ -351,17 +361,6 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
-
-    # NOTE: We still create a DLL version of the Python implemented shell
-    # extension for testing purposes - but it is *not* registered by
-    # default - our C++ one is instead.  To discourage people thinking
-    # this DLL is still necessary, its called 'tbzr_old.dll'
-    tbzr = dict(
-        modules=["tbzr"],
-        create_exe = False, # we only want a .dll
-        dest_base = 'tbzr_old',
-    )
-    com_targets.append(tbzr)
 
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
@@ -393,19 +392,19 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     console_targets.append(tracer)
 
     # The C++ implemented shell extensions.
-    dist_dir = os.path.join(tbzr_root, "shellext", "cpp", "tbzrshellext",
-                            "build", "dist")
+    dist_dir = os.path.join(tbzr_root, "shellext", "build")
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x86.dll')]))
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
 
-def get_qbzr_py2exe_info(includes, excludes, packages):
+def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     packages.append('PyQt4')
     excludes.append('PyQt4.elementtree.ElementTree')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
+    includes.append('win32event')  # for qsubprocess stuff
     # but we can avoid many Qt4 Dlls.
     dll_excludes.extend(
         """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
@@ -413,10 +412,45 @@ def get_qbzr_py2exe_info(includes, excludes, packages):
         QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
         qscintilla2.dll""".split())
     # the qt binaries might not be on PATH...
-    qt_dir = os.path.join(sys.prefix, "PyQt4", "bin")
-    path = os.environ.get("PATH","")
-    if qt_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
-        os.environ["PATH"] = path + os.pathsep + qt_dir
+    # They seem to install to a place like C:\Python25\PyQt4\*
+    # Which is not the same as C:\Python25\Lib\site-packages\PyQt4
+    pyqt_dir = os.path.join(sys.prefix, "PyQt4")
+    pyqt_bin_dir = os.path.join(pyqt_dir, "bin")
+    if os.path.isdir(pyqt_bin_dir):
+        path = os.environ.get("PATH", "")
+        if pyqt_bin_dir.lower() not in [p.lower() for p in path.split(os.pathsep)]:
+            os.environ["PATH"] = path + os.pathsep + pyqt_bin_dir
+    # also add all imageformat plugins to distribution
+    # We will look in 2 places, dirname(PyQt4.__file__) and pyqt_dir
+    base_dirs_to_check = []
+    if os.path.isdir(pyqt_dir):
+        base_dirs_to_check.append(pyqt_dir)
+    try:
+        import PyQt4
+    except ImportError:
+        pass
+    else:
+        pyqt4_base_dir = os.path.dirname(PyQt4.__file__)
+        if pyqt4_base_dir != pyqt_dir:
+            base_dirs_to_check.append(pyqt4_base_dir)
+    if not base_dirs_to_check:
+        log.warn("Can't find PyQt4 installation -> not including imageformat"
+                 " plugins")
+    else:
+        files = []
+        for base_dir in base_dirs_to_check:
+            plug_dir = os.path.join(base_dir, 'plugins', 'imageformats')
+            if os.path.isdir(plug_dir):
+                for fname in os.listdir(plug_dir):
+                    # Include plugin dlls, but not debugging dlls
+                    fullpath = os.path.join(plug_dir, fname)
+                    if fname.endswith('.dll') and not fname.endswith('d4.dll'):
+                        files.append(fullpath)
+        if files:
+            data_files.append(('imageformats', files))
+        else:
+            log.warn('PyQt4 was found, but we could not find any imageformat'
+                     ' plugins. Are you sure your configuration is correct?')
 
 
 def get_svn_py2exe_info(includes, excludes, packages):
@@ -504,7 +538,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2007",
+                                     copyright = "(c) Canonical Ltd, 2005-2009",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
@@ -595,11 +629,10 @@ elif 'py2exe' in sys.argv:
                        'tools/win32/bzr_postinstall.py',
                        ]
     gui_targets = []
-    com_targets = []
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
-        get_qbzr_py2exe_info(includes, excludes, packages)
+        get_qbzr_py2exe_info(includes, excludes, packages, data_files)
 
     if 'svn' in plugins:
         get_svn_py2exe_info(includes, excludes, packages)
@@ -646,7 +679,6 @@ elif 'py2exe' in sys.argv:
     setup(options=options_list,
           console=console_targets,
           windows=gui_targets,
-          com_server=com_targets,
           zipfile='lib/library.zip',
           data_files=data_files,
           cmdclass={'install_data': install_data_with_bytecompile},

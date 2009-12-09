@@ -526,6 +526,19 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
 
+    def test_lefthand_distance_smoke(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        graph = self.make_graph(history_shortcut)
+        distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
+        self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
+
+    def test_lefthand_distance_ghosts(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        nodes = {'nonghost':[NULL_REVISION], 'toghost':['ghost']}
+        graph = self.make_graph(nodes)
+        distance_graph = graph.find_lefthand_distances(['nonghost', 'toghost'])
+        self.assertEqual({'nonghost': 1, 'toghost': -1}, distance_graph)
+
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
 
@@ -1567,6 +1580,24 @@ class TestCollapseLinearRegions(tests.TestCase):
         # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
+
+
+class TestGraphThunkIdsToKeys(tests.TestCase):
+
+    def test_heads(self):
+        # A
+        # |\
+        # B C
+        # |/
+        # D
+        d = {('D',): [('B',), ('C',)], ('C',):[('A',)],
+             ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.Graph(_mod_graph.DictParentsProvider(d))
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'A'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
+        self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
 
 
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):

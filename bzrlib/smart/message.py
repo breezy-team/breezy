@@ -134,7 +134,7 @@ class ConventionalRequestHandler(MessageHandler):
 
     def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(args[0], args[1:])
+        self.request_handler.args_received(args)
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
@@ -283,7 +283,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
-                "please check connectivity and permissions")
+                "Unexpected end of message. "
+                "Please check connectivity and permissions, and report a bug "
+                "if problems persist.")
         self._protocol_decoder.accept_bytes(bytes)
 
     def protocol_error(self, exception):
@@ -328,7 +330,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpss' in debug.debug_flags:
+                if 'hpssdetail' in debug.debug_flags:
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()

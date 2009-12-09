@@ -154,7 +154,7 @@ class HttpTransportBase(ConnectedTransport):
                                  None, None, self._host, self._port, path)
 
     def _create_auth(self):
-        """Returns a dict returning the credentials provided at build time."""
+        """Returns a dict containing the credentials provided at build time."""
         auth = dict(host=self._host, port=self._port,
                     user=self._user, password=self._password,
                     protocol=self._unqualified_scheme,
@@ -617,7 +617,7 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
-        except errors.InvalidHttpResponse, e:
+        except (errors.InvalidHttpResponse, errors.ConnectionReset), e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
 

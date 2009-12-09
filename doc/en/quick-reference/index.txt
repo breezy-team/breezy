@@ -1,0 +1,6 @@
+Quick Reference
+===============
+
+* `PDF format <../_static/en/bzr-en-quick-reference.pdf>`_
+* `PNG format <../_static/en/bzr-en-quick-reference.png>`_
+* `SVG format <../_static/en/bzr-en-quick-reference.svg>`_

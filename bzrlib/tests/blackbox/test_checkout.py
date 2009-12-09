@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +28,13 @@ from bzrlib import (
     errors,
     workingtree,
     )
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import HardlinkFeature
+from bzrlib.tests.blackbox import (
+    ExternalBase,
+    )
+from bzrlib.tests import (
+    HardlinkFeature,
+    KnownFailure,
+    )
 
 
 class TestCheckout(ExternalBase):
@@ -150,8 +155,9 @@ class TestCheckout(ExternalBase):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        self.run_bzr(['checkout', 'source', 'target', '--files-from', 'source',
-                      '--hardlink'])
+        out, err = self.run_bzr(['checkout', 'source', 'target',
+            '--files-from', 'source',
+            '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)

@@ -19,9 +19,9 @@ import time
 from bzrlib import (
     debug,
     errors,
+    osutils,
     revision,
     trace,
-    tsort,
     )
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
@@ -310,6 +310,27 @@ class Graph(object):
         # We reached a known revision, so just add in how many steps it took to
         # get there.
         return known_revnos[cur_tip] + num_steps
+
+    def find_lefthand_distances(self, keys):
+        """Find the distance to null for all the keys in keys.
+
+        :param keys: keys to lookup.
+        :return: A dict key->distance for all of keys.
+        """
+        # Optimisable by concurrent searching, but a random spread should get
+        # some sort of hit rate.
+        result = {}
+        known_revnos = []
+        ghosts = []
+        for key in keys:
+            try:
+                known_revnos.append(
+                    (key, self.find_distance_to_null(key, known_revnos)))
+            except errors.GhostRevisionsHaveNoRevno:
+                ghosts.append(key)
+        for key in ghosts:
+            known_revnos.append((key, -1))
+        return dict(known_revnos)
 
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
@@ -905,6 +926,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
+        from bzrlib import tsort
         sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
@@ -1657,8 +1679,22 @@ def collapse_linear_regions(parent_map):
     return result
 
 
+class GraphThunkIdsToKeys(object):
+    """Forwards calls about 'ids' to be about keys internally."""
+
+    def __init__(self, graph):
+        self._graph = graph
+
+    def heads(self, ids):
+        """See Graph.heads()"""
+        as_keys = [(i,) for i in ids]
+        head_keys = self._graph.heads(as_keys)
+        return set([h[0] for h in head_keys])
+
+
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph

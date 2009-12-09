@@ -1,0 +1,15 @@
+ウェブブラウジング
+==================
+
+概要
+-----
+
+BazaarのリポジトリをWeb上で閲覧するために利用できる選択肢は幅広くあり、\
+主要なものは Loggerhead です。
+Loggerhead のホームページは https://launchpad.net/loggerhead にあります。
+
+ダウンロードリンクを含めてこれらのパッケージの最新情報に関しては
+http://bazaar-vcs.org/WebInterface を参照してください。
+
+注: プロジェクトがホストされているもしくはLaunchpadでミラーリングされている場合、
+Loggerheadのコードブラウジング機能はサービスの一部として提供されます。

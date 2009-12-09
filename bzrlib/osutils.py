@@ -21,6 +21,7 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -223,6 +224,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     else:
         file_existed = True
 
+    failure_exc = None
     success = False
     try:
         try:
@@ -234,8 +236,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # source and target may be aliases of each other (e.g. on a
             # case-insensitive filesystem), so we may have accidentally renamed
             # source by when we tried to rename target
-            if not (file_existed and e.errno in (None, errno.ENOENT)):
-                raise
+            failure_exc = sys.exc_info()
+            if (file_existed and e.errno in (None, errno.ENOENT)
+                and old.lower() == new.lower()):
+                # source and target are the same file on a case-insensitive
+                # filesystem, so we don't generate an exception
+                failure_exc = None
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -244,6 +250,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
+    if failure_exc is not None:
+        raise failure_exc[0], failure_exc[1], failure_exc[2]
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -687,6 +695,8 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
+
 
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -706,6 +716,32 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     date_str = time.strftime(date_fmt, tt)
     return date_str + offset_str
 
+
+# Cache of formatted offset strings
+_offset_cache = {}
+
+
+def format_date_with_offset_in_original_timezone(t, offset=0,
+    _cache=_offset_cache):
+    """Return a formatted date string in the original timezone.
+
+    This routine may be faster then format_date.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    """
+    if offset is None:
+        offset = 0
+    tt = time.gmtime(t + offset)
+    date_fmt = _default_format_by_weekday_num[tt[6]]
+    date_str = time.strftime(date_fmt, tt)
+    offset_str = _cache.get(offset, None)
+    if offset_str is None:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+        _cache[offset] = offset_str
+    return date_str + offset_str
+
+
 def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                       show_offset=True):
     """Return an unicode date string formatted according to the current locale.
@@ -724,6 +760,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     if not isinstance(date_str, unicode):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
+
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
@@ -881,9 +918,57 @@ def parent_directories(filename):
     return parents
 
 
+_extension_load_failures = []
+
+
+def failed_to_load_extension(exception):
+    """Handle failing to load a binary extension.
+
+    This should be called from the ImportError block guarding the attempt to
+    import the native extension.  If this function returns, the pure-Python
+    implementation should be loaded instead::
+
+    >>> try:
+    >>>     import bzrlib._fictional_extension_pyx
+    >>> except ImportError, e:
+    >>>     bzrlib.osutils.failed_to_load_extension(e)
+    >>>     import bzrlib._fictional_extension_py
+    """
+    # NB: This docstring is just an example, not a doctest, because doctest
+    # currently can't cope with the use of lazy imports in this namespace --
+    # mbp 20090729
+    
+    # This currently doesn't report the failure at the time it occurs, because
+    # they tend to happen very early in startup when we can't check config
+    # files etc, and also we want to report all failures but not spam the user
+    # with 10 warnings.
+    from bzrlib import trace
+    exception_str = str(exception)
+    if exception_str not in _extension_load_failures:
+        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        _extension_load_failures.append(exception_str)
+
+
+def report_extension_load_failures():
+    if not _extension_load_failures:
+        return
+    from bzrlib.config import GlobalConfig
+    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+        return
+    # the warnings framework should by default show this only once
+    from bzrlib.trace import warning
+    warning(
+        "bzr: warning: some compiled extensions could not be loaded; "
+        "see <https://answers.launchpad.net/bzr/+faq/703>")
+    # we no longer show the specific missing extensions here, because it makes
+    # the message too long and scary - see
+    # https://bugs.launchpad.net/bzr/+bug/430529
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
-except ImportError:
+except ImportError, e:
+    failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
 
@@ -1040,17 +1125,17 @@ def relpath(base, path):
 
     s = []
     head = rp
-    while len(head) >= len(base):
+    while True:
+        if len(head) <= len(base) and head != base:
+            raise errors.PathNotChild(rp, base)
         if head == base:
             break
-        head, tail = os.path.split(head)
+        head, tail = split(head)
         if tail:
-            s.insert(0, tail)
-    else:
-        raise errors.PathNotChild(rp, base)
+            s.append(tail)
 
     if s:
-        return pathjoin(*s)
+        return pathjoin(*reversed(s))
     else:
         return ''
 
@@ -1083,7 +1168,14 @@ def _cicp_canonical_relpath(base, path):
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
-        for look in _listdir(current):
+        try:
+            next_entries = _listdir(current)
+        except OSError: # enoent, eperm, etc
+            # We can't find this in the filesystem, so just append the
+            # remaining bits.
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+        for look in next_entries:
             if lbit == look.lower():
                 current = pathjoin(current, look)
                 break
@@ -1093,7 +1185,7 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base)+1:]
+    return current[len(abs_base):].lstrip('/')
 
 # XXX - TODO - we need better detection/integration of case-insensitive
 # file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
@@ -1238,25 +1330,49 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+default_terminal_width = 80
+"""The default terminal width for ttys.
+
+This is defined so that higher levels can share a common fallback value when
+terminal_width() returns None.
+"""
+
+
 def terminal_width():
-    """Return estimated terminal width."""
+    """Return terminal width.
+
+    None is returned if the width can't established precisely.
+    """
+
+    # If BZR_COLUMNS is set, take it, user is always right
+    try:
+        return int(os.environ['BZR_COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
+    isatty = getattr(sys.stdout, 'isatty', None)
+    if  isatty is None or not isatty():
+        # Don't guess, setting BZR_COLUMNS is the recommended way to override.
+        return None
+
     if sys.platform == 'win32':
-        return win32utils.get_console_size()[0]
-    width = 0
+        return win32utils.get_console_size(defaultx=None)[0]
+
     try:
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
         width = struct.unpack('HHHH', x)[1]
-    except IOError:
-        pass
-    if width <= 0:
+    except (IOError, AttributeError):
+        # If COLUMNS is set, take it
         try:
-            width = int(os.environ['COLUMNS'])
-        except:
-            pass
+            return int(os.environ['COLUMNS'])
+        except (KeyError, ValueError):
+            return None
+
     if width <= 0:
-        width = 80
+        # Consider invalid values as meaning no width
+        return None
 
     return width
 
@@ -1466,7 +1582,8 @@ def _walkdirs_utf8(top, prefix=""):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError:
+            except ImportError, e:
+                failed_to_load_extension(e)
                 pass
 
     if _selected_dir_reader is None:
@@ -1778,7 +1895,9 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError:
+        except ImportError, e:
+            # This is one time where we won't warn that an extension failed to
+            # load. The extension is never available on Windows anyway.
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )
@@ -1886,13 +2005,16 @@ def local_concurrency(use_cache=True):
     anything goes wrong.
     """
     global _cached_local_concurrency
+
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    try:
-        concurrency = _local_concurrency()
-    except (OSError, IOError):
-        concurrency = None
+    concurrency = os.environ.get('BZR_CONCURRENCY', None)
+    if concurrency is None:
+        try:
+            concurrency = _local_concurrency()
+        except (OSError, IOError):
+            pass
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

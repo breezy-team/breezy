@@ -435,6 +435,11 @@ class DirStateWorkingTree(WorkingTree3):
         return osutils.lexists(pathjoin(
                     self.basedir, row[0].decode('utf8'), row[1].decode('utf8')))
 
+    def has_or_had_id(self, file_id):
+        state = self.current_dirstate()
+        row, parents = self._get_entry(file_id=file_id)
+        return row is not None
+
     @needs_read_lock
     def id2path(self, file_id):
         "Convert a file-id to a path."
@@ -687,7 +692,7 @@ class DirStateWorkingTree(WorkingTree3):
             from_entry = self._get_entry(path=from_rel)
             if from_entry == (None, None):
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
-                    errors.NotVersionedError(path=str(from_rel)))
+                    errors.NotVersionedError(path=from_rel))
 
             from_id = from_entry[0][2]
             to_rel = pathjoin(to_dir, from_tail)
@@ -1195,13 +1200,16 @@ class DirStateWorkingTree(WorkingTree3):
                 # just forget the whole block.
                 entry_index = 0
                 while entry_index < len(block[1]):
-                    # Mark this file id as having been removed
                     entry = block[1][entry_index]
-                    ids_to_unversion.discard(entry[0][2])
-                    if (entry[1][0][0] in 'ar' # don't remove absent or renamed
-                                               # entries
-                        or not state._make_absent(entry)):
+                    if entry[1][0][0] in 'ar':
+                        # don't remove absent or renamed entries
                         entry_index += 1
+                    else:
+                        # Mark this file id as having been removed
+                        ids_to_unversion.discard(entry[0][2])
+                        if not state._make_absent(entry):
+                            # The block has not shrunk.
+                            entry_index += 1
                 # go to the next block. (At the moment we dont delete empty
                 # dirblocks)
                 block_index += 1
@@ -1259,9 +1267,17 @@ class DirStateWorkingTree(WorkingTree3):
         if self._dirty:
             raise AssertionError("attempting to write an inventory when the "
                 "dirstate is dirty will lose pending changes")
-        self.current_dirstate().set_state_from_inventory(inv)
-        self._make_dirty(reset_inventory=False)
-        if self._inventory is not None:
+        had_inventory = self._inventory is not None
+        # Setting self._inventory = None forces the dirstate to regenerate the
+        # working inventory. We do this because self.inventory may be inv, or
+        # may have been modified, and either case would prevent a clean delta
+        # being created.
+        self._inventory = None
+        # generate a delta,
+        delta = inv._make_delta(self.inventory)
+        # and apply it.
+        self.apply_inventory_delta(delta)
+        if had_inventory:
             self._inventory = inv
         self.flush()
 
@@ -1292,6 +1308,32 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         return statvalue, sha1
 
 
+class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
+    """Dirstate working tree that supports content filtering.
+
+    The dirstate holds the hash and size of the canonical form of the file, 
+    and most methods must return that.
+    """
+
+    def _file_content_summary(self, path, stat_result):
+        # This is to support the somewhat obsolete path_content_summary method
+        # with content filtering: see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/415508>.
+        #
+        # If the dirstate cache is up to date and knows the hash and size,
+        # return that.
+        # Otherwise if there are no content filters, return the on-disk size
+        # and leave the hash blank.
+        # Otherwise, read and filter the on-disk file and use its size and
+        # hash.
+        #
+        # The dirstate doesn't store the size of the canonical form so we
+        # can't trust it for content-filtered trees.  We just return None.
+        dirstate_sha1 = self._dirstate.sha1_from_stat(path, stat_result)
+        executable = self._is_executable_from_path_and_stat(path, stat_result)
+        return ('file', None, executable, dirstate_sha1)
+
+
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.
 
@@ -1305,7 +1347,7 @@ class WorkingTree4(DirStateWorkingTree):
     """
 
 
-class WorkingTree5(DirStateWorkingTree):
+class WorkingTree5(ContentFilteringDirStateWorkingTree):
     """This is the Format 5 working tree.
 
     This differs from WorkingTree4 by:
@@ -1315,7 +1357,7 @@ class WorkingTree5(DirStateWorkingTree):
     """
 
 
-class WorkingTree6(DirStateWorkingTree):
+class WorkingTree6(ContentFilteringDirStateWorkingTree):
     """This is the Format 6 working tree.
 
     This differs from WorkingTree5 by:
@@ -1405,17 +1447,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
-                # If content filtering is supported, do not use the accelerator
-                # tree - the cost of transforming the content both ways and
-                # checking for changed content can outweight the gains it gives.
-                # Note: do NOT move this logic up higher - using the basis from
-                # the accelerator tree is still desirable because that can save
-                # a minute or more of processing on large trees!
-                # The original tree may not have the same content filters
-                # applied so we can't safely build the inventory delta from
-                # the source tree.
                 if wt.supports_content_filtering():
-                    accelerator_tree = None
+                    # The original tree may not have the same content filters
+                    # applied so we can't safely build the inventory delta from
+                    # the source tree.
                     delta_from_tree = False
                 else:
                     delta_from_tree = True
@@ -1538,7 +1573,11 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
 
 
 class DirStateRevisionTree(Tree):
-    """A revision tree pulling the inventory from a dirstate."""
+    """A revision tree pulling the inventory from a dirstate.
+    
+    Note that this is one of the historical (ie revision) trees cached in the
+    dirstate for easy access, not the workingtree.
+    """
 
     def __init__(self, dirstate, revision_id, repository):
         self._dirstate = dirstate
@@ -1977,8 +2016,6 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)

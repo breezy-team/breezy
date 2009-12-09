@@ -26,9 +26,9 @@ are all an additional 8-bits wide leading to a sparse upper tree.
 
 Updates to a CHKMap are done preferentially via the apply_delta method, to
 allow optimisation of the update operation; but individual map/unmap calls are
-possible and supported. All changes via map/unmap are buffered in memory until
-the _save method is called to force serialisation of the tree. apply_delta
-performs a _save implicitly.
+possible and supported. Individual changes via map/unmap are buffered in memory
+until the _save method is called to force serialisation of the tree.
+apply_delta records its changes immediately by performing an implicit _save.
 
 TODO:
 -----
@@ -41,14 +41,19 @@ import heapq
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
-from bzrlib import versionedfile
+from bzrlib import (
+    errors,
+    versionedfile,
+    )
 """)
 from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    static_tuple,
     trace,
     )
+from bzrlib.static_tuple import StaticTuple
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
@@ -56,6 +61,9 @@ from bzrlib import (
 _PAGE_CACHE_SIZE = 4*1024*1024
 # We are caching bytes so len(value) is perfectly accurate
 _page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+
+def clear_cache():
+    _page_cache.clear()
 
 # If a ChildNode falls below this many bytes, we check for a remap
 _INTERESTING_NEW_SIZE = 50
@@ -76,6 +84,8 @@ search_key_registry.register('plain', _search_key_plain)
 
 class CHKMap(object):
     """A persistent map from string to string backed by a CHK store."""
+
+    __slots__ = ('_store', '_root_node', '_search_key_func')
 
     def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
@@ -105,6 +115,15 @@ class CHKMap(object):
             of old_key is removed.
         """
         delete_count = 0
+        # Check preconditions first.
+        as_st = StaticTuple.from_sequence
+        new_items = set([as_st(key) for (old, key, value) in delta
+                         if key is not None and old is None])
+        existing_new = list(self.iteritems(key_filter=new_items))
+        if existing_new:
+            raise errors.InconsistentDeltaDelta(delta,
+                "New items are already in the map %r." % existing_new)
+        # Now apply changes.
         for old, new, value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
@@ -119,7 +138,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -133,7 +152,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) is tuple:
+        if type(node) is StaticTuple:
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -180,7 +199,7 @@ class CHKMap(object):
             for key, value in sorted(node._items.iteritems()):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append('      %r %r' % (key, value))
+                result.append('      %r %r' % (tuple(key), value))
         return result
 
     @classmethod
@@ -204,6 +223,9 @@ class CHKMap(object):
         root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
+        if type(root_key) is not StaticTuple:
+            raise AssertionError('we got a %s instead of a StaticTuple'
+                                 % (type(root_key),))
         return root_key
 
     @classmethod
@@ -224,9 +246,11 @@ class CHKMap(object):
         node = LeafNode(search_key_func=search_key_func)
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
-        node._items = dict(initial_value)
+        as_st = StaticTuple.from_sequence
+        node._items = dict([(as_st(key), val) for key, val
+                                               in initial_value.iteritems()])
         node._raw_size = sum([node._key_value_len(key, value)
-                              for key,value in initial_value.iteritems()])
+                              for key,value in node._items.iteritems()])
         node._len = len(node._items)
         node._compute_search_prefix()
         node._compute_serialised_prefix()
@@ -468,11 +492,14 @@ class CHKMap(object):
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
+        if key_filter is not None:
+            as_st = StaticTuple.from_sequence
+            key_filter = [as_st(key) for key in key_filter]
         return self._root_node.iteritems(self._store, key_filter=key_filter)
 
     def key(self):
         """Return the key for this map."""
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             return self._root_node
         else:
             return self._root_node._key
@@ -482,7 +509,12 @@ class CHKMap(object):
         return len(self._root_node)
 
     def map(self, key, value):
-        """Map a key tuple to value."""
+        """Map a key tuple to value.
+        
+        :param key: A key to map.
+        :param value: The value to assign to key.
+        """
+        key = StaticTuple.from_sequence(key)
         # Need a root object.
         self._ensure_root()
         prefix, node_details = self._root_node.map(self._store, key, value)
@@ -499,12 +531,15 @@ class CHKMap(object):
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
         if type(node) is tuple:
+            node = StaticTuple.from_sequence(node)
+        if type(node) is StaticTuple:
             return node
         else:
             return node._key
 
     def unmap(self, key, check_remap=True):
         """remove key from the map."""
+        key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if type(self._root_node) is InternalNode:
             unmapped = self._root_node.unmap(self._store, key,
@@ -524,7 +559,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -537,6 +572,10 @@ class Node(object):
     :ivar _raw_size: The total size of the serialized key:value data, before
         adding the header bytes, and without prefix compression.
     """
+
+    __slots__ = ('_key', '_len', '_maximum_size', '_key_width',
+                 '_raw_size', '_items', '_search_prefix', '_search_key_func'
+                )
 
     def __init__(self, key_width=1):
         """Create a node.
@@ -632,6 +671,8 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
+    __slots__ = ('_common_serialised_prefix', '_serialise_key')
+
     def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
@@ -680,6 +721,7 @@ class LeafNode(Node):
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_leaf_node(bytes, key,
                                       search_key_func=search_key_func)
 
@@ -855,7 +897,7 @@ class LeafNode(Node):
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
+        self._key = StaticTuple("sha1:" + sha1,).intern()
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             raise AssertionError('Invalid _current_size')
@@ -929,6 +971,8 @@ class InternalNode(Node):
         LeafNode or InternalNode.
     """
 
+    __slots__ = ('_node_width',)
+
     def __init__(self, prefix='', search_key_func=None):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
@@ -976,6 +1020,7 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 
@@ -1006,7 +1051,7 @@ class InternalNode(Node):
             # for whatever we are missing
             shortcut = True
             for prefix, node in self._items.iteritems():
-                if node.__class__ is tuple:
+                if node.__class__ is StaticTuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
@@ -1041,7 +1086,7 @@ class InternalNode(Node):
                     # A given key can only match 1 child node, if it isn't
                     # there, then we can just return nothing
                     return
-                if node.__class__ is tuple:
+                if node.__class__ is StaticTuple:
                     keys[node] = (search_prefix, [key])
                 else:
                     # This is loaded, and the only thing that can match,
@@ -1074,7 +1119,7 @@ class InternalNode(Node):
                         # We can ignore this one
                         continue
                     node_key_filter = prefix_to_keys[search_prefix]
-                    if node.__class__ is tuple:
+                    if node.__class__ is StaticTuple:
                         keys[node] = (search_prefix, node_key_filter)
                     else:
                         yield node, node_key_filter
@@ -1089,7 +1134,7 @@ class InternalNode(Node):
                         if sub_prefix in length_filter:
                             node_key_filter.extend(prefix_to_keys[sub_prefix])
                     if node_key_filter: # this key matched something, yield it
-                        if node.__class__ is tuple:
+                        if node.__class__ is StaticTuple:
                             keys[node] = (prefix, node_key_filter)
                         else:
                             yield node, node_key_filter
@@ -1227,7 +1272,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) is tuple:
+            if type(node) is StaticTuple:
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1244,7 +1289,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) is tuple:
+            if type(node) is StaticTuple:
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1254,7 +1299,7 @@ class InternalNode(Node):
                     % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
+        self._key = StaticTuple("sha1:" + sha1,).intern()
         _page_cache.add(self._key, ''.join(lines))
         yield self._key
 
@@ -1289,7 +1334,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) is tuple:
+            if type(value) is StaticTuple:
                 refs.append(value)
             else:
                 refs.append(value.key())
@@ -1396,106 +1441,245 @@ def _deserialise(bytes, key, search_key_func):
     return node
 
 
-def _find_children_info(store, interesting_keys, uninteresting_keys, pb):
-    """Read the associated records, and determine what is interesting."""
-    uninteresting_keys = set(uninteresting_keys)
-    chks_to_read = uninteresting_keys.union(interesting_keys)
-    next_uninteresting = set()
-    next_interesting = set()
-    next_interesting_intersection = None
-    uninteresting_items = set()
-    interesting_items = set()
-    interesting_to_yield = []
-    for record in store.get_record_stream(chks_to_read, 'unordered', True):
-        # records_read.add(record.key())
-        if pb is not None:
-            pb.tick()
-        bytes = record.get_bytes_as('fulltext')
-        # We don't care about search_key_func for this code, because we only
-        # care about external references.
-        node = _deserialise(bytes, record.key, search_key_func=None)
-        if record.key in uninteresting_keys:
-            if type(node) is InternalNode:
-                next_uninteresting.update(node.refs())
-            else:
-                # We know we are at a LeafNode, so we can pass None for the
-                # store
-                uninteresting_items.update(node.iteritems(None))
-        else:
-            interesting_to_yield.append(record.key)
-            if type(node) is InternalNode:
-                if next_interesting_intersection is None:
-                    next_interesting_intersection = set(node.refs())
-                else:
-                    next_interesting_intersection = \
-                        next_interesting_intersection.intersection(node.refs())
-                next_interesting.update(node.refs())
-            else:
-                interesting_items.update(node.iteritems(None))
-    return (next_uninteresting, uninteresting_items,
-            next_interesting, interesting_to_yield, interesting_items,
-            next_interesting_intersection)
+class CHKMapDifference(object):
+    """Iterate the stored pages and key,value pairs for (new - old).
 
+    This class provides a generator over the stored CHK pages and the
+    (key, value) pairs that are in any of the new maps and not in any of the
+    old maps.
 
-def _find_all_uninteresting(store, interesting_root_keys,
-                            uninteresting_root_keys, pb):
-    """Determine the full set of uninteresting keys."""
-    # What about duplicates between interesting_root_keys and
-    # uninteresting_root_keys?
-    if not uninteresting_root_keys:
-        # Shortcut case. We know there is nothing uninteresting to filter out
-        # So we just let the rest of the algorithm do the work
-        # We know there is nothing uninteresting, and we didn't have to read
-        # any interesting records yet.
-        return (set(), set(), set(interesting_root_keys), [], set())
-    all_uninteresting_chks = set(uninteresting_root_keys)
-    all_uninteresting_items = set()
+    Note that it may yield chk pages that are common (especially root nodes),
+    but it won't yield (key,value) pairs that are common.
+    """
 
-    # First step, find the direct children of both the interesting and
-    # uninteresting set
-    (uninteresting_keys, uninteresting_items,
-     interesting_keys, interesting_to_yield,
-     interesting_items, interesting_intersection,
-     ) = _find_children_info(store, interesting_root_keys,
-                                              uninteresting_root_keys,
-                                              pb=pb)
-    all_uninteresting_chks.update(uninteresting_keys)
-    all_uninteresting_items.update(uninteresting_items)
-    del uninteresting_items
-    # Do not examine in detail pages common to all interesting trees.
-    # Pages that are common to all interesting trees will have their
-    # older versions found via the uninteresting tree traversal. Some pages
-    # found via the interesting trees traversal will be uninteresting for
-    # other of the interesting trees, which is why we require the pages to be
-    # common for us to trim them.
-    if interesting_intersection is not None:
-        uninteresting_keys.difference_update(interesting_intersection)
+    def __init__(self, store, new_root_keys, old_root_keys,
+                 search_key_func, pb=None):
+        # TODO: Should we add a StaticTuple barrier here? It would be nice to
+        #       force callers to use StaticTuple, because there will often be
+        #       lots of keys passed in here. And even if we cast it locally,
+        #       that just meanst that we will have *both* a StaticTuple and a
+        #       tuple() in memory, referring to the same object. (so a net
+        #       increase in memory, not a decrease.)
+        self._store = store
+        self._new_root_keys = new_root_keys
+        self._old_root_keys = old_root_keys
+        self._pb = pb
+        # All uninteresting chks that we have seen. By the time they are added
+        # here, they should be either fully ignored, or queued up for
+        # processing
+        # TODO: This might grow to a large size if there are lots of merge
+        #       parents, etc. However, it probably doesn't scale to O(history)
+        #       like _processed_new_refs does.
+        self._all_old_chks = set(self._old_root_keys)
+        # All items that we have seen from the old_root_keys
+        self._all_old_items = set()
+        # These are interesting items which were either read, or already in the
+        # interesting queue (so we don't need to walk them again)
+        # TODO: processed_new_refs becomes O(all_chks), consider switching to
+        #       SimpleSet here.
+        self._processed_new_refs = set()
+        self._search_key_func = search_key_func
 
-    # Second, find the full set of uninteresting bits reachable by the
-    # uninteresting roots
-    chks_to_read = uninteresting_keys
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            # TODO: Handle 'absent'
-            if pb is not None:
-                pb.tick()
+        # The uninteresting and interesting nodes to be searched
+        self._old_queue = []
+        self._new_queue = []
+        # Holds the (key, value) items found when processing the root nodes,
+        # waiting for the uninteresting nodes to be walked
+        self._new_item_queue = []
+        self._state = None
+
+    def _read_nodes_from_store(self, keys):
+        # We chose not to use _page_cache, because we think in terms of records
+        # to be yielded. Also, we expect to touch each page only 1 time during
+        # this code. (We may want to evaluate saving the raw bytes into the
+        # page cache, which would allow a working tree update after the fetch
+        # to not have to read the bytes again.)
+        as_st = StaticTuple.from_sequence
+        stream = self._store.get_record_stream(keys, 'unordered', True)
+        for record in stream:
+            if self._pb is not None:
+                self._pb.tick()
+            if record.storage_kind == 'absent':
+                raise errors.NoSuchRevision(self._store, record.key)
             bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
+            node = _deserialise(bytes, record.key,
+                                search_key_func=self._search_key_func)
             if type(node) is InternalNode:
-                # uninteresting_prefix_chks.update(node._items.iteritems())
-                chks = node._items.values()
-                # TODO: We remove the entries that are already in
-                #       uninteresting_chks ?
-                next_chks.update(chks)
-                all_uninteresting_chks.update(chks)
+                # Note we don't have to do node.refs() because we know that
+                # there are no children that have been pushed into this node
+                # Note: Using as_st() here seemed to save 1.2MB, which would
+                #       indicate that we keep 100k prefix_refs around while
+                #       processing. They *should* be shorter lived than that...
+                #       It does cost us ~10s of processing time
+                #prefix_refs = [as_st(item) for item in node._items.iteritems()]
+                prefix_refs = node._items.items()
+                items = []
             else:
-                all_uninteresting_items.update(node._items.iteritems())
-        chks_to_read = next_chks
-    return (all_uninteresting_chks, all_uninteresting_items,
-            interesting_keys, interesting_to_yield, interesting_items)
+                prefix_refs = []
+                # Note: We don't use a StaticTuple here. Profiling showed a
+                #       minor memory improvement (0.8MB out of 335MB peak 0.2%)
+                #       But a significant slowdown (15s / 145s, or 10%)
+                items = node._items.items()
+            yield record, node, prefix_refs, items
+
+    def _read_old_roots(self):
+        old_chks_to_enqueue = []
+        all_old_chks = self._all_old_chks
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(self._old_root_keys):
+            # Uninteresting node
+            prefix_refs = [p_r for p_r in prefix_refs
+                                if p_r[1] not in all_old_chks]
+            new_refs = [p_r[1] for p_r in prefix_refs]
+            all_old_chks.update(new_refs)
+            # TODO: This might be a good time to turn items into StaticTuple
+            #       instances and possibly intern them. However, this does not
+            #       impact 'initial branch' performance, so I'm not worrying
+            #       about this yet
+            self._all_old_items.update(items)
+            # Queue up the uninteresting references
+            # Don't actually put them in the 'to-read' queue until we have
+            # finished checking the interesting references
+            old_chks_to_enqueue.extend(prefix_refs)
+        return old_chks_to_enqueue
+
+    def _enqueue_old(self, new_prefixes, old_chks_to_enqueue):
+        # At this point, we have read all the uninteresting and interesting
+        # items, so we can queue up the uninteresting stuff, knowing that we've
+        # handled the interesting ones
+        for prefix, ref in old_chks_to_enqueue:
+            not_interesting = True
+            for i in xrange(len(prefix), 0, -1):
+                if prefix[:i] in new_prefixes:
+                    not_interesting = False
+                    break
+            if not_interesting:
+                # This prefix is not part of the remaining 'interesting set'
+                continue
+            self._old_queue.append(ref)
+
+    def _read_all_roots(self):
+        """Read the root pages.
+
+        This is structured as a generator, so that the root records can be
+        yielded up to whoever needs them without any buffering.
+        """
+        # This is the bootstrap phase
+        if not self._old_root_keys:
+            # With no old_root_keys we can just shortcut and be ready
+            # for _flush_new_queue
+            self._new_queue = list(self._new_root_keys)
+            return
+        old_chks_to_enqueue = self._read_old_roots()
+        # filter out any root keys that are already known to be uninteresting
+        new_keys = set(self._new_root_keys).difference(self._all_old_chks)
+        # These are prefixes that are present in new_keys that we are
+        # thinking to yield
+        new_prefixes = set()
+        # We are about to yield all of these, so we don't want them getting
+        # added a second time
+        processed_new_refs = self._processed_new_refs
+        processed_new_refs.update(new_keys)
+        for record, node, prefix_refs, items in \
+                self._read_nodes_from_store(new_keys):
+            # At this level, we now know all the uninteresting references
+            # So we filter and queue up whatever is remaining
+            prefix_refs = [p_r for p_r in prefix_refs
+                           if p_r[1] not in self._all_old_chks
+                              and p_r[1] not in processed_new_refs]
+            refs = [p_r[1] for p_r in prefix_refs]
+            new_prefixes.update([p_r[0] for p_r in prefix_refs])
+            self._new_queue.extend(refs)
+            # TODO: We can potentially get multiple items here, however the
+            #       current design allows for this, as callers will do the work
+            #       to make the results unique. We might profile whether we
+            #       gain anything by ensuring unique return values for items
+            # TODO: This might be a good time to cast to StaticTuple, as
+            #       self._new_item_queue will hold the contents of multiple
+            #       records for an extended lifetime
+            new_items = [item for item in items
+                               if item not in self._all_old_items]
+            self._new_item_queue.extend(new_items)
+            new_prefixes.update([self._search_key_func(item[0])
+                                 for item in new_items])
+            processed_new_refs.update(refs)
+            yield record
+        # For new_prefixes we have the full length prefixes queued up.
+        # However, we also need possible prefixes. (If we have a known ref to
+        # 'ab', then we also need to include 'a'.) So expand the
+        # new_prefixes to include all shorter prefixes
+        for prefix in list(new_prefixes):
+            new_prefixes.update([prefix[:i] for i in xrange(1, len(prefix))])
+        self._enqueue_old(new_prefixes, old_chks_to_enqueue)
+
+    def _flush_new_queue(self):
+        # No need to maintain the heap invariant anymore, just pull things out
+        # and process them
+        refs = set(self._new_queue)
+        self._new_queue = []
+        # First pass, flush all interesting items and convert to using direct refs
+        all_old_chks = self._all_old_chks
+        processed_new_refs = self._processed_new_refs
+        all_old_items = self._all_old_items
+        new_items = [item for item in self._new_item_queue
+                           if item not in all_old_items]
+        self._new_item_queue = []
+        if new_items:
+            yield None, new_items
+        refs = refs.difference(all_old_chks)
+        processed_new_refs.update(refs)
+        while refs:
+            # TODO: Using a SimpleSet for self._processed_new_refs and
+            #       saved as much as 10MB of peak memory. However, it requires
+            #       implementing a non-pyrex version.
+            next_refs = set()
+            next_refs_update = next_refs.update
+            # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
+            # from 1m54s to 1m51s. Consider it.
+            for record, _, p_refs, items in self._read_nodes_from_store(refs):
+                if all_old_items:
+                    # using the 'if' check saves about 145s => 141s, when
+                    # streaming initial branch of Launchpad data.
+                    items = [item for item in items
+                             if item not in all_old_items]
+                yield record, items
+                next_refs_update([p_r[1] for p_r in p_refs])
+                del p_refs
+            # set1.difference(set/dict) walks all of set1, and checks if it
+            # exists in 'other'.
+            # set1.difference(iterable) walks all of iterable, and does a
+            # 'difference_update' on a clone of set1. Pick wisely based on the
+            # expected sizes of objects.
+            # in our case it is expected that 'new_refs' will always be quite
+            # small.
+            next_refs = next_refs.difference(all_old_chks)
+            next_refs = next_refs.difference(processed_new_refs)
+            processed_new_refs.update(next_refs)
+            refs = next_refs
+
+    def _process_next_old(self):
+        # Since we don't filter uninteresting any further than during
+        # _read_all_roots, process the whole queue in a single pass.
+        refs = self._old_queue
+        self._old_queue = []
+        all_old_chks = self._all_old_chks
+        for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+            # TODO: Use StaticTuple here?
+            self._all_old_items.update(items)
+            refs = [r for _,r in prefix_refs if r not in all_old_chks]
+            self._old_queue.extend(refs)
+            all_old_chks.update(refs)
+
+    def _process_queues(self):
+        while self._old_queue:
+            self._process_next_old()
+        return self._flush_new_queue()
+
+    def process(self):
+        for record in self._read_all_roots():
+            yield record, []
+        for record, items in self._process_queues():
+            yield record, items
 
 
 def iter_interesting_nodes(store, interesting_root_keys,
@@ -1512,72 +1696,11 @@ def iter_interesting_nodes(store, interesting_root_keys,
     :return: Yield
         (interesting record, {interesting key:values})
     """
-    # TODO: consider that it may be more memory efficient to use the 20-byte
-    #       sha1 string, rather than tuples of hexidecimal sha1 strings.
-    # TODO: Try to factor out a lot of the get_record_stream() calls into a
-    #       helper function similar to _read_bytes. This function should be
-    #       able to use nodes from the _page_cache as well as actually
-    #       requesting bytes from the store.
-
-    (all_uninteresting_chks, all_uninteresting_items, interesting_keys,
-     interesting_to_yield, interesting_items) = _find_all_uninteresting(store,
-        interesting_root_keys, uninteresting_root_keys, pb)
-
-    # Now that we know everything uninteresting, we can yield information from
-    # our first request
-    interesting_items.difference_update(all_uninteresting_items)
-    interesting_to_yield = set(interesting_to_yield) - all_uninteresting_chks
-    if interesting_items:
-        yield None, interesting_items
-    if interesting_to_yield:
-        # We request these records again, rather than buffering the root
-        # records, most likely they are still in the _group_cache anyway.
-        for record in store.get_record_stream(interesting_to_yield,
-                                              'unordered', False):
-            yield record, []
-    all_uninteresting_chks.update(interesting_to_yield)
-    interesting_keys.difference_update(all_uninteresting_chks)
-
-    chks_to_read = interesting_keys
-    counter = 0
-    while chks_to_read:
-        next_chks = set()
-        for record in store.get_record_stream(chks_to_read, 'unordered', False):
-            counter += 1
-            if pb is not None:
-                pb.update('find chk pages', counter)
-            # TODO: Handle 'absent'?
-            bytes = record.get_bytes_as('fulltext')
-            # We don't care about search_key_func for this code, because we
-            # only care about external references.
-            node = _deserialise(bytes, record.key, search_key_func=None)
-            if type(node) is InternalNode:
-                # all_uninteresting_chks grows large, as it lists all nodes we
-                # don't want to process (including already seen interesting
-                # nodes).
-                # small.difference_update(large) scales O(large), but
-                # small.difference(large) scales O(small).
-                # Also, we know we just _deserialised this node, so we can
-                # access the dict directly.
-                chks = set(node._items.itervalues()).difference(
-                            all_uninteresting_chks)
-                # Is set() and .difference_update better than:
-                # chks = [chk for chk in node.refs()
-                #              if chk not in all_uninteresting_chks]
-                next_chks.update(chks)
-                # These are now uninteresting everywhere else
-                all_uninteresting_chks.update(chks)
-                interesting_items = []
-            else:
-                interesting_items = [item for item in node._items.iteritems()
-                                     if item not in all_uninteresting_items]
-                # TODO: Do we need to filter out items that we have already
-                #       seen on other pages? We don't really want to buffer the
-                #       whole thing, but it does mean that callers need to
-                #       understand they may get duplicate values.
-                # all_uninteresting_items.update(interesting_items)
-            yield record, interesting_items
-        chks_to_read = next_chks
+    iterator = CHKMapDifference(store, interesting_root_keys,
+                                uninteresting_root_keys,
+                                search_key_func=store._search_key_func,
+                                pb=pb)
+    return iterator.process()
 
 
 try:
@@ -1587,7 +1710,8 @@ try:
         _deserialise_leaf_node,
         _deserialise_internal_node,
         )
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
         _search_key_16,
         _search_key_255,
@@ -1596,3 +1720,22 @@ except ImportError:
         )
 search_key_registry.register('hash-16-way', _search_key_16)
 search_key_registry.register('hash-255-way', _search_key_255)
+
+
+def _check_key(key):
+    """Helper function to assert that a key is properly formatted.
+
+    This generally shouldn't be used in production code, but it can be helpful
+    to debug problems.
+    """
+    if type(key) is not StaticTuple:
+        raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
+    if len(key) != 1:
+        raise ValueError('key %r should have length 1, not %d' % (key, len(key),))
+    if type(key[0]) is not str:
+        raise TypeError('key %r should hold a str, not %r'
+                        % (key, type(key[0])))
+    if not key[0].startswith('sha1:'):
+        raise ValueError('key %r should point to a sha1:' % (key,))
+
+
