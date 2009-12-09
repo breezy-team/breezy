@@ -241,6 +241,12 @@ Documentation
 
 * Include Japanese translations for documentation (Inada Naoki)
 
+* New API ``ui_factory.make_output_stream`` to be used for sending bulk
+  (rather than user-interaction) data to stdout.  This automatically
+  coordinates with progress bars or other terminal activity, and can be
+  overridden by GUIs.
+  (Martin Pool, 493944)
+
 Internals
 *********
 

@@ -1293,10 +1293,13 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-            delta_format=None, levels=None, show_advice=False):
+            delta_format=None, levels=None, show_advice=False,
+            to_exact_file=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
+        :param to_exact_file: if set, gives an output stream to which 
+             non-Unicode diffs are written.
         :param show_ids: if True, revision-ids are to be displayed
         :param show_timezone: the timezone to use
         :param delta_format: the level of delta information to display
@@ -1309,7 +1312,13 @@ class LogFormatter(object):
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
         # and should not try to decode/encode it to unicode to avoid bug #328007
-        self.to_exact_file = getattr(to_file, 'stream', to_file)
+        if to_exact_file is not None:
+            self.to_exact_file = to_exact_file
+        else:
+            # XXX: somewhat hacky; this assumes it's a codec writer; it's better
+            # for code that expects to get diffs to pass in the exact file
+            # stream
+            self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
         if delta_format is None:
@@ -1494,9 +1503,11 @@ class LongLogFormatter(LogFormatter):
                                 short_status=False)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
+            to_file.flush()
             # Note: we explicitly don't indent the diff (relative to the
             # revision information) so that the output can be fed to patch -p0
             self.show_diff(self.to_exact_file, revision.diff, indent)
+            self.to_exact_file.flush()
 
     def get_advice_separator(self):
         """Get the text separating the log from the closing advice."""
