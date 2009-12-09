@@ -168,7 +168,7 @@ class MergePackageTests(TestCaseWithTransport):
         conflict_paths = sorted([c.path for c in ubup.conflicts()])
         self.assertEquals(conflict_paths, [u'debian/changelog'])
 
-    def test_deb_upstream_coflicts_with_ubu_packaging(self):
+    def test_deb_upstream_conflicts_with_ubu_packaging(self):
         """Source upstream conflicts with target packaging -> exception.
 
         The debian upstream and the ubuntu packaging branches will differ
@@ -186,6 +186,15 @@ class MergePackageTests(TestCaseWithTransport):
 
         conflict_paths = sorted([c.path for c in ubup.conflicts()])
         self.assertEquals(conflict_paths, [u'c.moved'])
+        # Check that all the merged revisions are now in this repo
+        merged_parent = ubup.get_parent_ids()[1]
+        its_parents_map = ubup.branch.repository.get_parent_map([
+                merged_parent])
+        self.assertTrue(merged_parent in its_parents_map)
+        its_parents = its_parents_map[merged_parent]
+        their_parents = ubup.branch.repository.get_parent_map(its_parents)
+        self.assertTrue(its_parents[0] in their_parents)
+        self.assertTrue(its_parents[1] in their_parents)
 
     def test_debian_upstream_older(self):
         """Diverging upstreams (debian older) don't cause merge conflicts.
