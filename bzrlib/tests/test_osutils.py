@@ -1928,39 +1928,63 @@ class TestFailedToLoadExtension(tests.TestCase):
 
 class TestTerminalWidth(tests.TestCase):
 
-    def test_default_values(self):
-        self.assertEquals(80, osutils.default_terminal_width)
-
-    def test_defaults_to_BZR_COLUMNS(self):
-        # BZR_COLUMNS is set by the test framework
-        self.assertEquals('80', os.environ['BZR_COLUMNS'])
-        os.environ['BZR_COLUMNS'] = '12'
-        self.assertEquals(12, osutils.terminal_width())
-
-    def test_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+    def replace_stdout(self, new):
         orig_stdout = sys.stdout
         def restore():
             sys.stdout = orig_stdout
         self.addCleanup(restore)
+        sys.stdout = new
+
+    def replace__terminal_size(self, new):
+        orig__terminal_size = osutils._terminal_size
+        def restore():
+            osutils._terminal_size = orig__terminal_size
+        self.addCleanup(restore)
+        osutils._terminal_size = new
+
+    def set_fake_tty(self):
 
         class I_am_a_tty(object):
             def isatty(self):
                 return True
 
-        sys.stdout = I_am_a_tty()
-        self.assertEquals(None, osutils.terminal_width())
+        self.replace_stdout(I_am_a_tty())
+
+    def test_default_values(self):
+        self.assertEqual(80, osutils.default_terminal_width)
+
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
+        self.assertEqual(12, osutils.terminal_width())
+
+    def test_falls_back_to_COLUMNS(self):
+        del os.environ['BZR_COLUMNS']
+        self.assertNotEqual('42', os.environ['COLUMNS'])
+        self.set_fake_tty()
+        os.environ['COLUMNS'] = '42'
+        self.assertEqual(42, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+
+        def terminal_size(w, h):
+            return 42, 42
+
+        self.set_fake_tty()
+        # We need to override the osutils definition as it depends on the
+        # running environment that we can't control (PQM running without a
+        # controlling terminal is one example).
+        self.replace__terminal_size(terminal_size)
+        self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = None
-        self.assertEquals(None, osutils.terminal_width())
+        self.replace_stdout(None)
+        self.assertEqual(None, osutils.terminal_width())
 
     def test_no_TIOCGWINSZ(self):
         self.requireFeature(TermIOSFeature)
@@ -1978,4 +2002,5 @@ class TestTerminalWidth(tests.TestCase):
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
-        self.assertIs(None, osutils.terminal_width())
+        # Whatever the result is, if we don't raise an exception, it's ok.
+        osutils.terminal_width()
