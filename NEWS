@@ -116,6 +116,11 @@ API Changes
 Internals
 *********
 
+* New test Feature: ``ModuleAvailableFeature``. It is designed to make it
+  easier to handle what tests you want to run based on what modules can be
+  imported. (Rather than lots of custom-implemented features that were
+  basically copy-and-pasted.) (John Arbash Meinel)
+
 * Several code paths that were calling ``Transport.get().read()`` have
   been changed to the equalivent ``Transport.get_bytes()``. The main
   difference is that the latter will explicitly call ``file.close()``,
