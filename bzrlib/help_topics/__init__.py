@@ -251,6 +251,26 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+"""
+
     return out
 
 
@@ -293,6 +313,7 @@ command.  (e.g. "bzr --profile help").
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -384,7 +405,9 @@ You can change the master of a checkout by using the "bind" command (see "help
 bind"). This will change the location that the commits are sent to. The bind
 command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+commit is local, you can use the "unbind" command. To see whether or not a
+branch is bound or not you can use the "info" command. If the branch is bound
+it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -398,6 +421,8 @@ Related commands::
               be sent to
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \
@@ -561,9 +586,11 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS      Override implicit terminal width.
+BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
 ================ =================================================================
 """
 

@@ -54,6 +54,7 @@ class TestLS(TestCaseWithTransport):
     def test_ls_basic(self):
         """Test the abilities of 'bzr ls'"""
         self.ls_equals('.bzrignore\na\n')
+        self.ls_equals('.bzrignore\na\n', './')
         self.ls_equals('?        .bzrignore\n'
                        '?        a\n',
                        '--verbose')

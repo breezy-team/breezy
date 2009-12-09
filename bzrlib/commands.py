@@ -923,6 +923,9 @@ def run_bzr(argv):
 
     --coverage
         Generate line coverage report in the specified directory.
+
+    --concurrency
+        Specify the number of processes that can be run concurrently (selftest).
     """
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
@@ -953,6 +956,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--concurrency':
+            os.environ['BZR_CONCURRENCY'] = argv[i + 1]
+            i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1

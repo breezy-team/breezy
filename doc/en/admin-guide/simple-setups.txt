@@ -1,0 +1,5 @@
+Simple Setups
+=============
+
+Smart server
+------------

@@ -1299,13 +1299,13 @@ class TestDiffFromTool(TestCaseWithTransport):
     def test_from_string(self):
         diff_obj = DiffFromTool.from_string('diff', None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
+        self.assertEqual(['diff', '@old_path', '@new_path'],
             diff_obj.command_template)
 
     def test_from_string_u5(self):
         diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
+        self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
@@ -1313,7 +1313,7 @@ class TestDiffFromTool(TestCaseWithTransport):
     def test_execute(self):
         output = StringIO()
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
+                                 'print "@old_path @new_path"'],
                                 None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
@@ -1338,7 +1338,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
+                                 'print "@old_path @new_path"'],
                                 tree, tree, output)
         diff_obj._prepare_files('file-id', 'file', 'file')
         self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
@@ -1370,7 +1370,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
+                                 'print "@old_path @new_path"'],
                                 old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
@@ -1378,7 +1378,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(0, os.stat(old_path).st_mtime)
-        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():

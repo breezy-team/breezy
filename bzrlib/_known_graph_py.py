@@ -17,6 +17,7 @@
 """Implementation of Graph algorithms when we have already loaded everything.
 """
 
+from collections import deque
 from bzrlib import (
     errors,
     revision,
@@ -62,7 +63,7 @@ class KnownGraph(object):
         :param parent_map: A dictionary mapping key => parent_keys
         """
         self._nodes = {}
-        # Maps {sorted(revision_id, revision_id): heads}
+        # Maps {frozenset(revision_id, revision_id): heads}
         self._known_heads = {}
         self.do_cache = do_cache
         self._initialize_nodes(parent_map)
@@ -131,6 +132,71 @@ class KnownGraph(object):
                 else:
                     # Update known_parent_gdfos for a key we couldn't process
                     known_parent_gdfos[child_key] = known_gdfo
+
+    def add_node(self, key, parent_keys):
+        """Add a new node to the graph.
+
+        If this fills in a ghost, then the gdfos of all children will be
+        updated accordingly.
+        
+        :param key: The node being added. If this is a duplicate, this is a
+            no-op.
+        :param parent_keys: The parents of the given node.
+        :return: None (should we return if this was a ghost, etc?)
+        """
+        nodes = self._nodes
+        if key in nodes:
+            node = nodes[key]
+            if node.parent_keys is None:
+                node.parent_keys = parent_keys
+                # A ghost is being added, we can no-longer trust the heads
+                # cache, so clear it
+                self._known_heads.clear()
+            else:
+                # Make sure we compare a list to a list, as tuple != list.
+                parent_keys = list(parent_keys)
+                existing_parent_keys = list(node.parent_keys)
+                if parent_keys == existing_parent_keys:
+                    return # Identical content
+                else:
+                    raise ValueError('Parent key mismatch, existing node %s'
+                        ' has parents of %s not %s'
+                        % (key, existing_parent_keys, parent_keys))
+        else:
+            node = _KnownGraphNode(key, parent_keys)
+            nodes[key] = node
+        parent_gdfo = 0
+        for parent_key in parent_keys:
+            try:
+                parent_node = nodes[parent_key]
+            except KeyError:
+                parent_node = _KnownGraphNode(parent_key, None)
+                # Ghosts and roots have gdfo 1
+                parent_node.gdfo = 1
+                nodes[parent_key] = parent_node
+            if parent_gdfo < parent_node.gdfo:
+                parent_gdfo = parent_node.gdfo
+            parent_node.child_keys.append(key)
+        node.gdfo = parent_gdfo + 1
+        # Now fill the gdfo to all children
+        # Note that this loop is slightly inefficient, in that we may visit the
+        # same child (and its decendents) more than once, however, it is
+        # 'efficient' in that we only walk to nodes that would be updated,
+        # rather than all nodes
+        # We use a deque rather than a simple list stack, to go for BFD rather
+        # than DFD. So that if a longer path is possible, we walk it before we
+        # get to the final child
+        pending = deque([node])
+        while pending:
+            node = pending.popleft()
+            next_gdfo = node.gdfo + 1
+            for child_key in node.child_keys:
+                child = nodes[child_key]
+                if child.gdfo < next_gdfo:
+                    # This child is being updated, we need to check its
+                    # children
+                    child.gdfo = next_gdfo
+                    pending.append(child)
 
     def heads(self, keys):
         """Return the heads from amongst keys.

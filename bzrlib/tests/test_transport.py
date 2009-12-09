@@ -908,6 +908,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # executes commands, and manage the hooking up of stdin/out/err to the
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
+        started = []
         class StubSSHServer(StubServer):
 
             test = self
@@ -933,10 +934,12 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                     (channel.recv, proc.stdin.write, proc.stdin.close),
                     (proc.stdout.read, channel.sendall, channel.close),
                     (proc.stderr.read, channel.sendall_stderr, channel.close)]
+                started.append(proc)
                 for read, write, close in file_functions:
                     t = threading.Thread(
                         target=ferry_bytes, args=(read, write, close))
                     t.start()
+                    started.append(t)
 
                 return True
 
@@ -967,3 +970,13 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.assertEqual(
             ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
             self.command_executed)
+        # Make sure to disconnect, so that the remote process can stop, and we
+        # can cleanup. Then pause the test until everything is shutdown
+        t._client._medium.disconnect()
+        if not started:
+            return
+        # First wait for the subprocess
+        started[0].wait()
+        # And the rest are threads
+        for t in started[1:]:
+            t.join()
