@@ -1407,6 +1407,10 @@ class WeaveMerger(Merge3Merger):
     supports_reverse_cherrypick = False
     history_based = True
 
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_merge(file_id, self.other_tree,
+                                              base=base)
+
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
@@ -1416,61 +1420,49 @@ class WeaveMerger(Merge3Merger):
             base = self.base_tree
         else:
             base = None
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
-                                              base=base)
+        plan = self._generate_merge_plan(file_id, base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
+            contents = ('%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
                                                  '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
+        lines, conflicts = textmerge.merge_lines(self.reprocess)
+        if conflicts:
+            base_lines = textmerge.base_from_plan()
+        else:
+            base_lines = None
+        return lines, base_lines
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        lines, conflicts = self._merged_lines(file_id)
+        lines, base_lines = self._merged_lines(file_id)
         lines = list(lines)
         # Note we're checking whether the OUTPUT is binary in this case,
         # because we don't want to get into weave merge guts.
         textfile.check_text_lines(lines)
         self.tt.create_file(lines, trans_id)
-        if conflicts:
+        if base_lines is not None:
+            # Conflict
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id,
-                                              no_base=True)
+                                              no_base=False,
+                                              base_lines=base_lines)
             file_group.append(trans_id)
 
 
 class LCAMerger(WeaveMerger):
 
-    def _merged_lines(self, file_id):
-        """Generate the merged lines.
-        There is no distinction between lines that are meant to contain <<<<<<<
-        and conflicts.
-        """
-        if self.cherrypick:
-            base = self.base_tree
-        else:
-            base = None
-        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
                                                   base=base)
-        if 'merge' in debug.debug_flags:
-            plan = list(plan)
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
-            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-                                                 '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
-
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""

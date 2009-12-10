@@ -211,6 +211,22 @@ class TestMerge(tests.TestCaseWithTransport):
         self.failUnlessExists('sub/a.txt.OTHER')
         self.failUnlessExists('sub/a.txt.BASE')
 
+    def test_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
+    def test_weave_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other --weave', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
         tree_a = self.make_branch_and_tree('branch_a')
