@@ -54,7 +54,7 @@ Expanding on the tree difference case we will need to:
    our hash cache from the dirstate allows us to avoid reading the file in the
    common case. There are alternative ways to achieve this - we could record
    a pointer to a revision which contained this fileid with the current content
-   rather than storing the content's hash; but this seems to be a pointless 
+   rather than storing the content's hash; but this seems to be a pointless
    double-indirection unless we save enough storage in the working tree. A
    variation of this is to not record an explicit pointer but instead
    define an implicit pointer as being to the left-hand-parent tree.
@@ -92,7 +92,7 @@ Scaling observations
   difference for the top level of the selected path) then we can gain a
   larger win. This strongly suggests that path expansion and tree
   difference generation should be linked in terms of API.
- 
+
 
 
 ..

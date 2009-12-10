@@ -54,13 +54,12 @@ class cmd_conflicts(commands.Command):
     instead.  (This is useful for editing all files with text conflicts.)
 
     Use bzr resolve when you have fixed a problem.
-
-    See also bzr resolve.
     """
     takes_options = [
             Option('text',
                    help='List paths of files with text conflicts.'),
         ]
+    _see_also = ['resolve']
 
     def run(self, text=False):
         wt = workingtree.WorkingTree.open_containing(u'.')[0]
@@ -82,10 +81,8 @@ class cmd_resolve(commands.Command):
     before you should commit.
 
     Once you have fixed a problem, use "bzr resolve" to automatically mark
-    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    text conflicts as fixed, "bzr resolve FILE" to mark a specific conflict as
     resolved, or "bzr resolve --all" to mark all conflicts as resolved.
-
-    See also bzr conflicts.
     """
     aliases = ['resolved']
     takes_args = ['file*']
@@ -93,6 +90,7 @@ class cmd_resolve(commands.Command):
             Option('all', help='Resolve all conflicts in this tree.'),
             Option('interactive', help='Dialog-based resolution'),
             ]
+    _see_also = ['conflicts']
     def run(self, file_list=None, all=False, interactive=False):
         if all and interactive:
             raise errors.BzrCommandError(

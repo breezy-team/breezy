@@ -154,7 +154,7 @@ When writing blackbox tests please honour the following conventions:
     cmd_object.run() method directly. This is a lot faster than
     subprocesses and generates the same logging output as running it in a
     subprocess (which invoking the method directly does not).
- 
+
  3. Only test the one command in a single test script. Use the bzrlib
     library when setting up tests and when evaluating the side-effects of
     the command. We do this so that the library api has continual pressure
@@ -225,10 +225,10 @@ Comments can be added anywhere, they start with '#' and end with
 the line.
 
 The execution stops as soon as an expected output or an expected error is not
-matched. 
+matched.
 
 When no output is specified, any ouput from the command is accepted
-and execution continue. 
+and execution continue.
 
 If an error occurs and no expected error is specified, the execution stops.
 
@@ -343,7 +343,7 @@ KnownFailure
         The test exists but is known to fail, for example this might be
         appropriate to raise if you've committed a test for a bug but not
         the fix for it, or if something works on Unix but not on Windows.
-        
+
         Raising this allows you to distinguish these failures from the
         ones that are not expected to fail.  If the test would fail
         because of something we don't expect or intend to fix,
@@ -352,6 +352,21 @@ KnownFailure
 
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
+
+ModuleAvailableFeature
+        A helper for handling running tests based on whether a python
+        module is available. This can handle 3rd-party dependencies (is
+        ``paramiko`` available?) as well as stdlib (``termios``) or
+        extension modules (``bzrlib._groupcompress_pyx``). You create a
+        new feature instance with::
+
+            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
+
+            ...
+            def test_something(self):
+                self.requireFeature(MyModuleFeature)
+                something = MyModuleFeature.module
+
 
 We plan to support three modes for running the test suite to control the
 interpretation of these results.  Strict mode is for use in situations
@@ -369,7 +384,7 @@ TestNotApplicable       pass    pass    pass
 UnavailableFeature      fail    pass    pass
 KnownFailure            fail    pass    pass
 ======================= ======= ======= ========
-     
+
 
 Test feature dependencies
 -------------------------
@@ -416,13 +431,13 @@ are defined by subclassing ``bzrlib.tests.Feature`` and overriding the
 ``_probe`` and ``feature_name`` methods.  For example::
 
     class _SymlinkFeature(Feature):
-    
+
         def _probe(self):
             return osutils.has_symlinks()
-    
+
         def feature_name(self):
             return 'symlinks'
-    
+
     SymlinkFeature = _SymlinkFeature()
 
 

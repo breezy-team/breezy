@@ -125,6 +125,34 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_password)
 
+    def make_output_stream(self, encoding=None, encoding_type=None):
+        """Get a stream for sending out bulk text data.
+
+        This is used for commands that produce bulk text, such as log or diff
+        output, as opposed to user interaction.  This should work even for
+        non-interactive user interfaces.  Typically this goes to a decorated
+        version of stdout, but in a GUI it might be appropriate to send it to a 
+        window displaying the text.
+     
+        :param encoding: Unicode encoding for output; default is the 
+            terminal encoding, which may be different from the user encoding.
+            (See get_terminal_encoding.)
+
+        :param encoding_type: How to handle encoding errors:
+            replace/strict/escape/exact.  Default is replace.
+        """
+        # XXX: is the caller supposed to close the resulting object?
+        if encoding is None:
+            encoding = osutils.get_terminal_encoding()
+        if encoding_type is None:
+            encoding_type = 'replace'
+        out_stream = self._make_output_stream_explicit(encoding, encoding_type)
+        return out_stream
+
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        raise NotImplementedError("%s doesn't support make_output_stream"
+            % (self.__class__.__name__))
+
     def nested_progress_bar(self):
         """Return a nested progress bar.
 

@@ -8,7 +8,7 @@ Once you have completed some work, it's a good idea to review your changes
 prior to permanently recording it. This way, you can make sure you'll be
 committing what you intend to.
 
-Two bzr commands are particularly useful here: **status** and **diff**.  
+Two bzr commands are particularly useful here: **status** and **diff**.
 
 bzr status
 ----------
@@ -45,6 +45,14 @@ the differences between two versions are shown::
     % bzr diff -r 1000..          # everything since r1000
     % bzr diff -r 1000..1100      # changes from 1000 to 1100
 
+To see the changes introduced by a single revision, you can use the ``-c``
+option to diff.
+
+::
+
+    % bzr diff -c 1000            # changes from r1000
+                                  # identical to -r999..1000
+
 The ``--diff-options`` option causes bzr to run the external diff program,
 passing options.  For example::
 
@@ -53,6 +61,6 @@ passing options.  For example::
 Some projects prefer patches to show a prefix at the start of the path
 for old and new files.  The ``--prefix`` option can be used to provide
 such a prefix.
-As a shortcut, ``bzr diff -p1`` produces a form that works with the 
+As a shortcut, ``bzr diff -p1`` produces a form that works with the
 command ``patch -p1``.
 

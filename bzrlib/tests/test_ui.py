@@ -139,14 +139,13 @@ class TestTextUIFactory(tests.TestCase):
         pb1.finished()
 
     def test_text_ui_get_boolean(self):
-        stdin = tests.StringIOWrapper(
-            "y\n" # True
-            "n\n" # False
-            "yes with garbage\nY\n" # True
-            "not an answer\nno\n" # False
-            "I'm sure!\nyes\n" # True
-            "NO\n" # False
-            "foo\n")
+        stdin = tests.StringIOWrapper("y\n" # True
+                                      "n\n" # False
+                                      "yes with garbage\nY\n" # True
+                                      "not an answer\nno\n" # False
+                                      "I'm sure!\nyes\n" # True
+                                      "NO\n" # False
+                                      "foo\n")
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
@@ -250,6 +249,32 @@ class TestTextUIFactory(tests.TestCase):
             pb.finished()
 
 
+class TestTextUIOutputStream(tests.TestCase):
+    """Tests for output stream that synchronizes with progress bar."""
+
+    def test_output_clears_terminal(self):
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        clear_calls = []
+
+        uif =  _mod_ui_text.TextUIFactory(None, stdout, stderr)
+        uif.clear_term = lambda: clear_calls.append('clear')
+
+        stream = _mod_ui_text.TextUIOutputStream(uif, uif.stdout)
+        stream.write("Hello world!\n")
+        stream.write("there's more...\n")
+        stream.writelines(["1\n", "2\n", "3\n"])
+
+        self.assertEqual(stdout.getvalue(),
+            "Hello world!\n"
+            "there's more...\n"
+            "1\n2\n3\n")
+        self.assertEqual(['clear', 'clear', 'clear'],
+            clear_calls)
+
+        stream.flush()
+
+
 class UITests(tests.TestCase):
 
     def test_progress_construction(self):
@@ -350,7 +375,6 @@ class CannedInputUIFactoryTests(tests.TestCase):
         self.assertEqual('password',
                          uif.get_password('Password for %(host)s',
                                           host='example.com'))
-        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):

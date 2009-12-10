@@ -50,7 +50,7 @@ identifying unnecessary lock traffic.  This is activated by the ``-Dlock``
 global option.
 
 This writes messages into ``~/.bzr.log``.
-At present this only logs actions relating to the on-disk lockdir.  It 
+At present this only logs actions relating to the on-disk lockdir.  It
 doesn't describe actions on in-memory lock counters, or OS locks (which
 are used for dirstate.)
 

@@ -103,7 +103,7 @@ Miscellaneous topics
    server
    hooks
    version_info
- 
+
 
 A brief tour of some popular plugins
 ####################################
