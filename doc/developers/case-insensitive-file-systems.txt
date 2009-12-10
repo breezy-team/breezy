@@ -27,7 +27,7 @@ Bazaar supports 3 kinds of file-systems, each to different degrees.
 * Case-insensitive: This is the file-system used by very old Windows versions
   and is rarely encountered "in the wild".  Two files that differ only by
   case is not allowed and the case used to create a file is not preserved.
-  
+
 As can be implied by the above descriptions, only the first two are considered
 relevant to a modern Bazaar.
 

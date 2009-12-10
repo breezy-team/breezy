@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,6 +110,7 @@ from bzrlib import (
     debug,
     errors,
     lock,
+    osutils,
     )
 import bzrlib.config
 from bzrlib.decorators import only_raises
@@ -416,7 +417,7 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return self._parse_info(self.transport.get(path))
+        return self._parse_info(self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -449,8 +450,9 @@ class LockDir(lock.Lock):
                    )
         return s.to_string()
 
-    def _parse_info(self, info_file):
-        return rio.read_stanza(info_file.readlines()).as_dict()
+    def _parse_info(self, info_bytes):
+        # TODO: Handle if info_bytes is empty
+        return rio.read_stanza(osutils.split_lines(info_bytes)).as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.

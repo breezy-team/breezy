@@ -22,6 +22,7 @@ import sys
 
 from bzrlib import (
     _static_tuple_py,
+    debug,
     errors,
     osutils,
     static_tuple,
@@ -147,9 +148,34 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo')
         t = k.as_tuple()
         self.assertEqual(('foo',), t)
+        self.assertIsInstance(t, tuple)
+        self.assertFalse(isinstance(t, self.module.StaticTuple))
         k = self.module.StaticTuple('foo', 'bar')
         t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k)
+        t = k2.as_tuple()
+        self.assertIsInstance(t, tuple)
+        # For pickling to work, we need to keep the sub-items as StaticTuple so
+        # that it knows that they also need to be converted.
+        self.assertIsInstance(t[1], self.module.StaticTuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+
+    def test_as_tuples(self):
+        k1 = self.module.StaticTuple('foo', 'bar')
+        t = static_tuple.as_tuples(k1)
+        self.assertIsInstance(t, tuple)
+        self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k1)
+        t = static_tuple.as_tuples(k2)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+        mixed = (1, k1)
+        t = static_tuple.as_tuples(mixed)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
 
     def test_len(self):
         k = self.module.StaticTuple()
@@ -571,12 +597,27 @@ class TestStaticTuple(tests.TestCase):
     def test_from_sequence_not_sequence(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object())
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, 10)
 
     def test_from_sequence_incorrect_args(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object(), 'a')
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
+
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(['foo', 'bar']))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_generator(self):
+        def generate_tuple():
+            yield 'foo'
+            yield 'bar'
+        st = self.module.StaticTuple.from_sequence(generate_tuple())
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
 
     def test_pickle(self):
         st = self.module.StaticTuple('foo', 'bar')
@@ -605,3 +646,28 @@ class TestStaticTuple(tests.TestCase):
                 return
         self.assertIs(static_tuple.StaticTuple,
                       self.module.StaticTuple)
+
+
+class TestEnsureStaticTuple(tests.TestCase):
+
+    def test_is_static_tuple(self):
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_is_tuple(self):
+        t = ('foo',)
+        st = static_tuple.expect_static_tuple(t)
+        self.assertIsInstance(st, static_tuple.StaticTuple)
+        self.assertEqual(t, st)
+
+    def test_flagged_is_static_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_flagged_is_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        t = ('foo',)
+        self.assertRaises(TypeError, static_tuple.expect_static_tuple, t)

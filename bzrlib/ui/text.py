@@ -18,6 +18,7 @@
 """Text UI, write output to the console.
 """
 
+import codecs
 import getpass
 import os
 import sys
@@ -146,6 +147,26 @@ class TextUIFactory(UIFactory):
         else:
             return NullProgressView()
 
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        if encoding_type == 'exact':
+            # force sys.stdout to be binary stream on win32; 
+            # NB: this leaves the file set in that mode; may cause problems if
+            # one process tries to do binary and then text output
+            if sys.platform == 'win32':
+                fileno = getattr(self.stdout, 'fileno', None)
+                if fileno:
+                    import msvcrt
+                    msvcrt.setmode(fileno(), os.O_BINARY)
+            return TextUIOutputStream(self, self.stdout)
+        else:
+            encoded_stdout = codecs.getwriter(encoding)(self.stdout,
+                errors=encoding_type)
+            # For whatever reason codecs.getwriter() does not advertise its encoding
+            # it just returns the encoding of the wrapped file, which is completely
+            # bogus. So set the attribute, so we can find the correct encoding later.
+            encoded_stdout.encoding = encoding
+            return TextUIOutputStream(self, encoded_stdout)
+
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
         self.clear_term()
@@ -234,8 +255,10 @@ class TextProgressView(object):
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        n = self._width - 1
-        self._term_file.write('\r%-*.*s\r' % (n, n, s))
+        if self._width is not None:
+            n = self._width - 1
+            s = '%-*.*s' % (n, n, s)
+        self._term_file.write('\r' + s + '\r')
 
     def clear(self):
         if self._have_output:
@@ -365,3 +388,37 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+
+class TextUIOutputStream(object):
+    """Decorates an output stream so that the terminal is cleared before writing.
+
+    This is supposed to ensure that the progress bar does not conflict with bulk
+    text output.
+    """
+    # XXX: this does not handle the case of writing part of a line, then doing
+    # progress bar output: the progress bar will probably write over it.
+    # one option is just to buffer that text until we have a full line;
+    # another is to save and restore it
+
+    # XXX: might need to wrap more methods
+
+    def __init__(self, ui_factory, wrapped_stream):
+        self.ui_factory = ui_factory
+        self.wrapped_stream = wrapped_stream
+        # this does no transcoding, but it must expose the underlying encoding
+        # because some callers need to know what can be written - see for
+        # example unescape_for_display.
+        self.encoding = getattr(wrapped_stream, 'encoding', None)
+
+    def flush(self):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.flush()
+
+    def write(self, to_write):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.write(to_write)
+
+    def writelines(self, lines):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.writelines(lines)

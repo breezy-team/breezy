@@ -6,13 +6,13 @@ Introduction
 ============
 
 Bazaar is a distributed version control system that makes it easier for
-people to work together on software projects. 
+people to work together on software projects.
 
 Over the next five minutes, you'll learn how to put your files under
 version control, how to record changes to them, examine your work, publish
 it and send your work for merger into a project's trunk.
 
-If you'd prefer a more detailed introduction, take a look at 
+If you'd prefer a more detailed introduction, take a look at
 `Learning More`_.
 
 
@@ -44,7 +44,7 @@ way your work is properly identified in revision logs.
 Using your name and email address, instead of John Doe's, type::
 
   $ bzr whoami "John Doe <john.doe@gmail.com>"
-  
+
 Bazaar will now create or modify a configuration file, including your
 name and email address.
 
@@ -63,15 +63,15 @@ Let's create a directory and some files to use with Bazaar::
  $ cd myproject
  $ mkdir subdirectory
  $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
- 
+
 **Note for Windows users:** use Windows Explorer to create your
-directories, then right-click in those directories and select 
+directories, then right-click in those directories and select
 ``New file`` to create your files.
 
 Now get Bazaar to initialize itself in your project directory::
 
   $ bzr init
-  
+
 If it looks like nothing happened, don't worry. Bazaar has created a
 branch_ where it will store your files and their revision histories.
 
@@ -87,13 +87,13 @@ The next step is to tell Bazaar which files you want to track. Running
  added test3.txt
  added subdirectory/test4.txt
 
-Next, take a snapshot of your files by committing them to your branch. Add 
+Next, take a snapshot of your files by committing them to your branch. Add
 a message to explain why you made the commit::
 
   $ bzr commit -m "Initial import"
-  
-As Bazaar is a distributed version control system, it doesn't need to 
-connect to a central server to make the commit. Instead, Bazaar stores your 
+
+As Bazaar is a distributed version control system, it doesn't need to
+connect to a central server to make the commit. Instead, Bazaar stores your
 branch and all its commits inside the directory you're working with; look
 for the ``.bzr`` sub-directory.
 
@@ -156,14 +156,14 @@ Let's assume you want to publish your branch at ``www.example.com/myproject``::
 
  $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
  2 revision(s) pushed.
- 
+
 Bazaar will create a ``myproject`` directory on the remote server and
 push your branch to it.
- 
+
 Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
- 
+
 **Note:** to use sftp, you may need to install ``paramiko`` and
 ``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
 
@@ -171,7 +171,7 @@ Now anyone can create their own copy of your branch by typing::
 Publishing your branch with Launchpad
 =====================================
 
-Launchpad is a suite of development and hosting tools for free 
+Launchpad is a suite of development and hosting tools for free
 software projects. You can use it to publish your branch.
 
 If you don't have a Launchpad account, follow the `account signup guide`_
@@ -180,17 +180,19 @@ and `register an SSH key`_ in your new Launchpad account.
 .. _account signup guide: https://help.launchpad.net/CreatingYourLaunchpadAccount
 .. _register an SSH key: https://launchpad.net/people/+me/+editsshkeys
 
-Replacing ``john.doe`` with your own Launchpad username, type::
+Replacing ``john.doe`` with your own Launchpad username, type [#]_::
 
- $ bzr push bzr+ssh://john.doe@bazaar.launchpad.net/~john.doe/+junk/myproject
+ $ bzr push lp:~john.doe/+junk/myproject
+
+.. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
 
 **Note:** ``+junk`` means that this branch isn't associated with any particular
 project in Launchpad.
 
 Now, anyone can create their own copy of your branch by typing::
 
- $ bzr branch http://bazaar.launchpad.net/~john.doe/+junk/myproject
- 
+ $ bzr branch lp:~john.doe/+junk/myproject
+
 You can also see information about your branch, including its revision
 history, at https://code.launchpad.net/people/+me/+junk/myproject
 
@@ -198,18 +200,18 @@ history, at https://code.launchpad.net/people/+me/+junk/myproject
 Creating your own copy of another branch
 ========================================
 
-To work with someone else's code, you can make your own copy of their 
+To work with someone else's code, you can make your own copy of their
 branch. Let's take a real-world example, Bazaar's GTK interface::
 
-  $ bzr branch http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk bzr-gtk.john
-  Branched 292 revision(s).                                                        
+  $ bzr branch lp:~bzr/bzr-gtk/trunk bzr-gtk.john
+  Branched 292 revision(s).
 
 Bazaar will download all the files and complete revision history from the
 bzr-gtk project's trunk branch and create a copy called bzr-gtk.john.
 
-Now, you have your own copy of the branch and can commit changes with 
-or without a net connection. You can share your branch at any time by 
-publishing it and, if the  bzr-gtk team want to use your work, Bazaar 
+Now, you have your own copy of the branch and can commit changes with
+or without a net connection. You can share your branch at any time by
+publishing it and, if the  bzr-gtk team want to use your work, Bazaar
 makes it easy for them to merge your branch back into their trunk branch.
 
 
@@ -225,11 +227,11 @@ the parent into your personal branch::
   $ bzr merge
   Merging from saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
   All changes applied successfully.
-            
+
 Check what has changed::
 
   $ bzr diff
- 
+
 If you're happy with the changes, you can commit them to your personal
 branch::
 
@@ -244,20 +246,20 @@ After you've worked on your personal branch of bzr-gtk, you may want to
 send your changes back upstream to the project. The easiest way is to
 use a merge directive.
 
-A merge directive is a machine-readable request to perform a 
-particular merge.  It usually contains a patch preview of the merge 
-and either contains the necessary revisions, or provides a branch 
+A merge directive is a machine-readable request to perform a
+particular merge.  It usually contains a patch preview of the merge
+and either contains the necessary revisions, or provides a branch
 where they can be found.
 
 Replacing ``mycode.patch``, create your merge directive::
 
  $ bzr send -o mycode.patch
  Using saved parent location: http://bazaar.launchpad.net/~bzr/bzr-gtk/trunk
- 
+
 You can now email the merge directive to the bzr-gtk project who, if
 they choose, can use it merge your work back into the parent branch.
- 
- 
+
+
 Learning more
 =============
 
