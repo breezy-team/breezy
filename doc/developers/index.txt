@@ -10,6 +10,7 @@ Overall developer documentation
 
 * `Developer Guide <en/developer-guide/HACKING.html>`_
 * `bzrlib API reference <http://bazaar-vcs.org/BzrLib>`_
+* `Design Principles <principles.html>`_
 
 Process
 =======
