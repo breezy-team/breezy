@@ -207,6 +207,16 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
+    def get_integer(self, prompt):
+        """Get an integer from the user.
+
+        :param prompt: a message to prompt the user with. Could be a multi-line
+            prompt but without a terminating \n.
+
+        :return: A signed integer.
+        """
+        raise NotImplementedError(self.get_integer)
+
     def make_progress_view(self):
         """Construct a new ProgressView object for this UI.
 
@@ -295,12 +305,15 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_boolean(self, prompt):
         return self.responses.pop(0)
 
+    def get_integer(self, prompt):
+        return self.responses.pop(0)
+
     def get_password(self, prompt='', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):
         return self.responses.pop(0)
-    
+
     def assert_all_input_consumed(self):
         if self.responses:
             raise AssertionError("expected all input in %r to be consumed"
