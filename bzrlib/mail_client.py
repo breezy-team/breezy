@@ -424,6 +424,10 @@ class EmacsMail(ExternalMailClient):
 
     _client_commands = ['emacsclient']
 
+    def __init__(self, config):
+        super(EmacsMail, self).__init__(config)
+        self.elisp_tmp_file = None
+
     def _prepare_send_function(self):
         """Write our wrapper function into a temporary file.
 
@@ -500,6 +504,7 @@ class EmacsMail(ExternalMailClient):
         if attach_path is not None:
             # Do not create a file if there is no attachment
             elisp = self._prepare_send_function()
+            self.elisp_tmp_file = elisp
             lmmform = '(load "%s")' % elisp
             mmform  = '(bzr-add-mime-att "%s")' % \
                 self._encode_path(attach_path, 'attachment')
@@ -532,6 +537,65 @@ class MAPIClient(BodyExternalMailClient):
                                                  ' (error %d)' % (e.code,)])
 mail_client_registry.register('mapi', MAPIClient,
                               help=MAPIClient.__doc__)
+
+
+class MailApp(BodyExternalMailClient):
+    """Use MacOS X's Mail.app for sending email messages.
+
+    Although it would be nice to use appscript, it's not installed
+    with the shipped Python installations.  We instead build an
+    AppleScript and invoke the script using osascript(1).  We don't
+    use the _encode_safe() routines as it's not clear what encoding
+    osascript expects the script to be in.
+    """
+
+    _client_commands = ['osascript']
+
+    def _get_compose_commandline(self, to, subject, attach_path, body=None,
+                                from_=None):
+       """See ExternalMailClient._get_compose_commandline"""
+
+       fd, self.temp_file = tempfile.mkstemp(prefix="bzr-send-",
+                                         suffix=".scpt")
+       try:
+           os.write(fd, 'tell application "Mail"\n')
+           os.write(fd, 'set newMessage to make new outgoing message\n')
+           os.write(fd, 'tell newMessage\n')
+           if to is not None:
+               os.write(fd, 'make new to recipient with properties'
+                   ' {address:"%s"}\n' % to)
+           if from_ is not None:
+               # though from_ doesn't actually seem to be used
+               os.write(fd, 'set sender to "%s"\n'
+                   % sender.replace('"', '\\"'))
+           if subject is not None:
+               os.write(fd, 'set subject to "%s"\n'
+                   % subject.replace('"', '\\"'))
+           if body is not None:
+               # FIXME: would be nice to prepend the body to the
+               # existing content (e.g., preserve signature), but
+               # can't seem to figure out the right applescript
+               # incantation.
+               os.write(fd, 'set content to "%s\\n\n"\n' %
+                   body.replace('"', '\\"').replace('\n', '\\n'))
+
+           if attach_path is not None:
+               # FIXME: would be nice to first append a newline to
+               # ensure the attachment is on a new paragraph, but
+               # can't seem to figure out the right applescript
+               # incantation.
+               os.write(fd, 'tell content to make new attachment'
+                   ' with properties {file name:"%s"}'
+                   ' at after the last paragraph\n'
+                   % self._encode_path(attach_path, 'attachment'))
+           os.write(fd, 'set visible to true\n')
+           os.write(fd, 'end tell\n')
+           os.write(fd, 'end tell\n')
+       finally:
+           os.close(fd) # Just close the handle but do not remove the file.
+       return [self.temp_file]
+mail_client_registry.register('mail.app', MailApp,
+                              help=MailApp.__doc__)
 
 
 class DefaultMail(MailClient):
@@ -570,3 +634,5 @@ class DefaultMail(MailClient):
 mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = 'default'
+
+

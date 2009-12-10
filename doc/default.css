@@ -51,7 +51,7 @@ div.note .first {
   }
 
 h1 {
-  color: #b52b2b; 
+  color: #b52b2b;
   /* DKREDcolor: #966b72; */
   /* GREY color: #444444; */
   font-size: 1.5em;
@@ -60,7 +60,7 @@ h1 {
 h1 a:link {
   color: inherit;
   }
-  
+
 h1 a:hover {
   color: inherit;
   }
@@ -89,7 +89,7 @@ h2 a:visited {
   }
 
 h3 {
-  color: #966b72; 
+  color: #966b72;
   /* color: #966b72; */
   }
 
@@ -114,7 +114,7 @@ dt {
   padding: 1ex;
   background: #7777FF;
         }
-dt:hover 
+dt:hover
   {
   background-color: black;
   }

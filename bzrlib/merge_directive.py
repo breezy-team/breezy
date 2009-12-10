@@ -371,15 +371,13 @@ class MergeDirective(_BaseMergeDirective):
         :return: a MergeRequest
         """
         line_iter = iter(lines)
+        firstline = ""
         for line in line_iter:
             if line.startswith('# Bazaar merge directive format '):
-                break
-        else:
-            if len(lines) > 0:
-                raise errors.NotAMergeDirective(lines[0])
-            else:
-                raise errors.NotAMergeDirective('')
-        return _format_registry.get(line[2:].rstrip())._from_lines(line_iter)
+                return _format_registry.get(line[2:].rstrip())._from_lines(
+                    line_iter)
+            firstline = firstline or line.strip()
+        raise errors.NotAMergeDirective(firstline)
 
     @classmethod
     def _from_lines(klass, line_iter):

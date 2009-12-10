@@ -930,6 +930,13 @@ class VersionedFiles(object):
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
 
+    def clear_cache(self):
+        """Clear whatever caches this VersionedFile holds.
+
+        This is generally called after an operation has been performed, when we
+        don't expect to be using this versioned file again soon.
+        """
+
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
         for line in lines:

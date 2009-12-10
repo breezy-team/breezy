@@ -40,8 +40,6 @@ check: docs check-nodocs
 
 check-nodocs: extensions
 	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
-	@echo "Running all tests with no locale."
-	LC_CTYPE= LANG=C LC_ALL= ./bzr selftest -1v $(tests) 2>&1 | sed -e 's/^/[ascii] /'
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -214,6 +212,7 @@ txt_all = \
 	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
+	doc/en/admin-guide/index-plain.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	$(derived_txt_files) \
 	doc/en/upgrade-guide/index.txt \
@@ -223,7 +222,8 @@ txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
 	doc/ja/user-guide/index.txt \
-	doc/ru/user-guide/index.txt
+	doc/ru/user-guide/index.txt \
+	doc/en/admin-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -281,6 +281,9 @@ doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-g
 #doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 #
+doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -409,7 +412,7 @@ clean-win32: clean-docs
 
 .PHONY: dist dist-upload-escudero check-dist-tarball
 
-# build a distribution tarball and zip file.
+# build a distribution source tarball
 #
 # this method of copying the pyrex generated files is a bit ugly; it would be
 # nicer to generate it from distutils.
@@ -419,15 +422,12 @@ dist:
 	expbasedir=`mktemp -t -d tmp_bzr_dist.XXXXXXXXXX` && \
 	expdir=$$expbasedir/bzr-$$version && \
 	tarball=$$PWD/../bzr-$$version.tar.gz && \
-	zipball=$$PWD/../bzr-$$version.zip && \
 	$(MAKE) clean && \
 	$(MAKE) && \
 	bzr export $$expdir && \
-	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	cp bzrlib/*.c bzrlib/*.h $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
-	(cd $$expbasedir && zip -r $$zipball bzr-$$version) && \
 	gpg --detach-sign $$tarball && \
-	gpg --detach-sign $$zipball && \
 	rm -rf $$expbasedir
 
 # run all tests in a previously built tarball
@@ -445,15 +445,10 @@ check-dist-tarball:
 dist-upload-escudero:
 	version=`./bzr version --short` && \
 	tarball=../bzr-$$version.tar.gz && \
-	zipball=../bzr-$$version.zip && \
-	scp $$zipball $$zipball.sig $$tarball $$tarball.sig \
+	scp $$tarball $$tarball.sig \
 	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
 		&& \
 	echo verifying over http... && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.zip \
-		| diff -s - $$zipball && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.zip.sig \
-		| diff -s - $$zipball.sig 
 	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
 		| diff -s - $$tarball && \
 	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \

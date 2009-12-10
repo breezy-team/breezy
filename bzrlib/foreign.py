@@ -36,7 +36,7 @@ from bzrlib import (
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
@@ -122,7 +122,17 @@ class ForeignRevision(Revision):
 class ForeignVcs(object):
     """A foreign version control system."""
 
-    def __init__(self, mapping_registry):
+    branch_format = None
+
+    repository_format = None
+
+    def __init__(self, mapping_registry, abbreviation=None):
+        """Create a new foreign vcs instance.
+
+        :param mapping_registry: Registry with mappings for this VCS.
+        :param abbreviation: Optional abbreviation ('bzr', 'svn', 'git', etc)
+        """
+        self.abbreviation = abbreviation
         self.mapping_registry = mapping_registry
 
     def show_foreign_revid(self, foreign_revid):
@@ -132,6 +142,15 @@ class ForeignVcs(object):
         :return: Dictionary mapping string keys to string values.
         """
         return { }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        """Serialize a foreign revision id for this VCS.
+
+        :param foreign_revid: Foreign revision id
+        :return: Bytestring with serialized revid, will not contain any 
+            newlines.
+        """
+        raise NotImplementedError(self.serialize_foreign_revid)
 
 
 class ForeignVcsRegistry(registry.Registry):
@@ -271,20 +290,25 @@ class cmd_dpush(Command):
     """
     hidden = True
     takes_args = ['location?']
-    takes_options = ['remember', Option('directory',
-            help='Branch to push from, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
-            Option('no-rebase', help="Do not rebase after push.")]
+    takes_options = [
+        'remember',
+        Option('directory',
+               help='Branch to push from, '
+               'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
+        Option('no-rebase', help="Do not rebase after push."),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree, --no-strict disables the check.'),
+        ]
 
-    def run(self, location=None, remember=False, directory=None, 
-            no_rebase=False):
+    def run(self, location=None, remember=False, directory=None,
+            no_rebase=False, strict=None):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
-        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
 
         if directory is None:
@@ -295,6 +319,20 @@ class cmd_dpush(Command):
         except NoWorkingTree:
             source_branch = Branch.open(directory)
             source_wt = None
+        if strict is None:
+            strict = source_branch.get_config(
+                ).get_user_option_as_bool('dpush_strict')
+        if strict is None: strict = True # default value
+        if strict and source_wt is not None:
+            if (source_wt.has_changes()):
+                raise errors.UncommittedChanges(
+                    source_wt, more='Use --no-strict to force the push.')
+            if source_wt.last_revision() != source_wt.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the push with --no-strict
+                raise errors.OutOfDateTree(
+                    source_wt, more='Use --no-strict to force the push.')
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:

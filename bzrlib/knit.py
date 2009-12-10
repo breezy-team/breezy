@@ -69,6 +69,7 @@ from bzrlib import (
     lru_cache,
     pack,
     progress,
+    static_tuple,
     trace,
     tsort,
     tuned_gzip,
@@ -2367,7 +2368,7 @@ class _KndxIndex(object):
     FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
-        that the the compressed data starts at.
+        that the compressed data starts at.
     LENGTH is the ascii representation of the length of the data file.
     PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
         REVISION_ID.
@@ -2944,10 +2945,15 @@ class _KnitGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
+                parents = node_refs[:1]
+                # Sometimes these are passed as a list rather than a tuple
+                passed = static_tuple.as_tuples(keys[key])
+                passed_parents = passed[1][:1]
                 if (value[0] != keys[key][0][0] or
-                    node_refs[:1] != keys[key][1][:1]):
+                    parents != passed_parents):
+                    node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                        ": %s %s" % ((value, node_refs), passed))
                 del keys[key]
         result = []
         if self._parents:
@@ -3702,5 +3708,6 @@ class _KnitAnnotator(annotate.Annotator):
 
 try:
     from bzrlib._knit_load_data_pyx import _load_data_c as _load_data
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._knit_load_data_py import _load_data_py as _load_data
