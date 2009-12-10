@@ -1314,6 +1314,9 @@ class Repository(_RelockDebugMixin):
         self._fallback_repositories = []
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
+        # Is it safe to return inventory entries directly from the entry cache,
+        # rather copying them?
+        self._safe_to_return_from_cache = False
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -2431,7 +2434,8 @@ class Repository(_RelockDebugMixin):
         :param xml: A serialised inventory.
         """
         result = self._serializer.read_inventory_from_string(xml, revision_id,
-                    entry_cache=self._inventory_entry_cache)
+                    entry_cache=self._inventory_entry_cache,
+                    return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
@@ -3840,6 +3844,7 @@ class InterDifferingSerializer(InterRepository):
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
         self._fetch_parent_invs_for_stacking(parent_map, cache)
+        self.source._safe_to_return_from_cache = True
         for tree in self.source.revision_trees(revision_ids):
             # Find a inventory delta for this revision.
             # Find text entries that need to be copied, too.
@@ -3893,6 +3898,7 @@ class InterDifferingSerializer(InterRepository):
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
+        self.source._safe_to_return_from_cache = False
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
@@ -3977,6 +3983,7 @@ class InterDifferingSerializer(InterRepository):
                 basis_id = self._fetch_batch(batch, basis_id, cache,
                                              a_graph=a_graph)
             except:
+                self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
                 raise
             else:
