@@ -394,7 +394,7 @@ def find_extra_authors(changes):
                     already_included = True
                     break
             if not already_included:
-                authors.append(new_author.encode("utf-8"))
+                authors.append(new_author)
     return authors
 
 
@@ -410,7 +410,7 @@ def find_thanks(changes):
             thanks = []
         thanks_str = match.group(1).strip()
         thanks_str = re.sub(r"\s+", " ", thanks_str)
-        thanks.append(thanks_str.encode("utf-8"))
+        thanks.append(thanks_str)
     return thanks
 
 
@@ -435,7 +435,7 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     bugs = []
     if changelog._blocks:
         block = changelog._blocks[0]
-        authors = [block.author]
+        authors = [block.author.decode("utf-8")]
         changes = strip_changelog_message(block.changes())
         authors += find_extra_authors(changes)
         bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)

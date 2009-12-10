@@ -460,7 +460,8 @@ class ChangelogInfoTests(TestCaseWithTransport):
         changes = ["  * Do foo", "", "  [ A. Hacker ]", "  * Do bar", "",
                    "  [ B. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
-        self.assertEqual(["A. Hacker", "B. Hacker"], authors)
+        self.assertEqual([u"A. Hacker", u"B. Hacker"], authors)
+        self.assertEqual([unicode]*len(authors), map(type, authors))
 
     def test_find_extra_authors_no_changes(self):
         authors = find_extra_authors([])
@@ -469,6 +470,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
     def assert_thanks_is(self, changes, expected_thanks):
         thanks = find_thanks(changes)
         self.assertEqual(expected_thanks, thanks)
+        self.assertEqual([unicode]*len(thanks), map(type, thanks))
 
     def test_find_thanks_no_changes(self):
         self.assert_thanks_is([], [])
@@ -479,25 +481,25 @@ class ChangelogInfoTests(TestCaseWithTransport):
 
     def test_find_thanks(self):
         changes = ["  * Thanks to A. Hacker"]
-        self.assert_thanks_is(changes, ["A. Hacker"])
+        self.assert_thanks_is(changes, [u"A. Hacker"])
         changes = ["  * Thanks to James A. Hacker"]
-        self.assert_thanks_is(changes, ["James A. Hacker"])
+        self.assert_thanks_is(changes, [u"James A. Hacker"])
         changes = ["  * Thankyou to B. Hacker"]
-        self.assert_thanks_is(changes, ["B. Hacker"])
+        self.assert_thanks_is(changes, [u"B. Hacker"])
         changes = ["  * thanks to A. Hacker"]
-        self.assert_thanks_is(changes, ["A. Hacker"])
+        self.assert_thanks_is(changes, [u"A. Hacker"])
         changes = ["  * thankyou to B. Hacker"]
-        self.assert_thanks_is(changes, ["B. Hacker"])
+        self.assert_thanks_is(changes, [u"B. Hacker"])
         changes = ["  * Thanks A. Hacker"]
-        self.assert_thanks_is(changes, ["A. Hacker"])
+        self.assert_thanks_is(changes, [u"A. Hacker"])
         changes = ["  * Thankyou B.  Hacker"]
-        self.assert_thanks_is(changes, ["B. Hacker"])
+        self.assert_thanks_is(changes, [u"B. Hacker"])
         changes = ["  * Thanks to Mark A. Super-Hacker"]
-        self.assert_thanks_is(changes, ["Mark A. Super-Hacker"])
+        self.assert_thanks_is(changes, [u"Mark A. Super-Hacker"])
         changes = ["  * Thanks to A. Hacker <ahacker@example.com>"]
-        self.assert_thanks_is(changes, ["A. Hacker <ahacker@example.com>"])
+        self.assert_thanks_is(changes, [u"A. Hacker <ahacker@example.com>"])
         changes = ["  * Thanks to Adeodato Sim\xc3\x83\xc2\xb3"]
-        self.assert_thanks_is(changes, ["Adeodato Sim\xc3\x83\xc2\xb3"])
+        self.assert_thanks_is(changes, [u"Adeodato Sim\xc3\xb3"])
 
     def test_find_bugs_fixed_no_changes(self):
         self.assertEqual([], find_bugs_fixed([], None, _lplib=MockLaunchpad()))
@@ -571,6 +573,7 @@ class ChangelogInfoTests(TestCaseWithTransport):
                         _lplib=MockLaunchpad())
         self.assertEqual("\n".join(strip_changelog_message(changes)), message)
         self.assertEqual([author]+find_extra_authors(changes), authors)
+        self.assertEqual(unicode, type(authors[0]))
         self.assertEqual(find_thanks(changes), thanks)
         self.assertEqual(find_bugs_fixed(changes, wt.branch,
                     _lplib=MockLaunchpad()), bugs)
