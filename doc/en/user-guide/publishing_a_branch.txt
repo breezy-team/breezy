@@ -55,7 +55,6 @@ Here is an example of the second way::
   bzr add                (populate repository; start version control)
   bzr commit -m "Initial import"
                          (publish to central repository)
-  bzr push sftp://centralhost/srv/bzr/project/trunk
 
 Note that committing inside a working tree created using
 the ``checkout`` command implicitly commits the content to

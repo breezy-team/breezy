@@ -37,7 +37,7 @@ bug report), see the contents of the report, file a bug, or save the
 report to file later.  At the moment we just show them the filename and
 let them take it from there.
 
-The process is 
+The process is
 
 #. An exception reaches the top-level handler.
 
@@ -83,5 +83,5 @@ Future ideas
 
   Possibly these bugs are better reported in the next time bzr runs.
 
-.. 
+..
     vim: ft=rst

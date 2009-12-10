@@ -84,7 +84,7 @@ Miscellaneous topics
 .. include:: server.txt
 .. include:: hooks.txt
 .. include:: version_info.txt
- 
+
 
 A brief tour of some popular plugins
 ####################################

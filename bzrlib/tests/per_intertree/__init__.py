@@ -163,7 +163,8 @@ def load_tests(standard_tests, module, loader):
                  optimiser._matching_from_tree_format,
                  optimiser._matching_to_tree_format,
                  optimiser.make_source_parent_tree_python_dirstate))
-        else:
+        elif (optimiser._matching_from_tree_format is not None and 
+              optimiser._matching_to_tree_format is not None):
             test_intertree_permutations.append(
                 (optimiser.__name__,
                  optimiser,

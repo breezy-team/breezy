@@ -1,0 +1,11 @@
+Upgrades
+========
+
+Software upgrades
+-----------------
+
+Disk format upgrades
+--------------------
+
+Plugin upgrades
+---------------

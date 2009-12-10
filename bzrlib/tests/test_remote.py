@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    branch,
     bzrdir,
     config,
     errors,
@@ -36,7 +37,6 @@ from bzrlib import (
     pack,
     remote,
     repository,
-    smart,
     tests,
     treebuilder,
     urlutils,
@@ -61,9 +61,8 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
-    KnownFailure,
     )
-from bzrlib.transport import get_transport, http
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -1782,6 +1781,20 @@ class TestRemoteRepository(TestRemote):
         return repo, client
 
 
+def remoted_description(format):
+    return 'Remote: ' + format.get_format_description()
+
+
+class TestBranchFormat(tests.TestCase):
+
+    def test_get_format_description(self):
+        remote_format = RemoteBranchFormat()
+        real_format = branch.BranchFormat.get_default_format()
+        remote_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_format.get_format_description())
+
+
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
@@ -1793,6 +1806,13 @@ class TestRepositoryFormat(TestRemoteRepository):
         false_format = RemoteRepositoryFormat()
         false_format._network_name = false_name
         self.assertEqual(False, false_format.fast_deltas)
+
+    def test_get_format_description(self):
+        remote_repo_format = RemoteRepositoryFormat()
+        real_format = repository.RepositoryFormat.get_default_format()
+        remote_repo_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_repo_format.get_format_description())
 
 
 class TestRepositoryGatherStats(TestRemoteRepository):
@@ -3022,6 +3042,7 @@ class TestStacking(tests.TestCaseWithTransport):
             local_tree.commit('more local changes are better')
             branch = Branch.open(self.get_url('tree3'))
             branch.lock_read()
+            self.addCleanup(branch.unlock)
             return None, branch
         rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
             branch_factory=make_stacked_stacked)

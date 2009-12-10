@@ -491,9 +491,9 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertEqualStat(real, fake)
 
     def test_assertEqualStat_notequal(self):
-        self.build_tree(["foo", "bar"])
+        self.build_tree(["foo", "longname"])
         self.assertRaises(AssertionError, self.assertEqualStat,
-            os.lstat("foo"), os.lstat("bar"))
+            os.lstat("foo"), os.lstat("longname"))
 
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
@@ -516,6 +516,14 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
+
+    def test_BZR_HOME_and_HOME_are_bytestrings(self):
+        """The $BZR_HOME and $HOME environment variables should not be unicode.
+
+        See https://bugs.launchpad.net/bzr/+bug/464174
+        """
+        self.assertIsInstance(os.environ['BZR_HOME'], str)
+        self.assertIsInstance(os.environ['HOME'], str)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
@@ -828,9 +836,10 @@ class TestTestResult(tests.TestCase):
             def report_known_failure(self, test, err):
                 self._call = test, err
         result = InstrumentedTestResult(None, None, None, None)
-        def test_function():
-            raise tests.KnownFailure('failed!')
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.KnownFailure('failed!')
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
@@ -914,8 +923,10 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP        0ms',
-                                 "    The feature 'Feature' is not available."])
+        # We don't check for the final '0ms' since it may fail on slow hosts
+        self.assertStartsWith(lines[0], 'NODEP')
+        self.assertEqual(lines[1],
+                         "    The feature 'Feature' is not available.")
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
@@ -927,9 +938,10 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         feature = tests.Feature()
-        def test_function():
-            raise tests.UnavailableFeature(feature)
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.UnavailableFeature(feature)
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'addNotSupported'.
         self.assertEqual(2, len(result._call))
@@ -952,7 +964,7 @@ class TestTestResult(tests.TestCase):
                                              verbosity=1)
         test = self.get_passing_test()
         err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result._addKnownFailure(test, err)
+        result.addExpectedFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
@@ -1015,10 +1027,11 @@ class TestRunner(tests.TestCase):
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
         # the final output when real failures occur.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                raise tests.KnownFailure('failed')
         test = unittest.TestSuite()
-        test.addTest(unittest.FunctionTestCase(known_failure_test))
+        test.addTest(Test("known_failure_test"))
         def failing_test():
             raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
@@ -1042,10 +1055,12 @@ class TestRunner(tests.TestCase):
             )
 
     def test_known_failure_ok_run(self):
-        # run a test that generates a known failure which should be printed in the final output.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
-        test = unittest.FunctionTestCase(known_failure_test)
+        # run a test that generates a known failure which should be printed in
+        # the final output.
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                raise tests.KnownFailure('failed')
+        test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
@@ -1128,11 +1143,12 @@ class TestRunner(tests.TestCase):
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
-        def not_applicable_test():
-            raise tests.TestNotApplicable('this test never runs')
+        class Test(tests.TestCase):
+            def not_applicable_test(self):
+                raise tests.TestNotApplicable('this test never runs')
         out = StringIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
-        test = unittest.FunctionTestCase(not_applicable_test)
+        test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
         self._log_file.write(out.getvalue())
         self.assertTrue(result.wasSuccessful())
@@ -2480,6 +2496,22 @@ class TestUnavailableFeature(tests.TestCase):
         feature = tests.Feature()
         exception = tests.UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+class TestModuleAvailableFeature(tests.TestCase):
+
+    def test_available_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.tests')
+        self.assertEqual('bzrlib.tests', feature.module_name)
+        self.assertEqual('bzrlib.tests', str(feature))
+        self.assertTrue(feature.available())
+        self.assertIs(tests, feature.module)
+
+    def test_unavailable_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
+        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
+        self.assertFalse(feature.available())
+        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):

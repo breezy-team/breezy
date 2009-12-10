@@ -161,7 +161,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(158, len(content))
+        self.assertEqual(131, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=5\n"
             "row_lengths=1\n",
@@ -185,7 +185,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(264, len(content))
+        self.assertEqual(238, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=2\nkey_elements=2\nlen=10\n"
             "row_lengths=1\n",
@@ -251,7 +251,7 @@ class TestBTreeBuilder(BTreeTestCase):
         temp_file = builder.finish()
         content = temp_file.read()
         del temp_file
-        self.assertEqual(181, len(content))
+        self.assertEqual(155, len(content))
         self.assertEqual(
             "B+Tree Graph Index 2\nnode_ref_lists=0\nkey_elements=1\nlen=10\n"
             "row_lengths=1\n",
@@ -359,23 +359,19 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test the parts of the index that take up memory are doing so
         # predictably.
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
@@ -384,7 +380,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -448,23 +443,19 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test the parts of the index that take up memory are doing so
         # predictably.
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         # And spills to a second backing index but doesn't combine
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         for backing_index in builder._backing_indices:
@@ -473,7 +464,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(3, len(builder._backing_indices))
         for backing_index in builder._backing_indices:
@@ -538,11 +528,9 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[0])
         # Test the parts of the index that take up memory are doing so
         # predictably.
-        self.assertEqual(1, len(builder._keys))
         self.assertEqual(1, len(builder._nodes))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
-        self.assertEqual(0, len(builder._keys))
         self.assertEqual(0, len(builder._nodes))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
@@ -551,7 +539,6 @@ class TestBTreeBuilder(BTreeTestCase):
         old = dict(builder._get_nodes_by_key()) #Build up the nodes by key dict
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIsNot(None, builder._nodes_by_key)
         self.assertNotEqual({}, builder._nodes_by_key)
         # We should have a new entry
@@ -559,7 +546,6 @@ class TestBTreeBuilder(BTreeTestCase):
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
@@ -568,7 +554,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -718,7 +703,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read, as it is one page long.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
-        self.assertEqual(1199, size)
+        self.assertEqual(1173, size)
 
     def test__read_nodes_no_size_one_page_reads_once(self):
         self.make_index(nodes=[(('key',), 'value', ())])
@@ -772,7 +757,7 @@ class TestBTreeIndex(BTreeTestCase):
         # The entire index should have been read linearly.
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
-        self.assertEqual(1514, size)
+        self.assertEqual(1488, size)
 
     def test_validate_two_pages(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)

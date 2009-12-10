@@ -1677,7 +1677,7 @@ class CHKInventory(CommonInventory):
         # to filter out empty names because of non rich-root...
         sections = bytes.split('\n')
         kind, file_id = sections[0].split(': ')
-        return (sections[2], file_id, sections[3])
+        return (sections[2], intern(file_id), intern(sections[3]))
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
@@ -1705,7 +1705,8 @@ class CHKInventory(CommonInventory):
             result.reference_revision = sections[4]
         else:
             raise ValueError("Not a serialised entry %r" % bytes)
-        result.revision = sections[3]
+        result.file_id = intern(result.file_id)
+        result.revision = intern(sections[3])
         if result.parent_id == '':
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
