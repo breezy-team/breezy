@@ -19,7 +19,6 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dhpss            Trace smart protocol requests and responses.
 -Dhpssdetail      More hpss details.
 -Dhpssvfs         Traceback on vfs access to Remote objects.
--Dhpssthread      Add thread identifiers to hpss debug messages
 -Dhttp            Trace http connections, requests and responses.
 -Dindex           Trace major index operations.
 -Dknit            Trace knit operations.
