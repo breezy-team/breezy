@@ -1065,17 +1065,20 @@ class _ProtocolThreeEncoder(object):
 
     def __init__(self, write_func):
         self._buf = []
+        self._buf_len = 0
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
         self._buf.append(bytes)
-        if len(self._buf) > 100:
+        self._buf_len += len(bytes)
+        if self._buf_len > 1*1024*1024:
             self.flush()
 
     def flush(self):
         if self._buf:
             self._real_write_func(''.join(self._buf))
             del self._buf[:]
+            self._buf_len = 0
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
