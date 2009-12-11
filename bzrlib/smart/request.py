@@ -36,7 +36,9 @@ import threading
 
 from bzrlib import (
     bzrdir,
+    debug,
     errors,
+    osutils,
     registry,
     revision,
     trace,
@@ -287,6 +289,23 @@ class SmartServerRequestHandler(object):
         self.response = None
         self.finished_reading = False
         self._command = None
+        if 'hpss' in debug.debug_flags:
+            self._request_start_time = osutils.timer_func()
+            self._thread_id = threading.currentThread().ident
+
+    def _trace(self, action, message, extra_bytes=None, suppress_time=False):
+        if suppress_time:
+            t = ''
+        else:
+            t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+        if extra_bytes is None:
+            extra = ''
+        else:
+            extra = ' ' + repr(extra_bytes[:40])
+            if len(extra) > 33:
+                extra = extra[:29] + extra[-1] + '...'
+        trace.mutter('%12s: [%s] %s%s%s'
+                     % (action, self._thread_id, t, message, extra))
 
     def accept_body(self, bytes):
         """Accept body data."""
@@ -294,12 +313,17 @@ class SmartServerRequestHandler(object):
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
+        if 'hpss' in debug.debug_flags:
+            self._trace('accept body',
+                        '%d bytes' % (len(bytes),), bytes)
 
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
+        if 'hpss' in debug.debug_flags:
+            self._trace('end of body', '')
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
@@ -334,7 +358,8 @@ class SmartServerRequestHandler(object):
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
-        pass
+        if 'hpss' in debug.debug_flags:
+            self._trace('headers', repr(headers))
 
     def args_received(self, args):
         cmd = args[0]
@@ -342,7 +367,20 @@ class SmartServerRequestHandler(object):
         try:
             command = self._commands.get(cmd)
         except LookupError:
+            if 'hpss' in debug.debug_flags:
+                self._trace('hpss unknown request', 
+                            cmd, repr(args)[1:-1],
+                            suppress_time=True)
             raise errors.UnknownSmartMethod(cmd)
+        if 'hpss' in debug.debug_flags:
+            from bzrlib.smart import vfs
+            if issubclass(command, vfs.VfsRequest):
+                action = 'hpss vfs req'
+            else:
+                action = 'hpss request'
+            self._trace(action, 
+                        '%s %s' % (cmd, repr(args)[1:-1]),
+                        suppress_time=True)
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
@@ -352,6 +390,8 @@ class SmartServerRequestHandler(object):
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_end, (), {})
+        if 'hpss' in debug.debug_flags:
+            self._trace('end', '')
 
     def post_body_error_received(self, error_args):
         # Just a no-op at the moment.

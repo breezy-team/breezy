@@ -71,6 +71,10 @@ import bzrlib
 from bzrlib import symbol_versioning
 
 
+timer_func = time.time
+if sys.platform == 'win32':
+    timer_func = time.clock
+
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because

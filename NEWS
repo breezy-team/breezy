@@ -26,6 +26,9 @@ New Features
 * ``bzr commit`` now has a ``--commit-time`` option.
   (Alexander Sack, #459276)
 
+* ``-Dhpss`` now increases logging done when run on the bzr server,
+  similarly to how it works on the client. (John Arbash Meinel)
+
 * The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
   respect a given terminal width. This can be useful when output is
   redirected or in obscure cases where the default value is not
@@ -127,6 +130,12 @@ Internals
   easier to handle what tests you want to run based on what modules can be
   imported. (Rather than lots of custom-implemented features that were
   basically copy-and-pasted.) (John Arbash Meinel)
+
+* ``osutils.timer_func()`` can be used to get either ``time.time()`` or
+  ``time.clock()`` when you want to do performance timing.
+  ``time.time()`` is limited to 15ms resolution on Windows, but
+  ``time.clock()`` gives CPU and not wall-clock time on other platforms.
+  (John Arbash Meinel)
 
 * Several code paths that were calling ``Transport.get().read()`` have
   been changed to the equalivent ``Transport.get_bytes()``. The main
