@@ -192,8 +192,6 @@ access to the remote working copy (``bzr+ssh://``, ``sftp://`` and
 ``file://``).  Also, it is only useful when the remote branch is updated with
 an explicit ``push`` command.
 
-.. TODO: check that the list of URLs is correct
-
 automirror
 ~~~~~~~~~~
 
@@ -221,9 +219,11 @@ Other Useful Plugins
 pqm (plugin)
 ~~~~~~~~~~~~
 
-Discussed further under `PQM <integration.html#patch-queue-manager-pqm>`_, this
-plugin submits each commit on a branch to the Patch Queue Manager, which can
-run the test suite before committing that revision to another branch.
+Facilitating interaction with `PQM
+<integration.html#patch-queue-manager-pqm>`_, this plugin provides support for 
+submitting merge requests to a remote Patch Queue Manager.  PQM provides 
+a way to automatically run the test suite before merging changes to the
+trunk branch.
 
 testrunner
 ~~~~~~~~~~
