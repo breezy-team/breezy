@@ -35,14 +35,17 @@ Email Notification
 ------------------
 
 A common need is for every change made on a branch to send an email message to
-some address, most often a mailing list.  These plugins provide that
-capability in a number of different ways.  The `email` plugin sends email
-from each individual developer's computer.  This can be useful for situations
-that want to track what each individual developer is working on.  On the
-downside, it requires that every developer's branches be configured
-individually to use the same plugin.  The next two plugins `hookless-email`
-and `email-notifier` are designed to run on a central server whenever changes
-happen on centrally stored branches.
+some address, most often a mailing list.  These plugins provide that capability
+in a number of different ways.  
+
+The `email` plugin sends email from each individual developer's computer.  This
+can be useful for situations that want to track what each individual developer
+is working on.  On the downside, it requires that every developer's branches be
+configured individually to use the same plugin.  
+
+The next two plugins `hookless-email` and `email-notifier` address this concern
+by running on a central server whenever changes happen on centrally stored
+branches.
 
 email
 ~~~~~
@@ -174,8 +177,7 @@ another.  This can be used to provide simple backup facilities or redundancy
 (see `Back-up and restore <backup.html>`_ for more details on backups).  One
 way to do this using Bazaar's workflows is to make the branch where changes
 happen into a bound branch of the mirror branch.  Then, when commits happen on
-the working branch, they will also happen on the mirror branch.  It is possible
-to make a chain of bound branches to create multiple mirrors.  Note that
+the working branch, they will also happen on the mirror branch.  Note that
 commits to bound branches do *not* update the mirror branch's working copy, so
 if the mirror branch is more than just a backup of the complete history of the
 branch, for example if it is being served as a web page, then additional

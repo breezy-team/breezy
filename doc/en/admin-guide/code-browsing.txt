@@ -11,15 +11,17 @@ choices where they differ.
 Loggerhead
 ----------
 
-Loggerhead is a code browsing interface for Bazaar branches (originally
-developed for Launchpad).  To see an example of Loggerhead in action, browse
-to http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files which is the
-loggerhead view of Bazaar's trunk branch.  Loggerhead runs as a web
-application on the server which is accessed over HTTP via a RESTful interface.
-It is possible to run this application on its own dedicated port as
-``http://www.example.com:8080`` or to proxy this location behind a separate
-web server, for example at ``http://www.example.com/loggerhead/``.  We will
-discuss both of these configurations below.
+Loggerhead_ is a code browsing interface for Bazaar branches (now used in
+Launchpad).  To see an example of Loggerhead in action, browse to
+http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/files which is the loggerhead
+view of Bazaar's trunk branch.  Loggerhead runs as a web application on the
+server which is accessed over HTTP via a RESTful interface.  It is possible to
+run this application on its own dedicated port as
+``http://www.example.com:8080`` or to proxy this location behind a separate web
+server, for example at ``http://www.example.com/loggerhead/``.  We will discuss
+both of these configurations below.
+
+.. _Loggerhead: http://launchpad.net/loggerhead
 
 Requirements
 ~~~~~~~~~~~~
@@ -47,7 +49,7 @@ file, these are
 
 Although directions for installing these on Ubuntu Linux are given, most other
 Linux distributions should package these dependencies, making installation
-easy.  For Windows and Mac OS X, the should all be ``easy_install``-able or at
+easy.  For Windows and Mac OS X, they should all be ``easy_install``-able or at
 worst installable from the Python sources.
 
 Built-in Web Server
