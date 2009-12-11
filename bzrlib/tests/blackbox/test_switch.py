@@ -192,6 +192,7 @@ class TestSwitch(ExternalBase):
             def look_up(self, name, url):
                 return 'foo-'+name
         directories.register('foo:', FooLookup, 'Create branches named foo-')
+        self.addCleanup(directories.remove, 'foo:')
         self.run_bzr('switch -b foo:branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         self.assertEndsWith(tree.branch.base, 'foo-branch2/')
