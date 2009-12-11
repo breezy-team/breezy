@@ -68,13 +68,25 @@ class TestShelveList(TestCaseWithTransport):
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
     def test_unshelve_keep(self):
-        tree = self.make_branch_and_tree('tree')
-        creator = self.make_creator(tree)
-        tree.get_shelf_manager().shelve_changes(creator, 'Foo')
+        # https://bugs.edge.launchpad.net/bzr/+bug/492091
+        tree = self.make_branch_and_tree('.')
+        # shelve apparently unhappy working with a tree with no root yet
+        tree.commit('make root')
+        self.build_tree(['file'])
 
         sr = ScriptRunner()
         sr.run_script(self, '''
-$ bzr unshelve --keep''')
+$ bzr add file
+$ bzr shelve --all -m Foo
+$ bzr shelve --list
+  1: Foo
+$ bzr unshelve --keep
+$ bzr shelve --list
+  1: Foo
+$ cat file
+contents of file
+''')
+
 
 
 class TestShelveRelpath(TestCaseWithTransport):
