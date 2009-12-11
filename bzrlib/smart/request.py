@@ -298,14 +298,18 @@ class SmartServerRequestHandler(object):
             t = ''
         else:
             t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+        if 'hpssthread' in debug.debug_flags:
+            t_info = ' [%s] ' % (self._thread_id,)
+        else:
+            t_info = ' '
         if extra_bytes is None:
             extra = ''
         else:
             extra = ' ' + repr(extra_bytes[:40])
             if len(extra) > 33:
                 extra = extra[:29] + extra[-1] + '...'
-        trace.mutter('%12s: [%s] %s%s%s'
-                     % (action, self._thread_id, t, message, extra))
+        trace.mutter('%12s:%s%s%s%s'
+                     % (action, t_info, t, message, extra))
 
     def accept_body(self, bytes):
         """Accept body data."""

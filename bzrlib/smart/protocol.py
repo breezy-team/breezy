@@ -1143,7 +1143,6 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            import threading
             self._thread_id = threading.currentThread().ident
             self._response_start_time = None
 
@@ -1154,14 +1153,18 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             t = ''
         else:
             t = '%5.3fs ' % (time.clock() - self._response_start_time)
+        if 'hpssthread' in debug.debug_flags:
+            t_info = ' [%s] ' % (self._thread_id,)
+        else:
+            t_info = ' '
         if extra_bytes is None:
             extra = ''
         else:
             extra = ' ' + repr(extra_bytes[:40])
             if len(extra) > 33:
                 extra = extra[:29] + extra[-1] + '...'
-        mutter('%12s: [%s] %s%s%s'
-               % (action, self._thread_id, t, message, extra))
+        mutter('%12s:%s%s%s%s'
+               % (action, t_info, t, message, extra))
 
     def send_error(self, exception):
         if self.response_sent:

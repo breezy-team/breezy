@@ -33,7 +33,9 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import atexit
+import threading
 import weakref
+
 from bzrlib import (
     debug,
     errors,
@@ -298,8 +300,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         tstart = osutils.timer_func()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
-            trace.mutter('%12s: %d bytes to the socket in %.3fs'
-                         % ('wrote', len(bytes), osutils.timer_func() - tstart))
+            if 'hpssthread' in debug.debug_flags:
+                ident_str = ' [%s] ' % (threading.currentThread().ident,)
+            else:
+                ident_str = ' '
+            trace.mutter('%12s:%s%d bytes to the socket in %.3fs'
+                         % ('wrote', ident_str, len(bytes),
+                            osutils.timer_func() - tstart))
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
