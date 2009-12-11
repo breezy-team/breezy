@@ -293,15 +293,15 @@ class SmartServerRequestHandler(object):
             self._request_start_time = osutils.timer_func()
             self._thread_id = threading.currentThread().ident
 
-    def _trace(self, action, message, extra_bytes=None, suppress_time=False):
+    def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of 
         # ProtocolThreeRequester._trace. However, there is enough difference
         # that just putting it in a helper doesn't help a lot. And some state
         # is taken from the instance.
-        if suppress_time:
-            t = ''
-        else:
+        if include_time:
             t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+        else:
+            t = ''
         if extra_bytes is None:
             extra = ''
         else:
@@ -327,7 +327,7 @@ class SmartServerRequestHandler(object):
         # cannot read after this.
         self.finished_reading = True
         if 'hpss' in debug.debug_flags:
-            self._trace('end of body', '')
+            self._trace('end of body', '', include_time=True)
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
@@ -373,8 +373,7 @@ class SmartServerRequestHandler(object):
         except LookupError:
             if 'hpss' in debug.debug_flags:
                 self._trace('hpss unknown request', 
-                            cmd, repr(args)[1:-1],
-                            suppress_time=True)
+                            cmd, repr(args)[1:-1])
             raise errors.UnknownSmartMethod(cmd)
         if 'hpss' in debug.debug_flags:
             from bzrlib.smart import vfs
@@ -383,8 +382,7 @@ class SmartServerRequestHandler(object):
             else:
                 action = 'hpss request'
             self._trace(action, 
-                        '%s %s' % (cmd, repr(args)[1:-1]),
-                        suppress_time=True)
+                        '%s %s' % (cmd, repr(args)[1:-1]))
         self._command = command(
             self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
@@ -395,7 +393,7 @@ class SmartServerRequestHandler(object):
             return
         self._run_handler_code(self._command.do_end, (), {})
         if 'hpss' in debug.debug_flags:
-            self._trace('end', '')
+            self._trace('end', '', include_time=True)
 
     def post_body_error_received(self, error_args):
         # Just a no-op at the moment.

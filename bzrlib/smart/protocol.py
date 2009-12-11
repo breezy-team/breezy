@@ -1146,13 +1146,13 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             self._thread_id = threading.currentThread().ident
             self._response_start_time = None
 
-    def _trace(self, action, message, extra_bytes=None, suppress_time=False):
+    def _trace(self, action, message, extra_bytes=None, include_time=False):
         if self._response_start_time is None:
             self._response_start_time = osutils.timer_func()
-        if suppress_time:
-            t = ''
-        else:
+        if include_time:
             t = '%5.3fs ' % (time.clock() - self._response_start_time)
+        else:
+            t = ''
         if extra_bytes is None:
             extra = ''
         else:
@@ -1194,13 +1194,13 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         else:
             self._write_error_status()
         if 'hpss' in debug.debug_flags:
-            self._trace('response', repr(response.args), suppress_time=True)
+            self._trace('response', repr(response.args))
         self._write_structure(response.args)
         if response.body is not None:
             self._write_prefixed_body(response.body)
             if 'hpss' in debug.debug_flags:
                 self._trace('body', '%d bytes' % (len(response.body),),
-                            response.body)
+                            response.body, include_time=True)
         elif response.body_stream is not None:
             count = num_bytes = 0
             first_chunk = None
@@ -1227,9 +1227,12 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                                     '%d bytes' % (len(chunk),),
                                     chunk, suppress_time=True)
             if 'hpss' in debug.debug_flags:
-                self._trace('body', '%d bytes %d chunks' % (num_bytes, count),
-                            response.body)
+                self._trace('body stream',
+                            '%d bytes %d chunks' % (num_bytes, count),
+                            first_chunk)
         self._write_end()
+        if 'hpss' in debug.debug_flags:
+            self._trace('response end', '', include_time=True)
 
 
 def _iter_with_errors(iterable):
