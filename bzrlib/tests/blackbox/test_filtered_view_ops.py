@@ -189,11 +189,11 @@ class TestViewTreeOperationss(TestCaseWithTransport):
         os.chdir("tree_2")
         self.run_bzr("bind ../tree_1")
         out, err = self.run_bzr('update')
-        self.assertEqualDiff(
+        self.assertStartsWith(err, 
             "Operating on whole tree but only reporting on 'my' view.\n"
             " M  a\n"
-            "All changes applied successfully.\n"
-            "Updated to revision 2.\n", err)
+            "All changes applied successfully.\n")
+        self.assertContainsRe(err, "Updated to revision 2 of branch .*.")
         self.assertEqualDiff("", out)
 
     def test_view_on_merge(self):

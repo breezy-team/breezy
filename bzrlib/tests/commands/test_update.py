@@ -19,7 +19,7 @@ from bzrlib import (
     branch,
     builtins,
     )
-from bzrlib.tests import transport_util
+from bzrlib.tests import transport_util, StringIOWrapper
 
 
 class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
@@ -36,6 +36,8 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         update = builtins.cmd_update()
+        # update needs the encoding from outf to print URLs
+        update.outf = StringIOWrapper()
         # update calls it 'dir' where other commands calls it 'directory'
         update.run(dir='local')
         self.assertEquals(1, len(self.connections))

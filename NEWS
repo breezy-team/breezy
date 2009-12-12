@@ -105,6 +105,9 @@ Improvements
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
 
+* ``bzr update`` provides feedback on which branch it is up to date with.
+  (Neil Martinsen-Burrell)
+
 Documentation
 *************
 
