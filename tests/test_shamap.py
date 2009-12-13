@@ -23,9 +23,13 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     UnavailableFeature,
     )
+from bzrlib.transport import (
+    get_transport,
+    )
 
 from bzrlib.plugins.git.shamap import (
     DictGitShaMap,
+    IndexGitShaMap,
     SqliteGitShaMap,
     TdbGitShaMap,
     )
@@ -33,19 +37,23 @@ from bzrlib.plugins.git.shamap import (
 class TestGitShaMap:
 
     def test_commit(self):
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301", 
+        self.map.start_write_group()
+        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
             "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.commit_write_group()
         self.assertEquals(
             ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
             self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
 
     def test_lookup_notfound(self):
-        self.assertRaises(KeyError, 
+        self.assertRaises(KeyError,
             self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
-        
+
     def test_blob(self):
         thesha = "5686645d49063c73d35436192dfc9a160c672301"
+        self.map.start_write_group()
         self.map.add_entry(thesha, "blob", ("myfileid", "myrevid"))
+        self.map.commit_write_group()
         self.assertEquals(
             ("blob", ("myfileid", "myrevid")),
             self.map.lookup_git_sha(thesha))
@@ -53,16 +61,20 @@ class TestGitShaMap:
 
     def test_tree(self):
         thesha = "5686645d49063c73d35436192dfc9a160c672301"
-        self.map.add_entry(thesha, 
+        self.map.start_write_group()
+        self.map.add_entry(thesha,
             "tree", ("somepath", "myrevid"))
+        self.map.commit_write_group()
         self.assertEquals(
             ("tree", ("somepath", "myrevid")),
             self.map.lookup_git_sha(thesha))
         self.assertEquals(thesha, self.map.lookup_tree("somepath", "myrevid"))
 
     def test_revids(self):
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301", 
+        self.map.start_write_group()
+        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
             "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
 
 
@@ -88,3 +100,10 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
             self.map = TdbGitShaMap(os.path.join(self.test_dir, 'foo.tdb'))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
+
+
+class IndexGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
+
+    def setUp(self):
+        TestCaseInTempDir.setUp(self)
+        self.map = IndexGitShaMap(get_transport(self.test_dir))

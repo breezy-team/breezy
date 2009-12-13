@@ -76,13 +76,14 @@ class BazaarObjectStore(BaseObjectStore):
             assert first is None
         graph = self.repository.get_graph()
         missing_revids = self._idmap.missing_revisions(all_revids)
+        self._idmap.start_write_group()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
                 pb.update("updating git map", i, len(missing_revids))
                 self._update_sha_map_revision(revid)
         finally:
-            self._idmap.commit()
+            self._idmap.commit_write_group()
             pb.finished()
 
     def __iter__(self):

@@ -25,8 +25,15 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    index as _mod_index,
+    osutils,
     trace,
     )
+
+# Data stored in the cache:
+# Git SHA -> Bazaar inventory entry / revision
+# Bazaar file id / revision -> Git SHA
+# Bazaar revision id -> Git SHA
 
 
 def get_cache_dir():
@@ -121,8 +128,14 @@ class GitShaMap(object):
         """List the SHA1s."""
         raise NotImplementedError(self.sha1s)
 
-    def commit(self):
+    def start_write_group(self):
+        """Start writing changes."""
+
+    def commit_write_group(self):
         """Commit any pending changes."""
+
+    def abort_write_group(self):
+        """Abort any pending changes."""
 
 
 class DictGitShaMap(GitShaMap):
@@ -195,7 +208,7 @@ class SqliteGitShaMap(GitShaMap):
             return row[0].encode("utf-8")
         raise KeyError
 
-    def commit(self):
+    def commit_write_group(self):
         self.db.commit()
 
     def add_entries(self, entries):
@@ -321,9 +334,6 @@ class TdbGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
 
-    def commit(self):
-        pass
-
     def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
@@ -377,3 +387,118 @@ class TdbGitShaMap(GitShaMap):
         for key in self.db.iterkeys():
             if key.startswith("git\0"):
                 yield sha_to_hex(key[4:])
+
+INDEX_FORMAT = 'bzr-git sha map version 1'
+
+
+class IndexGitShaMap(GitShaMap):
+    """SHA Map that uses the Bazaar Index API.
+
+    Entries:
+
+    "git <sha1>" -> "<type> <type-data1> <type-data2>"
+    "commit revid" -> "<sha1> <tree-id>"
+    "tree fileid revid" -> "<sha1>"
+    "blob fileid revid" -> "<sha1>"
+    """
+
+    def __init__(self, transport=None):
+        if transport is None:
+            self._transport = None
+        else:
+            self._transport = transport
+            try:
+                format = self._transport.get_bytes('format')
+            except bzrlib.errors.NoSuchFile:
+                self._transport.put_bytes('format', INDEX_FORMAT)
+            else:
+                if format != INDEX_FORMAT:
+                    trace.warning("SHA Map is incompatible (%s -> %s), rebuilding database.",
+                                  format, INDEX_FORMAT)
+                    raise KeyError
+        self._index = _mod_index.CombinedGraphIndex([])
+
+    @classmethod
+    def from_repository(cls, repository):
+        transport = getattr(repository, "_transport", None)
+        if transport is not None:
+            return cls(transport.clone('git'))
+        from bzrlib.transport import get_transport
+        return cls(get_transport(get_cache_dir()))
+
+    def start_write_group(self):
+        self._builder = _mod_index.GraphIndexBuilder(0, key_elements=3)
+        self._name = osutils.sha()
+
+    def commit_write_group(self):
+        stream = self._builder.finish()
+        name = self._name.hexdigest()
+        size = self._transport.put_file(name, stream)
+        index = _mod_index.GraphIndex(self._transport, name, size)
+        self._index.insert_index(0, index)
+        self._builder = None
+        self._name = None
+
+    def abort_write_group(self):
+        self._builder = None
+        self._name = None
+
+    def lookup_commit(self, revid):
+        entries = self._index.iter_entries([("commit", revid, None)])
+        try:
+            return entries.next()[2][:20]
+        except StopIteration:
+            raise KeyError
+
+    def add_entry(self, hexsha, type, type_data):
+        """Add a new entry to the database.
+        """
+        self._name.update(hexsha)
+        if hexsha is None:
+            hexsha = ""
+        else:
+            self._builder.add_node(("git", hexsha, "X"), " ".join((type, type_data[0], type_data[1])))
+        if type == "commit":
+            self._builder.add_node(("commit", type_data[0], "X"), " ".join((hexsha, type_data[1])))
+        else:
+            self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
+
+    def lookup_tree(self, fileid, revid):
+        entries = self._index.iter_entries([("tree", fileid, revid)])
+        try:
+            sha = entries.next()[2]
+        except StopIteration:
+            raise KeyError
+        else:
+            if sha == "":
+                return None
+            else:
+                return sha
+
+    def lookup_blob(self, fileid, revid):
+        entries = self._index.iter_entries([("blob", fileid, revid)])
+        try:
+            return entries.next()[2]
+        except StopIteration:
+            raise KeyError
+
+    def lookup_git_sha(self, sha):
+        if len(sha) == 20:
+            sha = sha_to_hex(sha)
+        entries = self._index.iter_entries([("git", sha, "X")])
+        try:
+            data = entries.next()[2].split(" ", 2)
+        except StopIteration:
+            raise KeyError
+        else:
+            return (data[0], (data[1], data[2]))
+
+    def revids(self):
+        """List the revision ids known."""
+        for entry in self._index.iter_entries_prefix([("commit", None, None)]):
+            yield entry[1][1]
+
+    def sha1s(self):
+        """List the SHA1s."""
+        for entry in self._index.iter_entries_prefix([("git", None, None)]):
+            yield entry[1][1]

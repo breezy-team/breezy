@@ -296,6 +296,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     :param mapping: Mapping to use
     :param object_iter: Iterator over Git objects.
     """
+    target_git_object_retriever._idmap.start_write_group() # FIXME: try/finally
     def lookup_object(sha):
         try:
             return object_iter[sha]
@@ -387,7 +388,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                 if oldobj != newobj:
                     raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
 
-    target_git_object_retriever._idmap.commit()
+    target_git_object_retriever._idmap.commit_write_group()
 
 
 class InterGitRepository(InterRepository):
