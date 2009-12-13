@@ -25,6 +25,7 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    btree_index as _mod_btree_index,
     index as _mod_index,
     osutils,
     trace,
@@ -403,8 +404,11 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
+        self._builder = None
         if transport is None:
             self._transport = None
+            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
+            self._builder = self._index
         else:
             self._transport = transport
             try:
@@ -416,89 +420,109 @@ class IndexGitShaMap(GitShaMap):
                     trace.warning("SHA Map is incompatible (%s -> %s), rebuilding database.",
                                   format, INDEX_FORMAT)
                     raise KeyError
-        self._index = _mod_index.CombinedGraphIndex([])
+            self._index = _mod_index.CombinedGraphIndex([])
+            for name in self._transport.list_dir("."):
+                if not name.endswith(".rix"):
+                    continue
+                x = _mod_btree_index.BTreeGraphIndex(self._transport, name, self._transport.stat(name).st_size)
+                self._index.insert_index(0, x)
 
     @classmethod
     def from_repository(cls, repository):
         transport = getattr(repository, "_transport", None)
         if transport is not None:
+            try:
+                transport.mkdir('git')
+            except bzrlib.errors.FileExists:
+                pass
             return cls(transport.clone('git'))
         from bzrlib.transport import get_transport
         return cls(get_transport(get_cache_dir()))
 
     def start_write_group(self):
-        self._builder = _mod_index.GraphIndexBuilder(0, key_elements=3)
+        assert self._builder is None
+        self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
         self._name = osutils.sha()
 
     def commit_write_group(self):
+        assert self._builder is not None
         stream = self._builder.finish()
-        name = self._name.hexdigest()
+        name = self._name.hexdigest() + ".rix"
         size = self._transport.put_file(name, stream)
-        index = _mod_index.GraphIndex(self._transport, name, size)
+        index = _mod_btree_index.BTreeGraphIndex(self._transport, name, size)
         self._index.insert_index(0, index)
         self._builder = None
         self._name = None
 
     def abort_write_group(self):
+        assert self._builder is not None
         self._builder = None
         self._name = None
 
-    def lookup_commit(self, revid):
-        entries = self._index.iter_entries([("commit", revid, None)])
+    def _get_entry(self, key):
+        entries = self._index.iter_entries([key])
         try:
-            return entries.next()[2][:20]
+            return entries.next()[2]
         except StopIteration:
-            raise KeyError
+            if self._builder is None:
+                raise KeyError
+            entries = self._builder.iter_entries([key])
+            try:
+                return entries.next()[2]
+            except StopIteration:
+                raise KeyError
+
+    def _iter_keys_prefix(self, prefix):
+        for entry in self._index.iter_entries_prefix([prefix]):
+            yield entry[1]
+        if self._builder is not None:
+            for entry in self._builder.iter_entries_prefix([prefix]):
+                yield entry[1]
+
+    def lookup_commit(self, revid):
+        return self._get_entry(("commit", revid, "X"))[:40]
 
     def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
-        self._name.update(hexsha)
-        if hexsha is None:
-            hexsha = ""
+        if hexsha is not None:
+            self._name.update(hexsha)
+            try:
+                self._builder.add_node(("git", hexsha, "X"), " ".join((type, type_data[0], type_data[1])))
+            except bzrlib.errors.BadIndexDuplicateKey:
+                pass # Multiple bzr objects can have the same contents
         else:
-            self._builder.add_node(("git", hexsha, "X"), " ".join((type, type_data[0], type_data[1])))
+            # This object is not represented in Git - perhaps an empty
+            # directory?
+            hexsha = ""
+            self._name.update(type + " ".join(type_data))
         if type == "commit":
             self._builder.add_node(("commit", type_data[0], "X"), " ".join((hexsha, type_data[1])))
         else:
             self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
 
     def lookup_tree(self, fileid, revid):
-        entries = self._index.iter_entries([("tree", fileid, revid)])
-        try:
-            sha = entries.next()[2]
-        except StopIteration:
-            raise KeyError
+        sha = self._get_entry(("tree", fileid, revid))
+        if sha == "":
+            return None
         else:
-            if sha == "":
-                return None
-            else:
-                return sha
+            return sha
 
     def lookup_blob(self, fileid, revid):
-        entries = self._index.iter_entries([("blob", fileid, revid)])
-        try:
-            return entries.next()[2]
-        except StopIteration:
-            raise KeyError
+        return self._get_entry(("blob", fileid, revid))
 
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        entries = self._index.iter_entries([("git", sha, "X")])
-        try:
-            data = entries.next()[2].split(" ", 2)
-        except StopIteration:
-            raise KeyError
-        else:
-            return (data[0], (data[1], data[2]))
+        data = self._get_entry(("git", sha, "X")).split(" ", 2)
+        return (data[0], (data[1], data[2]))
 
     def revids(self):
         """List the revision ids known."""
-        for entry in self._index.iter_entries_prefix([("commit", None, None)]):
-            yield entry[1][1]
+        for key in self._iter_keys_prefix(("commit", None, None)):
+            yield key[1]
 
     def sha1s(self):
         """List the SHA1s."""
-        for entry in self._index.iter_entries_prefix([("git", None, None)]):
-            yield entry[1][1]
+        for key in self._iter_keys_prefix(("git", None, None)):
+            yield key[1]

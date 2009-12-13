@@ -41,6 +41,7 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
 from bzrlib.plugins.git.shamap import (
+    IndexGitShaMap,
     SqliteGitShaMap,
     TdbGitShaMap,
     )
@@ -63,7 +64,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             self.mapping = mapping
         try:
-            self._idmap = TdbGitShaMap.from_repository(repository)
+            self._idmap = IndexGitShaMap.from_repository(repository)
         except ImportError:
             self._idmap = SqliteGitShaMap.from_repository(repository)
 
@@ -142,6 +143,7 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 if ret is None:
+                    # Empty directory
                     hexsha = None
                 else:
                     hexsha = ret.id
