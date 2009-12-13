@@ -110,6 +110,13 @@ class GitShaMap(object):
         """List the revision ids known."""
         raise NotImplementedError(self.revids)
 
+    def missing_revisions(self, revids):
+        """Return set of all the revisions that are not present."""
+        present_revids = set(self.revids())
+        if not isinstance(revids, set):
+            revids = set(revids)
+        return revids - present_revids
+
     def sha1s(self):
         """List the SHA1s."""
         raise NotImplementedError(self.sha1s)
@@ -351,6 +358,13 @@ class TdbGitShaMap(GitShaMap):
             sha = hex_to_sha(sha)
         data = self.db["git\0" + sha].split("\0")
         return (data[0], (data[1], data[2]))
+
+    def missing_revisions(self, revids):
+        ret = set()
+        for revid in revids:
+            if self.db.get("commit\0" + revid) is None:
+                ret.add(revid)
+        return ret
 
     def revids(self):
         """List the revision ids known."""

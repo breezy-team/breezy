@@ -75,11 +75,10 @@ class BazaarObjectStore(BaseObjectStore):
             first = all_revids.pop(0) # Pop leading None
             assert first is None
         graph = self.repository.get_graph()
-        present_revids = set(self._idmap.revids())
-        missing_revids = [revid for revid in graph.iter_topo_order(all_revids) if revid not in present_revids]
+        missing_revids = self._idmap.missing_revisions(all_revids)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(missing_revids):
+            for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
                 pb.update("updating git map", i, len(missing_revids))
                 self._update_sha_map_revision(revid)
         finally:
