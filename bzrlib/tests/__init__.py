@@ -617,14 +617,6 @@ class TextTestRunner(object):
         for decorator in self._result_decorators:
             result = decorator(result)
             result.stop_early = self.stop_on_failure
-        try:
-            import testtools
-        except ImportError:
-            pass
-        else:
-            if isinstance(test, testtools.ConcurrentTestSuite):
-                # We need to catch bzr specific behaviors
-                result = BZRTransformingResult(result)
         result.startTestRun()
         try:
             test.run(result)
@@ -3181,7 +3173,7 @@ def fork_for_tests(suite):
                 sys.stdin.close()
                 sys.stdin = None
                 stream = os.fdopen(c2pwrite, 'wb', 1)
-                subunit_result = BzrAutoTimingTestResultDecorator(
+                subunit_result = AutoTimingTestResultDecorator(
                     TestProtocolClient(stream))
                 process_suite.run(subunit_result)
             finally:
@@ -3275,56 +3267,10 @@ class ForwardingResult(unittest.TestResult):
 
     def addFailure(self, test, err):
         self.result.addFailure(test, err)
+ForwardingResult = testtools.ExtendedToOriginalDecorator
 
 
-class BZRTransformingResult(ForwardingResult):
-
-    def addError(self, test, err):
-        feature = self._error_looks_like('UnavailableFeature: ', err)
-        if feature is not None:
-            self.result.addNotSupported(test, feature)
-        else:
-            self.result.addError(test, err)
-
-    def addFailure(self, test, err):
-        known = self._error_looks_like('KnownFailure: ', err)
-        if known is not None:
-            self.result.addExpectedFailure(test,
-                [KnownFailure, KnownFailure(known), None])
-        else:
-            self.result.addFailure(test, err)
-
-    def _error_looks_like(self, prefix, err):
-        """Deserialize exception and returns the stringify value."""
-        import subunit
-        value = None
-        typ, exc, _ = err
-        if isinstance(exc, subunit.RemoteException):
-            # stringify the exception gives access to the remote traceback
-            # We search the last line for 'prefix'
-            lines = str(exc).split('\n')
-            while lines and not lines[-1]:
-                lines.pop(-1)
-            if lines:
-                if lines[-1].startswith(prefix):
-                    value = lines[-1][len(prefix):]
-        return value
-
-
-try:
-    from subunit.test_results import AutoTimingTestResultDecorator
-    # Expected failure should be seen as a success not a failure Once subunit
-    # provide native support for that, BZRTransformingResult and this class
-    # will become useless.
-    class BzrAutoTimingTestResultDecorator(AutoTimingTestResultDecorator):
-
-        def addExpectedFailure(self, test, err):
-            self._before_event()
-            return self._call_maybe("addExpectedFailure", self._degrade_skip,
-                                    test, err)
-except ImportError:
-    # Let's just define a no-op decorator
-    BzrAutoTimingTestResultDecorator = lambda x:x
+from subunit.test_results import AutoTimingTestResultDecorator
 
 
 class ProfileResult(ForwardingResult):
@@ -4309,7 +4255,7 @@ try:
     from subunit import TestProtocolClient
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
-            result = BzrAutoTimingTestResultDecorator(
+            result = AutoTimingTestResultDecorator(
                 TestProtocolClient(self.stream))
             test.run(result)
             return result
