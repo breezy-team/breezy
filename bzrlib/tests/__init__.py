@@ -590,7 +590,8 @@ class TextTestRunner(object):
         # specifically a built in file with encoding 'UTF-8' will still try
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
-        stream = codecs.getwriter(new_encoding)(stream)
+        codec = codecs.lookup(new_encoding)
+        stream = osutils.StreamWriter(codec, stream)
         stream.encoding = new_encoding
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions

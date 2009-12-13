@@ -55,12 +55,18 @@ API Changes
 Internals
 *********
 
+* New helper osutils.StreamWriter which encodes unicode objects but 
+  passes str objects straight through. This is used for selftest but
+  may be useful for diff and other operations that generate mixed output.
+  (Robert Collins)
+
 Testing
 *******
 
 * ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
   This permits features in testtools such as getUniqueInteger and
-  getUniqueString to be used. (Robert Collins)
+  getUniqueString to be used. Because of this, testtools version 0.9.2 or
+  newer is now a dependency to run bzr selftest. (Robert Collins)
 
 * -Dhpssvfs will now trigger on ``RemoteBzrDir._ensure_real``, providing
   more debugging of VFS access triggers. (Robert Collins)

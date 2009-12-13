@@ -1959,3 +1959,18 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
+
+
+class StreamWriter(codecs.StreamWriter):
+    """A stream writer that doesn't decode str arguments."""
+
+    def __init__(self, codec, stream, errors='strict'):
+        codecs.StreamWriter.__init__(self, stream, errors)
+        self.encode = codec.encode
+
+    def write(self, object):
+        if type(object) == str:
+            self.stream.write(object)
+        else:
+            data, _ = self.encode(object, self.errors)
+            self.stream.write(data)
