@@ -289,16 +289,16 @@ class TdbGitShaMap(GitShaMap):
             self.db = {}
         else:
             if not mapdbs().has_key(path):
-                mapdbs()[path] = tdb.Tdb(path, TDB_HASH_SIZE, tdb.DEFAULT, 
+                mapdbs()[path] = tdb.Tdb(path, TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)
-            self.db = mapdbs()[path]    
-        if not "version" in self.db:
-            self.db["version"] = str(TDB_MAP_VERSION)
-        else:
+            self.db = mapdbs()[path]
+        try:
             if int(self.db["version"]) != TDB_MAP_VERSION:
                 trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
                               self.db["version"], TDB_MAP_VERSION)
                 self.db.clear()
+                self.db["version"] = str(TDB_MAP_VERSION)
+        except KeyError:
             self.db["version"] = str(TDB_MAP_VERSION)
 
     @classmethod

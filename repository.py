@@ -57,10 +57,10 @@ class GitRepository(ForeignRepository):
     vcs = foreign_git
 
     def __init__(self, gitdir, lockfiles):
-        ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir, 
+        ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir,
             lockfiles)
         from bzrlib.plugins.git import fetch, push
-        for optimiser in [fetch.InterRemoteGitNonGitRepository, 
+        for optimiser in [fetch.InterRemoteGitNonGitRepository,
                           fetch.InterLocalGitNonGitRepository,
                           fetch.InterGitGitRepository,
                           push.InterToLocalGitRepository,
@@ -99,7 +99,7 @@ class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
 
     def __init__(self, gitdir, lockfiles):
-        # FIXME: This also caches negatives. Need to be more careful 
+        # FIXME: This also caches negatives. Need to be more careful
         # about this once we start writing to git
         self._parents_provider = graph.CachingParentsProvider(self)
         GitRepository.__init__(self, gitdir, lockfiles)
@@ -139,7 +139,7 @@ class LocalGitRepository(GitRepository):
             except KeyError:
                 continue
             if commit is None:
-                # Older versions of Dulwich used to return None rather than 
+                # Older versions of Dulwich used to return None rather than
                 # raise KeyError.
                 continue
             else:
@@ -164,7 +164,7 @@ class LocalGitRepository(GitRepository):
 
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
-        
+
         :param revid: Bazaar revision id.
         :return: Tuple with git revisionid and mapping.
         """
