@@ -5,11 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0b4 (not released yet)
-##############################
+bzr 2.1.0b4
+###########
 
 :Codename: san francisco airport
-:2.1.0b4: ???
+:2.1.0b4: 2009-12-14
 
 Compatibility Breaks
 ********************
@@ -153,17 +153,17 @@ Testing
 * TestCaseWithMemoryTransport no longer sets $HOME and $BZR_HOME to
   unicode strings. (Michael Hudson, #464174)
 
-bzr 2.0.3 (not released yet)
-############################
 
-:Codename: 
-:2.0.3: ???
+bzr 2.0.3
+#########
 
-Compatibility Breaks
-********************
+:Codename: little italy
+:2.0.3: 2009-12-14
 
-New Features
-************
+
+The third stable release of Bazaar has a small handful of bugfixes. As
+expected, this has no internal or external compatibility changes versus
+2.0.2 (or 2.0.0).
 
 Bug Fixes
 *********
@@ -175,24 +175,12 @@ Bug Fixes
 * Content filters are now applied correctly after pull, merge and switch.
   (Ian Clatworthy, #385879)
 
+* Fix a potential segfault in the groupcompress hash map handling code.
+  When inserting new entries, if the final hash bucket was empty, we could
+  end up trying to access if ``(last_entry+1)->ptr == NULL``.
+  (John Arbash Meinel, #490228)
+
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
-
-Improvements
-************
-
-Documentation
-*************
-* Include Japanese translations for documentation (Inada Naoki)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 bzr 2.1.0b3
@@ -417,21 +405,6 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.0.2
