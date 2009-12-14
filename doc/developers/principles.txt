@@ -4,8 +4,11 @@ Bazaar Design Principles
 
 We have learned or adopted a few general principles for code in Bazaar.
 Generally we will try to follow them in future, either for consistency or
-because they've been proven to work well, or both.  We may need to depart
-from these principles in particular cases or modify them as we learn more.
+because they've been proven to work well, or both.  
+
+We may need to depart from these principles in particular special cases,
+or modify them as we learn more, or we might be diverging for them for no
+very good reason but just because of bugs.  If in doubt, ask.  
 
 See also: `Bazaar Developer Document Catalog <index.html>`_.
 
@@ -50,7 +53,8 @@ We clearly distinguish internal files from user files.  Files inside
 them.  Within bzr, code addressing the abstract interface of the Branch,
 BzrDir, etc shouldn't know where or how the internal files are stored.  If
 anything else is written in there, it won't be propagated when pushing or
-pulling, and won't be converted when upgrading.
+pulling, and won't be converted when upgrading.  (This is not quite true
+though; there is a ``branch.conf``.)
 
 User files within the tree, by contrast, we always store and return
 verbatim.  It's OK for Bazaar to read and act on these files (as we do
