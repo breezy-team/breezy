@@ -261,6 +261,9 @@ class TextProgressView(object):
         self._total_byte_count = 0
         self._bytes_since_update = 0
         self._fraction = 0
+        # force the progress bar to be off, as at the moment it doesn't 
+        # correspond reliably to overall command progress
+        self.enable_bar = False
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
@@ -276,7 +279,8 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is None) or self._last_task.show_bar:
+        if self.enable_bar and (
+            (self._last_task is None) or self._last_task.show_bar):
             # If there's no task object, we show space for the bar anyhow.
             # That's because most invocations of bzr will end showing progress
             # at some point, though perhaps only after doing some initial IO.

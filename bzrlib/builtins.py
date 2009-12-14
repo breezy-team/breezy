@@ -1400,8 +1400,13 @@ class cmd_update(Command):
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
+            branch_location = master.base
         else:
             tree.lock_tree_write()
+            branch_location = tree.branch.base
+        # get rid of the final '/' and be ready for display
+        branch_location = urlutils.unescape_for_display(branch_location[:-1],
+                                                        self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = _mod_revision.ensure_null(tree.last_revision())
@@ -1411,7 +1416,8 @@ class cmd_update(Command):
                 if master is None or last_rev == _mod_revision.ensure_null(
                     master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d." % (revno,))
+                    note('Tree is up to date at revision %d of branch %s'
+                         % (revno, branch_location))
                     return 0
             view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
@@ -1419,7 +1425,8 @@ class cmd_update(Command):
                 view_info=view_info), possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d.' % (revno,))
+            note('Updated to revision %d of branch %s' %
+                 (revno, branch_location))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
@@ -5793,7 +5800,8 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
-            delete_only="Delete changes without applying them."
+            delete_only="Delete changes without applying them.",
+            keep="Apply changes but don't delete them.",
         )
     ]
     _see_also = ['shelve']
