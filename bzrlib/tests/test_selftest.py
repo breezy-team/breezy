@@ -1044,7 +1044,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertContainsRe(stream.getvalue(),
-            '(?sm)^testing.*$'
+            '(?sm)^bzr selftest.*$'
             '.*'
             '^======================================================================\n'
             '^FAIL: unittest.FunctionTestCase \\(failing_test\\)\n'

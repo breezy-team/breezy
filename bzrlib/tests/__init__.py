@@ -274,7 +274,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         else:
             bzr_path = sys.executable
         self.stream.write(
-            'testing: %s\n' % (bzr_path,))
+            'bzr selftest: %s\n' % (bzr_path,))
         self.stream.write(
             '   %s\n' % (
                     bzrlib.__path__[0],))
