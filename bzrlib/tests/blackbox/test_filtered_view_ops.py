@@ -18,19 +18,20 @@
 
 import os
 
-from bzrlib import bzrdir
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
+from bzrlib import (
+    bzrdir,
+    osutils,
+    tests,
+    )
 
 
-class TestViewFileOperations(TestCaseWithTransport):
+class TestViewFileOperations(tests.TestCaseWithTransport):
 
     def make_abc_tree_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
         format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
-        wt = TestCaseWithTransport.make_branch_and_tree(self, '.',
-            format=format)
+        wt = self.make_branch_and_tree( '.', format=format)
         self.build_tree(['a', 'b', 'c'])
         wt.views.set_view('my', ['a', 'b'])
         return wt
@@ -152,15 +153,14 @@ class TestViewFileOperations(TestCaseWithTransport):
         self.assertEquals('b', out_lines[1])
 
 
-class TestViewTreeOperationss(TestCaseWithTransport):
+class TestViewTreeOperations(tests.TestCaseWithTransport):
 
     def make_abc_tree_and_clone_with_ab_view(self):
         # we need to use a specific format because the default format
         # doesn't support views yet
         format = bzrdir.format_registry.make_bzrdir('development6-rich-root')
         # Build the first tree
-        wt1 = TestCaseWithTransport.make_branch_and_tree(self, 'tree_1',
-            format=format)
+        wt1 = self.make_branch_and_tree('tree_1', format=format)
         self.build_tree(['tree_1/a', 'tree_1/b', 'tree_1/c'])
         wt1.add(['a', 'b', 'c'])
         wt1.commit("adding a b c")
@@ -186,15 +186,16 @@ class TestViewTreeOperationss(TestCaseWithTransport):
 
     def test_view_on_update(self):
         tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
-        os.chdir("tree_2")
-        self.run_bzr("bind ../tree_1")
-        out, err = self.run_bzr('update')
+        self.run_bzr("bind ../tree_1", working_dir='tree_2')
+        out, err = self.run_bzr('update', working_dir='tree_2')
         self.assertEqualDiff(
-            "Operating on whole tree but only reporting on 'my' view.\n"
-            " M  a\n"
-            "All changes applied successfully.\n"
-            "Updated to revision 2.\n", err)
-        self.assertEqualDiff("", out)
+            """Operating on whole tree but only reporting on 'my' view.
+ M  a
+All changes applied successfully.
+Updated to revision 2 of branch %s
+""" % osutils.pathjoin(self.test_dir, 'tree_1'),
+            err)
+        self.assertEqual("", out)
 
     def test_view_on_merge(self):
         tree_1, tree_2 = self.make_abc_tree_and_clone_with_ab_view()
@@ -203,4 +204,4 @@ class TestViewTreeOperationss(TestCaseWithTransport):
             "Operating on whole tree but only reporting on 'my' view.\n"
             " M  a\n"
             "All changes applied successfully.\n", err)
-        self.assertEqualDiff("", out)
+        self.assertEqual("", out)
