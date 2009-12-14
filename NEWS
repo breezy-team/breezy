@@ -111,6 +111,9 @@ Improvements
 
 * ``bzr log`` is now faster. (Ian Clatworthy)
 
+* ``bzr update`` provides feedback on which branch it is up to date with.
+  (Neil Martinsen-Burrell)
+
 * ``bzrlib.urlutils.local_path_from_url`` now accepts
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
