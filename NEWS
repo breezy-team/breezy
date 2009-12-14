@@ -11,6 +11,14 @@ bzr 2.1.0b4
 :Codename: san francisco airport
 :2.1.0b4: 2009-12-14
 
+The fourth beta release in the 2.1 series brings with it a significant
+number of bugfixes (~20). The test suite is once again (finally) "green"
+on Windows, and should remain that way for future releases. There are a
+few performance related updates (faster upgrade and log), and several UI
+tweaks. There has also been a significant number of tweaks to the runtime
+documentation.
+
+
 Compatibility Breaks
 ********************
 
@@ -114,6 +122,10 @@ Improvements
 * ``bzr update`` provides feedback on which branch it is up to date with.
   (Neil Martinsen-Burrell)
 
+* ``bzr upgrade`` from pre-2a to 2a can be significantly faster (4x).
+  For details see the xml8 patch and heads() improvements.
+  (John Arbash Meinel)
+
 * ``bzrlib.urlutils.local_path_from_url`` now accepts
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
@@ -126,6 +138,9 @@ Improvements
 
 Documentation
 *************
+
+* Lots of documentation tweaks for inline help topics and command help
+  information.
 
 API Changes
 ***********
