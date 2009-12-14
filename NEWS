@@ -5,17 +5,16 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0.3 (not released yet)
-############################
+bzr 2.0.3
+#########
 
-:Codename: template
-:2.0.3: ???
+:Codename: little italy
+:2.0.3: 2009-12-14
 
-Compatibility Breaks
-********************
 
-New Features
-************
+The third stable release of Bazaar has a small handful of bugfixes. As
+expected, this has no internal or external compatibility changes versus
+2.0.2 (or 2.0.0).
 
 Bug Fixes
 *********
@@ -33,21 +32,6 @@ Bug Fixes
   (John Arbash Meinel, #490228)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.0.2
