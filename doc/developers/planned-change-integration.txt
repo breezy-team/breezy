@@ -11,14 +11,16 @@ Additionally changes that alter disk formats are inherently more tricky to
 integrate because we will often need to alter apis throughout the code base to
 expose the increased or reduced model of the preferred disk format.
 
-The dot file performance.dot graphs out the dependencies to let us make
-accurate assessments of the changes needed in terms of code and API, hopefully
-minimising the number of different integration steps we have to take, while
-giving us a broad surface area for development. Its based on a sumary in the
-next section of this document of the planned changes with their expected
-collaborators and dependencies. Where a command is listed, the expectation is
-that all uses of that command - local, remote, dumb transport and smart
-transport are being addressed together.
+You can generate a graph ``performance.png`` in the source tree from
+Graphviz "dot" file ``performance.dot``.  This graphs out the dependencies
+to let us make accurate assessments of the changes needed in terms of code
+and API, hopefully minimising the number of different integration steps we
+have to take, while giving us a broad surface area for development. It's
+based on a summary in the next section of this document of the planned
+changes with their expected collaborators and dependencies. Where a
+command is listed, the expectation is that all uses of that command -
+local, remote, dumb transport and smart transport are being addressed
+together.
 
 
 The following provides a summary of the planned changes and their expected
@@ -35,7 +37,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    provide strong feedback to the design process for those things which are
    considered optional or removable, so these APIs should be implemented
    before removing or making optional existing data.
- 
+
  * Deprecating versioned files as a supported API: This collaborates with the
    Repository API but can probably be done by adding a replacement API for
    places where the versioned-file api is used. We may well want to keep a
@@ -52,7 +54,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    layer changes to inventories so while we can create a revision validator
    API, we cannot create the final one until we have the inventory structural
    changes completed.
- 
+
  * Annotation caching API: This API is a prerequisite for new repository
    formats. If written after they are introduced we may find that the
    repository is lacking in functionality, so the API should be implemented
@@ -85,7 +87,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    of the newer API for accessing data about a file over time. It can be a
    separate step easily; but as it's in the same area of the library should not
    be done in parallel.
-  
+
  * Repository stacking API: The key dependency/change required for this is that
    repositories must individually be happy with having partial data - e.g. many
    ghosts. However the way the API needs to be used should be driven from the
@@ -95,7 +97,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    On the data insertion side commit will want to generate new data. The
    commands pull, bundle, merge, push, possibly uncommit will want to copy
    existing data in a streaming fashion.
- 
+
  * New container format: Its hard to tell what the right way to structure the
    layering is. Probably having smooth layering down to the point that code
    wants to operate on the containers directly will make this more clear. As
@@ -127,7 +129,7 @@ likely to require changes to their collaborators to be considered 'finished'.
  * Delta storage optimisation: This has a strict dependency on a new repository
    format. Optimisation takes many forms - we probably cannot complete the
    desired optimisations under knits though we could use xdelta within a
-   knit-variation. 
+   knit-variation.
 
  * Greatest distance from origin cache: The potential users of this exist
    today, it is likely able to be implemented immediately, but we are not sure

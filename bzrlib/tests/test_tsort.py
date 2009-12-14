@@ -12,11 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for topological sort."""
 
+import pprint
 
 from bzrlib.tests import TestCase
 from bzrlib.tsort import topo_sort, TopoSorter, MergeSorter, merge_sort
@@ -39,6 +40,23 @@ class TopoSortTests(TestCase):
                           list,
                           TopoSorter(graph).iter_topo_order())
 
+    def assertSortAndIterateOrder(self, graph):
+        """Check topo_sort and iter_topo_order is genuinely topological order.
+
+        For every child in the graph, check if it comes after all of it's
+        parents.
+        """
+        sort_result = topo_sort(graph)
+        iter_result = list(TopoSorter(graph).iter_topo_order())
+        for (node, parents) in graph:
+            for parent in parents:
+                if sort_result.index(node) < sort_result.index(parent):
+                    self.fail("parent %s must come before child %s:\n%s"
+                              % (parent, node, sort_result))
+                if iter_result.index(node) < iter_result.index(parent):
+                    self.fail("parent %s must come before child %s:\n%s"
+                              % (parent, node, iter_result))
+
     def test_tsort_empty(self):
         """TopoSort empty list"""
         self.assertSortAndIterate([], [])
@@ -50,32 +68,41 @@ class TopoSortTests(TestCase):
     def test_tsort_cycle(self):
         """TopoSort traps graph with cycles"""
         self.assertSortAndIterateRaise(GraphCycleError,
-                                       {0: [1], 
+                                       {0: [1],
                                         1: [0]}.items())
 
     def test_tsort_cycle_2(self):
         """TopoSort traps graph with longer cycle"""
         self.assertSortAndIterateRaise(GraphCycleError,
-                                       {0: [1], 
-                                        1: [2], 
+                                       {0: [1],
+                                        1: [2],
                                         2: [0]}.items())
-                 
+
+    def test_topo_sort_cycle_with_tail(self):
+        """TopoSort traps graph with longer cycle"""
+        self.assertSortAndIterateRaise(GraphCycleError,
+                                       {0: [1],
+                                        1: [2],
+                                        2: [3, 4],
+                                        3: [0],
+                                        4: []}.items())
+
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
-        self.assertSortAndIterate({0: [3], 
+        self.assertSortAndIterate({0: [3],
                                    1: [4],
                                    2: [1, 4],
-                                   3: [], 
+                                   3: [],
                                    4: [0, 3]}.items(),
                                   [3, 0, 4, 1, 2])
 
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
 
-        If the graph does not give an order between two nodes, they are 
-        returned in lexicographical order.
+        Multiple correct orderings are possible, so test for 
+        correctness, not for exact match on the resulting list.
         """
-        self.assertSortAndIterate(([(0, []),
+        self.assertSortAndIterateOrder([(0, []),
                                    (1, [0]),
                                    (2, [0]),
                                    (3, [0]),
@@ -83,8 +110,7 @@ class TopoSortTests(TestCase):
                                    (5, [1, 2]),
                                    (6, [1, 2]),
                                    (7, [2, 3]),
-                                   (8, [0, 1, 4, 5, 6])]),
-                                  [0, 1, 2, 3, 4, 5, 6, 7, 8])
+                                   (8, [0, 1, 4, 5, 6])])
 
     def test_tsort_unincluded_parent(self):
         """Sort nodes, but don't include some parents in the output"""
@@ -98,9 +124,12 @@ class MergeSortTests(TestCase):
     def assertSortAndIterate(self, graph, branch_tip, result_list,
             generate_revno, mainline_revisions=None):
         """Check that merge based sorting and iter_topo_order on graph works."""
-        self.assertEquals(result_list,
-            merge_sort(graph, branch_tip, mainline_revisions=mainline_revisions,
-                generate_revno=generate_revno))
+        value = merge_sort(graph, branch_tip,
+                           mainline_revisions=mainline_revisions,
+                           generate_revno=generate_revno)
+        if result_list != value:
+            self.assertEqualDiff(pprint.pformat(result_list),
+                                 pprint.pformat(value))
         self.assertEqual(result_list,
             list(MergeSorter(
                 graph,
@@ -133,7 +162,7 @@ class MergeSortTests(TestCase):
                                   'id',
                                   [(0, 'id', 0, (1,), True)],
                                   True)
-    
+
     def test_sequence_numbers_increase_no_merges(self):
         # emit a few revisions with no merges to check the sequence
         # numbering works in trivial cases
@@ -204,7 +233,7 @@ class MergeSortTests(TestCase):
         self.assertSortAndIterate(graph, 'F',
             [(0, 'F', 0, (3,), False),
              (1, 'D', 1, (2,2,1), False),
-             (2, 'C', 1, (2,1,1), True), # XXX: Shouldn't it be merge_depth=2?
+             (2, 'C', 2, (2,1,1), True),
              (3, 'B', 0, (2,), False),
              (4, 'A', 0, (1,), True),
              ], True)
@@ -237,9 +266,9 @@ class MergeSortTests(TestCase):
         # the merge depth marker should reflect the depth of the revision
         # in terms of merges out from the mainline
         # revid, depth, parents:
-        #  A 0   [D, B]   
-        #  B  1  [C, F]   
-        #  C  1  [H] 
+        #  A 0   [D, B]
+        #  B  1  [C, F]
+        #  C  1  [H]
         #  D 0   [H, E]
         #  E  1  [G, F]
         #  F   2 [G]
@@ -396,10 +425,10 @@ class MergeSortTests(TestCase):
     def test_end_of_merge_multiple_revisions_merged_at_once(self):
         # when multiple branches are merged at once, both of their
         # branch-endpoints should be listed as end-of-merge.
-        # Also, the order of the multiple merges should be 
+        # Also, the order of the multiple merges should be
         # left-right shown top to bottom.
         # * means end of merge
-        # A 0    [H, B, E] 
+        # A 0    [H, B, E]
         # B  1   [D, C]
         # C   2  [D]       *
         # D  1   [H]       *
@@ -476,7 +505,7 @@ class MergeSortTests(TestCase):
         # and thus when truncated to D,B,A it should show
         # A 0
         # B 0
-        # C 1 
+        # C 1
         # because C is brought in by B in this view and D
         # is the terminating revision id
         # this should also preserve revision numbers: C should still be 2.1.1
@@ -533,6 +562,19 @@ class MergeSortTests(TestCase):
             mainline_revisions=[None, 'A']
             )
 
+    def test_mainline_revs_with_ghost(self):
+        # We have a mainline, but the end of it is actually a ghost
+        # The graph that is passed to tsort has had ghosts filtered out, but
+        # the mainline history has not.
+        self.assertSortAndIterate(
+            {'B':[],
+             'C':['B']}.items(),
+            'C',
+            [(0, 'C', 0, (2,), False),
+             (1, 'B', 0, (1,), True),
+             ],
+             True, mainline_revisions=['A', 'B', 'C'])
+
     def test_parallel_root_sequence_numbers_increase_with_merges(self):
         """When there are parallel roots, check their revnos."""
         self.assertSortAndIterate(
@@ -546,11 +588,11 @@ class MergeSortTests(TestCase):
              ],
             True
             )
-        
+
     def test_revnos_are_globally_assigned(self):
         """revnos are assigned according to the revision they derive from."""
-        # in this test we setup a number of branches that all derive from 
-        # the first revision, and then merge them one at a time, which 
+        # in this test we setup a number of branches that all derive from
+        # the first revision, and then merge them one at a time, which
         # should give the revisions as they merge numbers still deriving from
         # the revision were based on.
         # merge 3: J: ['G', 'I']
@@ -589,6 +631,65 @@ class MergeSortTests(TestCase):
              (7, 'C', 1, (1,1,2), False),
              (8, 'B', 1, (1,1,1), True),
              (9, 'A', 0, (1,), True),
+             ],
+            True
+            )
+
+    def test_roots_and_sub_branches_versus_ghosts(self):
+        """Extra roots and their mini branches use the same numbering.
+
+        All of them use the 0-node numbering.
+        """
+        #       A D   K
+        #       | |\  |\
+        #       B E F L M
+        #       | |/  |/
+        #       C G   N
+        #       |/    |\
+        #       H I   O P
+        #       |/    |/
+        #       J     Q
+        #       |.---'
+        #       R
+        self.assertSortAndIterate(
+            {'A': [],
+             'B': ['A'],
+             'C': ['B'],
+             'D': [],
+             'E': ['D'],
+             'F': ['D'],
+             'G': ['E', 'F'],
+             'H': ['C', 'G'],
+             'I': [],
+             'J': ['H', 'I'],
+             'K': [],
+             'L': ['K'],
+             'M': ['K'],
+             'N': ['L', 'M'],
+             'O': ['N'],
+             'P': ['N'],
+             'Q': ['O', 'P'],
+             'R': ['J', 'Q'],
+            }.items(),
+            'R',
+            [( 0, 'R', 0, (6,), False),
+             ( 1, 'Q', 1, (0,4,5), False),
+             ( 2, 'P', 2, (0,6,1), True),
+             ( 3, 'O', 1, (0,4,4), False),
+             ( 4, 'N', 1, (0,4,3), False),
+             ( 5, 'M', 2, (0,5,1), True),
+             ( 6, 'L', 1, (0,4,2), False),
+             ( 7, 'K', 1, (0,4,1), True),
+             ( 8, 'J', 0, (5,), False),
+             ( 9, 'I', 1, (0,3,1), True),
+             (10, 'H', 0, (4,), False),
+             (11, 'G', 1, (0,1,3), False),
+             (12, 'F', 2, (0,2,1), True),
+             (13, 'E', 1, (0,1,2), False),
+             (14, 'D', 1, (0,1,1), True),
+             (15, 'C', 0, (3,), False),
+             (16, 'B', 0, (2,), False),
+             (17, 'A', 0, (1,), True),
              ],
             True
             )

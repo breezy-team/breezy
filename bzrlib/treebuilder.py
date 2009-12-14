@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """TreeBuilder helper class.
 
-TreeBuilders are used to build trees of various shapres or properties. This 
+TreeBuilders are used to build trees of various shapres or properties. This
 can be extremely useful in testing for instance.
 """
 
@@ -58,7 +58,7 @@ class TreeBuilder(object):
         """Raise NotBuilding if there is no current tree being built."""
         if self._tree is None:
             raise errors.NotBuilding
-            
+
     def finish_tree(self):
         """Finish building the current tree."""
         self._ensure_building()
@@ -68,8 +68,8 @@ class TreeBuilder(object):
 
     def start_tree(self, tree):
         """Start building on tree.
-        
-        :param tree: A tree to start building on. It must provide the 
+
+        :param tree: A tree to start building on. It must provide the
             MutableTree interface.
         """
         if self._tree is not None:

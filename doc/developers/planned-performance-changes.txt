@@ -50,7 +50,7 @@ thus do not pose a significant migration issue.
    considered a cache this is not exposed in such a way that cache operations
    like 'drop the cache' can be performed. On current disk formats the cache is
    mandatory, but an API to manage would allow refreshing of the cache (e.g.
-   after ghosts are filled in in baz conversions).
+   after ghosts are filled in during baz conversions).
 
  * Use the _iter_changes API to perform merges. This is a small change that may
    remove the need to use inventories in merge, making a dramatic difference to
@@ -93,7 +93,7 @@ Interoperable disk changes
  * New container format to allow single-file description of multiple named
    objects. This will provide the basis for transmission of revisions over the
    network, the new bundle format, and possibly a new repository format as
-   well. [Core implemented] 
+   well. [Core implemented]
 
  * Separate the annotation cache from the storage of actual file texts and make
    the annotation style, and when to do it, configurable. This will reduce data

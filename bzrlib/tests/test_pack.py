@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzrlib.pack."""
 
@@ -42,17 +42,17 @@ class TestContainerSerialiser(tests.TestCase):
         serialiser = pack.ContainerSerialiser()
         record = serialiser.bytes_record('bytes', [])
         self.assertEqual('B5\n\nbytes', record)
-        
+
     def test_bytes_record_one_name_with_one_part(self):
         serialiser = pack.ContainerSerialiser()
         record = serialiser.bytes_record('bytes', [('name',)])
         self.assertEqual('B5\nname\n\nbytes', record)
-        
+
     def test_bytes_record_one_name_with_two_parts(self):
         serialiser = pack.ContainerSerialiser()
         record = serialiser.bytes_record('bytes', [('part1', 'part2')])
         self.assertEqual('B5\npart1\x00part2\n\nbytes', record)
-        
+
     def test_bytes_record_two_names(self):
         serialiser = pack.ContainerSerialiser()
         record = serialiser.bytes_record('bytes', [('name1',), ('name2',)])
@@ -68,6 +68,7 @@ class TestContainerSerialiser(tests.TestCase):
 class TestContainerWriter(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.output = StringIO()
         self.writer = pack.ContainerWriter(self.output.write)
 
@@ -79,7 +80,7 @@ class TestContainerWriter(tests.TestCase):
 
     def test_construct(self):
         """Test constructing a ContainerWriter.
-        
+
         This uses None as the output stream to show that the constructor
         doesn't try to use the output stream.
         """
@@ -205,7 +206,7 @@ class TestContainerReader(tests.TestCase):
 
     def test_construct(self):
         """Test constructing a ContainerReader.
-        
+
         This uses None as the output stream to show that the constructor doesn't
         try to use the input stream.
         """
@@ -243,7 +244,7 @@ class TestContainerReader(tests.TestCase):
 
     def test_container_with_one_unnamed_record(self):
         """Read a container with one Bytes record.
-        
+
         Parsing Bytes records is more thoroughly exercised by
         TestBytesRecordReader.  This test is here to ensure that
         ContainerReader's integration with BytesRecordReader is working.
@@ -326,12 +327,12 @@ class TestContainerReader(tests.TestCase):
         reader = self.get_reader_for(
             "Bazaar pack format 1 (introduced in 0.18)\nB0\n\xcc\n\nE")
         self.assertRaises(errors.InvalidRecordError, reader.validate)
-        
+
 
 class TestBytesRecordReader(tests.TestCase):
     """Tests for reading and validating Bytes records with
     BytesRecordReader.
-    
+
     Like TestContainerReader, this explicitly tests the reading of format 1
     data.  If a new version of the format is added, then a separate set of
     tests for reading that format should be added.
@@ -385,7 +386,7 @@ class TestBytesRecordReader(tests.TestCase):
     def test_early_eof(self):
         """Tests for premature EOF occuring during parsing Bytes records with
         BytesRecordReader.
-        
+
         A incomplete container might be interrupted at any point.  The
         BytesRecordReader needs to cope with the input stream running out no
         matter where it is in the parsing process.
@@ -518,7 +519,7 @@ class TestReadvFile(tests.TestCaseWithTransport):
     """Tests of the ReadVFile class.
 
     Error cases are deliberately undefined: this code adapts the underlying
-    transport interface to a single 'streaming read' interface as 
+    transport interface to a single 'streaming read' interface as
     ContainerReader needs.
     """
 
@@ -584,10 +585,10 @@ class PushParserTestCase(tests.TestCase):
         parsed_records = parser.read_pending_records()
         self.assertEqual([expected_record], parsed_records)
 
-        
+
 class TestContainerPushParser(PushParserTestCase):
     """Tests for ContainerPushParser.
-    
+
     The ContainerPushParser reads format 1 containers, so these tests
     explicitly test how it reacts to format 1 data.  If a new version of the
     format is added, then separate tests for that format should be added.
@@ -609,10 +610,23 @@ class TestContainerPushParser(PushParserTestCase):
             [([('name1',)], 'body1'), ([('name2',)], 'body2')],
             parser.read_pending_records())
 
+    def test_multiple_empty_records_at_once(self):
+        """If multiple empty records worth of data are fed to the parser in one
+        string, the parser will correctly parse all the records.
+
+        (A naive implementation might stop after parsing the first empty
+        record, because the buffer size had not changed.)
+        """
+        parser = self.make_parser_expecting_record_type()
+        parser.accept_bytes("B0\nname1\n\nB0\nname2\n\n")
+        self.assertEqual(
+            [([('name1',)], ''), ([('name2',)], '')],
+            parser.read_pending_records())
+
 
 class TestContainerPushParserBytesParsing(PushParserTestCase):
     """Tests for reading Bytes records with ContainerPushParser.
-    
+
     The ContainerPushParser reads format 1 containers, so these tests
     explicitly test how it reacts to format 1 data.  If a new version of the
     format is added, then separate tests for that format should be added.

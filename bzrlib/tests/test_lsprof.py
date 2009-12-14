@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for profiling data collection."""
 
@@ -92,3 +92,22 @@ class TestStatsSave(tests.TestCaseInTempDir):
         self.stats.save(f)
         data1 = cPickle.load(open(f))
         self.assertEqual(type(data1), bzrlib.lsprof.Stats)
+
+
+class TestBzrProfiler(tests.TestCase):
+
+    _test_needs_features = [LSProfFeature]
+
+    def test_start_call_stuff_stop(self):
+        profiler = bzrlib.lsprof.BzrProfiler()
+        profiler.start()
+        try:
+            def a_function():
+                pass
+            a_function()
+        finally:
+            stats = profiler.stop()
+        stats.freeze()
+        lines = [str(data) for data in stats.data]
+        lines = [line for line in lines if 'a_function' in line]
+        self.assertLength(1, lines)

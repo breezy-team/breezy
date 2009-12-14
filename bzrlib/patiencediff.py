@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib.lazy_import import lazy_import
@@ -76,11 +76,16 @@ def unified_diff(a, b, fromfile='', tofile='', fromfiledate='',
         import difflib
         sequencematcher = difflib.SequenceMatcher
 
+    if fromfiledate:
+        fromfiledate = '\t' + str(fromfiledate)
+    if tofiledate:
+        tofiledate = '\t' + str(tofiledate)
+
     started = False
     for group in sequencematcher(None,a,b).get_grouped_opcodes(n):
         if not started:
-            yield '--- %s %s%s' % (fromfile, fromfiledate, lineterm)
-            yield '+++ %s %s%s' % (tofile, tofiledate, lineterm)
+            yield '--- %s%s%s' % (fromfile, fromfiledate, lineterm)
+            yield '+++ %s%s%s' % (tofile, tofiledate, lineterm)
             started = True
         i1, i2, j1, j2 = group[0][1], group[-1][2], group[0][3], group[-1][4]
         yield "@@ -%d,%d +%d,%d @@%s" % (i1+1, i2-i1, j1+1, j2-j1, lineterm)

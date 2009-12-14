@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 __all__ = ['needs_read_lock',
@@ -20,6 +20,11 @@ __all__ = ['needs_read_lock',
            'use_fast_decorators',
            'use_pretty_decorators',
            ]
+
+
+import sys
+
+from bzrlib import trace
 
 
 def _get_parameters(func):
@@ -68,9 +73,9 @@ def _pretty_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):
@@ -89,9 +94,17 @@ def _pretty_needs_read_lock(unbound):
 def %(name)s_read_locked(%(params)s):
     self.lock_read()
     try:
-        return unbound(%(passed_params)s)
-    finally:
+        result = unbound(%(passed_params)s)
+    except:
+        import sys
+        exc_info = sys.exc_info()
+        try:
+            self.unlock()
+        finally:
+            raise exc_info[0], exc_info[1], exc_info[2]
+    else:
         self.unlock()
+        return result
 read_locked = %(name)s_read_locked
 """
     params, passed_params = _get_parameters(unbound)
@@ -113,9 +126,9 @@ def _fast_needs_read_lock(unbound):
 
     This decorator can be applied to methods of any class with lock_read() and
     unlock() methods.
-    
+
     Typical usage:
-        
+
     class Branch(...):
         @needs_read_lock
         def branch_method(self, ...):
@@ -124,9 +137,17 @@ def _fast_needs_read_lock(unbound):
     def read_locked(self, *args, **kwargs):
         self.lock_read()
         try:
-            return unbound(self, *args, **kwargs)
-        finally:
+            result = unbound(self, *args, **kwargs)
+        except:
+            import sys
+            exc_info = sys.exc_info()
+            try:
+                self.unlock()
+            finally:
+                raise exc_info[0], exc_info[1], exc_info[2]
+        else:
             self.unlock()
+            return result
     read_locked.__doc__ = unbound.__doc__
     read_locked.__name__ = unbound.__name__
     return read_locked
@@ -138,9 +159,17 @@ def _pretty_needs_write_lock(unbound):
 def %(name)s_write_locked(%(params)s):
     self.lock_write()
     try:
-        return unbound(%(passed_params)s)
-    finally:
+        result = unbound(%(passed_params)s)
+    except:
+        import sys
+        exc_info = sys.exc_info()
+        try:
+            self.unlock()
+        finally:
+            raise exc_info[0], exc_info[1], exc_info[2]
+    else:
         self.unlock()
+        return result
 write_locked = %(name)s_write_locked
 """
     params, passed_params = _get_parameters(unbound)
@@ -162,12 +191,44 @@ def _fast_needs_write_lock(unbound):
     def write_locked(self, *args, **kwargs):
         self.lock_write()
         try:
-            return unbound(self, *args, **kwargs)
-        finally:
+            result = unbound(self, *args, **kwargs)
+        except:
+            exc_info = sys.exc_info()
+            try:
+                self.unlock()
+            finally:
+                raise exc_info[0], exc_info[1], exc_info[2]
+        else:
             self.unlock()
+            return result
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__
     return write_locked
+
+
+def only_raises(*errors):
+    """Make a decorator that will only allow the given error classes to be
+    raised.  All other errors will be logged and then discarded.
+
+    Typical use is something like::
+
+        @only_raises(LockNotHeld, LockBroken)
+        def unlock(self):
+            # etc
+    """
+    def decorator(unbound):
+        def wrapped(*args, **kwargs):
+            try:
+                return unbound(*args, **kwargs)
+            except errors:
+                raise
+            except:
+                trace.mutter('Error suppressed by only_raises:')
+                trace.log_exception_quietly()
+        wrapped.__doc__ = unbound.__doc__
+        wrapped.__name__ = unbound.__name__
+        return wrapped
+    return decorator
 
 
 # Default is more functionality, 'bzr' the commandline will request fast

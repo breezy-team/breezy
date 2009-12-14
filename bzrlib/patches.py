@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2006 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2004 - 2006, 2008 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -13,8 +13,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 import re
+
+
+binary_files_re = 'Binary files (.*) and (.*) differ\n'
+
+
+class BinaryFiles(Exception):
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+        Exception.__init__(self, 'Binary files section encountered.')
 
 
 class PatchSyntax(Exception):
@@ -58,6 +69,9 @@ class PatchConflict(Exception):
 def get_patch_names(iter_lines):
     try:
         line = iter_lines.next()
+        match = re.match(binary_files_re, line)
+        if match is not None:
+            raise BinaryFiles(match.group(1), match.group(2))
         if not line.startswith("--- "):
             raise MalformedPatchHeader("No orig name", line)
         else:
@@ -93,8 +107,9 @@ def parse_range(textrange):
     range = int(range)
     return (pos, range)
 
- 
+
 def hunk_from_header(line):
+    import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
     if matches is None:
         raise MalformedHunkHeader("Does not match format.", line)
@@ -164,8 +179,6 @@ def parse_line(line):
         return InsertLine(line[1:])
     elif line.startswith("-"):
         return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
     else:
         raise MalformedLine("Unknown line type", line)
 __pychecker__=""
@@ -261,22 +274,31 @@ def iter_hunks(iter_lines):
         yield hunk
 
 
-class Patch:
+class BinaryPatch(object):
     def __init__(self, oldname, newname):
         self.oldname = oldname
         self.newname = newname
+
+    def __str__(self):
+        return 'Binary files %s and %s differ\n' % (self.oldname, self.newname)
+
+
+class Patch(BinaryPatch):
+
+    def __init__(self, oldname, newname):
+        BinaryPatch.__init__(self, oldname, newname)
         self.hunks = []
 
     def __str__(self):
-        ret = self.get_header() 
+        ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
 
     def get_header(self):
         return "--- %s\n+++ %s\n" % (self.oldname, self.newname)
 
-    def stats_str(self):
-        """Return a string of patch statistics"""
+    def stats_values(self):
+        """Calculate the number of inserts and removes."""
         removes = 0
         inserts = 0
         for hunk in self.hunks:
@@ -285,8 +307,12 @@ class Patch:
                      inserts+=1;
                 elif isinstance(line, RemoveLine):
                      removes+=1;
+        return (inserts, removes, len(self.hunks))
+
+    def stats_str(self):
+        """Return a string of patch statistics"""
         return "%i inserts, %i removes in %i hunks" % \
-            (inserts, removes, len(self.hunks))
+            self.stats_values()
 
     def pos_in_mod(self, position):
         newpos = position
@@ -296,10 +322,10 @@ class Patch:
                 return None
             newpos += shift
         return newpos
-            
+
     def iter_inserted(self):
         """Iteraties through inserted lines
-        
+
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
         """
@@ -314,14 +340,20 @@ class Patch:
 
 
 def parse_patch(iter_lines):
-    (orig_name, mod_name) = get_patch_names(iter_lines)
-    patch = Patch(orig_name, mod_name)
-    for hunk in iter_hunks(iter_lines):
-        patch.hunks.append(hunk)
-    return patch
+    iter_lines = iter_lines_handle_nl(iter_lines)
+    try:
+        (orig_name, mod_name) = get_patch_names(iter_lines)
+    except BinaryFiles, e:
+        return BinaryPatch(e.orig_name, e.mod_name)
+    else:
+        patch = Patch(orig_name, mod_name)
+        for hunk in iter_hunks(iter_lines):
+            patch.hunks.append(hunk)
+        return patch
 
 
 def iter_file_patch(iter_lines):
+    regex = re.compile(binary_files_re)
     saved_lines = []
     orig_range = 0
     for line in iter_lines:
@@ -332,7 +364,7 @@ def iter_file_patch(iter_lines):
         elif orig_range > 0:
             if line.startswith('-') or line.startswith(' '):
                 orig_range -= 1
-        elif line.startswith('--- '):
+        elif line.startswith('--- ') or regex.match(line):
             if len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []
@@ -366,7 +398,6 @@ def iter_lines_handle_nl(iter_lines):
 
 
 def parse_patches(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 
@@ -393,13 +424,23 @@ def iter_patched(orig_lines, patch_lines):
     """Iterate through a series of lines with a patch applied.
     This handles a single file, and does exact, not fuzzy patching.
     """
-    if orig_lines is not None:
-        orig_lines = orig_lines.__iter__()
-    seen_patch = []
-    patch_lines = iter_lines_handle_nl(patch_lines.__iter__())
+    patch_lines = iter_lines_handle_nl(iter(patch_lines))
     get_patch_names(patch_lines)
+    return iter_patched_from_hunks(orig_lines, iter_hunks(patch_lines))
+
+
+def iter_patched_from_hunks(orig_lines, hunks):
+    """Iterate through a series of lines with a patch applied.
+    This handles a single file, and does exact, not fuzzy patching.
+
+    :param orig_lines: The unpatched lines.
+    :param hunks: An iterable of Hunk instances.
+    """
+    seen_patch = []
     line_no = 1
-    for hunk in iter_hunks(patch_lines):
+    if orig_lines is not None:
+        orig_lines = iter(orig_lines)
+    for hunk in hunks:
         while line_no < hunk.orig_pos:
             orig_line = orig_lines.next()
             yield orig_line

@@ -22,7 +22,7 @@ changes into the central branch: the code base evolves by gatekeepers
 acceptable, indeed common, to have multiple central branches with
 different gatekeepers, e.g. one branch for the current production
 release and another for the next release. In this case, a task branch
-holding a bug fix will most likely be advertized to both gatekeepers.
+holding a bug fix will most likely be advertised to both gatekeepers.
 
 One of the great things about this workflow is that it is hugely
 scalable. Large projects can be broken into teams and each

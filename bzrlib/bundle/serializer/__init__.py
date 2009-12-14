@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Serializer factory for reading and writing bundles.
 """
@@ -67,15 +67,15 @@ def read_bundle(f):
         m = CHANGESET_OLD_HEADER_RE.match(line)
         if m:
             version = m.group('version')
-            raise errors.BundleNotSupported(version, 
+            raise errors.BundleNotSupported(version,
                 'old format bundles not supported')
 
     if version is None:
         raise errors.NotABundle('Did not find an opening header')
 
-    # Now we have a version, to figure out how to read the bundle 
+    # Now we have a version, to figure out how to read the bundle
     if version not in _serializers:
-        raise errors.BundleNotSupported(version, 
+        raise errors.BundleNotSupported(version,
             'version not listed in known versions')
 
     serializer = _serializers[version](version)

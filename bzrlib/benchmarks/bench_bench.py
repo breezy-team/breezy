@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzr benchmark utilities performance."""
 
@@ -32,7 +32,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
     """Benchmark creating benchmark trees."""
 
     def test_make_kernel_like_tree(self):
-        """Making a kernel sized tree should be ~ 5seconds on modern disk.""" 
+        """Making a kernel sized tree should be ~ 5seconds on modern disk."""
         # on roberts machine: this originally took:  7372ms/ 7479ms
         # with the LocalTransport._abspath call:     3730ms/ 3778ms
         # with AtomicFile tuning:                    2888ms/ 2926ms
@@ -55,7 +55,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         self.time(creator.create, root='foo')
 
     def test_04_make_kernel_like_added_tree(self):
-        """Time the second creation of a kernel like added tree 
+        """Time the second creation of a kernel like added tree
         (this should be a clone)
         """
         # make sure kernel_like_added_tree is cached
@@ -73,7 +73,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         self.time(creator.create, root='foo')
 
     def test_06_make_kernel_like_committed_tree(self):
-        """Time the second creation of a committed kernel like tree 
+        """Time the second creation of a committed kernel like tree
         (this should be a clone)
         """
         creator = KernelLikeCommittedTreeCreator(self,
@@ -86,7 +86,7 @@ class MakeKernelLikeTreeBenchmark(Benchmark):
         self.time(creator.create, root='bar')
 
     def test_07_make_kernel_like_committed_tree_hardlink(self):
-        """Time the creation of a committed kernel like tree 
+        """Time the creation of a committed kernel like tree
         (this should also hardlink the .bzr/ directory)
         """
         creator = KernelLikeCommittedTreeCreator(self,

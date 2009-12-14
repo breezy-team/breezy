@@ -2,7 +2,7 @@
 Network Protocol
 ================
 
-:Date: 2007-09-03
+:Date: 2009-01-07
 
 
 .. contents::
@@ -28,7 +28,7 @@ side did shutdown.  For pipes we have read pipe which will have a zero
 read which marks end-of-file.  For HTTP server environment there is no
 end-of-stream because each request coming into the server is independent.
 
-So we need a wrapper around pipes and sockets to seperate out requests
+So we need a wrapper around pipes and sockets to separate out requests
 from substrate and this will give us a single model which is consistent
 for HTTP, sockets and pipes.
 
@@ -172,13 +172,13 @@ Version two with streamed bodies
 
 An extension to version two allows streamed bodies.  A streamed body looks
 a lot like HTTP's chunked encoding::
- 
+
   STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
   CHUNKS := CHUNK [CHUNKS]
   CHUNK := HEX_LENGTH CHUNK_CONTENT
   HEX_LENGTH := HEX_DIGITS NEWLINE
   CHUNK_CONTENT := bytes
-  
+
   TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
   SUCCESS_TERMINATOR := 'END' NEWLINE
   ERROR_TERMINATOR := 'ERR' NEWLINE CHUNKS SUCCESS_TERMINATOR
@@ -201,7 +201,7 @@ Version three
 -------------
 
 .. note::
-  
+
   For some discussion of the requirements that led to this new protocol
   version, see `bug #83935`_.
 
@@ -221,19 +221,24 @@ implements no verbs.
 
 The underlying message format is::
 
-  MESSAGE := "bzr message 3 (bzr 1.6)" NEWLINE HEADERS MESSAGE_PARTS
+  MESSAGE := MAGIC NEWLINE HEADERS CONTENTS END_MESSAGE
+  MAGIC := "bzr message 3 (bzr 1.6)"
   HEADERS := LENGTH_PREFIX bencoded_dict
-  MESSAGE_PARTS := MESSAGE_PART [MORE_MESSAGE_PARTS]
-  MORE_MESSAGE_PARTS := END_MESSAGE_PARTS | MESSAGE_PARTS
-  END_MESSAGE_PARTS := "e"
+  END_MESSAGE := "e"
 
+  BODY := MESSAGE_PART+
   MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES
   ONE_BYTE := "o" byte
   STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
   BYTES := "b" LENGTH_PREFIX bytes
 
+(Where ``+`` indicates one or more.)
+
 This format allows an arbitrary sequence of message parts to be encoded
-in a single message.
+in a single message.  The contents of a MESSAGE have a higher-level
+message, but knowing just this amount of data it's possible to
+deserialize and consume a message, so that implementations can respond to
+messages sent by later versions.
 
 Headers
 ~~~~~~~
@@ -254,35 +259,53 @@ optional body” structure, as in earlier protocol versions.  This section
 describes how such messages are encoded.  All requests and responses
 defined by earlier protocol versions must be encoded in this way.
 
-Conventional requests will send a sequence of:
+Conventional requests will send a CONTENTS of ::
 
-* Arguments (a STRUCTURE of a tuple)
+  CONV_REQ := ARGS SINGLE_OR_STREAMED_BODY?
+  SINGLE_OR_STREAMED_BODY := BYTES
+        | BYTES+ TRAILER
 
-* (Optional) body
+  ARGS := STRUCTURE(argument_tuple)
+  TRAILER := SUCCESS_STATUS | ERROR
+  SUCCESS_STATUS := ONE_BYTE("S")
+  ERROR := ONE_BYTE("E") STRUCTURE(argument_tuple)
 
-  * Single body (BYTES), or
+Conventional responses will send CONTENTS of ::
 
-  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
+  CONV_RESP := RESP_STATUS ARGS SINGLE_OR_STREAMED_BODY?
+  RESP_STATUS := ONE_BYTE("S") | ONE_BYTE("E")
 
-    * if status is "E", followed by an Error (STRUCTURE)
+If the RESP_STATUS is success ("S"), the arguments are the
+method-dependent result.
 
-Conventional responses will send a sequence of:
+For errors (where the Status byte of a response or a streamed body is
+"E"), the situation is analagous to requests.  The first item in the
+encoded sequence must be a string of the error name.  The other arguments
+supply details about the error, and their number and types will depend on
+the type of error (as identified by the error name).
 
-* Status (ONE_BYTE)
-
-* Arguments (a STRUCTURE of a tuple)
-
-* (Optional) body
-
-  * Single body (BYTES), or
-
-  * Streamed body (multiple BYTES parts), followed by a status (ONE_BYTE)
-
-    * if status is "E", followed by an Error (STRUCTURE)
-
-In all cases, the ONE_BYTE status is either "S" for Success or "E" for
-Error.  Note that the streamed body from version two is now just multiple
+Note that the streamed body from version two is now just multiple
 BYTES parts.
+
+The end of the request or response is indicated by the lower-level
+END_MESSAGE.  If there's only one BYTES element in the body, the TRAILER
+may or may not be present, depending on whether it was sent as a single
+chunk or as a stream that happens to have one element.
+
+  *(Discussion)* The success marker at the end of a streamed body seems
+  redundant; it doesn't have space for any arguments, and the end of the
+  body is marked anyhow by the end of the message.  Recipients shouldn't
+  take any action on it, though they should map an error into raising an
+  error locally.
+
+  1.10 clients don't assert that they get a status byte at the end of the
+  message.  They will complain (in
+  ``ConventionalResponseHandler.byte_part_received``) if they get an
+  initial success and then another byte part with no intervening bytes.
+  If we stop sending the final success message and only flag errors
+  they'll only get one if the error is detected after streaming starts but
+  before any bytes are actually sent.  Possibly we should wait until at
+  least the first chunk is ready before declaring success.
 
 For new methods, these sequences are just a convention and may be varied
 if appropriate for a particular request or response.  However, each
@@ -292,11 +315,105 @@ request method.  (Note that arguments in this protocol version are
 bencoded.  As a result, unlike previous protocol versions, arguments in
 this version are 8-bit clean.)
 
-For errors (where the Status byte of a response or a streamed body is
-"E"), the situation is analagous to requests.  The first item in the
-encoded sequence must be a string of the error name.  The other arguments
-supply details about the error, and their number and types will depend on
-the type of error (as identified by the error name).
+  (Discussion) We're discussing having the byte segments be not just a
+  method for sending a stream across the network, but actually having them
+  be preserved in the rpc from end to end.  This may be useful when
+  there's an iterator on one side feeding in to an iterator on the other,
+  if it avoids doing chunking and byte-counting at two levels, and if
+  those iterators are a natural place to get good granularity.  Also, for
+  cases like ``insert_record_stream`` the server can't do much with the
+  data until it gets a whole chunk, and so it'll be natural and efficient
+  for it to be called with one chunk at a time.
+
+  On the other hand, there may be times when we've got some bytes from the
+  network but not a full chunk, and it might be worthwhile to pass it up.
+  If we promise to preserve chunks, then to do this we'd need two separate
+  streaming interfaces: "we got a chunk" and "we got some bytes but not
+  yet a full chunk".  For ``insert_record_stream`` the second might not be
+  useful, but it might be good when writing to a file where any number of
+  bytes can be processed.
+
+  If we promise to preserve chunks, it'll tend to make some RPCs work only
+  in chunks, and others just on whole blocks, and we can't so easily
+  migrate RPCs from one to the other transparently to older
+  implementations.
+
+  The data inside those chunks will be serialized anyhow, and possibly the
+  data inside them will already be able to be serialized apart without
+  understanding the chunks.  Also, we might want to use these formats e.g.
+  for pack files or in bundles, and so they don't particularly need
+  lower-level chunking.  So the current (unmerged, unstable) record stream
+  serialization turns each record into a bencoded tuple and it'd be
+  feasible to parse one tuple at a time from a byte stream that contains a
+  sequence of them.
+
+  So we've decided that the chunks won't be semantic, and code should not
+  count on them being preserved from client to server.
+
+Early error returns
+~~~~~~~~~~~~~~~~~~~
+
+  *(Discussion)* It would be nice if the server could notify the client of
+  errors even before a streaming request has finished.  This could cover
+  situtaions such as the server not understanding the request, it being
+  unable to open the requested location, or it finding that some of the
+  revisions being sent are not actually needed.
+
+  Especially in the last case, we'd like to be able to gracefully notice
+  the condition while the client is writing, and then have it adapt its
+  behaviour.  In any case, we don't want to have drop and restart the
+  network stream.
+
+  It should be possible for the client to finish its current chunk and
+  then its message, possibly with an error to cancel what's already been
+  sent.
+
+  This relies on the client being able to read back from the server while
+  it's writing.  This is technically difficult for http but feasible over
+  a socket or ssh.
+
+  We'd need a clean way to pass this back to the request method, even
+  though it's presumably in the middle of doing its body iterator.
+  Possibly the body iterator could be manually given a reference to the
+  request object, and it can poll it to see if there's a response.
+
+  Perhaps we need to distinguish error conditions, which should turn into
+  a client-side error regardless of the request code, from early success,
+  which should be handled only if the request code specifically wants to
+  do it.
+
+Full-duplex operation
+~~~~~~~~~~~~~~~~~~~~~
+
+  Code not geared to do pipelined requests, and this might require doing
+  asynchrony within bzrlib.  We might want to either go fully pipelined
+  and asynchronous, but there might be a profitable middle ground.
+
+  The particular case where duplex communication would be good is in
+  working towards the common points in the graphs between the client and
+  server: we want to send speculatively, but detect as soon as they've
+  matched up.
+
+  So we could for instance have a synchronous core, but rely on the OS
+  network buffering to allow us to work on batches of say 64kB.  We can
+  also pipeline requests and responses, without allowing for them
+  happening out of order, or mixed requests happening at the same time.
+
+  Wonder how our network performance would have turned out now if we'd
+  done full-duplex from the start, and ignored hpss over http.  We have
+  pretty good (readonly) http support just over dumb http, and that may be
+  better for many users.
+
+
+
+APIs
+====
+
+On the client, the bzrlib code is "in charge": when it makes a request, or
+asks from data from the network, that causes network IO.  The server is
+event driven: the network code tells the response handler when data has
+been received, and it takes back a Response object from the request
+handler that is then polled for body stream data.
 
 Paths
 =====
@@ -314,11 +431,13 @@ incoming paths to be under that level (and prevent escaping using ../
 tricks).  The default implementation in bzrlib does this using the
 `bzrlib.transport.chroot` module.
 
-URLs that include ~ should probably be passed across to the server
-verbatim and the server can expand them.  This will proably not be
-meaningful when limited to a directory?  See `bug 109143`_.
+URLs that include ~ are passed across to the server verbatim and the
+server can expand them.  The default implementation in bzrlib does this
+using `bzrlib.transport.pathfilter` and `os.path.expanduser`, taking care
+to respect the virtual root.
 
-.. _bug 109143: https://bugs.launchpad.net/bzr/+bug/109143
+Paths in request arguments are UTF-8 encoded, except for the legacy VFS
+requests which expect escaped (`bzrlib.urlutils.escape`) paths.
 
 
 Requests

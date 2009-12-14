@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,35 +12,36 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the info command of bzr."""
 
-import os
 import sys
 
-import bzrlib
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     info,
     osutils,
-    repository,
+    upgrade,
     urlutils,
     )
 from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, MemoryServer
 from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestInfo(ExternalBase):
 
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self._repo_strings = "2a or development-subtree"
+
     def test_info_non_existing(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = MemoryServer
+        location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -62,7 +63,39 @@ Location:
 """, out)
         self.assertEqual('', err)
 
+        # Standalone branch - verbose mode
         out, err = self.run_bzr('info standalone -v')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: standalone
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: Weave repository format 6
+
+In the working tree:
+         0 unchanged
+         0 modified
+         1 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""", out)
+        self.assertEqual('', err)
+
+        # Standalone branch - really verbose mode
+        out, err = self.run_bzr('info standalone -vv')
         self.assertEqualDiff(
 """Standalone tree (format: weave)
 Location:
@@ -90,7 +123,6 @@ Branch history:
 
 Repository:
          0 revisions
-         0 KiB
 """, out)
         self.assertEqual('', err)
         tree1.commit('commit one')
@@ -141,19 +173,13 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch2.repository._revision_store.total_size(
-        branch2.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -161,8 +187,8 @@ Repository:
         # (creates backup as unknown)
         branch1.bzrdir.sprout('bound')
         knit1_format = bzrdir.format_registry.make_bzrdir('knit')
-        bzrlib.upgrade.upgrade('bound', knit1_format)
-        branch3 = bzrlib.bzrdir.BzrDir.open('bound').open_branch()
+        upgrade.upgrade('bound', knit1_format)
+        branch3 = bzrdir.BzrDir.open('bound').open_branch()
         branch3.bind(branch1)
         bound_tree = branch3.bzrdir.open_workingtree()
         out, err = self.run_bzr('info -v bound')
@@ -193,27 +219,21 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (bound_tree._format.get_format_description(),
        branch3._format.get_format_description(),
        branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch3.repository._revision_store.total_size(
-        branch3.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
         # Checkout standalone (same as above, but does not have parent set)
-        branch4 = bzrlib.bzrdir.BzrDir.create_branch_convenience('checkout',
+        branch4 = bzrdir.BzrDir.create_branch_convenience('checkout',
             format=knit1_format)
         branch4.bind(branch1)
         branch4.bzrdir.open_workingtree().update()
@@ -242,20 +262,14 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch4.repository._revision_store.total_size(
-        branch4.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -264,15 +278,14 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -288,15 +301,13 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         0 KiB
-""" % (datestring_first, datestring_first,), out)
+""" % (self._repo_strings, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -335,14 +346,12 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         0 KiB
 """ % (datestring_first, datestring_first,
        ), out)
         self.assertEqual('', err)
@@ -378,20 +387,14 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch3.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch3.repository._revision_store.total_size(
-        branch3.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -423,35 +426,28 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (branch4.repository._format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       branch4.repository._revision_store.total_size(
-        branch4.repository.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -469,15 +465,13 @@ In the working tree:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          2 revisions
-         0 KiB
-""" % (datestring_first, datestring_last,), out)
+""" % (self._repo_strings, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -498,11 +492,9 @@ Format:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % (info.describe_format(repo.bzrdir, repo, branch, None),
        format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
@@ -528,7 +520,6 @@ Format:
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('repo', format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -551,11 +542,9 @@ Format:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -564,7 +553,7 @@ Repository:
         # Create lightweight checkout
         transport.mkdir('tree')
         transport.mkdir('tree/lightcheckout')
-        tree2 = branch1.create_checkout('tree/lightcheckout', 
+        tree2 = branch1.create_checkout('tree/lightcheckout',
             lightweight=True)
         branch2 = tree2.branch
         self.assertCheckoutStatusOutput('-v tree/lightcheckout', tree2,
@@ -583,8 +572,7 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -592,7 +580,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -608,34 +596,29 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
         # Out of date checkout
         out, err = self.run_bzr('info -v tree/checkout')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -653,11 +636,9 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -669,14 +650,14 @@ Repository:
         tree3.add('b')
         out, err = self.run_bzr('info tree/checkout --verbose')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -692,20 +673,15 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
         tree3.commit('commit two')
@@ -715,8 +691,7 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -724,7 +699,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -742,20 +717,15 @@ In the working tree:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          2 revisions
-         %d KiB
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -774,20 +744,15 @@ Format:
 
 Branch history:
          2 revisions
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          2 revisions
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -804,11 +769,7 @@ Format:
 
 Repository:
          2 revisions
-         %d KiB
 """ % (format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -833,7 +794,6 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -870,11 +830,9 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        ), out)
@@ -912,20 +870,15 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -958,16 +911,11 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -1002,20 +950,15 @@ In the working tree:
 
 Branch history:
          1 revision
-         1 committer
          0 days old
    first revision: %s
   latest revision: %s
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ), out)
         self.assertEqual('', err)
 
@@ -1034,15 +977,11 @@ Create working tree for new branches inside the repository.
 
 Repository:
          1 revision
-         %d KiB
 """ % (format.repository_format.get_format_description(),
-       # poking at _revision_store isn't all that clean, but neither is
-       # having the ui test dependent on the exact overhead of a given store.
-       repo._revision_store.total_size(repo.get_transaction())[1] / 1024,
        ),
        out)
         self.assertEqual('', err)
-    
+
     def test_info_shared_repository_with_tree_in_root(self):
         format = bzrdir.format_registry.make_bzrdir('knit')
         transport = self.get_transport()
@@ -1064,7 +1003,6 @@ Create working tree for new branches inside the repository.
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1098,13 +1036,37 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % (format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+
+    def test_info_repository_hook(self):
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        def repo_info(repo, stats, outf):
+            outf.write("more info\n")
+        info.hooks.install_named_hook('repository', repo_info, None)
+        # Create shared repository with working trees
+        repo = self.make_repository('repo', shared=True, format=format)
+        out, err = self.run_bzr('info -v repo')
+        self.assertEqualDiff(
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
+Location:
+  shared repository: repo
+
+Format:
+       control: Meta directory format 1
+    repository: %s
+
+Create working tree for new branches inside the repository.
+
+Repository:
+         0 revisions
+more info
+""" % (format.repository_format.get_format_description(),
        ), out)
         self.assertEqual('', err)
 
@@ -1123,7 +1085,7 @@ Repository:
         allow us, the test writers, to document what *should* be present in
         the output. Removing this separation would remove the value of the
         tests.
-        
+
         :param path: the path to the light checkout.
         :param lco_tree: the tree object for the light checkout.
         :param shared_repo: A shared repository is in use, expect that in
@@ -1137,7 +1099,7 @@ Repository:
             actually locked then this parameter is overridden. This is because
             pack repositories do not have any public API for obtaining an
             exclusive repository wide lock.
-        :param verbose: If true, expect verbose output
+        :param verbose: verbosity level: 2 or higher to show committers
         """
         def friendly_location(url):
             path = urlutils.unescape_for_display(url, 'ascii')
@@ -1162,9 +1124,8 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: 'dirstate or dirstate-tags or pack-0.92'
-                        ' or rich-root or rich-root-pack',
-                  False: 'dirstate'}[light_checkout]
+        format = {True: self._repo_strings,
+                  False: 'unnamed'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()
         if repo_locked or branch_locked or tree_locked:
@@ -1207,12 +1168,12 @@ Repository:
         else:
             branch_data = ("   checkout of branch: %s\n" %
                 lco_tree.branch.bzrdir.root_transport.base)
-        
-        if verbose:
+
+        if verbose >= 2:
             verbose_info = '         0 committers\n'
         else:
             verbose_info = ''
-            
+
         self.assertEqualDiff(
 """%s (format: %s)
 Location:
@@ -1238,7 +1199,6 @@ Branch history:
 %s
 Repository:
          0 revisions
-         0 KiB
 """ %  (description,
         format,
         tree_data,
@@ -1255,21 +1215,21 @@ Repository:
         transport = self.get_transport()
         # Create shared repository with a branch
         repo = self.make_repository('repo', shared=True,
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+                                    format=bzrdir.BzrDirMetaFormat1())
         repo.set_make_working_trees(False)
         repo.bzrdir.root_transport.mkdir('branch')
         repo_branch = repo.bzrdir.create_branch_convenience('repo/branch',
-                                    format=bzrlib.bzrdir.BzrDirMetaFormat1())
+                                    format=bzrdir.BzrDirMetaFormat1())
         # Do a heavy checkout
         transport.mkdir('tree')
         transport.mkdir('tree/checkout')
-        co_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('tree/checkout',
-            format=bzrlib.bzrdir.BzrDirMetaFormat1())
+        co_branch = bzrdir.BzrDir.create_branch_convenience('tree/checkout',
+            format=bzrdir.BzrDirMetaFormat1())
         co_branch.bind(repo_branch)
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
-        lco_dir = bzrlib.bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        bzrlib.branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
+        lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
+        branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
@@ -1366,9 +1326,14 @@ Repository:
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
             raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This test tests old (all-in-one, OS lock using) behaviour which
+        # simply cannot work on windows (and is indeed why we changed our
+        # design. As such, don't try to remove the thisFailsStrictLockCheck
+        # call here.
+        self.thisFailsStrictLockCheck()
 
         tree = self.make_branch_and_tree('branch',
-                                         format=bzrlib.bzrdir.BzrDirFormat6())
+                                         format=bzrdir.BzrDirFormat6())
 
         # Test all permutations of locking the working tree, branch and repository
         # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
@@ -1401,11 +1366,9 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
@@ -1435,12 +1398,29 @@ In the working tree:
 
 Branch history:
          0 revisions
-         0 committers
 
 Repository:
          0 revisions
-         0 KiB
 """ % ('branch', tree.branch.repository._format.get_format_description(),
        ), out)
         self.assertEqual('', err)
         tree.unlock()
+
+    def test_info_stacked(self):
+        # We have a mainline
+        trunk_tree = self.make_branch_and_tree('mainline',
+            format='1.6')
+        trunk_tree.commit('mainline')
+        # and a branch from it which is stacked
+        new_dir = trunk_tree.bzrdir.sprout('newbranch', stacked=True)
+        out, err = self.run_bzr('info newbranch')
+        self.assertEqual(
+"""Standalone tree (format: 1.6)
+Location:
+  branch root: newbranch
+
+Related branches:
+  parent branch: mainline
+     stacked on: mainline
+""", out)
+        self.assertEqual("", err)

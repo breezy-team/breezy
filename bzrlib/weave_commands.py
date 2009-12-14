@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """builtin bzr commands relating to individual weave files
 
@@ -36,35 +36,10 @@ class cmd_versionedfile_list(Command):
         from bzrlib.weavefile import read_weave
         from bzrlib.transport import get_transport
         from bzrlib import osutils
-        from bzrlib.knit import KnitVersionedFile
-        if filename.endswith('.knit'):
-            transport = get_transport(osutils.dirname(filename))
-            relpath = osutils.basename(filename)[:-len('.knit')]
-            vf = KnitVersionedFile(relpath, transport)
-        else:
-            vf = read_weave(file(filename, 'rb'))
+        vf = read_weave(file(filename, 'rb'))
         names = vf.versions()
         names.sort()
         print '\n'.join(names)
-
-
-class cmd_weave_join(Command):
-    """Join the contents of two weave files.
-
-    The resulting weave is sent to stdout.
-
-    This command is only intended for bzr developer use.
-    """
-
-    hidden = True
-    takes_args = ['weave1', 'weave2']
-
-    def run(self, weave1, weave2):
-        from bzrlib.weavefile import read_weave, write_weave
-        w1 = read_weave(file(weave1, 'rb'))
-        w2 = read_weave(file(weave2, 'rb'))
-        w1.join(w2)
-        write_weave(w1, sys.stdout)
 
 
 class cmd_weave_plan_merge(Command):

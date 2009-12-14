@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,17 +12,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+import time
 
 from bzrlib import (
     debug,
     errors,
+    osutils,
     revision,
-    symbol_versioning,
     trace,
-    tsort,
     )
-from bzrlib.deprecated_graph import (node_distances, select_farthest)
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
+
+STEP_UNIQUE_SEARCHER_EVERY = 5
 
 # DIAGRAM of terminology
 #       A
@@ -57,18 +60,25 @@ class DictParentsProvider(object):
         return 'DictParentsProvider(%r)' % self.ancestry
 
     def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
+        """See StackedParentsProvider.get_parent_map"""
         ancestry = self.ancestry
         return dict((k, ancestry[k]) for k in keys if k in ancestry)
 
+@deprecated_function(deprecated_in((1, 16, 0)))
+def _StackedParentsProvider(*args, **kwargs):
+    return StackedParentsProvider(*args, **kwargs)
 
-class _StackedParentsProvider(object):
-
+class StackedParentsProvider(object):
+    """A parents provider which stacks (or unions) multiple providers.
+    
+    The providers are queries in the order of the provided parent_providers.
+    """
+    
     def __init__(self, parent_providers):
         self._parent_providers = parent_providers
 
     def __repr__(self):
-        return "_StackedParentsProvider(%r)" % self._parent_providers
+        return "%s(%r)" % (self.__class__.__name__, self._parent_providers)
 
     def get_parent_map(self, keys):
         """Get a mapping of keys => parents
@@ -95,42 +105,82 @@ class _StackedParentsProvider(object):
 
 
 class CachingParentsProvider(object):
-    """A parents provider which will cache the revision => parents in a dict.
+    """A parents provider which will cache the revision => parents as a dict.
 
-    This is useful for providers that have an expensive lookup.
+    This is useful for providers which have an expensive look up.
+
+    Either a ParentsProvider or a get_parent_map-like callback may be
+    supplied.  If it provides extra un-asked-for parents, they will be cached,
+    but filtered out of get_parent_map.
+
+    The cache is enabled by default, but may be disabled and re-enabled.
     """
+    def __init__(self, parent_provider=None, get_parent_map=None):
+        """Constructor.
 
-    def __init__(self, parent_provider):
+        :param parent_provider: The ParentProvider to use.  It or
+            get_parent_map must be supplied.
+        :param get_parent_map: The get_parent_map callback to use.  It or
+            parent_provider must be supplied.
+        """
         self._real_provider = parent_provider
-        # Theoretically we could use an LRUCache here
-        self._cache = {}
+        if get_parent_map is None:
+            self._get_parent_map = self._real_provider.get_parent_map
+        else:
+            self._get_parent_map = get_parent_map
+        self._cache = None
+        self.enable_cache(True)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._real_provider)
 
-    def get_parent_map(self, keys):
-        """See _StackedParentsProvider.get_parent_map"""
-        needed = set()
-        # If the _real_provider doesn't have a key, we cache a value of None,
-        # which we then later use to realize we cannot provide a value for that
-        # key.
-        parent_map = {}
-        cache = self._cache
-        for key in keys:
-            if key in cache:
-                value = cache[key]
-                if value is not None:
-                    parent_map[key] = value
-            else:
-                needed.add(key)
+    def enable_cache(self, cache_misses=True):
+        """Enable cache."""
+        if self._cache is not None:
+            raise AssertionError('Cache enabled when already enabled.')
+        self._cache = {}
+        self._cache_misses = cache_misses
+        self.missing_keys = set()
 
-        if needed:
-            new_parents = self._real_provider.get_parent_map(needed)
-            cache.update(new_parents)
-            parent_map.update(new_parents)
-            needed.difference_update(new_parents)
-            cache.update(dict.fromkeys(needed, None))
-        return parent_map
+    def disable_cache(self):
+        """Disable and clear the cache."""
+        self._cache = None
+        self._cache_misses = None
+        self.missing_keys = set()
+
+    def get_cached_map(self):
+        """Return any cached get_parent_map values."""
+        if self._cache is None:
+            return None
+        return dict(self._cache)
+
+    def get_parent_map(self, keys):
+        """See StackedParentsProvider.get_parent_map."""
+        cache = self._cache
+        if cache is None:
+            cache = self._get_parent_map(keys)
+        else:
+            needed_revisions = set(key for key in keys if key not in cache)
+            # Do not ask for negatively cached keys
+            needed_revisions.difference_update(self.missing_keys)
+            if needed_revisions:
+                parent_map = self._get_parent_map(needed_revisions)
+                cache.update(parent_map)
+                if self._cache_misses:
+                    for key in needed_revisions:
+                        if key not in parent_map:
+                            self.note_missing_key(key)
+        result = {}
+        for key in keys:
+            value = cache.get(key)
+            if value is not None:
+                result[key] = value
+        return result
+
+    def note_missing_key(self, key):
+        """Note that key is a missing key."""
+        if self._cache_misses:
+            self.missing_keys.add(key)
 
 
 class Graph(object):
@@ -208,6 +258,80 @@ class Graph(object):
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
 
+    def find_distance_to_null(self, target_revision_id, known_revision_ids):
+        """Find the left-hand distance to the NULL_REVISION.
+
+        (This can also be considered the revno of a branch at
+        target_revision_id.)
+
+        :param target_revision_id: A revision_id which we would like to know
+            the revno for.
+        :param known_revision_ids: [(revision_id, revno)] A list of known
+            revno, revision_id tuples. We'll use this to seed the search.
+        """
+        # Map from revision_ids to a known value for their revno
+        known_revnos = dict(known_revision_ids)
+        cur_tip = target_revision_id
+        num_steps = 0
+        NULL_REVISION = revision.NULL_REVISION
+        known_revnos[NULL_REVISION] = 0
+
+        searching_known_tips = list(known_revnos.keys())
+
+        unknown_searched = {}
+
+        while cur_tip not in known_revnos:
+            unknown_searched[cur_tip] = num_steps
+            num_steps += 1
+            to_search = set([cur_tip])
+            to_search.update(searching_known_tips)
+            parent_map = self.get_parent_map(to_search)
+            parents = parent_map.get(cur_tip, None)
+            if not parents: # An empty list or None is a ghost
+                raise errors.GhostRevisionsHaveNoRevno(target_revision_id,
+                                                       cur_tip)
+            cur_tip = parents[0]
+            next_known_tips = []
+            for revision_id in searching_known_tips:
+                parents = parent_map.get(revision_id, None)
+                if not parents:
+                    continue
+                next = parents[0]
+                next_revno = known_revnos[revision_id] - 1
+                if next in unknown_searched:
+                    # We have enough information to return a value right now
+                    return next_revno + unknown_searched[next]
+                if next in known_revnos:
+                    continue
+                known_revnos[next] = next_revno
+                next_known_tips.append(next)
+            searching_known_tips = next_known_tips
+
+        # We reached a known revision, so just add in how many steps it took to
+        # get there.
+        return known_revnos[cur_tip] + num_steps
+
+    def find_lefthand_distances(self, keys):
+        """Find the distance to null for all the keys in keys.
+
+        :param keys: keys to lookup.
+        :return: A dict key->distance for all of keys.
+        """
+        # Optimisable by concurrent searching, but a random spread should get
+        # some sort of hit rate.
+        result = {}
+        known_revnos = []
+        ghosts = []
+        for key in keys:
+            try:
+                known_revnos.append(
+                    (key, self.find_distance_to_null(key, known_revnos)))
+            except errors.GhostRevisionsHaveNoRevno:
+                ghosts.append(key)
+        for key in ghosts:
+            known_revnos.append((key, -1))
+        return dict(known_revnos)
+
     def find_unique_ancestors(self, unique_revision, common_revisions):
         """Find the unique ancestors for a revision versus others.
 
@@ -236,19 +360,49 @@ class Graph(object):
         #    information you have so far.
         # 5) Continue searching, stopping the common searches when the search
         #    tip is an ancestor of all unique nodes.
-        # 6) Search is done when all common searchers have completed.
+        # 6) Aggregate together unique searchers when they are searching the
+        #    same tips. When all unique searchers are searching the same node,
+        #    stop move it to a single 'all_unique_searcher'.
+        # 7) The 'all_unique_searcher' represents the very 'tip' of searching.
+        #    Most of the time this produces very little important information.
+        #    So don't step it as quickly as the other searchers.
+        # 8) Search is done when all common searchers have completed.
 
+        unique_searcher, common_searcher = self._find_initial_unique_nodes(
+            [unique_revision], common_revisions)
+
+        unique_nodes = unique_searcher.seen.difference(common_searcher.seen)
+        if not unique_nodes:
+            return unique_nodes
+
+        (all_unique_searcher,
+         unique_tip_searchers) = self._make_unique_searchers(unique_nodes,
+                                    unique_searcher, common_searcher)
+
+        self._refine_unique_nodes(unique_searcher, all_unique_searcher,
+                                  unique_tip_searchers, common_searcher)
+        true_unique_nodes = unique_nodes.difference(common_searcher.seen)
         if 'graph' in debug.debug_flags:
-            _mutter = trace.mutter
-        else:
-            def _mutter(*args, **kwargs):
-                pass
+            trace.mutter('Found %d truly unique nodes out of %d',
+                         len(true_unique_nodes), len(unique_nodes))
+        return true_unique_nodes
 
-        unique_searcher = self._make_breadth_first_searcher([unique_revision])
-        # we know that unique_revision isn't in common_revisions
+    def _find_initial_unique_nodes(self, unique_revisions, common_revisions):
+        """Steps 1-3 of find_unique_ancestors.
+
+        Find the maximal set of unique nodes. Some of these might actually
+        still be common, but we are sure that there are no other unique nodes.
+
+        :return: (unique_searcher, common_searcher)
+        """
+
+        unique_searcher = self._make_breadth_first_searcher(unique_revisions)
+        # we know that unique_revisions aren't in common_revisions, so skip
+        # past them.
         unique_searcher.next()
         common_searcher = self._make_breadth_first_searcher(common_revisions)
 
+        # As long as we are still finding unique nodes, keep searching
         while unique_searcher._next_query:
             next_unique_nodes = set(unique_searcher.step())
             next_common_nodes = set(common_searcher.step())
@@ -262,138 +416,226 @@ class Graph(object):
             if unique_are_common_nodes:
                 ancestors = unique_searcher.find_seen_ancestors(
                                 unique_are_common_nodes)
+                # TODO: This is a bit overboard, we only really care about
+                #       the ancestors of the tips because the rest we
+                #       already know. This is *correct* but causes us to
+                #       search too much ancestry.
                 ancestors.update(common_searcher.find_seen_ancestors(ancestors))
                 unique_searcher.stop_searching_any(ancestors)
                 common_searcher.start_searching(ancestors)
 
-        unique_nodes = unique_searcher.seen.difference(common_searcher.seen)
-        if not unique_nodes:
-            return unique_nodes
+        return unique_searcher, common_searcher
+
+    def _make_unique_searchers(self, unique_nodes, unique_searcher,
+                               common_searcher):
+        """Create a searcher for all the unique search tips (step 4).
+
+        As a side effect, the common_searcher will stop searching any nodes
+        that are ancestors of the unique searcher tips.
+
+        :return: (all_unique_searcher, unique_tip_searchers)
+        """
         unique_tips = self._remove_simple_descendants(unique_nodes,
                         self.get_parent_map(unique_nodes))
 
         if len(unique_tips) == 1:
-            unique_searchers = []
+            unique_tip_searchers = []
             ancestor_all_unique = unique_searcher.find_seen_ancestors(unique_tips)
         else:
-            unique_searchers = []
+            unique_tip_searchers = []
             for tip in unique_tips:
                 revs_to_search = unique_searcher.find_seen_ancestors([tip])
+                revs_to_search.update(
+                    common_searcher.find_seen_ancestors(revs_to_search))
                 searcher = self._make_breadth_first_searcher(revs_to_search)
                 # We don't care about the starting nodes.
                 searcher._label = tip
                 searcher.step()
-                unique_searchers.append(searcher)
+                unique_tip_searchers.append(searcher)
 
             ancestor_all_unique = None
-            for searcher in unique_searchers:
+            for searcher in unique_tip_searchers:
                 if ancestor_all_unique is None:
                     ancestor_all_unique = set(searcher.seen)
                 else:
                     ancestor_all_unique = ancestor_all_unique.intersection(
                                                 searcher.seen)
         # Collapse all the common nodes into a single searcher
-        all_unique_searcher = self._make_breadth_first_searcher(ancestor_all_unique)
+        all_unique_searcher = self._make_breadth_first_searcher(
+                                ancestor_all_unique)
         if ancestor_all_unique:
+            # We've seen these nodes in all the searchers, so we'll just go to
+            # the next
             all_unique_searcher.step()
 
             # Stop any search tips that are already known as ancestors of the
             # unique nodes
-            common_searcher.stop_searching_any(
+            stopped_common = common_searcher.stop_searching_any(
                 common_searcher.find_seen_ancestors(ancestor_all_unique))
 
             total_stopped = 0
-            for searcher in unique_searchers:
+            for searcher in unique_tip_searchers:
                 total_stopped += len(searcher.stop_searching_any(
                     searcher.find_seen_ancestors(ancestor_all_unique)))
-            _mutter('For %s unique nodes, created %s + 1 unique searchers'
-                    ' (%s stopped search tips, %s common ancestors)',
-                    len(unique_nodes), len(unique_searchers), total_stopped,
-                    len(ancestor_all_unique))
-            del ancestor_all_unique
+        if 'graph' in debug.debug_flags:
+            trace.mutter('For %d unique nodes, created %d + 1 unique searchers'
+                         ' (%d stopped search tips, %d common ancestors'
+                         ' (%d stopped common)',
+                         len(unique_nodes), len(unique_tip_searchers),
+                         total_stopped, len(ancestor_all_unique),
+                         len(stopped_common))
+        return all_unique_searcher, unique_tip_searchers
 
+    def _step_unique_and_common_searchers(self, common_searcher,
+                                          unique_tip_searchers,
+                                          unique_searcher):
+        """Step all the searchers"""
+        newly_seen_common = set(common_searcher.step())
+        newly_seen_unique = set()
+        for searcher in unique_tip_searchers:
+            next = set(searcher.step())
+            next.update(unique_searcher.find_seen_ancestors(next))
+            next.update(common_searcher.find_seen_ancestors(next))
+            for alt_searcher in unique_tip_searchers:
+                if alt_searcher is searcher:
+                    continue
+                next.update(alt_searcher.find_seen_ancestors(next))
+            searcher.start_searching(next)
+            newly_seen_unique.update(next)
+        return newly_seen_common, newly_seen_unique
+
+    def _find_nodes_common_to_all_unique(self, unique_tip_searchers,
+                                         all_unique_searcher,
+                                         newly_seen_unique, step_all_unique):
+        """Find nodes that are common to all unique_tip_searchers.
+
+        If it is time, step the all_unique_searcher, and add its nodes to the
+        result.
+        """
+        common_to_all_unique_nodes = newly_seen_unique.copy()
+        for searcher in unique_tip_searchers:
+            common_to_all_unique_nodes.intersection_update(searcher.seen)
+        common_to_all_unique_nodes.intersection_update(
+                                    all_unique_searcher.seen)
+        # Step all-unique less frequently than the other searchers.
+        # In the common case, we don't need to spider out far here, so
+        # avoid doing extra work.
+        if step_all_unique:
+            tstart = time.clock()
+            nodes = all_unique_searcher.step()
+            common_to_all_unique_nodes.update(nodes)
+            if 'graph' in debug.debug_flags:
+                tdelta = time.clock() - tstart
+                trace.mutter('all_unique_searcher step() took %.3fs'
+                             'for %d nodes (%d total), iteration: %s',
+                             tdelta, len(nodes), len(all_unique_searcher.seen),
+                             all_unique_searcher._iterations)
+        return common_to_all_unique_nodes
+
+    def _collapse_unique_searchers(self, unique_tip_searchers,
+                                   common_to_all_unique_nodes):
+        """Combine searchers that are searching the same tips.
+
+        When two searchers are searching the same tips, we can stop one of the
+        searchers. We also know that the maximal set of common ancestors is the
+        intersection of the two original searchers.
+
+        :return: A list of searchers that are searching unique nodes.
+        """
+        # Filter out searchers that don't actually search different
+        # nodes. We already have the ancestry intersection for them
+        unique_search_tips = {}
+        for searcher in unique_tip_searchers:
+            stopped = searcher.stop_searching_any(common_to_all_unique_nodes)
+            will_search_set = frozenset(searcher._next_query)
+            if not will_search_set:
+                if 'graph' in debug.debug_flags:
+                    trace.mutter('Unique searcher %s was stopped.'
+                                 ' (%s iterations) %d nodes stopped',
+                                 searcher._label,
+                                 searcher._iterations,
+                                 len(stopped))
+            elif will_search_set not in unique_search_tips:
+                # This searcher is searching a unique set of nodes, let it
+                unique_search_tips[will_search_set] = [searcher]
+            else:
+                unique_search_tips[will_search_set].append(searcher)
+        # TODO: it might be possible to collapse searchers faster when they
+        #       only have *some* search tips in common.
+        next_unique_searchers = []
+        for searchers in unique_search_tips.itervalues():
+            if len(searchers) == 1:
+                # Searching unique tips, go for it
+                next_unique_searchers.append(searchers[0])
+            else:
+                # These searchers have started searching the same tips, we
+                # don't need them to cover the same ground. The
+                # intersection of their ancestry won't change, so create a
+                # new searcher, combining their histories.
+                next_searcher = searchers[0]
+                for searcher in searchers[1:]:
+                    next_searcher.seen.intersection_update(searcher.seen)
+                if 'graph' in debug.debug_flags:
+                    trace.mutter('Combining %d searchers into a single'
+                                 ' searcher searching %d nodes with'
+                                 ' %d ancestry',
+                                 len(searchers),
+                                 len(next_searcher._next_query),
+                                 len(next_searcher.seen))
+                next_unique_searchers.append(next_searcher)
+        return next_unique_searchers
+
+    def _refine_unique_nodes(self, unique_searcher, all_unique_searcher,
+                             unique_tip_searchers, common_searcher):
+        """Steps 5-8 of find_unique_ancestors.
+
+        This function returns when common_searcher has stopped searching for
+        more nodes.
+        """
+        # We step the ancestor_all_unique searcher only every
+        # STEP_UNIQUE_SEARCHER_EVERY steps.
+        step_all_unique_counter = 0
         # While we still have common nodes to search
         while common_searcher._next_query:
-            newly_seen_common = set(common_searcher.step())
-            newly_seen_unique = set()
-            for searcher in unique_searchers:
-                newly_seen_unique.update(searcher.step())
+            (newly_seen_common,
+             newly_seen_unique) = self._step_unique_and_common_searchers(
+                common_searcher, unique_tip_searchers, unique_searcher)
             # These nodes are common ancestors of all unique nodes
-            unique_are_common_nodes = newly_seen_unique.copy()
-            for searcher in unique_searchers:
-                unique_are_common_nodes = unique_are_common_nodes.intersection(
-                                            searcher.seen)
-            unique_are_common_nodes = unique_are_common_nodes.intersection(
-                                        all_unique_searcher.seen)
-            unique_are_common_nodes.update(all_unique_searcher.step())
+            common_to_all_unique_nodes = self._find_nodes_common_to_all_unique(
+                unique_tip_searchers, all_unique_searcher, newly_seen_unique,
+                step_all_unique_counter==0)
+            step_all_unique_counter = ((step_all_unique_counter + 1)
+                                       % STEP_UNIQUE_SEARCHER_EVERY)
+
             if newly_seen_common:
                 # If a 'common' node is an ancestor of all unique searchers, we
                 # can stop searching it.
                 common_searcher.stop_searching_any(
                     all_unique_searcher.seen.intersection(newly_seen_common))
-            if unique_are_common_nodes:
-                # We have new common-to-all-unique-searchers nodes
-                for searcher in unique_searchers:
-                    unique_are_common_nodes.update(
-                        searcher.find_seen_ancestors(unique_are_common_nodes))
-                unique_are_common_nodes.update(
-                    all_unique_searcher.find_seen_ancestors(unique_are_common_nodes))
-                # Since these are common, we can grab another set of ancestors
-                # that we have seen
-                unique_are_common_nodes.update(
-                    common_searcher.find_seen_ancestors(unique_are_common_nodes))
-
+            if common_to_all_unique_nodes:
+                common_to_all_unique_nodes.update(
+                    common_searcher.find_seen_ancestors(
+                        common_to_all_unique_nodes))
                 # The all_unique searcher can start searching the common nodes
                 # but everyone else can stop.
-                all_unique_searcher.start_searching(unique_are_common_nodes)
-                common_searcher.stop_searching_any(unique_are_common_nodes)
+                # This is the sort of thing where we would like to not have it
+                # start_searching all of the nodes, but only mark all of them
+                # as seen, and have it search only the actual tips. Otherwise
+                # it is another get_parent_map() traversal for it to figure out
+                # what we already should know.
+                all_unique_searcher.start_searching(common_to_all_unique_nodes)
+                common_searcher.stop_searching_any(common_to_all_unique_nodes)
 
-                # Filter out searchers that don't actually search different
-                # nodes. We already have the ancestry intersection for them
-                next_unique_searchers = []
-                unique_search_sets = set()
-                for searcher in unique_searchers:
-                    stopped = searcher.stop_searching_any(unique_are_common_nodes)
-                    will_search_set = frozenset(searcher._next_query)
-                    if not will_search_set:
-                        _mutter('Unique searcher %s was stopped.'
-                                ' (%s iterations) %d nodes stopped',
-                                searcher._label,
-                                searcher._iterations,
-                                len(stopped))
-                    elif will_search_set not in unique_search_sets:
-                        # This searcher is searching a unique set of nodes, let it
-                        unique_search_sets.add(will_search_set)
-                        next_unique_searchers.append(searcher)
-                    else:
-                        _mutter('Unique searcher %s stopped for repeated'
-                                ' search of %s nodes', 
-                                searcher._label, len(will_search_set))
-                if len(unique_searchers) != len(next_unique_searchers):
-                    _mutter('Collapsed %s unique searchers => %s'
-                            ' at %s iterations',
-                            len(unique_searchers), len(next_unique_searchers),
-                            all_unique_searcher._iterations)
-                unique_searchers = next_unique_searchers
-        return unique_nodes.difference(common_searcher.seen)
-
-    @symbol_versioning.deprecated_method(symbol_versioning.one_one)
-    def get_parents(self, revisions):
-        """Find revision ids of the parents of a list of revisions
-
-        A list is returned of the same length as the input.  Each entry
-        is a list of parent ids for the corresponding input revision.
-
-        [NULL_REVISION] is used as the parent of the first user-committed
-        revision.  Its parent list is empty.
-
-        If the revision is not present (i.e. a ghost), None is used in place
-        of the list of parents.
-
-        Deprecated in bzr 1.2 - please see get_parent_map.
-        """
-        parents = self.get_parent_map(revisions)
-        return [parents.get(r, None) for r in revisions]
+            next_unique_searchers = self._collapse_unique_searchers(
+                unique_tip_searchers, common_to_all_unique_nodes)
+            if len(unique_tip_searchers) != len(next_unique_searchers):
+                if 'graph' in debug.debug_flags:
+                    trace.mutter('Collapsed %d unique searchers => %d'
+                                 ' at %s iterations',
+                                 len(unique_tip_searchers),
+                                 len(next_unique_searchers),
+                                 all_unique_searcher._iterations)
+            unique_tip_searchers = next_unique_searchers
 
     def get_parent_map(self, revisions):
         """Get a map of key:parent_list for revisions.
@@ -573,6 +815,53 @@ class Graph(object):
             common_walker.start_searching(new_common)
         return candidate_heads
 
+    def find_merge_order(self, tip_revision_id, lca_revision_ids):
+        """Find the order that each revision was merged into tip.
+
+        This basically just walks backwards with a stack, and walks left-first
+        until it finds a node to stop.
+        """
+        if len(lca_revision_ids) == 1:
+            return list(lca_revision_ids)
+        looking_for = set(lca_revision_ids)
+        # TODO: Is there a way we could do this "faster" by batching up the
+        # get_parent_map requests?
+        # TODO: Should we also be culling the ancestry search right away? We
+        # could add looking_for to the "stop" list, and walk their
+        # ancestry in batched mode. The flip side is it might mean we walk a
+        # lot of "stop" nodes, rather than only the minimum.
+        # Then again, without it we may trace back into ancestry we could have
+        # stopped early.
+        stack = [tip_revision_id]
+        found = []
+        stop = set()
+        while stack and looking_for:
+            next = stack.pop()
+            stop.add(next)
+            if next in looking_for:
+                found.append(next)
+                looking_for.remove(next)
+                if len(looking_for) == 1:
+                    found.append(looking_for.pop())
+                    break
+                continue
+            parent_ids = self.get_parent_map([next]).get(next, None)
+            if not parent_ids: # Ghost, nothing to search here
+                continue
+            for parent_id in reversed(parent_ids):
+                # TODO: (performance) We see the parent at this point, but we
+                #       wait to mark it until later to make sure we get left
+                #       parents before right parents. However, instead of
+                #       waiting until we have traversed enough parents, we
+                #       could instead note that we've found it, and once all
+                #       parents are in the stack, just reverse iterate the
+                #       stack for them.
+                if parent_id not in stop:
+                    # this will need to be searched
+                    stack.append(parent_id)
+                stop.add(parent_id)
+        return found
+
     def find_unique_lca(self, left_revision, right_revision,
                         count_steps=False):
         """Find a unique LCA.
@@ -637,6 +926,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
+        from bzrlib import tsort
         sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 
@@ -649,6 +939,17 @@ class Graph(object):
         """
         return set([candidate_descendant]) == self.heads(
             [candidate_ancestor, candidate_descendant])
+
+    def is_between(self, revid, lower_bound_revid, upper_bound_revid):
+        """Determine whether a revision is between two others.
+
+        returns true if and only if:
+        lower_bound_revid <= revid <= upper_bound_revid
+        """
+        return ((upper_bound_revid is None or
+                    self.is_ancestor(revid, upper_bound_revid)) and
+               (lower_bound_revid is None or
+                    self.is_ancestor(lower_bound_revid, revid)))
 
     def _search_for_extra_common(self, common, searchers):
         """Make sure that unique nodes are genuinely unique.
@@ -928,7 +1229,7 @@ class _BreadthFirstSearcher(object):
 
     def get_result(self):
         """Get a SearchResult for the current state of this searcher.
-        
+
         :return: A SearchResult for this search so far. The SearchResult is
             static - the search can be advanced and the search result will not
             be invalidated or altered.
@@ -938,7 +1239,7 @@ class _BreadthFirstSearcher(object):
             # exclude keys for them. However, while we could have a second
             # look-ahead result buffer and shuffle things around, this method
             # is typically only called once per search - when memoising the
-            # results of the search. 
+            # results of the search.
             found, ghosts, next, parents = self._do_query(self._next_query)
             # pretend we didn't query: perhaps we should tweak _do_query to be
             # entirely stateless?
@@ -985,7 +1286,7 @@ class _BreadthFirstSearcher(object):
 
     def next_with_ghosts(self):
         """Return the next found ancestors, with ghosts split out.
-        
+
         Ancestors are returned in the order they are seen in a breadth-first
         traversal.  No ancestor will be returned more than once. Ancestors are
         returned only after asking for their parents, which allows us to detect
@@ -1035,6 +1336,8 @@ class _BreadthFirstSearcher(object):
         parent_map = self._parents_provider.get_parent_map(revisions)
         found_revisions.update(parent_map)
         for rev_id, parents in parent_map.iteritems():
+            if parents is None:
+                continue
             new_found_parents = [p for p in parents if p not in self.seen]
             if new_found_parents:
                 # Calling set.update() with an empty generator is actually
@@ -1047,7 +1350,16 @@ class _BreadthFirstSearcher(object):
         return self
 
     def find_seen_ancestors(self, revisions):
-        """Find ancestors of these revisions that have already been seen."""
+        """Find ancestors of these revisions that have already been seen.
+
+        This function generally makes the assumption that querying for the
+        parents of a node that has already been queried is reasonably cheap.
+        (eg, not a round trip to a remote host).
+        """
+        # TODO: Often we might ask one searcher for its seen ancestors, and
+        #       then ask another searcher the same question. This can result in
+        #       searching the same revisions repeatedly if the two searchers
+        #       have a lot of overlap.
         all_seen = self.seen
         pending = set(revisions).intersection(all_seen)
         seen_ancestors = set(pending)
@@ -1080,8 +1392,17 @@ class _BreadthFirstSearcher(object):
         Remove any of the specified revisions from the search list.
 
         None of the specified revisions are required to be present in the
-        search list.  In this case, the call is a no-op.
+        search list.
+
+        It is okay to call stop_searching_any() for revisions which were seen
+        in previous iterations. It is the callers responsibility to call
+        find_seen_ancestors() to make sure that current search tips that are
+        ancestors of those revisions are also stopped.  All explicitly stopped
+        revisions will be excluded from the search result's get_keys(), though.
         """
+        # TODO: does this help performance?
+        # if not revisions:
+        #     return set()
         revisions = frozenset(revisions)
         if self._returning == 'next':
             stopped = self._next_query.intersection(revisions)
@@ -1092,7 +1413,7 @@ class _BreadthFirstSearcher(object):
                 self._current_ghosts.intersection(revisions))
             self._current_present.difference_update(stopped)
             self._current_ghosts.difference_update(stopped)
-            # stopping 'x' should stop returning parents of 'x', but 
+            # stopping 'x' should stop returning parents of 'x', but
             # not if 'y' always references those same parents
             stop_rev_references = {}
             for rev in stopped_present:
@@ -1114,6 +1435,7 @@ class _BreadthFirstSearcher(object):
                     stop_parents.add(rev_id)
             self._next_query.difference_update(stop_parents)
         self._stopped_keys.update(stopped)
+        self._stopped_keys.update(revisions)
         return stopped
 
     def start_searching(self, revisions):
@@ -1159,26 +1481,26 @@ class SearchResult(object):
             a SearchResult from a smart server, in which case the keys list is
             not necessarily immediately available.
         """
-        self._recipe = (start_keys, exclude_keys, key_count)
+        self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
-        
+
         The recipe allows reconstruction of the same results at a later date
         without knowing all the found keys. The essential elements are a list
-        of keys to start and and to stop at. In order to give reproducible
+        of keys to start and to stop at. In order to give reproducible
         results when ghosts are encountered by a search they are automatically
         added to the exclude list (or else ghost filling may alter the
         results).
 
-        :return: A tuple (start_keys_set, exclude_keys_set, revision_count). To
-            recreate the results of this search, create a breadth first
-            searcher on the same graph starting at start_keys. Then call next()
-            (or next_with_ghosts()) repeatedly, and on every result, call
-            stop_searching_any on any keys from the exclude_keys set. The
-            revision_count value acts as a trivial cross-check - the found
-            revisions of the new search should have as many elements as
+        :return: A tuple ('search', start_keys_set, exclude_keys_set,
+            revision_count). To recreate the results of this search, create a
+            breadth first searcher on the same graph starting at start_keys.
+            Then call next() (or next_with_ghosts()) repeatedly, and on every
+            result, call stop_searching_any on any keys from the exclude_keys
+            set. The revision_count value acts as a trivial cross-check - the
+            found revisions of the new search should have as many elements as
             revision_count. If it does not, then additional revisions have been
             ghosted since the search was executed the first time and the second
             time.
@@ -1192,3 +1514,187 @@ class SearchResult(object):
         """
         return self._keys
 
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        return self._recipe[3] == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        start = self._recipe[1]
+        exclude = self._recipe[2]
+        count = self._recipe[3]
+        keys = self.get_keys()
+        # New heads = referenced + old heads - seen things - exclude
+        pending_refs = set(referenced)
+        pending_refs.update(start)
+        pending_refs.difference_update(seen)
+        pending_refs.difference_update(exclude)
+        # New exclude = old exclude + satisfied heads
+        seen_heads = start.intersection(seen)
+        exclude.update(seen_heads)
+        # keys gets seen removed
+        keys = keys - seen
+        # length is reduced by len(seen)
+        count -= len(seen)
+        return SearchResult(pending_refs, exclude, count, keys)
+
+
+class PendingAncestryResult(object):
+    """A search result that will reconstruct the ancestry for some graph heads.
+
+    Unlike SearchResult, this doesn't hold the complete search result in
+    memory, it just holds a description of how to generate it.
+    """
+
+    def __init__(self, heads, repo):
+        """Constructor.
+
+        :param heads: an iterable of graph heads.
+        :param repo: a repository to use to generate the ancestry for the given
+            heads.
+        """
+        self.heads = frozenset(heads)
+        self.repo = repo
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :seealso SearchResult.get_recipe:
+
+        :return: A tuple ('proxy-search', start_keys_set, set(), -1)
+            To recreate this result, create a PendingAncestryResult with the
+            start_keys_set.
+        """
+        return ('proxy-search', self.heads, set(), -1)
+
+    def get_keys(self):
+        """See SearchResult.get_keys.
+
+        Returns all the keys for the ancestry of the heads, excluding
+        NULL_REVISION.
+        """
+        return self._get_keys(self.repo.get_graph())
+
+    def _get_keys(self, graph):
+        NULL_REVISION = revision.NULL_REVISION
+        keys = [key for (key, parents) in graph.iter_ancestry(self.heads)
+                if key != NULL_REVISION and parents is not None]
+        return keys
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        if revision.NULL_REVISION in self.heads:
+            return len(self.heads) == 1
+        else:
+            return len(self.heads) == 0
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        """
+        referenced = self.heads.union(referenced)
+        return PendingAncestryResult(referenced - seen, self.repo)
+
+
+def collapse_linear_regions(parent_map):
+    """Collapse regions of the graph that are 'linear'.
+
+    For example::
+
+      A:[B], B:[C]
+
+    can be collapsed by removing B and getting::
+
+      A:[C]
+
+    :param parent_map: A dictionary mapping children to their parents
+    :return: Another dictionary with 'linear' chains collapsed
+    """
+    # Note: this isn't a strictly minimal collapse. For example:
+    #   A
+    #  / \
+    # B   C
+    #  \ /
+    #   D
+    #   |
+    #   E
+    # Will not have 'D' removed, even though 'E' could fit. Also:
+    #   A
+    #   |    A
+    #   B => |
+    #   |    C
+    #   C
+    # A and C are both kept because they are edges of the graph. We *could* get
+    # rid of A if we wanted.
+    #   A
+    #  / \
+    # B   C
+    # |   |
+    # D   E
+    #  \ /
+    #   F
+    # Will not have any nodes removed, even though you do have an
+    # 'uninteresting' linear D->B and E->C
+    children = {}
+    for child, parents in parent_map.iteritems():
+        children.setdefault(child, [])
+        for p in parents:
+            children.setdefault(p, []).append(child)
+
+    orig_children = dict(children)
+    removed = set()
+    result = dict(parent_map)
+    for node in parent_map:
+        parents = result[node]
+        if len(parents) == 1:
+            parent_children = children[parents[0]]
+            if len(parent_children) != 1:
+                # This is not the only child
+                continue
+            node_children = children[node]
+            if len(node_children) != 1:
+                continue
+            child_parents = result.get(node_children[0], None)
+            if len(child_parents) != 1:
+                # This is not its only parent
+                continue
+            # The child of this node only points at it, and the parent only has
+            # this as a child. remove this node, and join the others together
+            result[node_children[0]] = parents
+            children[parents[0]] = node_children
+            del result[node]
+            del children[node]
+            removed.add(node)
+
+    return result
+
+
+class GraphThunkIdsToKeys(object):
+    """Forwards calls about 'ids' to be about keys internally."""
+
+    def __init__(self, graph):
+        self._graph = graph
+
+    def heads(self, ids):
+        """See Graph.heads()"""
+        as_keys = [(i,) for i in ids]
+        head_keys = self._graph.heads(as_keys)
+        return set([h[0] for h in head_keys])
+
+
+_counters = [0,0,0,0,0,0,0]
+try:
+    from bzrlib._known_graph_pyx import KnownGraph
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
+    from bzrlib._known_graph_py import KnownGraph

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Bisection lookup multiple keys."""
 
@@ -23,7 +23,7 @@ __all__ = [
 
 def bisect_multi_bytes(content_lookup, size, keys):
     """Perform bisection lookups for keys using byte based addressing.
-    
+
     The keys are looked up via the content_lookup routine. The content_lookup
     routine gives bisect_multi_bytes information about where to keep looking up
     to find the data for the key, and bisect_multi_bytes feeds this back into

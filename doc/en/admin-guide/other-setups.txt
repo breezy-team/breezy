@@ -1,0 +1,13 @@
+Other Setups
+============
+
+Dumb servers
+------------
+
+Smart server over HTTP(S)
+-------------------------
+
+Direct Smart Server Access
+--------------------------
+
+

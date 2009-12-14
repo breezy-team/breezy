@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side branch related request implmentations."""
 
@@ -32,7 +32,7 @@ class SmartServerBranchRequest(SmartServerRequest):
 
     def do(self, path, *args):
         """Execute a request for a branch at path.
-    
+
         All Branch requests take a path to the branch as their first argument.
 
         If the branch is a branch reference, NotBranchError is raised.
@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 
@@ -74,22 +74,76 @@ class SmartServerLockedBranchRequest(SmartServerBranchRequest):
 
 
 class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
-    
+
     def do_with_branch(self, branch):
-        """Return the content of branch.control_files.get('branch.conf').
-        
+        """Return the content of branch.conf
+
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
-        # This was at one time called by RemoteBranchLockableFiles
-        # intercepting access to this file; as of 1.5 it is not called by the
-        # client but retained for compatibility.  It may be called again to
-        # allow the client to get the configuration without needing vfs
-        # access.
         try:
-            content = branch.control_files.get('branch.conf').read()
+            content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
+
+
+class SmartServerBranchGetParent(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the parent of branch."""
+        parent = branch._get_parent_location() or ''
+        return SuccessfulSmartServerResponse((parent,))
+
+
+class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the _get_tags_bytes for a branch."""
+        bytes = branch._get_tags_bytes()
+        return SuccessfulSmartServerResponse((bytes,))
+
+
+class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
+
+    def __init__(self, backing_transport, root_client_path='/', jail_root=None):
+        SmartServerLockedBranchRequest.__init__(
+            self, backing_transport, root_client_path, jail_root)
+        self.locked = False
+        
+    def do_with_locked_branch(self, branch):
+        """Call _set_tags_bytes for a branch.
+
+        New in 1.18.
+        """
+        # We need to keep this branch locked until we get a body with the tags
+        # bytes.
+        self.branch = branch
+        self.branch.lock_write()
+        self.locked = True
+
+    def do_body(self, bytes):
+        self.branch._set_tags_bytes(bytes)
+        return SuccessfulSmartServerResponse(())
+
+    def do_end(self):
+        # TODO: this request shouldn't have to do this housekeeping manually.
+        # Some of this logic probably belongs in a base class.
+        if not self.locked:
+            # We never acquired the branch successfully in the first place, so
+            # there's nothing more to do.
+            return
+        try:
+            return SmartServerLockedBranchRequest.do_end(self)
+        finally:
+            # Only try unlocking if we locked successfully in the first place
+            self.branch.unlock()
+
+
+class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        stacked_on_url = branch.get_stacked_on_url()
+        return SuccessfulSmartServerResponse(('ok', stacked_on_url))
 
 
 class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
@@ -105,38 +159,112 @@ class SmartServerRequestRevisionHistory(SmartServerBranchRequest):
 
 
 class SmartServerBranchRequestLastRevisionInfo(SmartServerBranchRequest):
-    
+
     def do_with_branch(self, branch):
         """Return branch.last_revision_info().
-        
+
         The revno is encoded in decimal, the revision_id is encoded as utf8.
         """
         revno, last_revision = branch.last_revision_info()
         return SuccessfulSmartServerResponse(('ok', str(revno), last_revision))
 
 
-class SmartServerBranchRequestSetLastRevision(SmartServerLockedBranchRequest):
-    
-    def do_with_locked_branch(self, branch, new_last_revision_id):
+class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
+    """Base class for handling common branch request logic for requests that
+    update the branch tip.
+    """
+
+    def do_with_locked_branch(self, branch, *args):
+        try:
+            return self.do_tip_change_with_locked_branch(branch, *args)
+        except errors.TipChangeRejected, e:
+            msg = e.msg
+            if isinstance(msg, unicode):
+                msg = msg.encode('utf-8')
+            return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
+
+
+class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
+
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
             branch.set_revision_history([])
         else:
             if not branch.repository.has_revision(new_last_revision_id):
                 return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
-            branch.generate_revision_history(new_last_revision_id)
+            branch.set_revision_history(branch._lefthand_history(
+                new_last_revision_id, None, None))
         return SuccessfulSmartServerResponse(('ok',))
 
 
-class SmartServerBranchRequestSetLastRevisionInfo(
-    SmartServerLockedBranchRequest):
+class SmartServerBranchRequestSetLastRevisionEx(SmartServerSetTipRequest):
+
+    def do_tip_change_with_locked_branch(self, branch, new_last_revision_id,
+            allow_divergence, allow_overwrite_descendant):
+        """Set the last revision of the branch.
+
+        New in 1.6.
+
+        :param new_last_revision_id: the revision ID to set as the last
+            revision of the branch.
+        :param allow_divergence: A flag.  If non-zero, change the revision ID
+            even if the new_last_revision_id's ancestry has diverged from the
+            current last revision.  If zero, a 'Diverged' error will be
+            returned if new_last_revision_id is not a descendant of the current
+            last revision.
+        :param allow_overwrite_descendant:  A flag.  If zero and
+            new_last_revision_id is not a descendant of the current last
+            revision, then the last revision will not be changed.  If non-zero
+            and there is no divergence, then the last revision is always
+            changed.
+
+        :returns: on success, a tuple of ('ok', revno, revision_id), where
+            revno and revision_id are the new values of the current last
+            revision info.  The revision_id might be different to the
+            new_last_revision_id if allow_overwrite_descendant was not set.
+        """
+        do_not_overwrite_descendant = not allow_overwrite_descendant
+        try:
+            last_revno, last_rev = branch.last_revision_info()
+            graph = branch.repository.get_graph()
+            if not allow_divergence or do_not_overwrite_descendant:
+                relation = branch._revision_relations(
+                    last_rev, new_last_revision_id, graph)
+                if relation == 'diverged' and not allow_divergence:
+                    return FailedSmartServerResponse(('Diverged',))
+                if relation == 'a_descends_from_b' and do_not_overwrite_descendant:
+                    return SuccessfulSmartServerResponse(
+                        ('ok', last_revno, last_rev))
+            new_revno = graph.find_distance_to_null(
+                new_last_revision_id, [(last_rev, last_revno)])
+            branch.set_last_revision_info(new_revno, new_last_revision_id)
+        except errors.GhostRevisionsHaveNoRevno:
+            return FailedSmartServerResponse(
+                ('NoSuchRevision', new_last_revision_id))
+        return SuccessfulSmartServerResponse(
+            ('ok', new_revno, new_last_revision_id))
+
+
+class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
     """Branch.set_last_revision_info.  Sets the revno and the revision ID of
     the specified branch.
 
     New in bzrlib 1.4.
     """
-    
-    def do_with_locked_branch(self, branch, new_revno, new_last_revision_id):
+
+    def do_tip_change_with_locked_branch(self, branch, new_revno,
+            new_last_revision_id):
         try:
             branch.set_last_revision_info(int(new_revno), new_last_revision_id)
         except errors.NoSuchRevision:
@@ -145,8 +273,19 @@ class SmartServerBranchRequestSetLastRevisionInfo(
         return SuccessfulSmartServerResponse(('ok',))
 
 
-class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
+class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
+    """Set the parent location for a branch.
     
+    Takes a location to set, which must be utf8 encoded.
+    """
+
+    def do_with_locked_branch(self, branch, location):
+        branch._set_parent_location(location)
+        return SuccessfulSmartServerResponse(())
+
+
+class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
+
     def do_with_branch(self, branch, branch_token='', repo_token=''):
         if branch_token == '':
             branch_token = None
@@ -192,4 +331,4 @@ class SmartServerBranchRequestUnlock(SmartServerBranchRequest):
         branch.dont_leave_lock_in_place()
         branch.unlock()
         return SuccessfulSmartServerResponse(('ok',))
-        
+

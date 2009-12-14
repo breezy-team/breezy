@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzr working tree performance."""
 
@@ -56,7 +56,7 @@ class WorkingTreeBenchmark(Benchmark):
         """How long does is_ignored take to initialise and check one file."""
         t = self.make_branch_and_tree('.')
         self.time(t.is_ignored, "CVS")
-        
+
     def test_is_ignored_10824_calls(self):
         """How long does is_ignored take to initialise and check one file."""
         t = self.make_branch_and_tree('.')

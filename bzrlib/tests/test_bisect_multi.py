@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bisect_multi."""
 
@@ -34,7 +34,7 @@ class TestBisectMultiBytes(TestCase):
 
     def test_lookup_missing_key_no_content(self):
         """Doing a lookup in a zero-length file still does a single request.
-        
+
         This makes sense because the bisector cannot tell how long content is
         and its more flexible to only stop when the content object says 'False'
         for a given location, key pair.
@@ -315,7 +315,7 @@ class TestBisectMultiBytes(TestCase):
             ], calls)
 
     def test_change_direction_in_single_key_search(self):
-        # check that we can search down, up, down again - 
+        # check that we can search down, up, down again -
         # so length 8, goes 4, 6, 5
         calls = []
         def missing_at_5(location_keys):

@@ -12,20 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
 
 from bzrlib import (
-    builtins,
     bzrdir,
     commands,
     errors,
     option,
-    repository,
-    symbol_versioning,
     )
-from bzrlib.builtins import cmd_commit, cmd_log, cmd_status
+from bzrlib.builtins import cmd_commit
 from bzrlib.commands import Command, parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
@@ -41,16 +38,18 @@ class OptionTests(TestCase):
 
     def test_parse_args(self):
         """Option parser"""
-        eq = self.assertEquals
-        eq(parse_args(cmd_commit(), ['--help']),
-           ([], {'fixes': [], 'help': True}))
-        eq(parse_args(cmd_commit(), ['--message=biter']),
-           ([], {'fixes': [], 'message': 'biter'}))
+        # XXX: Using cmd_commit makes these tests overly sensitive to changes
+        # to cmd_commit, when they are meant to be about option parsing in
+        # general.
+        self.assertEqual(parse_args(cmd_commit(), ['--help']),
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'help': True}))
+        self.assertEqual(parse_args(cmd_commit(), ['--message=biter']),
+           ([], {'author': [], 'exclude': [], 'fixes': [], 'message': 'biter'}))
 
     def test_no_more_opts(self):
         """Terminated options"""
-        self.assertEquals(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
-                          (['-file-with-dashes'], {'fixes': []}))
+        self.assertEqual(parse_args(cmd_commit(), ['--', '-file-with-dashes']),
+                          (['-file-with-dashes'], {'author': [], 'exclude': [], 'fixes': []}))
 
     def test_option_help(self):
         """Options have help strings."""
@@ -67,7 +66,7 @@ class OptionTests(TestCase):
     def test_option_arg_help(self):
         """Help message shows option arguments."""
         out, err = self.run_bzr('help commit')
-        self.assertEquals(err, '')
+        self.assertEqual(err, '')
         self.assertContainsRe(out, r'--file[ =]MSGFILE')
 
     def test_unknown_short_opt(self):
@@ -81,8 +80,7 @@ class OptionTests(TestCase):
 
     def test_allow_dash(self):
         """Test that we can pass a plain '-' as an argument."""
-        self.assertEqual(
-            (['-'], {'fixes': []}), parse_args(cmd_commit(), ['-']))
+        self.assertEqual((['-']), parse_args(cmd_commit(), ['-'])[0])
 
     def parse(self, options, args):
         parser = option.get_optparser(dict((o.name, o) for o in options))
@@ -103,6 +101,10 @@ class OptionTests(TestCase):
                           ['--number'])
         self.assertRaises(errors.BzrCommandError, self.parse, options,
                           ['--no-number'])
+
+    def test_is_hidden(self):
+        self.assertTrue(option.Option('foo', hidden=True).is_hidden('foo'))
+        self.assertFalse(option.Option('foo', hidden=False).is_hidden('foo'))
 
     def test_registry_conversion(self):
         registry = bzrdir.BzrDirFormatRegistry()
@@ -152,6 +154,15 @@ class OptionTests(TestCase):
         opts, args = self.parse(options, ['--format', 'knit'])
         self.assertIsInstance(opts.format.repository_format,
                               knitrepo.RepositoryFormatKnit1)
+
+    def test_lazy_registry(self):
+        options = [option.RegistryOption('format', '',
+                   lazy_registry=('bzrlib.bzrdir','format_registry'),
+                   converter=str)]
+        opts, args = self.parse(options, ['--format', 'knit'])
+        self.assertEqual({'format': 'knit'}, opts)
+        self.assertRaises(
+            errors.BadOptionValue, self.parse, options, ['--format', 'BAD'])
 
     def test_from_kwargs(self):
         my_option = option.RegistryOption.from_kwargs('my-option',
@@ -258,6 +269,12 @@ class TestListOptions(TestCase):
         opts, args = self.parse(options, ['--hello=world', '--hello=sailor'])
         self.assertEqual(['world', 'sailor'], opts.hello)
 
+    def test_list_option_with_dash(self):
+        options = [option.ListOption('with-dash', type=str)]
+        opts, args = self.parse(options, ['--with-dash=world',
+                                          '--with-dash=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.with_dash)
+
     def test_list_option_no_arguments(self):
         options = [option.ListOption('hello', type=str)]
         opts, args = self.parse(options, [])
@@ -307,8 +324,8 @@ class TestOptionDefinitions(TestCase):
 
     def get_builtin_command_options(self):
         g = []
-        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
-            cmd = cmd_class()
+        for cmd_name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(cmd_name)
             for opt_name, opt in sorted(cmd.options().items()):
                 g.append((cmd_name, opt))
         return g
@@ -321,14 +338,15 @@ class TestOptionDefinitions(TestCase):
         g = dict(option.Option.OPTIONS.items())
         used_globals = {}
         msgs = []
-        for cmd_name, cmd_class in sorted(commands.get_all_cmds()):
-            for option_or_name in sorted(cmd_class.takes_options):
+        for cmd_name in sorted(commands.all_command_names()):
+            cmd = commands.get_cmd_object(cmd_name)
+            for option_or_name in sorted(cmd.takes_options):
                 if not isinstance(option_or_name, basestring):
                     self.assertIsInstance(option_or_name, option.Option)
                 elif not option_or_name in g:
                     msgs.append("apparent reference to undefined "
                         "global option %r from %r"
-                        % (option_or_name, cmd_class))
+                        % (option_or_name, cmd))
                 else:
                     used_globals.setdefault(option_or_name, []).append(cmd_name)
         unused_globals = set(g.keys()) - set(used_globals.keys())
@@ -349,13 +367,13 @@ class TestOptionDefinitions(TestCase):
         # period and be all on a single line, because the display code will
         # wrap it.
         option_re = re.compile(r'^[A-Z][^\n]+\.$')
-        for scope, option in self.get_builtin_command_options():
-            if not option.help:
+        for scope, opt in self.get_builtin_command_options():
+            if not opt.help:
                 msgs.append('%-16s %-16s %s' %
-                       ((scope or 'GLOBAL'), option.name, 'NO HELP'))
-            elif not option_re.match(option.help):
+                       ((scope or 'GLOBAL'), opt.name, 'NO HELP'))
+            elif not option_re.match(opt.help):
                 msgs.append('%-16s %-16s %s' %
-                        ((scope or 'GLOBAL'), option.name, option.help))
+                        ((scope or 'GLOBAL'), opt.name, opt.help))
         if msgs:
             self.fail("The following options don't match the style guide:\n"
                     + '\n'.join(msgs))

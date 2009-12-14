@@ -13,12 +13,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for 'bzr unknowns', which shows unknown files."""
 
 from bzrlib.tests.blackbox import ExternalBase
+
 
 class TestUnknowns(ExternalBase):
 
@@ -33,12 +34,12 @@ class TestUnknowns(ExternalBase):
         self.build_tree_contents([('a', 'contents of a\n')])
         self.assertEquals(self.run_bzr('unknowns')[0], 'a\n')
 
-        # multiple unknown files
-        self.build_tree(['b', 'c'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n')
+        # multiple unknown files, including one with a space in its name
+        self.build_tree(['b', 'c', 'd e'])
+        self.assertEquals(self.run_bzr('unknowns')[0], 'a\nb\nc\n"d e"\n')
 
         # after add, file no longer shown
-        tree.add('a')
+        tree.add(['a', 'd e'])
         self.assertEquals(self.run_bzr('unknowns')[0], 'b\nc\n')
 
         # after all added, none shown

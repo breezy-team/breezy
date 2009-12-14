@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 # Author: Martin Pool <mbp@canonical.com>
 
@@ -99,7 +99,7 @@ def read_weave(f):
 
 def _read_weave_v5(f, w):
     """Private helper routine to read a weave format 5 file into memory.
-    
+
     This is only to be used by read_weave and WeaveFile.__init__.
     """
     #  200   0   2075.5080   1084.0360   bzrlib.weavefile:104(_read_weave_v5)
@@ -115,11 +115,11 @@ def _read_weave_v5(f, w):
     #  200   0    851.7250    501.1120   bzrlib.weavefile:104(_read_weave_v5)
     # +59363 0    311.8780    311.8780   +<method 'append' of 'list' objects>
     # +200   0     30.2500     30.2500   +<method 'readlines' of 'file' objects>
-                  
+
     from weave import WeaveFormatError
 
     lines = iter(f.readlines())
-    
+
     try:
         l = lines.next()
     except StopIteration:

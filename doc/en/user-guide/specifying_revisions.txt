@@ -36,17 +36,23 @@ different format specifications as shown below.
  +----------------------+------------------------------------+
  | *number*             | revision number                    |
  +----------------------+------------------------------------+
- | **revno**:*number*   | positive revision number           |
+ | **revno**:*number*   | revision number                    |
  +----------------------+------------------------------------+
  | **last**:*number*    | negative revision number           |
+ +----------------------+------------------------------------+
+ | *guid*               | globally unique revision id        |
  +----------------------+------------------------------------+
  | **revid**:*guid*     | globally unique revision id        |
  +----------------------+------------------------------------+
  | **before**:*rev*     | leftmost parent of ''rev''         |
  +----------------------+------------------------------------+
- | **date**:*value*     | first entry after a given date     |
+ | *date-value*         | first entry after a given date     |
  +----------------------+------------------------------------+
- | **tag**:*value*      | revision matching a given tag      |
+ | **date**:*date-value*| first entry after a given date     |
+ +----------------------+------------------------------------+
+ | *tag-name*           | revision matching a given tag      |
+ +----------------------+------------------------------------+
+ | **tag**:*tag-name*   | revision matching a given tag      |
  +----------------------+------------------------------------+
  | **ancestor**:*path*  | last merged revision from a branch |
  +----------------------+------------------------------------+
@@ -81,7 +87,7 @@ revid
 ~~~~~
 
 **revid** allows specifying a an internal revision ID, as shown by ``bzr
-log`` and some other commands.
+log --show-ids`` and some other commands.
 
 For example::
 
@@ -93,7 +99,7 @@ before
 **before**
     ''rev'' specifies the leftmost parent of ''rev'', that is the revision
     that appears before ''rev'' in the revision history, or the revision that
-    was current when ''rev'' what comitted.
+    was current when ''rev'' was committed.
 
 ''rev'' can be any revision specifier and may be chained.
 
@@ -128,7 +134,7 @@ Ancestor
 ~~~~~~~~
 
 **ancestor**:*path*
-    specifies the common ancestor between the current branch and a 
+    specifies the common ancestor between the current branch and a
     different branch. This is the same ancestor that would be used for
     merging purposes.
 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of simple versioning operations"""
@@ -22,10 +22,10 @@
 
 import os
 
-from bzrlib.tests import TestCaseInTempDir
 from bzrlib.branch import Branch
-from bzrlib.trace import mutter
 from bzrlib.osutils import pathjoin
+from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
+from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 
@@ -122,60 +122,51 @@ class TestVersioning(TestCaseInTempDir):
         check(b, False)
 
 
-class SubdirCommit(TestCaseInTempDir):
+class SubdirCommit(TestCaseWithTransport):
 
     def test_subdir_commit(self):
-        """Test committing a subdirectory, and committing within a directory."""
-        run_bzr = self.run_bzr
-        eq = self.assertEqual
-
+        """Test committing a subdirectory, and committing a directory."""
+        tree = self.make_branch_and_tree('.')
+        b = tree.branch
         self.build_tree(['a/', 'b/'])
-
-        run_bzr('init')
-        b = Branch.open(u'.')
-
-        for fn in ('a/one', 'b/two', 'top'):
-            file(fn, 'w').write('old contents')
-
-        run_bzr('add')
-        run_bzr(['commit', '-m', 'first revision'])
-
-        for fn in ('a/one', 'b/two', 'top'):
-            file(fn, 'w').write('new contents')
+        def set_contents(contents):
+            self.build_tree_contents([
+                ('a/one', contents),
+                ('b/two', contents),
+                ('top', contents),
+                ])
+        set_contents('old contents')
+        tree.smart_add(['.'])
+        tree.commit('first revision')
+        set_contents('new contents')
 
         mutter('start selective subdir commit')
-        run_bzr(['commit', 'a', '-m', 'commit a only'])
+        self.run_bzr(['commit', 'a', '-m', 'commit a only'])
 
-        old = b.repository.revision_tree(b.get_rev_id(1))
         new = b.repository.revision_tree(b.get_rev_id(2))
         new.lock_read()
 
-        eq(new.get_file_by_path('b/two').read(), 'old contents')
-        eq(new.get_file_by_path('top').read(), 'old contents')
-        eq(new.get_file_by_path('a/one').read(), 'new contents')
+        self.assertEqual(new.get_file_by_path('b/two').read(), 'old contents')
+        self.assertEqual(new.get_file_by_path('top').read(), 'old contents')
+        self.assertEqual(new.get_file_by_path('a/one').read(), 'new contents')
         new.unlock()
 
         os.chdir('a')
         # commit from here should do nothing
-        run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
+        self.run_bzr(['commit', '.', '-m', 'commit subdir only', '--unchanged'])
         v3 = b.repository.revision_tree(b.get_rev_id(3))
         v3.lock_read()
-        eq(v3.get_file_by_path('b/two').read(), 'old contents')
-        eq(v3.get_file_by_path('top').read(), 'old contents')
-        eq(v3.get_file_by_path('a/one').read(), 'new contents')
+        self.assertEqual(v3.get_file_by_path('b/two').read(), 'old contents')
+        self.assertEqual(v3.get_file_by_path('top').read(), 'old contents')
+        self.assertEqual(v3.get_file_by_path('a/one').read(), 'new contents')
         v3.unlock()
 
         # commit in subdirectory commits whole tree
-        run_bzr(['commit', '-m', 'commit whole tree from subdir'])
+        self.run_bzr(['commit', '-m', 'commit whole tree from subdir'])
         v4 = b.repository.revision_tree(b.get_rev_id(4))
         v4.lock_read()
-        eq(v4.get_file_by_path('b/two').read(), 'new contents')
-        eq(v4.get_file_by_path('top').read(), 'new contents')
+        self.assertEqual(v4.get_file_by_path('b/two').read(), 'new contents')
+        self.assertEqual(v4.get_file_by_path('top').read(), 'new contents')
         v4.unlock()
 
         # TODO: factor out some kind of assert_tree_state() method
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()

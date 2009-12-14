@@ -12,20 +12,27 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test directory service implementation"""
 
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
-from bzrlib.tests import TestCase
+from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
 
 class FooService(object):
     """A directory service that maps the name to a FILE url"""
 
+    # eg 'file:///foo' on Linux, or 'file:///C:/foo' on Windows
+    base = urlutils.local_path_to_url('/foo')
+
     def look_up(self, name, url):
-        return 'file:///foo' + name
+        return self.base + name
 
 
 class TestDirectoryLookup(TestCase):
@@ -41,11 +48,62 @@ class TestDirectoryLookup(TestCase):
         self.assertEqual('bar', suffix)
 
     def test_dereference(self):
-        self.assertEqual('file:///foobar',
+        self.assertEqual(FooService.base + 'bar',
                          self.registry.dereference('foo:bar'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
         self.addCleanup(lambda: directories.remove('foo:'))
-        self.assertEqual('file:///foobar/', get_transport('foo:bar').base)
+        self.assertEqual(FooService.base + 'bar/',
+                         get_transport('foo:bar').base)
+
+
+class TestAliasDirectory(TestCaseWithTransport):
+
+    def test_lookup_parent(self):
+        branch = self.make_branch('.')
+        branch.set_parent('http://a')
+        self.assertEqual('http://a', directories.dereference(':parent'))
+
+    def test_lookup_submit(self):
+        branch = self.make_branch('.')
+        branch.set_submit_branch('http://b')
+        self.assertEqual('http://b', directories.dereference(':submit'))
+
+    def test_lookup_public(self):
+        branch = self.make_branch('.')
+        branch.set_public_branch('http://c')
+        self.assertEqual('http://c', directories.dereference(':public'))
+
+    def test_lookup_bound(self):
+        branch = self.make_branch('.')
+        branch.set_bound_location('http://d')
+        self.assertEqual('http://d', directories.dereference(':bound'))
+
+    def test_lookup_push(self):
+        branch = self.make_branch('.')
+        branch.set_push_location('http://e')
+        self.assertEqual('http://e', directories.dereference(':push'))
+
+    def test_lookup_this(self):
+        branch = self.make_branch('.')
+        self.assertEqual(branch.base, directories.dereference(':this'))
+
+    def test_extra_path(self):
+        branch = self.make_branch('.')
+        self.assertEqual(urlutils.join(branch.base, 'arg'),
+                         directories.dereference(':this/arg'))
+
+    def test_lookup_badname(self):
+        branch = self.make_branch('.')
+        e = self.assertRaises(errors.InvalidLocationAlias,
+                              directories.dereference, ':booga')
+        self.assertEqual('":booga" is not a valid location alias.',
+                         str(e))
+
+    def test_lookup_badvalue(self):
+        branch = self.make_branch('.')
+        e = self.assertRaises(errors.UnsetLocationAlias,
+                              directories.dereference, ':parent')
+        self.assertEqual('No parent location assigned.', str(e))

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -85,7 +85,7 @@ class TestRemerge(ExternalBase):
                            'remerge --merge-type weave', retcode=1)
 
         self.failUnlessExists('hello.OTHER')
-        self.failIfExists('hello.BASE')
+        self.failUnless('hello.BASE')
         self.assertFalse('|||||||' in conflict_text)
         self.assertFalse('hi world' in conflict_text)
 

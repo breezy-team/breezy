@@ -19,7 +19,7 @@ Scaling analysys of Merge
 :c: files that differ between base and other:
 :d: number of files in the tree
 :e: number of lines in the text
-:f: number number of files requiring text merge
+:f: number of files requiring text merge
 :g: number of conflicts (g <= c)
 :h: humber of uncommon ancestors
 :i: number of revisions between base and other

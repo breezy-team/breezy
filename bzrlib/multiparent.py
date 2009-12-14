@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.lazy_import import lazy_import
 
@@ -28,21 +28,35 @@ from bzrlib import (
     trace,
     ui,
     )
-from bzrlib.util import bencode
+from bzrlib import bencode
 """)
 from bzrlib.tuned_gzip import GzipFile
 
 
+def topo_iter_keys(vf, keys=None):
+    if keys is None:
+        keys = vf.keys()
+    parents = vf.get_parent_map(keys)
+    return _topo_iter(parents, keys)
+
 def topo_iter(vf, versions=None):
-    seen = set()
-    descendants = {}
     if versions is None:
         versions = vf.versions()
     parents = vf.get_parent_map(versions)
+    return _topo_iter(parents, versions)
+
+def _topo_iter(parents, versions):
+    seen = set()
+    descendants = {}
     def pending_parents(version):
+        if parents[version] is None:
+            return []
         return [v for v in parents[version] if v in versions and
                 v not in seen]
     for version_id in versions:
+        if parents[version_id] is None:
+            # parentless
+            continue
         for parent_id in parents[version_id]:
             descendants.setdefault(parent_id, []).append(version_id)
     cur = [v for v in versions if len(pending_parents(v)) == 0]
@@ -276,7 +290,7 @@ class ParentText(object):
             ' %(num_lines)r)' % self.__dict__
 
     def __eq__(self, other):
-        if self.__class__ != other.__class__:
+        if self.__class__ is not other.__class__:
             return False
         return (self.__dict__ == other.__dict__)
 
@@ -302,7 +316,7 @@ class BaseVersionedFile(object):
         return version in self._parents
 
     def do_snapshot(self, version_id, parent_ids):
-        """Determine whether to perform a a snapshot for this version"""
+        """Determine whether to perform a snapshot for this version"""
         if self.snapshot_interval is None:
             return False
         if self.max_snapshots is not None and\

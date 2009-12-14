@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr sign-my-commits."""
 
@@ -79,7 +79,7 @@ class SignMyCommits(TestCaseWithTransport):
         self.assertSigned(repo, 'B')
         self.assertSigned(repo, 'C')
         self.assertUnsigned(repo, 'D')
-            
+
     def test_sign_my_commits_location(self):
         wt = self.setup_tree('other')
         repo = wt.branch.repository

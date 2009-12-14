@@ -12,11 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Helper functions/classes for testing locking"""
 
 from bzrlib import errors
+from bzrlib.decorators import only_raises
 
 
 class TestPreventLocking(errors.LockError):
@@ -44,6 +45,12 @@ class LockWrapper(object):
         self.__dict__['_allow_read'] = True
         self.__dict__['_allow_unlock'] = True
 
+    def __eq__(self, other):
+        # Branch objects look for controlfiles == repo.controlfiles.
+        if type(other) is LockWrapper:
+            return self._other == other._other
+        return False
+
     def __getattr__(self, attr):
         return getattr(self._other, attr)
 
@@ -62,6 +69,7 @@ class LockWrapper(object):
             return self._other.lock_write()
         raise TestPreventLocking('lock_write disabled')
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         self._sequence.append((self._other_id, 'ul', self._allow_unlock))
         if self._allow_unlock:

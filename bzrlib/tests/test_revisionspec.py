@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import datetime
 import os
@@ -23,6 +23,7 @@ from bzrlib import (
     bzrdir,
     errors,
     repository,
+    revision as _mod_revision,
     )
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.revisionspec import (
@@ -73,21 +74,67 @@ class TestRevisionSpec(TestCaseWithTransport):
                          ' %r != %r'
                          % (revision_spec, exp_revision_id, rev_info.rev_id))
 
-    def assertInvalid(self, revision_spec, extra=''):
+    def assertInvalid(self, revision_spec, extra='',
+                      invalid_as_revision_id=True):
         try:
             self.get_in_history(revision_spec)
         except errors.InvalidRevisionSpec, e:
             self.assertEqual(revision_spec, e.spec)
             self.assertEqual(extra, e.extra)
         else:
-            self.fail('Expected InvalidRevisionSpec to be raised for %s'
-                      % (revision_spec,))
+            self.fail('Expected InvalidRevisionSpec to be raised for'
+                      ' %r.in_history' % (revision_spec,))
+        if invalid_as_revision_id:
+            try:
+                spec = RevisionSpec.from_string(revision_spec)
+                spec.as_revision_id(self.tree.branch)
+            except errors.InvalidRevisionSpec, e:
+                self.assertEqual(revision_spec, e.spec)
+                self.assertEqual(extra, e.extra)
+            else:
+                self.fail('Expected InvalidRevisionSpec to be raised for'
+                          ' %r.as_revision_id' % (revision_spec,))
 
     def assertAsRevisionId(self, revision_id, revision_spec):
         """Calling as_revision_id() should return the specified id."""
         spec = RevisionSpec.from_string(revision_spec)
         self.assertEqual(revision_id,
                          spec.as_revision_id(self.tree.branch))
+
+    def get_as_tree(self, revision_spec, tree=None):
+        if tree is None:
+            tree = self.tree
+        spec = RevisionSpec.from_string(revision_spec)
+        return spec.as_tree(tree.branch)
+
+
+class RevisionSpecMatchOnTrap(RevisionSpec):
+
+    def _match_on(self, branch, revs):
+        self.last_call = (branch, revs)
+        return super(RevisionSpecMatchOnTrap, self)._match_on(branch, revs)
+
+
+class TestRevisionSpecBase(TestRevisionSpec):
+
+    def test_wants_revision_history(self):
+        # If wants_revision_history = True, then _match_on should get the
+        # branch revision history
+        spec = RevisionSpecMatchOnTrap('foo', _internal=True)
+        spec.in_history(self.tree.branch)
+
+        self.assertEqual((self.tree.branch, ['r1' ,'r2']),
+                         spec.last_call)
+
+    def test_wants_no_revision_history(self):
+        # If wants_revision_history = False, then _match_on should get None for
+        # the branch revision history
+        spec = RevisionSpecMatchOnTrap('foo', _internal=True)
+        spec.wants_revision_history = False
+        spec.in_history(self.tree.branch)
+
+        self.assertEqual((self.tree.branch, None), spec.last_call)
+
 
 
 class TestOddRevisionSpec(TestRevisionSpec):
@@ -99,24 +146,49 @@ class TestOddRevisionSpec(TestRevisionSpec):
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
-    def test_unregistered_spec(self):
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, 'foo')
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, '123a')
 
+class TestRevisionSpec_dwim(TestRevisionSpec):
 
+    # Don't need to test revno's explicitly since TRS_revno already
+    # covers that well for us
+    def test_dwim_spec_revno(self):
+        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertAsRevisionId('alt_r2', '1.1.1')
 
-class TestRevnoFromString(TestCase):
+    def test_dwim_spec_revid(self):
+        self.assertInHistoryIs(2, 'r2', 'r2')
 
-    def test_from_string_dotted_decimal(self):
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '-1.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.2..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.')
-        self.assertIsInstance(RevisionSpec.from_string('1.1'), RevisionSpec_revno)
-        self.assertIsInstance(RevisionSpec.from_string('1.1.3'), RevisionSpec_revno)
+    def test_dwim_spec_tag(self):
+        self.tree.branch.tags.set_tag('footag', 'r1')
+        self.assertAsRevisionId('r1', 'footag')
+        self.tree.branch.tags.delete_tag('footag')
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          self.get_in_history, 'footag')
+
+    def test_dwim_spec_tag_that_looks_like_revno(self):
+        # Test that we slip past revno with things that look like revnos,
+        # but aren't.  Tags are convenient for testing this since we can
+        # make them look however we want.
+        self.tree.branch.tags.set_tag('3', 'r2')
+        self.assertAsRevisionId('r2', '3')
+        self.build_tree(['tree/b'])
+        self.tree.add(['b'])
+        self.tree.commit('b', rev_id='r3')
+        self.assertAsRevisionId('r3', '3')
+
+    def test_dwim_spec_date(self):
+        self.assertAsRevisionId('r1', 'today')
+
+    def test_dwim_spec_branch(self):
+        self.assertInHistoryIs(None, 'alt_r2', 'tree2')
+
+    def test_dwim_spec_nonexistent(self):
+        self.assertInvalid('somethingrandom', invalid_as_revision_id=False)
+        self.assertInvalid('-1.1', invalid_as_revision_id=False)
+        self.assertInvalid('.1', invalid_as_revision_id=False)
+        self.assertInvalid('1..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.2..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.', invalid_as_revision_id=False)
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
@@ -129,6 +201,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
 
     def test_dotted_decimal(self):
         self.assertInHistoryIs(None, 'alt_r2', '1.1.1')
+        self.assertInvalid('1.1.123')
 
     def test_negative_int(self):
         self.assertInHistoryIs(2, 'r2', '-1')
@@ -228,7 +301,7 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         """Old revno:N:path tests"""
         wta = self.make_branch_and_tree('a')
         ba = wta.branch
-        
+
         wta.commit('Commit one', rev_id='a@r-0-1')
         wta.commit('Commit two', rev_id='a@r-0-2')
         wta.commit('Commit three', rev_id='a@r-0-3')
@@ -260,17 +333,31 @@ class TestRevisionSpec_revno(TestRevisionSpec):
         self.assertAsRevisionId('r2', '-1')
         self.assertAsRevisionId('alt_r2', '1.1.1')
 
+    def test_as_tree(self):
+        tree = self.get_as_tree('0')
+        self.assertEquals(_mod_revision.NULL_REVISION, tree.get_revision_id())
+        tree = self.get_as_tree('1')
+        self.assertEquals('r1', tree.get_revision_id())
+        tree = self.get_as_tree('2')
+        self.assertEquals('r2', tree.get_revision_id())
+        tree = self.get_as_tree('-2')
+        self.assertEquals('r1', tree.get_revision_id())
+        tree = self.get_as_tree('-1')
+        self.assertEquals('r2', tree.get_revision_id())
+        tree = self.get_as_tree('1.1.1')
+        self.assertEquals('alt_r2', tree.get_revision_id())
+
 
 class TestRevisionSpec_revid(TestRevisionSpec):
-    
+
     def test_in_history(self):
         # We should be able to access revisions that are directly
         # in the history.
         self.assertInHistoryIs(1, 'r1', 'revid:r1')
         self.assertInHistoryIs(2, 'r2', 'revid:r2')
-        
+
     def test_missing(self):
-        self.assertInvalid('revid:r3')
+        self.assertInvalid('revid:r3', invalid_as_revision_id=False)
 
     def test_merged(self):
         """We can reach revisions in the ancestry"""
@@ -279,7 +366,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
     def test_not_here(self):
         self.tree2.commit('alt third', rev_id='alt_r3')
         # It exists in tree2, but not in tree
-        self.assertInvalid('revid:alt_r3')
+        self.assertInvalid('revid:alt_r3', invalid_as_revision_id=False)
 
     def test_in_repository(self):
         """We can get any revision id in the repository"""
@@ -375,7 +462,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
 
 
 class TestRevisionSpec_tag(TestRevisionSpec):
-    
+
     def make_branch_and_tree(self, relpath):
         # override format as the default one may not support tags
         return TestRevisionSpec.make_branch_and_tree(
@@ -447,7 +534,7 @@ class TestRevisionSpec_date(TestRevisionSpec):
 
 
 class TestRevisionSpec_ancestor(TestRevisionSpec):
-    
+
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
@@ -483,7 +570,7 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
         self.assertRaises(errors.NoCommits,
                           spec_in_history, 'ancestor:new_tree',
                                            self.tree.branch)
-                        
+
         self.assertRaises(errors.NoCommits,
                           spec_in_history, 'ancestor:tree',
                                            new_tree.branch)
@@ -491,9 +578,20 @@ class TestRevisionSpec_ancestor(TestRevisionSpec):
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'ancestor:tree2')
 
+    def test_default(self):
+        # We don't have a parent to default to
+        self.assertRaises(errors.NotBranchError, self.get_in_history,
+                          'ancestor:')
+
+        # Create a branch with a parent to default to
+        tree3 = self.tree.bzrdir.sprout('tree3').open_workingtree()
+        tree3.commit('foo', rev_id='r3')
+        self.tree = tree3
+        self.assertInHistoryIs(2, 'r2', 'ancestor:')
+
 
 class TestRevisionSpec_branch(TestRevisionSpec):
-    
+
     def test_non_exact_branch(self):
         # It seems better to require an exact path to the branch
         # Branch.open() rather than using Branch.open_containing()
@@ -524,9 +622,16 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         new_tree = self.make_branch_and_tree('new_tree')
         self.assertRaises(errors.NoCommits,
                           self.get_in_history, 'branch:new_tree')
+        self.assertRaises(errors.NoCommits,
+                          self.get_as_tree, 'branch:new_tree')
 
     def test_as_revision_id(self):
         self.assertAsRevisionId('alt_r2', 'branch:tree2')
+
+    def test_as_tree(self):
+        tree = self.get_as_tree('branch:tree', self.tree2)
+        self.assertEquals('r2', tree.get_revision_id())
+        self.assertFalse(self.tree2.branch.repository.has_revision('r2'))
 
 
 class TestRevisionSpec_submit(TestRevisionSpec):

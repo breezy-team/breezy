@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Benchmarks of bzr commit."""
 
@@ -76,6 +76,6 @@ class CommitBenchmark(Benchmark):
         self.time(self.run_bzr, ['commit', '-m', 'init simple tree'])
 
     def test_cmd_commit_subprocess(self):
-        """Text startup and execution of a simple commit.""" 
+        """Text startup and execution of a simple commit."""
         tree = self.make_simple_tree()
         self.time(self.run_bzr_subprocess, 'commit', '-m', 'init simple tree')

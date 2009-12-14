@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Benchmarks for pack performance"""
 
@@ -28,8 +28,8 @@ class BenchPack(Benchmark):
     """Benchmark pack performance."""
 
     def test_insert_one_gig_1k_chunks_no_names_disk(self):
-        # test real disk writing of many small chunks. 
-        # useful for testing whether buffer sizes are right 
+        # test real disk writing of many small chunks.
+        # useful for testing whether buffer sizes are right
         transport = self.get_transport()
         stream = transport.open_write_stream('pack.pack')
         writer = pack.ContainerWriter(stream.write)

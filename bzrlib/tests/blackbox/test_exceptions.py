@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for display of exceptions."""
 
@@ -33,23 +33,6 @@ from bzrlib.errors import NotBranchError
 
 class TestExceptionReporting(TestCase):
 
-    def test_report_exception(self):
-        """When an error occurs, display bug report details to stderr"""
-        try:
-            raise AssertionError("failed")
-        except AssertionError, e:
-            erf = StringIO()
-            trace.report_exception(sys.exc_info(), erf)
-        err = erf.getvalue()
-        self.assertContainsRe(err,
-            r'bzr: ERROR: exceptions\.AssertionError: failed\n')
-        self.assertContainsRe(err,
-            r'Please report a bug at https://bugs\.launchpad\.net/bzr/\+filebug')
-        self.assertContainsRe(err,
-            '(?m)^encoding: .*, fsenc: .*, lang: .*')
-        self.assertContainsRe(err,
-            '(?m)^plugins:$')
-
     def test_exception_exitcode(self):
         # we must use a subprocess, because the normal in-memory mechanism
         # allows errors to propagate up through the test suite
@@ -58,9 +41,9 @@ class TestExceptionReporting(TestCase):
             retcode=errors.EXIT_INTERNAL_ERROR)
         self.assertEqual(4, errors.EXIT_INTERNAL_ERROR)
         self.assertContainsRe(err,
-                r'bzr: ERROR: exceptions\.AssertionError: always fails\n')
-        self.assertContainsRe(err, r'Please report a bug at')
-    
+                r'exceptions\.AssertionError: always fails\n')
+        self.assertContainsRe(err, r'Bazaar has encountered an internal error')
+
 
 class TestDeprecationWarning(TestCaseInTempDir):
 

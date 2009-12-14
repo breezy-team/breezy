@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for plugins"""
 
@@ -26,12 +26,15 @@ from StringIO import StringIO
 import sys
 import zipfile
 
-from bzrlib import plugin, tests
+from bzrlib import (
+    osutils,
+    plugin,
+    tests,
+    )
 import bzrlib.plugin
 import bzrlib.plugins
 import bzrlib.commands
 import bzrlib.help
-from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import (
     TestCase,
     TestCaseInTempDir,
@@ -71,7 +74,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -119,7 +122,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
-        # write plugins that will record when they are loaded in the 
+        # write plugins that will record when they are loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -171,7 +174,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
         self.failUnless(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
-        # write a plugin that will record when its loaded in the 
+        # write a plugin that will record when its loaded in the
         # tempattribute list.
         template = ("from bzrlib.tests.test_plugins import TestLoadingPlugins\n"
                     "TestLoadingPlugins.activeattributes[%r].append('%s')\n")
@@ -193,29 +196,59 @@ class TestLoadingPlugins(TestCaseInTempDir):
                 del bzrlib.plugins.ts_plugin
         self.failIf(getattr(bzrlib.plugins, 'ts_plugin', None))
 
-    def test_plugin_with_bad_name_does_not_load(self):
-        # Create badly-named plugin
-        file('bzr-bad plugin-name..py', 'w').close()
+    def load_and_capture(self, name):
+        """Load plugins from '.' capturing the output.
 
+        :param name: The name of the plugin.
+        :return: A string with the log from the plugin loading call.
+        """
         # Capture output
         stream = StringIO()
-        handler = logging.StreamHandler(stream)
-        log = logging.getLogger('bzr')
-        log.addHandler(handler)
+        try:
+            handler = logging.StreamHandler(stream)
+            log = logging.getLogger('bzr')
+            log.addHandler(handler)
+            try:
+                try:
+                    bzrlib.plugin.load_from_path(['.'])
+                finally:
+                    if 'bzrlib.plugins.%s' % name in sys.modules:
+                        del sys.modules['bzrlib.plugins.%s' % name]
+                    if getattr(bzrlib.plugins, name, None):
+                        delattr(bzrlib.plugins, name)
+            finally:
+                # Stop capturing output
+                handler.flush()
+                handler.close()
+                log.removeHandler(handler)
+            return stream.getvalue()
+        finally:
+            stream.close()
 
-        bzrlib.plugin.load_from_dir('.')
+    def test_plugin_with_bad_api_version_reports(self):
+        # This plugin asks for bzrlib api version 1.0.0, which is not supported
+        # anymore.
+        name = 'wants100.py'
+        f = file(name, 'w')
+        try:
+            f.write("import bzrlib.api\n"
+                "bzrlib.api.require_any_api(bzrlib, [(1, 0, 0)])\n")
+        finally:
+            f.close()
 
-        # Stop capturing output
-        handler.flush()
-        handler.close()
-        log.removeHandler(handler)
+        log = self.load_and_capture(name)
+        self.assertContainsRe(log,
+            r"It requested API version")
 
-        self.assertContainsRe(stream.getvalue(),
+    def test_plugin_with_bad_name_does_not_load(self):
+        # The file name here invalid for a python module.
+        name = 'bzr-bad plugin-name..py'
+        file(name, 'w').close()
+        log = self.load_and_capture(name)
+        self.assertContainsRe(log,
             r"Unable to load 'bzr-bad plugin-name\.' in '\.' as a plugin "
             "because the file path isn't a valid module name; try renaming "
             "it to 'bad_plugin_name_'\.")
-
-        stream.close()
 
 
 class TestPlugins(TestCaseInTempDir):
@@ -228,7 +261,7 @@ class TestPlugins(TestCaseInTempDir):
         file('plugin.py', 'w').write(source + '\n')
         self.addCleanup(self.teardown_plugin)
         bzrlib.plugin.load_from_path(['.'])
-    
+
     def teardown_plugin(self):
         # remove the plugin 'plugin'
         if 'bzrlib.plugins.plugin' in sys.modules:
@@ -323,15 +356,55 @@ def load_tests(standard_tests, module, loader):
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("unknown", plugin.__version__)
 
-    def test___version__with_version_info(self):
+    def test_str__version__with_version_info(self):
+        self.setup_plugin("version_info = '1.2.3'")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3", plugin.__version__)
+
+    def test_noniterable__version__with_version_info(self):
+        self.setup_plugin("version_info = (1)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1", plugin.__version__)
+
+    def test_1__version__with_version_info(self):
+        self.setup_plugin("version_info = (1,)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1", plugin.__version__)
+
+    def test_1_2__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2", plugin.__version__)
+
+    def test_1_2_3__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3", plugin.__version__)
+
+    def test_candidate__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'candidate', 1)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3rc1", plugin.__version__)
+
+    def test_dev__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'dev', 0)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3dev", plugin.__version__)
+
+    def test_dev_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'dev', 4)")
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("1.2.3dev4", plugin.__version__)
 
     def test_final__version__with_version_info(self):
-        self.setup_plugin("version_info = (1, 2, 3, 'final', 4)")
+        self.setup_plugin("version_info = (1, 2, 3, 'final', 0)")
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual("1.2.3", plugin.__version__)
+
+    def test_final_fallback__version__with_version_info(self):
+        self.setup_plugin("version_info = (1, 2, 3, 'final', 2)")
+        plugin = bzrlib.plugin.plugins()['plugin']
+        self.assertEqual("1.2.3.final.2", plugin.__version__)
 
 
 class TestPluginHelp(TestCaseInTempDir):
@@ -339,7 +412,8 @@ class TestPluginHelp(TestCaseInTempDir):
     def split_help_commands(self):
         help = {}
         current = None
-        for line in self.run_bzr('help commands')[0].splitlines():
+        out, err = self.run_bzr('--no-plugins help commands')
+        for line in out.splitlines():
             if not line.startswith(' '):
                 current = line.split()[0]
             help[current] = help.get(current, '') + line
@@ -382,79 +456,11 @@ class TestPluginHelp(TestCaseInTempDir):
             self.assertContainsRe(help, '\[myplug\]')
         finally:
             # unregister command
-            if bzrlib.commands.plugin_cmds.get('myplug', None):
-                del bzrlib.commands.plugin_cmds['myplug']
+            if 'myplug' in bzrlib.commands.plugin_cmds:
+                bzrlib.commands.plugin_cmds.remove('myplug')
             # remove the plugin 'myplug'
             if getattr(bzrlib.plugins, 'myplug', None):
                 delattr(bzrlib.plugins, 'myplug')
-
-
-class TestPluginFromZip(TestCaseInTempDir):
-
-    def make_zipped_plugin(self, zip_name, filename):
-        z = zipfile.ZipFile(zip_name, 'w')
-        z.writestr(filename, PLUGIN_TEXT)
-        z.close()
-
-    def check_plugin_load(self, zip_name, plugin_name):
-        self.assertFalse(plugin_name in dir(bzrlib.plugins),
-                         'Plugin already loaded')
-        old_path = bzrlib.plugins.__path__
-        try:
-            # this is normally done by load_plugins -> set_plugins_path
-            bzrlib.plugins.__path__ = [zip_name]
-            self.applyDeprecated(one_three,
-                bzrlib.plugin.load_from_zip, zip_name)
-            self.assertTrue(plugin_name in dir(bzrlib.plugins),
-                            'Plugin is not loaded')
-        finally:
-            # unregister plugin
-            if getattr(bzrlib.plugins, plugin_name, None):
-                delattr(bzrlib.plugins, plugin_name)
-                del sys.modules['bzrlib.plugins.' + plugin_name]
-            bzrlib.plugins.__path__ = old_path
-
-    def test_load_module(self):
-        self.make_zipped_plugin('./test.zip', 'ziplug.py')
-        self.check_plugin_load('./test.zip', 'ziplug')
-
-    def test_load_package(self):
-        self.make_zipped_plugin('./test.zip', 'ziplug/__init__.py')
-        self.check_plugin_load('./test.zip', 'ziplug')
-
-
-class TestSetPluginsPath(TestCase):
-    
-    def test_set_plugins_path(self):
-        """set_plugins_path should set the module __path__ correctly."""
-        old_path = bzrlib.plugins.__path__
-        try:
-            bzrlib.plugins.__path__ = []
-            expected_path = bzrlib.plugin.set_plugins_path()
-            self.assertEqual(expected_path, bzrlib.plugins.__path__)
-        finally:
-            bzrlib.plugins.__path__ = old_path
-
-    def test_set_plugins_path_with_trailing_slashes(self):
-        """set_plugins_path should set the module __path__ based on
-        BZR_PLUGIN_PATH."""
-        old_path = bzrlib.plugins.__path__
-        old_env = os.environ.get('BZR_PLUGIN_PATH')
-        try:
-            bzrlib.plugins.__path__ = []
-            os.environ['BZR_PLUGIN_PATH'] = "first\\//\\" + os.pathsep + \
-                "second/\\/\\/"
-            bzrlib.plugin.set_plugins_path()
-            expected_path = ['first', 'second',
-                os.path.dirname(bzrlib.plugins.__file__)]
-            self.assertEqual(expected_path,
-                bzrlib.plugins.__path__[:len(expected_path)])
-        finally:
-            bzrlib.plugins.__path__ = old_path
-            if old_env is not None:
-                os.environ['BZR_PLUGIN_PATH'] = old_env
-            else:
-                del os.environ['BZR_PLUGIN_PATH']
 
 
 class TestHelpIndex(tests.TestCase):
@@ -563,3 +569,174 @@ class TestModuleHelpTopic(tests.TestCase):
         mod = FakeModule('two lines of help\nand more', 'bzrlib.plugins.foo_bar')
         topic = plugin.ModuleHelpTopic(mod)
         self.assertEqual('foo_bar', topic.get_help_topic())
+
+
+class TestLoadFromPath(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestLoadFromPath, self).setUp()
+        # Save the attributes that we're about to monkey-patch.
+        old_plugins_path = bzrlib.plugins.__path__
+        old_loaded = plugin._loaded
+        old_load_from_path = plugin.load_from_path
+
+        def restore():
+            bzrlib.plugins.__path__ = old_plugins_path
+            plugin._loaded = old_loaded
+            plugin.load_from_path = old_load_from_path
+
+        self.addCleanup(restore)
+
+        # Change bzrlib.plugin to think no plugins have been loaded yet.
+        bzrlib.plugins.__path__ = []
+        plugin._loaded = False
+
+        # Monkey-patch load_from_path to stop it from actually loading anything.
+        def load_from_path(dirs):
+            pass
+        plugin.load_from_path = load_from_path
+
+    def test_set_plugins_path_with_args(self):
+        plugin.set_plugins_path(['a', 'b'])
+        self.assertEqual(['a', 'b'], bzrlib.plugins.__path__)
+
+    def test_set_plugins_path_defaults(self):
+        plugin.set_plugins_path()
+        self.assertEqual(plugin.get_standard_plugins_path(),
+                         bzrlib.plugins.__path__)
+
+    def test_get_standard_plugins_path(self):
+        path = plugin.get_standard_plugins_path()
+        for directory in path:
+            self.assertNotContainsRe(directory, r'\\/$')
+        try:
+            from distutils.sysconfig import get_python_lib
+        except ImportError:
+            pass
+        else:
+            if sys.platform != 'win32':
+                python_lib = get_python_lib()
+                for directory in path:
+                    if directory.startswith(python_lib):
+                        break
+                else:
+                    self.fail('No path to global plugins')
+
+    def test_get_standard_plugins_path_env(self):
+        os.environ['BZR_PLUGIN_PATH'] = 'foo/'
+        path = plugin.get_standard_plugins_path()
+        for directory in path:
+            self.assertNotContainsRe(directory, r'\\/$')
+
+    def test_load_plugins(self):
+        plugin.load_plugins(['.'])
+        self.assertEqual(bzrlib.plugins.__path__, ['.'])
+        # subsequent loads are no-ops
+        plugin.load_plugins(['foo'])
+        self.assertEqual(bzrlib.plugins.__path__, ['.'])
+
+    def test_load_plugins_default(self):
+        plugin.load_plugins()
+        path = plugin.get_standard_plugins_path()
+        self.assertEqual(path, bzrlib.plugins.__path__)
+
+
+class TestEnvPluginPath(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        super(TestEnvPluginPath, self).setUp()
+        old_default = plugin.DEFAULT_PLUGIN_PATH
+
+        def restore():
+            plugin.DEFAULT_PLUGIN_PATH = old_default
+
+        self.addCleanup(restore)
+
+        plugin.DEFAULT_PLUGIN_PATH = None
+
+        self.user = plugin.get_user_plugin_path()
+        self.site = plugin.get_site_plugin_path()
+        self.core = plugin.get_core_plugin_path()
+
+    def _list2paths(self, *args):
+        paths = []
+        for p in args:
+            plugin._append_new_path(paths, p)
+        return paths
+
+    def _set_path(self, *args):
+        path = os.pathsep.join(self._list2paths(*args))
+        osutils.set_or_unset_env('BZR_PLUGIN_PATH', path)
+
+    def check_path(self, expected_dirs, setting_dirs):
+        if setting_dirs:
+            self._set_path(*setting_dirs)
+        actual = plugin.get_standard_plugins_path()
+        self.assertEquals(self._list2paths(*expected_dirs), actual)
+
+    def test_default(self):
+        self.check_path([self.user, self.core, self.site],
+                        None)
+
+    def test_adhoc_policy(self):
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+core', '+site'])
+
+    def test_fallback_policy(self):
+        self.check_path([self.core, self.site, self.user],
+                        ['+core', '+site', '+user'])
+
+    def test_override_policy(self):
+        self.check_path([self.user, self.site, self.core],
+                        ['+user', '+site', '+core'])
+
+    def test_disable_user(self):
+        self.check_path([self.core, self.site], ['-user'])
+
+    def test_disable_user_twice(self):
+        # Ensures multiple removals don't left cruft
+        self.check_path([self.core, self.site], ['-user', '-user'])
+
+    def test_duplicates_are_removed(self):
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+user'])
+        # And only the first reference is kept (since the later references will
+        # onnly produce <plugin> already loaded mutters)
+        self.check_path([self.user, self.core, self.site],
+                        ['+user', '+user', '+core',
+                         '+user', '+site', '+site',
+                         '+core'])
+
+    def test_disable_overrides_disable(self):
+        self.check_path([self.core, self.site], ['-user', '+user'])
+
+    def test_disable_core(self):
+        self.check_path([self.site], ['-core'])
+        self.check_path([self.user, self.site], ['+user', '-core'])
+
+    def test_disable_site(self):
+        self.check_path([self.core], ['-site'])
+        self.check_path([self.user, self.core], ['-site', '+user'])
+
+    def test_override_site(self):
+        self.check_path(['mysite', self.user, self.core],
+                        ['mysite', '-site', '+user'])
+        self.check_path(['mysite', self.core],
+                        ['mysite', '-site'])
+
+    def test_override_core(self):
+        self.check_path(['mycore', self.user, self.site],
+                        ['mycore', '-core', '+user', '+site'])
+        self.check_path(['mycore', self.site],
+                        ['mycore', '-core'])
+
+    def test_my_plugin_only(self):
+        self.check_path(['myplugin'], ['myplugin', '-user', '-core', '-site'])
+
+    def test_my_plugin_first(self):
+        self.check_path(['myplugin', self.core, self.site, self.user],
+                        ['myplugin', '+core', '+site', '+user'])
+
+    def test_bogus_references(self):
+        self.check_path(['+foo', '-bar', self.core, self.site],
+                        ['+foo', '-bar'])

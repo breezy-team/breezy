@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,14 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Serializer factory for reading and writing bundles.
 """
 
 import os
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.bundle.serializer import (BundleSerializer,
                                       _get_bundle_header,
                                      )
@@ -27,9 +30,7 @@ from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
-from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
     format_highres_date,
@@ -119,12 +120,11 @@ class BundleSerializerV08(BundleSerializer):
         source.lock_read()
         try:
             self._write_main_header()
-            pb = DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
                 self._write_revisions(pb)
             finally:
-                pass
-                #pb.finished()
+                pb.finished()
         finally:
             source.unlock()
 
@@ -183,7 +183,7 @@ class BundleSerializerV08(BundleSerializer):
 
         i_max = len(self.revision_ids)
         for i, rev_id in enumerate(self.revision_ids):
-            pb.update("Generating revsion data", i, i_max)
+            pb.update("Generating revision data", i, i_max)
             rev = self.source.get_revision(rev_id)
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree
@@ -206,17 +206,17 @@ class BundleSerializerV08(BundleSerializer):
             else:
                 base_tree = self.source.revision_tree(base_id)
             force_binary = (i != 0)
-            self._write_revision(rev, rev_tree, base_id, base_tree, 
+            self._write_revision(rev, rev_tree, base_id, base_tree,
                                  explicit_base, force_binary)
 
             last_rev_id = base_id
             last_rev_tree = base_tree
 
     def _testament_sha1(self, revision_id):
-        return StrictTestament.from_revision(self.source, 
+        return StrictTestament.from_revision(self.source,
                                              revision_id).as_sha1()
 
-    def _write_revision(self, rev, rev_tree, base_rev, base_tree, 
+    def _write_revision(self, rev, rev_tree, base_rev, base_tree,
                         explicit_base, force_binary):
         """Write out the information for a revision."""
         def w(key, value):
@@ -241,7 +241,7 @@ class BundleSerializerV08(BundleSerializer):
             for name, value in sorted(rev.properties.items()):
                 self._write(name, value, indent=3,
                             trailing_space_when_empty=True)
-        
+
         # Add an extra blank space at the end
         self.to_file.write('\n')
 
@@ -254,7 +254,7 @@ class BundleSerializerV08(BundleSerializer):
         self.to_file.write(' // '.join(p_texts).encode('utf-8'))
         self.to_file.write('\n')
 
-    def _write_delta(self, new_tree, old_tree, default_revision_id, 
+    def _write_delta(self, new_tree, old_tree, default_revision_id,
                      force_binary):
         """Write out the changes between the trees."""
         DEVNULL = '/dev/null'
@@ -277,14 +277,14 @@ class BundleSerializerV08(BundleSerializer):
                 old_lines = tree_lines(old_tree, require_text=True)
                 new_lines = tree_lines(new_tree, require_text=True)
                 action.write(self.to_file)
-                internal_diff(old_path, old_lines, new_path, new_lines, 
+                internal_diff(old_path, old_lines, new_path, new_lines,
                               self.to_file)
             except errors.BinaryFile:
                 old_lines = tree_lines(old_tree, require_text=False)
                 new_lines = tree_lines(new_tree, require_text=False)
                 action.add_property('encoding', 'base64')
                 action.write(self.to_file)
-                binary_diff(old_path, old_lines, new_path, new_lines, 
+                binary_diff(old_path, old_lines, new_path, new_lines,
                             self.to_file)
 
         def finish_action(action, file_id, kind, meta_modified, text_modified,
@@ -308,7 +308,7 @@ class BundleSerializerV08(BundleSerializer):
 
         for path, file_id, kind in delta.added:
             action = Action('added', [kind, path], [('file-id', file_id)])
-            meta_modified = (kind=='file' and 
+            meta_modified = (kind=='file' and
                              new_tree.is_executable(file_id))
             finish_action(action, file_id, kind, meta_modified, True,
                           DEVNULL, path)
@@ -332,7 +332,7 @@ class BundleSerializerV08(BundleSerializer):
                 continue
             old_rev = getattr(old_tree.inventory[ie.file_id], 'revision', None)
             if new_rev != old_rev:
-                action = Action('modified', [ie.kind, 
+                action = Action('modified', [ie.kind,
                                              new_tree.id2path(ie.file_id)])
                 action.add_utf8_property('last-changed', ie.revision)
                 action.write(self.to_file)
@@ -350,7 +350,7 @@ class BundleReader(object):
         object.__init__(self)
         self.from_file = iter(from_file)
         self._next_line = None
-        
+
         self.info = self._get_info()
         # We put the actual inventory ids in the footer, so that the patch
         # is easier to read for humans.
@@ -461,7 +461,7 @@ class BundleReader(object):
         else:
             # What do we do with a key we don't recognize
             raise errors.MalformedHeader('Unknown Key: "%s"' % key)
-    
+
     def _read_many(self, indent):
         """If a line ends with no entry, that means that it should be
         followed with multiple lines of values.
@@ -504,7 +504,7 @@ class BundleReader(object):
             elif line.startswith('... '):
                 action += line[len('... '):-1].decode('utf-8')
 
-            if (self._next_line is not None and 
+            if (self._next_line is not None and
                 self._next_line.startswith('===')):
                 return action, lines, True
             elif self._next_line is None or self._next_line.startswith('#'):
@@ -516,7 +516,7 @@ class BundleReader(object):
                 lines.append(line)
 
         return action, lines, False
-            
+
     def _read_patches(self):
         do_continue = True
         revision_actions = []
