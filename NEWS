@@ -95,7 +95,7 @@ Bug Fixes
   branch, not just from the root of the branch. 
   (Neil Martinsen-Burrell, #489102)
 
-* ``bzr switch`` can now create branches that are located using directory
+* ``bzr switch -b`` can now create branches that are located using directory
   services such as ``lp:``, even when the branch name doesn't contain a
   '/'.  (Neil Martinsen-Burrell, #495263)
 
