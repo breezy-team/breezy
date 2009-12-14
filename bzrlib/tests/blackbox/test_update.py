@@ -18,11 +18,12 @@
 
 """Tests for the update command of bzr."""
 
-import os
+import os, re
 
 from bzrlib import branch, bzrdir
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.workingtree import WorkingTree
+from bzrlib.osutils import pathjoin
 
 
 class TestUpdate(ExternalBase):
@@ -31,7 +32,7 @@ class TestUpdate(ExternalBase):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('update')
         self.assertContainsRe(err, 'Tree is up to date at revision 0'
-                                   ' of branch .*.')
+                                   ' of branch %s.' % re.escape(self.test_dir))
         self.assertEqual('', out)
 
     def test_update_quiet(self):
@@ -44,23 +45,25 @@ class TestUpdate(ExternalBase):
         self.make_branch_and_tree('.')
         out, err = self.run_bzr('up')
         self.assertContainsRe(err, 'Tree is up to date at revision 0'
-                                   ' of branch .*.')
+                                   ' of branch %s.' % re.escape(self.test_dir))
         self.assertEqual('', out)
 
     def test_update_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('checkout --lightweight branch checkout')
         out, err = self.run_bzr('update checkout')
+        branch_path = pathjoin(self.test_dir, 'branch/')
         self.assertContainsRe(err, 'Tree is up to date at revision 0'
-                                   ' of branch .*.')
+                                   ' of branch %s.' % re.escape(branch_path))
         self.assertEqual('', out)
 
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('checkout branch checkout')
         out, err = self.run_bzr('update checkout')
+        branch_path = pathjoin(self.test_dir, 'branch/')
         self.assertContainsRe(err, 'Tree is up to date at revision 0'
-                                   ' of branch .*.')
+                                   ' of branch %s.' % re.escape(branch_path))
         self.assertEqual('', out)
 
     def test_update_out_of_date_standalone_tree(self):
@@ -77,7 +80,9 @@ class TestUpdate(ExternalBase):
         self.assertEqual('', out)
         self.assertContainsRe(err, '\+N  file')
         self.assertContainsRe(err, 'All changes applied successfully.')
-        self.assertContainsRe(err, 'Updated to revision 1 of branch .*.')
+        branch_path = pathjoin(self.test_dir, 'branch/')
+        self.assertContainsRe(err, 'Updated to revision 1 of branch %s.' %
+                                    re.escape(branch_path))
         self.failUnlessExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
@@ -92,7 +97,9 @@ class TestUpdate(ExternalBase):
         out,err = self.run_bzr('update checkout2')
         self.assertContainsRe(err, '\+N  file')
         self.assertContainsRe(err, r'All changes applied successfully\.')
-        self.assertContainsRe(err, r'Updated to revision 1 of branch .*.')
+        branch_path = pathjoin(self.test_dir, 'branch/')
+        self.assertContainsRe(err, r'Updated to revision 1 of branch %s.' %
+                                     re.escape(branch_path))
         self.assertEqual('', out)
 
     def test_update_conflicts_returns_2(self):
@@ -116,7 +123,9 @@ class TestUpdate(ExternalBase):
         out,err = self.run_bzr('update checkout2', retcode=1)
         self.assertContainsRe(err, 'M  file')
         self.assertContainsRe(err, '1 conflicts encountered.')
-        self.assertContainsRe(err, 'Updated to revision 2 of branch .*.')
+        branch_path = pathjoin(self.test_dir, 'branch/')
+        self.assertContainsRe(err, 'Updated to revision 2 of branch %s.' %
+                                    re.escape(branch_path))
         self.assertContainsRe(err, 'Text conflict in file\n')
         self.assertEqual('', out)
 
@@ -156,7 +165,9 @@ class TestUpdate(ExternalBase):
         self.assertEqual('', out)
         self.assertContainsRe(err, '\+N  file')
         self.assertContainsRe(err, '\+N  file_b')
-        self.assertContainsRe(err, 'Updated to revision 1 of branch .*.')
+        branch_path = pathjoin(self.test_dir, 'master/')
+        self.assertContainsRe(err, 'Updated to revision 1 of branch %s.' %
+                                    re.escape(branch_path))
         self.assertContainsRe(err, 'Your local commits will now show as'
                                    ' pending merges')
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
@@ -205,7 +216,9 @@ class TestUpdate(ExternalBase):
         out, err = self.run_bzr('update')
         self.assertEqual('', out)
         self.assertContainsRe(err, 'All changes applied successfully.')
-        self.assertContainsRe(err, 'Updated to revision 2 of branch .*.')
+        branch_path = pathjoin(self.test_dir, 'master/')
+        self.assertContainsRe(err, 'Updated to revision 2 of branch %s.' %
+                                    re.escape(branch_path))
         self.assertContainsRe(err, r'\+N  file3')
         # The pending merges should still be there
         self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
