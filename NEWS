@@ -26,6 +26,9 @@ New Features
 * ``bzr commit`` now has a ``--commit-time`` option.
   (Alexander Sack, #459276)
 
+* New option ``bzr unshelve --keep`` applies the changes and leaves them
+  on the shelf.  (Martin Pool, Oscar Fuentes, #492091)
+
 * The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
   respect a given terminal width. This can be useful when output is
   redirected or in obscure cases where the default value is not
