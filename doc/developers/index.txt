@@ -46,6 +46,7 @@ Other documents
 .. toctree::
    :maxdepth: 1
 
+   principles
    plans
    specifications
    implementation-notes
