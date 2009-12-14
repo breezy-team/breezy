@@ -22,6 +22,17 @@ specifically tuned to be kind to tape backup methods that prefer to append to
 existing files, but they should be reasonably friendly in that regard.  (In
 many cases, they do only append to files that already exist.)
 
+Although Bazaar has a valid on-disk state at all times, backing up a live
+branch can have unintended human interactions.  In particular, a commit that
+happens during the course of a backup may not be present in the backup that
+was running when the commit was made.  This can be a problem if developers
+delete their local branches on the assumption that the branch located on the
+server is backed up.  In the event of a failure on the server before the next
+backup that starts strictly *after* the commit finishes, then that commit may
+be lost when restoring from the backup.  To avoid this possibility entirely,
+it is necessary to take the branch offline while doing the backup or to use
+a backup scheme based on Bazaar's branches: `Bound Branch Backups`_
+
 
 Bazaar as its own backup
 ------------------------
@@ -91,8 +102,9 @@ the branches on the backup server (we'll use ``bzr push``, but we could as
 easily have used ``bzr branch`` from the backup server)
 
 ::
+
   $ cd /srv/bzr/projectx/trunk
-  $ bzr push bzr+ssh://backup.example.com/var/backup//trunk
+  $ bzr push bzr+ssh://backup.example.com/var/backup/trunk
   $ cd ../feature-gui
   $ bzr push bzr+ssh://backup.example.com/var/backup/feature-gui
 
@@ -105,23 +117,14 @@ and then we need to bind the main branches to their backups
   $ cd ../feature-gui
   $ bzr bind bzr+ssh://backup.example.com/var/backup/feature-gui
 
-A branch can only be bound to a single location, so if multiple backups are
-desired, then the branches must be chained.  For example on the backup server,
-we could bind the backup branches to a separate, remote backup
-
-::
-
-  $ cd /var/backup/trunk
-  $ bzr push bzr+ssh://offsite.example.org/projectx-corp/backup/trunk
-  $ bzr bind bzr+ssh://offsite.example.org/projectx-corp/backup/trunk
-  $ cd ../feature-gui
-  $ bzr push bzr+ssh://offsite.example.org/projectx-corp/backup/feature-gui
-  $ bzr bind bzr+ssh://offsite.example.org/projectx-corp/backup/feature-gui
+A branch can only be bound to a single location, so multiple backups cannot
+be created using this method.  
 
 Using the `automirror`_ plugin mentioned under `Hooks and Plugins <hooks-plugins.html>`_, one can
 also make a push-type backup system that more naturally handles mutliple
 backups.  Simply set the ``post_commit_mirror`` option to multiple URLs
-separated by commas.  Replicating the above example would mean doing
+separated by commas.  In order to backup to the backup server and a 
+remote location, one could do
 
 ::
 
@@ -135,8 +138,63 @@ separated by commas.  Replicating the above example would mean doing
 .. _automirror: http://launchpad.net/bzr-automirror
 
 As for any push-type backup strategy that maintains consistency, the downside
-of these methods is that all of the backup commits must succeed before the
-initial commit can succeed.  If there is a long chain of bound branches, many
-mirror branches, or if the bound branch has a slow network connection, then
-the delay in the original commit may be unacceptably long.  In this case,
-pull-type backups, or a mixed system may be preferable.
+of this method is that all of the backup commits must succeed before the
+initial commit can succeed.  If there is a many mirror branches or if the bound
+branch has a slow network connection, then the delay in the original commit may
+be unacceptably long.  In this case, pull-type backups, or a mixed system may
+be preferable.
+
+
+Restoring from Backups
+----------------------
+
+Checking backup consistency
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Many a system administrator has been bitten by having a backup process,
+but when it came time to restore from backups, finding out that the backups
+themselves were flawed.  As such, it is important to check the quality of the
+backups periodically.  In Bazaar, there are two ways to do this: using the
+``bzr check`` command and by simply making a new branch from the backup.  The
+``bzr check`` command goes through all of the revisions in a branch and checks
+them for validity according to Bazaar's internal invariants.  Since it goes
+through every revision, it can be quite slow for large branches.  The other
+way to ensure that the backups can be restored from is to perform a test
+restoration.  This means performing the restoration process in a temporary
+directory.  After the restoration process, ``bzr check`` may again be relevant
+for testing the validity of the restored branches.  The following two sections
+present two restoration recipes.
+
+Restoring Filesystem Backups
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are many different backup tools with different ways of accessing the
+backup data, so we can't cover them all here.  What we will say is that
+restoring the contents of the ``/srv/bzr`` directory completely will restore
+all branches stored there to their state at the time of the backup (see
+`Filesystem Backups`_ for possible human-level concerns on backing up live branches.)  For
+example, if the backups were mounted at ``/mnt/backup/bzr`` then we could
+restore using simply::
+ 
+  $ cd /srv
+  $ mv bzr bzr.old
+  $ cp -r /mnt/backup/bzr bzr
+
+Of course, to restore only a single branch from backup, it is sufficient to
+copy only that branch.  Until the restored backup has been successfully used
+in practice, we recommend keeping the original directory available.
+
+Restoring Bazaar-based Backups
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In order to restore from backup branches, we can simply branch them into the
+appropriate location::
+
+  $ cd /srv
+  $ mv bzr bzr.old
+  $ cd bzr
+  $ bzr branch bzr+ssh://backup.example.com/var/backup/trunk
+  $ bzr branch bzr+ssh://backup.example.com/var/backup/feature-gui
+
+If there are multiple backups, then change the URL above to restore from the
+other backups.  
