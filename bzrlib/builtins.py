@@ -1404,7 +1404,8 @@ class cmd_update(Command):
         else:
             tree.lock_tree_write()
             branch_location = tree.branch.base
-        branch_location = urlutils.unescape_for_display(branch_location,
+        # get rid of the final '/' and be ready for display
+        branch_location = urlutils.unescape_for_display(branch_location[:-1],
                                                         self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
@@ -1415,8 +1416,8 @@ class cmd_update(Command):
                 if master is None or last_rev == _mod_revision.ensure_null(
                     master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d of branch %s." % 
-                         (revno, branch_location))
+                    note('Tree is up to date at revision %d of branch %s'
+                         % (revno, branch_location))
                     return 0
             view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
@@ -1424,7 +1425,7 @@ class cmd_update(Command):
                 view_info=view_info), possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d of branch %s.' %
+            note('Updated to revision %d of branch %s' %
                  (revno, branch_location))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
