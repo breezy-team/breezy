@@ -27,6 +27,11 @@ Bug Fixes
 * Content filters are now applied correctly after pull, merge and switch.
   (Ian Clatworthy, #385879)
 
+* Fix a potential segfault in the groupcompress hash map handling code.
+  When inserting new entries, if the final hash bucket was empty, we could
+  end up trying to access if ``(last_entry+1)->ptr == NULL``.
+  (John Arbash Meinel, #490228)
+
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
 
 Improvements

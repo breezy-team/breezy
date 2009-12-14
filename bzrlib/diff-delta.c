@@ -804,8 +804,8 @@ create_delta_index_from_delta(const struct source_info *src,
             old_entry--;
         }
         old_entry++;
-        if (old_entry->ptr != NULL
-            || old_entry >= old_index->hash[hash_offset + 1]) {
+        if (old_entry >= old_index->hash[hash_offset + 1]
+            || old_entry->ptr != NULL) {
             /* There is no room for this entry, we have to resize */
             // char buff[128];
             // get_text(buff, entry->ptr);
