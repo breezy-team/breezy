@@ -10,7 +10,7 @@ later versions.
 
 That said, Bazaar is constantly improving and the most recent versions are the
 most featureful and have better performance.  In particular, the Bazaar
-versions after 2.0 have significant advantages over earlier versions,
+versions 2.0 and later have significant advantages over earlier versions,
 including a more compact disk format, faster network operations and overall
 performance improvements.  With the 2.0 release, Bazaar has moved to a
 stable/development release model where the 2.x series is maintained with
@@ -18,13 +18,15 @@ bugfixes releases for six months, while simultaneously the 2.(x+1) series is
 being developed with monthly beta releases that are suitable for everyday use.
 Bazaar development has a stable trunk with an extensive test suite, so there
 is no reason to fear using the development series for everyday use, it simply
-changes more often than the stable series.
+changes more often than the stable series.  Many users do run the development
+version of Bazaar and update it regularly, including most of the Bazaar
+developers themselves.
 
 
 Software upgrades
 -----------------
 
-Upgrading the Bazaar software is as simple re-installing the Python package
+Upgrading the Bazaar software is as simple as re-installing the Python package
 using either the latest binary package for Windows or Mac OS X, the binary
 package provided by your Linux distribution, or installing from the source
 release.  See http://bazaar-vcs.org/Downloads for the latest releases for all
