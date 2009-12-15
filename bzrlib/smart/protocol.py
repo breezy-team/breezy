@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1062,6 +1062,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 class _ProtocolThreeEncoder(object):
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
+    BUFFER_SIZE = 1024*1024 # 1 MiB buffer before flushing
 
     def __init__(self, write_func):
         self._buf = []
@@ -1071,7 +1072,7 @@ class _ProtocolThreeEncoder(object):
     def _write_func(self, bytes):
         self._buf.append(bytes)
         self._buf_len += len(bytes)
-        if self._buf_len > 1*1024*1024:
+        if self._buf_len > self.BUFFER_SIZE:
             self.flush()
 
     def flush(self):
