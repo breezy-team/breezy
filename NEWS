@@ -5,11 +5,50 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0b4 (not released yet)
-##############################
+bzr 2.1.0rc1 (not released yet)
+###############################
+
+:Codename: mysterioso
+:2.1.0rc1: 2009-01-06 (expected)
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b4
+###########
 
 :Codename: san francisco airport
-:2.1.0b4: ???
+:2.1.0b4: 2009-12-14
+
+The fourth beta release in the 2.1 series brings with it a significant
+number of bugfixes (~20). The test suite is once again (finally) "green"
+on Windows, and should remain that way for future releases. There are a
+few performance related updates (faster upgrade and log), and several UI
+tweaks. There has also been a significant number of tweaks to the runtime
+documentation. 2.1.0b4 include everything from the 2.0.3 release.
+
 
 Compatibility Breaks
 ********************
@@ -117,6 +156,10 @@ Improvements
 * ``bzr update`` provides feedback on which branch it is up to date with.
   (Neil Martinsen-Burrell)
 
+* ``bzr upgrade`` from pre-2a to 2a can be significantly faster (4x).
+  For details see the xml8 patch and heads() improvements.
+  (John Arbash Meinel)
+
 * ``bzrlib.urlutils.local_path_from_url`` now accepts
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
@@ -129,6 +172,9 @@ Improvements
 
 Documentation
 *************
+
+* Lots of documentation tweaks for inline help topics and command help
+  information.
 
 API Changes
 ***********
@@ -162,17 +208,17 @@ Testing
 * TestCaseWithMemoryTransport no longer sets $HOME and $BZR_HOME to
   unicode strings. (Michael Hudson, #464174)
 
-bzr 2.0.3 (not released yet)
-############################
 
-:Codename: 
-:2.0.3: ???
+bzr 2.0.3
+#########
 
-Compatibility Breaks
-********************
+:Codename: little italy
+:2.0.3: 2009-12-14
 
-New Features
-************
+
+The third stable release of Bazaar has a small handful of bugfixes. As
+expected, this has no internal or external compatibility changes versus
+2.0.2 (or 2.0.0).
 
 Bug Fixes
 *********
@@ -190,23 +236,6 @@ Bug Fixes
   (John Arbash Meinel, #490228)
 
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
-
-Improvements
-************
-
-Documentation
-*************
-* Include Japanese translations for documentation (Inada Naoki)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 bzr 2.1.0b3
@@ -431,21 +460,6 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.0.2
