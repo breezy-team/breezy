@@ -26,6 +26,12 @@ New Features
 * ``bzr commit`` now has a ``--commit-time`` option.
   (Alexander Sack, #459276)
 
+* The ``suppresss_warnings`` configuration option has been introduced and
+  accept the ``format_deprecation`` value to disable the corresponding
+  warning for repositories. It can be set to in either ``bazaar.conf``,
+  ``locations.conf`` or ``branch.conf``.
+  (Ted Gould, Matthew Fuller, Vincent Ladeuil)
+
 Bug Fixes
 *********
 

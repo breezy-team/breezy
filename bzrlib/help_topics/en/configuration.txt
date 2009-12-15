@@ -428,11 +428,17 @@ public_branch
 A publically-accessible version of this branch (implying that this version is
 not publically-accessible).  Used (and set) by ``bzr send``.
 
-format_deprecation_warning
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+suppress_warnings
+~~~~~~~~~~~~~~~~~
 
-A boolean value as to whether the format deprecation warning is shown on
-repositories that are using deprecated formats.
+A list of strings, each string represent a warning that can be emitted by
+bzr. Mentioning a warning in this list tells bzr to not emit it.
+
+Valid values:
+
+* ``format_deprecation``:
+    whether the format deprecation warning is shown on repositories that are
+    using deprecated formats.
 
 
 Branch type specific options
