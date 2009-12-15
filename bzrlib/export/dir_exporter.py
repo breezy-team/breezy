@@ -82,7 +82,6 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
         if filtered:
             filters = tree._content_filter_stack(relpath)
             context = ContentFilterContext(relpath, tree, ie)
-            context = ContentFilterContext(relpath, tree, ie)
             chunks = filtered_output_bytes(chunks, filters, context)
         fullpath = osutils.pathjoin(dest, relpath)
         out = open(fullpath, 'wb')
