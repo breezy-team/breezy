@@ -29,9 +29,8 @@ from bzrlib import (
     transform,
     versionedfile,
     )
-from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, TextConflict
-from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
+from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
