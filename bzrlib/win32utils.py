@@ -182,7 +182,7 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
     # To avoid problem with redirecting output via pipe
-    # need to use stderr instead of stdout
+    # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
     csbi = ctypes.create_string_buffer(22)
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
@@ -631,7 +631,7 @@ def _command_line_to_argv(command_line):
     args = []
     for is_quoted, arg in s:
         if is_quoted or not glob.has_magic(arg):
-            args.append(arg.replace(u'\\', u'/'))
+            args.append(arg)
         else:
             args.extend(glob_one(arg))
     return args

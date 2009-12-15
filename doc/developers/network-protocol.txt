@@ -172,13 +172,13 @@ Version two with streamed bodies
 
 An extension to version two allows streamed bodies.  A streamed body looks
 a lot like HTTP's chunked encoding::
- 
+
   STREAMED_BODY := "chunked" NEWLINE CHUNKS TERMINATOR
   CHUNKS := CHUNK [CHUNKS]
   CHUNK := HEX_LENGTH CHUNK_CONTENT
   HEX_LENGTH := HEX_DIGITS NEWLINE
   CHUNK_CONTENT := bytes
-  
+
   TERMINATOR := SUCCESS_TERMINATOR | ERROR_TERMINATOR
   SUCCESS_TERMINATOR := 'END' NEWLINE
   ERROR_TERMINATOR := 'ERR' NEWLINE CHUNKS SUCCESS_TERMINATOR
@@ -201,7 +201,7 @@ Version three
 -------------
 
 .. note::
-  
+
   For some discussion of the requirements that led to this new protocol
   version, see `bug #83935`_.
 
@@ -226,7 +226,7 @@ The underlying message format is::
   HEADERS := LENGTH_PREFIX bencoded_dict
   END_MESSAGE := "e"
 
-  BODY := MESSAGE_PART+ 
+  BODY := MESSAGE_PART+
   MESSAGE_PART := ONE_BYTE | STRUCTURE | BYTES
   ONE_BYTE := "o" byte
   STRUCTURE := "s" LENGTH_PREFIX bencoded_structure
@@ -262,10 +262,10 @@ defined by earlier protocol versions must be encoded in this way.
 Conventional requests will send a CONTENTS of ::
 
   CONV_REQ := ARGS SINGLE_OR_STREAMED_BODY?
-  SINGLE_OR_STREAMED_BODY := BYTES 
+  SINGLE_OR_STREAMED_BODY := BYTES
         | BYTES+ TRAILER
-         
-  ARGS := STRUCTURE(argument_tuple) 
+
+  ARGS := STRUCTURE(argument_tuple)
   TRAILER := SUCCESS_STATUS | ERROR
   SUCCESS_STATUS := ONE_BYTE("S")
   ERROR := ONE_BYTE("E") STRUCTURE(argument_tuple)
@@ -276,7 +276,7 @@ Conventional responses will send CONTENTS of ::
   RESP_STATUS := ONE_BYTE("S") | ONE_BYTE("E")
 
 If the RESP_STATUS is success ("S"), the arguments are the
-method-dependent result.  
+method-dependent result.
 
 For errors (where the Status byte of a response or a streamed body is
 "E"), the situation is analagous to requests.  The first item in the
@@ -287,7 +287,7 @@ the type of error (as identified by the error name).
 Note that the streamed body from version two is now just multiple
 BYTES parts.
 
-The end of the request or response is indicated by the lower-level 
+The end of the request or response is indicated by the lower-level
 END_MESSAGE.  If there's only one BYTES element in the body, the TRAILER
 may or may not be present, depending on whether it was sent as a single
 chunk or as a stream that happens to have one element.
@@ -304,7 +304,7 @@ chunk or as a stream that happens to have one element.
   initial success and then another byte part with no intervening bytes.
   If we stop sending the final success message and only flag errors
   they'll only get one if the error is detected after streaming starts but
-  before any bytes are actually sent.  Possibly we should wait until at 
+  before any bytes are actually sent.  Possibly we should wait until at
   least the first chunk is ready before declaring success.
 
 For new methods, these sequences are just a convention and may be varied
@@ -320,12 +320,12 @@ this version are 8-bit clean.)
   be preserved in the rpc from end to end.  This may be useful when
   there's an iterator on one side feeding in to an iterator on the other,
   if it avoids doing chunking and byte-counting at two levels, and if
-  those iterators are a natural place to get good granularity.  Also, for 
+  those iterators are a natural place to get good granularity.  Also, for
   cases like ``insert_record_stream`` the server can't do much with the
   data until it gets a whole chunk, and so it'll be natural and efficient
   for it to be called with one chunk at a time.
 
-  On the other hand, there may be times when we've got some bytes from the 
+  On the other hand, there may be times when we've got some bytes from the
   network but not a full chunk, and it might be worthwhile to pass it up.
   If we promise to preserve chunks, then to do this we'd need two separate
   streaming interfaces: "we got a chunk" and "we got some bytes but not

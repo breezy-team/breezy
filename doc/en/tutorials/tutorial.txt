@@ -2,7 +2,7 @@
 .. into HTML or text.  In the future we plan to extract the example commands
 .. and automatically test them.
 
-.. This text was previously on the wiki at 
+.. This text was previously on the wiki at
 .. http://bazaar.canonical.com/IntroductionToBzr
 .. but has been moved into the source tree so it can be kept in sync with
 .. the source and possibly automatically checked.
@@ -15,15 +15,15 @@ Bazaar Tutorial
 Introduction
 ============
 
-If you are already familiar with decentralized revision control, then
+If you are already familiar with decentralized version control, then
 please feel free to skip ahead to "Introducing Yourself to Bazaar". If,
-on the other hand, you are familiar with revision control but not
-decentralized revision control, then please start at "How DRCS is
+on the other hand, you are familiar with version control but not
+decentralized version control, then please start at "How DVCS is
 different." Otherwise, get some coffee or tea, get comfortable and get
-ready to catch up. 
+ready to catch up.
 
-The purpose of revision control
-===============================
+The purpose of version control
+==============================
 
 Odds are that you have worked on some sort of textual data -- the sources
 to a program, web sites or the config files that Unix system
@@ -34,7 +34,7 @@ source code for a pet project. Whatever happened, you have just deleted
 important information that you would desperately like to get back. If this
 has ever happened to you, then you are probably ready for Bazaar.
 
-Revision control systems (which I'll henceforth call RCS) such as
+Version control systems (which I'll henceforth call VCS) such as
 Bazaar give you the ability to track changes for a directory by turning
 it into something slightly more complicated than a directory that we call
 a **branch**. The branch not only stores how the directory looks right
@@ -42,10 +42,10 @@ now, but also how it looked at various points in the past. Then, when you
 do something you wish you hadn't, you can restore the directory to the way
 it looked at some point in the past.
 
-Revision control systems give users the ability to save changes to a
+Version control systems give users the ability to save changes to a
 branch by "committing a **revision**". The revision created is essentially
 a summary of the changes that were made since the last time the tree was
-saved. 
+saved.
 
 These revisions have other uses as well. For example, one can comment
 revisions to record what the recent set of changes meant by providing an
@@ -53,25 +53,25 @@ optional log message. Real life log messages include things like "Fixed
 the web template to close the table" and "Added sftp suppport. Fixes #595"
 	
 We keep these logs so that if later there is some sort of problem with
-sftp, we can figure out when the problem probably happened. 
+sftp, we can figure out when the problem probably happened.
 
-How DRCS is different
+How DVCS is different
 =====================
 
-Many Revision Control Systems (RCS) are stored on servers. If one wants to
-work on the code stored within an RCS, then one needs to connect to the
+Many Version Control Systems (VCS) are stored on servers. If one wants to
+work on the code stored within a VCS, then one needs to connect to the
 server and "checkout" the code. Doing so gives one a directory in which a
-person can make changes and then commit. The RCS client then connects to
-the RCS server and stores the changes. This method is known as the
-centralized model. 
+person can make changes and then commit. The VCS client then connects to
+the VCS server and stores the changes. This method is known as the
+centralized model.
 
-The centralized model can have some drawbacks. A centralized RCS requires
+The centralized model can have some drawbacks. A centralized VCS requires
 that one is able to connect to the server whenever one wants to do version
 control work. This can be a bit of a problem if your server is on some other
 machine on the internet and you are not. Or, worse yet, you **are** on the
 internet but the server is missing!
 
-Decentralized Revision Control Systems (which I'll call DRCS after this
+Decentralized Version Control Systems (which I'll call DVCS after this
 point) deal with this problem by keeping branches on the same machine as
 the client. In Bazaar's case, the branch is kept in the same place as
 the code that is being version controlled. This allows the user to save
@@ -79,15 +79,15 @@ his changes (**commit**) whenever he wants -- even if he is offline. The
 user only needs internet access when he wants to access the changes in
 someone else's branch that are somewhere else.
 
- 
+
 A common requirement that many people have is the need to keep track of
 the changes for a directory such as file and subdirectory changes.
 Performing this tracking by hand is a awkward process that over time
 becomes unwieldy. That is, until one considers version control tools such
 as Bazaar. These tools automate the process of storing data by creating
-a **revision** of the directory tree whenever the user asks. 
+a **revision** of the directory tree whenever the user asks.
 
-Revision control software such as Bazaar can do much more than just
+Version control software such as Bazaar can do much more than just
 storage and performing undo.  For example, with Bazaar a developer can
 take the modifications in one branch of software and apply them to a
 related branch -- even if those changes exist in a branch owned by
@@ -105,7 +105,7 @@ Introducing yourself to Bazaar
 ==============================
 
 Bazaar installs a single new command, **bzr**.  Everything else is a
-subcommand of this.  You can get some help with ``bzr help``. Some arguments 
+subcommand of this.  You can get some help with ``bzr help``. Some arguments
 are grouped in topics: ``bzr help topics`` to see which topics are available.
 
 One function of a version control system is to keep track of who changed
@@ -147,7 +147,7 @@ guess that Bazaar makes, then three options exist:
 
 .. [1] On Windows, the users configuration files can be found in the
    application data directory. So instead of ``~/.bazaar/branch.conf``
-   the configuration file can be found as: 
+   the configuration file can be found as:
    ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\branch.conf``.
    The same is true for ``locations.conf``, ``ignore``, and the
    ``plugins`` directory.
@@ -230,9 +230,9 @@ It's also a good practice to make sure that the code compiles and passes
 its test suite before committing, to make sure that every revision is a
 known-good state.  You can also review your changes, to make sure you're
 committing what you intend to, and as a chance to rethink your work before
-you permanently record it. 
+you permanently record it.
 
-Two bzr commands are particularly useful here: **status** and **diff**.  
+Two bzr commands are particularly useful here: **status** and **diff**.
 
 bzr status
 ----------
@@ -277,7 +277,7 @@ passing options.  For example::
 Some projects prefer patches to show a prefix at the start of the path
 for old and new files.  The ``--prefix`` option can be used to provide
 such a prefix.
-As a shortcut, ``bzr diff -p1`` produces a form that works with the 
+As a shortcut, ``bzr diff -p1`` produces a form that works with the
 command ``patch -p1``.
 
 
@@ -285,7 +285,7 @@ Committing changes
 ==================
 
 When the working tree state is satisfactory, it can be **committed** to
-the branch, creating a new revision holding a snapshot of that state.  
+the branch, creating a new revision holding a snapshot of that state.
 
 bzr commit
 ----------
@@ -329,6 +329,30 @@ information about the files that will be committed. This means that you can
 read it as you write the message, but the diff itself wont be seen in the
 commit message when you have finished. If you would like parts to be
 included in the message you can copy and paste them above the separator.
+
+Marking bugs as fixed
+---------------------
+
+Many changes to a project are as a result of fixing bugs. Bazaar can keep
+metadata about bugs you fixed when you commit them. To do this you use the
+``--fixes`` option. This option takes an argument that looks like this::
+
+    % bzr commit --fixes <tracker>:<id>
+
+Where ``<tracker>`` is an identifier for a bug tracker and ``<id>`` is an
+identifier for a bug that is tracked in that bug tracker. ``<id>`` is usually
+a number. Bazaar already knows about a few popular bug trackers. They are 
+bugs.launchpad.net, bugs.debian.org, and bugzilla.gnome.org. These trackers
+have their own identifiers: lp, deb, and gnome respectively. For example,
+if you made a change to fix the bug #1234 on bugs.launchpad.net, you would
+use the following command to commit your fix::
+
+    % bzr commit -m "fixed my first bug" --fixes lp:1234
+
+For more information on this topic or for information on how to configure
+other bug trackers please read `Bug Tracker Settings`_.
+
+.. _Bug Tracker Settings: ../user-reference/index.html#bug-tracker-settings
 
 Selective commit
 ----------------
@@ -403,6 +427,26 @@ of the branch see the same patterns::
     % bzr commit -m "Add ignore patterns"
 
 
+bzr ignore
+----------
+
+As an alternative to editing the ``.bzrignore`` file, you can use the
+``bzr ignore`` command. The ``bzr ignore`` command takes filenames and/or
+patterns as arguments and then adds them to the ``.bzrignore`` file. If a
+``.bzrignore`` file does not exist the ``bzr ignore`` command will
+automatically create one for you, and implicitly add it to be versioned::
+
+    % bzr ignore tags
+    % bzr status
+    added:
+      .bzrignore
+
+Just like when editing the ``.bzrignore`` file on your own, you should
+commit the automatically created ``.bzrignore`` file::
+
+    % bzr commit -m "Added tags to ignore file"
+
+
 Global ignores
 --------------
 
@@ -435,7 +479,7 @@ Branch statistics
 =================
 
 The ``bzr info`` command shows some summary information about the working
-tree and the branch history.  
+tree and the branch history.
 
 
 Versioning directories
@@ -464,7 +508,7 @@ do ``cvs remove``.
 
 ``bzr remove`` makes the file un-versioned, but may or may not delete the
 working copy [2]_.  This is useful when you add the wrong file, or decide that
-a file should actually not be versioned. 
+a file should actually not be versioned.
 
 ::
 
@@ -491,7 +535,7 @@ change to an existing project.  To do this, you'll need to get a copy of
 the existing branch.  Because this new copy is potentially a new branch,
 the command is called **branch**::
 
-    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev 
+    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev
     % cd bzr.dev
 
 This copies down the complete history of this branch, so we can do all
@@ -510,7 +554,7 @@ changes::
     % bzr pull
 
 After this change, the local directory will be a mirror of the source. This
-includes the ''revision-history'' - which is a list of the commits done in 
+includes the ''revision-history'' - which is a list of the commits done in
 this branch, rather than merged from other branches.
 
 This command only works if your local (destination) branch is either an
@@ -564,7 +608,7 @@ the following three methods:
 
   ::
 
-    % bzr push sftp://servername.com/path/to/directory 
+    % bzr push sftp://servername.com/path/to/directory
 
   (The destination directory must already exist unless the
   ``--create-prefix`` option is used.)
@@ -578,7 +622,7 @@ the following three methods:
   than using ``push``, but may be faster or easier in some situations.
 
 
-Moving changes between trees 
+Moving changes between trees
 ============================
 
 It happens to the best of us: sometimes you'll make changes in the wrong

@@ -185,6 +185,7 @@ doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
@@ -211,6 +212,7 @@ txt_all = \
 	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
+	doc/en/admin-guide/index-plain.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	$(derived_txt_files) \
 	doc/en/upgrade-guide/index.txt \
@@ -220,7 +222,8 @@ txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
 	doc/ja/user-guide/index.txt \
-	doc/ru/user-guide/index.txt
+	doc/ru/user-guide/index.txt \
+	doc/en/admin-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -278,6 +281,9 @@ doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-g
 #doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 #
+doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 

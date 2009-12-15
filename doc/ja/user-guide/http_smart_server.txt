@@ -26,7 +26,7 @@ FastCGI
 
     LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
     FastCgiIpcDir /var/lib/apache2/fastcgi
-    
+
 我々の例では、`http://example.com/code` で `/srv/example.com/www/code` をすでに提供しているので
 既存のApacheの設定は次のようになります::
 
@@ -46,7 +46,7 @@ FastCGI
         RewriteBase /code
         RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
-    
+
     # bzr-smart.fcgiはDocumentRootの元に存在しないので、実行されるように
     # AliasはこれをURLの名前空間のエイリアスにする。
     Alias /srv/example.com/scripts/bzr-smart.fcgi /srv/example.com/scripts/bzr-smart.fcgi
@@ -56,7 +56,7 @@ FastCGI
             SetHandler fastcgi-script
         </Files>
     </Directory>
-    
+
 この設定はFastCGIを通して `/code` 内部の `/.bzr/smart` で終わるURLに対する
 Bazaarのスマートサーバーへのリクエストを扱うようにApacheに指示します。
 
@@ -126,11 +126,11 @@ FastCGI
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True,
-        load_plugins=True, 
+        load_plugins=True,
         enable_logging=True)
 
     fcgi.WSGIServer(smart_server_app).run()
-        
+
 　`fcgi`のモジュールはhttp://svn.saddi.com/py-lib/trunk/fcgi.pyで見つかります。
 これは flup_ の一部です。
 
@@ -151,14 +151,14 @@ mod_python
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True,
-        load_plugins=True, 
+        load_plugins=True,
         enable_logging=True)
 
     def handler(request):
         """Handle a single request."""
         wsgi_server = modpywsgi.WSGIServer(smart_server_app)
         return wsgi_server.run(request)
-        
+
 `modpywsgi` モジュールは
 `http://dev.pocoo.org/projects/pocoo/browser/pocoo/wrappers/modpy.py` で見つかります。
 これは pocoo_ の一部です。modpywsgi.pyをbzr-smart.pyと同じディレクトリ
@@ -191,7 +191,7 @@ WSGI標準に準拠するサードパーティのWSGIのミドルウェアもし
 この例で使われている `make_app` ヘルパーは それに渡される `root` パスに基づいたトランスポートを伴う
 `SmartWSGIApp` をコンストラクトし、引数 `prefix` と`path_var` に基づくそれぞれのリクエストに対する
 　`bzrlib.relpath` を算出します。
-上記の例において、これは (Apacheによって設定される)'REQUEST_URI' を取り、接頭辞の '/code/' と接尾辞の '/.bzr/smart' 
+上記の例において、これは (Apacheによって設定される)'REQUEST_URI' を取り、接頭辞の '/code/' と接尾辞の '/.bzr/smart'
 をはぎ取り、それを 'bzrlib.relpath' として設定するので、 '/code/foo/bar/.bzr/smart' に対するリクエストは
 'foo/bzr' の 'bzrlib.relpath' になります。
 
@@ -217,5 +217,5 @@ httpスマートサーバーを通してデータをプッシュすることは�
 プレーンなHTTPは読み込み限定のアクセスを許可することは確実にできます。
 
 
-.. 
+..
    vim: ft=rst tw=74 et

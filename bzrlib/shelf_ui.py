@@ -253,6 +253,12 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
+        if not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when trying
+            # to prompt the user, better abort now.  See
+            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
+            # for more context.
+            raise errors.BzrError("You need a controlling terminal.")
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
@@ -408,9 +414,12 @@ class Unshelver(object):
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
-            if action == 'delete-only':
+            elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
+            elif action == 'keep':
+                apply_changes = True
+                delete_shelf = False
         except:
             tree.unlock()
             raise

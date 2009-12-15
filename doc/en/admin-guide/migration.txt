@@ -1,0 +1,73 @@
+Migration
+=========
+
+Migrating between version control systems can be a complicated process, and
+Bazaar has extensive documentation on the process at 
+http://doc.bazaar-vcs.org/migration/en and we won't attempt to repeat that
+here.  We will try to give a few motivating examples for conversion from
+Mercurial and Subversion.
+
+Fast Import
+-----------
+
+In many projects wishing to use Bazaar, there is pre-existing history for the
+codebase that should be taken into consideration.  Bazaar leverages an
+interchange format originally developed for Git called `fast-import` to
+provide migration strategies for many other version control systems.  To
+work with fast-import files, Bazaar needs the `fastimport`_ plugin.  This can
+be installed as with any Bazaar plugin.
+
+.. _fastimport: http://launchpad.net/bzr-fastimport
+
+The way that fast-import can be used for migration is to export the existing
+history into a fast-import file, then use the ``bzr fast-import`` command.
+The `fastimport` plugin includes exporters for Subversion, CVS, Git, Mercurial
+and darcs, accessible as the ``fast-export-from-XXX`` commands.  Note that
+``fast-import`` should not be used in a branch with existing history.
+
+Assuming that ProjectX was first developed in Mercurial before switching to
+Bazaar, and that the Mercurial repository is in ``/srv/hg/projectx``, the
+following commands will import that history into a newly created ``trunk``
+branch.  (Recall that in `Further Configuration
+<simple-setups.html#further-configuration>`_ we created the
+``/srv/bzr/projectx`` directory as a shared repository.)
+
+::
+
+  $ cd /srv/bzr/projectx
+  $ bzr fast-export-from-hg ../../hg/projectx projectx.fi
+  $ bzr init trunk
+  $ bzr fast-import projectx.fi trunk
+
+Subversion Conversion
+---------------------
+
+As the most common centralized version control system, migration from
+Subversion is particularly important for any *new* version control system.
+Bazaar's `svn`_ plugin provides tools for interaction with Subversion
+projects.  In fact, Bazaar can be used transparently with projects stored in
+Subversion, but that is beyond the scope of this document.  (See
+http://doc.bazaar-vcs.org/en/migration/foreign/bzr-on-svn-projects.html for
+more on that subject.)  What is relevant here is the ``svn-import`` command
+provided by that plugin.  This can import an entire subversion repository
+including tags and branches, particularly if they are stored in Subversion's
+recommended directory structure: ``/tags/``, ``/branches/`` and ``/trunk/``.
+
+This command has flexible ways to specify what paths within the Subversion
+repository contain branches and which contain tags.  For example, the
+recommended layout for Subversion projects (called ``trunk`` by the svn
+plugin) could be specified in ``~/.bazaar/subversion.conf`` as
+
+::
+
+  [203ae883-c723-44c9-aabd-cb56e4f81c9a]
+  branches = branches/*
+  tags = tags/*
+
+This allows substantially complicated Subversion repositories to be converted
+into a set of separate Bazaar branches.  After installing the svn plugin, see
+``bzr help svn-import`` and ``bzr help svn-layout``.
+
+.. _svn: http://launchpad.net/bzr-svn
+
+.. TODO: Legacy VCS to bzr sync.  Tailor?  Incremental conversions?

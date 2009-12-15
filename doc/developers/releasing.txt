@@ -2,11 +2,18 @@ Releasing Bazaar
 ================
 
 This document describes the processes for making and announcing a Bazaar
-release, and managing the release process.  This is just one phase of the 
+release, and managing the release process.  This is just one phase of the
 `overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
 but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
+
+If you're helping the Release Manager (RM) for one reason or another, you
+may notice that he didn't follow that document scrupulously. He may have
+good reasons to do that but he may also have missed some parts.
+
+Follow the document yourself and don't hesitate to create the missing
+milestones for example (we tend to forget these ones a lot).
 
 .. contents::
 
@@ -35,7 +42,7 @@ To start a new release cycle:
    will be available for targeting or nominating bugs.
 
 #. We create a new pqm-controlled branch for this release series, by
-   asking a Canonical sysadmin.  
+   asking a Canonical sysadmin.
    This branch means that from the first release beta or candidate onwards,
    general development continues on the trunk, and only
    specifically-targeted fixes go into the release branch.
@@ -45,27 +52,16 @@ To start a new release cycle:
    and their expected dates.
 
 #. Update the version number in the ``bzr`` script, and the
-   ``bzrlib/__init__.py`` file.
+   ``bzrlib/__init__.py`` file. Make sure there is always a corresponding
+   milestone when you change that version number.
 
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,
    or that interact with other changes. This is called the metronome mail
-   and as RM you're supposed to send other metronome mails at your rythm.
+   and is described in `Development cycles <cycle.html>`_.
 
-
-Starting the release phase
---------------------------
-
-When it's time to make the first beta release or release candidate:
-
-#. Make a beta release or release candidate. The milestone for this
-   candidate will already exist (see Starting a cycle above).
-
-Preparing the tree for release
-------------------------------
-
-#. Make a local branch for preparing this release.  (Only for the first 
+#. Make a local branch for preparing this release.  (Only for the first
    release in a series, otherwise you should already have a branch.) ::
 
      bzr branch trunk prepare-1.14
@@ -77,6 +73,7 @@ Preparing the tree for release
 	[/home/mbp/bzr/prepare-x.y]
 	pqm_email = Canonical PQM <pqm@bazaar-vcs.org>
 	submit_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
+	parent_branch = http://bazaar.launchpad.net/~bzr-pqm/bzr/x.y
 	public_branch = http://bazaar.example.com/prepare-x.y
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
@@ -85,6 +82,7 @@ Preparing the tree for release
     for more details on PQM
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
+   Make sure the corresponding milestone exists.
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
    the output of ``bzr --version``.
 
@@ -98,7 +96,20 @@ Preparing the tree for release
        version_info = (2, 0, 1, 'candidate', 1)
 
 
+Starting the release phase
+--------------------------
+
+#. Create a new milestone at <https://launchpad.net/bzr/x.y/+addmilestone>
+   for the beta release or release candidate if you haven't already.
+
 #. Add the date and release number to ``./NEWS``
+
+   Depending on whether you're doing a beta or a bugfix release, you'll
+   have to create a NEWS section for your release in the right
+   place. Most of the time, the new section is at the top of the file
+   (look what have been done for the various 2.0x and 2.1.0bx releases).
+   The rule is to keep the sections sorted by date. You'll need to be
+   cautious when merging back to trunk to respect that.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
@@ -112,18 +123,18 @@ Preparing the tree for release
 #. Summarize into one or two paragraphs what's new in this release.
 
 #. Commit these changes to the release branch, using a command like::
-    
-     bzr commit -m "Release 1.14." 
-   
+
+     bzr commit -m "Release 1.14."
+
    The diff before you commit will be something like::
 
      === modified file 'NEWS'
      --- NEWS        2008-09-17 23:09:18 +0000
      +++ NEWS        2008-09-23 16:14:54 +0000
      @@ -4,6 +4,23 @@
-     
+
       .. contents::
-     
+
      +bzr 1.7 2008-09-23
      +------------------
      +
@@ -136,21 +147,21 @@ Preparing the tree for release
      +
       bzr 1.7rc2 2008-09-17
       ---------------------
-     
-     
+
+
      === modified file 'bzrlib/__init__.py'
      --- bzrlib/__init__.py  2008-09-16 21:39:28 +0000
      +++ bzrlib/__init__.py  2008-09-23 16:14:54 +0000
      @@ -41,7 +41,7 @@
       # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
       # releaselevel of 'dev' for unreleased under-development code.
-     
+
      -version_info = (1, 7, 0, 'candidate', 2)
      +version_info = (1, 7, 0, 'final', 0)
-     
-     
+
+
       # API compatibility version: bzrlib is currently API compatible with 1.7.
-      
+
 #. Tag the new release::
 
      bzr tag bzr-1.14
@@ -159,7 +170,7 @@ Preparing the tree for release
    the Internet. PQM will pull from this repository when it attempts to merge
    your changes. Then submit those changes to PQM for merge into the
    appropriate release branch::
- 
+
      bzr push
      bzr pqm-submit -m "(mbp) prepare 1.14"
 
@@ -170,12 +181,12 @@ Making the source tarball
 -------------------------
 
 #. Change into the source directory and run ::
-  
+
      make dist
 
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
- 
+
      make check-dist-tarball
 
    You may encounter failures while running the test suite caused
@@ -248,28 +259,28 @@ Now that the release is publicly available, tell people about it.
    ``bazaar-announce`` list too.
 
    For final releases, it should also be cc'd to ``info-gnu@gnu.org``,
-   ``python-announce-list@python.org``, ``bug-directory@gnu.org``.  
+   ``python-announce-list@python.org``, ``bug-directory@gnu.org``.
 
    In all cases, it is good to set ``Reply-To: bazaar@lists.canonical.com``,
    so that people who reply to the announcement don't spam other lists.
 
    The announce mail will look something like this::
-   
+
       Subject: bzr x.yy released!
-      
+
       <<Summary paragraph from news>>
-     
-      The Bazaar team is happy to announce availability of a new 
+
+      The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
       Bazaar is part of the GNU system <http://gnu.org/>.
-     
+
       Thanks to everyone who contributed patches, suggestions, and
       feedback.
-      
-      Bazaar is now available for download from 
-      http://bazaar-vcs.org/Download as a source tarball; packages 
+
+      Bazaar is now available for download from
+      http://bazaar-vcs.org/Download as a source tarball; packages
       for various systems will be available soon.
-      
+
       <<NEWS section from this release back to the last major release>>
 
    Feel free to tweak this to your taste.
@@ -280,7 +291,7 @@ Now that the release is publicly available, tell people about it.
    ensuring the new topic text keeps the project name, web site link, etc.
 
 #. Announce on http://freshmeat.net/projects/bzr/
-   
+
    This should be done for beta releases, release candidates and final
    releases. If you do not have a Freshmeat account yet, ask one of the
    existing admins.
@@ -308,9 +319,28 @@ were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
 back into pqm for bzr.dev.
 
+As soon as you change the version number in trunk, make sure you have
+created the corresponding milestone to ensure the continuity in bug
+targeting or nominating. Depending on the change, you may even have to
+create a new series (if your change the major or minor release number), in
+that case go to `Starting a cycle` and follow the instructions from there.
+
 You should also merge (not pull) the release branch into
 ``lp:~bzr/bzr/current``, so that branch contains the current released code
 at any time.
+
+Releases until the final one
+----------------------------
+
+Congratulations - you have made your first release.  Have a beer
+or fruit juice - it's on the house! If it was a beta, or
+candidate, you're not finished yet. Another beta or candidate or
+hopefully a final release is still to come.
+
+The process is the same as for the first release. Goto `Starting the
+release phase`_ and follow the instructions again. Some details change
+between beta, candidate and final releases, but they should be
+documented. If the instructions aren't clear enough, please fix them.
 
 
 See also

@@ -2,6 +2,16 @@
 Bazaar Developer Document Catalog
 =================================
 
+
+Introduction
+============
+
+.. toctree::
+   :maxdepth: 1
+
+   contribution-quickstart
+
+
 Enhancing Bazaar
 ================
 
@@ -24,9 +34,9 @@ Developing using bzrlib
    overview
    integration
 
-* `Writing plugins for Bazaar <http://bazaar-vcs.org/WritingPlugins>`_ (web link) 
+* `Writing plugins for Bazaar <http://bazaar-vcs.org/WritingPlugins>`_ (web link)
 
-* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_ 
+* `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_
   (web link)
 
 
@@ -36,6 +46,7 @@ Other documents
 .. toctree::
    :maxdepth: 1
 
+   principles
    plans
    specifications
    implementation-notes

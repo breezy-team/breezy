@@ -335,6 +335,17 @@ class TestPush(tests.TestCaseWithTransport):
         # The push should have created target/a
         self.failUnlessExists('target/a')
 
+    def test_push_use_existing_into_empty_bzrdir(self):
+        """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
+        fails.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/', 'target/.bzr/'])
+        self.run_bzr_error(
+            ['Target directory ../target already contains a .bzr directory, '
+             'but it is not valid.'],
+            'push ../target --use-existing-dir', working_dir='tree')
+
     def test_push_onto_repo(self):
         """We should be able to 'bzr push' into an existing bzrdir."""
         tree = self.create_simple_tree()

@@ -1337,20 +1337,26 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
                                  'print "@old_path @new_path"'],
-                                tree, tree, output)
+                                basis_tree, tree, output)
         diff_obj._prepare_files('file-id', 'file', 'file')
-        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
-        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+        # The old content should be readonly
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file',
+                                    r'R.*old\\file$')
+        # The new content should use the tree object, not a 'new' file anymore
+        self.assertEndsWith(tree.basedir, 'work/tree')
+        self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
         proc = subprocess.Popen(['attrib', relpath],
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
-        proc.wait()
-        result = proc.stdout.read()
-        self.assertContainsRe(result, regex)
+        (result, err) = proc.communicate()
+        self.assertContainsRe(result.replace('\r\n', '\n'), regex)
 
     def test_prepare_files(self):
         output = StringIO()
@@ -1378,7 +1384,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(0, os.stat(old_path).st_mtime)
-        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():

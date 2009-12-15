@@ -1679,6 +1679,19 @@ def collapse_linear_regions(parent_map):
     return result
 
 
+class GraphThunkIdsToKeys(object):
+    """Forwards calls about 'ids' to be about keys internally."""
+
+    def __init__(self, graph):
+        self._graph = graph
+
+    def heads(self, ids):
+        """See Graph.heads()"""
+        as_keys = [(i,) for i in ids]
+        head_keys = self._graph.heads(as_keys)
+        return set([h[0] for h in head_keys])
+
+
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
