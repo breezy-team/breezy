@@ -325,6 +325,19 @@ class Config(object):
                 path = 'bzr'
             return path
 
+    def suppress_warning(self, warning):
+        """Should the warning be suppressed or emitted.
+
+        :param warning: The name of the warning being tested.
+
+        :returns: True if the warning should be suppressed, False otherwise.
+        """
+        warnings = self.get_user_option_as_list('suppress_warnings')
+        if warnings is None or warning not in warnings:
+            return False
+        else:
+            return True
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""

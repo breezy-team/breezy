@@ -369,6 +369,14 @@ class TestConfigPath(tests.TestCase):
 
 class TestIniConfig(tests.TestCase):
 
+    def make_config_parser(self, s):
+        conf = config.IniBasedConfig(None)
+        parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
+        return conf, parser
+
+
+class TestIniConfigBuilding(TestIniConfig):
+
     def test_contructs(self):
         my_config = config.IniBasedConfig("nothing")
 
@@ -386,39 +394,51 @@ class TestIniConfig(tests.TestCase):
         self.failUnless(my_config._get_parser() is parser)
 
 
-class TestGetUserOptionAs(tests.TestCase):
-
-    def make_config_parser(self, s):
-        conf = config.IniBasedConfig(None)
-        parser = conf._get_parser(file=StringIO(s).encode('utf-8'))
-        return conf, parser
+class TestGetUserOptionAs(TestIniConfig):
 
     def test_get_user_option_as_bool(self):
-        my_config, parser = self.make_config_parser("""
+        conf, parser = self.make_config_parser("""
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
 a_list = hmm, who knows ? # This is interpreted as a list !
 """)
-        get_option = my_config.get_user_option_as_bool
-        self.assertEqual(True, get_option('a_true_bool'))
-        self.assertEqual(False, get_option('a_false_bool'))
-        self.assertIs(None, get_option('an_invalid_bool'))
-        self.assertIs(None, get_option('not_defined_in_this_config'))
+        get_bool = conf.get_user_option_as_bool
+        self.assertEqual(True, get_bool('a_true_bool'))
+        self.assertEqual(False, get_bool('a_false_bool'))
+        self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertIs(None, get_bool('not_defined_in_this_config'))
 
 
     def test_get_user_option_as_list(self):
-        my_config, parser = self.make_config_parser("""
+        conf, parser = self.make_config_parser("""
 a_list = a,b,c
 length_1 = 1,
 one_item = x
-""".encode('utf-8'))
-        get_list = my_config.get_user_option_as_list
+""")
+        get_list = conf.get_user_option_as_list
         self.assertEqual(['a', 'b', 'c'], get_list('a_list'))
         self.assertEqual(['1'], get_list('length_1'))
-        self.assertEqual('x', my_config.get_user_option('one_item'))
+        self.assertEqual('x', conf.get_user_option('one_item'))
         # automatically cast to list
         self.assertEqual(['x'], get_list('one_item'))
+
+
+class TestSupressWarning(TestIniConfig):
+
+    def make_warnings_config(self, s):
+        conf, parser = self.make_config_parser(s)
+        return conf.suppress_warning
+
+    def test_suppress_warning_unknown(self):
+        suppress_warning = self.make_warnings_config('')
+        self.assertEqual(False, suppress_warning('unknown_warning'))
+
+    def test_suppress_warning_known(self):
+        suppress_warning = self.make_warnings_config('suppress_warnings=a,b')
+        self.assertEqual(False, suppress_warning('c'))
+        self.assertEqual(True, suppress_warning('a'))
+        self.assertEqual(True, suppress_warning('b'))
 
 
 class TestGetConfig(tests.TestCase):
