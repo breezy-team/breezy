@@ -385,15 +385,21 @@ class TestIniConfig(tests.TestCase):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+
+class TestGetUserOptionAs(tests.TestCase):
+
+    def make_config_parser(self, s):
+        conf = config.IniBasedConfig(None)
+        parser = conf._get_parser(file=StringIO(s).encode('utf-8'))
+        return conf, parser
+
     def test_get_user_option_as_bool(self):
-        config_file = StringIO("""
+        my_config, parser = self.make_config_parser("""
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
 a_list = hmm, who knows ? # This is interpreted as a list !
-""".encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
-        parser = my_config._get_parser(file=config_file)
+""")
         get_option = my_config.get_user_option_as_bool
         self.assertEqual(True, get_option('a_true_bool'))
         self.assertEqual(False, get_option('a_false_bool'))
@@ -402,13 +408,11 @@ a_list = hmm, who knows ? # This is interpreted as a list !
 
 
     def test_get_user_option_as_list(self):
-        config_file = StringIO("""
+        my_config, parser = self.make_config_parser("""
 a_list = a,b,c
 length_1 = 1,
 one_item = x
 """.encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
-        parser = my_config._get_parser(file=config_file)
         get_list = my_config.get_user_option_as_list
         self.assertEqual(['a', 'b', 'c'], get_list('a_list'))
         self.assertEqual(['1'], get_list('length_1'))
