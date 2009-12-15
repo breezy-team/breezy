@@ -390,7 +390,7 @@ class TestIniConfig(tests.TestCase):
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
-a_list = hmm, who knows ? # This interpreted as a list !
+a_list = hmm, who knows ? # This is interpreted as a list !
 """.encode('utf-8'))
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
@@ -399,6 +399,23 @@ a_list = hmm, who knows ? # This interpreted as a list !
         self.assertEqual(False, get_option('a_false_bool'))
         self.assertIs(None, get_option('an_invalid_bool'))
         self.assertIs(None, get_option('not_defined_in_this_config'))
+
+
+    def test_get_user_option_as_list(self):
+        config_file = StringIO("""
+a_list = a,b,c
+length_1 = 1,
+one_item = x
+""".encode('utf-8'))
+        my_config = config.IniBasedConfig(None)
+        parser = my_config._get_parser(file=config_file)
+        get_list = my_config.get_user_option_as_list
+        self.assertEqual(['a', 'b', 'c'], get_list('a_list'))
+        self.assertEqual(['1'], get_list('length_1'))
+        self.assertEqual('x', my_config.get_user_option('one_item'))
+        # automatically cast to list
+        self.assertEqual(['x'], get_list('one_item'))
+
 
 class TestGetConfig(tests.TestCase):
 
