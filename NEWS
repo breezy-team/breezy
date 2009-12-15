@@ -16,7 +16,7 @@ number of bugfixes (~20). The test suite is once again (finally) "green"
 on Windows, and should remain that way for future releases. There are a
 few performance related updates (faster upgrade and log), and several UI
 tweaks. There has also been a significant number of tweaks to the runtime
-documentation.
+documentation. 2.1.0b4 include everything from the 2.0.3 release.
 
 
 Compatibility Breaks
