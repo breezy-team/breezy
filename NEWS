@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr unshelve`` has improved messages about what it is doing.
+  (Neil Martinsen-Burrell, #496917)
+
 Improvements
 ************
 
