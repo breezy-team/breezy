@@ -18,7 +18,7 @@ additional benefits:
   than leaving them in a shared repository).
 
 * Security is improved over shared repositories, because the stacked-on
-  repository can be physically readonly to developers committing to stacked 
+  repository can be physically readonly to developers committing to stacked
   branches.
 
 These benefits make stacked branches ideal for various scenarios

@@ -148,9 +148,34 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo')
         t = k.as_tuple()
         self.assertEqual(('foo',), t)
+        self.assertIsInstance(t, tuple)
+        self.assertFalse(isinstance(t, self.module.StaticTuple))
         k = self.module.StaticTuple('foo', 'bar')
         t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k)
+        t = k2.as_tuple()
+        self.assertIsInstance(t, tuple)
+        # For pickling to work, we need to keep the sub-items as StaticTuple so
+        # that it knows that they also need to be converted.
+        self.assertIsInstance(t[1], self.module.StaticTuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+
+    def test_as_tuples(self):
+        k1 = self.module.StaticTuple('foo', 'bar')
+        t = static_tuple.as_tuples(k1)
+        self.assertIsInstance(t, tuple)
+        self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k1)
+        t = static_tuple.as_tuples(k2)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+        mixed = (1, k1)
+        t = static_tuple.as_tuples(mixed)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
 
     def test_len(self):
         k = self.module.StaticTuple()

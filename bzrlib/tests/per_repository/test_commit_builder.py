@@ -894,7 +894,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 self.assertTrue(version_recorded)
             else:
                 self.assertFalse(version_recorded)
+            self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
+            inv_key = (builder._new_revision_id,)
+            inv_sha1 = tree.branch.repository.inventories.get_sha1s(
+                            [inv_key])[inv_key]
+            self.assertEqual(inv_sha1, builder.inv_sha1)
+            self.assertIs(None, builder.new_inventory)
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:

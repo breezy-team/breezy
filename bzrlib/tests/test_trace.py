@@ -84,11 +84,12 @@ class TestTrace(TestCase):
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
-        except OSError:
-            pass
+        except OSError, e:
+            e_str = str(e)
         msg = _format_exception()
-        self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+        # Linux seems to give "No such file" but Windows gives "The system
+        # cannot find the file specified".
+        self.assertEqual('bzr: ERROR: %s\n' % (e_str,), msg)
 
     def test_format_io_error(self):
         try:
@@ -96,7 +97,10 @@ class TestTrace(TestCase):
         except IOError:
             pass
         msg = _format_exception()
-        self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+        # Even though Windows and Linux differ for 'os.rmdir', they both give
+        # 'No such file' for open()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
     def test_format_unicode_error(self):
         try:
@@ -274,7 +278,7 @@ class TestBzrLog(TestCaseInTempDir):
     def test_log_rollover(self):
         temp_log_name = 'test-log'
         trace_file = open(temp_log_name, 'at')
-        trace_file.write('test_log_rollover padding\n' * 1000000)
+        trace_file.writelines(['test_log_rollover padding\n'] * 200000)
         trace_file.close()
         _rollover_trace_maybe(temp_log_name)
         # should have been rolled over

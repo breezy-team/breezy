@@ -917,7 +917,7 @@ class SocketListener(threading.Thread):
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
-        self.port = self._socket.getsockname()[1]
+        self.host, self.port = self._socket.getsockname()[:2]
         self._stop_event = threading.Event()
 
     def stop(self):
@@ -1045,7 +1045,8 @@ class SFTPServer(Server):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+        return 'sftp://foo:bar@%s:%d/%s' % (self._listener.host,
+                                            self._listener.port, path)
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""

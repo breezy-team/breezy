@@ -58,7 +58,7 @@ class StaticTuple(tuple):
         return StaticTuple.from_sequence(tuple.__add__(self,other))
 
     def as_tuple(self):
-        return self
+        return tuple(self)
 
     def intern(self):
         return _interned_tuples.setdefault(self, self)

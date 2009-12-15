@@ -462,7 +462,7 @@ class HttpServer(transport.Server):
                 raise httplib.UnknownProtocol(proto_vers)
             else:
                 self._httpd = self.create_httpd(serv_cls, rhandler)
-            host, self.port = self._httpd.socket.getsockname()
+            self.host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
@@ -494,13 +494,16 @@ class HttpServer(transport.Server):
             except socket.timeout:
                 pass
             except (socket.error, select.error), e:
-               if e[0] == errno.EBADF:
-                   # Starting with python-2.6, handle_request may raise socket
-                   # or select exceptions when the server is shut down (as we
-                   # do).
-                   pass
-               else:
-                   raise
+                if (e[0] == errno.EBADF
+                    or (sys.platform == 'win32' and e[0] == 10038)):
+                    # Starting with python-2.6, handle_request may raise socket
+                    # or select exceptions when the server is shut down (as we
+                    # do).
+                    # 10038 = WSAENOTSOCK
+                    # http://msdn.microsoft.com/en-us/library/ms740668%28VS.85%29.aspx
+                    pass
+                else:
+                    raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)

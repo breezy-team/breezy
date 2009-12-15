@@ -22,17 +22,23 @@ import tempfile
 
 from bzrlib import (
     builtins,
+    commands,
     delta,
     diff,
     errors,
     osutils,
     patches,
+    patiencediff,
     shelf,
     textfile,
     trace,
     ui,
     workingtree,
 )
+
+
+class UseEditor(Exception):
+    """Use an editor instead of selecting hunks."""
 
 
 class ShelfReporter(object):
@@ -143,6 +149,9 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
+        config = self.work_tree.branch.get_config()
+        self.change_editor = config.get_change_editor(target_tree, work_tree)
+        self.work_tree.lock_tree_write()
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -168,11 +177,10 @@ class Shelver(object):
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                 tree.branch, tree)
             files = builtins.safe_relpath_files(tree, file_list)
-        except:
+            return klass(tree, target_tree, diff_writer, all, all, files,
+                         message, destroy)
+        finally:
             tree.unlock()
-            raise
-        return klass(tree, target_tree, diff_writer, all, all, files, message,
-                     destroy)
 
     def run(self):
         """Interactively shelve the changes."""
@@ -211,6 +219,12 @@ class Shelver(object):
             shutil.rmtree(self.tempdir)
             creator.finalize()
 
+    def finalize(self):
+        if self.change_editor is not None:
+            self.change_editor.finish()
+        self.work_tree.unlock()
+
+
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
@@ -239,13 +253,19 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
+        if not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when trying
+            # to prompt the user, better abort now.  See
+            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
+            # for more context.
+            raise errors.BzrError("You need a controlling terminal.")
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         return char
 
-    def prompt_bool(self, question, long=False):
+    def prompt_bool(self, question, long=False, allow_editor=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -255,13 +275,20 @@ class Shelver(object):
         """
         if self.auto:
             return True
+        editor_string = ''
         if long:
-            prompt = ' [(y)es, (N)o, (f)inish, or (q)uit]'
+            if allow_editor:
+                editor_string = '(E)dit manually, '
+            prompt = ' [(y)es, (N)o, %s(f)inish, or (q)uit]' % editor_string
         else:
-            prompt = ' [yNfq?]'
+            if allow_editor:
+                editor_string = 'e'
+            prompt = ' [yN%sfq?]' % editor_string
         char = self.prompt(question + prompt)
         if char == 'y':
             return True
+        elif char == 'e' and allow_editor:
+            raise UseEditor
         elif char == 'f':
             self.auto = True
             return True
@@ -273,6 +300,23 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        """Handle modified text, by using hunk selection or file editing.
+
+        :param creator: A ShelfCreator.
+        :param file_id: The id of the file that was modified.
+        :return: The number of changes.
+        """
+        work_tree_lines = self.work_tree.get_file_lines(file_id)
+        try:
+            lines, change_count = self._select_hunks(creator, file_id,
+                                                     work_tree_lines)
+        except UseEditor:
+            lines, change_count = self._edit_file(file_id, work_tree_lines)
+        if change_count != 0:
+            creator.shelve_lines(file_id, lines)
+        return change_count
+
+    def _select_hunks(self, creator, file_id, work_tree_lines):
         """Provide diff hunk selection for modified text.
 
         If self.reporter.invert_diff is True, the diff is inverted so that
@@ -280,13 +324,14 @@ class Shelver(object):
 
         :param creator: a ShelfCreator
         :param file_id: The id of the file to shelve.
+        :param work_tree_lines: Line contents of the file in the working tree.
         :return: number of shelved hunks.
         """
         if self.reporter.invert_diff:
-            target_lines = self.work_tree.get_file_lines(file_id)
+            target_lines = work_tree_lines
         else:
             target_lines = self.target_tree.get_file_lines(file_id)
-        textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
+        textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
         final_hunks = []
@@ -295,7 +340,9 @@ class Shelver(object):
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                selected = self.prompt_bool(self.reporter.vocab['hunk'])
+                selected = self.prompt_bool(self.reporter.vocab['hunk'],
+                                            allow_editor=(self.change_editor
+                                                          is not None))
                 if not self.reporter.invert_diff:
                     selected = (not selected)
                 if selected:
@@ -304,16 +351,32 @@ class Shelver(object):
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
         sys.stdout.flush()
-        if not self.reporter.invert_diff and (
-            len(parsed.hunks) == len(final_hunks)):
-            return 0
-        if self.reporter.invert_diff and len(final_hunks) == 0:
-            return 0
-        patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
-        creator.shelve_lines(file_id, list(patched))
         if self.reporter.invert_diff:
-            return len(final_hunks)
-        return len(parsed.hunks) - len(final_hunks)
+            change_count = len(final_hunks)
+        else:
+            change_count = len(parsed.hunks) - len(final_hunks)
+        patched = patches.iter_patched_from_hunks(target_lines,
+                                                  final_hunks)
+        lines = list(patched)
+        return lines, change_count
+
+    def _edit_file(self, file_id, work_tree_lines):
+        """
+        :param file_id: id of the file to edit.
+        :param work_tree_lines: Line contents of the file in the working tree.
+        :return: (lines, change_region_count), where lines is the new line
+            content of the file, and change_region_count is the number of
+            changed regions.
+        """
+        lines = osutils.split_lines(self.change_editor.edit_file(file_id))
+        return lines, self._count_changed_regions(work_tree_lines, lines)
+
+    @staticmethod
+    def _count_changed_regions(old_lines, new_lines):
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_lines,
+                                                       new_lines)
+        blocks = matcher.get_matching_blocks()
+        return len(blocks) - 2
 
 
 class Unshelver(object):
@@ -351,9 +414,12 @@ class Unshelver(object):
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
-            if action == 'delete-only':
+            elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
+            elif action == 'keep':
+                apply_changes = True
+                delete_shelf = False
         except:
             tree.unlock()
             raise

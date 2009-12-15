@@ -160,12 +160,4 @@ class TestCheckout(ExternalBase):
             '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        same_file = (source_stat == target_stat)
-        if same_file:
-            pass
-        else:
-            # https://bugs.edge.launchpad.net/bzr/+bug/408193
-            self.assertContainsRe(err, "hardlinking working copy files is "
-                "not currently supported")
-            raise KnownFailure("--hardlink doesn't work in formats "
-                "that support content filtering (#408193)")
+        self.assertEqual(source_stat, target_stat)

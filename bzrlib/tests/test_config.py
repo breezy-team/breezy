@@ -25,6 +25,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    diff,
     errors,
     osutils,
     mail_client,
@@ -42,6 +43,7 @@ sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
+change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
@@ -208,6 +210,10 @@ class InstrumentedConfig(config.Config):
         self._calls.append('_get_signature_checking')
         return self._signatures
 
+    def _get_change_editor(self):
+        self._calls.append('_get_change_editor')
+        return 'vimdiff -fo @new_path @old_path'
+
 
 bool_config = """[DEFAULT]
 active = true
@@ -313,6 +319,14 @@ class TestConfig(tests.TestCase):
     def test_log_format_default(self):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
+
+    def test_get_change_editor(self):
+        my_config = InstrumentedConfig()
+        change_editor = my_config.get_change_editor('old_tree', 'new_tree')
+        self.assertEqual(['_get_change_editor'], my_config._calls)
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual(['vimdiff', '-fo', '@new_path', '@old_path'],
+                         change_editor.command_template)
 
 
 class TestConfigPath(tests.TestCase):
@@ -624,6 +638,18 @@ class TestGlobalConfigItems(tests.TestCase):
     def test_get_long_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
+
+    def test_get_change_editor(self):
+        my_config = self._get_sample_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual('vimdiff -of @new_path @old_path',
+                         ' '.join(change_editor.command_template))
+
+    def test_get_no_change_editor(self):
+        my_config = self._get_empty_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(None, change_editor)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):

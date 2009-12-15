@@ -3043,6 +3043,7 @@ class TestStacking(tests.TestCaseWithTransport):
             local_tree.commit('more local changes are better')
             branch = Branch.open(self.get_url('tree3'))
             branch.lock_read()
+            self.addCleanup(branch.unlock)
             return None, branch
         rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
             branch_factory=make_stacked_stacked)

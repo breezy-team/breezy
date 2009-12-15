@@ -28,7 +28,7 @@ renamed to e.g. 'development0', 'development1' etc.
 
 When a release of bzr is done, all the older numbered development
 formats will be removed from 'bzr.dev', so we will not be carrying the
-code for them around indefinately. 
+code for them around indefinately.
 
 Support for upgrade and migration
 ---------------------------------
@@ -40,7 +40,7 @@ test out development formats (though we cannot guarantee bugs of course
  - users of a given development format can always get back onto regular
    formats by switching to the next bzr released version which is
    guaranteed to be able to upgrade from that development format.
- - users that routinely use bzr.dev should upgrade to the most recent 
+ - users that routinely use bzr.dev should upgrade to the most recent
    development version available before pulling in bzr.dev changes
    around release time, as that is when old format cleanups will occur.
 

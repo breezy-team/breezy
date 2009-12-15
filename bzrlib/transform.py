@@ -1973,7 +1973,7 @@ class _PreviewTree(tree.Tree):
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
                 if not supports_executable():
-                    executable = None
+                    executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
             else:
@@ -1981,8 +1981,7 @@ class _PreviewTree(tree.Tree):
                 executable = None
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
+        executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
@@ -2301,8 +2300,12 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
-                         in iter if not (c or e[0] != e[1]))
+        unchanged = [(f, p[1]) for (f, p, c, v, d, n, k, e)
+                     in iter if not (c or e[0] != e[1])]
+        if accelerator_tree.supports_content_filtering():
+            unchanged = [(f, p) for (f, p) in unchanged
+                         if not accelerator_tree.iter_search_rules([p]).next()]
+        unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
         for file_id, (trans_id, tree_path) in desired_files:
@@ -2431,8 +2434,14 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
-    """Create new file contents according to tree contents."""
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+    filter_tree_path=None):
+    """Create new file contents according to tree contents.
+    
+    :param filter_tree_path: the tree path to use to lookup
+      content filters to apply to the bytes output in the working tree.
+      This only applies if the working tree supports content filtering.
+    """
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
@@ -2443,6 +2452,11 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
                 bytes = tree_file.readlines()
             finally:
                 tree_file.close()
+        wt = tt._tree
+        if wt.supports_content_filtering() and filter_tree_path is not None:
+            filters = wt._content_filter_stack(filter_tree_path)
+            bytes = filtered_output_bytes(bytes, filters,
+                ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)

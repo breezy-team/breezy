@@ -43,7 +43,9 @@ from bzrlib import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
+    timestamp,
     transport,
     ui,
     urlutils,
@@ -257,6 +259,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
+    Additionally for directories, symlinks and files with an executable
+    bit, Bazaar indicates their type using a trailing character: '/', '@'
+    or '*' respectively.
+
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
 
@@ -431,8 +437,7 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
-                                   for ref_list in node[3]])
+            refs_as_tuples = static_tuple.as_tuples(node[3])
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -849,8 +854,9 @@ class cmd_mv(Command):
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
             rel_names = tree.get_canonical_inventory_paths(rel_names)
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
-                self.outf.write("%s => %s\n" % pair)
+            for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
+                if not is_quiet():
+                    self.outf.write("%s => %s\n" % (src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
@@ -900,22 +906,25 @@ class cmd_mv(Command):
             dest = osutils.pathjoin(dest_parent, dest_tail)
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
-            self.outf.write("%s => %s\n" % (src, dest))
+            if not is_quiet():
+                self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
-    This command only works on branches that have not diverged.  Branches are
-    considered diverged if the destination branch's most recent commit is one
-    that has not been merged (directly or indirectly) into the parent.
+    By default, this command only works on branches that have not diverged.
+    Branches are considered diverged if the destination branch's most recent 
+    commit is one that has not been merged (directly or indirectly) into the 
+    parent.
 
     If branches have diverged, you can use 'bzr merge' to integrate the changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If you want to forget your local changes and just update your branch to
-    match the remote one, use pull --overwrite.
+    If you want to replace your local changes and just want your branch to
+    match the remote one, use pull --overwrite. This will work even if the two
+    branches have diverged.
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
@@ -1200,9 +1209,6 @@ class cmd_branch(Command):
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        if (accelerator_tree is not None and
-            accelerator_tree.supports_content_filtering()):
-            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
         try:
@@ -1394,8 +1400,13 @@ class cmd_update(Command):
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
+            branch_location = master.base
         else:
             tree.lock_tree_write()
+            branch_location = tree.branch.base
+        # get rid of the final '/' and be ready for display
+        branch_location = urlutils.unescape_for_display(branch_location[:-1],
+                                                        self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = _mod_revision.ensure_null(tree.last_revision())
@@ -1405,7 +1416,8 @@ class cmd_update(Command):
                 if master is None or last_rev == _mod_revision.ensure_null(
                     master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d." % (revno,))
+                    note('Tree is up to date at revision %d of branch %s'
+                         % (revno, branch_location))
                     return 0
             view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
@@ -1413,7 +1425,8 @@ class cmd_update(Command):
                 view_info=view_info), possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d.' % (revno,))
+            note('Updated to revision %d of branch %s' %
+                 (revno, branch_location))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
@@ -1748,16 +1761,22 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to hold branches.
+    """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
-    revisions in the repository, not in the branch directory.
+    revisions in the repository, not in the branch directory.  For branches
+    with shared history, this reduces the amount of storage needed and 
+    speeds up the creation of new branches.
 
-    If the --no-trees option is used then the branches in the repository
-    will not have working trees by default.
+    If the --no-trees option is given then the branches in the repository
+    will not have working trees by default.  They will still exist as 
+    directories on disk, but they will not have separate copies of the 
+    files at a certain revision.  This can be useful for repositories that
+    store branches which are interacted with through checkouts or remote
+    branches, such as on a server.
 
     :Examples:
-        Create a shared repositories holding just branches::
+        Create a shared repository holding just branches::
 
             bzr init-repo --no-trees repo
             bzr init repo/trunk
@@ -1829,13 +1848,27 @@ class cmd_diff(Command):
 
             bzr diff -r1
 
-        Difference between revision 2 and revision 1::
+        Difference between revision 3 and revision 1::
 
-            bzr diff -r1..2
+            bzr diff -r1..3
 
-        Difference between revision 2 and revision 1 for branch xxx::
+        Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..2 xxx
+            bzr diff -r1..3 xxx
+
+        To see the changes introduced in revision X::
+        
+            bzr diff -cX
+
+        Note that in the case of a merge, the -c option shows the changes
+        compared to the left hand parent. To see the changes against
+        another parent, use::
+
+            bzr diff -r<chosen_parent>..X
+
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
 
         Show just the differences for file NEWS::
 
@@ -2323,7 +2356,10 @@ class cmd_log(Command):
             # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
+            # Make a non-encoding output to include the diffs - bug 328007
+            unencoded_output = ui.ui_factory.make_output_stream(encoding_type='exact')
             lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            to_exact_file=unencoded_output,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
                             levels=levels,
@@ -2492,7 +2528,7 @@ class cmd_ls(Command):
         if from_root:
             if relpath:
                 prefix = relpath + '/'
-        elif fs_path != '.':
+        elif fs_path != '.' and not fs_path.endswith('/'):
             prefix = fs_path + '/'
 
         if revision is not None or tree is None:
@@ -2573,6 +2609,12 @@ class cmd_ignore(Command):
     """Ignore specified files or patterns.
 
     See ``bzr help patterns`` for details on the syntax of patterns.
+
+    If a .bzrignore file does not exist, the ignore command
+    will create one and add the specified files or patterns to the newly
+    created file. The ignore command will also automatically add the 
+    .bzrignore file to be versioned. Creating a .bzrignore file without
+    the use of the ignore command will require an explicit add command.
 
     To remove patterns from the ignore list, edit the .bzrignore file.
     After adding, editing or deleting that file either indirectly by
@@ -2947,6 +2989,9 @@ class cmd_commit(Command):
              Option('strict',
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
+             Option('commit-time', type=str,
+                    help="Manually set a commit time using commit date "
+                    "format, e.g. '2009-10-10 08:00:00 +0100'."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
@@ -2959,9 +3004,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-              Option('show-diff',
-                     help='When no message is supplied, show the diff along'
-                     ' with the status summary in the message editor.'),
+             Option('show-diff',
+                    help='When no message is supplied, show the diff along'
+                    ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2986,7 +3031,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None):
+            author=None, show_diff=False, exclude=None, commit_time=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -2997,6 +3042,14 @@ class cmd_commit(Command):
             generate_commit_message_template,
             make_commit_message_template_encoded
         )
+
+        commit_stamp = offset = None
+        if commit_time is not None:
+            try:
+                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+            except ValueError, e:
+                raise errors.BzrCommandError(
+                    "Could not parse --commit-time: " + str(e))
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -3022,6 +3075,21 @@ class cmd_commit(Command):
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
+
+        if message is not None:
+            try:
+                file_exists = osutils.lexists(message)
+            except UnicodeError:
+                # The commit message contains unicode characters that can't be
+                # represented in the filesystem encoding, so that can't be a
+                # file.
+                file_exists = False
+            if file_exists:
+                warning_msg = (
+                    'The commit message is a file name: "%(f)s".\n'
+                    '(use --file "%(f)s" to take commit message from that file)'
+                    % { 'f': message })
+                ui.ui_factory.show_warning(warning_msg)
 
         def get_message(commit_obj):
             """Callback to get commit message"""
@@ -3058,7 +3126,8 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        authors=author,
+                        authors=author, timestamp=commit_stamp,
+                        timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -3614,7 +3683,7 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
     """
@@ -3784,7 +3853,10 @@ class cmd_merge(Command):
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
                                    diff_writer=writer(sys.stdout))
-        shelver.run()
+        try:
+            shelver.run()
+        finally:
+            shelver.finalize()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
@@ -4034,9 +4106,10 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
 
-    Any files that have been newly added since that revision will be deleted,
-    with a backup kept if appropriate.  Directories containing unknown files
-    will not be deleted.
+    If you have newly added files since the target revision, they will be
+    removed.  If the files to be removed have been changed, backups will be
+    created as above.  Directories containing unknown files will not be
+    deleted.
 
     The working tree contains a list of pending merged revisions, which will
     be included as parents in the next commit.  Normally, revert clears that
@@ -4045,6 +4118,16 @@ class cmd_revert(Command):
     revert ." in the tree root to revert all files but keep the merge record,
     and "bzr revert --forget-merges" to clear the pending merge list without
     reverting any files.
+
+    Using "bzr revert --forget-merges", it is possible to apply the changes
+    from an arbitrary merge as a single revision.  To do this, perform the
+    merge as desired.  Then doing revert with the "--forget-merges" option will
+    keep the content of the tree as it was, but it will clear the list of
+    pending merges.  The next commit will then contain all of the changes that
+    would have been in the merge, but without any mention of the other parent
+    revisions.  Because this technique forgets where these changes originated,
+    it may cause additional conflicts on later merges involving the source and
+    target branches.
     """
 
     _see_also = ['cat', 'export']
@@ -4131,6 +4214,10 @@ class cmd_missing(Command):
     To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+            
+    :Exit values:
+        1 - some missing revisions
+        0 - no missing revisions
 
     :Examples:
 
@@ -4726,8 +4813,8 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
-        RegistryOption('protocol', 
-               help="Protocol to serve.", 
+        RegistryOption('protocol',
+               help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
         Option('port',
@@ -4742,7 +4829,11 @@ class cmd_serve(Command):
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
-                    'the served directory and below.'
+                    'the served directory and below.  Note that ``bzr serve`` '
+                    'does not perform authentication, so unless some form of '
+                    'external authentication is arranged supplying this '
+                    'option leads to global uncontrolled write access to your '
+                    'file system.'
                 ),
         ]
 
@@ -5671,7 +5762,7 @@ class cmd_shelve(Command):
             try:
                 shelver.run()
             finally:
-                shelver.work_tree.unlock()
+                shelver.finalize()
         except errors.UserAbort:
             return 0
 
@@ -5709,7 +5800,8 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
-            delete_only="Delete changes without applying them."
+            delete_only="Delete changes without applying them.",
+            keep="Apply changes but don't delete them.",
         )
     ]
     _see_also = ['shelve']

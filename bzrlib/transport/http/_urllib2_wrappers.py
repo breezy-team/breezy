@@ -71,6 +71,7 @@ from bzrlib import (
     trace,
     transport,
     ui,
+    urlutils,
     )
 
 
@@ -1066,6 +1067,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
         auth = self.get_auth(request)
         auth['modified'] = False
+        # Put some common info in auth if the caller didn't
+        if auth.get('path', None) is None:
+            (protocol, _, _,
+             host, port, path) = urlutils.parse_url(request.get_full_url())
+            self.update_auth(auth, 'protocol', protocol)
+            self.update_auth(auth, 'host', host)
+            self.update_auth(auth, 'port', port)
+            self.update_auth(auth, 'path', path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.
@@ -1167,8 +1176,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             and then during dialog with the server).
         """
         auth_conf = config.AuthenticationConfig()
-        user = auth['user']
-        password = auth['password']
+        user = auth.get('user', None)
+        password = auth.get('password', None)
         realm = auth['realm']
 
         if user is None:
@@ -1308,7 +1317,8 @@ class BasicAuthHandler(AbstractAuthHandler):
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth['user'] is None or auth['password'] is None:
+            if (auth.get('user', None) is None
+                or auth.get('password', None) is None):
                 user, password = self.get_user_password(auth)
                 self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
@@ -1373,7 +1383,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         self.update_auth(auth, 'scheme', scheme)
         self.update_auth(auth, 'realm', realm)
-        if auth['user'] is None or auth['password'] is None:
+        if auth.get('user', None) is None or auth.get('password', None) is None:
             user, password = self.get_user_password(auth)
             self.update_auth(auth, 'user', user)
             self.update_auth(auth, 'password', password)

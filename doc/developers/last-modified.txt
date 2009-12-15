@@ -30,7 +30,7 @@ the last_modified of any other head.
 If there is still more than one head, a new last_modified is assigned.
 This points to the merge point in the file graph.
 
-If the file text and properties are the same as the sole remaining head, 
+If the file text and properties are the same as the sole remaining head,
 its last_modified is inherited. Property changes include executable bit,
 filename, and containing directory.
 
@@ -53,7 +53,7 @@ was faster to determine.  So it needs to be fast.
 For the single-parent commit case, we just need to determine which files have
 changed compared to the parent.  If the file was changed, it gets the
 revision id of the new revision; otherwise it inherits the value from the
-parent tree.  
+parent tree.
 
 In the multi-parent commit case (commit of a merge), it can take the value
 from any of the parent trees, or of the new revision.
@@ -74,11 +74,11 @@ supersedes another, and it could emit only a single parent.  Merge could
 in fact do this even when not using per-file graphs.  In the current
 dirstate format we need to store the full data for all trees because they
 can be extracted from the dirstate, but it could mark some parents as
-already merged.  
+already merged.
 
 Alternatively, we could change the dirstate to include
 only the base and current trees, and cache the merged-in parents
-elsewhere. 
+elsewhere.
 
 (Offtopic other dirstate changes: we could also omit the working-copy
 hash, and just have a stat-fingerprint of when it was last known equal to
@@ -89,7 +89,7 @@ makes it simpler to update, and shouldn't penalize common cases.)
 Generation during conversion
 ----------------------------
 
-Accessing a foreign branch requires synthesizing this information. 
+Accessing a foreign branch requires synthesizing this information.
 If last_modified is removed from a future bzr version, we will also need
 to synthesize it to pull back to earlier formats.
 
@@ -172,5 +172,5 @@ Possible structure
 For a single file, if I am different from all parents, 'new'. (Do not need
 to evaluate last modified).
 
-..   
+..
   vim: ft=rst tw=74

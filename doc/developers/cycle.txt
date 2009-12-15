@@ -2,7 +2,7 @@
 Bazaar Release Cycles
 *********************
 
-:status: Current policy, as of 2009-08. 
+:status: Current policy, as of 2009-08.
 :blueprint: <https://blueprints.launchpad.net/bzr/+spec/6m-cycle>
 
 
@@ -18,14 +18,14 @@ See also:
 
 * `Bazaar Developer Document Catalog <index.html>`_
 
-* `Releasing Bazaar <releasing.html>`_ -- the process for actually making 
+* `Releasing Bazaar <releasing.html>`_ -- the process for actually making
   a release or release candidate.
 
 The Problem Situation
 *********************
 
 Bazaar makes a release every month, preceded by a one-week
-release-candidate test.  
+release-candidate test.
 
 In any release we may fix bugs, add formats, change the default format,
 improve performance, add new commands or change command line behaviour,
@@ -105,7 +105,7 @@ Schedule
                                                         +-- 3.0.0beta1 ...
 
 
-Starting from the date of a major release: 
+Starting from the date of a major release:
 
 At four-week intervals we make a new beta release.  There will be no
 separate release candidate, but if a serious problem is discovered we may
@@ -121,7 +121,7 @@ have landed.
 We will then make a release candidate for the next major release, and at
 this point create a release branch for it.  We will iterate release
 candidates at approximately weekly intervals until there are no bugs
-blocking the final major release. 
+blocking the final major release.
 
 Compared to the current process this has approximately the same amount of
 release-related work, because the extra releases from the stable branch
@@ -192,7 +192,7 @@ Development series
 Bug Work
 --------
 
-Bug fixes should normally be done first against the stable branch, 
+Bug fixes should normally be done first against the stable branch,
 reviewed against that branch, and then merged forward to trunk.
 
 It may not always be easy to do this, if fixing the bug requires large
@@ -240,7 +240,7 @@ We will no longer focus on letting old plugin code work with new versions
 of bzrlib, which is an elusive target in Python.
 
 This may mean that in cases where today a plugin would keep running but
-give warnings, it will now fail altogether with an error.   
+give warnings, it will now fail altogether with an error.
 
 In return we expect more freedom to change and cleanup bzrlib code without
 needing to keep old code around, or write extra compatibility shims, or
@@ -252,7 +252,7 @@ Discussion of plugins here includes programs that import and use bzrlib
 but that aren't technically plugins.  The same approach, though the
 technical considerations are different, should apply to other extensions
 such as programs that use bzr through the shell interface.
-  
+
 
 
 Data and Network Formats
@@ -296,7 +296,7 @@ release and development release.
 This can be handled in various ways either at the OS packaging or the
 Python level.  We don't propose to directly address it in the upstream
 source.  (For example, we will not change the bzrlib library name from one
-release to the next.)  
+release to the next.)
 
 The issue already exists with people who may want to use for example the
 previous bzr release and the trunk.  There is a related issue that plugins
@@ -350,7 +350,7 @@ covering these points (as appropriate):
 
 * Early communication about changing dependencies or defaults
 
-* Reminder re lifecycle and where we're up to right now, in particular the 
+* Reminder re lifecycle and where we're up to right now, in particular the
   dates for the next release and/or candidate.
 
 * Summary of recent successes and pending work.
@@ -364,11 +364,11 @@ covering these points (as appropriate):
 Questions
 *********
 
-Do users actually want this?  
+Do users actually want this?
     Apparently yes, because it's often requested and often raised as a
     problem.
 
-Would this confuse users?  
+Would this confuse users?
     It shouldn't, because it's a fairly standard scheme.
 
 Won't it take more time to fix bugs in multiple places?
@@ -388,7 +388,7 @@ Will anyone test the beta releases?
     really rather not test them, forcing them is not helpful.
 
 Isn't this a step backwards to a slower, less-agile process?
-    No, our trunk stays releasable, and we ship every month.  We're just 
+    No, our trunk stays releasable, and we ship every month.  We're just
     cutting out things that hold us back (continuous rather than episodic
     API stability; RCs every month) and giving users what they demand.
 
@@ -406,7 +406,7 @@ don't occur, we'll think again:
   and stable releases, indicating that each has value.
 
 * API changes are easier or safer to make during beta periods, without
-  being held back by fears of compatibility or 
+  being held back by fears of compatibility or
 
 * The stable releases are actually stable and don't introduce regressions
   or break plugins.

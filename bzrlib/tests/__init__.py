@@ -518,11 +518,15 @@ class VerboseTestResult(ExtendedTestResult):
     def report_test_start(self, test):
         self.count += 1
         name = self._shortened_test_description(test)
-        # width needs space for 6 char status, plus 1 for slash, plus an
-        # 11-char time string, plus a trailing blank
-        # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on space
-        self.stream.write(self._ellipsize_to_right(name,
-                          osutils.terminal_width()-18))
+        width = osutils.terminal_width()
+        if width is not None:
+            # width needs space for 6 char status, plus 1 for slash, plus an
+            # 11-char time string, plus a trailing blank
+            # when NUMBERED_DIRS: plus 5 chars on test number, plus 1 char on
+            # space
+            self.stream.write(self._ellipsize_to_right(name, width-18))
+        else:
+            self.stream.write(name)
         self.stream.flush()
 
     def _error_summary(self, err):
@@ -1119,12 +1123,23 @@ class TestCase(testtools.TestCase):
         :raises AssertionError: If the expected and actual stat values differ
             other than by atime.
         """
-        self.assertEqual(expected.st_size, actual.st_size)
-        self.assertEqual(expected.st_mtime, actual.st_mtime)
-        self.assertEqual(expected.st_ctime, actual.st_ctime)
-        self.assertEqual(expected.st_dev, actual.st_dev)
-        self.assertEqual(expected.st_ino, actual.st_ino)
-        self.assertEqual(expected.st_mode, actual.st_mode)
+        self.assertEqual(expected.st_size, actual.st_size,
+                         'st_size did not match')
+        self.assertEqual(expected.st_mtime, actual.st_mtime,
+                         'st_mtime did not match')
+        self.assertEqual(expected.st_ctime, actual.st_ctime,
+                         'st_ctime did not match')
+        if sys.platform != 'win32':
+            # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
+            # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
+            # odd. Regardless we shouldn't actually try to assert anything
+            # about their values
+            self.assertEqual(expected.st_dev, actual.st_dev,
+                             'st_dev did not match')
+            self.assertEqual(expected.st_ino, actual.st_ino,
+                             'st_ino did not match')
+        self.assertEqual(expected.st_mode, actual.st_mode,
+                         'st_mode did not match')
 
     def assertLength(self, length, obj_with_len):
         """Assert that obj_with_len is of length length."""
@@ -1511,6 +1526,7 @@ class TestCase(testtools.TestCase):
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            'BZR_CONCURRENCY': None,
             # Make sure that any text ui tests are consistent regardless of
             # the environment the test case is run in; you may want tests that
             # test other combinations.  'dumb' is a reasonable guess for tests
@@ -1518,6 +1534,7 @@ class TestCase(testtools.TestCase):
             'TERM': 'dumb',
             'LINES': '25',
             'COLUMNS': '80',
+            'BZR_COLUMNS': '80',
             # SSH Agent
             'SSH_AUTH_SOCK': None,
             # Proxies
@@ -1721,10 +1738,22 @@ class TestCase(testtools.TestCase):
             os.chdir(working_dir)
 
         try:
-            result = self.apply_redirected(ui.ui_factory.stdin,
-                stdout, stderr,
-                bzrlib.commands.run_bzr_catch_user_errors,
-                args)
+            try:
+                result = self.apply_redirected(ui.ui_factory.stdin,
+                    stdout, stderr,
+                    bzrlib.commands.run_bzr_catch_user_errors,
+                    args)
+            except KeyboardInterrupt:
+                # Reraise KeyboardInterrupt with contents of redirected stdout
+                # and stderr as arguments, for tests which are interested in
+                # stdout and stderr and are expecting the exception.
+                out = stdout.getvalue()
+                err = stderr.getvalue()
+                if out:
+                    self.log('output:\n%r', out)
+                if err:
+                    self.log('errors:\n%r', err)
+                raise KeyboardInterrupt(out, err)
         finally:
             logger.removeHandler(handler)
             ui.ui_factory = old_ui_factory
@@ -2278,7 +2307,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # recreate a new one or all the followng tests will fail.
             # If you need to inspect its content uncomment the following line
             # import pdb; pdb.set_trace()
-            _rmtree_temp_dir(root + '/.bzr')
+            _rmtree_temp_dir(root + '/.bzr', test_id=self.id())
             self._create_safety_net()
             raise AssertionError('%s/.bzr should not be modified' % root)
 
@@ -2360,8 +2389,11 @@ class TestCaseWithMemoryTransport(TestCase):
         return branchbuilder.BranchBuilder(branch=branch)
 
     def overrideEnvironmentForTesting(self):
-        os.environ['HOME'] = self.test_home_dir
-        os.environ['BZR_HOME'] = self.test_home_dir
+        test_home_dir = self.test_home_dir
+        if isinstance(test_home_dir, unicode):
+            test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
+        os.environ['HOME'] = test_home_dir
+        os.environ['BZR_HOME'] = test_home_dir
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
@@ -2473,7 +2505,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def deleteTestDir(self):
         os.chdir(TestCaseWithMemoryTransport.TEST_ROOT)
-        _rmtree_temp_dir(self.test_base_dir)
+        _rmtree_temp_dir(self.test_base_dir, test_id=self.id())
 
     def build_tree(self, shape, line_endings='binary', transport=None):
         """Build a test tree according to a pattern.
@@ -3217,13 +3249,17 @@ def reinvoke_for_tests(suite):
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
+        bzr_path = [bzr_path]
+        if sys.platform == "win32":
+            # if we're on windows, we can't execute the bzr script directly
+            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
             test_list_file.write(test.id() + '\n')
         test_list_file.close()
         try:
-            argv = [bzr_path, 'selftest', '--load-list', test_list_file_name,
+            argv = bzr_path + ['selftest', '--load-list', test_list_file_name,
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
@@ -3951,7 +3987,7 @@ def clone_test(test, new_id):
     return new_test
 
 
-def _rmtree_temp_dir(dirname):
+def _rmtree_temp_dir(dirname, test_id=None):
     # If LANG=C we probably have created some bogus paths
     # which rmtree(unicode) will fail to delete
     # so make sure we are using rmtree(str) to delete everything
@@ -3969,6 +4005,9 @@ def _rmtree_temp_dir(dirname):
         # We don't want to fail here because some useful display will be lost
         # otherwise. Polluting the tmp dir is bad, but not giving all the
         # possible info to the test runner is even worse.
+        if test_id != None:
+            ui.ui_factory.clear_term()
+            sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         sys.stderr.write('Unable to remove testing dir %s\n%s'
                          % (os.path.basename(dirname), e))
 
@@ -4056,6 +4095,37 @@ class _UnicodeFilenameFeature(Feature):
             return True
 
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
+
+
+class ModuleAvailableFeature(Feature):
+    """This is a feature than describes a module we want to be available.
+
+    Declare the name of the module in __init__(), and then after probing, the
+    module will be available as 'self.module'.
+
+    :ivar module: The module if it is available, else None.
+    """
+
+    def __init__(self, module_name):
+        super(ModuleAvailableFeature, self).__init__()
+        self.module_name = module_name
+
+    def _probe(self):
+        try:
+            self._module = __import__(self.module_name, {}, {}, [''])
+            return True
+        except ImportError:
+            return False
+
+    @property
+    def module(self):
+        if self.available(): # Make sure the probe has been done
+            return self._module
+        return None
+    
+    def feature_name(self):
+        return self.module_name
+
 
 
 def probe_unicode_in_user_encoding():
@@ -4171,7 +4241,9 @@ class _BreakinFeature(Feature):
             # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
             # We trigger SIGBREAK via a Console api so we need ctypes to
             # access the function
-            if not have_ctypes:
+            try:
+                import ctypes
+            except OSError:
                 return False
         return True
 

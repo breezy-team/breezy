@@ -76,6 +76,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         e = self.assertRaises(AssertionError, shelver.run)
         self.assertEqual('Unexpected prompt: Shelve? [yNfq?]', str(e))
 
@@ -84,6 +85,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('foo', 'y')
         e = self.assertRaises(AssertionError, shelver.run)
         self.assertEqual('Wrong prompt: Shelve? [yNfq?]', str(e))
@@ -93,6 +95,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'n')
         shelver.expect('Shelve? [yNfq?]', 'n')
         # No final shelving prompt because no changes were selected
@@ -104,6 +107,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'n')
@@ -115,6 +119,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
@@ -126,6 +131,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'n')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -138,6 +144,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve binary changes? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -149,6 +156,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve renaming "foo" => "bar"? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
         shelver.expect('Shelve? [yNfq?]', 'y')
@@ -162,6 +170,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve removing file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -175,6 +184,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve adding file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -187,6 +197,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve changing "foo" from file to directory? [yNfq?]',
                        'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -202,6 +213,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve changing target of "baz" from "bar" to '
                 '"vax"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
@@ -213,6 +225,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'f')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -223,6 +236,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', 'q')
         self.assertRaises(errors.UserAbort, shelver.run)
         self.assertFileEqual(LINES_ZY, 'tree/foo')
@@ -234,7 +248,7 @@ class TestShelver(tests.TestCaseWithTransport):
         try:
             shelver.run()
         finally:
-            shelver.work_tree.unlock()
+            shelver.finalize()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
     def test_shelve_filename(self):
@@ -244,6 +258,7 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(), file_list=['bar'])
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve adding file "bar"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -253,19 +268,18 @@ class TestShelver(tests.TestCaseWithTransport):
         tree.lock_tree_write()
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Shelve? [yNfq?]', '?')
         shelver.expect('Shelve? [(y)es, (N)o, (f)inish, or (q)uit]', 'f')
         shelver.expect('Shelve 2 change(s)? [yNfq?]', 'y')
         shelver.run()
 
-    def test_shelve_distroy(self):
+    def test_shelve_destroy(self):
         tree = self.create_shelvable_tree()
         shelver = shelf_ui.Shelver.from_args(sys.stdout, all=True,
                                              directory='tree', destroy=True)
-        try:
-            shelver.run()
-        finally:
-            shelver.work_tree.unlock()
+        self.addCleanup(shelver.finalize)
+        shelver.run()
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
         self.assertFileEqual(LINES_AJ, 'tree/foo')
 
@@ -276,7 +290,10 @@ class TestShelver(tests.TestCaseWithTransport):
             target = tree.branch.repository.revision_tree(target_revision_id)
             shelver = shelf_ui.Shelver(tree, target, auto=True,
                                        auto_apply=True)
-            shelver.run()
+            try:
+                shelver.run()
+            finally:
+                shelver.finalize()
         finally:
             tree.unlock()
 
@@ -316,6 +333,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Apply change? [yNfq?]', 'n')
         shelver.expect('Apply change? [yNfq?]', 'n')
         # No final shelving prompt because no changes were selected
@@ -328,6 +346,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply 2 change(s)? [yNfq?]', 'n')
@@ -340,6 +359,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply 2 change(s)? [yNfq?]', 'y')
@@ -353,6 +373,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Apply binary changes? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -365,6 +386,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Rename "bar" => "foo"? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
         shelver.expect('Apply change? [yNfq?]', 'y')
@@ -379,6 +401,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Add file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -393,6 +416,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Delete file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
@@ -406,6 +430,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Change "foo" from directory to a file? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
 
@@ -421,6 +446,7 @@ class TestApplyReporter(TestShelver):
         self.addCleanup(tree.unlock)
         shelver = ExpectShelver(tree, tree.basis_tree(),
                                 reporter=shelf_ui.ApplyReporter())
+        self.addCleanup(shelver.finalize)
         shelver.expect('Change target of "baz" from "vax" to "bar"? [yNfq?]',
                        'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
@@ -438,8 +464,12 @@ class TestUnshelver(tests.TestCaseWithTransport):
             tree.add('foo', 'foo-id')
             tree.commit('added foo')
             self.build_tree_contents([('tree/foo', LINES_ZY)])
-            shelf_ui.Shelver(tree, tree.basis_tree(), auto_apply=True,
-                             auto=True).run()
+            shelver = shelf_ui.Shelver(tree, tree.basis_tree(),
+                                       auto_apply=True, auto=True)
+            try:
+                shelver.run()
+            finally:
+                shelver.finalize()
         finally:
             tree.unlock()
         return tree
