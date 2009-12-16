@@ -19,7 +19,6 @@ import re
 import stat
 from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
-import signal
 import sys
 import time
 import warnings
@@ -40,6 +39,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import signal
 import subprocess
 import tempfile
 from tempfile import (
@@ -1424,7 +1424,13 @@ def _terminal_size_changed(signum, frame):
     width, height = _terminal_size(None, None)
     if width is not None:
         os.environ['COLUMNS'] = str(width)
-signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+if sys.platform == 'win32':
+    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
+    # I've no idea how to plug that in the current design -- vila 20091216
+    pass
+else:
+    signal.signal(signal.SIGWINCH, _terminal_size_changed)
 
 
 def supports_executable():
