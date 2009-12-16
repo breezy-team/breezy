@@ -10,28 +10,32 @@ Filesystem Backups
 ------------------
 
 Bazaar transactions are atomic in the sense that the disk format is such that
-it is in a valid state at all times.  If a Bazaar file is copied while some
-process is in the midst of writing to that file, then that content is not
-referred to by the other on-disk structures until the data is completely
-written.  As such, it should be safe to copy Bazaar branches using filesystem
-tools at any time.  The only possible drawback to doing this is that the
-copied files may contain a small amount of additional content that isn't used
-elsewhere in the branch.  A later copy made after that change has fully
-completed would contain that whole change.  Bazaar's disk formats are not
-specifically tuned to be kind to tape backup methods that prefer to append to
-existing files, but they should be reasonably friendly in that regard.  (In
-many cases, they do only append to files that already exist.)
+it is in a valid state at any instant in time.  However, for a backup process
+that takes a finite amount of time to complete, it is possible to have
+inconsistencies between different on-disk structures when backing up a live
+branch or repository.  (Bazaar itself manages this concurrency issue by only
+*reading* those structures in a well-defined order.)  Tools such as LVM that
+allow instantaneous snapshots of the contents of a disk can be used to take
+filesystem backups of live Bazaar branches and repositories.
 
-Although Bazaar has a valid on-disk state at all times, backing up a live
-branch can have unintended human interactions.  In particular, a commit that
-happens during the course of a backup may not be present in the backup that
-was running when the commit was made.  This can be a problem if developers
-delete their local branches on the assumption that the branch located on the
-server is backed up.  In the event of a failure on the server before the next
-backup that starts strictly *after* the commit finishes, then that commit may
-be lost when restoring from the backup.  To avoid this possibility entirely,
-it is necessary to take the branch offline while doing the backup or to use
-a backup scheme based on Bazaar's branches: `Bound Branch Backups`_
+For other backup methods, it is necessary to take the branch or repository
+offline while the backup is being done in order to guarantee consistency
+between the various files that comprise a Bazaar branch's history.  This
+requirement can be alleviated by using Bazaar as its own backup client,
+since it follows an order for reading that is designed to manage concurrent
+access (see the next section for details).  Depending on the different
+access methods that are being used for a branch, there are different ways to
+take the branch "offline".  For ``bzr+ssh://`` access, it is possible to
+temporarily change the filesystem permissions to prevent write access from
+any users.  For ``http://`` access, changing permissions, shutting down
+the HTTP server or switching the server to a separate configuration that
+disallows access are all possible ways to take a branch offline for backup.  
+Finally, for direct filesystem access, it is necessary to make the branch
+directories un-writable.
+
+Because this sort of downtime can be very disruptive, we strongly encourage
+using Bazaar itself as a backup client, where branches are copied and
+updated using Bazaar directly.
 
 
 Bazaar as its own backup
@@ -172,7 +176,7 @@ There are many different backup tools with different ways of accessing the
 backup data, so we can't cover them all here.  What we will say is that
 restoring the contents of the ``/srv/bzr`` directory completely will restore
 all branches stored there to their state at the time of the backup (see
-`Filesystem Backups`_ for possible human-level concerns on backing up live branches.)  For
+`Filesystem Backups`_ for concerns on backing up live branches.)  For
 example, if the backups were mounted at ``/mnt/backup/bzr`` then we could
 restore using simply::
  
