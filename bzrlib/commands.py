@@ -40,6 +40,7 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
+    cleanup,
     debug,
     errors,
     option,
@@ -384,7 +385,11 @@ class Command(object):
             warn("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
-
+        self._operation = cleanup.OperationWithCleanups(self.run)
+    
+    def add_cleanup(self, cleanup_func, *args, **kwargs):
+        self._operation.add_cleanup(cleanup_func, *args, **kwargs)
+        
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
@@ -635,7 +640,7 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        return self._operation.run_simple(**all_cmd_args)
 
     def run(self):
         """Actually run the command.
