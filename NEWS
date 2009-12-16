@@ -33,6 +33,12 @@ New Features
   lengths. 
   (Vincent Ladeuil)
 
+* The new command ``bzr lp-mirror`` will request that Launchpad update its
+  mirror of a local branch. This command will only function if launchpadlib
+  is installed.
+  (Jonathan Lange)
+
+
 Bug Fixes
 *********
 
@@ -112,6 +118,11 @@ API Changes
 ***********
 
 * ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
+
+* The Launchpad plugin now has a function ``login`` which will log in to
+  Launchpad with launchpadlib, and ``load_branch`` which will return the
+  Launchpad Branch object corresponding to a given Bazaar Branch object.
+  (Jonathan Lange)
 
 Internals
 *********
