@@ -58,7 +58,7 @@ def get_cache_directory():
 
 
 LAUNCHPAD_API_URLS = {
-    'production': EDGE_SERVICE_ROOT,
+    'production': 'https://api.launchpad.net/beta/',
     'edge': EDGE_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
