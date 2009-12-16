@@ -96,8 +96,6 @@ def login(service, timeout=None, proxy_info=None):
     # XXX: Work-around a minor security bug in launchpadlib 1.5.1, which would
     # create this directory with default umask.
     os.chmod(cache_directory, 0700)
-    # XXX: Why does this set the private member of a class?
-    launchpad._service = service
     return launchpad
 
 
@@ -110,19 +108,15 @@ def load_branch(launchpad, branch):
         `branch`.
     :return: A launchpadlib Branch object.
     """
-    # XXX: Why does this need service and _guess_branch_path?
-    service = launchpad._service
+    # XXX: This duplicates the "What are possible URLs for the branch that
+    # Launchpad might recognize" logic found in cmd_lp_open.
+
+    # XXX: This makes multiple roundtrips to Launchpad for what is
+    # conceptually a single operation -- get me the branches that match these
+    # URLs. Unfortunately, Launchpad's support for such operations is poor, so
+    # we have to allow multiple roundtrips.
     for url in branch.get_public_branch(), branch.get_push_location():
-        if url is None:
-            continue
-        try:
-            path = service._guess_branch_path(url)
-        except (errors.InvalidURL, NotLaunchpadBranch):
-            pass
-        else:
-            trace.mutter('Guessing path: %s', path)
-            uri = launchpad._root_uri.append(path)
-            uri_str = str(uri)
-            trace.mutter('Guessing url: %s', uri_str)
-            return launchpad.load(uri_str)
+        lp_branch = launchpad.branches.getByUrl(url=url)
+        if lp_branch:
+            return lp_branch
     raise NotLaunchpadBranch(url)
