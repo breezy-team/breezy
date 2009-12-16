@@ -375,6 +375,7 @@ class CannedInputUIFactoryTests(tests.TestCase):
         self.assertEqual('password',
                          uif.get_password('Password for %(host)s',
                                           host='example.com'))
+        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):

@@ -414,9 +414,12 @@ class Unshelver(object):
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
-            if action == 'delete-only':
+            elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
+            elif action == 'keep':
+                apply_changes = True
+                delete_shelf = False
         except:
             tree.unlock()
             raise
