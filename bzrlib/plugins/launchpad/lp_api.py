@@ -40,9 +40,14 @@ from launchpadlib.launchpad import (
 from lazr.uri import URI
 
 
-# XXX: Not the right value for Windows
-# Look in win32 utils -- maybe wrap it up
-CACHE_DIRECTORY = os.path.expanduser('~/.launchpadlib/cache')
+def get_cache_directory():
+    """Return the directory to cache launchpadlib objects in."""
+    # XXX: Not the right value for Windows. Use the same logic as config_dir
+    # to get a suitable base directory, maybe extract stuff out of that.
+
+    # XXX: Don't use launchpadlib/cache, use a directory called launchpadlib
+    # underneath the xdg cache. (~/.cache on UNIX)
+    return os.path.expanduser('~/.launchpadlib/cache')
 
 
 LAUNCHPAD_API_URLS = {
@@ -80,7 +85,7 @@ def _get_credential_path(service):
     """
     web_root_uri = URI(_get_api_url(service))
     credential_name = 'creds-%s-bzr' % (web_root_uri.host)
-    return os.path.join(CACHE_DIRECTORY, credential_name)
+    return os.path.join(get_cache_directory(), credential_name)
 
 
 def _login_from_cache(consumer_name, service_root, cache_dir,
