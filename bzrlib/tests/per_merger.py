@@ -193,12 +193,14 @@ class TestMergeImplementation(TestCaseWithTransport):
 class TestHookMergeFileContent(TestCaseWithTransport):
     """Tests that the 'merge_file_content' hook is invoked."""
 
-    def install_hook_merge_file_content(self):
+    def install_hook_noop(self):
         def hook_na(merge_params):
             # This hook unconditionally does nothing.
             return 'not_applicable', None
         _mod_merge.Merger.hooks.install_named_hook(
             'merge_file_content', hook_na, 'test hook (n/a)')
+
+    def install_hook_success(self):
         def hook_success(merge_params):
             if merge_params.file_id == '1':
                 return 'success', ['text-merged-by-hook']
@@ -206,13 +208,22 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         _mod_merge.Merger.hooks.install_named_hook(
             'merge_file_content', hook_success, 'test hook (success)')
         
+    def install_hook_delete(self):
+        def hook_delete(merge_params):
+            if merge_params.file_id == '1':
+                return 'delete', None
+            return 'not_applicable', None
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_delete, 'test hook (delete)')
+        
     def make_merge_builder(self):
         builder = MergeBuilder(self.test_base_dir)
         self.addCleanup(builder.cleanup)
         return builder
 
-    def test_hook_merge_file_content(self):
-        self.install_hook_merge_file_content()
+    def test_change_vs_change(self):
+        """Hook is used for (changed, changed)"""
+        self.install_hook_success()
         builder = self.make_merge_builder()
         builder.add_file("1", builder.tree_root, "name1", "text1", True)
         builder.change_contents("1", other="text4", this="text3")
@@ -220,4 +231,26 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         self.assertEqual(conflicts, [])
         self.assertEqual(
             builder.this.get_file('1').read(), 'text-merged-by-hook')
+
+    def test_change_vs_deleted(self):
+        """Hook is used for (changed, deleted)"""
+        self.install_hook_success()
+        builder = self.make_merge_builder()
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", this="text2")
+        builder.remove_file("1", other=True)
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(
+            builder.this.get_file('1').read(), 'text-merged-by-hook')
+
+    def test_result_can_be_delete(self):
+        """A hook's result can be the deletion of a file."""
+        self.install_hook_delete()
+        builder = self.make_merge_builder()
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", this="text2", other="text3")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [])
+        self.assertRaises(errors.NoSuchId, builder.this.id2path, '1')
 

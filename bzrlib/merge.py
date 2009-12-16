@@ -1193,40 +1193,46 @@ class Merge3Merger(object):
                 self.tt.unversion_file(trans_id)
                 return "deleted"
         else:
+            hooks = Merger.hooks['merge_file_content']
+            params = MergeHookParams(self, file_id, trans_id)
+            hook_ran = False
+            for hook in hooks:
+                hook_status, lines = hook(params)
+                if hook_status == 'not_applicable':
+                    continue
+                elif hook_status == 'success':
+                    self.tt.create_file(lines, trans_id)
+                elif hook_status == 'conflicted':
+                    # XXX: perhaps the hook should be able to provide
+                    # the BASE/THIS/OTHER files?
+                    self.tt.create_file(lines, trans_id)
+                    self._raw_conflicts.append(
+                        ('text conflict', trans_id))
+                    name = self.tt.final_name(trans_id)
+                    parent_id = self.tt.final_parent(trans_id)
+                    file_group = self._dump_conflicts(
+                        name, parent_id, file_id)
+                    file_group.append(trans_id)
+                elif hook_status == 'delete':
+                    self.tt.unversion_file(trans_id)
+                    return "deleted"
+                else:
+                    raise AssertionError(
+                        'unknown hook_status: %r' % (hook_status,))
+                # This hook function applied, so don't try any other
+                # hook functions.
+                hook_ran = True
+                break
+                    # if no hook functions applied, do the default merge.
+
             # We have a hypothetical conflict, but if we have files, then we
             # can try to merge the content
-            if this_pair[0] == 'file' and other_pair[0] == 'file':
+            if (this_pair[0] == 'file' and other_pair[0] == 'file') or hook_ran:
                 # THIS and OTHER are both files, so text merge.  Either
                 # BASE is a file, or both converted to files, so at least we
                 # have agreement that output should be a file.
                 try:
-                    hooks = Merger.hooks['merge_file_content']
-                    params = MergeHookParams(self, file_id, trans_id)
-                    for hook in hooks:
-                        hook_status, lines = hook(params)
-                        if hook_status == 'not_applicable':
-                            continue
-                        elif hook_status == 'success':
-                            self.tt.create_file(lines, trans_id)
-                        elif hook_status == 'conflicted':
-                            # XXX: perhaps the hook should be able to provide
-                            # the BASE/THIS/OTHER files?
-                            self.tt.create_file(lines, trans_id)
-                            self._raw_conflicts.append(
-                                ('text conflict', trans_id))
-                            name = self.tt.final_name(trans_id)
-                            parent_id = self.tt.final_parent(trans_id)
-                            file_group = self._dump_conflicts(
-                                name, parent_id, file_id)
-                            file_group.append(trans_id)
-                        else:
-                            raise AssertionError(
-                                'unknown hook_status: %r' % (hook_status,))
-                        # This hook function applied, so don't try any other
-                        # hook functions.
-                        break
-                    else:
-                        # if no hook functions applied, do the default merge.
+                    if not hook_ran:
                         self.text_merge(file_id, trans_id)
                 except errors.BinaryFile:
                     return contents_conflict()
