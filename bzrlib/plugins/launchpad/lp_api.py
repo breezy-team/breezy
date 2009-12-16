@@ -20,6 +20,8 @@
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
+# XXX: Do some sort of version check for 1.5.1 or greater.
+
 import os
 import sys
 
