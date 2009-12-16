@@ -671,7 +671,7 @@ def _clever_some_str(value):
 traceback._some_str = _clever_some_str
 
 
-# deprecated
+# deprecated - use self.knownFailure(), or self.expectFailure.
 KnownFailure = testtools.testcase._ExpectedFailure
 
 
