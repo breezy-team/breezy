@@ -116,6 +116,7 @@ docs-sphinx: html-sphinx
 clean-sphinx:
 	cd doc/en && make clean
 	cd doc/es && make clean
+	cd doc/ja && make clean
 	cd doc/ru && make clean
 	cd doc/developers && make clean
 
@@ -124,6 +125,8 @@ SPHINX_DEPENDENCIES = \
         doc/en/user-reference/index.txt \
 	doc/es/Makefile \
 	doc/es/make.bat \
+	doc/ja/Makefile \
+	doc/ja/make.bat \
 	doc/ru/Makefile \
 	doc/ru/make.bat \
 	doc/developers/Makefile \
@@ -146,6 +149,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make html
 	cd doc/es && make html
 	cd doc/ru && make html
+	cd doc/ja && make html
 	cd doc/developers && make html
 
 # Build the PDF docs using Sphinx. This requires numerous LaTeX
@@ -156,6 +160,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 pdf-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make latex
 	cd doc/es && make latex
+	cd doc/ja && make latex
 	cd doc/developers && make latex
 	cd doc/en/_build/latex && make all-pdf
 	cd doc/es/_build/latex && make all-pdf
@@ -168,6 +173,7 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make htmlhelp
 	cd doc/es && make htmlhelp
 	cd doc/ru && make htmlhelp
+	cd doc/ja && make htmlhelp
 	cd doc/developers && make htmlhelp
 
 
@@ -181,6 +187,7 @@ doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
@@ -201,7 +208,10 @@ txt_all = \
 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
         $(wildcard doc/es/tutorials/*.txt) \
-        $(wildcard doc/ru/tutorials/*.txt) \
+		$(wildcard doc/ru/tutorials/*.txt) \
+	doc/ja/tutorials/tutorial.txt \
+	doc/ja/tutorials/using_bazaar_with_launchpad.txt \
+	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
 	$(wildcard doc/es/guia-usario/*.txt) \
@@ -212,6 +222,7 @@ txt_all = \
 txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
+	doc/ja/user-guide/index.txt \
 	doc/ru/user-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 

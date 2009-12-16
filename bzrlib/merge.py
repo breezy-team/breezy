@@ -1162,8 +1162,22 @@ class Merge3Merger(object):
                 self.tt.delete_contents(trans_id)
             if file_id in self.other_tree:
                 # OTHER changed the file
+                wt = self.this_tree
+                if wt.supports_content_filtering():
+                    # We get the path from the working tree if it exists.
+                    # That fails though when OTHER is adding a file, so
+                    # we fall back to the other tree to find the path if
+                    # it doesn't exist locally.
+                    try:
+                        filter_tree_path = wt.id2path(file_id)
+                    except errors.NoSuchId:
+                        filter_tree_path = self.other_tree.id2path(file_id)
+                else:
+                    # Skip the id2path lookup for older formats
+                    filter_tree_path = None
                 create_from_tree(self.tt, trans_id,
-                                 self.other_tree, file_id)
+                                 self.other_tree, file_id,
+                                 filter_tree_path=filter_tree_path)
                 if not file_in_this:
                     self.tt.version_file(file_id, trans_id)
                 return "modified"
@@ -1256,12 +1270,26 @@ class Merge3Merger(object):
                 ('THIS', self.this_tree, this_lines)]
         if not no_base:
             data.append(('BASE', self.base_tree, base_lines))
+
+        # We need to use the actual path in the working tree of the file here,
+        # ignoring the conflict suffixes
+        wt = self.this_tree
+        if wt.supports_content_filtering():
+            try:
+                filter_tree_path = wt.id2path(file_id)
+            except errors.NoSuchId:
+                # file has been deleted
+                filter_tree_path = None
+        else:
+            # Skip the id2path lookup for older formats
+            filter_tree_path = None
+
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
             if file_id in tree:
                 trans_id = self._conflict_file(name, parent_id, tree, file_id,
-                                               suffix, lines)
+                                               suffix, lines, filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
                     self.tt.version_file(file_id, trans_id)
@@ -1269,11 +1297,12 @@ class Merge3Merger(object):
         return file_group
 
     def _conflict_file(self, name, parent_id, tree, file_id, suffix,
-                       lines=None):
+                       lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        create_from_tree(self.tt, trans_id, tree, file_id, lines)
+        create_from_tree(self.tt, trans_id, tree, file_id, lines,
+            filter_tree_path)
         return trans_id
 
     def merge_executable(self, file_id, file_status):

@@ -1,0 +1,68 @@
+ブランチを公開する
+===================
+
+集中型リポジトリをセットアップする
+-------------------------------------
+
+集中型のワークフローはコンピュータ上のブランチを中心型のブランチ\
+として指名することで使うことができます。
+実際大抵のチームは集中型のブランチをホストするために専用サーバーを\
+持ちます。
+
+共用リポジトリをローカルで使うことが最良の習慣であるように、\
+中心型のブランチを共用リポジトリを設置することもお勧めです。
+通常は、中心型の共用ブランチはファイルの作業コピーではなく\
+履歴のみを保存することに注意してください。
+なので、そのような共有リポジトリを作るときには通常 ``no-trees``
+オプションを使います::
+
+  bzr init-repo --no-trees sftp://centralhost/srv/bzr/PROJECT
+
+この手順をcvsrootもしくはSubversionのリポジトリのセットアップとして\
+似たようなものとして考えることができます。
+しかしながら、Bazaarはリポジトリ内のブランチの編成方法をより柔軟にします。
+ガイドラインと例に関しては付録の
+`共用レポジトリのレイアウト <shared_repository_layouts.html>`_ を参照してください。
+
+
+集中型ブランチを始める
+-------------------------
+
+集中型ブランチに初期の内容を投入する方法は2つあります:
+
+ 1. ローカルのブランチを作り中央にプッシュする
+ 2. 空の中央ブランチを作り内容をコミットする
+
+最初のやり方の例です::
+
+  bzr init-repo PROJECT  (ローカルリポジトリを準備する)
+  bzr init PROJECT/trunk
+  cd PROJECT/trunk
+			 (開発ファイルをコピーする)
+  cp -ar ~/PROJECT .     (OS固有のツールを使用してファイルをコピーする)
+  bzr add                (リポジトリを投入する; バージョン管理を始める)
+  bzr commit -m "Initial import"
+                         (中心リポジトリに公開する)
+  bzr push sftp://centralhost/srv/bzr/PROJECT/trunk
+
+2番目のやり方の例です::
+
+  bzr init-repo PROJECT  (ローカルリポジトリを準備する)
+  cd PROJECT
+  bzr init sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr checkout sftp://centralhost/srv/bzr/PROJECT/trunk
+  cd trunk
+  cp -ar ~/PROJECT .     (OS固有のツールを使用してファイルをコピーする)
+  bzr add                (リポジトリを投入する; バージョン管理を始める)
+  bzr commit -m "Initial import"
+                         (中心リポジトリに公開する)
+  bzr push sftp://centralhost/srv/bzr/project/trunk
+
+``checkout`` コミットを使って作られた作業ツリー内部でコミットすると\
+ローカルと同様に内容は暗黙の内に中心位置にコミットされることに注意してください。
+``checkout`` の代わりに ``branch`` コマンドを使ったので、\
+内容はローカルにのみコミットされます。
+
+このように中心位置に密接に連動した作業ツリーは *チェックアウト(checkouts)*
+と呼ばれます。
+この章の残りでは数多くの機能を詳しく説明します。
