@@ -36,13 +36,11 @@ from bzrlib.plugins.launchpad.lp_registration import (
     NotLaunchpadBranch,
     )
 
-from launchpadlib.credentials import Credentials
 from launchpadlib.launchpad import (
     EDGE_SERVICE_ROOT,
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-from lazr.uri import URI
 
 
 def get_cache_directory():
@@ -86,45 +84,18 @@ def _get_api_url(service):
         raise InvalidLaunchpadInstance(lp_instance)
 
 
-def _get_credential_path(service):
-    """Return the path to cached credentials for 'service'.
-
-    :param service: A `LaunchpadService` object.
-    :return: The path to a cached credentials file, which might not exist.
-    """
-    web_root_uri = URI(_get_api_url(service))
-    credential_name = 'creds-%s-bzr' % (web_root_uri.host)
-    return os.path.join(get_cache_directory(), credential_name)
-
-
-def _login_from_cache(consumer_name, service_root, cache_dir,
-                      credential_cache, timeout=None, proxy_info=None):
-    """Use cached credentials if they exist, log in otherwise."""
-    # XXX: make sure credentials are private
-    try:
-        credentials = Credentials.load_from_path(credential_cache)
-    except (OSError, IOError):
-        launchpad = Launchpad.get_token_and_login(
-            consumer_name, service_root, cache_dir, timeout, proxy_info)
-        launchpad.credentials.save_to_path(credential_cache)
-    else:
-        access_key = credentials.access_token.key
-        access_secret = credentials.access_token.secret
-        launchpad = Launchpad.login(
-            consumer_name, access_key, access_secret, service_root,
-            cache_dir, timeout, proxy_info)
-    return launchpad
-
-
 def login(service, timeout=None, proxy_info=None):
     """Log in to the Launchpad API.
 
     :return: The root `Launchpad` object from launchpadlib.
     """
-    credential_path = _get_credential_path(service)
-    launchpad = _login_from_cache(
-        'bzr', _get_api_url(service), CACHE_DIRECTORY, credential_path,
-        timeout, proxy_info)
+    cache_directory = get_cache_directory()
+    launchpad = Launchpad.login_with(
+        'bzr', _get_api_url(service), cache_directory, timeout=timeout,
+        proxy_info=proxy_info)
+    # XXX: Work-around a minor security bug in launchpadlib 1.5.1, which would
+    # create this directory with default umask.
+    os.chmod(cache_directory, 0700)
     # XXX: Why does this set the private member of a class?
     launchpad._service = service
     return launchpad
