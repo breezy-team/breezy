@@ -16,6 +16,10 @@
 
 """Tools for dealing with the Launchpad API."""
 
+# Importing this module will be expensive, since it imports launchpadlib and
+# its dependencies. However, our plan is to only load this module when it is
+# needed by a command that uses it.
+
 import os
 
 from bzrlib import (
