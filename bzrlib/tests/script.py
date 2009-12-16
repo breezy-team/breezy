@@ -107,9 +107,11 @@ def _script_to_commands(text, file_name=None):
                 error = []
             error.append(line[2:] + '\n')
         else:
+            # can happen if the first line is not recognized as a command, eg
+            # if the prompt has leading whitespace
             if output is None:
                 if cmd_cur is None:
-                    raise SyntaxError('No command for that output',
+                    raise SyntaxError('No command for line %r' % (line,),
                                       (file_name, lineno, 1, orig))
                 output = []
             output.append(line + '\n')
