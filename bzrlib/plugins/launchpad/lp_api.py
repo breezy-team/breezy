@@ -21,10 +21,13 @@
 # needed by a command that uses it.
 
 import os
+import sys
 
 from bzrlib import (
     errors,
+    osutils,
     trace,
+    win32utils,
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
@@ -44,10 +47,16 @@ def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
     # XXX: Not the right value for Windows. Use the same logic as config_dir
     # to get a suitable base directory, maybe extract stuff out of that.
-
-    # XXX: Don't use launchpadlib/cache, use a directory called launchpadlib
-    # underneath the xdg cache. (~/.cache on UNIX)
-    return os.path.expanduser('~/.launchpadlib/cache')
+    if sys.platform == 'win32':
+        base = win32utils.get_appdata_location_unicode()
+        if base is None:
+            base = os.environ.get('HOME', None)
+        if base is None:
+            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
+                                  ' or HOME set')
+    else:
+        base = os.path.expanduser('~/.cache')
+    return osutils.pathjoin(base, 'launchpadlib')
 
 
 LAUNCHPAD_API_URLS = {
