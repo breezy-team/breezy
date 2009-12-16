@@ -4506,30 +4506,28 @@ class cmd_annotate(Command):
             bzrdir.BzrDir.open_containing_tree_or_branch(filename)
         if wt is not None:
             wt.lock_read()
+            self.add_cleanup(wt.unlock)
         else:
             branch.lock_read()
-        try:
-            tree = _get_one_revision_tree('annotate', revision, branch=branch)
-            if wt is not None:
-                file_id = wt.path2id(relpath)
-            else:
-                file_id = tree.path2id(relpath)
-            if file_id is None:
-                raise errors.NotVersionedError(filename)
-            file_version = tree.inventory[file_id].revision
-            if wt is not None and revision is None:
-                # If there is a tree and we're not annotating historical
-                # versions, annotate the working tree's content.
-                annotate_file_tree(wt, file_id, self.outf, long, all,
-                    show_ids=show_ids)
-            else:
-                annotate_file(branch, file_version, file_id, long, all, self.outf,
-                              show_ids=show_ids)
-        finally:
-            if wt is not None:
-                wt.unlock()
-            else:
-                branch.unlock()
+            self.add_cleanup(branch.unlock)
+        tree = _get_one_revision_tree('annotate', revision, branch=branch)
+        tree.lock_read()
+        self.add_cleanup(tree.unlock)
+        if wt is not None:
+            file_id = wt.path2id(relpath)
+        else:
+            file_id = tree.path2id(relpath)
+        if file_id is None:
+            raise errors.NotVersionedError(filename)
+        file_version = tree.inventory[file_id].revision
+        if wt is not None and revision is None:
+            # If there is a tree and we're not annotating historical
+            # versions, annotate the working tree's content.
+            annotate_file_tree(wt, file_id, self.outf, long, all,
+                show_ids=show_ids)
+        else:
+            annotate_file(branch, file_version, file_id, long, all, self.outf,
+                          show_ids=show_ids)
 
 
 class cmd_re_sign(Command):
