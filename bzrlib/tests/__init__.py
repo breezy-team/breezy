@@ -3746,6 +3746,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_inventory',
         'bzrlib.tests.per_interbranch',
         'bzrlib.tests.per_lock',
+        'bzrlib.tests.per_merger',
         'bzrlib.tests.per_transport',
         'bzrlib.tests.per_tree',
         'bzrlib.tests.per_pack_repository',
