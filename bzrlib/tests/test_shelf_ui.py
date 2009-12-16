@@ -532,10 +532,13 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_ui.Unshelver.from_args, directory='tree',
             action='delete-only', shelf_id='foo')
 
+
+class TestUnshelveScripts(TestUnshelver, 
+                          script.TestCaseWithTransportAndScript): 
+
     def test_unshelve_messages_keep(self):
         self.create_tree_with_shelf()
-        sr = script.ScriptRunner()
-        sr.run_script(self, """
+        self.run_script("""
 $ cd tree
 $ bzr unshelve --keep
 2>Using changes with id "1".
@@ -545,8 +548,7 @@ $ bzr unshelve --keep
 
     def test_unshelve_messages_delete(self):
         self.create_tree_with_shelf()
-        sr = script.ScriptRunner()
-        sr.run_script(self, """
+        self.run_script("""
 $ cd tree
 $ bzr unshelve --delete-only
 2>Deleted changes with id "1".
@@ -554,8 +556,7 @@ $ bzr unshelve --delete-only
 
     def test_unshelve_messages_apply(self):
         self.create_tree_with_shelf()
-        sr = script.ScriptRunner()
-        sr.run_script(self, """
+        self.run_script("""
 $ cd tree
 $ bzr unshelve --apply
 2>Using changes with id "1".
@@ -566,8 +567,7 @@ $ bzr unshelve --apply
 
     def test_unshelve_messages_dry_run(self):
         self.create_tree_with_shelf()
-        sr = script.ScriptRunner()
-        sr.run_script(self, """
+        self.run_script("""
 $ cd tree
 $ bzr unshelve --dry-run
 2>Using changes with id "1".
