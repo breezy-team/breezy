@@ -98,11 +98,17 @@ class TestMergeImplementation(TestCaseWithTransport):
         this_tree.commit('Swapped 2 & 3')
         self.do_merge(this_tree, other_tree)
         if self.merge_type is _mod_merge.LCAMerger:
-            # lca merge doesn't conflict for move and change
-            self.assertFileEqual('line 1\n'
-                'line 2 to 2.1\n'
+            self.expectFailure(
+                "lca merge doesn't conflict for move and change",
+                self.assertFileEqual,
+                'line 1\n'
+                '<<<<<<< TREE\n'
                 'line 3\n'
                 'line 2\n'
+                '=======\n'
+                'line 2 to 2.1\n'
+                'line 3\n'
+                '>>>>>>> MERGE-SOURCE\n'
                 'line 4\n', 'this/file1')
         else:
             self.assertFileEqual('line 1\n'
