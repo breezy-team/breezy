@@ -121,6 +121,10 @@ class OperationWithCleanups(object):
         return _do_with_cleanups(
             self.cleanups, self.func, *args, **kwargs)
 
+    def cleanup_now(self):
+        _run_cleanups(self.cleanups)
+        self.cleanups.clear()
+
 
 def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
     """Run `func`, then call all the cleanup_funcs.

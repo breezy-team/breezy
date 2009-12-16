@@ -388,7 +388,24 @@ class Command(object):
         self._operation = cleanup.OperationWithCleanups(self.run)
     
     def add_cleanup(self, cleanup_func, *args, **kwargs):
+        """Register a function to call after self.run returns or raises.
+
+        Functions will be called in LIFO order.
+        """
         self._operation.add_cleanup(cleanup_func, *args, **kwargs)
+
+    def cleanup_now(self):
+        """Execute and empty pending cleanup functions immediately.
+
+        After cleanup_now all registered cleanups are forgotten.  add_cleanup
+        may be called again after cleanup_now; these cleanups will be called
+        after self.run returns or raises (or when cleanup_now is next called).
+
+        This is useful for releasing expensive or contentious resources (such
+        as write locks) before doing further work that does not require those
+        resources (such as writing results to self.outf).
+        """
+        self._operation.cleanup_now()
         
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
