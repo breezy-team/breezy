@@ -41,6 +41,7 @@ from lazr.uri import URI
 
 
 # XXX: Not the right value for Windows
+# Look in win32 utils -- maybe wrap it up
 CACHE_DIRECTORY = os.path.expanduser('~/.launchpadlib/cache')
 
 
@@ -85,6 +86,7 @@ def _get_credential_path(service):
 def _login_from_cache(consumer_name, service_root, cache_dir,
                       credential_cache, timeout=None, proxy_info=None):
     """Use cached credentials if they exist, log in otherwise."""
+    # XXX: make sure credentials are private
     try:
         credentials = Credentials.load_from_path(credential_cache)
     except (OSError, IOError):
