@@ -421,6 +421,21 @@ don't occur, we'll think again:
 
 * Users like it.
 
+
+Reviewing for the Stable Branch
+*******************************
+
+* All changes to the stable branch should fix a bug, even if you would not
+  normally file a bug for the change.  The bug description should if at
+  all possible explain how to manually verify the bug in a way that will
+  fail before and pass after the change.  (These are requirements for the
+  SRU process.)
+
+* The change should be reasonably small and conservative.  Be extra
+  careful of things that could break on other platforms or locales.
+
+* (more items welcome)
+
 References
 **********
 
@@ -428,4 +443,3 @@ References
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4
-
