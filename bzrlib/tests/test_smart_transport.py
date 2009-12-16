@@ -2892,13 +2892,13 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.assertWriteCount(1)
 
     def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
-        """When there are many chunks (>100), multiple writes will occur rather
+        """When there are many bytes (>1MB), multiple writes will occur rather
         than buffering indefinitely.
         """
-        # Construct a response with stream with 40 chunks in it.  Every chunk
-        # triggers 3 buffered writes, so we expect > 100 buffered writes, but <
-        # 200.
-        body_stream = ['chunk %d' % count for count in range(40)]
+        # Construct a response with stream with ~1.5MB in it. This should
+        # trigger 2 writes, but not 3
+        onekib = '12345678' * 128
+        body_stream = [onekib] * (1024 + 512)
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=body_stream)
         self.responder.send_response(response)
