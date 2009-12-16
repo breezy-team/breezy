@@ -25,6 +25,7 @@ from bzrlib.tests import (
     multiply_tests,
     TestCaseWithTransport,
     )
+from bzrlib.tests.test_merge_core import MergeBuilder
 from bzrlib.transform import TreeTransform
 
 
@@ -189,4 +190,34 @@ class TestMergeImplementation(TestCaseWithTransport):
         self.assertRaises(errors.LockError, wt.unlock)
 
 
+class TestHookMergeFileContent(TestCaseWithTransport):
+    """Tests that the 'merge_file_content' hook is invoked."""
+
+    def install_hook_merge_file_content(self):
+        def hook_na(merge_params):
+            # This hook unconditionally does nothing.
+            return 'not_applicable', None
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_na, 'test hook (n/a)')
+        def hook_success(merge_params):
+            if merge_params.file_id == '1':
+                return 'success', ['text-merged-by-hook']
+            return 'not_applicable', None
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_success, 'test hook (success)')
+        
+    def make_merge_builder(self):
+        builder = MergeBuilder(self.test_base_dir)
+        self.addCleanup(builder.cleanup)
+        return builder
+
+    def test_hook_merge_file_content(self):
+        self.install_hook_merge_file_content()
+        builder = self.make_merge_builder()
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", other="text4", this="text3")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(
+            builder.this.get_file('1').read(), 'text-merged-by-hook')
 
