@@ -159,6 +159,18 @@ class TestTextUIFactory(tests.TestCase):
         # stdin should be empty
         self.assertEqual('', factory.stdin.readline())
 
+    def test_text_ui_get_integer(self):
+        stdin = tests.StringIOWrapper(
+            "1\n"
+            "  -2  \n"
+            "hmmm\nwhat else ?\nCome on\nok 42\n4.24\n42\n")
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        factory = _mod_ui_text.TextUIFactory(stdin, stdout, stderr)
+        self.assertEqual(1, factory.get_integer(""))
+        self.assertEqual(-2, factory.get_integer(""))
+        self.assertEqual(42, factory.get_integer(""))
+
     def test_text_factory_prompt(self):
         # see <https://launchpad.net/bugs/365891>
         StringIO = tests.StringIOWrapper
@@ -363,6 +375,7 @@ class CannedInputUIFactoryTests(tests.TestCase):
         self.assertEqual('password',
                          uif.get_password('Password for %(host)s',
                                           host='example.com'))
+        self.assertEqual(42, uif.get_integer('And all that jazz ?'))
 
 
 class TestBoolFromString(tests.TestCase):
