@@ -143,9 +143,9 @@ class cmd_register_branch(Command):
             # Run on service entirely in memory
             service = DryRunLaunchpadService()
         service.gather_user_credentials()
-        branch_object_url = rego.submit(service)
+        rego.submit(service)
         if link_bug:
-            link_bug_url = linko.submit(service)
+            linko.submit(service)
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
@@ -191,8 +191,7 @@ class cmd_launchpad_open(Command):
             LaunchpadService)
         if location is None:
             location = u'.'
-        web_url = self._get_web_url(
-            lp_registration.LaunchpadService(), location)
+        web_url = self._get_web_url(LaunchpadService(), location)
         trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
