@@ -1526,7 +1526,7 @@ class DistributionBranch(object):
                  time_tuple = rfc822.parsedate_tz(raw_timestamp)
                  if time_tuple is not None:
                      timestamp = (time.mktime(time_tuple[:9]), time_tuple[9])
-                 author = cl.author
+                 author = cl.author.decode("utf-8")
             versions = self._get_safe_versions_from_changelog(cl)
             assert not self.has_version(version), \
                 "Trying to import version %s again" % str(version)

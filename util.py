@@ -440,7 +440,7 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
         authors += find_extra_authors(changes)
         bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)
         thanks = find_thanks(changes)
-        message = "\n".join(changes)
+        message = "\n".join(changes).replace("\r", "")
     return (message, authors, thanks, bugs)
 
 
