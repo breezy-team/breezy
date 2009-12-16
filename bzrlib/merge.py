@@ -21,6 +21,7 @@ from bzrlib import (
     debug,
     errors,
     graph as _mod_graph,
+    hooks,
     merge3,
     osutils,
     patiencediff,
@@ -50,7 +51,26 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
         from_tree.unlock()
 
 
+class MergeHooks(hooks.Hooks):
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('merge_file_content',
+            "Invoked to merge the content of a file.", (2, 1), None))
+
+
+class MergeHookParams(object):
+
+    def __init__(self, merger, file_id, trans_id):
+        self.merger = merger
+        self.file_id = file_id
+        self.trans_id = trans_id
+        
+
 class Merger(object):
+
+    hooks = MergeHooks()
+
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=None, change_reporter=None,
                  recurse='down', revision_graph=None):
@@ -1180,7 +1200,34 @@ class Merge3Merger(object):
                 # BASE is a file, or both converted to files, so at least we
                 # have agreement that output should be a file.
                 try:
-                    self.text_merge(file_id, trans_id)
+                    hooks = Merger.hooks['merge_file_content']
+                    params = MergeHookParams(self, file_id, trans_id)
+                    for hook in hooks:
+                        hook_status, lines = hook(params)
+                        if hook_status == 'not_applicable':
+                            continue
+                        elif hook_status == 'success':
+                            self.tt.create_file(lines, trans_id)
+                        elif hook_status == 'conflicted':
+                            # XXX: perhaps the hook should be able to provide
+                            # the BASE/THIS/OTHER files?
+                            self.tt.create_file(lines, trans_id)
+                            self._raw_conflicts.append(
+                                ('text conflict', trans_id))
+                            name = self.tt.final_name(trans_id)
+                            parent_id = self.tt.final_parent(trans_id)
+                            file_group = self._dump_conflicts(
+                                name, parent_id, file_id)
+                            file_group.append(trans_id)
+                        else:
+                            raise AssertionError(
+                                'unknown hook_status: %r' % (hook_status,))
+                        # This hook function applied, so don't try any other
+                        # hook functions.
+                        break
+                    else:
+                        # if no hook functions applied, do the default merge.
+                        self.text_merge(file_id, trans_id)
                 except errors.BinaryFile:
                     return contents_conflict()
                 if file_id not in self.this_tree:

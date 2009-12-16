@@ -428,6 +428,32 @@ y
         self.assertEqual('text2', builder.this.get_file('1').read())
         builder.cleanup()
 
+    def install_hook_merge_file_content(self):
+        def hook_na(merge_params):
+            # This hook unconditionally does nothing.
+            return 'not_applicable', None
+        Merger.hooks.install_named_hook(
+            'merge_file_content', hook_na, 'test hook (n/a)')
+        def hook_success(merge_params):
+            if merge_params.file_id == '1':
+                return 'success', ['text-merged-by-hook']
+            return 'not_applicable', None
+        Merger.hooks.install_named_hook(
+            'merge_file_content', hook_success, 'test hook (success)')
+        
+    def test_hook_merge_file_content(self):
+        self.install_hook_merge_file_content()
+        # from contents_test_conflicts
+        builder = MergeBuilder(getcwd())
+        self.addCleanup(builder.cleanup)
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", other="text4", this="text3")
+        conflicts = builder.merge(Merge3Merger)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(
+            builder.this.get_file('1').read(), 'text-merged-by-hook')
+
+
 class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
