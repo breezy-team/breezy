@@ -248,9 +248,6 @@ class TextProgressView(object):
         self._term_file = term_file
         # true when there's output on the screen we may need to clear
         self._have_output = False
-        # XXX: We could listen for SIGWINCH and update the terminal width...
-        # https://launchpad.net/bugs/316357
-        self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
         # time we last repainted the screen
@@ -267,9 +264,11 @@ class TextProgressView(object):
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        if self._width is not None:
-            n = self._width - 1
-            s = '%-*.*s' % (n, n, s)
+        width = osutils.terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+            s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):

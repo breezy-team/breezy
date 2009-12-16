@@ -23,6 +23,39 @@ Bug Fixes
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
 
+* Listen to the SIGWINCH signal to update the terminal width.
+  (Vincent Ladeuil, #316357)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+bzr 2.0.4 (not released yet)
+############################
+
+:Codename: template
+:2.0.4: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
 Improvements
 ************
 
