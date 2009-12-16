@@ -198,7 +198,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo, scenario = self.prepare_test_repository()
         check_result = repo.check()
         check_result.report_results(verbose=True)
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         for pattern in scenario.check_regexes(repo):
             self.assertContainsRe(log, pattern)
 

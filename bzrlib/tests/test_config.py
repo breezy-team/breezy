@@ -1599,9 +1599,8 @@ password=jimpass
         # the user is prompted
         self.assertEquals(entered_password,
                           conf.get_password('ssh', 'bar.org', user='jim'))
-        log = u"".join(self.getDetails()['log'].iter_text())
         self.assertContainsRe(
-            log,
+            self.log_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
@@ -1625,9 +1624,8 @@ user=jim
                           conf.get_password('ssh', 'bar.org', user='jim'))
         # No warning shoud be emitted since there is no password. We are only
         # providing "user".
-        log = u"".join(self.getDetails()['log'].iter_text())
         self.assertNotContainsRe(
-            log,
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_uses_fallback_stores(self):

@@ -484,8 +484,7 @@ class TextTestResult(ExtendedTestResult):
             ))
 
     def report_known_failure(self, test, err):
-        ui.ui_factory.note('XFAIL: %s\n%s\n' % (
-            self._test_description(test), err[1]))
+        pass
 
     def report_skip(self, test, reason):
         pass
@@ -595,7 +594,7 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        stream = osutils.StreamWriter(codec, stream)
+        stream = osutils.UnicodeOrBytesToBytesWriter(codec, stream)
         stream.encoding = new_encoding
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
@@ -672,15 +671,8 @@ def _clever_some_str(value):
 traceback._some_str = _clever_some_str
 
 
-
-class KnownFailure(AssertionError):
-    """Indicates that a test failed in a precisely expected manner.
-
-    Such failures dont block the whole test suite from passing because they are
-    indicators of partially completed code or of future work. We have an
-    explicit error for them so that we can ensure that they are always visible:
-    KnownFailures are always shown in the output of bzr selftest.
-    """
+# deprecated
+KnownFailure = testtools.testcase._ExpectedFailure
 
 
 class UnavailableFeature(Exception):
@@ -798,8 +790,6 @@ class TestCase(testtools.TestCase):
             (UnavailableFeature, self._do_unsupported_or_skip))
         self.exception_handlers.insert(0,
             (TestNotApplicable, self._do_not_applicable))
-        self.exception_handlers.insert(0,
-            (KnownFailure, self._do_known_failure))
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -1293,41 +1283,6 @@ class TestCase(testtools.TestCase):
                 m += ": " + msg
             self.fail(m)
 
-    def expectFailure(self, reason, assertion, *args, **kwargs):
-        """Invoke a test, expecting it to fail for the given reason.
-
-        This is for assertions that ought to succeed, but currently fail.
-        (The failure is *expected* but not *wanted*.)  Please be very precise
-        about the failure you're expecting.  If a new bug is introduced,
-        AssertionError should be raised, not KnownFailure.
-
-        Frequently, expectFailure should be followed by an opposite assertion.
-        See example below.
-
-        Intended to be used with a callable that raises AssertionError as the
-        'assertion' parameter.  args and kwargs are passed to the 'assertion'.
-
-        Raises KnownFailure if the test fails.  Raises AssertionError if the
-        test succeeds.
-
-        example usage::
-
-          self.expectFailure('Math is broken', self.assertNotEqual, 54,
-                             dynamic_val)
-          self.assertEqual(42, dynamic_val)
-
-          This means that a dynamic_val of 54 will cause the test to raise
-          a KnownFailure.  Once math is fixed and the expectFailure is removed,
-          only a dynamic_val of 42 will allow the test to pass.  Anything other
-          than 54 or 42 will cause an AssertionError.
-        """
-        try:
-            assertion(*args, **kwargs)
-        except AssertionError:
-            raise KnownFailure(reason)
-        else:
-            self.fail('Unexpected success.  Should have failed: %s' % reason)
-
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
         self.failUnlessExists(path)
@@ -1643,7 +1598,10 @@ class TestCase(testtools.TestCase):
         mutter(*args)
 
     def _get_log(self, keep_log_file=False):
-        """Get the log from bzrlib.trace calls from this test.
+        """Internal helper to get the log from bzrlib.trace for this test.
+
+        Please use self.getDetails, or self.get_log to access this in test case
+        code.
 
         :param keep_log_file: When True, if the log is still a file on disk
             leave it as a file on disk. When False, if the log is still a file
@@ -1691,6 +1649,13 @@ class TestCase(testtools.TestCase):
             return log_contents
         else:
             return "No log file content and no log file name."
+
+    def get_log(self):
+        """Get a unicode string containing the log from bzrlib.trace.
+
+        Undecodable characters are replaced.
+        """
+        return u"".join(self.getDetails()['log'].iter_text())
 
     def requireFeature(self, feature):
         """This test requires a specific feature is available.

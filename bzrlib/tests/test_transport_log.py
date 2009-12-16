@@ -36,7 +36,7 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         # operations such as mkdir are logged
         mutter('where are you?')
         logging_transport.mkdir('subdir')
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         self.assertContainsRe(log, r'mkdir memory\+\d+://.*subdir')
         self.assertContainsRe(log, '  --> None')
         # they have the expected effect

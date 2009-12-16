@@ -2892,9 +2892,8 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
-        log = u"".join(self.getDetails()['log'].iter_text())
         self.assertContainsRe(
-            log,
+            self.get_log(),
             "Missing key 'branch' in context")
 
     def test_path_missing(self):
@@ -2908,8 +2907,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
-        log = u"".join(self.getDetails()['log'].iter_text())
-        self.assertContainsRe(log, "Missing key 'path' in context")
+        self.assertContainsRe(self.get_log(), "Missing key 'path' in context")
 
 
 class TestStacking(tests.TestCaseWithTransport):

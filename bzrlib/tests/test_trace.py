@@ -144,20 +144,20 @@ class TestTrace(TestCase):
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         self.assertContainsRe(log, "the unicode character for benzene is")
 
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         self.assertContainsRe(log, 'the unicode character')
 
     def test_trace_argument_utf8(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s',
                u'\N{BENZENE RING}'.encode('utf-8'))
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         self.assertContainsRe(log, 'the unicode character')
 
     def test_report_broken_pipe(self):
@@ -177,7 +177,7 @@ class TestTrace(TestCase):
     def test_mutter_callsite_1(self):
         """mutter_callsite can capture 1 level of stack frame."""
         mutter_callsite(1, "foo %s", "a string")
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         # begin with the message
         self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
@@ -189,7 +189,7 @@ class TestTrace(TestCase):
     def test_mutter_callsite_2(self):
         """mutter_callsite can capture 2 levels of stack frame."""
         mutter_callsite(2, "foo %s", "a string")
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         # begin with the message
         self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
@@ -206,7 +206,7 @@ class TestTrace(TestCase):
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
         mutter('and in an ascii argument: %s', '\xb5')
-        log = u"".join(self.getDetails()['log'].iter_text())
+        log = self.get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
         # However, the log content object does unicode replacement on reading

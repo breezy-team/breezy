@@ -97,7 +97,8 @@ class MetaTestLog(tests.TestCase):
         log = details['log']
         self.assertThat(log.content_type, Equals(ContentType(
             "text", "plain", {"charset": "utf8"})))
-        self.assertThat(u"".join(log.iter_text()),
+        self.assertThat(u"".join(log.iter_text()), Equals(self.get_log()))
+        self.assertThat(self.get_log(),
             DocTestMatches(u"...a test message\n", ELLIPSIS))
 
 
@@ -847,8 +848,8 @@ class TestTestResult(tests.TestCase):
             def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
-            def report_known_failure(self, test, err):
-                self._call = test, err
+            def report_known_failure(self, test, err=None, details=None):
+                self._call = test, 'known failure'
         result = InstrumentedTestResult(None, None, None, None)
         class Test(tests.TestCase):
             def test_function(self):
@@ -858,8 +859,7 @@ class TestTestResult(tests.TestCase):
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
         self.assertEqual(test.id(), result._call[0].id())
-        self.assertEqual(tests.KnownFailure, result._call[1][0])
-        self.assertIsInstance(result._call[1][1], tests.KnownFailure)
+        self.assertEqual('known failure', result._call[1])
         # we dont introspec the traceback, if the rest is ok, it would be
         # exceptional for it not to be.
         # it should update the known_failure_count on the object.
@@ -1043,11 +1043,11 @@ class TestRunner(tests.TestCase):
         # the final output when real failures occur.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                raise tests.KnownFailure('failed')
+                self.expectFailure('failed', self.assertTrue, False)
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            raise AssertionError('foo')
+            self.fail('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1061,7 +1061,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    raise AssertionError\\(\'foo\'\\)\n'
+            '    self.fail\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1073,7 +1073,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                raise tests.KnownFailure('failed')
+                self.expectFailure('failed', self.assertTrue, False)
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -2340,28 +2340,6 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.assertEqual('bzr: interrupted\n', result[1])
 
 
-class TestKnownFailure(tests.TestCase):
-
-    def test_known_failure(self):
-        """Check that KnownFailure is defined appropriately."""
-        # a KnownFailure is an assertion error for compatability with unaware
-        # runners.
-        self.assertIsInstance(tests.KnownFailure(""), AssertionError)
-
-    def test_expect_failure(self):
-        try:
-            self.expectFailure("Doomed to failure", self.assertTrue, False)
-        except tests.KnownFailure, e:
-            self.assertEqual('Doomed to failure', e.args[0])
-        try:
-            self.expectFailure("Doomed to failure", self.assertTrue, True)
-        except AssertionError, e:
-            self.assertEqual('Unexpected success.  Should have failed:'
-                             ' Doomed to failure', e.args[0])
-        else:
-            self.fail('Assertion not raised')
-
-
 class TestFeature(tests.TestCase):
 
     def test_caching(self):
@@ -2603,8 +2581,7 @@ class TestBlackboxSupport(tests.TestCase):
         # the test framework
         self.assertEquals('always fails', str(e))
         # check that there's no traceback in the test log
-        log = u"".join(self.getDetails()['log'].iter_text())
-        self.assertNotContainsRe(log, r'Traceback')
+        self.assertNotContainsRe(self.get_log(), r'Traceback')
 
     def test_run_bzr_user_error_caught(self):
         # Running bzr in blackbox mode, normal/expected/user errors should be
@@ -2919,7 +2896,7 @@ class TestTestPrefixRegistry(tests.TestCase):
         tpr.register('bar', 'bbb.aaa.rrr')
         tpr.register('bar', 'bBB.aAA.rRR')
         self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
-        self.assertThat(u"".join(self.getDetails()['log'].iter_text()),
+        self.assertThat(self.get_log(),
             DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR", ELLIPSIS))
 
     def test_get_unknown_prefix(self):

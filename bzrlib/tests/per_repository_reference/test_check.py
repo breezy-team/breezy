@@ -39,5 +39,4 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         check_result = referring.branch.repository.check(
             referring.branch.repository.all_revision_ids())
         check_result.report_results(verbose=False)
-        log = u"".join(self.getDetails()['log'].iter_text())
-        self.assertFalse("inconsistent parents" in log)
+        self.assertFalse("inconsistent parents" in self.get_log())
