@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Listen to the SIGWINCH signal to update the terminal width.
+  (Vincent Ladeuil, #316357)
+
 Improvements
 ************
 
