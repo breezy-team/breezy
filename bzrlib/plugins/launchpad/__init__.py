@@ -227,8 +227,7 @@ class cmd_launchpad_login(Command):
         ]
 
     def run(self, name=None, no_check=False, verbose=False):
-        # XXX: At the moment, this is totally separate from any launchpadlib
-        # login system.
+        # This is totally separate from any launchpadlib login system.
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
