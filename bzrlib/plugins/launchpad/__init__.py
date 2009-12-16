@@ -41,11 +41,6 @@ from bzrlib.errors import (
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
-# XXX: Lazy import this
-from bzrlib.plugins.launchpad.lp_registration import (
-    LaunchpadService,
-    NotLaunchpadBranch,
-    )
 
 
 class cmd_register_branch(Command):
@@ -113,7 +108,7 @@ class cmd_register_branch(Command):
             dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import (
             BranchRegistrationRequest, BranchBugLinkRequest,
-            DryRunLaunchpadService)
+            DryRunLaunchpadService, LaunchpadService)
         if public_url is None:
             try:
                 b = _mod_branch.Branch.open_containing('.')[0]
@@ -182,6 +177,8 @@ class cmd_launchpad_open(Command):
             yield branch_url
 
     def _get_web_url(self, service, location):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
                 return service.get_web_url_from_branch_url(branch_url)
@@ -190,9 +187,12 @@ class cmd_launchpad_open(Command):
         raise NotLaunchpadBranch(branch_url)
 
     def run(self, location=None, dry_run=False):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            LaunchpadService)
         if location is None:
             location = u'.'
-        web_url = self._get_web_url(LaunchpadService(), location)
+        web_url = self._get_web_url(
+            lp_registration.LaunchpadService(), location)
         trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
             import webbrowser   # this import should not be lazy
@@ -275,6 +275,7 @@ class cmd_launchpad_mirror(Command):
         return lp_api
 
     def run(self, location='.'):
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
         service = LaunchpadService()
         lp_api = self._get_lp_api()
         launchpad = lp_api.login(service)
