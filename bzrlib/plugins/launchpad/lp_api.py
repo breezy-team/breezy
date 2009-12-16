@@ -45,8 +45,6 @@ from lazr.uri import URI
 
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
-    # XXX: Not the right value for Windows. Use the same logic as config_dir
-    # to get a suitable base directory, maybe extract stuff out of that.
     if sys.platform == 'win32':
         base = win32utils.get_appdata_location_unicode()
         if base is None:
