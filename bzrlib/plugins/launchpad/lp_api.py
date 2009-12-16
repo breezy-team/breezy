@@ -36,6 +36,7 @@ from launchpadlib.launchpad import (
 from lazr.uri import URI
 
 
+# XXX: Not the right value for Windows
 CACHE_DIRECTORY = os.path.expanduser('~/.launchpadlib/cache')
 
 
@@ -104,6 +105,7 @@ def login(service, timeout=None, proxy_info=None):
     launchpad = _login_from_cache(
         'bzr', _get_api_url(service), CACHE_DIRECTORY, credential_path,
         timeout, proxy_info)
+    # XXX: Why does this set the private member of a class?
     launchpad._service = service
     return launchpad
 
@@ -117,6 +119,7 @@ def load_branch(launchpad, branch):
         `branch`.
     :return: A launchpadlib Branch object.
     """
+    # XXX: Why does this need service and _guess_branch_path?
     service = launchpad._service
     for url in branch.get_public_branch(), branch.get_push_location():
         if url is None:

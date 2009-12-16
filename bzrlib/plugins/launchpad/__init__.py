@@ -41,6 +41,7 @@ from bzrlib.errors import (
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
+# XXX: Lazy import this
 from bzrlib.plugins.launchpad.lp_registration import (
     LaunchpadService,
     NotLaunchpadBranch,
@@ -226,6 +227,8 @@ class cmd_launchpad_login(Command):
         ]
 
     def run(self, name=None, no_check=False, verbose=False):
+        # XXX: At the moment, this is totally separate from any launchpadlib
+        # login system.
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -255,6 +258,7 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
+# XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
     """Ask Launchpad to mirror a branch now."""
 
