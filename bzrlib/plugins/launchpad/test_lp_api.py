@@ -15,25 +15,46 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import sys
-
 from bzrlib import errors
-from bzrlib.tests import TestCase
+from bzrlib.tests import ModuleAvailableFeature, TestCase
+
+
+launchpadlib_feature = ModuleAvailableFeature('launchpadlib')
 
 
 class TestDependencyManagement(TestCase):
     """Tests for managing the dependency on launchpadlib."""
 
-    def test_launchpadlib_not_available(self):
-        # We raise an error if you try to get the launchpadlib api wrapper
-        # when launchpadlib itself is not available.
-        def import_lp_api():
-            from bzrlib.plugins.launchpad import lp_api
-            return lp_api
-        real_launchpadlib = sys.modules.get('launchpadlib', None)
-        sys.modules['launchpadlib'] = None
-        self.addCleanup(
-            sys.modules.__setitem__, 'launchpadlib', real_launchpadlib)
-        self.assertRaises(
-            errors.DependencyNotPresent, import_lp_api)
+    _test_needs_features = [launchpadlib_feature]
 
+    def setUp(self):
+        TestCase.setUp(self)
+        from bzrlib.plugins.launchpad import lp_api
+        self.lp_api = lp_api
+
+    def patch(self, obj, name, value):
+        """Temporarily set the 'name' attribute of 'obj' to 'value'."""
+        real_value = getattr(obj, name)
+        setattr(obj, name, value)
+        self.addCleanup(setattr, obj, name, real_value)
+
+    def test_get_launchpadlib_version(self):
+        # parse_launchpadlib_version returns a tuple of a version number of
+        # the style used by launchpadlib.
+        version_info = self.lp_api.parse_launchpadlib_version('1.5.1')
+        self.assertEqual((1, 5, 1), version_info)
+
+    def test_supported_launchpadlib_version(self):
+        launchpadlib = launchpadlib_feature.module
+        self.patch(launchpadlib, '__version__', '1.5.1')
+        self.lp_api.MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
+        # Doesn't raise an exception.
+        self.lp_api.check_launchpadlib_compatibility()
+
+    def test_unsupported_launchpadlib_version(self):
+        launchpadlib = launchpadlib_feature.module
+        self.patch(launchpadlib, '__version__', '1.5.0')
+        self.lp_api.MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
+        self.assertRaises(
+            errors.IncompatibleAPI,
+            self.lp_api.check_launchpadlib_compatibility)

@@ -20,7 +20,6 @@
 # its dependencies. However, our plan is to only load this module when it is
 # needed by a command that uses it.
 
-# XXX: Do some sort of version check for 1.5.1 or greater.
 
 import os
 
@@ -28,7 +27,6 @@ from bzrlib import (
     config,
     errors,
     osutils,
-    trace,
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
@@ -36,18 +34,40 @@ from bzrlib.plugins.launchpad.lp_registration import (
     )
 
 try:
-    from launchpadlib.launchpad import (
-        EDGE_SERVICE_ROOT,
-        STAGING_SERVICE_ROOT,
-        Launchpad,
-        )
+    import launchpadlib
 except ImportError, e:
     raise errors.DependencyNotPresent('launchpadlib', e)
+
+from launchpadlib.launchpad import (
+    EDGE_SERVICE_ROOT,
+    STAGING_SERVICE_ROOT,
+    Launchpad,
+    )
+
+
+# Declare the minimum version of launchpadlib that we need in order to work.
+# 1.5.1 is the version of launchpadlib packaged in Ubuntu 9.10, the most
+# recent Ubuntu release at the time of writing.
+MINIMUM_LAUNCHPADLIB_VERSION = (1, 5, 1)
 
 
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
     return osutils.pathjoin(config.config_dir(), 'launchpad')
+
+
+def parse_launchpadlib_version(version_number):
+    """Parse a version number of the style used by launchpadlib."""
+    return tuple(map(int, version_number.split('.')))
+
+
+def check_launchpadlib_compatibility():
+    """Raise an error if launchpadlib has the wrong version number."""
+    installed_version = parse_launchpadlib_version(launchpadlib.__version__)
+    if installed_version < MINIMUM_LAUNCHPADLIB_VERSION:
+        raise errors.IncompatibleAPI(
+            'launchpadlib', MINIMUM_LAUNCHPADLIB_VERSION,
+            installed_version, installed_version)
 
 
 LAUNCHPAD_API_URLS = {
