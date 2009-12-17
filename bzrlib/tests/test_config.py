@@ -1600,7 +1600,7 @@ password=jimpass
         self.assertEquals(entered_password,
                           conf.get_password('ssh', 'bar.org', user='jim'))
         self.assertContainsRe(
-            self.log_log(),
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
