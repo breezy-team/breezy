@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib import errors
+from bzrlib import config, errors, osutils
 from bzrlib.tests import ModuleAvailableFeature, TestCase
 
 
@@ -64,3 +64,16 @@ class TestDependencyManagement(TestCase):
         self.assertRaises(
             errors.IncompatibleAPI,
             self.lp_api.check_launchpadlib_compatibility)
+
+
+class TestCacheDirectory(TestCase):
+    """Tests for get_cache_directory."""
+
+    _test_needs_features = [launchpadlib_feature]
+
+    def test_get_cache_directory(self):
+        # get_cache_directory returns the path to a directory inside the
+        # Bazaar configuration directory.
+        from bzrlib.plugins.launchpad import lp_api
+        expected_path = osutils.pathjoin(config.config_dir(), 'launchpad')
+        self.assertEqual(expected_path, lp_api.get_cache_directory())
