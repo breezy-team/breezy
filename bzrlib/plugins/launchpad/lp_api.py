@@ -35,11 +35,14 @@ from bzrlib.plugins.launchpad.lp_registration import (
     NotLaunchpadBranch,
     )
 
-from launchpadlib.launchpad import (
-    EDGE_SERVICE_ROOT,
-    STAGING_SERVICE_ROOT,
-    Launchpad,
-    )
+try:
+    from launchpadlib.launchpad import (
+        EDGE_SERVICE_ROOT,
+        STAGING_SERVICE_ROOT,
+        Launchpad,
+        )
+except ImportError, e:
+    raise errors.DependencyNotPresent('launchpadlib', e)
 
 
 def get_cache_directory():

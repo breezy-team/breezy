@@ -36,6 +36,7 @@ from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
+    DependencyNotPresent,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
@@ -263,16 +264,8 @@ class cmd_launchpad_mirror(Command):
     aliases = ['lp-mirror']
     takes_args = ['location?']
 
-    def _get_lp_api(self):
-        """Return the lp_api module, if it's loadable."""
-        try:
-            from bzrlib.plugins.launchpad import lp_api
-        except ImportError:
-            raise BzrCommandError(
-                "%s requires launchpadlib" % self.name())
-        return lp_api
-
     def run(self, location='.'):
+        from bzrlib.plugins.launchpad import lp_api
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
         service = LaunchpadService()
         lp_api = self._get_lp_api()
@@ -296,6 +289,7 @@ def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_account',
         'test_register',
+        'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
         'test_lp_open',
