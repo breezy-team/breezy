@@ -23,13 +23,12 @@
 # XXX: Do some sort of version check for 1.5.1 or greater.
 
 import os
-import sys
 
 from bzrlib import (
+    config,
     errors,
     osutils,
     trace,
-    win32utils,
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
@@ -45,16 +44,7 @@ from launchpadlib.launchpad import (
 
 def get_cache_directory():
     """Return the directory to cache launchpadlib objects in."""
-    if sys.platform == 'win32':
-        base = win32utils.get_appdata_location_unicode()
-        if base is None:
-            base = os.environ.get('HOME', None)
-        if base is None:
-            raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
-                                  ' or HOME set')
-    else:
-        base = os.path.expanduser('~/.cache')
-    return osutils.pathjoin(base, 'launchpadlib')
+    return osutils.pathjoin(config.config_dir(), 'launchpad')
 
 
 LAUNCHPAD_API_URLS = {
