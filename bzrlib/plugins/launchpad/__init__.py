@@ -267,9 +267,9 @@ class cmd_launchpad_mirror(Command):
     def run(self, location='.'):
         from bzrlib.plugins.launchpad import lp_api
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        branch = _mod_branch.Branch.open(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
-        branch = _mod_branch.Branch.open(location)
         lp_branch = lp_api.load_branch(launchpad, branch)
         lp_branch.requestMirror()
 
