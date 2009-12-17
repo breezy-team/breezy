@@ -78,16 +78,19 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
                (ie.file_id, ie.kind))
     # The data returned here can be in any order, but we've already created all
     # the directories
+    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
     for (relpath, executable), chunks in tree.iter_files_bytes(to_fetch):
         if filtered:
             filters = tree._content_filter_stack(relpath)
             context = ContentFilterContext(relpath, tree, ie)
             chunks = filtered_output_bytes(chunks, filters, context)
         fullpath = osutils.pathjoin(dest, relpath)
-        out = open(fullpath, 'wb')
+        # We set the mode and let the umask sort out the file info
+        mode = 0666
+        if executable:
+            mode = 0777
+        out = os.fdopen(os.open(fullpath, flags, mode))
         try:
             out.writelines(chunks)
         finally:
             out.close()
-        if executable:
-            os.chmod(fullpath, 0755)
