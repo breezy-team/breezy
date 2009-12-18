@@ -1415,7 +1415,7 @@ class WeaveMerger(Merge3Merger):
             base = self.base_tree
         else:
             base = None
-        plan = self._plan_weave_merge(file_id, base)
+        plan = self._plan_file_merge(file_id, base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
@@ -1426,7 +1426,7 @@ class WeaveMerger(Merge3Merger):
                                                  '>>>>>>> MERGE-SOURCE\n')
         return textmerge.merge_lines(self.reprocess)
 
-    def _plan_weave_merge(self, file_id, base):
+    def _plan_file_merge(self, file_id, base):
         return self.this_tree.plan_file_merge(
             file_id, self.other_tree, base=base)
 
@@ -1452,7 +1452,7 @@ class WeaveMerger(Merge3Merger):
 
 class LCAMerger(WeaveMerger):
 
-    def _plan_weave_merge(self, file_id, base):
+    def _plan_file_merge(self, file_id, base):
         return self.this_tree.plan_file_lca_merge(
             file_id, self.other_tree, base=base)
 
