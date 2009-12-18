@@ -14,12 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Implementation tests for bzrlib.merge.Merger."""
+
 import os
 
 from bzrlib.conflicts import TextConflict
 from bzrlib import (
     errors,
     merge as _mod_merge,
+    option,
     progress,
     )
 from bzrlib.tests import (
@@ -34,13 +37,9 @@ from bzrlib.transform import TreeTransform
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     result = loader.suiteClass()
-    merge_types = {
-        'merge3': _mod_merge.Merge3Merger,
-        'weave': _mod_merge.WeaveMerger,
-        'lca': _mod_merge.LCAMerger,
-        }
     scenarios = [
-        (name, {'merge_type': merger}) for name, merger in merge_types.items()]
+        (name, {'merge_type': merger})
+        for name, merger in option._merge_type_registry.items()]
     return multiply_tests(standard_tests, scenarios, result)
 
 
