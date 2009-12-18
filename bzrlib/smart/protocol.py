@@ -1147,7 +1147,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            self._thread_id = threading.currentThread().get_ident()
+            self._thread_id = threading.currentThread().ident
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
