@@ -379,6 +379,8 @@ class TextProgressView(object):
         # XXX: Probably there should be a transport activity model, and that
         # too should be seen by the progress view, rather than being poked in
         # here.
+        self._total_byte_count += byte_count
+        self._bytes_since_update += byte_count
         if not self._have_output:
             # As a workaround for <https://launchpad.net/bugs/321935> we only
             # show transport activity when there's already a progress bar
@@ -387,8 +389,6 @@ class TextProgressView(object):
             # output.  Eventually it would be nice to have that automatically
             # synchronized.
             return
-        self._total_byte_count += byte_count
-        self._bytes_since_update += byte_count
         now = time.time()
         if self._total_byte_count < 2000:
             # a little resistance at first, so it doesn't stay stuck at 0
