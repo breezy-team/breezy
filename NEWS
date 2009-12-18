@@ -8,7 +8,7 @@ Bazaar Release Notes
 bzr 2.0.4 (not released yet)
 ############################
 
-:Codename: template
+:Codename:
 :2.0.4: ???
 
 Compatibility Breaks
@@ -24,6 +24,12 @@ Bug Fixes
   rather than requsting the file content one file-at-a-time. This can make
   exporting over the network significantly faster (54min => 9min in one
   case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
 
 Improvements
 ************
