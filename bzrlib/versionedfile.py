@@ -1426,7 +1426,7 @@ class PlanWeaveMerge(TextMerge):
     def __init__(self, plan, a_marker=TextMerge.A_MARKER,
                  b_marker=TextMerge.B_MARKER):
         TextMerge.__init__(self, a_marker, b_marker)
-        self.plan = plan
+        self.plan = list(plan)
 
     def _merge_struct(self):
         lines_a = []
@@ -1489,6 +1489,60 @@ class PlanWeaveMerge(TextMerge):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
+
+    def base_from_plan(self):
+        """Construct a BASE file from the plan text."""
+        base_lines = []
+        for state, line in self.plan:
+            if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged'):
+                # If unchanged, then this line is straight from base. If a or b
+                # or both killed the line, then it *used* to be in base.
+                base_lines.append(line)
+            else:
+                if state not in ('killed-base', 'irrelevant',
+                                 'ghost-a', 'ghost-b',
+                                 'new-a', 'new-b',
+                                 'conflicted-a', 'conflicted-b'):
+                    # killed-base, irrelevant means it doesn't apply
+                    # ghost-a/ghost-b are harder to say for sure, but they
+                    # aren't in the 'inc_c' which means they aren't in the
+                    # shared base of a & b. So we don't include them.  And
+                    # obviously if the line is newly inserted, it isn't in base
+
+                    # If 'conflicted-a' or b, then it is new vs one base, but
+                    # old versus another base. However, if we make it present
+                    # in the base, it will be deleted from the target, and it
+                    # seems better to get a line doubled in the merge result,
+                    # rather than have it deleted entirely.
+                    # Example, each node is the 'text' at that point:
+                    #           MN
+                    #          /   \
+                    #        MaN   MbN
+                    #         |  X  |
+                    #        MabN MbaN
+                    #          \   /
+                    #           ???
+                    # There was a criss-cross conflict merge. Both sides
+                    # include the other, but put themselves first.
+                    # Weave marks this as a 'clean' merge, picking OTHER over
+                    # THIS. (Though the details depend on order inserted into
+                    # weave, etc.)
+                    # LCA generates a plan:
+                    # [('unchanged', M),
+                    #  ('conflicted-b', b),
+                    #  ('unchanged', a),
+                    #  ('conflicted-a', b),
+                    #  ('unchanged', N)]
+                    # If you mark 'conflicted-*' as part of BASE, then a 3-way
+                    # merge tool will cleanly generate "MaN" (as BASE vs THIS
+                    # removes one 'b', and BASE vs OTHER removes the other)
+                    # If you include neither, 3-way creates a clean "MbabN" as
+                    # THIS adds one 'b', and OTHER does too.
+                    # It seems that having the line 2 times is better than
+                    # having it omitted. (Easier to manually delete than notice
+                    # it needs to be added.)
+                    raise AssertionError('Unknown state: %s' % (state,))
+        return base_lines
 
 
 class WeaveMerge(PlanWeaveMerge):

@@ -353,6 +353,21 @@ KnownFailure
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
 
+ModuleAvailableFeature
+        A helper for handling running tests based on whether a python
+        module is available. This can handle 3rd-party dependencies (is
+        ``paramiko`` available?) as well as stdlib (``termios``) or
+        extension modules (``bzrlib._groupcompress_pyx``). You create a
+        new feature instance with::
+
+            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
+
+            ...
+            def test_something(self):
+                self.requireFeature(MyModuleFeature)
+                something = MyModuleFeature.module
+
+
 We plan to support three modes for running the test suite to control the
 interpretation of these results.  Strict mode is for use in situations
 like merges to the mainline and releases where we want to make sure that

@@ -211,6 +211,22 @@ class TestMerge(tests.TestCaseWithTransport):
         self.failUnlessExists('sub/a.txt.OTHER')
         self.failUnlessExists('sub/a.txt.BASE')
 
+    def test_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
+    def test_weave_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other --weave', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
         tree_a = self.make_branch_and_tree('branch_a')
@@ -588,6 +604,14 @@ class TestMerge(tests.TestCaseWithTransport):
         other.commit('rev1b')
         self.run_bzr('merge -d this other -r0..')
         self.failUnlessExists('this/other_file')
+
+    def test_merge_interactive_unlocks_branch(self):
+        this = self.make_branch_and_tree('this')
+        other = self.make_branch_and_tree('other')
+        other.commit('empty commit')
+        self.run_bzr('merge -i -d this other')
+        this.lock_write()
+        this.unlock()
 
     def test_merge_reversed_revision_range(self):
         tree = self.make_branch_and_tree(".")

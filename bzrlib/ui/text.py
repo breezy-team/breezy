@@ -18,6 +18,7 @@
 """Text UI, write output to the console.
 """
 
+import codecs
 import getpass
 import os
 import sys
@@ -82,6 +83,15 @@ class TextUIFactory(UIFactory):
                 # end-of-file; possibly should raise an error here instead
                 return None
 
+    def get_integer(self, prompt):
+        while True:
+            self.prompt(prompt)
+            line = self.stdin.readline()
+            try:
+                return int(line)
+            except ValueError:
+                pass
+
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)
         if isatty is not None and isatty():
@@ -145,6 +155,26 @@ class TextUIFactory(UIFactory):
             return TextProgressView(self.stderr)
         else:
             return NullProgressView()
+
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        if encoding_type == 'exact':
+            # force sys.stdout to be binary stream on win32; 
+            # NB: this leaves the file set in that mode; may cause problems if
+            # one process tries to do binary and then text output
+            if sys.platform == 'win32':
+                fileno = getattr(self.stdout, 'fileno', None)
+                if fileno:
+                    import msvcrt
+                    msvcrt.setmode(fileno(), os.O_BINARY)
+            return TextUIOutputStream(self, self.stdout)
+        else:
+            encoded_stdout = codecs.getwriter(encoding)(self.stdout,
+                errors=encoding_type)
+            # For whatever reason codecs.getwriter() does not advertise its encoding
+            # it just returns the encoding of the wrapped file, which is completely
+            # bogus. So set the attribute, so we can find the correct encoding later.
+            encoded_stdout.encoding = encoding
+            return TextUIOutputStream(self, encoded_stdout)
 
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
@@ -218,9 +248,6 @@ class TextProgressView(object):
         self._term_file = term_file
         # true when there's output on the screen we may need to clear
         self._have_output = False
-        # XXX: We could listen for SIGWINCH and update the terminal width...
-        # https://launchpad.net/bugs/316357
-        self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
         # time we last repainted the screen
@@ -231,12 +258,17 @@ class TextProgressView(object):
         self._total_byte_count = 0
         self._bytes_since_update = 0
         self._fraction = 0
+        # force the progress bar to be off, as at the moment it doesn't 
+        # correspond reliably to overall command progress
+        self.enable_bar = False
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        if self._width is not None:
-            n = self._width - 1
-            s = '%-*.*s' % (n, n, s)
+        width = osutils.terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+            s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):
@@ -246,7 +278,8 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is None) or self._last_task.show_bar:
+        if self.enable_bar and (
+            (self._last_task is None) or self._last_task.show_bar):
             # If there's no task object, we show space for the bar anyhow.
             # That's because most invocations of bzr will end showing progress
             # at some point, though perhaps only after doing some initial IO.
@@ -367,3 +400,37 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+
+class TextUIOutputStream(object):
+    """Decorates an output stream so that the terminal is cleared before writing.
+
+    This is supposed to ensure that the progress bar does not conflict with bulk
+    text output.
+    """
+    # XXX: this does not handle the case of writing part of a line, then doing
+    # progress bar output: the progress bar will probably write over it.
+    # one option is just to buffer that text until we have a full line;
+    # another is to save and restore it
+
+    # XXX: might need to wrap more methods
+
+    def __init__(self, ui_factory, wrapped_stream):
+        self.ui_factory = ui_factory
+        self.wrapped_stream = wrapped_stream
+        # this does no transcoding, but it must expose the underlying encoding
+        # because some callers need to know what can be written - see for
+        # example unescape_for_display.
+        self.encoding = getattr(wrapped_stream, 'encoding', None)
+
+    def flush(self):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.flush()
+
+    def write(self, to_write):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.write(to_write)
+
+    def writelines(self, lines):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.writelines(lines)

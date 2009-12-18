@@ -1,0 +1,11 @@
+Introduction
+============
+
+Scope of this guide
+-------------------
+
+What you need to run a Bazaar server
+------------------------------------
+
+
+

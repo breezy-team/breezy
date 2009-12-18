@@ -951,6 +951,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     def is_write_locked(self):
         return self._lock_mode == 'w'
 
+    def _warn_if_deprecated(self, branch=None):
+        # If we have a real repository, the check will be done there, if we
+        # don't the check will be done remotely.
+        pass
+
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:

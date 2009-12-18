@@ -405,7 +405,9 @@ You can change the master of a checkout by using the "bind" command (see "help
 bind"). This will change the location that the commits are sent to. The bind
 command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+commit is local, you can use the "unbind" command. To see whether or not a
+branch is bound or not you can use the "info" command. If the branch is bound
+it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -419,6 +421,8 @@ Related commands::
               be sent to
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \

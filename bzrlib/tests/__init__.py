@@ -4248,6 +4248,37 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
+class ModuleAvailableFeature(Feature):
+    """This is a feature than describes a module we want to be available.
+
+    Declare the name of the module in __init__(), and then after probing, the
+    module will be available as 'self.module'.
+
+    :ivar module: The module if it is available, else None.
+    """
+
+    def __init__(self, module_name):
+        super(ModuleAvailableFeature, self).__init__()
+        self.module_name = module_name
+
+    def _probe(self):
+        try:
+            self._module = __import__(self.module_name, {}, {}, [''])
+            return True
+        except ImportError:
+            return False
+
+    @property
+    def module(self):
+        if self.available(): # Make sure the probe has been done
+            return self._module
+        return None
+    
+    def feature_name(self):
+        return self.module_name
+
+
+
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.

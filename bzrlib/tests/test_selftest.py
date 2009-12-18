@@ -2497,6 +2497,22 @@ class TestUnavailableFeature(tests.TestCase):
         self.assertIs(feature, exception.args[0])
 
 
+class TestModuleAvailableFeature(tests.TestCase):
+
+    def test_available_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.tests')
+        self.assertEqual('bzrlib.tests', feature.module_name)
+        self.assertEqual('bzrlib.tests', str(feature))
+        self.assertTrue(feature.available())
+        self.assertIs(tests, feature.module)
+
+    def test_unavailable_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
+        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
+        self.assertFalse(feature.available())
+        self.assertIs(None, feature.module)
+
+
 class TestSelftestFiltering(tests.TestCase):
 
     def setUp(self):
