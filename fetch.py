@@ -491,7 +491,10 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                                 store.get_raw, progress)
                     import_git_objects(self.target, mapping, objects_iter,
                             store, recorded_wants, pb)
-                finally:
+                except:
+                    self.target.abort_write_group()
+                    raise
+                else:
                     pack_hint = self.target.commit_write_group()
                 return pack_hint
             finally:
@@ -527,7 +530,10 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
                     import_git_objects(self.target, mapping,
                             self.source._git.object_store,
                             target_git_object_retriever, wants, pb)
-                finally:
+                except:
+                    self.target.abort_write_group()
+                    raise
+                else:
                     pack_hint = self.target.commit_write_group()
                 return pack_hint
             finally:
