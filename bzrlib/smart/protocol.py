@@ -1147,7 +1147,12 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            self._thread_id = threading.currentThread().get_ident()
+            # python 2.6 introduced 'ident' as a nice small integer to
+            # represent a thread. But it doesn't exist in 2.4/2.5
+            cur_thread = threading.currentThread()
+            self._thread_id = getattr(cur_thread, 'ident', None)
+            if self._thread_id is None:
+                self._thread_id = cur_thread.getName()
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):

@@ -291,7 +291,10 @@ class SmartServerRequestHandler(object):
         self._command = None
         if 'hpss' in debug.debug_flags:
             self._request_start_time = osutils.timer_func()
-            self._thread_id = threading.currentThread().get_ident()
+            cur_thread = threading.currentThread()
+            self._thread_id = getattr(cur_thread, 'ident', None)
+            if self._thread_id is None:
+                self._thread_id = cur_thread.getName()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of 

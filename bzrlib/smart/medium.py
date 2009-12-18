@@ -300,7 +300,10 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         tstart = osutils.timer_func()
         osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
-            thread_id = threading.currentThread().ident
+            cur_thread = threading.currentThread()
+            thread_id = getattr(cur_thread, 'ident', None)
+            if thread_id is None:
+                thread_id = cur_thread.getName()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
                          % ('wrote', thread_id, len(bytes),
                             osutils.timer_func() - tstart))
