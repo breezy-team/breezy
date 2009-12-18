@@ -167,9 +167,9 @@ class TestTTYTextUIFactory(TestTextUIFactory):
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
         # Displaying the result should write to the progress stream
-        self.assertEqual('Transferred: 0.007MiB'
-                         ' (r:0.002MiB w:0.001MiB u:0.004MiB)\n',
-                         self.stderr.getvalue())
+        self.assertContainsRe(self.stderr.getvalue(),
+            r'Transferred: 0\.007MiB'
+            r' \(\d+\.\dKiB/s r:0\.002MiB w:0\.001MiB u:0\.004MiB\)')
 
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):

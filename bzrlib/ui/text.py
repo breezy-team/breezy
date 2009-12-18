@@ -265,6 +265,7 @@ class TextProgressView(object):
         self._total_byte_count = 0
         self._bytes_since_update = 0
         self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
+        self._first_byte_time = None
         self._fraction = 0
         # force the progress bar to be off, as at the moment it doesn't 
         # correspond reliably to overall command progress
@@ -382,6 +383,11 @@ class TextProgressView(object):
         # here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
+        if self._first_byte_time is None:
+            # Note that this isn't great, as technically it should be the time
+            # when the bytes started transferring, not when they completed.
+            # However, we usually start with a small request anyway.
+            self._first_byte_time = time.time()
         if direction in self._bytes_by_direction:
             self._bytes_by_direction[direction] += byte_count
         else:
@@ -414,9 +420,18 @@ class TextProgressView(object):
             self._repaint()
 
     def _format_bytes_by_direction(self):
+        if self._first_byte_time is None:
+            bps = 0.0
+        else:
+            transfer_time = time.time() - self._first_byte_time
+            if transfer_time < 0.001:
+                transfer_time = 0.001
+            bps = self._total_byte_count / transfer_time
+
         msg = ('Transferred: %.3fMiB'
-               ' (r:%.3fMiB w:%.3fMiB'
+               ' (%.1fKiB/s r:%.3fMiB w:%.3fMiB'
                % (self._total_byte_count / 1024. / 1024.,
+                  bps / 1024.,
                   self._bytes_by_direction['read'] / 1024. / 1024.,
                   self._bytes_by_direction['write'] / 1024. / 1024.,
                  ))
