@@ -246,6 +246,19 @@ class UIFactory(object):
         """
         pass
 
+    def log_transport_activity(self, display=False):
+        """Write out whatever transport activity has been measured.
+
+        Implementations are allowed to do nothing, but it is useful if they can
+        write a line to the log file.
+
+        :param display: If False, only log to disk, if True also try to display
+            a message to the user.
+        :return: None
+        """
+        # Default implementation just does nothing
+        pass
+
     def show_error(self, msg):
         """Show an error message (not an exception) to the user.
         
@@ -344,4 +357,7 @@ class NullProgressView(object):
         pass
 
     def show_transport_activity(self, transport, direction, byte_count):
+        pass
+
+    def log_transport_activity(self, display=False):
         pass

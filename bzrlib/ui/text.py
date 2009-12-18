@@ -32,6 +32,7 @@ from bzrlib import (
     progress,
     osutils,
     symbol_versioning,
+    trace,
     )
 
 """)
@@ -202,6 +203,12 @@ class TextUIFactory(UIFactory):
         """
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
+
+    def log_transport_activity(self, display=False):
+        """See UIFactory.log_transport_activity()"""
+        log = getattr(self._progress_view, 'log_transport_activity', None)
+        if log is not None:
+            log(display=display)
 
     def show_error(self, msg):
         self.clear_term()
@@ -400,6 +407,14 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+    def log_transport_activity(self, display=False):
+        byte_message = 'Total byte count: %.3fMiB (%dB)' % (
+                        self._total_byte_count / 1024. / 1024,
+                        self._total_byte_count)
+        trace.mutter(byte_message)
+        if display:
+            self._term_file.write('\n%s\n' % (byte_message,))
 
 
 class TextUIOutputStream(object):
