@@ -1628,8 +1628,8 @@ class DistributionBranch(object):
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
-            previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
             if previous_version is not None:
+                previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
                 if self.has_upstream_version_in_packaging_branch(
                         previous_version.upstream_version):
                     upstream_tip = self.revid_of_upstream_version_from_branch(
