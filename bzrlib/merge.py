@@ -1227,12 +1227,10 @@ class Merge3Merger(object):
                     # XXX: perhaps the hook should be able to provide
                     # the BASE/THIS/OTHER files?
                     self.tt.create_file(lines, trans_id)
-                    self._raw_conflicts.append(
-                        ('text conflict', trans_id))
+                    self._raw_conflicts.append(('text conflict', trans_id))
                     name = self.tt.final_name(trans_id)
                     parent_id = self.tt.final_parent(trans_id)
-                    file_group = self._dump_conflicts(
-                        name, parent_id, file_id)
+                    file_group = self._dump_conflicts(name, parent_id, file_id)
                     file_group.append(trans_id)
                 elif hook_status == 'delete':
                     self.tt.unversion_file(trans_id)
@@ -1244,8 +1242,6 @@ class Merge3Merger(object):
                 # hook functions.
                 hook_ran = True
                 break
-                    # if no hook functions applied, do the default merge.
-
             # We have a hypothetical conflict, but if we have files, then we
             # can try to merge the content
             if (this_pair[0] == 'file' and other_pair[0] == 'file') or hook_ran:
@@ -1254,6 +1250,7 @@ class Merge3Merger(object):
                 # have agreement that output should be a file.
                 try:
                     if not hook_ran:
+                        # if no hook functions applied, do the default merge.
                         self.text_merge(file_id, trans_id)
                 except errors.BinaryFile:
                     return contents_conflict()
