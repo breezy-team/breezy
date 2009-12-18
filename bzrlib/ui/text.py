@@ -414,7 +414,8 @@ class TextProgressView(object):
                         self._total_byte_count)
         trace.mutter(byte_message)
         if display:
-            self._term_file.write('\n%s\n' % (byte_message,))
+            self.clear()
+            self._term_file.write('%s\n' % (byte_message,))
 
 
 class TextUIOutputStream(object):
