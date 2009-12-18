@@ -387,13 +387,25 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     del checked
     # Order the revisions
     # Create the inventory objects
-    for i, head in enumerate(topo_sort(graph)):
-        if pb is not None:
-            pb.update("fetching revisions", i, len(graph))
-        import_git_commit(repo, mapping, head, lookup_object,
-                          target_git_object_retriever, 
-                          parent_invs_cache)
+    batch_size = 100
+    revision_ids = topo_sort(graph)
+    pack_hints = []
+    for offset in range(0, len(revision_ids), batch_size):
+        repo.start_write_group()
+        try:
+            for i, head in enumerate(revision_ids[offset:offset+batch_size]):
+                if pb is not None:
+                    pb.update("fetching revisions", offset+i, len(revision_ids))
+                import_git_commit(repo, mapping, head, lookup_object,
+                                  target_git_object_retriever,
+                                  parent_invs_cache)
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            pack_hints.extend(repo.commit_write_group())
     target_git_object_retriever._idmap.commit()
+    return pack_hints
 
 
 class InterGitRepository(InterRepository):
@@ -490,19 +502,11 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
-                self.target.start_write_group()
-                try:
-                    objects_iter = self.source.fetch_objects(
-                                record_determine_wants, graph_walker,
-                                store.get_raw, progress)
-                    import_git_objects(self.target, mapping, objects_iter,
-                            store, recorded_wants, pb)
-                except:
-                    self.target.abort_write_group()
-                    raise
-                else:
-                    pack_hint = self.target.commit_write_group()
-                return pack_hint
+                objects_iter = self.source.fetch_objects(
+                            record_determine_wants, graph_walker,
+                            store.get_raw, progress)
+                return import_git_objects(self.target, mapping,
+                    objects_iter, store, recorded_wants, pb)
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -531,17 +535,9 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         try:
             self.target.lock_write()
             try:
-                self.target.start_write_group()
-                try:
-                    import_git_objects(self.target, mapping,
-                            self.source._git.object_store,
-                            target_git_object_retriever, wants, pb)
-                except:
-                    self.target.abort_write_group()
-                    raise
-                else:
-                    pack_hint = self.target.commit_write_group()
-                return pack_hint
+                return import_git_objects(self.target, mapping,
+                    self.source._git.object_store, target_git_object_retriever,
+                    wants, pb)
             finally:
                 self.target.unlock()
         finally:
