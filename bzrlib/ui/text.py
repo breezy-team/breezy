@@ -264,6 +264,7 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
         self._fraction = 0
         # force the progress bar to be off, as at the moment it doesn't 
         # correspond reliably to overall command progress
@@ -381,6 +382,10 @@ class TextProgressView(object):
         # here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
+        if direction in self._bytes_by_direction:
+            self._bytes_by_direction[direction] += byte_count
+        else:
+            self._bytes_by_direction['unknown'] += byte_count
         if not self._have_output:
             # As a workaround for <https://launchpad.net/bugs/321935> we only
             # show transport activity when there's already a progress bar
@@ -408,14 +413,27 @@ class TextProgressView(object):
             self._last_transport_msg = msg
             self._repaint()
 
+    def _format_bytes_by_direction(self):
+        msg = ('Transferred: %.3fMiB'
+               ' (r:%.3fMiB w:%.3fMiB'
+               % (self._total_byte_count / 1024. / 1024.,
+                  self._bytes_by_direction['read'] / 1024. / 1024.,
+                  self._bytes_by_direction['write'] / 1024. / 1024.,
+                 ))
+        if self._bytes_by_direction['unknown'] > 0:
+            msg += ' u:%.3fMiB)' % (
+                self._bytes_by_direction['unknown'] / 1024. / 1024.
+                )
+        else:
+            msg += ')'
+        return msg
+
     def log_transport_activity(self, display=False):
-        byte_message = 'Total byte count: %.3fMiB (%dB)' % (
-                        self._total_byte_count / 1024. / 1024,
-                        self._total_byte_count)
-        trace.mutter(byte_message)
+        msg = self._format_bytes_by_direction()
+        trace.mutter(msg)
         if display:
             self.clear()
-            self._term_file.write('%s\n' % (byte_message,))
+            self._term_file.write(msg + '\n')
 
 
 class TextUIOutputStream(object):

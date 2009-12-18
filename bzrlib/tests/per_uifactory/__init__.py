@@ -90,6 +90,7 @@ class UIFactoryTestMixin(object):
         t = transport.get_transport('memory:///')
         self.factory.report_transport_activity(t, 1000, 'write')
         self.factory.report_transport_activity(t, 2000, 'read')
+        self.factory.report_transport_activity(t, 4000, None)
         self.factory.log_transport_activity()
         self._check_log_transport_activity_noarg()
         self.factory.log_transport_activity(display=True)
@@ -166,7 +167,8 @@ class TestTTYTextUIFactory(TestTextUIFactory):
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
         # Displaying the result should write to the progress stream
-        self.assertEqual('Total byte count: 0.003MiB (3000B)\n',
+        self.assertEqual('Transferred: 0.007MiB'
+                         ' (r:0.002MiB w:0.001MiB u:0.004MiB)\n',
                          self.stderr.getvalue())
 
 
