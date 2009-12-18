@@ -1078,7 +1078,8 @@ class DistributionBranch(object):
 
     def import_upstream(self, upstream_part, version, md5, upstream_parents,
             upstream_tarball=None, upstream_branch=None,
-            upstream_revision=None, timestamp=None, author=None):
+            upstream_revision=None, timestamp=None, author=None,
+            file_ids_from=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -1123,6 +1124,8 @@ class DistributionBranch(object):
             upstream_trees.insert(0,
                     self.upstream_branch.repository.revision_tree(
                         upstream_revision))
+        if file_ids_from is not None:
+            upstream_trees = file_ids_from + upstream_trees
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
         self.upstream_tree.set_parent_ids(upstream_parents)
@@ -1192,7 +1195,7 @@ class DistributionBranch(object):
                                 '.bzr-builddeb/default.conf'])
 
     def import_debian(self, debian_part, version, parents, md5,
-            native=False, timestamp=None):
+            native=False, timestamp=None, file_ids_from=None):
         """Import the debian part of a source package.
 
         :param debian_part: the path of a directory containing the unpacked
@@ -1232,6 +1235,8 @@ class DistributionBranch(object):
         debian_trees = [get_last_revision_tree(o.branch)
             for o in other_branches]
         parent_trees = []
+        if file_ids_from is not None:
+            parent_trees = file_ids_from[:]
         for parent in parents:
             parent_trees.append(self.branch.repository.revision_tree(
                         parent))
@@ -1386,7 +1391,7 @@ class DistributionBranch(object):
 
     def _do_import_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_md5, upstream_tarball=None,
-            timestamp=None, author=None):
+            timestamp=None, author=None, file_ids_from=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
@@ -1416,7 +1421,8 @@ class DistributionBranch(object):
                             version.upstream_version,
                             upstream_md5, upstream_parents,
                             upstream_tarball=upstream_tarball,
-                            timestamp=timestamp, author=author)
+                            timestamp=timestamp, author=author,
+                            file_ids_from=file_ids_from)
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
@@ -1424,7 +1430,7 @@ class DistributionBranch(object):
                     force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5,
-                    timestamp=timestamp)
+                    timestamp=timestamp, file_ids_from=file_ids_from)
 
     def get_native_parents(self, version, versions):
         last_contained_version = self.last_contained_version(versions)
@@ -1466,14 +1472,15 @@ class DistributionBranch(object):
 
 
     def _import_native_package(self, version, versions, debian_part, md5,
-            timestamp=None):
+            timestamp=None, file_ids_from=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
             self.import_debian(debian_part, version, parents, md5,
-                    native=True, timestamp=timestamp)
+                    native=True, timestamp=timestamp,
+                    file_ids_from=file_ids_from)
 
     def _get_safe_versions_from_changelog(self, cl):
         versions = []
@@ -1484,7 +1491,8 @@ class DistributionBranch(object):
                 break
         return versions
 
-    def import_package(self, dsc_filename, use_time_from_changelog=True):
+    def import_package(self, dsc_filename, use_time_from_changelog=True,
+            file_ids_from=None):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1537,10 +1545,11 @@ class DistributionBranch(object):
                 self._do_import_package(version, versions, debian_part, md5,
                         upstream_part, upstream_md5,
                         upstream_tarball=upstream_tarball,
-                        timestamp=timestamp, author=author)
+                        timestamp=timestamp, author=author,
+                        file_ids_from=file_ids_from)
             else:
                 self._import_native_package(version, versions, debian_part,
-                        md5, timestamp=timestamp)
+                        md5, timestamp=timestamp, file_ids_from=file_ids_from)
         finally:
             shutil.rmtree(tempdir)
 
