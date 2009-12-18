@@ -16,6 +16,7 @@
 
 import os
 
+from bzrlib.conflicts import TextConflict
 from bzrlib import (
     errors,
     merge as _mod_merge,
@@ -208,6 +209,14 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         _mod_merge.Merger.hooks.install_named_hook(
             'merge_file_content', hook_success, 'test hook (success)')
         
+    def install_hook_conflict(self):
+        def hook_conflict(merge_params):
+            if merge_params.file_id == '1':
+                return 'conflicted', ['text-with-conflict-markers-from-hook']
+            return 'not_applicable', None
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_conflict, 'test hook (delete)')
+        
     def install_hook_delete(self):
         def hook_delete(merge_params):
             if merge_params.file_id == '1':
@@ -216,6 +225,23 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         _mod_merge.Merger.hooks.install_named_hook(
             'merge_file_content', hook_delete, 'test hook (delete)')
         
+    def install_hook_log_lines(self):
+        """Install a hook that saves the get_lines for the this, base and other
+        versions of the file.
+        """
+        self.hook_log = []
+        def hook_log(merge_params):
+            merger = merge_params.merger
+            self.hook_log.append((
+                merger.get_lines(merger.this_tree, merge_params.file_id),
+                merger.get_lines(merger.other_tree, merge_params.file_id),
+                merger.get_lines(merger.base_tree, merge_params.file_id),
+                ))
+            # This hook unconditionally does nothing.
+            return 'not_applicable', None
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_log, 'test hook (log)')
+
     def make_merge_builder(self):
         builder = MergeBuilder(self.test_base_dir)
         self.addCleanup(builder.cleanup)
@@ -253,4 +279,30 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertRaises(errors.NoSuchId, builder.this.id2path, '1')
+
+    def test_result_can_be_conflict(self):
+        """A hook's result can be a conflict."""
+        self.install_hook_conflict()
+        builder = self.make_merge_builder()
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", this="text2", other="text3")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [TextConflict('name1', file_id='1')])
+        # The hook still gets to set the file contents in this case, so that it
+        # can insert custom conflict markers.
+        self.assertEqual(
+            builder.this.get_file('1').read(),
+            'text-with-conflict-markers-from-hook')
+
+    def test_can_access_this_other_and_base_versions(self):
+        """The hook function can call params.merger.get_lines to access the
+        THIS/OTHER/BASE versions of the file.
+        """
+        self.install_hook_log_lines()
+        builder = self.make_merge_builder()
+        builder.add_file("1", builder.tree_root, "name1", "text1", True)
+        builder.change_contents("1", this="text2", other="text3")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(
+            [(['text2'], ['text3'], ['text1'])], self.hook_log)
 
