@@ -193,15 +193,21 @@ class TestMergeImplementation(TestCaseWithTransport):
 class TestHookMergeFileContent(TestCaseWithTransport):
     """Tests that the 'merge_file_content' hook is invoked."""
 
+    def setUp(self):
+        TestCaseWithTransport.setUp(self)
+        self.hook_log = []
+        
     def install_hook_noop(self):
         def hook_na(merge_params):
             # This hook unconditionally does nothing.
+            self.hook_log.append(('no-op',))
             return 'not_applicable', None
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_na, 'test hook (n/a)')
+            'merge_file_content', hook_na, 'test hook (no-op)')
 
     def install_hook_success(self):
         def hook_success(merge_params):
+            self.hook_log.append(('success',))
             if merge_params.file_id == '1':
                 return 'success', ['text-merged-by-hook']
             return 'not_applicable', None
@@ -210,6 +216,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         
     def install_hook_conflict(self):
         def hook_conflict(merge_params):
+            self.hook_log.append(('conflict',))
             if merge_params.file_id == '1':
                 return 'conflicted', ['text-with-conflict-markers-from-hook']
             return 'not_applicable', None
@@ -218,6 +225,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         
     def install_hook_delete(self):
         def hook_delete(merge_params):
+            self.hook_log.append(('delete',))
             if merge_params.file_id == '1':
                 return 'delete', None
             return 'not_applicable', None
@@ -228,24 +236,27 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """Install a hook that saves the get_lines for the this, base and other
         versions of the file.
         """
-        self.hook_log = []
-        def hook_log(merge_params):
+        def hook_log_lines(merge_params):
             merger = merge_params.merger
             self.hook_log.append((
+                'log_lines',
                 merger.get_lines(merger.this_tree, merge_params.file_id),
                 merger.get_lines(merger.other_tree, merge_params.file_id),
                 merger.get_lines(merger.base_tree, merge_params.file_id),
                 ))
-            # This hook unconditionally does nothing.
             return 'not_applicable', None
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_log, 'test hook (log)')
+            'merge_file_content', hook_log_lines, 'test hook (log_lines)')
 
     def make_merge_builder(self):
         builder = MergeBuilder(self.test_base_dir)
         self.addCleanup(builder.cleanup)
         return builder
 
+    def create_file_needing_contents_merge(self, builder, file_id):
+        builder.add_file(file_id, builder.tree_root, "name1", "text1", True)
+        builder.change_contents(file_id, other="text4", this="text3")
+        
     def test_change_vs_change(self):
         """Hook is used for (changed, changed)"""
         self.install_hook_success()
@@ -273,8 +284,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """A hook's result can be the deletion of a file."""
         self.install_hook_delete()
         builder = self.make_merge_builder()
-        builder.add_file("1", builder.tree_root, "name1", "text1", True)
-        builder.change_contents("1", this="text2", other="text3")
+        self.create_file_needing_contents_merge(builder, "1")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertRaises(errors.NoSuchId, builder.this.id2path, '1')
@@ -283,8 +293,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         """A hook's result can be a conflict."""
         self.install_hook_conflict()
         builder = self.make_merge_builder()
-        builder.add_file("1", builder.tree_root, "name1", "text1", True)
-        builder.change_contents("1", this="text2", other="text3")
+        self.create_file_needing_contents_merge(builder, "1")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [TextConflict('name1', file_id='1')])
         # The hook still gets to set the file contents in this case, so that it
@@ -303,5 +312,49 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         builder.change_contents("1", this="text2", other="text3")
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(
-            [(['text2'], ['text3'], ['text1'])], self.hook_log)
+            [('log_lines', ['text2'], ['text3'], ['text1'])], self.hook_log)
+
+    def test_chain_when_not_applicable(self):
+        """When a hook function returns not_applicable, the next function is
+        tried (when one exists).
+        """
+        self.install_hook_noop()
+        self.install_hook_success()
+        builder = self.make_merge_builder()
+        self.create_file_needing_contents_merge(builder, "1")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(
+            builder.this.get_file('1').read(), 'text-merged-by-hook')
+        self.assertEqual([('no-op',), ('success',)], self.hook_log)
+
+    def test_chain_stops_after_success(self):
+        """When a hook function returns success, no later functions are tried.
+        """
+        self.install_hook_success()
+        self.install_hook_noop()
+        builder = self.make_merge_builder()
+        self.create_file_needing_contents_merge(builder, "1")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual([('success',)], self.hook_log)
+
+    def test_chain_stops_after_conflict(self):
+        """When a hook function returns conflict, no later functions are tried.
+        """
+        self.install_hook_conflict()
+        self.install_hook_noop()
+        builder = self.make_merge_builder()
+        self.create_file_needing_contents_merge(builder, "1")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual([('conflict',)], self.hook_log)
+
+    def test_chain_stops_after_delete(self):
+        """When a hook function returns delete, no later functions are tried.
+        """
+        self.install_hook_delete()
+        self.install_hook_noop()
+        builder = self.make_merge_builder()
+        self.create_file_needing_contents_merge(builder, "1")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual([('delete',)], self.hook_log)
 
