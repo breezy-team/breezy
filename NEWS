@@ -20,6 +20,11 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
 Improvements
 ************
 
