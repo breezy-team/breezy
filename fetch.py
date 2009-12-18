@@ -288,6 +288,58 @@ def approx_inv_size(inv):
     return len(inv) * 1024
 
 
+def import_git_commit(repo, mapping, head, lookup_object,
+                      target_git_object_retriever, parent_invs_cache):
+    o = lookup_object(head)
+    rev = mapping.import_commit(o)
+    # We have to do this here, since we have to walk the tree and
+    # we need to make sure to import the blobs / trees with the right
+    # path; this may involve adding them more than once.
+    parent_invs = []
+    for parent_id in rev.parent_ids:
+        try:
+            parent_invs.append(parent_invs_cache[parent_id])
+        except KeyError:
+            parent_inv = repo.get_inventory(parent_id)
+            parent_invs.append(parent_inv)
+            parent_invs_cache[parent_id] = parent_inv
+    if parent_invs == []:
+        base_inv = Inventory(root_id=None)
+        base_ie = None
+    else:
+        base_inv = parent_invs[0]
+        base_ie = base_inv.root
+    inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
+            mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
+            parent_invs, target_git_object_retriever._idmap, lookup_object,
+            allow_submodules=getattr(repo._format, "supports_tree_reference", False))
+    target_git_object_retriever._idmap.add_entries(shamap)
+    if unusual_modes != {}:
+        for path, mode in unusual_modes.iteritems():
+            warn_unusual_mode(rev.foreign_revid, path, mode)
+        mapping.import_unusual_file_modes(rev, unusual_modes)
+    try:
+        basis_id = rev.parent_ids[0]
+    except IndexError:
+        basis_id = NULL_REVISION
+        base_inv = None
+    rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
+              inv_delta, rev.revision_id, rev.parent_ids,
+              base_inv)
+    parent_invs_cache[rev.revision_id] = inv
+    repo.add_revision(rev.revision_id, rev)
+    if "verify" in debug.debug_flags:
+        new_unusual_modes = mapping.export_unusual_file_modes(rev)
+        if new_unusual_modes != unusual_modes:
+            raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
+        objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
+        for sha1, newobj, path in objs:
+            assert path is not None
+            oldobj = tree_lookup_path(lookup_object, o.tree, path)
+            if oldobj != newobj:
+                raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
+
+
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         heads, pb=None):
     """Import a set of git objects into a bzr repository.
@@ -338,55 +390,9 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     for i, head in enumerate(topo_sort(graph)):
         if pb is not None:
             pb.update("fetching revisions", i, len(graph))
-        o = lookup_object(head)
-        rev = mapping.import_commit(o)
-        # We have to do this here, since we have to walk the tree and
-        # we need to make sure to import the blobs / trees with the right
-        # path; this may involve adding them more than once.
-        parent_invs = []
-        for parent_id in rev.parent_ids:
-            try:
-                parent_invs.append(parent_invs_cache[parent_id])
-            except KeyError:
-                parent_inv = repo.get_inventory(parent_id)
-                parent_invs.append(parent_inv)
-                parent_invs_cache[parent_id] = parent_inv
-        if parent_invs == []:
-            base_inv = Inventory(root_id=None)
-            base_ie = None
-        else:
-            base_inv = parent_invs[0]
-            base_ie = base_inv.root
-        inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-                mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
-                parent_invs, target_git_object_retriever._idmap, lookup_object,
-                allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-        target_git_object_retriever._idmap.add_entries(shamap)
-        if unusual_modes != {}:
-            for path, mode in unusual_modes.iteritems():
-                warn_unusual_mode(rev.foreign_revid, path, mode)
-            mapping.import_unusual_file_modes(rev, unusual_modes)
-        try:
-            basis_id = rev.parent_ids[0]
-        except IndexError:
-            basis_id = NULL_REVISION
-            base_inv = None
-        rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-                  inv_delta, rev.revision_id, rev.parent_ids,
-                  base_inv)
-        parent_invs_cache[rev.revision_id] = inv
-        repo.add_revision(rev.revision_id, rev)
-        if "verify" in debug.debug_flags:
-            new_unusual_modes = mapping.export_unusual_file_modes(rev)
-            if new_unusual_modes != unusual_modes:
-                raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
-            objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
-            for sha1, newobj, path in objs:
-                assert path is not None
-                oldobj = tree_lookup_path(lookup_object, o.tree, path)
-                if oldobj != newobj:
-                    raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
-
+        import_git_commit(repo, mapping, head, lookup_object,
+                          target_git_object_retriever, 
+                          parent_invs_cache)
     target_git_object_retriever._idmap.commit()
 
 
