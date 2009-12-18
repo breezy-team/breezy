@@ -403,7 +403,9 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             repo.abort_write_group()
             raise
         else:
-            pack_hints.extend(repo.commit_write_group())
+            hint = repo.commit_write_group()
+            if hint is not None:
+                pack_hints.extend(hint)
     target_git_object_retriever._idmap.commit()
     return pack_hints
 
