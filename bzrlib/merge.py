@@ -56,7 +56,11 @@ class MergeHooks(hooks.Hooks):
     def __init__(self):
         hooks.Hooks.__init__(self)
         self.create_hook(hooks.HookPoint('merge_file_content',
-            "Invoked to merge the content of a file.", (2, 1), None))
+            "Called when file content needs to be merged (including when one "
+            "side has deleted the file and the other has changed it)."
+            "merge_file_content is called with a "
+            "bzrlib.merge.MergeHookParams.",
+            (2, 1), None))
 
 
 class MergeHookParams(object):
