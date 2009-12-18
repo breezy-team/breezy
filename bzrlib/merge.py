@@ -59,11 +59,28 @@ class MergeHooks(hooks.Hooks):
             "Called when file content needs to be merged (including when one "
             "side has deleted the file and the other has changed it)."
             "merge_file_content is called with a "
-            "bzrlib.merge.MergeHookParams.",
+            "bzrlib.merge.MergeHookParams. The function should return a tuple "
+            "of (status, lines), where status is one of 'not_applicable', "
+            "'success', 'conflicted', or 'delete'.  If status is success or "
+            "conflicted, then lines should be an iterable of the new lines "
+            "for the file.",
             (2, 1), None))
 
 
 class MergeHookParams(object):
+    """Object holding parameters passed to merge_file_content hooks.
+
+    There are 3 fields hooks can access:
+
+    :ivar merger: the Merger object
+    :ivar file_id: the file ID of the file being merged
+    :ivar trans_id: the transform ID for the merge of this file.
+
+    The lines of versions of the file being merged can be retrieved from the
+    merger, e.g.::
+
+        params.merger.get_lines(params.merger.this_tree, params.file_id)
+    """
 
     def __init__(self, merger, file_id, trans_id):
         self.merger = merger
