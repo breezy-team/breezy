@@ -89,7 +89,7 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
         mode = 0666
         if executable:
             mode = 0777
-        out = os.fdopen(os.open(fullpath, flags, mode))
+        out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
         try:
             out.writelines(chunks)
         finally:
