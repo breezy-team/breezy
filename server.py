@@ -113,7 +113,10 @@ class BzrBackend(Backend):
                 import_git_objects(target, self.mapping, objects,
                                    BazaarObjectStore (target, self.mapping),
                                    heads)
-            finally:
+            except:
+                target.abort_write_group()
+                raise
+            else:
                 target.commit_write_group()
         finally:
             target.unlock()
