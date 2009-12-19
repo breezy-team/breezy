@@ -68,17 +68,22 @@ class BazaarObjectStore(BaseObjectStore):
             self._idmap = SqliteGitShaMap.from_repository(repository)
 
     def _update_sha_map(self, stop_revision=None):
-        if stop_revision is None:
-            all_revids = self.repository.all_revision_ids()
-        else:
-            all_revids = self.repository.get_ancestry(stop_revision)
-            first = all_revids.pop(0) # Pop leading None
-            assert first is None
         graph = self.repository.get_graph()
-        missing_revids = self._idmap.missing_revisions(all_revids)
+        if stop_revision is None:
+            heads = graph.heads(self.repository.all_revision_ids())
+        else:
+            heads = set([stop_revision])
+        missing_revids = []
+        while heads:
+            parents = graph.get_parent_map(heads)
+            todo = set()
+            for p in parents.values():
+                todo.update(p)
+            heads = self._idmap.missing_revisions(todo)
+            missing_revids.extend(heads)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+            for i, revid in enumerate(reversed(missing_revids)):
                 pb.update("updating git map", i, len(missing_revids))
                 self._update_sha_map_revision(revid)
         finally:
