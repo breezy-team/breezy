@@ -203,8 +203,11 @@ class BazaarObjectStore(BaseObjectStore):
         try:
             return self._idmap.lookup_commit(revid)
         except KeyError:
-            self._update_sha_map(revid)
-            return self._idmap.lookup_commit(revid)
+            try:
+                return mapping_registry.parse_revision_id(revid)[0]
+            except errors.InvalidRevisionId:
+                self._update_sha_map(revid)
+                return self._idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
         """Get the raw representation of a Git object by SHA1.
