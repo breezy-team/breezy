@@ -614,7 +614,7 @@ class UnicodeShlex(object):
         return quoted, token
 
 
-def _command_line_to_argv(command_line):
+def command_line_to_argv(command_line):
     """Convert a Unicode command line into a set of argv arguments.
 
     This does wildcard expansion, etc. It is intended to make wildcards act
@@ -636,16 +636,14 @@ def _command_line_to_argv(command_line):
 
 if has_ctypes and winver != 'Windows 98':
     def get_unicode_argv():
-        LPCWSTR = ctypes.c_wchar_p
-        INT = ctypes.c_int
-        POINTER = ctypes.POINTER
-        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
-        GetCommandLine = prototype(("GetCommandLineW",
-                                    ctypes.windll.kernel32))
-        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
-        command_line = GetCommandLine()
+        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p, use_last_error=True)
+        GetCommandLineW = prototype(("GetCommandLineW",
+                                     ctypes.windll.kernel32))
+        command_line = GetCommandLineW()
+        if command_line is None:
+            raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line)[1:]
+        argv = command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]

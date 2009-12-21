@@ -869,8 +869,12 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
 
 
 def shlex_split_unicode(unsplit):
-    import shlex
-    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+    if sys.platform == "win32":
+        import bzrlib.win32utils as win32utils
+        return win32utils.command_line_to_argv(unsplit)
+    else:
+        import shlex
+        return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
 
 
 def get_alias(cmd, config=None):
