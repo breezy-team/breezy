@@ -31,6 +31,10 @@ Bug Fixes
   This will likely have an impact on any other process that is serving for
   an extended period of time.  (John Arbash Meinel, #494406)
 
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
+
 Improvements
 ************
 
