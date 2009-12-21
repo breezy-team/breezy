@@ -35,6 +35,10 @@ Bug Fixes
 Improvements
 ************
 
+* When using the pycurl client module, Bazaar shows some of the text from
+  http server error messages.
+  (Martin Pool)
+
 Documentation
 *************
 
