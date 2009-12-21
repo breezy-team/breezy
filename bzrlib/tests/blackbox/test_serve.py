@@ -233,7 +233,7 @@ class TestBzrServe(TestBzrServeBase):
         f = open(log_fname, 'rb')
         content = f.read()
         f.close()
-        self.assertContainsRe(content, 'hpss request: \[')
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
 
 class TestCmdServeChrooting(TestBzrServeBase):
