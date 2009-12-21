@@ -19,6 +19,7 @@ from bzrlib import (
     branch as _mod_branch,
     conflicts as _mod_conflicts,
     debug,
+    decorators,
     errors,
     graph as _mod_graph,
     hooks,
@@ -87,6 +88,21 @@ class MergeHookParams(object):
         self.file_id = file_id
         self.trans_id = trans_id
         
+    @decorators.cachedproperty
+    def base_lines(self):
+        """The lines of the 'base' version of the file."""
+        return self.merger.get_lines(self.merger.base_tree, self.file_id)
+
+    @decorators.cachedproperty
+    def this_lines(self):
+        """The lines of the 'this' version of the file."""
+        return self.merger.get_lines(self.merger.this_tree, self.file_id)
+
+    @decorators.cachedproperty
+    def other_lines(self):
+        """The lines of the 'other' version of the file."""
+        return self.merger.get_lines(self.merger.other_tree, self.file_id)
+
 
 class Merger(object):
 

@@ -253,3 +253,19 @@ def use_pretty_decorators():
     global needs_read_lock, needs_write_lock
     needs_read_lock = _pretty_needs_read_lock
     needs_write_lock = _pretty_needs_write_lock
+
+
+def cachedproperty(getter_func):
+    """Like property(getter_func), but caches the value.
+    
+    Note: there's no way to clear or reset the cache.
+    """
+    memo = []
+    def f(self):
+        if not memo:
+            memo.append(getter_func(self))
+        return memo[0]
+    f.__doc__ = getter_func.__doc__
+    getter_func.__name__ = getter_func.__name__
+    return property(f)
+

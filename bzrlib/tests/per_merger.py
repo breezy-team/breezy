@@ -237,12 +237,11 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         versions of the file.
         """
         def hook_log_lines(merge_params):
-            merger = merge_params.merger
             self.hook_log.append((
                 'log_lines',
-                merger.get_lines(merger.this_tree, merge_params.file_id),
-                merger.get_lines(merger.other_tree, merge_params.file_id),
-                merger.get_lines(merger.base_tree, merge_params.file_id),
+                merge_params.this_lines,
+                merge_params.other_lines,
+                merge_params.base_lines,
                 ))
             return 'not_applicable', None
         _mod_merge.Merger.hooks.install_named_hook(
