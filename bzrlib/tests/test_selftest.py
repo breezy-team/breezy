@@ -52,6 +52,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.tests import (
+    features,
     SubUnitFeature,
     test_lsprof,
     test_sftp_transport,
@@ -2020,7 +2021,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(transport_server, captured_transport[0])
 
     def test_transport_sftp(self):
-        self.requireFeature(tests.ParamikoFeature)
+        self.requireFeature(features.paramiko)
         self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
