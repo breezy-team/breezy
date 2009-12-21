@@ -37,16 +37,17 @@ def load_tests(standard_tests, module, loader):
         ('python-nocache', {'module': _known_graph_py, 'do_cache': False}),
     ]
     suite = loader.suiteClass()
-    if CompiledKnownGraphFeature.available():
-        from bzrlib import _known_graph_pyx
-        scenarios.append(('C', {'module': _known_graph_pyx, 'do_cache': True}))
-        caching_scenarios.append(('C-nocache',
-                          {'module': _known_graph_pyx, 'do_cache': False}))
+    if compiled_known_graph.available():
+        scenarios.append(('C', {'module': compiled_known_graph.module,
+                                'do_cache': True}))
+        caching_scenarios.append(
+            ('C-nocache', {'module': compiled_known_graph.module,
+                           'do_cache': False}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(CompiledKnownGraphFeature)
+                self.requireFeature(compiled_known_graph)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     # TestKnownGraphHeads needs to be permutated with and without caching.
     # All other TestKnownGraph tests only need to be tested across module
@@ -58,19 +59,7 @@ def load_tests(standard_tests, module, loader):
     return suite
 
 
-class _CompiledKnownGraphFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._known_graph_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._known_graph_pyx'
-
-CompiledKnownGraphFeature = _CompiledKnownGraphFeature()
+compiled_known_graph = tests.ModuleAvailableFeature('bzrlib._known_graph_pyx')
 
 
 #  a
