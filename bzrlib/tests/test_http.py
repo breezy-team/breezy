@@ -448,10 +448,7 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         https by supplying a fake version_info that do not
         support it.
         """
-        try:
-            import pycurl
-        except ImportError:
-            raise tests.TestSkipped('pycurl not present')
+        self.requireFeature(features.pycurl)
 
         version_info_orig = pycurl.version_info
         try:
