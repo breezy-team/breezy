@@ -15,21 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests import Feature
+from bzrlib import tests
 
 
-class _ApportFeature(Feature):
-    
-    def _probe(self):
-        try:
-            import apport
-        except ImportError, e:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'apport'
-
-
-ApportFeature = _ApportFeature()
+ApportFeature = tests.ModuleAvailableFeature('apport')
+pycurl = tests.ModuleAvailableFeature('pycurl')

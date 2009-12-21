@@ -48,6 +48,7 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    features,
     http_server,
     http_utils,
     )
@@ -61,11 +62,8 @@ from bzrlib.transport.http import (
     )
 
 
-try:
+if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
-    pycurl_present = True
-except errors.DependencyNotPresent:
-    pycurl_present = False
 
 
 def load_tests(standard_tests, module, loader):
@@ -84,7 +82,7 @@ def load_tests(standard_tests, module, loader):
                         _server=http_server.HttpServer_urllib,
                         _qualified_prefix='http+urllib',)),
         ]
-    if pycurl_present:
+    if features.pycurl.available():
         transport_scenarios.append(
             ('pycurl', dict(_transport=PyCurlTransport,
                             _server=http_server.HttpServer_PyCurl,
@@ -156,7 +154,7 @@ def load_tests(standard_tests, module, loader):
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
                                   _transport=_urllib.HttpTransport_urllib,)),)
-    if pycurl_present:
+    if features.pycurl.available():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                  _transport=PyCurlTransport,)),)
@@ -376,11 +374,8 @@ class TestWithTransport_pycurl(object):
     """Test case to inherit from if pycurl is present"""
 
     def _get_pycurl_maybe(self):
-        try:
-            from bzrlib.transport.http._pycurl import PyCurlTransport
-            return PyCurlTransport
-        except errors.DependencyNotPresent:
-            raise tests.TestSkipped('pycurl not present')
+        self.requireFeature(features.pycurl)
+        return PyCurlTransport
 
     _transport = property(_get_pycurl_maybe)
 
@@ -603,7 +598,9 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
                                       protocol_version=self._protocol_version)
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
 
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -718,7 +715,7 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
     _req_handler_class = BadProtocolRequestHandler
 
     def setUp(self):
-        if pycurl_present and self._transport == PyCurlTransport:
+        if self._testing_pycurl():
             raise tests.TestNotApplicable(
                 "pycurl doesn't check the protocol version")
         super(TestBadProtocolServer, self).setUp()
@@ -1187,7 +1184,9 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         self._old_env = {}
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
     def create_transport_secondary_server(self):
         """Creates an http server that will serve files with
@@ -1389,7 +1388,8 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """
 
     def setUp(self):
-        if pycurl_present and self._transport == PyCurlTransport:
+        if (features.pycurl.available()
+            and self._transport == PyCurlTransport):
             raise tests.TestNotApplicable(
                 "pycurl doesn't redirect silently annymore")
         super(TestHTTPSilentRedirections, self).setUp()
@@ -1507,7 +1507,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         return self._auth_server(protocol_version=self._protocol_version)
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
     def get_user_url(self, user, password):
         """Build an url embedding user and password"""

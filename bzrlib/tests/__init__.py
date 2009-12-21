@@ -4278,6 +4278,9 @@ class ModuleAvailableFeature(Feature):
         return self.module_name
 
 
+ParamikoFeature = ModuleAvailableFeature('paramiko')
+
+
 
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
@@ -4331,23 +4334,6 @@ class _HTTPSServerFeature(Feature):
 
 
 HTTPSServerFeature = _HTTPSServerFeature()
-
-
-class _ParamikoFeature(Feature):
-    """Is paramiko available?"""
-
-    def _probe(self):
-        try:
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return True
-        except errors.ParamikoNotPresent:
-            return False
-
-    def feature_name(self):
-        return "Paramiko"
-
-
-ParamikoFeature = _ParamikoFeature()
 
 
 class _UnicodeFilename(Feature):
@@ -4460,20 +4446,7 @@ class _CaseInsensitiveFilesystemFeature(Feature):
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
-class _SubUnitFeature(Feature):
-    """Check if subunit is available."""
-
-    def _probe(self):
-        try:
-            import subunit
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'subunit'
-
-SubUnitFeature = _SubUnitFeature()
+SubUnitFeature = ModuleAvailableFeature('subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
