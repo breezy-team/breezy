@@ -492,16 +492,34 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
+    # XXX: Shamelessly copied from test_osutils.py. Is there a better place
+    # where it could live in order to be shared by both?
+    def replace_stdout(self, new):
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+        sys.stdout = new
+
     def test_unshelve_args_dry_run(self):
         tree = self.create_tree_with_shelf()
         unshelver = shelf_ui.Unshelver.from_args(directory='tree',
             action='dry-run')
+        stdout = StringIO()
+        self.replace_stdout(stdout)
         try:
             unshelver.run()
         finally:
             unshelver.tree.unlock()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+        # Now check that the diff was written to our fake stdout.
+        stdout.seek(0)
+        lines = stdout.read().split()
+        self.assertTrue('-a' in lines, lines)
+        self.assertTrue('-j' in lines, lines)
+        self.assertTrue('+z' in lines, lines)
+        self.assertTrue('+y' in lines, lines)
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')

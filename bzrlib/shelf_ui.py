@@ -22,7 +22,6 @@ import tempfile
 
 from bzrlib import (
     builtins,
-    commands,
     delta,
     diff,
     errors,
@@ -476,6 +475,10 @@ class Unshelver(object):
     def show_changes(self, merger):
         """Show the changes that this operation specifies."""
         tree_merger = merger.make_merger()
-        # This implicitly shows the changes via the reporter, so we're done...
+        # This implicitly shows the changes via the reporter.
         tt = tree_merger.make_preview_transform()
+        # And now we show the diff that would've been applied if this was for
+        # real.
+        new_tree = tt.get_preview_tree()
+        diff.show_diff_trees(merger.this_tree, new_tree, sys.stdout)
         tt.finalize()
