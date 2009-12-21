@@ -160,7 +160,8 @@ bzr made a choice: version the parent
 - manually rename <children>
 
 resolve:
-- nothing to do nothing more than the conflicted objects have been created
+- nothing more to do than removing the conflicted objects that
+   have been created
 
 
 Missing parent
