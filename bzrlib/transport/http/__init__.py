@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -661,3 +661,12 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""
         pass
+
+
+def unhtml_roughly(maybe_html):
+    """Very approximate html->text translation, for presenting error bodies.
+
+    >>> unhtml_roughly("<b>bad</b> things happened\\n")
+    ' bad  things happened '
+    """
+    return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0]

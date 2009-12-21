@@ -3935,6 +3935,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.timestamp',
+        'bzrlib.transport.http',
         'bzrlib.version_info_formats.format_custom',
         ]
 
