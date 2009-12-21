@@ -36,32 +36,19 @@ def load_tests(standard_tests, module, loader):
         ('python', {'module': _static_tuple_py}),
     ]
     suite = loader.suiteClass()
-    if CompiledStaticTuple.available():
-        from bzrlib import _static_tuple_c
-        scenarios.append(('C', {'module': _static_tuple_c}))
+    if compiled_static_tuple.available():
+        scenarios.append(('C', {'module': compiled_static_tuple.module}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(CompiledStaticTuple)
+                self.requireFeature(compiled_static_tuple)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     result = tests.multiply_tests(standard_tests, scenarios, suite)
     return result
 
 
-class _CompiledStaticTuple(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._static_tuple_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._static_tuple_c'
-
-CompiledStaticTuple = _CompiledStaticTuple()
+compiled_static_tuple = tests.ModuleAvailableFeature('bzrlib._static_tuple_c')
 
 
 class _Meliae(tests.Feature):
@@ -641,7 +628,7 @@ class TestStaticTuple(tests.TestCase):
         # Make sure the right implementation is available from
         # bzrlib.static_tuple.StaticTuple.
         if self.module is _static_tuple_py:
-            if CompiledStaticTuple.available():
+            if compiled_static_tuple.available():
                 # We will be using the C version
                 return
         self.assertIs(static_tuple.StaticTuple,
