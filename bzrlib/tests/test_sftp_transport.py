@@ -21,12 +21,6 @@ import sys
 import threading
 import time
 
-try:
-    import paramiko
-    paramiko_loaded = True
-except ImportError:
-    paramiko_loaded = False
-
 from bzrlib import (
     bzrdir,
     config,
@@ -49,7 +43,7 @@ from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
 
-if paramiko_loaded:
+if tests.ParamikoFeature.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.transport.sftp import (
         SFTPAbsoluteServer,
@@ -76,8 +70,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithSFTPServer, self).setUp()
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
         set_test_transport_to_sftp(self)
 
 
@@ -165,8 +158,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
 class SFTPNonServerTest(TestCase):
     def setUp(self):
         TestCase.setUp(self)
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
 
     def test_parse_url_with_home_dir(self):
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative')
@@ -307,8 +299,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     """
 
     def setUp(self):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
         super(SSHVendorBadConnection, self).setUp()
         import bzrlib.transport.ssh
 
@@ -420,8 +411,7 @@ class TestSocketDelay(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
 
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay
@@ -482,8 +472,7 @@ def _null_report_activity(*a, **k):
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
             _null_report_activity)
         self.assertEqual(expected_requests, helper._get_requests())
@@ -503,8 +492,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
                                (42000, 24000)])
 
     def checkRequestAndYield(self, expected, data, offsets):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(tests.ParamikoFeature)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
             _null_report_activity)
         data_f = ReadvFile(data)

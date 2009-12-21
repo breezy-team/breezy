@@ -2020,10 +2020,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(transport_server, captured_transport[0])
 
     def test_transport_sftp(self):
-        try:
-            import bzrlib.transport.sftp
-        except errors.ParamikoNotPresent:
-            raise tests.TestSkipped("Paramiko not present")
+        self.requireFeature(tests.ParamikoFeature)
         self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
