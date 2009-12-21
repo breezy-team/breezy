@@ -372,7 +372,7 @@ class TextProgressView(object):
         # XXX: Probably there should be a transport activity model, and that
         # too should be seen by the progress view, rather than being poked in
         # here.
-        if 'disable_transport_activity' in debug.debug_flags:
+        if 'no_transport_activity' in debug.debug_flags:
             # Can be used as a workaround if
             # <https://launchpad.net/bugs/321935> reappears and transport
             # activity is cluttering other output.  However, thanks to
