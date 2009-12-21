@@ -989,7 +989,7 @@ class TestChunksToLines(tests.TestCase):
 
     def test_osutils_binding(self):
         from bzrlib.tests import test__chunks_to_lines
-        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+        if test__chunks_to_lines.compiled_chunkstolines.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
