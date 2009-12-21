@@ -74,6 +74,15 @@ class UIFactoryTestMixin(object):
         self.factory.show_warning(msg)
         self._check_show_warning(msg)
 
+    def test_make_output_stream(self):
+        # at the moment this is only implemented on text uis; i'm not sure
+        # what it should do elsewhere
+        try:
+            output_stream = self.factory.make_output_stream()
+        except NotImplementedError, e:
+            raise tests.TestSkipped(str(e))
+        output_stream.write('hello!')
+
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 

@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     check,
     chk_map,
+    config,
     debug,
     errors,
     fetch as _mod_fetch,
@@ -1304,16 +1305,14 @@ class Repository(_RelockDebugMixin):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = True
-        # not right yet - should be more semantically clear ?
-        #
-        # TODO: make sure to construct the right store classes, etc, depending
-        # on whether escaping is required.
-        self._warn_if_deprecated()
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
+        # Is it safe to return inventory entries directly from the entry cache,
+        # rather copying them?
+        self._safe_to_return_from_cache = False
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1386,6 +1385,7 @@ class Repository(_RelockDebugMixin):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
+            self._warn_if_deprecated()
             self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
@@ -1397,6 +1397,7 @@ class Repository(_RelockDebugMixin):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
+            self._warn_if_deprecated()
             self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
@@ -2431,7 +2432,8 @@ class Repository(_RelockDebugMixin):
         :param xml: A serialised inventory.
         """
         result = self._serializer.read_inventory_from_string(xml, revision_id,
-                    entry_cache=self._inventory_entry_cache)
+                    entry_cache=self._inventory_entry_cache,
+                    return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
@@ -2778,13 +2780,22 @@ class Repository(_RelockDebugMixin):
         result.check(callback_refs)
         return result
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         global _deprecation_warning_done
         if _deprecation_warning_done:
             return
-        _deprecation_warning_done = True
-        warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
-                % (self._format, self.bzrdir.transport.base))
+        try:
+            if branch is None:
+                conf = config.GlobalConfig()
+            else:
+                conf = branch.get_config()
+            if conf.suppress_warning('format_deprecation'):
+                return
+            warning("Format %s for %s is deprecated -"
+                    " please use 'bzr upgrade' to get better performance"
+                    % (self._format, self.bzrdir.transport.base))
+        finally:
+            _deprecation_warning_done = True
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -3840,6 +3851,7 @@ class InterDifferingSerializer(InterRepository):
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
         self._fetch_parent_invs_for_stacking(parent_map, cache)
+        self.source._safe_to_return_from_cache = True
         for tree in self.source.revision_trees(revision_ids):
             # Find a inventory delta for this revision.
             # Find text entries that need to be copied, too.
@@ -3893,6 +3905,7 @@ class InterDifferingSerializer(InterRepository):
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
+        self.source._safe_to_return_from_cache = False
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
@@ -3977,6 +3990,7 @@ class InterDifferingSerializer(InterRepository):
                 basis_id = self._fetch_batch(batch, basis_id, cache,
                                              a_graph=a_graph)
             except:
+                self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
                 raise
             else:

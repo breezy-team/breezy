@@ -1401,8 +1401,13 @@ class cmd_update(Command):
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
+            branch_location = master.base
         else:
             tree.lock_tree_write()
+            branch_location = tree.branch.base
+        # get rid of the final '/' and be ready for display
+        branch_location = urlutils.unescape_for_display(branch_location[:-1],
+                                                        self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
             last_rev = _mod_revision.ensure_null(tree.last_revision())
@@ -1412,7 +1417,8 @@ class cmd_update(Command):
                 if master is None or last_rev == _mod_revision.ensure_null(
                     master.last_revision()):
                     revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d." % (revno,))
+                    note('Tree is up to date at revision %d of branch %s'
+                         % (revno, branch_location))
                     return 0
             view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
@@ -1420,7 +1426,8 @@ class cmd_update(Command):
                 view_info=view_info), possible_transports=possible_transports)
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d.' % (revno,))
+            note('Updated to revision %d of branch %s' %
+                 (revno, branch_location))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
@@ -2350,7 +2357,10 @@ class cmd_log(Command):
             # Build the log formatter
             if log_format is None:
                 log_format = log.log_formatter_registry.get_default(b)
+            # Make a non-encoding output to include the diffs - bug 328007
+            unencoded_output = ui.ui_factory.make_output_stream(encoding_type='exact')
             lf = log_format(show_ids=show_ids, to_file=self.outf,
+                            to_exact_file=unencoded_output,
                             show_timezone=timezone,
                             delta_format=get_verbosity_level(),
                             levels=levels,
@@ -3069,7 +3079,7 @@ class cmd_commit(Command):
 
         if message is not None:
             try:
-                file_exists = os.path.exists(message)
+                file_exists = osutils.lexists(message)
             except UnicodeError:
                 # The commit message contains unicode characters that can't be
                 # represented in the filesystem encoding, so that can't be a
@@ -5793,7 +5803,8 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
-            delete_only="Delete changes without applying them."
+            delete_only="Delete changes without applying them.",
+            keep="Apply changes but don't delete them.",
         )
     ]
     _see_also = ['shelve']

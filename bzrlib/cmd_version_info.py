@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,14 +17,17 @@
 """Commands for generating snapshot information about a bzr tree."""
 
 from bzrlib.lazy_import import lazy_import
+
 lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
-    workingtree,
+    ui,
     version_info_formats,
+    workingtree,
     )
 """)
+
 from bzrlib.commands import Command
 from bzrlib.option import Option, RegistryOption
 
@@ -113,4 +116,4 @@ class cmd_version_info(Command):
                 include_revision_history=include_history,
                 include_file_revisions=include_file_revisions,
                 template=template)
-        builder.generate(self.outf)
+        builder.generate(ui.ui_factory.make_output_stream())

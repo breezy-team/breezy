@@ -25,6 +25,7 @@ from bzrlib import (
     revision,
     tests,
 )
+from bzrlib.tests import script
 
 
 class ExpectShelver(shelf_ui.Shelver):
@@ -530,3 +531,45 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertRaises(errors.InvalidShelfId,
             shelf_ui.Unshelver.from_args, directory='tree',
             action='delete-only', shelf_id='foo')
+
+
+class TestUnshelveScripts(TestUnshelver, 
+                          script.TestCaseWithTransportAndScript): 
+
+    def test_unshelve_messages_keep(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --keep
+2>Using changes with id "1".
+2> M  foo
+2>All changes applied successfully.
+""")
+
+    def test_unshelve_messages_delete(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --delete-only
+2>Deleted changes with id "1".
+""")
+
+    def test_unshelve_messages_apply(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --apply
+2>Using changes with id "1".
+2> M  foo
+2>All changes applied successfully.
+2>Deleted changes with id "1".
+""")
+
+    def test_unshelve_messages_dry_run(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --dry-run
+2>Using changes with id "1".
+2> M  foo
+""")
