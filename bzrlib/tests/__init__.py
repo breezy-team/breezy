@@ -4278,6 +4278,8 @@ class ModuleAvailableFeature(Feature):
         return self.module_name
 
 
+# This is kept here for compatibility, it is recommended to use
+# 'bzrlib.tests.feature.paramiko' instead
 ParamikoFeature = ModuleAvailableFeature('paramiko')
 
 

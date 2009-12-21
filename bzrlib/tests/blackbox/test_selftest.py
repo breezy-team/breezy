@@ -23,6 +23,7 @@ from bzrlib import (
     )
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
+                          features,
                           SubUnitFeature,
                           TestCase,
                           TestCaseInTempDir,
@@ -78,7 +79,7 @@ class TestOptions(TestCase, SelfTestPatch):
     def test_transport_set_to_sftp(self):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
-        self.requireFeature(tests.ParamikoFeature)
+        self.requireFeature(features.paramiko)
         params = self.get_params_passed_to_core('selftest --transport=sftp')
         self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
             params[1]["transport"])

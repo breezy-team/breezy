@@ -38,7 +38,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    ParamikoFeature,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
