@@ -26,6 +26,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
 
