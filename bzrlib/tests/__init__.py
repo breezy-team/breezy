@@ -453,10 +453,9 @@ class TextTestResult(ExtendedTestResult):
             a += '%dm%ds' % (runtime / 60, runtime % 60)
         else:
             a += '%ds' % runtime
-        if self.error_count:
-            a += ', %d err' % self.error_count
-        if self.failure_count:
-            a += ', %d fail' % self.failure_count
+        total_fail_count = self.error_count + self.failure_count
+        if total_fail_count:
+            a += ', %d failed' % total_fail_count
         # if self.unsupported:
         #     a += ', %d missing' % len(self.unsupported)
         a += ']'
