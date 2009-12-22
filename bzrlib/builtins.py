@@ -1392,12 +1392,17 @@ class cmd_update(Command):
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
+    takes_options = ['revision']
     aliases = ['up']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', revision=None):
+        if revision is not None and len(revision) != 1:
+            raise errors.BzrCommandError(
+                        "bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
+        branch = tree.branch
         possible_transports = []
-        master = tree.branch.get_master_branch(
+        master = branch.get_master_branch(
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
@@ -1410,24 +1415,47 @@ class cmd_update(Command):
                                                         self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
-            last_rev = _mod_revision.ensure_null(tree.last_revision())
-            if last_rev == _mod_revision.ensure_null(
-                tree.branch.last_revision()):
-                # may be up to date, check master too.
-                if master is None or last_rev == _mod_revision.ensure_null(
-                    master.last_revision()):
-                    revno = tree.branch.revision_id_to_revno(last_rev)
-                    note('Tree is up to date at revision %d of branch %s'
-                         % (revno, branch_location))
-                    return 0
+            # potentially get new revisions from the master branch.
+            # needed for the case where -r N is given, with N not yet
+            # in the local branch for a heavyweight checkout.
+            if revision is not None:
+                try:
+                    rev = revision[0].in_history(branch).rev_id
+                    # no need to run branch.update()
+                    old_tip = None
+                except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
+                    # revision was not there, but is maybe in the master.
+                    old_tip = branch.update(possible_transports)
+                    rev = revision[0].in_history(branch).rev_id
+            else:
+                if master is None:
+                    old_tip = None
+                else:
+                    old_tip = branch.update(possible_transports)
+                rev = branch.last_revision()
+            if rev == _mod_revision.ensure_null(tree.last_revision()):
+                revno = branch.revision_id_to_revno(rev)
+                # XXX: Should say which branch it's up to date with
+                note("Tree is up to date at revision %d." %
+                    (revno, ))
+                return 0
             view_info = _get_view_info_for_change_reporter(tree)
-            conflicts = tree.update(
-                delta._ChangeReporter(unversioned_filter=tree.is_ignored,
-                view_info=view_info), possible_transports=possible_transports)
-            revno = tree.branch.revision_id_to_revno(
-                _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d of branch %s' %
-                 (revno, branch_location))
+            try:
+                conflicts = tree.update(
+                    delta._ChangeReporter(unversioned_filter=tree.is_ignored),
+                    possible_transports=possible_transports,
+                    revision=rev,
+                    old_tip=old_tip,
+                    view_info=view_info)
+            except errors.NoSuchRevision, e:
+                raise errors.BzrCommandError(
+                                      "branch has no revision %s\n"
+                                      "bzr update --revision only works"
+                                      " for a revision in the branch history"
+                                      % (e.revision))
+            revno = branch.revision_id_to_revno(
+                _mod_revision.ensure_null(rev))
+            note('Updated to revision %d.' % (revno,))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
