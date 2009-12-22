@@ -60,6 +60,10 @@ Internals
 Testing
 *******
 
+* The test progress bar no longer distinguishes tests that 'errored' from
+  tests that 'failed' - they're all just failures.
+  (Martin Pool)
+
 bzr 2.0.4 (not released yet)
 ############################
 
