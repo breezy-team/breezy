@@ -23,7 +23,7 @@ before being implemented as policy.  We will describe one such possible setup
 here.
 
 Consider ProjectX Corp's international expansion with a new branch office in
-Darwin, Australia, in addition to the company's headquarters in Paris, Texas,
+Darwin, Australia, in addition to the company's headquarters in Austin, Texas,
 USA.  One of the difficulties of a far-flung multi-site development
 environment such as this is that the network connection between Australia and
 Texas is slow and unreliable.  So, each branch office would like the master
@@ -37,30 +37,34 @@ suggest that it is best not to privilege either the Texas or Australia
 branches, but to merge both of them into a separate master branch (which may
 reside at either site).  For definiteness, we will locate the master branch at
 the Texas site.  So, we will have three branches stored on two servers:
-trunk-master and trunk-texas at the Texas site and trunk-australia at the
-Darwin site.
+trunk and texas-integration at the Texas site and australia-integration at the
+Darwin site.  These branches are named in terms of the sites where the 
+development takes place, but in many cases it may make more sense to name
+branches after the functional teams rather their geographical locations.
+Since we are trying illustrate the issues with multi-*site* development, we
+will persist in this naming scheme.
 
 Setup
 ~~~~~
 
 Using our previous setup at the Texas site, we will simply rename the old
-trunk branch as trunk-master and branch a copy as trunk-texas.
+trunk branch as trunk and branch a copy as texas-integration.
 
 ::
  
   $ cd /srv/bzr/projectx
-  $ mv trunk trunk-master              # can simply rename on the filesystem
-  $ bzr branch trunk-master trunk-texas   # very fast in a shared repository
+  $ mv trunk trunk              # can simply rename on the filesystem
+  $ bzr branch trunk texas-integration   # very fast in a shared repository
 
 In Australia, we need to set up the ``/srv/bzr/projectx`` directory and get a
-copy of the current trunk as trunk-australia::
+copy of the current trunk as australia-integration::
 
   $ mkdir -p /srv/bzr
   $ cd /srv/bzr
   $ bzr init-repo --no-trees projectx
   $ cd projectx
-  $ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk-master
-  $ bzr branch trunk-master trunk-australia
+  $ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk
+  $ bzr branch trunk australia-integration
 
 Merging to master
 ~~~~~~~~~~~~~~~~~
@@ -75,19 +79,19 @@ branches on the server::
   # Get a copy of the Australia branch in Texas.  After the initial branch
   # command, use pull to keep the branch up to date.  With a slow network,
   # this is the only slow part
-  $ bzr branch bzr+ssh://autralia.example.com/srv/bzr/projectx/trunk-australia \
-    bzr+ssh://server.example.com/srv/bzr/projectx/trunk-australia
+  $ bzr branch bzr+ssh://autralia.example.com/srv/bzr/projectx/australia-integration \
+    bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
   
   # Check out the master branch locally for doing the merge
   $ cd ~/projectx
-  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/trunk-master
-  $ cd trunk-master
-  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/trunk-texas
+  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/trunk
+  $ cd trunk
+  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
   # Run the test suite and resolve any conflicts
   $ bzr commit -m "Merge Texas branch to master"
   
   # Now, merge from Australia using the local copy of that branch
-  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/trunk-australia
+  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
   # Run the test suite and resolve any conflicts between the two offices
   $ bzr commit -m "Merge Australia branch to master"
 
@@ -100,38 +104,38 @@ automatically commit when possible, use ``bzr merge --pull``.
 Merging back to local trunks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Now the trunk-master branch is the most up-to-date version of the software and
+Now the trunk branch is the most up-to-date version of the software and
 both of the local trunks need to reincorporate the changes from the master.
-If no new commits have been made to trunk-texas, then that can happen using
+If no new commits have been made to texas-integration, then that can happen using
 ``bzr pull``::
 
   $ cd ~/projectx
-  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/trunk-texas
-  $ cd trunk-texas
-  $ bzr pull ../trunk-master  # Use trunk-master from the local disk
+  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
+  $ cd texas-integration
+  $ bzr pull ../trunk  # Use trunk from the local disk
                               # No need to commit
 
-If new changes have happened on trunk-texas since the integration with
-trunk-master, then the above pull will produce an error suggesting to use
+If new changes have happened on texas-integration since the integration with
+trunk, then the above pull will produce an error suggesting to use
 merge::
 
-  $ bzr merge ../trunk-master
+  $ bzr merge ../trunk
   # Run test suite, resolve conflicts
   $ bzr commit -m "Merging Australian changes"
 
-In Australia, they will need to update their local copy of trunk-master::
+In Australia, they will need to update their local copy of trunk::
 
-  $ cd /srv/bzr/projectx/trunk-master
+  $ cd /srv/bzr/projectx/trunk
   $ bzr pull     # parent location is used by default
 
-Then, they need to pull or merge the changes from trunk-master into the local
-trunk.  This should be done by a developer with a checkout of trunk-australia
-so that they can run the test suite::
+Then, they need to pull or merge the changes from trunk into the local trunk.
+This should be done by a developer with a checkout of australia-integration so
+that they can run the test suite::
 
   $ cd ~/projectx
-  $ bzr co bzr+ssh://australia.example.com/srv/bzr/projectx/trunk-australia
-  $ cd trunk-australia
-  $ bzr merge bzr+ssh://australia.example.com/srv/bzr/projectx/trunk-master
+  $ bzr co bzr+ssh://australia.example.com/srv/bzr/projectx/australia-integration
+  $ cd australia-integration
+  $ bzr merge bzr+ssh://australia.example.com/srv/bzr/projectx/trunk
   # Run test suite and integrate Texan changes with only recent local
   # development
   $ bzr commit -m "Integrate work from Texas"
@@ -146,7 +150,7 @@ for integration, etc.  The preceding description is meant to be one possible
 way to do fairly symmetric multi-site development.  (Neither Texas or
 Australia is privileged in this structure.)  In a situation where there is one
 main site and other smaller sites, one of the local trunk branches can be
-eliminated and trunk-master can be used directly for development at the main
+eliminated and trunk can be used directly for development at the main
 site.
 
 It is also up to the particular situation how frequently the local trunks are
