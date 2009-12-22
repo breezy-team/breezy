@@ -98,8 +98,9 @@ branches on the server::
 Note that Bazaar does not commit even cleanly applied merges by default.  This
 is because although a merge may apply cleanly, the merged state still needs to
 be checked before it is committed.  (Just because there are no text conflicts
-does not mean that everything will work after a merge.)  If it is desired to
-automatically commit when possible, use ``bzr merge --pull``.
+does not mean that everything will work after a merge.)  An alternative that 
+can pull when possible and merge otherwise is available with 
+``bzr merge --pull``.
 
 Merging back to local trunks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
