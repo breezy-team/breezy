@@ -82,7 +82,7 @@ def dir_reader_scenarios():
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
-    if test__walkdirs_win32.Win32ReadDirFeature.available():
+    if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from bzrlib import _walkdirs_win32
             scenarios.append(
