@@ -36,7 +36,7 @@ from bzrlib.errors import (DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
-from bzrlib.tests import ParamikoFeature, TestCase, TestCaseInTempDir
+from bzrlib.tests import features, TestCase, TestCaseInTempDir
 from bzrlib.transport import (_clear_protocol_handlers,
                               _CoalescedOffset,
                               ConnectedTransport,
@@ -895,7 +895,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # A reasonable evolution for this would be to simply check inside
         # check_channel_exec_request that the command is appropriate, and then
         # satisfy requests in-process.
-        self.requireFeature(ParamikoFeature)
+        self.requireFeature(features.paramiko)
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.

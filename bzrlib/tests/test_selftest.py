@@ -52,7 +52,7 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.tests import (
-    SubUnitFeature,
+    features,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -1982,7 +1982,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(expected.getvalue(), repeated.getvalue())
 
     def test_runner_class(self):
-        self.requireFeature(SubUnitFeature)
+        self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
         stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
             test_suite_factory=self.factory)
@@ -2020,10 +2020,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(transport_server, captured_transport[0])
 
     def test_transport_sftp(self):
-        try:
-            import bzrlib.transport.sftp
-        except errors.ParamikoNotPresent:
-            raise tests.TestSkipped("Paramiko not present")
+        self.requireFeature(features.paramiko)
         self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
@@ -2497,6 +2494,21 @@ class TestUnavailableFeature(tests.TestCase):
         self.assertIs(feature, exception.args[0])
 
 
+simple_thunk_feature = tests._CompatabilityThunkFeature(
+    'bzrlib.tests', 'UnicodeFilename',
+    'bzrlib.tests.test_selftest.simple_thunk_feature',
+    deprecated_in((2,1,0)))
+
+class Test_CompatibilityFeature(tests.TestCase):
+
+    def test_does_thunk(self):
+        res = self.callDeprecated(
+            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
+             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
+            simple_thunk_feature.available)
+        self.assertEqual(tests.UnicodeFilename.available(), res)
+
+        
 class TestModuleAvailableFeature(tests.TestCase):
 
     def test_available_module(self):
