@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ from bzrlib import (
     urlutils,
     workingtree,
     )
+from bzrlib.tests.script import ScriptRunner
 
 
 class TestUpdate(tests.TestCaseWithTransport):
@@ -253,15 +254,19 @@ Updated to revision 2 of branch %s
         master.add(['file2'])
         master.commit('two', rev_id='m2')
 
-        out, err = self.run_bzr('update -r 1')
-        self.assertEqual('', out)
-        self.assertEqual('-D  file2\nAll changes applied successfully.\n'
-                         'Updated to revision 1.\n', err)
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update -r 1
+2>-D  file2
+2>All changes applied successfully.
+2>Updated to revision 1 of .../master
+''')
         self.failUnlessExists('./file1')
         self.failIfExists('./file2')
         # hrm - the below doesn't look correct for all formats...
         #self.check_file_contents('.bzr/checkout/last-revision',
         #                         'm1')
+        # XXX: Should check last tree version.
 
     def test_update_dash_r_outside_history(self):
         # Test that 'bzr update' works correctly when you have
