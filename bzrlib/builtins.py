@@ -1441,21 +1441,24 @@ class cmd_update(Command):
                 return 0
             view_info = _get_view_info_for_change_reporter(tree)
             try:
+                change_reporter = delta._ChangeReporter(
+                    unversioned_filter=tree.is_ignored,
+                    view_info=view_info)
                 conflicts = tree.update(
-                    delta._ChangeReporter(unversioned_filter=tree.is_ignored),
+                    change_reporter,
                     possible_transports=possible_transports,
                     revision=rev,
-                    old_tip=old_tip,
-                    view_info=view_info)
+                    old_tip=old_tip)
             except errors.NoSuchRevision, e:
                 raise errors.BzrCommandError(
                                       "branch has no revision %s\n"
                                       "bzr update --revision only works"
                                       " for a revision in the branch history"
                                       % (e.revision))
-            revno = branch.revision_id_to_revno(
-                _mod_revision.ensure_null(rev))
-            note('Updated to revision %d.' % (revno,))
+            revno = tree.branch.revision_id_to_revno(
+                _mod_revision.ensure_null(tree.last_revision()))
+            note('Updated to revision %d of branch %s' %
+                 (revno, branch_location))
             if tree.get_parent_ids()[1:] != existing_pending_merges:
                 note('Your local commits will now show as pending merges with '
                      "'bzr status', and can be committed with 'bzr commit'.")
