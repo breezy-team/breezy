@@ -30,7 +30,7 @@ def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
     suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
         'bzrlib._annotator_py', 'bzrlib._annotator_pyx')
-    return result
+    return suite
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):
