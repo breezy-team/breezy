@@ -28,6 +28,7 @@ from bzrlib import (
     multiparent,
     osutils,
     pack,
+    tests,
     )
 from bzrlib.errors import (
     RevisionAlreadyPresent,

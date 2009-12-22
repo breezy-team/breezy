@@ -47,6 +47,11 @@ Documentation
 API Changes
 ***********
 
+* Many test features were renamed from ``FooFeature`` to ``foo_feature``
+  to be consistent with instances being lower case and classes being
+  CamelCase. For the features that were more likely to be used, we added a
+  deprecation thunk, but not all. (John Arbash Meinel)
+
 Internals
 *********
 
