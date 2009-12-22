@@ -20,6 +20,7 @@ from bzrlib.tests import features
 # SFTPTransport offers better performances but relies on paramiko, if paramiko
 # is not available, we fallback to FtpTransport
 if features.paramiko.available():
+    from bzrlib.tests import test_sftp_transport
     from bzrlib.transport import sftp
     _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport
