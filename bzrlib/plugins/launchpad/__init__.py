@@ -36,15 +36,12 @@ from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
+    DependencyNotPresent,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
-from bzrlib.plugins.launchpad.lp_registration import (
-    LaunchpadService,
-    NotLaunchpadBranch,
-    )
 
 
 class cmd_register_branch(Command):
@@ -111,8 +108,8 @@ class cmd_register_branch(Command):
             link_bug=None,
             dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import (
-            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
-            DryRunLaunchpadService)
+            BranchRegistrationRequest, BranchBugLinkRequest,
+            DryRunLaunchpadService, LaunchpadService)
         if public_url is None:
             try:
                 b = _mod_branch.Branch.open_containing('.')[0]
@@ -147,9 +144,9 @@ class cmd_register_branch(Command):
             # Run on service entirely in memory
             service = DryRunLaunchpadService()
         service.gather_user_credentials()
-        branch_object_url = rego.submit(service)
+        rego.submit(service)
         if link_bug:
-            link_bug_url = linko.submit(service)
+            linko.submit(service)
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
@@ -170,7 +167,7 @@ class cmd_launchpad_open(Command):
         """Yield possible external locations for the branch at 'location'."""
         yield location
         try:
-            branch = _mod_branch.Branch.open(location)
+            branch = _mod_branch.Branch.open_containing(location)[0]
         except NotBranchError:
             return
         branch_url = branch.get_public_branch()
@@ -181,6 +178,8 @@ class cmd_launchpad_open(Command):
             yield branch_url
 
     def _get_web_url(self, service, location):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
                 return service.get_web_url_from_branch_url(branch_url)
@@ -189,6 +188,8 @@ class cmd_launchpad_open(Command):
         raise NotLaunchpadBranch(branch_url)
 
     def run(self, location=None, dry_run=False):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            LaunchpadService)
         if location is None:
             location = u'.'
         web_url = self._get_web_url(LaunchpadService(), location)
@@ -226,6 +227,7 @@ class cmd_launchpad_login(Command):
         ]
 
     def run(self, name=None, no_check=False, verbose=False):
+        # This is totally separate from any launchpadlib login system.
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -255,6 +257,26 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
+# XXX: cmd_launchpad_mirror is untested
+class cmd_launchpad_mirror(Command):
+    """Ask Launchpad to mirror a branch now."""
+
+    aliases = ['lp-mirror']
+    takes_args = ['location?']
+
+    def run(self, location='.'):
+        from bzrlib.plugins.launchpad import lp_api
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        branch = _mod_branch.Branch.open(location)
+        service = LaunchpadService()
+        launchpad = lp_api.login(service)
+        lp_branch = lp_api.load_branch(launchpad, branch)
+        lp_branch.requestMirror()
+
+
+register_command(cmd_launchpad_mirror)
+
+
 def _register_directory():
     directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
@@ -266,6 +288,7 @@ def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_account',
         'test_register',
+        'test_lp_api',
         'test_lp_directory',
         'test_lp_login',
         'test_lp_open',

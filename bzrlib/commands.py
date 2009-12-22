@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    ui,
     win32utils,
     )
 """)
@@ -595,26 +596,8 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        # Originally I was using self.stdout, but that looks
-        # *way* too much like sys.stdout
-        if self.encoding_type == 'exact':
-            # force sys.stdout to be binary stream on win32
-            if sys.platform == 'win32':
-                fileno = getattr(sys.stdout, 'fileno', None)
-                if fileno:
-                    import msvcrt
-                    msvcrt.setmode(fileno(), os.O_BINARY)
-            self.outf = sys.stdout
-            return
-
-        output_encoding = osutils.get_terminal_encoding()
-
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
-                        errors=self.encoding_type)
-        # For whatever reason codecs.getwriter() does not advertise its encoding
-        # it just returns the encoding of the wrapped file, which is completely
-        # bogus. So set the attribute, so we can find the correct encoding later.
-        self.outf.encoding = output_encoding
+        self.outf = ui.ui_factory.make_output_stream(
+            encoding_type=self.encoding_type)
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""

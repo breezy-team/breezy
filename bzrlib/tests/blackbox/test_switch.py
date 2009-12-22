@@ -22,6 +22,7 @@ import os
 
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.directory_service import directories
 
 
 class TestSwitch(ExternalBase):
@@ -183,3 +184,16 @@ class TestSwitch(ExternalBase):
         # The new branch should have been created at the same level as
         # 'branch', because we did not have a '/' segment
         self.assertEqual(branch.base[:-1] + '2/', tree.branch.base)
+
+    def test_create_branch_directory_services(self):
+        branch = self.make_branch('branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        class FooLookup(object):
+            def look_up(self, name, url):
+                return 'foo-'+name
+        directories.register('foo:', FooLookup, 'Create branches named foo-')
+        self.addCleanup(directories.remove, 'foo:')
+        self.run_bzr('switch -b foo:branch2', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        self.assertEndsWith(tree.branch.base, 'foo-branch2/')
+

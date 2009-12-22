@@ -5,11 +5,96 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0b4 (not released yet)
-##############################
+bzr 2.1.0rc1 (not released yet)
+###############################
+
+:Codename: mysterioso
+:2.1.0rc1: 2009-01-06 (expected)
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+* The ``suppress_warnings`` configuration option has been introduced and
+  accept the ``format_deprecation`` value to disable the corresponding
+  warning for repositories. It can be set to in either ``bazaar.conf``,
+  ``locations.conf`` or ``branch.conf``.
+  (Ted Gould, Matthew Fuller, Vincent Ladeuil)
+
+Bug Fixes
+*********
+
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
+* ``bzr unshelve`` has improved messages about what it is doing.
+  (Neil Martinsen-Burrell, #496917)
+
+* Listen to the SIGWINCH signal to update the terminal width.
+  (Vincent Ladeuil, #316357)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+bzr 2.0.4 (not released yet)
+############################
+
+:Codename: template
+:2.0.4: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0b4
+###########
 
 :Codename: san francisco airport
-:2.1.0b4: ???
+:2.1.0b4: 2009-12-14
+
+The fourth beta release in the 2.1 series brings with it a significant
+number of bugfixes (~20). The test suite is once again (finally) "green"
+on Windows, and should remain that way for future releases. There are a
+few performance related updates (faster upgrade and log), and several UI
+tweaks. There has also been a significant number of tweaks to the runtime
+documentation. 2.1.0b4 include everything from the 2.0.3 release.
+
 
 Compatibility Breaks
 ********************
@@ -26,12 +111,24 @@ New Features
 * ``bzr commit`` now has a ``--commit-time`` option.
   (Alexander Sack, #459276)
 
+* ``-Dhpss`` now increases logging done when run on the bzr server,
+  similarly to how it works on the client. (John Arbash Meinel)
+
+* New option ``bzr unshelve --keep`` applies the changes and leaves them
+  on the shelf.  (Martin Pool, Oscar Fuentes, #492091)
+
 * The ``BZR_COLUMNS`` envrionment variable can be set to force bzr to
   respect a given terminal width. This can be useful when output is
   redirected or in obscure cases where the default value is not
   appropriate. Pagers can use it to get a better control of the line
   lengths. 
   (Vincent Ladeuil)
+
+* The new command ``bzr lp-mirror`` will request that Launchpad update its
+  mirror of a local branch. This command will only function if launchpadlib
+  is installed.
+  (Jonathan Lange)
+
 
 Bug Fixes
 *********
@@ -49,24 +146,33 @@ Bug Fixes
 * ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
   (#325618, #484109, Marius Kruger)
 
+* ``bzr merge --weave`` and ``--lca`` will now create ``.BASE`` files for
+  files with conflicts (similar to ``--merge3``). The contents of the file
+  is a synthesis of all bases used for the merge.
+  (John Arbash Meinel, #40412)
+
 * ``bzr mv --quiet`` really is quiet now.  (Gordon Tyler, #271790)
 
 * ``bzr serve`` is more clear about the risk of supplying --allow-writes.
   (Robert Collins, #84659)
 
+* ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
+
 * Fix bug with redirected URLs over authenticated HTTP.
   (Glen Mailer, Neil Martinsen-Burrell, Vincent Ladeuil, #395714)
 
-* ``bzr serve --quiet`` really is quiet now.  (Gordon Tyler, #252834)
+* Interactive merge doesn't leave branch locks behind.  (Aaron Bentley)
 
 * Lots of bugfixes for the test suite on Windows. We should once again
   have a test suite with no failures on Windows. (John Arbash Meinel)
 
-* ``osutils.terminal_width()`` obeys the BZR_COLUMNS envrionment
+* ``osutils.terminal_width()`` obeys the BZR_COLUMNS environment
   variable but returns None if the terminal is not a tty (when output is
   redirected for example). Also fixes its usage under OSes that doesn't
-  provide termios.TIOCGWINSZ.  
+  provide termios.TIOCGWINSZ. Make sure the corresponding tests runs on
+  windows too.
   (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
+  (John Arbash Meinel, Vincent Ladeuil, #492561)
 
 * Terminate ssh subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
@@ -89,26 +195,62 @@ Bug Fixes
   passed to the external diff tool. This allows the file to be edited if the
   diff tool provides for this. (Gary van der Merwe, #490738)
   
+* The launchpad-open command can now be used from a subdirectory of a
+  branch, not just from the root of the branch. 
+  (Neil Martinsen-Burrell, #489102)
+
 
 Improvements
 ************
 
 * ``bzr log`` is now faster. (Ian Clatworthy)
 
+* ``bzr update`` provides feedback on which branch it is up to date with.
+  (Neil Martinsen-Burrell)
+
+* ``bzr upgrade`` from pre-2a to 2a can be significantly faster (4x).
+  For details see the xml8 patch and heads() improvements.
+  (John Arbash Meinel)
+
 * ``bzrlib.urlutils.local_path_from_url`` now accepts
   'file://localhost/' as well as 'file:///' URLs on POSIX.  (Michael
   Hudson)
 
+* The progress bar now shows only a spinner and per-operation counts,
+  not an overall progress bar.  The previous bar was often not correlated
+  with real overall operation progress, either because the operations take
+  nonlinear time, or because at the start of the operation Bazaar couldn't
+  estimate how much work there was to do.  (Martin Pool)
+
 Documentation
 *************
+
+* Lots of documentation tweaks for inline help topics and command help
+  information.
 
 API Changes
 ***********
 
 * ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
 
+* The Launchpad plugin now has a function ``login`` which will log in to
+  Launchpad with launchpadlib, and ``load_branch`` which will return the
+  Launchpad Branch object corresponding to a given Bazaar Branch object.
+  (Jonathan Lange)
+
 Internals
 *********
+
+* New test Feature: ``ModuleAvailableFeature``. It is designed to make it
+  easier to handle what tests you want to run based on what modules can be
+  imported. (Rather than lots of custom-implemented features that were
+  basically copy-and-pasted.) (John Arbash Meinel)
+
+* ``osutils.timer_func()`` can be used to get either ``time.time()`` or
+  ``time.clock()`` when you want to do performance timing.
+  ``time.time()`` is limited to 15ms resolution on Windows, but
+  ``time.clock()`` gives CPU and not wall-clock time on other platforms.
+  (John Arbash Meinel)
 
 * Several code paths that were calling ``Transport.get().read()`` have
   been changed to the equalivent ``Transport.get_bytes()``. The main
@@ -123,17 +265,17 @@ Testing
 * TestCaseWithMemoryTransport no longer sets $HOME and $BZR_HOME to
   unicode strings. (Michael Hudson, #464174)
 
-bzr 2.0.3 (not released yet)
-############################
 
-:Codename: 
-:2.0.3: ???
+bzr 2.0.3
+#########
 
-Compatibility Breaks
-********************
+:Codename: little italy
+:2.0.3: 2009-12-14
 
-New Features
-************
+
+The third stable release of Bazaar has a small handful of bugfixes. As
+expected, this has no internal or external compatibility changes versus
+2.0.2 (or 2.0.0).
 
 Bug Fixes
 *********
@@ -145,24 +287,12 @@ Bug Fixes
 * Content filters are now applied correctly after pull, merge and switch.
   (Ian Clatworthy, #385879)
 
+* Fix a potential segfault in the groupcompress hash map handling code.
+  When inserting new entries, if the final hash bucket was empty, we could
+  end up trying to access if ``(last_entry+1)->ptr == NULL``.
+  (John Arbash Meinel, #490228)
+
 * Improve "Binary files differ" hunk handling.  (Aaron Bentley, #436325)
-
-Improvements
-************
-
-Documentation
-*************
-* Include Japanese translations for documentation (Inada Naoki)
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 bzr 2.1.0b3
@@ -234,6 +364,12 @@ Documentation
 *************
 
 * Include Japanese translations for documentation (Inada Naoki)
+
+* New API ``ui_factory.make_output_stream`` to be used for sending bulk
+  (rather than user-interaction) data to stdout.  This automatically
+  coordinates with progress bars or other terminal activity, and can be
+  overridden by GUIs.
+  (Martin Pool, 493944)
 
 Internals
 *********
@@ -381,21 +517,6 @@ Internals
   caches from earlier versioned files. (So 'revisions' is cleared when we
   start reading 'inventories', etc.) This can have a significant impact on
   peak memory for initial copies (~200MB). (John Arbash Meinel)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.0.2

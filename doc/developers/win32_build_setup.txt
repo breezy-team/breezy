@@ -106,6 +106,11 @@ Install Packages
    i) Install pyreadline
       https://launchpad.net/pyreadline/+download
    j) easy_install pygments
+   k) Patch pycrypto, so that it supports older Windows installs. (see bugs
+      #248522, #272791, #497733). The direct link to the patch is:
+      http://launchpadlibrarian.net/16133025/win32_clock.patch
+      This may not end up necessary w/ pycrypto 2.1, especially if paramiko can
+      be taught to use the new functionality (avoiding the warning).
 
 5) Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
    Windows, and paramiko knows how to use keys from Pageant.
