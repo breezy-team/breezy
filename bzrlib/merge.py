@@ -83,11 +83,16 @@ class MergeHookParams(object):
         params.merger.get_lines(params.merger.this_tree, params.file_id)
     """
 
-    def __init__(self, merger, file_id, trans_id):
+    def __init__(self, merger, file_id, trans_id, this_pair, other_pair):
         self.merger = merger
         self.file_id = file_id
         self.trans_id = trans_id
+        self.this_pair = this_pair
+        self.other_pair = other_pair
         
+    def is_file_merge(self):
+        return self.this_pair[0] == 'file' and self.other_pair[0] == 'file'
+    
     @decorators.cachedproperty
     def base_lines(self):
         """The lines of the 'base' version of the file."""
@@ -1229,59 +1234,68 @@ class Merge3Merger(object):
                 # OTHER deleted the file
                 self.tt.unversion_file(trans_id)
                 return "deleted"
-        else:
-            hooks = Merger.hooks['merge_file_content']
-            params = MergeHookParams(self, file_id, trans_id)
-            hook_ran = False
-            for hook in hooks:
-                hook_status, lines = hook(params)
-                if hook_status == 'not_applicable':
-                    continue
-                elif hook_status == 'success':
-                    self.tt.create_file(lines, trans_id)
-                elif hook_status == 'conflicted':
-                    # XXX: perhaps the hook should be able to provide
-                    # the BASE/THIS/OTHER files?
-                    self.tt.create_file(lines, trans_id)
-                    self._raw_conflicts.append(('text conflict', trans_id))
-                    name = self.tt.final_name(trans_id)
-                    parent_id = self.tt.final_parent(trans_id)
-                    file_group = self._dump_conflicts(name, parent_id, file_id)
-                    file_group.append(trans_id)
-                elif hook_status == 'delete':
-                    self.tt.unversion_file(trans_id)
-                    if file_id in self.this_tree:
-                        self.tt.delete_contents(trans_id)
-                    return "deleted"
-                else:
-                    raise AssertionError(
-                        'unknown hook_status: %r' % (hook_status,))
-                # This hook function applied, so don't try any other
-                # hook functions.
-                hook_ran = True
+        # We have a hypothetical conflict, but if we have files, then we
+        # can try to merge the content
+        hooks = Merger.hooks['merge_file_content']
+        hooks = list(hooks) + [self.default_text_merge]
+        params = MergeHookParams(self, file_id, trans_id, this_pair,
+            other_pair)
+        hook_status = 'not_applicable'
+        for hook in hooks:
+            hook_status, lines = hook(params)
+            if hook_status != 'not_applicable':
+                # Don't try any more hooks, this one applies.
                 break
-            # We have a hypothetical conflict, but if we have files, then we
-            # can try to merge the content
-            if (this_pair[0] == 'file' and other_pair[0] == 'file') or hook_ran:
-                # THIS and OTHER are both files, so text merge.  Either
-                # BASE is a file, or both converted to files, so at least we
-                # have agreement that output should be a file.
-                try:
-                    if not hook_ran:
-                        # if no hook functions applied, do the default merge.
-                        self.text_merge(file_id, trans_id)
-                except errors.BinaryFile:
-                    return contents_conflict()
-                if file_id not in self.this_tree:
-                    self.tt.version_file(file_id, trans_id)
-                try:
-                    self.tt.tree_kind(trans_id)
-                    self.tt.delete_contents(trans_id)
-                except errors.NoSuchFile:
-                    pass
-                return "modified"
-            else:
-                return contents_conflict()
+        if hook_status == 'not_applicable':
+            # No function to merge the file's contents was found, so this must
+            # be a contents conflict.
+            contents_conflict()
+            return
+        elif hook_status == 'success':
+            self.tt.create_file(lines, trans_id)
+        elif hook_status == 'conflicted':
+            # XXX: perhaps the hook should be able to provide
+            # the BASE/THIS/OTHER files?
+            self.tt.create_file(lines, trans_id)
+            self._raw_conflicts.append(('text conflict', trans_id))
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id)
+            file_group.append(trans_id)
+        elif hook_status == 'delete':
+            self.tt.unversion_file(trans_id)
+            if file_id in self.this_tree:
+                self.tt.delete_contents(trans_id)
+            return "deleted"
+        elif hook_status == 'done':
+            # The hook function did whatever it needs to do directly, no
+            # further action needed here.
+            pass
+        else:
+            raise AssertionError(
+                'unknown hook_status: %r' % (hook_status,))
+        if file_id not in self.this_tree:
+            self.tt.version_file(file_id, trans_id)
+        try:
+            self.tt.tree_kind(trans_id)
+            self.tt.delete_contents(trans_id)
+        except errors.NoSuchFile:
+            pass
+        return "modified"
+
+    def default_text_merge(self, merge_hook_params):
+        if merge_hook_params.is_file_merge():
+            # THIS and OTHER are both files, so text merge.  Either
+            # BASE is a file, or both converted to files, so at least we
+            # have agreement that output should be a file.
+            try:
+                self.text_merge(merge_hook_params.file_id,
+                    merge_hook_params.trans_id)
+            except errors.BinaryFile:
+                return 'not_applicable', None
+        else:
+            return 'not_applicable', None
+        return 'done', None
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
