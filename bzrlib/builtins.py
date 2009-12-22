@@ -1420,13 +1420,16 @@ class cmd_update(Command):
             # in the local branch for a heavyweight checkout.
             if revision is not None:
                 try:
+                    # nb: would be nicer to use as_revision_id, but that
+                    # doesn't check that it's actually present, and here we do
+                    # want to know that
                     rev = revision[0].in_history(branch).rev_id
                     # no need to run branch.update()
                     old_tip = None
                 except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
                     # revision was not there, but is maybe in the master.
                     old_tip = branch.update(possible_transports)
-                    rev = revision[0].in_history(branch).rev_id
+                    rev = revision[0].as_revision_id(branch)
             else:
                 if master is None:
                     old_tip = None
