@@ -19,5 +19,6 @@ from bzrlib import tests
 
 
 ApportFeature = tests.ModuleAvailableFeature('apport')
-paramiko = tests.ParamikoFeature
+paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
+subunit = tests.ModuleAvailableFeature('subunit')

@@ -24,7 +24,6 @@ from bzrlib import (
 from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
                           features,
-                          SubUnitFeature,
                           TestCase,
                           TestCaseInTempDir,
                           TestSkipped,
@@ -114,7 +113,7 @@ class TestOptions(TestCase, SelfTestPatch):
         self.assertEqual(['foo', 'bar'], params[1]['starting_with'])
 
     def test_subunit(self):
-        self.requireFeature(SubUnitFeature)
+        self.requireFeature(features.subunit)
         params = self.get_params_passed_to_core('selftest --subunit')
         self.assertEqual(tests.SubUnitBzrRunner, params[1]['runner_class'])
 

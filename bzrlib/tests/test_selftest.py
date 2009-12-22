@@ -53,7 +53,6 @@ from bzrlib.symbol_versioning import (
     )
 from bzrlib.tests import (
     features,
-    SubUnitFeature,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -1983,7 +1982,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(expected.getvalue(), repeated.getvalue())
 
     def test_runner_class(self):
-        self.requireFeature(SubUnitFeature)
+        self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
         stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
             test_suite_factory=self.factory)
@@ -2495,6 +2494,21 @@ class TestUnavailableFeature(tests.TestCase):
         self.assertIs(feature, exception.args[0])
 
 
+simple_thunk_feature = tests._CompatabilityThunkFeature(
+    'bzrlib.tests', 'UnicodeFilename',
+    'bzrlib.tests.test_selftest.simple_thunk_feature',
+    deprecated_in((2,1,0)))
+
+class Test_CompatibilityFeature(tests.TestCase):
+
+    def test_does_thunk(self):
+        res = self.callDeprecated(
+            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
+             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
+            simple_thunk_feature.available)
+        self.assertEqual(tests.UnicodeFilename.available(), res)
+
+        
 class TestModuleAvailableFeature(tests.TestCase):
 
     def test_available_module(self):
