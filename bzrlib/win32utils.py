@@ -614,20 +614,25 @@ class UnicodeShlex(object):
         return quoted, token
 
 
-def command_line_to_argv(command_line):
-    """Convert a Unicode command line into a set of argv arguments.
+def command_line_to_argv(command_line, wildcard_expansion=True):
+    """Convert a Unicode command line into a list of argv arguments.
 
-    This does wildcard expansion, etc. It is intended to make wildcards act
-    closer to how they work in posix shells, versus how they work by default on
-    Windows.
+    This optionally does wildcard expansion, etc. It is intended to make
+    wildcards act closer to how they work in posix shells, versus how they
+    work by default on Windows. Quoted arguments are left untouched.
+
+    :param command_line: The unicode string to split into an arg list.
+    :param wildcard_expansion: Whether wildcard expansion should be applied to
+                               each argument. True by default.
+    :return: A list of unicode strings.
     """
     s = UnicodeShlex(command_line)
-    # Now that we've split the content, expand globs
+    # Now that we've split the content, expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
     args = []
     for is_quoted, arg in s:
-        if is_quoted or not glob.has_magic(arg):
+        if is_quoted or not glob.has_magic(arg) or not wildcard_expansion:
             args.append(arg)
         else:
             args.extend(glob_one(arg))
