@@ -1428,6 +1428,8 @@ class cmd_update(Command):
                     old_tip = None
                 except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
                     # revision was not there, but is maybe in the master.
+                    note("Updating branch %s from master" %
+                        (branch._transport.base))
                     old_tip = branch.update(possible_transports)
                     rev = revision[0].as_revision_id(branch)
             else:

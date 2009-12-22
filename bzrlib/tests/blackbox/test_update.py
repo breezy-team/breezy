@@ -311,6 +311,7 @@ $ bzr update -r 1
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr update -r revid:m2
+2>Updating branch .../branch/ from master
 2>+N  file2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
