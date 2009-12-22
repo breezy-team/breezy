@@ -26,6 +26,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
 
@@ -35,11 +39,20 @@ Bug Fixes
 Improvements
 ************
 
+* Transport network activity indicator is shown more of the time when
+  Bazaar is doing network IO.
+  (Martin Pool)
+
 Documentation
 *************
 
 API Changes
 ***********
+
+* Many test features were renamed from ``FooFeature`` to ``foo_feature``
+  to be consistent with instances being lower case and classes being
+  CamelCase. For the features that were more likely to be used, we added a
+  deprecation thunk, but not all. (John Arbash Meinel)
 
 Internals
 *********

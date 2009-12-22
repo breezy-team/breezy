@@ -301,7 +301,7 @@ class TextProgressView(object):
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif self._last_task.show_spinner:
+        elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
@@ -372,13 +372,11 @@ class TextProgressView(object):
         # XXX: Probably there should be a transport activity model, and that
         # too should be seen by the progress view, rather than being poked in
         # here.
-        if not self._have_output:
-            # As a workaround for <https://launchpad.net/bugs/321935> we only
-            # show transport activity when there's already a progress bar
-            # shown, which time the application code is expected to know to
-            # clear off the progress bar when it's going to send some other
-            # output.  Eventually it would be nice to have that automatically
-            # synchronized.
+        if 'no_activity' in debug.debug_flags:
+            # Can be used as a workaround if
+            # <https://launchpad.net/bugs/321935> reappears and transport
+            # activity is cluttering other output.  However, thanks to
+            # TextUIOutputStream this shouldn't be a problem any more.
             return
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count

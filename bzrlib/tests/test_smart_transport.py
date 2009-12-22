@@ -2902,8 +2902,6 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=body_stream)
         self.responder.send_response(response)
-        # The write buffer is flushed every 100 buffered writes, so we expect 2
-        # actual writes.
         self.assertWriteCount(2)
 
 

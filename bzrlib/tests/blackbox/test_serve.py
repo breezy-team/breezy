@@ -38,7 +38,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    ParamikoFeature,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
@@ -233,7 +232,7 @@ class TestBzrServe(TestBzrServeBase):
         f = open(log_fname, 'rb')
         content = f.read()
         f.close()
-        self.assertContainsRe(content, 'hpss request: \[')
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
 
 class TestCmdServeChrooting(TestBzrServeBase):

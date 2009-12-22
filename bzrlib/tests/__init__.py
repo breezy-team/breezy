@@ -88,6 +88,7 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     DEPRECATED_PARAMETER,
     deprecated_function,
+    deprecated_in,
     deprecated_method,
     deprecated_passed,
     )
@@ -4248,6 +4249,34 @@ class _UnicodeFilenameFeature(Feature):
 UnicodeFilenameFeature = _UnicodeFilenameFeature()
 
 
+class _CompatabilityThunkFeature(Feature):
+    """This feature is just a thunk to another feature.
+
+    It issues a deprecation warning if it is accessed, to let you know that you
+    should really use a different feature.
+    """
+
+    def __init__(self, module, name, this_name, dep_version):
+        super(_CompatabilityThunkFeature, self).__init__()
+        self._module = module
+        self._name = name
+        self._this_name = this_name
+        self._dep_version = dep_version
+        self._feature = None
+
+    def _ensure(self):
+        if self._feature is None:
+            msg = (self._dep_version % self._this_name) + (
+                   ' Use %s.%s instead.' % (self._module, self._name))
+            symbol_versioning.warn(msg, DeprecationWarning)
+            mod = __import__(self._module, {}, {}, [self._name])
+            self._feature = getattr(mod, self._name)
+
+    def _probe(self):
+        self._ensure()
+        return self._feature._probe()
+
+
 class ModuleAvailableFeature(Feature):
     """This is a feature than describes a module we want to be available.
 
@@ -4277,6 +4306,11 @@ class ModuleAvailableFeature(Feature):
     def feature_name(self):
         return self.module_name
 
+
+# This is kept here for compatibility, it is recommended to use
+# 'bzrlib.tests.feature.paramiko' instead
+ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
+    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
 
 
 def probe_unicode_in_user_encoding():
@@ -4331,23 +4365,6 @@ class _HTTPSServerFeature(Feature):
 
 
 HTTPSServerFeature = _HTTPSServerFeature()
-
-
-class _ParamikoFeature(Feature):
-    """Is paramiko available?"""
-
-    def _probe(self):
-        try:
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return True
-        except errors.ParamikoNotPresent:
-            return False
-
-    def feature_name(self):
-        return "Paramiko"
-
-
-ParamikoFeature = _ParamikoFeature()
 
 
 class _UnicodeFilename(Feature):
@@ -4460,20 +4477,9 @@ class _CaseInsensitiveFilesystemFeature(Feature):
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
-class _SubUnitFeature(Feature):
-    """Check if subunit is available."""
-
-    def _probe(self):
-        try:
-            import subunit
-            return True
-        except ImportError:
-            return False
-
-    def feature_name(self):
-        return 'subunit'
-
-SubUnitFeature = _SubUnitFeature()
+# Kept for compatibility, use bzrlib.tests.features.subunit instead
+SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
+    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

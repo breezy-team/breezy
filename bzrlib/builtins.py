@@ -31,6 +31,7 @@ from bzrlib import (
     bundle,
     btree_index,
     bzrdir,
+    directory_service,
     delta,
     config,
     errors,
@@ -5488,6 +5489,8 @@ class cmd_switch(Command):
             if branch is None:
                 raise errors.BzrCommandError('cannot create branch without'
                                              ' source branch')
+            to_location = directory_service.directories.dereference(
+                              to_location)
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
