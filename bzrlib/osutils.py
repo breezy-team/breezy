@@ -39,6 +39,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import signal
 import subprocess
 import tempfile
 from tempfile import (
@@ -1425,6 +1426,20 @@ if sys.platform == 'win32':
     _terminal_size = _win32_terminal_size
 else:
     _terminal_size = _ioctl_terminal_size
+
+
+def _terminal_size_changed(signum, frame):
+    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
+    width, height = _terminal_size(None, None)
+    if width is not None:
+        os.environ['COLUMNS'] = str(width)
+
+if sys.platform == 'win32':
+    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
+    # I've no idea how to plug that in the current design -- vila 20091216
+    pass
+else:
+    signal.signal(signal.SIGWINCH, _terminal_size_changed)
 
 
 def supports_executable():

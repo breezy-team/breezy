@@ -190,10 +190,22 @@ class Config(object):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
-            interpreted as a boolean. Returns True or False ortherwise.
+            interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
         return ui.bool_from_string(s)
+
+    def get_user_option_as_list(self, option_name):
+        """Get a generic option as a list - no special process, no default.
+
+        :return None if the option doesn't exist. Returns the value as a list
+            otherwise.
+        """
+        l = self._get_user_option(option_name)
+        if isinstance(l, (str, unicode)):
+            # A single value, most probably the user forgot the final ','
+            l = [l]
+        return l
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -312,6 +324,19 @@ class Config(object):
             if path is None:
                 path = 'bzr'
             return path
+
+    def suppress_warning(self, warning):
+        """Should the warning be suppressed or emitted.
+
+        :param warning: The name of the warning being tested.
+
+        :returns: True if the warning should be suppressed, False otherwise.
+        """
+        warnings = self.get_user_option_as_list('suppress_warnings')
+        if warnings is None or warning not in warnings:
+            return False
+        else:
+            return True
 
 
 class IniBasedConfig(Config):

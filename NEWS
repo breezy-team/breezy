@@ -17,17 +17,42 @@ Compatibility Breaks
 New Features
 ************
 
+* The ``suppress_warnings`` configuration option has been introduced and
+  accept the ``format_deprecation`` value to disable the corresponding
+  warning for repositories. It can be set to in either ``bazaar.conf``,
+  ``locations.conf`` or ``branch.conf``.
+  (Ted Gould, Matthew Fuller, Vincent Ladeuil)
+
 Bug Fixes
 *********
 
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
+* ``bzr unshelve`` has improved messages about what it is doing.
+  (Neil Martinsen-Burrell, #496917)
+
+* Listen to the SIGWINCH signal to update the terminal width.
+  (Vincent Ladeuil, #316357)
+
 Improvements
 ************
+
+* Transport network activity indicator is shown more of the time when
+  Bazaar is doing network IO.
+  (Martin Pool)
 
 Documentation
 *************
 
 API Changes
 ***********
+
+* Many test features were renamed from ``FooFeature`` to ``foo_feature``
+  to be consistent with instances being lower case and classes being
+  CamelCase. For the features that were more likely to be used, we added a
+  deprecation thunk, but not all. (John Arbash Meinel)
 
 Internals
 *********
@@ -119,6 +144,12 @@ New Features
   appropriate. Pagers can use it to get a better control of the line
   lengths. 
   (Vincent Ladeuil)
+
+* The new command ``bzr lp-mirror`` will request that Launchpad update its
+  mirror of a local branch. This command will only function if launchpadlib
+  is installed.
+  (Jonathan Lange)
+
 
 Bug Fixes
 *********
@@ -222,6 +253,11 @@ API Changes
 ***********
 
 * ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
+
+* The Launchpad plugin now has a function ``login`` which will log in to
+  Launchpad with launchpadlib, and ``load_branch`` which will return the
+  Launchpad Branch object corresponding to a given Bazaar Branch object.
+  (Jonathan Lange)
 
 Internals
 *********
