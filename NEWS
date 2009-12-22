@@ -39,6 +39,10 @@ Bug Fixes
 Improvements
 ************
 
+* Transport network activity indicator is shown more of the time when
+  Bazaar is doing network IO.
+  (Martin Pool)
+
 Documentation
 *************
 
