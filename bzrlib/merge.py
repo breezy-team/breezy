@@ -83,12 +83,14 @@ class MergeHookParams(object):
         params.merger.get_lines(params.merger.this_tree, params.file_id)
     """
 
-    def __init__(self, merger, file_id, trans_id, this_pair, other_pair):
+    def __init__(self, merger, file_id, trans_id, this_pair, other_pair,
+            winner):
         self.merger = merger
         self.file_id = file_id
         self.trans_id = trans_id
         self.this_pair = this_pair
         self.other_pair = other_pair
+        self.winner = winner
         
     def is_file_merge(self):
         return self.this_pair[0] == 'file' and self.other_pair[0] == 'file'
@@ -1202,44 +1204,13 @@ class Merge3Merger(object):
         if winner == 'this':
             # No interesting changes introduced by OTHER
             return "unmodified"
-        trans_id = self.tt.trans_id_file_id(file_id)
-        if winner == 'other':
-            # OTHER is a straight winner, so replace this contents with other
-            file_in_this = file_id in self.this_tree
-            if file_in_this:
-                # Remove any existing contents
-                self.tt.delete_contents(trans_id)
-            if file_id in self.other_tree:
-                # OTHER changed the file
-                wt = self.this_tree
-                if wt.supports_content_filtering():
-                    # We get the path from the working tree if it exists.
-                    # That fails though when OTHER is adding a file, so
-                    # we fall back to the other tree to find the path if
-                    # it doesn't exist locally.
-                    try:
-                        filter_tree_path = wt.id2path(file_id)
-                    except errors.NoSuchId:
-                        filter_tree_path = self.other_tree.id2path(file_id)
-                else:
-                    # Skip the id2path lookup for older formats
-                    filter_tree_path = None
-                transform.create_from_tree(self.tt, trans_id,
-                                 self.other_tree, file_id,
-                                 filter_tree_path=filter_tree_path)
-                if not file_in_this:
-                    self.tt.version_file(file_id, trans_id)
-                return "modified"
-            elif file_in_this:
-                # OTHER deleted the file
-                self.tt.unversion_file(trans_id)
-                return "deleted"
         # We have a hypothetical conflict, but if we have files, then we
         # can try to merge the content
+        trans_id = self.tt.trans_id_file_id(file_id)
+        params = MergeHookParams(self, file_id, trans_id, this_pair,
+            other_pair, winner)
         hooks = Merger.hooks['merge_file_content']
         hooks = list(hooks) + [self.default_text_merge]
-        params = MergeHookParams(self, file_id, trans_id, this_pair,
-            other_pair)
         hook_status = 'not_applicable'
         for hook in hooks:
             hook_status, lines = hook(params)
@@ -1283,8 +1254,43 @@ class Merge3Merger(object):
             pass
         return "modified"
 
+    def _default_other_winner_merge(self, merge_hook_params):
+        """Replace this contents with other."""
+        file_id = merge_hook_params.file_id
+        trans_id = merge_hook_params.trans_id
+        file_in_this = file_id in self.this_tree
+        if file_id in self.other_tree:
+            # OTHER changed the file
+            wt = self.this_tree
+            if wt.supports_content_filtering():
+                # We get the path from the working tree if it exists.
+                # That fails though when OTHER is adding a file, so
+                # we fall back to the other tree to find the path if
+                # it doesn't exist locally.
+                try:
+                    filter_tree_path = wt.id2path(file_id)
+                except errors.NoSuchId:
+                    filter_tree_path = self.other_tree.id2path(file_id)
+            else:
+                # Skip the id2path lookup for older formats
+                filter_tree_path = None
+            transform.create_from_tree(self.tt, trans_id,
+                             self.other_tree, file_id,
+                             filter_tree_path=filter_tree_path)
+            return 'done', None
+        elif file_in_this:
+            # OTHER deleted the file
+            return 'delete', None
+        else:
+            raise AssertionError(
+                'winner is OTHER, but file_id %r not in THIS or OTHER tree'
+                % (file_id,))
+
     def default_text_merge(self, merge_hook_params):
-        if merge_hook_params.is_file_merge():
+        if merge_hook_params.winner == 'other':
+            # OTHER is a straight winner, so replace this contents with other
+            return self._default_other_winner_merge(merge_hook_params)
+        elif merge_hook_params.is_file_merge():
             # THIS and OTHER are both files, so text merge.  Either
             # BASE is a file, or both converted to files, so at least we
             # have agreement that output should be a file.
@@ -1293,9 +1299,9 @@ class Merge3Merger(object):
                     merge_hook_params.trans_id)
             except errors.BinaryFile:
                 return 'not_applicable', None
+            return 'done', None
         else:
             return 'not_applicable', None
-        return 'done', None
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
