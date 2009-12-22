@@ -1977,10 +1977,8 @@ class InterDirStateTree(InterTree):
     def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
                                                   target):
         from bzrlib.tests.test__dirstate_helpers import \
-            compiled_dirstate_helpers
-        if not compiled_dirstate_helpers.available():
-            from bzrlib.tests import UnavailableFeature
-            raise UnavailableFeature(compiled_dirstate_helpers)
+            compiled_dirstate_helpers_feature
+        test_case.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import ProcessEntryC
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = ProcessEntryC
