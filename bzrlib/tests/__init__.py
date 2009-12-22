@@ -3143,6 +3143,7 @@ def fork_for_tests(suite):
     concurrency = osutils.local_concurrency()
     result = []
     from subunit import TestProtocolClient, ProtocolTestCase
+    from subunit.test_results import AutoTimingTestResultDecorator
     class TestInOtherProcess(ProtocolTestCase):
         # Should be in subunit, I think. RBC.
         def __init__(self, stream, pid):
@@ -3270,9 +3271,6 @@ class ForwardingResult(unittest.TestResult):
     def addFailure(self, test, err):
         self.result.addFailure(test, err)
 ForwardingResult = testtools.ExtendedToOriginalDecorator
-
-
-from subunit.test_results import AutoTimingTestResultDecorator
 
 
 class ProfileResult(ForwardingResult):
@@ -4297,6 +4295,7 @@ SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
+    from subunit.test_results import AutoTimingTestResultDecorator
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
             result = AutoTimingTestResultDecorator(
