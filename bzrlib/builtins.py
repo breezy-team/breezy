@@ -1388,6 +1388,9 @@ class cmd_update(Command):
 
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
+
+    If the tree's branch is bound to a master branch, it will also update
+    the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
@@ -1415,28 +1418,16 @@ class cmd_update(Command):
                                                         self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
-            # potentially get new revisions from the master branch.
-            # needed for the case where -r N is given, with N not yet
-            # in the local branch for a heavyweight checkout.
-            if revision is not None:
-                try:
-                    # nb: would be nicer to use as_revision_id, but that
-                    # doesn't check that it's actually present, and here we do
-                    # want to know that
-                    rev = revision[0].in_history(branch).rev_id
-                    # no need to run branch.update()
-                    old_tip = None
-                except (errors.NoSuchRevision, errors.InvalidRevisionSpec):
-                    # revision was not there, but is maybe in the master.
-                    note("Updating branch %s from master" %
-                        (branch._transport.base))
-                    old_tip = branch.update(possible_transports)
-                    rev = revision[0].as_revision_id(branch)
+            if master is None:
+                old_tip = None
             else:
-                if master is None:
-                    old_tip = None
-                else:
-                    old_tip = branch.update(possible_transports)
+                # may need to fetch data into a heavyweight checkout
+                # XXX: this may take some time, maybe we should display a
+                # message
+                old_tip = branch.update(possible_transports)
+            if revision is not None:
+                rev = revision[0].as_revision_id(branch)
+            else:
                 rev = branch.last_revision()
             if rev == _mod_revision.ensure_null(tree.last_revision()):
                 revno = branch.revision_id_to_revno(rev)

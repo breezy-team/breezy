@@ -68,11 +68,11 @@ class TestUpdate(tests.TestCaseWithTransport):
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('checkout branch checkout')
-        out, err = self.run_bzr('update checkout')
-        self.assertEqual('Tree is up to date at revision 0 of branch %s\n'
-                         % osutils.pathjoin(self.test_dir, 'branch'),
-                         err)
-        self.assertEqual('', out)
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update checkout
+2> Tree is up to date at revision 0 of branch .../branch
+''')
 
     def test_update_out_of_date_standalone_tree(self):
         # FIXME the default format has to change for this to pass
@@ -311,7 +311,6 @@ $ bzr update -r 1
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr update -r revid:m2
-2>Updating branch .../branch/ from master
 2>+N  file2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
