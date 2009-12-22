@@ -1435,9 +1435,8 @@ class cmd_update(Command):
                 rev = branch.last_revision()
             if rev == _mod_revision.ensure_null(tree.last_revision()):
                 revno = branch.revision_id_to_revno(rev)
-                # XXX: Should say which branch it's up to date with
-                note("Tree is up to date at revision %d." %
-                    (revno, ))
+                note("Tree is up to date at revision %d of branch %s" %
+                    (revno, branch_location))
                 return 0
             view_info = _get_view_info_for_change_reporter(tree)
             try:
