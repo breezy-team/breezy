@@ -77,12 +77,13 @@ class _NoImplementCompare(_Hashable):
 
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
-compiled_simpleset = tests.ModuleAvailableFeature('bzrlib._simple_set_pyx')
+compiled_simpleset_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._simple_set_pyx')
 
 
 class TestSimpleSet(tests.TestCase):
 
-    _test_needs_features = [compiled_simpleset]
+    _test_needs_features = [compiled_simpleset_feature]
     module = _simple_set_pyx
 
     def assertIn(self, obj, container):

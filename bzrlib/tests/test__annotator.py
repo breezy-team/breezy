@@ -32,19 +32,20 @@ def load_tests(standard_tests, module, loader):
         ('python', {'module': _annotator_py}),
     ]
     suite = loader.suiteClass()
-    if compiled_annotator.available():
-        scenarios.append(('C', {'module': compiled_annotator.module}))
+    if compiled_annotator_feature.available():
+        scenarios.append(('C', {'module': compiled_annotator_feature.module}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(compiled_annotator)
+                self.requireFeature(compiled_annotator_feature)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     result = tests.multiply_tests(standard_tests, scenarios, suite)
     return result
 
 
-compiled_annotator = tests.ModuleAvailableFeature('bzrlib._annotator_pyx')
+compiled_annotator_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._annotator_pyx')
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):

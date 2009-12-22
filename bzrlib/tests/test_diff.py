@@ -63,7 +63,8 @@ class _AttribFeature(Feature):
 AttribFeature = _AttribFeature()
 
 
-compiled_patiencediff = tests.ModuleAvailableFeature('bzrlib._patiencediff_c')
+compiled_patiencediff_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._patiencediff_c')
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -1144,7 +1145,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
-    _test_needs_features = [compiled_patiencediff]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
@@ -1240,7 +1241,7 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
-    _test_needs_features = [compiled_patiencediff]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
@@ -1252,7 +1253,7 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 class TestUsingCompiledIfAvailable(TestCase):
 
     def test_PatienceSequenceMatcher(self):
-        if compiled_patiencediff.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
                           bzrlib.patiencediff.PatienceSequenceMatcher)
@@ -1262,7 +1263,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
-        if compiled_patiencediff.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
                           bzrlib.patiencediff.unique_lcs)
@@ -1272,7 +1273,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
-        if compiled_patiencediff.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
                           bzrlib.patiencediff.recurse_matches)

@@ -24,19 +24,20 @@ def load_tests(standard_tests, module, loader):
     # parameterize all tests in this module
     import bzrlib._chunks_to_lines_py as py_module
     scenarios = [('python', {'module': py_module})]
-    if compiled_chunkstolines.available():
-        scenarios.append(('C', {'module': compiled_chunkstolines.module}))
+    if compiled_chunkstolines_feature.available():
+        scenarios.append(('C', {'module':
+                                compiled_chunkstolines_feature.module}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(compiled_chunkstolines)
+                self.requireFeature(compiled_chunkstolines_feature)
         standard_tests.addTest(FailWithoutFeature("test_fail"))
     return tests.multiply_tests(standard_tests, scenarios, loader.suiteClass())
 
 
-compiled_chunkstolines = tests.ModuleAvailableFeature(
-                            'bzrlib._chunks_to_lines_pyx')
+compiled_chunkstolines_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._chunks_to_lines_pyx')
 
 
 class TestChunksToLines(tests.TestCase):

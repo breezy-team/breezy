@@ -38,7 +38,7 @@ except ImportError:
     has_dirstate_helpers_pyx = False
 
 
-compiled_dirstate_helpers = tests.ModuleAvailableFeature(
+compiled_dirstate_helpers_feature = tests.ModuleAvailableFeature(
                                 'bzrlib._dirstate_helpers_pyx')
 
 
@@ -51,8 +51,8 @@ def load_tests(basic_tests, module, loader):
 
     ue_scenarios = [('dirstate_Python',
                      {'update_entry': dirstate.py_update_entry})]
-    if compiled_dirstate_helpers.available():
-        update_entry = compiled_dirstate_helpers.module.update_entry
+    if compiled_dirstate_helpers_feature.available():
+        update_entry = compiled_dirstate_helpers_feature.module.update_entry
         pyrex_scenario = ('dirstate_Pyrex', {'update_entry': update_entry})
         ue_scenarios.append(pyrex_scenario)
     process_entry_tests, remaining_tests = tests.split_suite_by_condition(
@@ -64,8 +64,8 @@ def load_tests(basic_tests, module, loader):
 
     pe_scenarios = [('dirstate_Python',
                      {'_process_entry': dirstate.ProcessEntryPython})]
-    if compiled_dirstate_helpers.available():
-        process_entry = compiled_dirstate_helpers.module.ProcessEntryC
+    if compiled_dirstate_helpers_feature.available():
+        process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
         pyrex_scenario = ('dirstate_Pyrex', {'_process_entry': process_entry})
         pe_scenarios.append(pyrex_scenario)
     process_entry_tests, remaining_tests = tests.split_suite_by_condition(
@@ -253,7 +253,7 @@ class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
 class TestCompiledBisectPathLeft(TestBisectPathLeft):
     """Run all Bisect Path tests against _bisect_path_lect"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_pyx import _bisect_path_left
@@ -274,7 +274,7 @@ class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
 class TestCompiledBisectPathRight(TestBisectPathRight):
     """Run all Bisect Path tests against _bisect_path_right"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
         from bzrlib._dirstate_helpers_pyx import _bisect_path_right
@@ -386,7 +386,7 @@ class TestCompiledBisectDirblock(TestBisectDirblock):
     compiled version.
     """
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_dirblock(self):
         from bzrlib._dirstate_helpers_pyx import bisect_dirblock
@@ -508,7 +508,7 @@ class TestCmpByDirs(tests.TestCase):
 class TestCompiledCmpByDirs(TestCmpByDirs):
     """Test the pyrex implementation of cmp_by_dirs"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_cmp_by_dirs(self):
         from bzrlib._dirstate_helpers_pyx import cmp_by_dirs
@@ -659,7 +659,7 @@ class TestCmpPathByDirblock(tests.TestCase):
 class TestCompiledCmpPathByDirblock(TestCmpPathByDirblock):
     """Test the pyrex implementation of _cmp_path_by_dirblock"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_cmp_by_dirs(self):
         from bzrlib._dirstate_helpers_pyx import _cmp_path_by_dirblock
@@ -669,7 +669,7 @@ class TestCompiledCmpPathByDirblock(TestCmpPathByDirblock):
 class TestMemRChr(tests.TestCase):
     """Test memrchr functionality"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def assertMemRChr(self, expected, s, c):
         from bzrlib._dirstate_helpers_pyx import _py_memrchr
@@ -757,7 +757,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 class TestCompiledReadDirblocks(TestReadDirblocks):
     """Test the pyrex implementation of _read_dirblocks"""
 
-    _test_needs_features = [compiled_dirstate_helpers]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_read_dirblocks(self):
         from bzrlib._dirstate_helpers_pyx import _read_dirblocks
@@ -773,49 +773,49 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
     """
 
     def test_bisect_dirblock(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import bisect_dirblock
         else:
             from bzrlib._dirstate_helpers_py import bisect_dirblock
         self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
 
     def test__bisect_path_left(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import _bisect_path_left
         else:
             from bzrlib._dirstate_helpers_py import _bisect_path_left
         self.assertIs(_bisect_path_left, dirstate._bisect_path_left)
 
     def test__bisect_path_right(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import _bisect_path_right
         else:
             from bzrlib._dirstate_helpers_py import _bisect_path_right
         self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
 
     def test_cmp_by_dirs(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import cmp_by_dirs
         else:
             from bzrlib._dirstate_helpers_py import cmp_by_dirs
         self.assertIs(cmp_by_dirs, dirstate.cmp_by_dirs)
 
     def test__read_dirblocks(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         else:
             from bzrlib._dirstate_helpers_py import _read_dirblocks
         self.assertIs(_read_dirblocks, dirstate._read_dirblocks)
 
     def test_update_entry(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import update_entry
         else:
             from bzrlib.dirstate import update_entry
         self.assertIs(update_entry, dirstate.update_entry)
 
     def test_process_entry(self):
-        if compiled_dirstate_helpers.available():
+        if compiled_dirstate_helpers_feature.available():
             from bzrlib._dirstate_helpers_pyx import ProcessEntryC
             self.assertIs(ProcessEntryC, dirstate._process_entry)
         else:

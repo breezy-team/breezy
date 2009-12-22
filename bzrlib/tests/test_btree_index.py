@@ -43,13 +43,14 @@ def load_tests(standard_tests, module, loader):
         condition_isinstance(TestBTreeNodes))
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
-    if compiled_btreeparser.available():
-        scenarios.append(('C', {'parse_btree': compiled_btreeparser.module}))
+    if compiled_btreeparser_feature.available():
+        scenarios.append(('C', {'parse_btree':
+                                compiled_btreeparser_feature.module}))
     return multiply_tests(node_tests, scenarios, others)
 
 
-compiled_btreeparser = tests.ModuleAvailableFeature(
-                            'bzrlib._btree_serializer_pyx')
+compiled_btreeparser_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -1280,7 +1281,7 @@ class TestCompiledBtree(tests.TestCase):
     def test_exists(self):
         # This is just to let the user know if they don't have the feature
         # available
-        self.requireFeature(compiled_btreeparser)
+        self.requireFeature(compiled_btreeparser_feature)
 
 
 class TestMultiBisectRight(tests.TestCase):

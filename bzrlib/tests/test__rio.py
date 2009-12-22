@@ -27,19 +27,19 @@ def load_tests(standard_tests, module, loader):
     suite = loader.suiteClass()
     import bzrlib._rio_py as py_module
     scenarios = [('python', {'module': py_module})]
-    if compiled_rio.available():
-        scenarios.append(('C', {'module': compiled_rio.module}))
+    if compiled_rio_feature.available():
+        scenarios.append(('C', {'module': compiled_rio_feature.module}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(compiled_rio)
+                self.requireFeature(compiled_rio_feature)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     tests.multiply_tests(standard_tests, scenarios, suite)
     return suite
 
 
-compiled_rio = tests.ModuleAvailableFeature('bzrlib._rio_pyx')
+compiled_rio_feature = tests.ModuleAvailableFeature('bzrlib._rio_pyx')
 
 
 class TestValidTag(tests.TestCase):

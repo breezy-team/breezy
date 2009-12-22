@@ -53,7 +53,7 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
-TermIOSFeature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = tests.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -1987,8 +1987,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(None, osutils.terminal_width())
 
     def test_no_TIOCGWINSZ(self):
-        self.requireFeature(TermIOSFeature)
-        termios = TermIOSFeature.module
+        self.requireFeature(term_ios_feature)
+        termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
             orig = termios.TIOCGWINSZ

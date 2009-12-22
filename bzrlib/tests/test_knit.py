@@ -69,7 +69,8 @@ from bzrlib.versionedfile import (
     )
 
 
-compiled_knit = tests.ModuleAvailableFeature('bzrlib._knit_load_data_pyx')
+compiled_knit_feature = tests.ModuleAvailableFeature(
+                            'bzrlib._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -1296,7 +1297,7 @@ class LowLevelKnitIndexTests(TestCase):
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
-    _test_needs_features = [compiled_knit]
+    _test_needs_features = [compiled_knit_feature]
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
