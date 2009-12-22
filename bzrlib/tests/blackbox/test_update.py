@@ -263,10 +263,7 @@ $ bzr update -r 1
 ''')
         self.failUnlessExists('./file1')
         self.failIfExists('./file2')
-        # hrm - the below doesn't look correct for all formats...
-        #self.check_file_contents('.bzr/checkout/last-revision',
-        #                         'm1')
-        # XXX: Should check last tree version.
+        self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
         # Test that 'bzr update' works correctly when you have
