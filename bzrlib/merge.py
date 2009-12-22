@@ -1171,18 +1171,6 @@ class Merge3Merger(object):
                 contents = None
             return kind, contents
 
-        def contents_conflict():
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id)
-            parent_id = self.tt.final_parent(trans_id)
-            if file_id in self.this_tree.inventory:
-                self.tt.unversion_file(trans_id)
-                if file_id in self.this_tree:
-                    self.tt.delete_contents(trans_id)
-            file_group = self._dump_conflicts(name, parent_id, file_id,
-                                              set_version=True)
-            self._raw_conflicts.append(('contents conflict', file_group))
-
         # See SPOT run.  run, SPOT, run.
         # So we're not QUITE repeating ourselves; we do tricky things with
         # file kind...
@@ -1217,11 +1205,18 @@ class Merge3Merger(object):
             if hook_status != 'not_applicable':
                 # Don't try any more hooks, this one applies.
                 break
+        contents_conflict = False
         if hook_status == 'not_applicable':
-            # No function to merge the file's contents was found, so this must
-            # be a contents conflict.
-            contents_conflict()
-            return
+            # This is a contents conflict, because none of the available
+            # functions could merge it.
+            contents_conflict = True
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            if file_id in self.this_tree.inventory:
+                self.tt.unversion_file(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id,
+                                              set_version=True)
+            self._raw_conflicts.append(('contents conflict', file_group))
         elif hook_status == 'success':
             self.tt.create_file(lines, trans_id)
         elif hook_status == 'conflicted':
@@ -1245,14 +1240,15 @@ class Merge3Merger(object):
         else:
             raise AssertionError(
                 'unknown hook_status: %r' % (hook_status,))
-        if file_id not in self.this_tree:
+        if file_id not in self.this_tree and not contents_conflict:
             self.tt.version_file(file_id, trans_id)
         try:
             self.tt.tree_kind(trans_id)
             self.tt.delete_contents(trans_id)
         except errors.NoSuchFile:
             pass
-        return "modified"
+        if not contents_conflict:
+            return "modified"
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
