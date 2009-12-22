@@ -308,7 +308,10 @@ $ bzr update -r 1
         master.commit('two', rev_id='m2')
 
         os.chdir('checkout')
-        out, err = self.run_bzr('update -r revid:m2')
-        self.assertEqual('', out)
-        self.assertEqual('+N  file2\nAll changes applied successfully.\n'
-                         'Updated to revision 2.\n', err)
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update -r revid:m2
+2>+N  file2
+2>All changes applied successfully.
+2>Updated to revision 2 of branch .../master
+''')
