@@ -390,7 +390,7 @@ class Unshelver(object):
 
         :param shelf_id: Integer id of the shelf, as a string.
         :param action: action to perform.  May be 'apply', 'dry-run',
-            'delete'.
+            'delete', 'preview'.
         :param directory: The directory to unshelve changes into.
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
@@ -410,9 +410,14 @@ class Unshelver(object):
             apply_changes = True
             delete_shelf = True
             read_shelf = True
+            show_diff = False
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
+            elif action == 'preview':
+                apply_changes = False
+                delete_shelf = False
+                show_diff = True
             elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
@@ -423,10 +428,10 @@ class Unshelver(object):
             tree.unlock()
             raise
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
-                     read_shelf)
+                     read_shelf, show_diff)
 
     def __init__(self, tree, manager, shelf_id, apply_changes=True,
-                 delete_shelf=True, read_shelf=True):
+                 delete_shelf=True, read_shelf=True, show_diff=False):
         """Constructor.
 
         :param tree: The working tree to unshelve into.
@@ -436,6 +441,8 @@ class Unshelver(object):
             working tree.
         :param delete_shelf: If True, delete the changes from the shelf.
         :param read_shelf: If True, read the changes from the shelf.
+        :param show_diff: If True, show the diff that would result from
+            unshelving the changes.
         """
         self.tree = tree
         manager = tree.get_shelf_manager()
@@ -444,8 +451,9 @@ class Unshelver(object):
         self.apply_changes = apply_changes
         self.delete_shelf = delete_shelf
         self.read_shelf = read_shelf
+        self.show_diff = show_diff
 
-    def run(self):
+    def run(self, diff_output=None):
         """Perform the unshelving operation."""
         self.tree.lock_tree_write()
         cleanups = [self.tree.unlock]
@@ -462,6 +470,8 @@ class Unshelver(object):
                     merger.change_reporter = change_reporter
                     if self.apply_changes:
                         merger.do_merge()
+                    elif self.show_diff:
+                        self.write_diff(merger, diff_output)
                     else:
                         self.show_changes(merger)
                 finally:
@@ -472,13 +482,23 @@ class Unshelver(object):
             for cleanup in reversed(cleanups):
                 cleanup()
 
+    def write_diff(self, merger, diff_output=None):
+        tree_merger = merger.make_merger()
+        # This would implicitly show the changes via the reporter, but we
+        # don't want that, so we silence it.
+        merger.change_reporter.report = lambda *args: None
+        tt = tree_merger.make_preview_transform()
+        # And now we show the diff that would've been applied if this was
+        # for real.
+        new_tree = tt.get_preview_tree()
+        if diff_output is None:
+            diff_output = ui.ui_factory.make_output_stream()
+        diff.show_diff_trees(merger.this_tree, new_tree, diff_output)
+        tt.finalize()
+
     def show_changes(self, merger):
         """Show the changes that this operation specifies."""
         tree_merger = merger.make_merger()
         # This implicitly shows the changes via the reporter.
         tt = tree_merger.make_preview_transform()
-        # And now we show the diff that would've been applied if this was for
-        # real.
-        new_tree = tt.get_preview_tree()
-        diff.show_diff_trees(merger.this_tree, new_tree, sys.stdout)
         tt.finalize()
