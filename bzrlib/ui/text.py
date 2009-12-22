@@ -381,6 +381,10 @@ class TextProgressView(object):
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
         now = time.time()
+        if self._total_byte_count < 2000:
+            # a little resistance at first, so it doesn't stay stuck at 0
+            # while connecting...
+            return
         if self._transport_update_time is None:
             self._transport_update_time = now
         elif now >= (self._transport_update_time + 0.5):
