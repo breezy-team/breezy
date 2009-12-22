@@ -287,6 +287,7 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(conflicts, [])
         self.assertRaises(errors.NoSuchId, builder.this.id2path, '1')
+        self.assertEqual([], list(builder.this.list_files()))
 
     def test_result_can_be_conflict(self):
         """A hook's result can be a conflict."""

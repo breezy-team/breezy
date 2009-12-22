@@ -1250,6 +1250,8 @@ class Merge3Merger(object):
                     file_group.append(trans_id)
                 elif hook_status == 'delete':
                     self.tt.unversion_file(trans_id)
+                    if file_id in self.this_tree:
+                        self.tt.delete_contents(trans_id)
                     return "deleted"
                 else:
                     raise AssertionError(
