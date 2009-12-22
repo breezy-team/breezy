@@ -20,27 +20,21 @@ to developers on the server machine.  In this case, Bazaar provides
 ``bzr_ssh_path_limiter``, a script that runs the Bazaar smart server on the
 server machine at a specified path, and allows no other access.
 
-To set it up, specify
+To set it up, specify::
 
-::
+   command="/path/to/bzr_ssh_path_limiter <path>" <typical key line>
 
-   command="/path/to/bzr_ssh_path_limiter <path>" ssh-<type> <key>
-
-in each user's ``~/.ssh/authorized_keys`` file, where `<type>` is the type of
-enryption key, `<key>` is the public key and `<path>` is the path to limit
-access to (and its subdirectories).  This will only permit Bazaar access to
-the specified path and no other SSH access for that user.
+in each user's ``~/.ssh/authorized_keys`` file on the server, where `<path>` is
+the path to limit access to (and its subdirectories).  For more documentation
+on the syntax of the ``authorized_keys`` file see the documentation of the SSH
+server.  This will only permit Bazaar access to the specified path and no other
+SSH access for that user.
 
 If it isn't desired to give each user an account on the server, multiple
 private/public key pairs can be included under one single SSH account (say
 sshuser) in the ``~sshuser/.ssh/authorized_keys`` file and then each developer
 can be given their own private key.  They can then use
-``bzr+ssh://sshuser@server.example.com/`` URLs to access the server.  It is
-even possible to use a single private/public key pair for the SSH user where
-all of the developers use the same private key, but this means that revoking
-one developer's access requires regenerating and redistributing keys to all of
-the other developers.  For this reason, we don't recommend using a single key
-pair for all of the developers.
+``bzr+ssh://sshuser@server.example.com/`` URLs to access the server.
 
 Using HTTP authentication methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
