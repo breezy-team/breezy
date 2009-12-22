@@ -19,23 +19,9 @@
 from bzrlib import tests
 
 def load_tests(standard_tests, module, loader):
-    # parameterize all tests in this module
-    suite = loader.suiteClass()
-    import bzrlib.util._bencode_py as py_module
-    scenarios = [('python', {'bencode': py_module})]
-    if compiled_bencode_feature.available():
-        scenarios.append(('C', {'bencode': compiled_bencode_feature.module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(compiled_bencode_feature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib.util._bencode_py', 'bzrlib._bencode_pyx')
     return suite
-
-
-compiled_bencode_feature = tests.ModuleAvailableFeature('bzrlib._bencode_pyx')
 
 
 class TestBencodeDecode(tests.TestCase):

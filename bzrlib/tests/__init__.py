@@ -4139,6 +4139,26 @@ def clone_test(test, new_id):
     return new_test
 
 
+def permute_tests_for_extension(standard_tests, loader, py_module_name,
+                                ext_module_name):
+    py_module = __import__(py_module_name, {}, {}, ['NO_SUCH_ATTRIB'])
+    scenarios = [
+        ('python', {'module': py_module}),
+    ]
+    suite = loader.suiteClass()
+    feature = ModuleAvailableFeature(ext_module_name)
+    if feature.available():
+        scenarios.append(('C', {'module': feature.module}))
+    else:
+        # the compiled module isn't available, so we add a failing test
+        class FailWithoutFeature(TestCase):
+            def test_fail(self):
+                self.requireFeature(feature)
+        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
+    result = multiply_tests(standard_tests, scenarios, suite)
+    return result, feature
+
+
 def _rmtree_temp_dir(dirname, test_id=None):
     # If LANG=C we probably have created some bogus paths
     # which rmtree(unicode) will fail to delete

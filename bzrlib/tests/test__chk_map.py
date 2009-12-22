@@ -25,23 +25,9 @@ stuple = StaticTuple
 
 
 def load_tests(standard_tests, module, loader):
-    # parameterize all tests in this module
-    suite = loader.suiteClass()
-    import bzrlib._chk_map_py as py_module
-    scenarios = [('python', {'module': py_module})]
-    if compiled_chkmap_feature.available():
-        scenarios.append(('C', {'module': compiled_chkmap_feature.module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(compiled_chkmap_feature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._chk_map_py', 'bzrlib._chk_map_pyx')
     return suite
-
-
-compiled_chkmap_feature = tests.ModuleAvailableFeature('bzrlib._chk_map_pyx')
 
 
 class TestSearchKeys(tests.TestCase):

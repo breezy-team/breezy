@@ -28,24 +28,9 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    scenarios = [
-        ('python', {'module': _annotator_py}),
-    ]
-    suite = loader.suiteClass()
-    if compiled_annotator_feature.available():
-        scenarios.append(('C', {'module': compiled_annotator_feature.module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(compiled_annotator_feature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._annotator_py', 'bzrlib._annotator_pyx')
     return result
-
-
-compiled_annotator_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._annotator_pyx')
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):
