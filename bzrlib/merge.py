@@ -1205,11 +1205,11 @@ class Merge3Merger(object):
             if hook_status != 'not_applicable':
                 # Don't try any more hooks, this one applies.
                 break
-        contents_conflict = False
+        result = "modified"
         if hook_status == 'not_applicable':
             # This is a contents conflict, because none of the available
             # functions could merge it.
-            contents_conflict = True
+            result = None
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             if file_id in self.this_tree.inventory:
@@ -1230,25 +1230,21 @@ class Merge3Merger(object):
             file_group.append(trans_id)
         elif hook_status == 'delete':
             self.tt.unversion_file(trans_id)
-            if file_id in self.this_tree:
-                self.tt.delete_contents(trans_id)
-            return "deleted"
+            result = "deleted"
         elif hook_status == 'done':
             # The hook function did whatever it needs to do directly, no
             # further action needed here.
             pass
         else:
-            raise AssertionError(
-                'unknown hook_status: %r' % (hook_status,))
-        if file_id not in self.this_tree and not contents_conflict:
+            raise AssertionError('unknown hook_status: %r' % (hook_status,))
+        if file_id not in self.this_tree and result == "modified":
             self.tt.version_file(file_id, trans_id)
         try:
             self.tt.tree_kind(trans_id)
             self.tt.delete_contents(trans_id)
         except errors.NoSuchFile:
             pass
-        if not contents_conflict:
-            return "modified"
+        return result
 
     def _default_other_winner_merge(self, merge_hook_params):
         """Replace this contents with other."""
