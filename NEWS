@@ -50,6 +50,9 @@ Documentation
 API Changes
 ***********
 
+* ``WorkingTree.update`` implementations must now accept a ``revision``
+  parameter.
+
 Internals
 *********
 
