@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-# TODO: Move this into builtins
 
 # TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
@@ -438,6 +436,9 @@ class ContentsConflict(PathConflict):
 
 # FIXME: TextConflict is about a single file-id, there never is a conflict_path
 # attribute so we shouldn't inherit from PathConflict but simply from Conflict
+
+# TODO: There should be a base revid attribute to better inform the user about
+# how the conflicts were generated.
 class TextConflict(PathConflict):
     """The merge algorithm could not resolve all differences encountered."""
 
@@ -646,7 +647,6 @@ def register_types(*conflict_types):
     global ctype
     for conflict_type in conflict_types:
         ctype[conflict_type.typestring] = conflict_type
-
 
 register_types(ContentsConflict, TextConflict, PathConflict, DuplicateID,
                DuplicateEntry, ParentLoop, UnversionedParent, MissingParent,

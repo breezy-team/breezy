@@ -24,55 +24,10 @@ https://bugs.edge.launchpad.net/bzr/+bug/457793
 TODO:
 =====
 
-- add more info to Conflict objects:
-  - base revid for text conflict
-  - this requires a format bump ?
-
 - tests with '.diverted' files ?
-
-- doc/es/user-guide/resolving_conflicts.txt is really
-  user-reference/resolving_conflicts.txt
-
 
 Overall presentation:
 =====================
-
-When conflicts are present in a working tree (as shown by ``bzr
-conflicts``), the user should resolve them and then inform bzr
-that the conflicts has been resolved.
-
-Resolving conflicts is sometimes not obvious. Either because the
-user that should resolve them is not the one responsible for
-their occurrence, as is the case when merging other people work
-or because some conflicts are presented in a way that is not easy
-to understand.
-
-``bzr`` try to avoid conflicts, its aim is to ask the user to
-resolve the conflict if and only if there's an actual conceptual
-conflict in the source tree.  Because bzr doesn't understand the
-real meaning of the files being versioned it can fall short in
-either direction trying to resolve the conflict itself when faced
-with ambiguities.
-
-When it can't resolve, bzr add information into the working tree
-to present the conflicting versions and leave the resolution to
-the user.
-
-Whatever the conflict is, resolving it is roughly done in two steps:
-
-- modify the working tree content so that the conflicted item is
-  now in the desired state, there are,
-
-- inform bzr that the conflict is now solved and ask to cleanup
-  any remaining generated information (``bzr resolve <item>``).
-
-
-For most conflict types, there are some obvious ways to modify
-the working tree and put it into the desired state. For some type
-of conflicts, bzr itself already made a choice when possible.
-
-Yet, whether bzr made a choice or not, there are some other ways
-simple but alternative ways to resolve the conflict.
 
 Providing the ``--interactive`` option to ``bzr resolve`` will
 display a short explanation of the conflict and propose some
@@ -106,48 +61,6 @@ The following paragraphs list all the existing conflict types and summarize:
 In practice, the actions will always contain:
 - leave the user solve the conflict by its own means,
 - mark the conflict as solved without any additional action.
-
-
-Text conflicts:
----------------
-
-5 ways:
-- force THIS (for all conflicted regions)
-- force OTHER (for all conflicted regions)
-- manually solve each conflicted region
-- force THIS (overriding all cleanly merged modifications)
-- force OTHER (overriding all cleanly merged modifications)
-
-resolve:
-- delete .THIS, .OTHER, .BASE  if present
-
-Content conflicts:
-------------------
-
-3 ways:
-- bzr mv .THIS <item>,
-- bzr mv .OTHER <item>,
-- manually combine .THIS and .OTHER
-
-resolve:
-- delete .THIS, .OTHER, .BASE if present
-
-
-Duplicate paths
----------------
-
-bzr made a choice
-
-3 ways:
-- bzr mv .moved <item> (refuse bzr choice)
-- bzr rm .moved (accept bzr choice)
-- manually combine <item> and .moved
-
-resolve:
-
-- nothing to do ? If the '.moved' file still exists emit a
-  warning ? Delete it ? Put it to the trash ?
-
 
 Unversioned parent
 ------------------

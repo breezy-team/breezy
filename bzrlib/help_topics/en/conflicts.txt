@@ -3,16 +3,59 @@ Conflicts Types
 
 Some operations, like merge, revert and pull, modify the contents of your
 working tree.  These modifications are programmatically generated, and so they
-may conflict with the current state of your working tree. Many kinds of changes
-can be combined programmatically, but sometimes only a human can determine the
-right thing to do.  When this happens Bazaar will inform you that there is a
-conflict and then ask you to resolve it.  The command to tell Bazaar a conflict
-is resolved is ``resolve``, but you must perform some action before you can do
-this.
+may conflict with the current state of your working tree. 
+
+When conflicts are present in your working tree (as shown by ``bzr
+conflicts``), you should resolve them and then inform bzr that the conflicts
+has been resolved.
+
+Resolving conflicts is sometimes not obvious. Either because the user that
+should resolve them is not the one responsible for their occurrence, as is the
+case when merging other people work or because some conflicts are presented in
+a way that is not easy to understand.
+
+Bazaar try to avoid conflicts, its aim is to ask you to resolve the conflict
+if and only if there's an actual conceptual conflict in the source tree.
+Because Bazaar doesn't understand the real meaning of the files being
+versioned it can, when faced with ambiguities, fall short in either direction
+trying to resolve the conflict itself. Many kinds of changes can be combined
+programmatically, but sometimes only a human can determine the right thing to
+do.
+
+When Bazaar generates a conflict, it adds information into the working tree to
+present the conflicting versions and it's up to you to find the correct
+resolution.
+
+Whatever the conflict is, resolving it is roughly done in two steps:
+
+- modify the working tree content so that the conflicted item is now in the
+  state you want to keep,
+
+- inform Bazaar that the conflict is now solved and ask to cleanup any
+  remaining generated information (``bzr resolve <item>``).
+
+For most conflict types, there are some obvious ways to modify the working
+tree and put it into the desired state. For some types of conflicts, Bazaar
+itself already made a choice when possible.
+
+Yet, whether Bazaar made a choice or not, there are some other simple but
+alternative ways to resolve the conflict.
 
 Each type of conflict is explained below, and the action which must be done to
 resolve the conflict is outlined.
 
+Various actions are available depending on the kind of conflict, for some of
+these actions, Bazaar can provide some help. In the end you should at least
+inform Bazaar that you're done with the conflict with::
+
+  ``bzr resolve FILE --action=done'
+
+Note that this is the default action when a single file is involved so you can
+simply use::
+
+   ``bzr resolve FILE``
+
+See ``bzr help resolve`` for more details.
 
 Text conflicts
 --------------
@@ -54,8 +97,20 @@ If you edit the main copy, be sure to remove the herringbone markers.  When
 you are done editing, the file should look like it never had a conflict, and be
 ready to commit.
 
-When you have resolved text conflicts, just run "bzr resolve", and Bazaar will
-auto-detect which conflicts you have resolved.
+When you have resolved text conflicts, just run ``bzr resolve --auto``, and
+Bazaar will auto-detect which conflicts you have resolved.
+
+When the conflict is resolved, Bazaar deletes the previously generated
+``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the
+working tree.
+
+.. TODO: There are 6 ways to resolve text conflicts:
+   1. Manually
+   1. prefer_mine choose THIS in conflicted regions
+   1. prefer_theirs choose OTHER in conflicted regions
+   1. keep_both take THIS and OTHER in conflicted regions
+   1. keep_mine take THIS overriding all cleanly merged modifications
+   1. take_theirs take OTHER overriding all cleanly merged modifications
 
 Content conflicts
 -----------------
@@ -64,20 +119,31 @@ Typical message::
 
   Contents conflict in FILE
 
-This conflict happens when there are conflicting changes in the target tree and
-the merge source, but the conflicted items are not text files.  They may be
-binary files, or symlinks, or directories.  It can even happen with files that
-are deleted on one side, and modified on the other.
+This conflict happens when there are conflicting changes in the working tree
+and the merge source, but the conflicted items are not text files.  They may
+be binary files, or symlinks, or directories.  It can even happen with files
+that are deleted on one side, and modified on the other.
 
 Like text conflicts, Bazaar will emit THIS, OTHER and BASE files.  (They may be
 regular files, symlinks or directories).  But it will not include a "main copy"
 of the file with herringbone conflict markers.  It will appear that the "main
 copy" has been renamed to THIS or OTHER.
 
-To resolve this, use "bzr mv" to rename the file back to its normal name, and
-combine the changes manually.  When you are satisfied, run "bzr resolve
-FILE".  Bazaar cannot auto-detect when conflicts of this kind have been
-resolved.
+To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will issue ``bzr mv FILE.THIS FILE``,
+- ``--action=take_theirs`` will issue ``bzr mv FILE.OTHER FILE``,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
+``.OTHER`` files if they are still present in the working tree.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. TODO: if either .THIS or .OTHER doesn't exist anymore and FILE exists
+again, --auto may consider the conflict as resolved.
 
 Tag conflicts
 -------------
@@ -95,12 +161,13 @@ uses of pull or push will result in the same message.
 To resolve the conflict, you must apply the correct tags to either the target
 branch or the source branch as appropriate.  Use "bzr tags --show-ids -d
 SOURCE_URL" to see the tags in the source branch.  If you want to make the
-target branch's tags match the source branch, then in the target branch do 
+target branch's tags match the source branch, then in the target branch do
 ``bzr tag --force -r revid:REVISION_ID CONFLICTING_TAG`` for each of the
 CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in the source
-branch.  You need not call "bzr resolve" after doing this.  To resolve in favor of the target branch, you need to similarly use ``tag --force`` in the source
-branch.  (Note that pulling or pushing using --overwrite will overwrite all
-tags as well.)
+branch.  You need not call "bzr resolve" after doing this.  To resolve in
+favor of the target branch, you need to similarly use ``tag --force`` in the
+source branch.  (Note that pulling or pushing using --overwrite will overwrite
+all tags as well.)
 
 Duplicate paths
 ---------------
@@ -110,10 +177,23 @@ Typical message::
   Conflict adding file FILE.  Moved existing file to FILE.moved.
 
 Sometimes Bazaar will attempt to create a file using a pathname that has
-already been used.  The existing file will be renamed to "FILE.moved".  If
-you wish, you can rename either one of these files, or combine their contents.
-When you are satisfied, you can run "bzr resolve FILE" to mark the conflict as
-resolved.
+already been used.  The existing file will be renamed to "FILE.moved".  
+
+To resolve that kind of conflict, you should rebuild FILE from either version
+or a combination of both.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will issue ``bzr mv FILE.moved FILE``,
+- ``--action=take_theirs`` will issue ``bzr rm FILE.moved``,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Note that you must get rid of FILE.moved before using ``--action=done``.
+..TODO: This check must be enforced both when ``--action=done`` is used and at
+``bzr commit`` time or FILE.moved should be automatically removed and
+unversioned.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Unversioned parent
 ------------------
