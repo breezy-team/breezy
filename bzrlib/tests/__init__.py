@@ -4141,6 +4141,27 @@ def clone_test(test, new_id):
 
 def permute_tests_for_extension(standard_tests, loader, py_module_name,
                                 ext_module_name):
+    """Helper for permutating tests against an extension module.
+
+    This is meant to be used inside a modules 'load_tests()' function. It will
+    create 2 scenarios, and cause all tests in the 'standard_tests' to be run
+    against both implementations. Setting 'test.module' to the appropriate
+    module. See bzrlib.tests.test__chk_map.load_tests as an example.
+
+    :param standard_tests: A test suite to permute
+    :param loader: A TestLoader
+    :param py_module_name: The python path to a python module that can always
+        be loaded, and will be considered the 'python' implementation. (eg
+        'bzrlib._chk_map_py')
+    :param ext_module_name: The python path to an extension module. If the
+        module cannot be loaded, a single test will be added, which notes that
+        the module is not available. If it can be loaded, all standard_tests
+        will be run against that module.
+    :return: (suite, feature) suite is a test-suite that has all the permuted
+        tests. feature is the Feature object that can be used to determine if
+        the module is available.
+    """
+
     py_module = __import__(py_module_name, {}, {}, ['NO_SUCH_ATTRIB'])
     scenarios = [
         ('python', {'module': py_module}),
