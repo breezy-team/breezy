@@ -573,8 +573,8 @@ class cmd_upload(commands.Command):
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
 
-                #if revision is None and  changes.has_changed():
-                #    raise errors.UncommittedChanges(wt)
+                if revision is None and  changes.has_changed():
+                    raise errors.UncommittedChanges(wt)
 
             if location is None:
                 stored_loc = get_upload_location(branch)
