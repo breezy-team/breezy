@@ -1388,16 +1388,24 @@ class cmd_update(Command):
 
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
+
+    If the tree's branch is bound to a master branch, it will also update
+    the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
+    takes_options = ['revision']
     aliases = ['up']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', revision=None):
+        if revision is not None and len(revision) != 1:
+            raise errors.BzrCommandError(
+                        "bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
+        branch = tree.branch
         possible_transports = []
-        master = tree.branch.get_master_branch(
+        master = branch.get_master_branch(
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
@@ -1410,20 +1418,38 @@ class cmd_update(Command):
                                                         self.outf.encoding)
         try:
             existing_pending_merges = tree.get_parent_ids()[1:]
-            last_rev = _mod_revision.ensure_null(tree.last_revision())
-            if last_rev == _mod_revision.ensure_null(
-                tree.branch.last_revision()):
-                # may be up to date, check master too.
-                if master is None or last_rev == _mod_revision.ensure_null(
-                    master.last_revision()):
-                    revno = tree.branch.revision_id_to_revno(last_rev)
-                    note('Tree is up to date at revision %d of branch %s'
-                         % (revno, branch_location))
-                    return 0
+            if master is None:
+                old_tip = None
+            else:
+                # may need to fetch data into a heavyweight checkout
+                # XXX: this may take some time, maybe we should display a
+                # message
+                old_tip = branch.update(possible_transports)
+            if revision is not None:
+                revision_id = revision[0].as_revision_id(branch)
+            else:
+                revision_id = branch.last_revision()
+            if revision_id == _mod_revision.ensure_null(tree.last_revision()):
+                revno = branch.revision_id_to_revno(revision_id)
+                note("Tree is up to date at revision %d of branch %s" %
+                    (revno, branch_location))
+                return 0
             view_info = _get_view_info_for_change_reporter(tree)
-            conflicts = tree.update(
-                delta._ChangeReporter(unversioned_filter=tree.is_ignored,
-                view_info=view_info), possible_transports=possible_transports)
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=tree.is_ignored,
+                view_info=view_info)
+            try:
+                conflicts = tree.update(
+                    change_reporter,
+                    possible_transports=possible_transports,
+                    revision=revision_id,
+                    old_tip=old_tip)
+            except errors.NoSuchRevision, e:
+                raise errors.BzrCommandError(
+                                      "branch has no revision %s\n"
+                                      "bzr update --revision only works"
+                                      " for a revision in the branch history"
+                                      % (e.revision))
             revno = tree.branch.revision_id_to_revno(
                 _mod_revision.ensure_null(tree.last_revision()))
             note('Updated to revision %d of branch %s' %
