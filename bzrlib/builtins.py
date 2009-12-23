@@ -1426,23 +1426,23 @@ class cmd_update(Command):
                 # message
                 old_tip = branch.update(possible_transports)
             if revision is not None:
-                rev = revision[0].as_revision_id(branch)
+                revision_id = revision[0].as_revision_id(branch)
             else:
-                rev = branch.last_revision()
-            if rev == _mod_revision.ensure_null(tree.last_revision()):
-                revno = branch.revision_id_to_revno(rev)
+                revision_id = branch.last_revision()
+            if revision_id == _mod_revision.ensure_null(tree.last_revision()):
+                revno = branch.revision_id_to_revno(revision_id)
                 note("Tree is up to date at revision %d of branch %s" %
                     (revno, branch_location))
                 return 0
             view_info = _get_view_info_for_change_reporter(tree)
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=tree.is_ignored,
+                view_info=view_info)
             try:
-                change_reporter = delta._ChangeReporter(
-                    unversioned_filter=tree.is_ignored,
-                    view_info=view_info)
                 conflicts = tree.update(
                     change_reporter,
                     possible_transports=possible_transports,
-                    revision=rev,
+                    revision=revision_id,
                     old_tip=old_tip)
             except errors.NoSuchRevision, e:
                 raise errors.BzrCommandError(
