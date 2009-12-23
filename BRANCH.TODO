@@ -6,6 +6,7 @@
 Related Bugs:
 =============
 
+.BASE, .THIS, .OTHER, .moved can't be added nor committed.
 https://bugs.edge.launchpad.net/bzr/+bug/414589
 
 https://bugs.edge.launchpad.net/bzr/+bug/236724
@@ -15,14 +16,21 @@ https://bugs.edge.launchpad.net/bzr/+bug/322767
 https://bugs.edge.launchpad.net/bzr/+bug/416903
 https://bugs.edge.launchpad.net/bzr/+bug/355964
 
+Implement --keep-mine, --take-theirs
 https://bugs.edge.launchpad.net/bzr/+bug/257297
 https://bugs.edge.launchpad.net/bzr/+bug/232512
 
-https://bugs.edge.launchpad.net/bzr/+bug/405264
 https://bugs.edge.launchpad.net/bzr/+bug/457793
 
 TODO:
 =====
+
+- check we have a bug about resolve actions for text conflicts
+
+- file a bug about more conflicts that *can* be handled by --auto
+  (at least some content conflicts can)
+
+- make sure .moved files can't be committed !
 
 - tests with '.diverted' files ?
 
