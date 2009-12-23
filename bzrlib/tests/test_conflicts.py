@@ -22,7 +22,6 @@ from bzrlib import (
     conflicts,
     errors,
     tests,
-    workingtree,
     )
 from bzrlib.tests import script
 
