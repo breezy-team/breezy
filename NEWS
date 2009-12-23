@@ -23,6 +23,12 @@ New Features
   ``locations.conf`` or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
+* ``bzrlib.tests.permute_for_extension`` is a helper that simplifies
+  running all tests in the current module, once against a pure python
+  implementation, and once against an extension (pyrex/C) implementation.
+  It can be used to dramatically simplify the implementation of
+  ``load_tests``.  (John Arbash Meinel)
+
 Bug Fixes
 *********
 
