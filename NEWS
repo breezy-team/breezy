@@ -36,6 +36,9 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* Add bug information to log output when available.
+  (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
+
 Improvements
 ************
 

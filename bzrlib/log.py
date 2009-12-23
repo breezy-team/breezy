@@ -1980,6 +1980,20 @@ def _get_kind_for_file_id(tree, file_id):
 
 properties_handler_registry = registry.Registry()
 
+# Use the properties handlers to print out bug information if available
+def _bugs_properties_handler(revision):
+    if revision.properties.has_key('bugs'):
+        bug_list =  [val.split()[0] for val in
+                     revision.properties['bugs'].split('\n') if
+                     val.split()[1] == 'fixed'
+                    ]
+        if bug_list:
+            return {'fixes bug(s)': ' '.join(bug_list)}
+    return {}
+
+properties_handler_registry.register('bugs_properties_handler',
+                                     _bugs_properties_handler)
+
 
 # adapters which revision ids to log are filtered. When log is called, the
 # log_rev_iterator is adapted through each of these factory methods.
