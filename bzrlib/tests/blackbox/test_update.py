@@ -71,7 +71,7 @@ class TestUpdate(tests.TestCaseWithTransport):
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr update checkout
-2> Tree is up to date at revision 0 of branch .../branch
+2>Tree is up to date at revision 0 of branch .../branch
 ''')
 
     def test_update_out_of_date_standalone_tree(self):
