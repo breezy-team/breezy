@@ -52,6 +52,9 @@ import warnings
 
 import testtools
 from testtools import content
+if testtools.__version__ < (0, 9, 2):
+    raise ImportError("need at least testtools 0.9.2: %s is %r"
+        % (testtools.__file__, testtools.__version__))
 
 from bzrlib import (
     branchbuilder,
