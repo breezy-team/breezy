@@ -198,7 +198,7 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
 
 Shell-like tests
-~~~~~~~~~~~~~~~~
+----------------
 
 ``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
 using a restricted and limited set of commands that should be enough to mimic
@@ -286,6 +286,24 @@ You can also check the existence of a file with cat, the following will fail if
 the file doesn't exist::
 
   $ cat file
+
+The actual use of ScriptRunner within a TestCase looks something like
+this::
+
+        def test_unshelve_keep(self):
+                # some setup here
+                sr = ScriptRunner()
+                sr.run_script(self, '''
+        $ bzr add file
+        $ bzr shelve --all -m Foo
+        $ bzr shelve --list
+        1: Foo
+        $ bzr unshelve --keep
+        $ bzr shelve --list
+        1: Foo
+        $ cat file
+        contents of file
+        ''')
 
 
 
