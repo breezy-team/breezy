@@ -23,12 +23,6 @@ New Features
   ``locations.conf`` or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
-* ``bzrlib.tests.permute_for_extension`` is a helper that simplifies
-  running all tests in the current module, once against a pure python
-  implementation, and once against an extension (pyrex/C) implementation.
-  It can be used to dramatically simplify the implementation of
-  ``load_tests``.  (John Arbash Meinel)
-
 * ``bzr update`` now takes a ``--revision`` argument. This lets you
   change the revision of the working tree to any revision in the
   ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
@@ -78,6 +72,12 @@ Internals
 
 Testing
 *******
+
+* ``bzrlib.tests.permute_for_extension`` is a helper that simplifies
+  running all tests in the current module, once against a pure python
+  implementation, and once against an extension (pyrex/C) implementation.
+  It can be used to dramatically simplify the implementation of
+  ``load_tests``.  (John Arbash Meinel)
 
 * ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
   This permits features in testtools such as getUniqueInteger and
