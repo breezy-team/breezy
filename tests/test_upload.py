@@ -462,6 +462,19 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.failIfUpFileExists('dir')
 
+    def test_ignore_nested_directory(self):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload','dir')
+        self.add_dir('dir')
+        self.add_dir('dir/foo')
+        self.add_file('dir/foo/bar','')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('dir')
+        self.failIfUpFileExists('dir/foo/bar')
+
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
