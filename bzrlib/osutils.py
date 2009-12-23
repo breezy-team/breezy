@@ -2092,9 +2092,9 @@ def local_concurrency(use_cache=True):
 class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
     """A stream writer that doesn't decode str arguments."""
 
-    def __init__(self, codec, stream, errors='strict'):
+    def __init__(self, encode, stream, errors='strict'):
         codecs.StreamWriter.__init__(self, stream, errors)
-        self.encode = codec.encode
+        self.encode = encode
 
     def write(self, object):
         if type(object) is str:

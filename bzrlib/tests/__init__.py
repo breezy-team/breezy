@@ -594,7 +594,12 @@ class TextTestRunner(object):
         # to encode using ascii.
         new_encoding = osutils.get_terminal_encoding()
         codec = codecs.lookup(new_encoding)
-        stream = osutils.UnicodeOrBytesToBytesWriter(codec, stream)
+        if type(codec) is tuple:
+            # Python 2.4
+            encode = codec[0]
+        else:
+            encode = codec.encode
+        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream)
         stream.encoding = new_encoding
         self.stream = unittest._WritelnDecorator(stream)
         self.descriptions = descriptions
