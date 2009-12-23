@@ -289,7 +289,8 @@ class BzrUploader(object):
 
     def upload_file(self, relpath, id, mode=None):
         ignored_files = self.get_ignored()
-        if relpath not in ignored_files:
+        is_ignored =  osutils.is_inside_any(ignored_files, relpath)
+        if is_ignored is False:
             if mode is None:
                 if self.tree.is_executable(id):
                     mode = 0775
@@ -322,7 +323,8 @@ class BzrUploader(object):
 
     def make_remote_dir(self, relpath, mode=None):
         ignored_files = self.get_ignored()
-        if relpath not in ignored_files:
+        is_ignored =  osutils.is_inside_any(ignored_files, relpath)
+        if is_ignored is False:
             if mode is None:
                 mode = 0775
             self.to_transport.mkdir(relpath, mode)
@@ -571,8 +573,8 @@ class cmd_upload(commands.Command):
             if wt:
                 changes = wt.changes_from(wt.basis_tree())
 
-                if revision is None and  changes.has_changed():
-                    raise errors.UncommittedChanges(wt)
+                #if revision is None and  changes.has_changed():
+                #    raise errors.UncommittedChanges(wt)
 
             if location is None:
                 stored_loc = get_upload_location(branch)
