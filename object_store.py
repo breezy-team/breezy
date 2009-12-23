@@ -81,20 +81,14 @@ class BazaarObjectStore(BaseObjectStore):
                 todo.update([x for x in p if x not in missing_revids])
             heads = self._idmap.missing_revisions(todo)
             missing_revids.update(heads)
-        self._idmap.start_write_group()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
-            pb = ui.ui_factory.nested_progress_bar()
-            try:
-                for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
-                    pb.update("updating git map", i, len(missing_revids))
-                    self._update_sha_map_revision(revid)
-            finally:
-                pb.finished()
-        except:
-            self._idmap.abort_write_group()
-            raise
-        else:
-            self._idmap.commit_write_group()
+            for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                pb.update("updating git map", i, len(missing_revids))
+                self._update_sha_map_revision(revid)
+        finally:
+            pb.finished()
+        self._idmap.commit_write_group()
 
     def __iter__(self):
         self._update_sha_map()
