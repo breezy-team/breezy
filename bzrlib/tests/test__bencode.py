@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,14 +26,14 @@ def load_tests(standard_tests, module, loader):
 
 class TestBencodeDecode(tests.TestCase):
 
-    bencode = None
+    module = None
 
     def _check(self, expected, source):
-        self.assertEquals(expected, self.bencode.bdecode(source))
+        self.assertEquals(expected, self.module.bdecode(source))
 
     def _run_check_error(self, exc, bad):
         """Check that bdecoding a string raises a particular exception."""
-        self.assertRaises(exc, self.bencode.bdecode, bad)
+        self.assertRaises(exc, self.module.bdecode, bad)
 
     def test_int(self):
         self._check(0, 'i0e')
@@ -64,7 +64,7 @@ class TestBencodeDecode(tests.TestCase):
         self._check('1234567890', '10:1234567890')
 
     def test_large_string(self):
-        self.assertRaises(ValueError, self.bencode.bdecode, "2147483639:foo")
+        self.assertRaises(ValueError, self.module.bdecode, "2147483639:foo")
 
     def test_malformed_string(self):
         self._run_check_error(ValueError, '10:x')
@@ -119,7 +119,7 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, 'd432432432432432432:e')
 
     def test_empty_string(self):
-        self.assertRaises(ValueError, self.bencode.bdecode, '')
+        self.assertRaises(ValueError, self.module.bdecode, '')
 
     def test_junk(self):
         self._run_check_error(ValueError, 'i6easd')
@@ -128,7 +128,7 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(ValueError, 'leanfdldjfh')
 
     def test_unknown_object(self):
-        self.assertRaises(ValueError, self.bencode.bdecode, 'relwjhrlewjh')
+        self.assertRaises(ValueError, self.module.bdecode, 'relwjhrlewjh')
 
     def test_unsupported_type(self):
         self._run_check_error(TypeError, float(1.5))
@@ -138,15 +138,15 @@ class TestBencodeDecode(tests.TestCase):
         self._run_check_error(TypeError, u"ie")
 
     def test_decoder_type_error(self):
-        self.assertRaises(TypeError, self.bencode.bdecode, 1)
+        self.assertRaises(TypeError, self.module.bdecode, 1)
 
 
 class TestBencodeEncode(tests.TestCase):
 
-    bencode = None
+    module = None
 
     def _check(self, expected, source):
-        self.assertEquals(expected, self.bencode.bencode(source))
+        self.assertEquals(expected, self.module.bencode(source))
 
     def test_int(self):
         self._check('i4e', 4)
@@ -178,7 +178,7 @@ class TestBencodeEncode(tests.TestCase):
         for i in range(10000):
             l.append([])
             l = l[0]
-        self.assertRaises(RuntimeError, self.bencode.bencode, 
+        self.assertRaises(RuntimeError, self.module.bencode, 
             top)
 
     def test_dict(self):
@@ -193,14 +193,14 @@ class TestBencodeEncode(tests.TestCase):
         for i in range(10000):
             d[''] = {}
             d = d['']
-        self.assertRaises(RuntimeError, self.bencode.bencode, 
+        self.assertRaises(RuntimeError, self.module.bencode, 
             top)
 
     def test_bencached(self):
-        self._check('i3e', self.bencode.Bencached(self.bencode.bencode(3)))
+        self._check('i3e', self.module.Bencached(self.module.bencode(3)))
 
     def test_invalid_dict(self):
-        self.assertRaises(TypeError, self.bencode.bencode, {1:"foo"})
+        self.assertRaises(TypeError, self.module.bencode, {1:"foo"})
 
     def test_bool(self):
         self._check('i1e', True)
