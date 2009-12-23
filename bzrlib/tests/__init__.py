@@ -51,6 +51,11 @@ import unittest
 import warnings
 
 import testtools
+# nb: check this before importing anything else from within it
+_testtools_version = getattr(testtools, '__version__', ())
+if _testtools_version < (0, 9, 2):
+    raise ImportError("need at least testtools 0.9.2: %s is %r"
+        % (testtools.__file__, _testtools_version))
 from testtools import content
 
 from bzrlib import (
