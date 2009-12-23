@@ -51,10 +51,12 @@ import unittest
 import warnings
 
 import testtools
-from testtools import content
-if testtools.__version__ < (0, 9, 2):
+# nb: check this before importing anything else from within it
+_testtools_version = getattr(testtools, '__version__', ())
+if _testtools_version < (0, 9, 2):
     raise ImportError("need at least testtools 0.9.2: %s is %r"
-        % (testtools.__file__, testtools.__version__))
+        % (testtools.__file__, _testtools_version))
+from testtools import content
 
 from bzrlib import (
     branchbuilder,
