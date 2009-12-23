@@ -46,8 +46,7 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         revid2 = tree.commit('2')
         check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log, "0 unreferenced text versions")
+        self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
 
 
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
@@ -90,13 +89,11 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         # contents of it!
         check_object = repo.check(['ignored'])
         check_object.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(
-            log, '1 revisions have incorrect parents in the revision index')
+        self.assertContainsRe(self.get_log(),
+            '1 revisions have incorrect parents in the revision index')
         check_object.report_results(verbose=True)
-        log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
-            log,
+            self.get_log(),
             "revision-id has wrong parents in index: "
             r"\('incorrect-parent',\) should be \(\)")
 
@@ -147,5 +144,5 @@ class TestCleanRepository(TestCaseWithRepository):
         rev_id = builder.commit('first post')
         result = repo.check(None, check_repo=True)
         result.report_results(True)
-        log = self._get_log(keep_log_file=True)
+        log = self.get_log()
         self.assertFalse('Missing' in log, "Something was missing in %r" % log)

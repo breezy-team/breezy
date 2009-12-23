@@ -687,9 +687,9 @@ class TestPackRepository(TestCaseWithTransport):
         # abort_write_group will not raise an error
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         # But it does log an error
-        log_file = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log_file, 'abort_write_group failed')
-        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        log = self.get_log()
+        self.assertContainsRe(log, 'abort_write_group failed')
+        self.assertContainsRe(log, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
 
