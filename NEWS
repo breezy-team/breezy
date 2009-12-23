@@ -31,6 +31,10 @@ Bug Fixes
   This will likely have an impact on any other process that is serving for
   an extended period of time.  (John Arbash Meinel, #494406)
 
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
