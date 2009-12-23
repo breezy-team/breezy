@@ -57,8 +57,20 @@ API Changes
 Internals
 *********
 
+* New helper osutils.UnicodeOrBytesToBytesWriter which encodes unicode
+  objects but passes str objects straight through. This is used for
+  selftest but may be useful for diff and other operations that generate
+  mixed output. (Robert Collins)
+
 Testing
 *******
+
+* ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
+  This permits features in testtools such as getUniqueInteger and
+  getUniqueString to be used. Because of this, testtools version 0.9.2 or
+  newer is now a dependency to run bzr selftest. Running with versions of
+  testtools less than 0.9.2 will cause bzr to error while loading the test
+  suite. (Robert Collins)
 
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.

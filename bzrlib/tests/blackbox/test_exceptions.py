@@ -114,4 +114,3 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         self.enable_deprecation_warning()
         out, err = self.run_bzr('status', working_dir='foo')
         self.check_warning(False)
-
