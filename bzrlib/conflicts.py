@@ -533,9 +533,9 @@ class ParentLoop(HandledPathConflict):
     This is rare, but can be produced like so:
 
     tree A:
-      mv foo/bar
+      mv foo bar
     tree B:
-      mv bar/foo
+      mv bar foo
     merge A and B
     """
 
@@ -548,8 +548,8 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def take_theirs(self, tree):
-        # FIXME: We should have to manipulate so many paths here (and there is
-        # probably a bug or two...)
+        # FIXME: We shouldn't have to manipulate so many paths here (and there
+        # is probably a bug or two...)
         conflict_base_path = osutils.basename(self.conflict_path)
         base_path = osutils.basename(self.path)
         tree.rename_one(self.conflict_path, conflict_base_path)
@@ -573,7 +573,7 @@ class MissingParent(HandledConflict):
     """An attempt to add files to a directory that is not present.
     Typically, the result of a merge where THIS deleted the directory and
     the OTHER added a file to it.
-    See also: DeletingParent (same situation, reversed THIS and OTHER)
+    See also: DeletingParent (same situation, THIS and OTHER reversed)
     """
 
     typestring = 'missing parent'

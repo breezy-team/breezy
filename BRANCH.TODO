@@ -25,8 +25,6 @@ https://bugs.edge.launchpad.net/bzr/+bug/457793
 TODO:
 =====
 
-- check we have a bug about resolve actions for text conflicts
-
 - file a bug about more conflicts that *can* be handled by --auto
   (at least some content conflicts can)
 
@@ -53,7 +51,7 @@ list of possible actions (including do nothing) to the user
 before marking the file as resolved.
 
 The --all and file* parameters will still be honored so that the
-user solve conflicts at his own pace.
+user can solve conflicts at his own pace.
 
 It should be possible for a GUI to query the conflict objects for
 possible actions (in textual form) and trigger them.
@@ -70,88 +68,3 @@ In practice, the actions will always contain:
 - leave the user solve the conflict by its own means,
 - mark the conflict as solved without any additional action.
 
-Unversioned parent
-------------------
-
-bzr made a choice: version the parent
-
-3 ways:
-- bzr rm <children>
-- bzr rm <parent>
-- manually rename <children>
-
-resolve:
-- nothing more to do than removing the conflicted objects that
-   have been created
-
-
-Missing parent
---------------
-
-bzr made a choice: create the missing parent and version it.
-
-3 ways:
-- bzr rm <children>
-- bzr rm <parent>
-- manually rename <children>
-
-resolve:
-- nothing to do, nothing more than the conflicted objects have been created
-
-
-Deleting parent
----------------
-
-bzr made a choice: not delete the parent
-
-3 ways:
-- bzr rm <children>
-- bzr rm <parent>
-- manually solve the issue (may be more than a single children)
-
-resolve:
-- nothing to do
-
-
-Path conflict
--------------
-
-bzr made a choice: use the source's name
-
-3 ways:
-- do nothing (accept bzr choice)
-- bzr mv <item> other-name (refuse bzr choice)
-- manually rename to a different name
-
-resolve:
-- nothing to do 
-
-Parent loop
------------
-
-bzr made a choice: keep the existing renaming
-
-3 ways:
-- do nothing (accept bzr choice)
-- bzr mv this_parent/this_children other_parent/other_children
-- manually rename the items
-
-resolve:
-- nothing to do
-
-
-Non-directory parent
---------------------
-
-bzr made a choice: create a <parent>.new directory
-
-There is no obvious single action that can solve the conflict
-here, but let's try anyway.
-
-3 ways:
-- bzr rm <parent>.new
-- bzr rm <parent> + bzr mv <parent>.new <parent>
-- manually rename the items
-
-resolve:
-- nothing to do

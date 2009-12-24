@@ -475,7 +475,6 @@ class TestResolvePathConflict(TestResolveConflicts):
     preamble = """
 $ bzr init trunk
 $ cd trunk
-$ mkdir dir
 $ echo 'Boo!' >file
 $ bzr add
 $ bzr commit -m 'Create trunk'

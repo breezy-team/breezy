@@ -106,11 +106,11 @@ working tree.
 
 .. TODO: There are 6 ways to resolve text conflicts:
    1. Manually
-   1. prefer_mine choose THIS in conflicted regions
-   1. prefer_theirs choose OTHER in conflicted regions
-   1. keep_both take THIS and OTHER in conflicted regions
-   1. keep_mine take THIS overriding all cleanly merged modifications
-   1. take_theirs take OTHER overriding all cleanly merged modifications
+   1. prefer-mine choose THIS in conflicted regions
+   1. prefer-theirs choose OTHER in conflicted regions
+   1. keep-both take THIS and OTHER in conflicted regions
+   1. keep-mine take THIS overriding all cleanly merged modifications
+   1. take-theirs take OTHER overriding all cleanly merged modifications
 
 Content conflicts
 -----------------
@@ -135,7 +135,7 @@ or a combination of both.
 ``bzr resolve`` recognizes the following actions:
 
 - ``--action=keep-mine`` will issue ``bzr mv FILE.THIS FILE``,
-- ``--action=take_theirs`` will issue ``bzr mv FILE.OTHER FILE``,
+- ``--action=take-theirs`` will issue ``bzr mv FILE.OTHER FILE``,
 - ``--action=done`` will just mark the conflict as resolved.
 
 Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
@@ -185,7 +185,7 @@ or a combination of both.
 ``bzr resolve`` recognizes the following actions:
 
 - ``--action=keep-mine`` will issue ``bzr mv FILE.moved FILE``,
-- ``--action=take_theirs`` will issue ``bzr rm FILE.moved``,
+- ``--action=take-theirs`` will issue ``bzr rm FILE.moved``,
 - ``--action=done`` will just mark the conflict as resolved.
 
 Note that you must get rid of FILE.moved before using ``--action=done``.
@@ -221,22 +221,47 @@ This happens when a directory has been deleted in the target, but has new
 children in the source.  This is similar to the "unversioned parent" conflict,
 except that the parent directory does not *exist*, instead of just being
 unversioned.  In this situation, Bazaar will create the missing parent.
-Resolving this issue depends very much on the particular scenario.  You may
-wish to rename or delete either the file or the directory.  When you are
-satisfied, you can run "bzr resolve FILE" to mark the conflict as resolved.
+Resolving this issue depends very much on the particular scenario.
+
+To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will issue ``bzr rm directory`` including the children,
+- ``--action=take-theirs`` will acknowledge Bazaar choice to keep the children
+  and restoring the directory,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. TODO: Arguably any state is valid after the merge so we bzr can just
+consider the conflict as resolved.
 
 Deleting parent
 ---------------
 
 Typical message::
 
-  Conflict: can't delete FILE because it is not empty.  Not deleting.
+  Conflict: can't delete DIR because it is not empty.  Not deleting.
 
 This is the opposite of "missing parent".  A directory is deleted in the
 source, but has new children in the target.  Bazaar will retain the directory.
-Resolving this issue depends very much on the particular scenario.  You may
-wish to rename or delete either the file or the directory.  When you are
-satisfied, you can run "bzr resolve FILE" to mark the conflict as resolved.
+Resolving this issue depends very much on the particular scenario.
+
+To resolve that kind of conflict, you should either remove or rename the
+children or the directory or a combination of both.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will acknowledge Bazaar choice to keep the directory,
+- ``--action=take-theirs`` will issue ``bzr rm directory`` including the 
+  children,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. TODO: The most annoying case here is when the directory contains junk
+files. If we knew how to identify them, then the default resolving action can
+be to get rid of them.
 
 Path conflict
 -------------
@@ -246,9 +271,21 @@ Typical message::
   Path conflict: PATH1 / PATH2
 
 This happens when the source and target have each modified the name or parent
-directory of a file.  Bazaar will use the path elements from the source.  You
-can rename the file, and once you have, run "bzr resolve FILE" to mark the
-conflict as resolved.
+directory of a file.  Bazaar will use the path elements from the source.
+
+To resolve that kind of conflict, you just have to decide what name should be
+retained for the file involved.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will revert Bazaar choice and keep ``PATH1`` by
+  issuing ``bzr mv PATH2 PATH1``,
+- ``--action=take-theirs`` will acknowledge Bazaar choice of keeping ``PATH2``,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. TODO: Arguably acknowledging Bazaar choice should be an acceptable
+resolution, and *any* name is valid as a conflict resolution at that point.
 
 Parent loop
 -----------
@@ -262,42 +299,67 @@ that, if the change could be applied, a directory would be contained by itself.
 For example::
 
   $ bzr init
-  $ bzr mkdir a
-  $ bzr mkdir b
+  $ bzr mkdir white
+  $ bzr mkdir black
   $ bzr commit -m "BASE"
   $ bzr branch . ../other
-  $ bzr mv a b
+  $ bzr mv white black
   $ bzr commit -m "THIS"
-  $ bzr mv ../other/b ../other/a
+  $ bzr mv ../other/black ../other/white
   $ bzr commit ../other -m "OTHER"
   $ bzr merge ../other
 
-In this situation, Bazaar will cancel the move, and leave "a" in "b".
-You can rename the directories if you like, and once you have, run "bzr resolve
-FILE" to mark the conflict as resolved.
+In this situation, Bazaar will cancel the move, and leave ``white`` in
+``black``.  To resolve that kind of conflict, you just have to decide what
+name should be retained for the directories involved.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will acknowledge Bazaar choice of leaving ``white`` 
+  in ``black``,
+- ``--action=take-theirs`` will revert Bazaar choice and move ``black`` in
+  ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. TODO: Any layout is valid and should be considered as an acceptable
+resolution.
 
 Non-directory parent
 --------------------
 
 Typical message::
 
-  Conflict: FILE.new is not a directory, but has files in it.
+  Conflict: foo.new is not a directory, but has files in it.
   Created directory.
 
 This happens when one side has added files to a directory, and the other side
 has changed the directory into a file or symlink.  For example::
 
   $ bzr init
-  $ bzr mkdir a
+  $ bzr mkdir foo
   $ bzr commit -m "BASE"
   $ bzr branch . ../other
-  $ rmdir a
-  $ touch a
+  $ rmdir foo
+  $ touch foo
   $ bzr commit -m "THIS"
-  $ bzr mkdir ../other/a/b
+  $ bzr mkdir ../other/foo/bar
   $ bzr commit ../other -m "OTHER"
   $ bzr merge ../other
 
+To resolve that kind of conflict, you have to decide what name should be
+retained for the file, directory or symlink involved.
+
+``bzr resolve`` recognizes the following actions:
+
+- ``--action=keep-mine`` will issue ``bzr rm --force foo.new`` and 
+  ``bzr add foo``,
+- ``--action=take-theirs`` will issue ``bzr rm --force foo`` and 
+  ``bzr mv foo.new foo``,
+- ``--action=done`` will just mark the conflict as resolved.
+
+Bazaar cannot auto-detect when conflicts of this kind have been resolved.
+.. FIXME: Arguably .OTHER should be used instead of .new.
 
 MalformedTransform
 ------------------
