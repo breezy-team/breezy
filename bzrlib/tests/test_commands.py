@@ -94,6 +94,9 @@ class TestGetAlias(tests.TestCase):
             commands.get_alias("diff", config=my_config))
 
     def test_single_quotes(self):
+        if sys.platform == 'win32':
+            # skipping due to inability to handle single quotes on win32
+            raise TestSkipped()
         my_config = self._get_config("[ALIASES]\n"
             "diff=diff -r -2..-1 --diff-options "
             "'--strip-trailing-cr -wp'\n")
@@ -111,7 +114,7 @@ class TestGetAlias(tests.TestCase):
 
     def test_unicode(self):
         my_config = self._get_config("[ALIASES]\n"
-            u"iam=whoami 'Erik B\u00e5gfors <erik@bagfors.nu>'\n")
+            u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
                           commands.get_alias("iam", config=my_config))
 
