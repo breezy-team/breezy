@@ -51,6 +51,10 @@ Improvements
 Documentation
 *************
 
+* There is a System Administrator's Guide in ``doc/en/admin-guide``,
+  including discussions of installation, relevant plugins, security and 
+  backup.
+
 API Changes
 ***********
 
