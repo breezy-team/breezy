@@ -120,19 +120,3 @@ class TestResolve(tests.TestCaseWithTransport, TestMixin):
         self.build_tree_contents([('file', 'a\n')])
         note = self.run_bzr('resolve')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')
-
-    def test_resolve_interactive(self):
-        out, err = self.run_bzr('resolve --interactive mydir2', retcode=0,
-                                stdin='quit')
-
-    def test_resolve_interactive_all(self):
-        self.run_bzr_error(['--all and --interactive are mutually exclusive'],
-                          ['resolve', '--interactive', '--all'])
-
-    def test_resolve_interactive_with_no_files(self):
-        self.run_bzr_error(['--interactive requires a single FILE parameter'],
-                          ['resolve', '--interactive'])
-
-    def test_resolve_interactive_with_too_much_files(self):
-        self.run_bzr_error(['--interactive requires a single FILE parameter'],
-                          ['resolve', '--interactive', 'foo', 'bar'])
