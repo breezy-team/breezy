@@ -33,7 +33,10 @@ from bzrlib import (
     workingtree,
     )
 """)
-from bzrlib.option import Option
+from bzrlib import (
+    option,
+    registry,
+    )
 
 
 CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
@@ -54,8 +57,8 @@ class cmd_conflicts(commands.Command):
     Use bzr resolve when you have fixed a problem.
     """
     takes_options = [
-            Option('text',
-                   help='List paths of files with text conflicts.'),
+            option.Option('text',
+                          help='List paths of files with text conflicts.'),
         ]
     _see_also = ['resolve']
 
@@ -68,6 +71,28 @@ class cmd_conflicts(commands.Command):
                 self.outf.write(conflict.path + '\n')
             else:
                 self.outf.write(str(conflict) + '\n')
+
+
+resolve_action_registry = registry.Registry()
+
+
+resolve_action_registry.register(
+    'done', 'done', 'Marks the conflict as resolved' )
+resolve_action_registry.register(
+    'keep-mine', 'keep_mine',
+    'Resolve the conflict preserving the version in the working tree' )
+resolve_action_registry.register(
+    'take-theirs', 'take_theirs',
+    'Resolve the conflict taking the merged version into account' )
+resolve_action_registry.default_key = 'done'
+
+class ResolveActionOption(option.RegistryOption):
+
+    def __init__(self):
+        super(ResolveActionOption, self).__init__(
+            'action', 'How to resolve the conflict.',
+            value_switches=True,
+            registry=resolve_action_registry)
 
 
 class cmd_resolve(commands.Command):
@@ -85,8 +110,8 @@ class cmd_resolve(commands.Command):
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
-            Option('all', help='Resolve all conflicts in this tree.'),
-            Option('interactive', help='Dialog-based resolution'),
+            option.Option('all', help='Resolve all conflicts in this tree.'),
+            option.Option('interactive', help='Dialog-based resolution'),
             ]
     _see_also = ['conflicts']
     def run(self, file_list=None, all=False, interactive=False):

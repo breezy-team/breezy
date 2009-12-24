@@ -21,6 +21,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    option,
     tests,
     )
 from bzrlib.tests import script
@@ -653,3 +654,35 @@ $ bzr commit -m 'Add foo/bar'
 $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
 """)
+
+
+class TestResolveActionOption(tests.TestCase):
+
+    def setUp(self):
+        super(TestResolveActionOption, self).setUp()
+        self.options = [conflicts.ResolveActionOption()]
+        self.parser = option.get_optparser(dict((o.name, o)
+                                                for o in self.options))
+
+    def parse(self, args):
+        return self.parser.parse_args(args)
+
+    def test_unknown_action(self):
+        self.assertRaises(errors.BadOptionValue,
+                          self.parse, ['--action', 'take-me-to-the-moon'])
+
+    def test_done(self):
+        opts, args = self.parse(['--action', 'done'])
+        self.assertEqual({'action':'done'}, opts)
+
+    def test_keep_mine(self):
+        opts, args = self.parse(['--action', 'keep-mine'])
+        self.assertEqual({'action': 'keep_mine'}, opts)
+        opts, args = self.parse(['--keep-mine'])
+        self.assertEqual({'action': 'keep_mine'}, opts)
+
+    def test_take_theirs(self):
+        opts, args = self.parse(['--action', 'take-theirs'])
+        self.assertEqual({'action': 'take_theirs'}, opts)
+        opts, args = self.parse(['--take-theirs'])
+        self.assertEqual({'action': 'take_theirs'}, opts)
