@@ -1,3 +1,6 @@
+# This file is a modified copy of bzrtools' upstream_import.py, last changed in
+# bzrtools 1.14.0.
+
 """Import upstream source into a branch"""
 
 from bz2 import BZ2File
