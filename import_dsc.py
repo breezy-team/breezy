@@ -144,18 +144,19 @@ class FileInfo(object):
             return False
 
 
-def top_directory(path):
+def top_path(path):
     """Return the top directory given in a path."""
-    parts = osutils.splitpath(osutils.normpath(path))
-    if len(parts) > 0:
-        return parts[0]
-    return ''
+    components = splitpath(osutils.normpath(path))
+    if len(components) > 0:
+        return components[0]
+    else:
+        return ''
 
 
 def common_directory(names):
     """Determine a single directory prefix from a list of names"""
     prefixes = set()
-    prefixes.update(map(top_directory, names))
+    prefixes.update(map(top_path, names))
     if '' in prefixes:
         prefixes.remove('')
     if len(prefixes) != 1:
