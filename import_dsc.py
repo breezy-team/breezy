@@ -167,7 +167,6 @@ def common_directory(names):
     return prefix
 
 
-
 def do_directory(tt, trans_id, tree, relative_path, path):
     if isdir(path) and tree.path2id(relative_path) is not None:
         tt.cancel_deletion(trans_id)
