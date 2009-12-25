@@ -61,6 +61,11 @@ class ZipInfoWrapper(object):
         return not self.isdir()
 
 
+files_to_ignore = set(
+    ['.bzrignore', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+     '.bzr-builddeb'])
+
+
 class DirWrapper(object):
     def __init__(self, fileobj, mode='r'):
         assert mode == 'r', mode
@@ -165,6 +170,17 @@ def names_of_files(tar_file):
             yield member.name
 
 
+def should_ignore(relative_path):
+    parts = splitpath(relative_path)
+    if not parts:
+        return False
+    for part in parts:
+        if part in files_to_ignore:
+            return True
+        if part.endswith(',v'):
+            return True
+
+
 def import_tar(tree, tar_input):
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
@@ -204,6 +220,8 @@ def import_archive(tree, archive_file):
             relative_path = relative_path[len(prefix)+1:]
             relative_path = relative_path.rstrip('/')
         if relative_path == '':
+            continue
+        if should_ignore(relative_path):
             continue
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
