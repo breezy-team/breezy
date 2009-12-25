@@ -410,8 +410,9 @@ class Conflict(object):
         raise NotImplementedError(self.cleanup)
 
     def done(self, tree):
-        """Mark the conflict as solved."""
-        raise NotImplementedError(self.done)
+        """Mark the conflict as solved once it has been handled."""
+        # This method does nothing but simplifies the design of upper levels.
+        pass
 
     def keep_mine(self, tree):
         raise NotImplementedError(self.keep_mine)
@@ -440,9 +441,6 @@ class PathConflict(Conflict):
         return s
 
     def cleanup(self, tree):
-        pass
-
-    def done(self, tree):
         pass
 
     def keep_mine(self, tree):
@@ -524,10 +522,6 @@ class HandledConflict(Conflict):
         s = Conflict.as_stanza(self)
         s.add('action', self.action)
         return s
-
-    def done(self, tree):
-        """The conflict has been handled."""
-        pass
 
     def cleanup(self, tree):
         """Nothing to cleanup."""
