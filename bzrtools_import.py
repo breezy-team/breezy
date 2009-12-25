@@ -95,7 +95,6 @@ class FileInfo(object):
         if filepath != '':
             self.name = pathjoin(basename(root), filepath)
         else:
-            print 'root %r' % root
             self.name = basename(root)
         self.type = None
         stat = os.lstat(self.fullpath)
