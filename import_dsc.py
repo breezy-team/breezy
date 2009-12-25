@@ -56,7 +56,7 @@ from bzrlib.errors import (
         NoWorkingTree,
         )
 from bzrlib.export import export
-from bzrlib.osutils import file_iterator, isdir, basename, splitpath
+from bzrlib.osutils import file_iterator, isdir, basename, splitpath, pathjoin
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, mutter, note
@@ -101,12 +101,12 @@ class DirWrapper(object):
 
     def getmembers(self, subdir=None):
         if subdir is not None:
-            mydir = os.path.join(self.root, subdir)
+            mydir = pathjoin(self.root, subdir)
         else:
             mydir = self.root
         for child in os.listdir(mydir):
             if subdir is not None:
-                child = os.path.join(subdir, child)
+                child = pathjoin(subdir, child)
             fi = FileInfo(self.root, child)
             yield fi
             if fi.isdir():
@@ -120,10 +120,10 @@ class DirWrapper(object):
 class FileInfo(object):
 
     def __init__(self, root, filepath):
-        self.fullpath = os.path.join(root, filepath)
+        self.fullpath = pathjoin(root, filepath)
         self.root = root
         if filepath != '':
-            self.name = os.path.join(basename(root), filepath)
+            self.name = pathjoin(basename(root), filepath)
         else:
             self.name = basename(root)
         self.type = None
