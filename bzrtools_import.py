@@ -20,6 +20,7 @@ from bzrlib.trace import warning
 from bzrlib.transform import TreeTransform, resolve_conflicts, cook_conflicts
 from bzrlib.workingtree import WorkingTree
 from bzrlib.plugins.bzrtools.bzrtools import open_from_url
+from bzrlib.plugins.builddeb.errors import UnknownType
 
 class ZipFileWrapper(object):
 
@@ -245,7 +246,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
         elif member.issym():
             tt.create_symlink(member.linkname, trans_id)
         else:
-            continue
+            raise UnknownType(relative_path)
         if tt.tree_file_id(trans_id) is None:
             found = False
             for other_tree in file_ids_from:
