@@ -181,24 +181,27 @@ def should_ignore(relative_path):
             return True
 
 
-def import_tar(tree, tar_input):
+def import_tar(tree, tar_input, file_ids_from=None):
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
     """
     tar_file = tarfile.open('lala', 'r', tar_input)
-    import_archive(tree, tar_file)
+    import_archive(tree, tar_file, file_ids_from=file_ids_from)
 
-def import_zip(tree, zip_input):
+def import_zip(tree, zip_input, file_ids_from=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
-    import_archive(tree, zip_file)
+    import_archive(tree, zip_file, file_ids_from=file_ids_from)
 
-def import_dir(tree, dir_input):
+def import_dir(tree, dir_input, file_ids_from=None):
     dir_file = DirWrapper(dir_input)
-    import_archive(tree, dir_file)
+    import_archive(tree, dir_file, file_ids_from=file_ids_from)
 
-def import_archive(tree, archive_file):
+def import_archive(tree, archive_file, file_ids_from=None):
     prefix = common_directory(names_of_files(archive_file))
     tt = TreeTransform(tree)
+
+    if file_ids_from is None:
+        file_ids_from = []
 
     removed = set()
     for path, entry in tree.inventory.iter_entries():
@@ -244,9 +247,22 @@ def import_archive(tree, archive_file):
         else:
             continue
         if tt.tree_file_id(trans_id) is None:
-            name = basename(member.name.rstrip('/'))
-            file_id = generate_ids.gen_file_id(name)
-            tt.version_file(file_id, trans_id)
+            found = False
+            for other_tree in file_ids_from:
+                other_tree.lock_read()
+                try:
+                    if other_tree.has_filename(relative_path):
+                        file_id = other_tree.path2id(relative_path)
+                        if file_id is not None:
+                            tt.version_file(file_id, trans_id)
+                            found = True
+                            break
+                finally:
+                    other_tree.unlock()
+            if not found:
+                name = basename(member.name.rstrip('/'))
+                file_id = generate_ids.gen_file_id(name)
+                tt.version_file(file_id, trans_id)
 
     for relative_path in implied_parents.difference(added):
         if relative_path == "":
@@ -255,7 +271,20 @@ def import_archive(tree, archive_file):
         path = tree.abspath(relative_path)
         do_directory(tt, trans_id, tree, relative_path, path)
         if tt.tree_file_id(trans_id) is None:
-            tt.version_file(trans_id, trans_id)
+            found = False
+            for other_tree in file_ids_from:
+                other_tree.lock_read()
+                try:
+                    if other_tree.has_filename(relative_path):
+                        file_id = other_tree.path2id(relative_path)
+                        if file_id is not None:
+                            tt.version_file(file_id, trans_id)
+                            found = True
+                            break
+                finally:
+                    other_tree.unlock()
+            if not found:
+                tt.version_file(trans_id, trans_id)
         added.add(relative_path)
 
     for path in removed.difference(added):
