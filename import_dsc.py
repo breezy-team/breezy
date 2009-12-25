@@ -65,11 +65,6 @@ from bzrlib.transport import (
     get_transport,
     )
 
-from bzrlib.plugins.bzrtools.upstream_import import (
-                                                     names_of_files,
-                                                     add_implied_parents,
-                                                     )
-
 from bzrlib.plugins.builddeb.errors import (
                 PristineTarError,
                 TarFailed,
@@ -181,6 +176,21 @@ def do_directory(tt, trans_id, tree, relative_path, path):
         tt.cancel_deletion(trans_id)
     else:
         tt.create_directory(trans_id)
+
+
+def add_implied_parents(implied_parents, path):
+    """Update the set of implied parents from a path"""
+    parent = os.path.dirname(path)
+    if parent in implied_parents:
+        return
+    implied_parents.add(parent)
+    add_implied_parents(implied_parents, parent)
+
+
+def names_of_files(tar_file):
+    for member in tar_file.getmembers():
+        if member.type != "g":
+            yield member.name
 
 
 def should_ignore(relative_path):
