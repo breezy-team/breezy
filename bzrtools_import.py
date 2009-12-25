@@ -193,7 +193,8 @@ def import_zip(tree, zip_input, file_ids_from=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
     import_archive(tree, zip_file, file_ids_from=file_ids_from)
 
-def import_dir(tree, dir_input, file_ids_from=None):
+def import_dir(tree, dir, file_ids_from=None):
+    dir_input = StringIO(dir)
     dir_file = DirWrapper(dir_input)
     import_archive(tree, dir_file, file_ids_from=file_ids_from)
 
