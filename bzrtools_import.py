@@ -136,17 +136,14 @@ def top_path(path):
 
 def common_directory(names):
     """Determine a single directory prefix from a list of names"""
-    possible_prefix = None
-    for name in names:
-        name_top = top_path(name)
-        if name_top == '':
-            return None
-        if possible_prefix is None:
-            possible_prefix = name_top
-        else:
-            if name_top != possible_prefix:
-                return None
-    return possible_prefix
+    prefixes = set()
+    prefixes.update(map(top_path, names))
+    if len(prefixes) != 1:
+        return None
+    prefix = prefixes.pop()
+    if prefix == '':
+        return None
+    return prefix
 
 
 def do_directory(tt, trans_id, tree, relative_path, path):
