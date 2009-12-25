@@ -143,10 +143,6 @@ class FileInfo(object):
         else:
             return False
 
-    def islnk(self):
-        # This could be accurate, but the use below seems like
-        # it wouldn't really care
-        return False
 
 def top_directory(path):
     """Return the top directory given in a path."""
@@ -249,7 +245,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
                 tt.set_executability(None, trans_id)
             tt.cancel_creation(trans_id)
         seen.add(member.name)
-        if member.isreg() or member.islnk():
+        if member.isreg():
             tt.create_file(file_iterator(archive_file.extractfile(member)),
                            trans_id)
             executable = (member.mode & 0111) != 0
