@@ -153,31 +153,6 @@ class FileInfo(object):
         # it wouldn't really care
         return False
 
-
-def import_dir(tree, dir, file_ids_from=None):
-    dir_input = StringIO(dir)
-    dir_file = DirWrapper(dir_input)
-    import_archive(tree, dir_file, file_ids_from=file_ids_from)
-
-
-def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.path2id(relative_path) is not None:
-        tt.cancel_deletion(trans_id)
-    else:
-        tt.create_directory(trans_id)
-
-
-def should_ignore(relative_path):
-    parts = splitpath(relative_path)
-    if not parts:
-        return False
-    for part in parts:
-        if part in files_to_ignore:
-            return True
-        if part.endswith(',v'):
-            return True
-
-
 def top_directory(path):
     """Return the top directory given in a path."""
     parts = osutils.splitpath(osutils.normpath(path))
@@ -199,6 +174,30 @@ def common_directory(names):
         return None
     return prefix
 
+
+
+def do_directory(tt, trans_id, tree, relative_path, path):
+    if isdir(path) and tree.path2id(relative_path) is not None:
+        tt.cancel_deletion(trans_id)
+    else:
+        tt.create_directory(trans_id)
+
+
+def should_ignore(relative_path):
+    parts = splitpath(relative_path)
+    if not parts:
+        return False
+    for part in parts:
+        if part in files_to_ignore:
+            return True
+        if part.endswith(',v'):
+            return True
+
+
+def import_dir(tree, dir, file_ids_from=None):
+    dir_input = StringIO(dir)
+    dir_file = DirWrapper(dir_input)
+    import_archive(tree, dir_file, file_ids_from=file_ids_from)
 
 def import_archive(tree, archive_file, file_ids_from=None):
     prefix = common_directory(names_of_files(archive_file))
