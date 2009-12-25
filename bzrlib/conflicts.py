@@ -441,6 +441,7 @@ class PathConflict(Conflict):
         return s
 
     def cleanup(self, tree):
+        # No additional files have been generated here
         pass
 
     def keep_mine(self, tree):
@@ -459,8 +460,6 @@ class ContentsConflict(PathConflict):
     typestring = 'contents conflict'
 
     format = 'Contents conflict in %(path)s'
-
-    # FIXME: done() should fail ? -- vila 091224
 
     def cleanup(self, tree):
         for suffix in ('.BASE', '.OTHER'):
@@ -683,7 +682,7 @@ class NonDirectoryParent(HandledConflict):
              "  %(action)s."
 
     def keep_mine(self, tree):
-        # FIXME: we should preserve that path at conflict build time !
+        # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith('.new'):
             conflict_path = self.path[:-(len('.new'))]
             tree.remove([self.path], force=True, keep_files=False)
@@ -692,7 +691,7 @@ class NonDirectoryParent(HandledConflict):
             raise NotImplementedError(self.keep_mine)
 
     def take_their(self, tree):
-        # FIXME: we should preserve that path at conflict build time !
+        # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith('.new'):
             conflict_path = self.path[:-(len('.new'))]
             tree.remove([conflict_path], force=True, keep_files=False)

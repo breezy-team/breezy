@@ -9,6 +9,11 @@ Related Bugs:
 .BASE, .THIS, .OTHER, .moved can't be added nor committed.
 https://bugs.edge.launchpad.net/bzr/+bug/414589
 
+More conflict types should be handled by --auto (and the option
+added).
+https://bugs.edge.launchpad.net/bzr/+bug/344013
+https://bugs.edge.launchpad.net/bzr/+bug/389396
+
 https://bugs.edge.launchpad.net/bzr/+bug/236724
 https://bugs.edge.launchpad.net/bzr/+bug/228506
 https://bugs.edge.launchpad.net/bzr/+bug/113809
@@ -24,9 +29,6 @@ https://bugs.edge.launchpad.net/bzr/+bug/457793
 
 TODO:
 =====
-
-- file a bug about more conflicts that *can* be handled by --auto
-  (at least some content conflicts can)
 
 - make sure .moved files can't be committed !
 

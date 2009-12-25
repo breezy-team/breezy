@@ -406,9 +406,6 @@ many operations.
   specified. If none is specified. the number of processes is obtained
   from the OS as before.  (Matt Nordhoff, Vincent Ladeuil)
 
-* ``UIFactory`` can now query for signed integers.
-  (Vincent Ladeuil)
-
 Bug Fixes
 *********
 
