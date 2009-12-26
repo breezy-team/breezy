@@ -56,7 +56,7 @@ from bzrlib.errors import (
         NoWorkingTree,
         )
 from bzrlib.export import export
-from bzrlib.osutils import file_iterator, isdir, basename, splitpath, pathjoin
+from bzrlib.osutils import file_iterator, isdir, basename, splitpath, pathjoin, normpath
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, mutter, note
@@ -146,7 +146,7 @@ class FileInfo(object):
 
 def top_path(path):
     """Return the top directory given in a path."""
-    components = splitpath(osutils.normpath(path))
+    components = splitpath(normpath(path))
     if len(components) > 0:
         return components[0]
     else:
@@ -228,7 +228,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             # type 'g' is a header
             continue
         relative_path = member.name
-        relative_path = osutils.normpath(relative_path)
+        relative_path = normpath(relative_path)
         relative_path = relative_path.lstrip('/')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
