@@ -127,7 +127,7 @@ class FileInfo(object):
 
 def top_path(path):
     """Return the top directory given in a path."""
-    components = splitpath(path)
+    components = splitpath(osutils.normpath(path))
     if len(components) > 0:
         return components[0]
     else:
