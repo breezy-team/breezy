@@ -232,6 +232,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
         relative_path = relative_path.lstrip('/')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
+            relative_path = relative_path.rstrip('/')
         if relative_path == '' or relative_path == '.':
             continue
         if should_ignore(relative_path):
