@@ -15,7 +15,7 @@ from bzrlib import generate_ids
 from bzrlib.bzrdir import BzrDir
 from bzrlib.errors import NoSuchFile, BzrCommandError, NotBranchError
 from bzrlib.osutils import (pathjoin, isdir, file_iterator, basename,
-                            file_kind, splitpath)
+                            file_kind, splitpath, normpath)
 from bzrlib.trace import warning
 from bzrlib.transform import TreeTransform, resolve_conflicts, cook_conflicts
 from bzrlib.workingtree import WorkingTree
@@ -127,7 +127,7 @@ class FileInfo(object):
 
 def top_path(path):
     """Return the top directory given in a path."""
-    components = splitpath(osutils.normpath(path))
+    components = splitpath(normpath(path))
     if len(components) > 0:
         return components[0]
     else:
@@ -220,7 +220,7 @@ def import_archive(tree, archive_file, file_ids_from=None):
             # type 'g' is a header
             continue
         relative_path = member.name
-        relative_path = osutils.normpath(relative_path)
+        relative_path = normpath(relative_path)
         relative_path = relative_path.lstrip('/')
         if prefix is not None:
             relative_path = relative_path[len(prefix)+1:]
