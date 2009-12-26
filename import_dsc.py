@@ -37,7 +37,6 @@ import os
 import shutil
 import stat
 from subprocess import Popen, PIPE
-from StringIO import StringIO
 import tempfile
 
 from debian_bundle import deb822
@@ -45,7 +44,6 @@ from debian_bundle.changelog import Version, Changelog, VersionError
 
 from bzrlib import (
                     bzrdir,
-                    generate_ids,
                     osutils,
                     )
 from bzrlib.config import ConfigObj
@@ -56,19 +54,17 @@ from bzrlib.errors import (
         NoWorkingTree,
         )
 from bzrlib.export import export
-from bzrlib.osutils import file_iterator, isdir, basename, splitpath, pathjoin, normpath
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, mutter, note
-from bzrlib.transform import TreeTransform, cook_conflicts, resolve_conflicts
 from bzrlib.transport import (
     get_transport,
     )
 
+from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
                 PristineTarError,
                 TarFailed,
-                UnknownType,
                 UpstreamAlreadyImported,
                 UpstreamBranchAlreadyMerged,
                 )
@@ -79,231 +75,6 @@ from bzrlib.plugins.builddeb.util import (
     open_transport,
     subprocess_setup,
     )
-
-
-files_to_ignore = set(
-    ['.bzrignore', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
-     '.bzr-builddeb'])
-
-
-class DirWrapper(object):
-    def __init__(self, fileobj, mode='r'):
-        assert mode == 'r', mode
-        self.root = os.path.realpath(fileobj.read())
-
-    def __repr__(self):
-        return 'DirWrapper(%r)' % self.root
-
-    def getmembers(self, subdir=None):
-        if subdir is not None:
-            mydir = pathjoin(self.root, subdir)
-        else:
-            mydir = self.root
-        for child in os.listdir(mydir):
-            if subdir is not None:
-                child = pathjoin(subdir, child)
-            fi = FileInfo(self.root, child)
-            yield fi
-            if fi.isdir():
-                for v in self.getmembers(child):
-                    yield v
-
-    def extractfile(self, member):
-        return open(member.fullpath)
-
-
-class FileInfo(object):
-
-    def __init__(self, root, filepath):
-        self.fullpath = pathjoin(root, filepath)
-        self.root = root
-        if filepath != '':
-            self.name = pathjoin(basename(root), filepath)
-        else:
-            self.name = basename(root)
-        self.type = None
-        stat = os.lstat(self.fullpath)
-        self.mode = stat.st_mode
-        if self.isdir():
-            self.name += '/'
-
-    def __repr__(self):
-        return 'FileInfo(%r)' % self.name
-
-    def isreg(self):
-        return stat.S_ISREG(self.mode)
-
-    def isdir(self):
-        return stat.S_ISDIR(self.mode)
-
-    def issym(self):
-        if stat.S_ISLNK(self.mode):
-            self.linkname = os.readlink(self.fullpath)
-            return True
-        else:
-            return False
-
-
-def top_path(path):
-    """Return the top directory given in a path."""
-    components = splitpath(normpath(path))
-    if len(components) > 0:
-        return components[0]
-    else:
-        return ''
-
-
-def common_directory(names):
-    """Determine a single directory prefix from a list of names"""
-    prefixes = set()
-    prefixes.update(map(top_path, names))
-    if '' in prefixes:
-        prefixes.remove('')
-    if len(prefixes) != 1:
-        return None
-    prefix = prefixes.pop()
-    if prefix == '':
-        return None
-    return prefix
-
-
-def do_directory(tt, trans_id, tree, relative_path, path):
-    if isdir(path) and tree.path2id(relative_path) is not None:
-        tt.cancel_deletion(trans_id)
-    else:
-        tt.create_directory(trans_id)
-
-
-def add_implied_parents(implied_parents, path):
-    """Update the set of implied parents from a path"""
-    parent = os.path.dirname(path)
-    if parent in implied_parents:
-        return
-    implied_parents.add(parent)
-    add_implied_parents(implied_parents, parent)
-
-
-def names_of_files(tar_file):
-    for member in tar_file.getmembers():
-        if member.type != "g":
-            yield member.name
-
-
-def should_ignore(relative_path):
-    parts = splitpath(relative_path)
-    if not parts:
-        return False
-    for part in parts:
-        if part in files_to_ignore:
-            return True
-        if part.endswith(',v'):
-            return True
-
-
-def import_dir(tree, dir, file_ids_from=None):
-    dir_input = StringIO(dir)
-    dir_file = DirWrapper(dir_input)
-    import_archive(tree, dir_file, file_ids_from=file_ids_from)
-
-def import_archive(tree, archive_file, file_ids_from=None):
-    prefix = common_directory(names_of_files(archive_file))
-    tt = TreeTransform(tree)
-
-    if file_ids_from is None:
-        file_ids_from = []
-
-    removed = set()
-    for path, entry in tree.inventory.iter_entries():
-        if entry.parent_id is None:
-            continue
-        trans_id = tt.trans_id_tree_path(path)
-        tt.delete_contents(trans_id)
-        removed.add(path)
-
-    added = set()
-    implied_parents = set()
-    seen = set()
-    for member in archive_file.getmembers():
-        if member.type == 'g':
-            # type 'g' is a header
-            continue
-        relative_path = member.name
-        relative_path = normpath(relative_path)
-        relative_path = relative_path.lstrip('/')
-        if prefix is not None:
-            relative_path = relative_path[len(prefix)+1:]
-            relative_path = relative_path.rstrip('/')
-        if relative_path == '' or relative_path == '.':
-            continue
-        if should_ignore(relative_path):
-            continue
-        add_implied_parents(implied_parents, relative_path)
-        trans_id = tt.trans_id_tree_path(relative_path)
-        added.add(relative_path.rstrip('/'))
-        path = tree.abspath(relative_path)
-        if member.name in seen:
-            if tt.final_kind(trans_id) == 'file':
-                tt.set_executability(None, trans_id)
-            tt.cancel_creation(trans_id)
-        seen.add(member.name)
-        if member.isreg():
-            tt.create_file(file_iterator(archive_file.extractfile(member)),
-                           trans_id)
-            executable = (member.mode & 0111) != 0
-            tt.set_executability(executable, trans_id)
-        elif member.isdir():
-            do_directory(tt, trans_id, tree, relative_path, path)
-        elif member.issym():
-            tt.create_symlink(member.linkname, trans_id)
-        else:
-            raise UnknownType(relative_path)
-        if tt.tree_file_id(trans_id) is None:
-            found = False
-            for other_tree in file_ids_from:
-                other_tree.lock_read()
-                try:
-                    if other_tree.has_filename(relative_path):
-                        file_id = other_tree.path2id(relative_path)
-                        if file_id is not None:
-                            tt.version_file(file_id, trans_id)
-                            found = True
-                            break
-                finally:
-                    other_tree.unlock()
-            if not found:
-                name = basename(member.name.rstrip('/'))
-                file_id = generate_ids.gen_file_id(name)
-                tt.version_file(file_id, trans_id)
-
-    for relative_path in implied_parents.difference(added):
-        if relative_path == "":
-            continue
-        trans_id = tt.trans_id_tree_path(relative_path)
-        path = tree.abspath(relative_path)
-        do_directory(tt, trans_id, tree, relative_path, path)
-        if tt.tree_file_id(trans_id) is None:
-            found = False
-            for other_tree in file_ids_from:
-                other_tree.lock_read()
-                try:
-                    if other_tree.has_filename(relative_path):
-                        file_id = other_tree.path2id(relative_path)
-                        if file_id is not None:
-                            tt.version_file(file_id, trans_id)
-                            found = True
-                            break
-                finally:
-                    other_tree.unlock()
-            if not found:
-                tt.version_file(trans_id, trans_id)
-        added.add(relative_path)
-
-    for path in removed.difference(added):
-        tt.unversion_file(tt.trans_id_tree_path(path))
-
-    for conflict in cook_conflicts(resolve_conflicts(tt), tt):
-        warning(conflict)
-    tt.apply()
 
 
 class DscCache(object):
