@@ -1,11 +1,15 @@
+0.5.6   UNRELEASED
+
+  BUG FIXES
+
+   * Fix rebase to not discard revisions off the leftmost path.
+     (Robert Collins, Max Bowsher, #266897)
+
 0.5.5	2009-12-15
 
   BUG FIXES
 
    * Mark as compatible with Bazaar 2.1.
-
-   * rebasing of merges was discarding the merged parents.
-     (Robert Collins, #266897)
 
   FEATURES
 
