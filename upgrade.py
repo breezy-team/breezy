@@ -1,5 +1,5 @@
 # Copyright (C) 2006-2009 by Jelmer Vernooij
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -52,7 +52,7 @@ class UpgradeChangesContent(BzrError):
 
 def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
     """Create a new revision id for an upgraded version of a revision.
-    
+
     Prevents suffix to be appended needlessly.
 
     :param revid: Original revision id.
@@ -66,7 +66,7 @@ def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
 
 def create_deterministic_revid(revid, new_parents):
     """Create a new deterministic revision id with specified new parents.
-    
+
     Prevents suffix to be appended needlessly.
 
     :param revid: Original revision id.
@@ -86,7 +86,7 @@ def upgrade_workingtree(wt, generate_rebase_map, determine_new_revid,
     wt.lock_write()
     try:
         old_revid = wt.last_revision()
-        revid_renames = upgrade_branch(wt.branch, generate_rebase_map, 
+        revid_renames = upgrade_branch(wt.branch, generate_rebase_map,
             determine_new_revid, allow_changes=allow_changes, verbose=verbose)
         last_revid = wt.branch.last_revision()
         if old_revid == last_revid:
@@ -112,7 +112,7 @@ def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
         for i, (name, revid) in enumerate(tags_dict.iteritems()):
             pb.update("upgrading tags", i, len(tags_dict))
             if not revid in renames:
-                renames.update(upgrade_repository(repository, generate_rebase_map, determine_new_revid, 
+                renames.update(upgrade_repository(repository, generate_rebase_map, determine_new_revid,
                       revision_id=revid, allow_changes=allow_changes, verbose=verbose))
             if revid in renames and (branch_ancestry is None or not revid in branch_ancestry):
                 tags.set_tag(name, renames[revid])
@@ -123,7 +123,7 @@ def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
 def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
                    allow_changes=False, verbose=False):
     """Upgrade a branch to the current mapping version.
-    
+
     :param branch: Branch to upgrade.
     :param foreign_repository: Repository to fetch new revisions from
     :param allow_changes: Allow changes in mappings.
@@ -131,21 +131,21 @@ def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
     """
     revid = branch.last_revision()
     renames = upgrade_repository(branch.repository, generate_rebase_map,
-              determine_new_revid, revision_id=revid, 
+              determine_new_revid, revision_id=revid,
               allow_changes=allow_changes, verbose=verbose)
     if revid in renames:
         branch.generate_revision_history(renames[revid])
     ancestry = branch.repository.get_ancestry(branch.last_revision(),
                     topo_sorted=False)
-    upgrade_tags(branch.tags, branch.repository, generate_rebase_map, 
-            determine_new_revid, 
+    upgrade_tags(branch.tags, branch.repository, generate_rebase_map,
+            determine_new_revid,
            allow_changes=allow_changes, verbose=verbose, branch_renames=renames,
            branch_ancestry=ancestry)
     return renames
 
 
 def check_revision_changed(oldrev, newrev):
-    """Check if two revisions are different. This is exactly the same 
+    """Check if two revisions are different. This is exactly the same
     as Revision.equals() except that it does not check the revision_id."""
     if (newrev.inventory_sha1 != oldrev.inventory_sha1 or
         newrev.timestamp != oldrev.timestamp or
@@ -162,7 +162,7 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
     :param new_mapping: Mapping to upgrade revisions to.
     :param vcs: The foreign vcs
     :param revs: Iterator over revisions to upgrade.
-    :return: Map from old revids as keys, new revids as values stored in a 
+    :return: Map from old revids as keys, new revids as values stored in a
              dictionary.
     """
     rename_map = {}
@@ -186,7 +186,7 @@ def generate_rebase_map_from_mappings(repository, graph, revision_id, foreign_re
     if revision_id is None:
         potential = repository.all_revision_ids()
     else:
-        potential = itertools.imap(lambda (rev, parents): rev, 
+        potential = itertools.imap(lambda (rev, parents): rev,
                 graph.iter_ancestry([revision_id]))
 
     def determine_upgraded_revid(foreign_revid):
@@ -204,7 +204,7 @@ def generate_rebase_map_from_mappings(repository, graph, revision_id, foreign_re
                 return None
         return new_revid
 
-    return generate_upgrade_map(potential, foreign_repository.vcs, 
+    return generate_upgrade_map(potential, foreign_repository.vcs,
                                        determine_upgraded_revid)
 
 
@@ -215,7 +215,7 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
     :param repository: Repository to do upgrade in
     :param foreign_repository: Subversion repository to fetch new revisions from.
     :param new_mapping: New mapping to use.
-    :param revision_id: Revision to upgrade (None for all revisions in 
+    :param revision_id: Revision to upgrade (None for all revisions in
         repository.)
     :param allow_changes: Whether an upgrade is allowed to change the contents
         of revisions.
@@ -224,7 +224,7 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
 
     graph = repository.get_graph()
     upgrade_map = generate_rebase_map(revision_id)
-   
+
     if not allow_changes:
         for oldrevid, newrevid in upgrade_map.iteritems():
             oldrev = repository.get_revision(oldrevid)
@@ -232,12 +232,12 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
             check_revision_changed(oldrev, newrev)
 
     if revision_id is None:
-        heads = repository.all_revision_ids() 
+        heads = repository.all_revision_ids()
     else:
         heads = [revision_id]
 
 
-    plan = generate_transpose_plan(graph.iter_ancestry(heads), upgrade_map, 
+    plan = generate_transpose_plan(graph.iter_ancestry(heads), upgrade_map,
       graph, determine_new_revid)
     def remove_parents((oldrevid, (newrevid, parents))):
         return (oldrevid, newrevid)
@@ -245,16 +245,16 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
 
     return (plan, upgrade_map)
 
- 
-def upgrade_repository(repository, generate_rebase_map, 
-                       determine_new_revid, revision_id=None, 
+
+def upgrade_repository(repository, generate_rebase_map,
+                       determine_new_revid, revision_id=None,
                        allow_changes=False, verbose=False):
     """Upgrade the revisions in repository until the specified stop revision.
 
     :param repository: Repository in which to upgrade.
     :param foreign_repository: Repository to fetch new revisions from.
     :param new_mapping: New mapping.
-    :param revision_id: Revision id up until which to upgrade, or None for 
+    :param revision_id: Revision id up until which to upgrade, or None for
                         all revisions.
     :param allow_changes: Allow changes to mappings.
     :param verbose: Whether to print list of rewrites

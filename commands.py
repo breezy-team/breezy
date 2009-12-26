@@ -1,5 +1,5 @@
 # Copyright (C) 2007 by Jelmer Vernooij <jelmer@samba.org>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -77,7 +77,7 @@ class cmd_rebase(Command):
             help="Rebase pending merges onto local branch."),
         Option('onto', help='Different revision to replay onto.',
             type=str)]
-    
+
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None,
             merge_type=None, verbose=False, dry_run=False,
@@ -188,7 +188,7 @@ class cmd_rebase(Command):
                     note("%s" % revid)
 
             # Check for changes in the working tree.
-            if (not pending_merges and 
+            if (not pending_merges and
                 wt.basis_tree().changes_from(wt).has_changed()):
                 raise UncommittedChanges(wt)
 
@@ -212,7 +212,7 @@ class cmd_rebase(Command):
 
 class cmd_rebase_abort(Command):
     """Abort an interrupted rebase."""
-    
+
     @display_command
     def run(self):
         from bzrlib.plugins.rebase.rebase import (
@@ -238,7 +238,7 @@ class cmd_rebase_abort(Command):
 class cmd_rebase_continue(Command):
     """Continue an interrupted rebase after resolving conflicts."""
     takes_options = ['merge-type']
-    
+
     @display_command
     def run(self, merge_type=None):
         from bzrlib.plugins.rebase.rebase import (
@@ -276,18 +276,18 @@ class cmd_rebase_continue(Command):
                 raise BzrCommandError("A conflict occurred replaying a commit."
                     " Resolve the conflict and run 'bzr rebase-continue' or "
                     "run 'bzr rebase-abort'.")
-            # Remove plan file  
+            # Remove plan file
             remove_rebase_plan(wt)
         finally:
             wt.unlock()
 
 
 class cmd_rebase_todo(Command):
-    """Print list of revisions that still need to be replayed as part of the 
+    """Print list of revisions that still need to be replayed as part of the
     current rebase operation.
 
     """
-    
+
     def run(self):
         from bzrlib.plugins.rebase.rebase import (
             rebase_todo,
@@ -315,7 +315,7 @@ class cmd_replay(Command):
     """Replay commits from another branch on top of this one.
 
     """
-    
+
     takes_options = ['revision', 'merge-type']
     takes_args = ['location']
     hidden = True
@@ -367,15 +367,15 @@ class cmd_replay(Command):
 
 class cmd_foreign_mapping_upgrade(Command):
     """Upgrade revisions mapped from a foreign version control system.
-    
-    This will change the identity of revisions whose parents 
+
+    This will change the identity of revisions whose parents
     were mapped from revisions in the other version control system.
 
-    You are recommended to run "bzr check" in the local repository 
+    You are recommended to run "bzr check" in the local repository
     after running this command.
     """
     takes_args = ['from_repository?']
-    takes_options = ['verbose', 
+    takes_options = ['verbose',
             Option("idmap-file", help="Write map with old and new revision ids.", type=str)]
 
     def run(self, from_repository=None, verbose=False, idmap_file=None):
@@ -418,11 +418,11 @@ class cmd_foreign_mapping_upgrade(Command):
         new_mapping = from_repository.get_mapping()
 
         def generate_rebase_map(revision_id):
-            return generate_rebase_map_from_mappings(branch_to.repository, 
-                branch_to.repository.get_graph(), revision_id, from_repository, 
+            return generate_rebase_map_from_mappings(branch_to.repository,
+                branch_to.repository.get_graph(), revision_id, from_repository,
                 new_mapping)
         def determine_new_revid(old_revid, new_parents):
-            # If this revision id already exists round-tripped upstream, 
+            # If this revision id already exists round-tripped upstream,
             # leave it alone.
             if from_repository.has_revision(old_revid):
                 return old_revid
@@ -453,8 +453,8 @@ class cmd_foreign_mapping_upgrade(Command):
 class cmd_pseudonyms(Command):
     """Show a list of 'pseudonym' revisions.
 
-    Pseudonym revisions are revisions that are roughly the same revision, 
-    usually because they were converted from the same revision in a 
+    Pseudonym revisions are revisions that are roughly the same revision,
+    usually because they were converted from the same revision in a
     foreign version control system.
     """
 
@@ -472,16 +472,16 @@ class cmd_pseudonyms(Command):
 
 class cmd_rebase_foreign(Command):
     """Rebase revisions based on a branch created with a different import tool.
-    
-    This will change the identity of revisions whose parents 
+
+    This will change the identity of revisions whose parents
     were mapped from revisions in the other version control system.
 
-    You are recommended to run "bzr check" in the local repository 
+    You are recommended to run "bzr check" in the local repository
     after running this command.
     """
     takes_args = ['new_base?']
-    takes_options = ['verbose', 
-        Option("idmap-file", help="Write map with old and new revision ids.", 
+    takes_options = ['verbose',
+        Option("idmap-file", help="Write map with old and new revision ids.",
                type=str)]
 
     def run(self, new_base=None, verbose=False, idmap_file=None):
@@ -520,14 +520,14 @@ class cmd_rebase_foreign(Command):
         else:
             new_base = Branch.open(new_base)
 
-        branch_to.repository.fetch(new_base.repository, 
+        branch_to.repository.fetch(new_base.repository,
             revision_id=branch_to.last_revision())
-    
+
         pseudonyms = pseudonyms_as_dict(find_pseudonyms(branch_to.repository,
             branch_to.repository.all_revision_ids()))
 
         def generate_rebase_map(revision_id):
-            return generate_rebase_map_from_pseudonyms(pseudonyms, 
+            return generate_rebase_map_from_pseudonyms(pseudonyms,
                 branch_to.repository.get_ancestry(revision_id),
                 branch_to.repository.get_ancestry(new_base.last_revision()))
         def determine_new_revid(old_revid, new_parents):
@@ -541,7 +541,7 @@ class cmd_rebase_foreign(Command):
                     determine_new_revid, allow_changes=True, verbose=verbose)
             else:
                 renames = upgrade_branch(branch_to, generate_rebase_map,
-                        determine_new_revid, allow_changes=True, 
+                        determine_new_revid, allow_changes=True,
                         verbose=verbose)
         finally:
             branch_to.unlock()

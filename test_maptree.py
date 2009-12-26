@@ -1,5 +1,5 @@
 # Copyright (C) 2006-2007 by Jelmer Vernooij
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -27,7 +27,7 @@ from bzrlib.plugins.rebase.maptree import (
 class EmptyMapTreeTests(TestCaseWithTransport):
     def setUp(self):
         super(EmptyMapTreeTests, self).setUp()
-        tree = self.make_branch_and_tree('branch') 
+        tree = self.make_branch_and_tree('branch')
         self.oldtree = tree
 
     def test_has_filename(self):

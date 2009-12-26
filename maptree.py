@@ -1,5 +1,5 @@
 # Copyright (C) 2006-2007 by Jelmer Vernooij
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -89,7 +89,7 @@ class MapTree:
     """
 
     def __init__(self, oldtree, fileid_map):
-        """Create a new MapTree. 
+        """Create a new MapTree.
 
         :param oldtree: Old tree to map to.
         :param fileid_map: Map with old -> new file ids.
@@ -122,7 +122,7 @@ class MapTree:
 
     def get_file_sha1(self, file_id, path=None):
         "See Tree.get_file_sha1()."""
-        return self.oldtree.get_file_sha1(file_id=self.old_id(file_id), 
+        return self.oldtree.get_file_sha1(file_id=self.old_id(file_id),
                                           path=path)
 
     def get_file_with_stat(self, file_id, path=None):
@@ -142,7 +142,7 @@ class MapTree:
 
     def is_executable(self, file_id, path=None):
         "See Tree.is_executable()."""
-        return self.oldtree.is_executable(self.old_id(file_id=file_id), 
+        return self.oldtree.is_executable(self.old_id(file_id=file_id),
                                           path=path)
 
     def has_filename(self, filename):

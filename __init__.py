@@ -1,5 +1,5 @@
 # Copyright (C) 2007 by Jelmer Vernooij <jelmer@samba.org>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -41,10 +41,10 @@ __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 for cmd in bzr_commands:
-    plugin_cmds.register_lazy("cmd_%s" % cmd, [], 
+    plugin_cmds.register_lazy("cmd_%s" % cmd, [],
         "bzrlib.plugins.rebase.commands")
 
-plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [], 
+plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [],
                           'bzrlib.plugins.rebase.commands')
 
 

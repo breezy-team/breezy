@@ -1,5 +1,5 @@
 # Copyright (C) 2006-2007 by Jelmer Vernooij
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -131,7 +131,7 @@ def unmarshall_rebase_plan(text):
 
 def regenerate_default_revid(repository, revid):
     """Generate a revision id for the rebase of an existing revision.
-    
+
     :param repository: Repository in which the revision is present.
     :param revid: Revision id of the revision that is being rebased.
     :return: new revision id."""
@@ -141,7 +141,7 @@ def regenerate_default_revid(repository, revid):
 
 def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     generate_revid, skip_full_merged=False):
-    """Create a simple rebase plan that replays history based 
+    """Create a simple rebase plan that replays history based
     on one revision being replayed on top of another.
 
     :param todo_set: A set of revisions to rebase. Only the revisions from
@@ -152,7 +152,7 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     :param onto_revid: Id of revision on top of which to replay
     :param graph: Graph object
     :param generate_revid: Function for generating new revision ids
-    :param skip_full_merged: Skip revisions that merge already merged 
+    :param skip_full_merged: Skip revisions that merge already merged
                              revisions.
 
     :return: replace map
@@ -236,7 +236,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
 
     parent_map.update(graph.get_parent_map(filter(lambda x: not x in parent_map, renames.values())))
 
-    # todo contains a list of revisions that need to 
+    # todo contains a list of revisions that need to
     # be rewritten
     for r, v in renames.items():
         replace_map[r] = (v, parent_map[v])
@@ -267,7 +267,7 @@ def generate_transpose_plan(ancestry, renames, graph, generate_revid):
                     parents = list(parents)
                     parents[parents.index(r)] = replace_map[r][0]
                     parents = tuple(parents)
-                replace_map[c] = (generate_revid(c, tuple(parents)), 
+                replace_map[c] = (generate_revid(c, tuple(parents)),
                                   tuple(parents))
                 if replace_map[c][0] == c:
                     del replace_map[c]
@@ -318,10 +318,10 @@ def rebase(repository, replace_map, replay_fn):
             replay_fn(repository, revid, newrevid, newparents)
     finally:
         pb.finished()
-        
+
 
 def replay_snapshot(repository, oldrevid, newrevid, new_parents):
-    """Replay a commit by simply commiting the same snapshot with different 
+    """Replay a commit by simply commiting the same snapshot with different
     parents.
 
     :param repository: Repository in which the revision is present.
@@ -330,15 +330,15 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
     :param new_parents: Revision ids of the new parent revisions.
     """
     assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
-    mutter('creating copy %r of %r with new parents %r' % 
+    mutter('creating copy %r of %r with new parents %r' %
                                (newrevid, oldrevid, new_parents))
     oldrev = repository.get_revision(oldrevid)
 
     revprops = dict(oldrev.properties)
     revprops[REVPROP_REBASE_OF] = oldrevid
 
-    builder = repository.get_commit_builder(branch=None, 
-                                            parents=new_parents, 
+    builder = repository.get_commit_builder(branch=None,
+                                            parents=new_parents,
                                             config=Config(),
                                             committer=oldrev.committer,
                                             timestamp=oldrev.timestamp,
@@ -360,7 +360,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
             for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
                 pb.update('upgrading file', i, len(mappedtree.inventory))
                 ie = old_ie.copy()
-                # Either this file was modified last in this revision, 
+                # Either this file was modified last in this revision,
                 # in which case it has to be rewritten
                 if old_ie.revision == oldrevid:
                     if repository.texts.has_key((ie.file_id, newrevid)):
@@ -370,7 +370,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
                         # Create a new text
                         ie.revision = None
                 else:
-                    # or it was already there before the commit, in 
+                    # or it was already there before the commit, in
                     # which case the right revision should be used
                     # one of the old parents had this revision, so find that
                     # and then use the matching new parent
@@ -399,7 +399,7 @@ def replay_snapshot(repository, oldrevid, newrevid, new_parents):
 
 def commit_rebase(wt, oldrev, newrevid):
     """Commit a rebase.
-    
+
     :param wt: Mutable tree with the changes.
     :param oldrev: Revision info of new revision to commit.
     :param newrevid: New revision id."""
@@ -409,7 +409,7 @@ def commit_rebase(wt, oldrev, newrevid):
     committer = wt.branch.get_config().username()
     authors = oldrev.get_apparent_authors()
     if oldrev.committer == committer:
-        # No need to explicitly record the authors if the original 
+        # No need to explicitly record the authors if the original
         # committer is rebasing.
         if [oldrev.committer] == authors:
             authors = None
@@ -420,7 +420,7 @@ def commit_rebase(wt, oldrev, newrevid):
         del revprops['author']
     if 'authors' in revprops:
         del revprops['authors']
-    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp, 
+    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
               committer=committer, authors=authors)
     write_active_rebase_revid(wt, None)
@@ -440,16 +440,16 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
     if len(oldparents) == 0:
         return NULL_REVISION
 
-    # In the case of a "simple" revision with just one parent, 
+    # In the case of a "simple" revision with just one parent,
     # that parent should be the base
     if len(oldparents) == 1:
         return oldparents[0]
 
     # In case the rhs parent(s) of the origin revision has already been merged
-    # in the new branch, use diff between rhs parent and diff from 
+    # in the new branch, use diff between rhs parent and diff from
     # original revision
     if len(newparents) == 1:
-        # FIXME: Find oldparents entry that matches newparents[0] 
+        # FIXME: Find oldparents entry that matches newparents[0]
         # and return it
         return oldparents[1]
 
@@ -459,7 +459,7 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
         return oldparents[0]
 
 
-def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
+def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
                              merge_type=None):
     """Replay a commit in a working tree, with a different base.
 
@@ -473,7 +473,7 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
         from bzrlib.merge import Merge3Merger
         merge_type = Merge3Merger
     oldrev = wt.branch.repository.get_revision(oldrevid)
-    # Make sure there are no conflicts or pending merges/changes 
+    # Make sure there are no conflicts or pending merges/changes
     # in the working tree
     complete_revert(wt, [newparents[0]])
     assert not wt.changes_from(wt.basis_tree()).has_changed(), "Changes in rev"
@@ -503,13 +503,13 @@ def workingtree_replay(wt, map_ids=False, merge_type=None):
     """
     def replay(repository, oldrevid, newrevid, newparents):
         assert wt.branch.repository == repository, "Different repository"
-        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents, 
+        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
                                         merge_type=merge_type)
     return replay
 
 
 def write_active_rebase_revid(wt, revid):
-    """Write the id of the revision that is currently being rebased. 
+    """Write the id of the revision that is currently being rebased.
 
     :param wt: Working Tree that is being used for the rebase.
     :param revid: Revision id to write
@@ -536,7 +536,7 @@ def read_active_rebase_revid(wt):
 
 
 def complete_revert(wt, newparents):
-    """Simple helper that reverts to specified new parents and makes sure none 
+    """Simple helper that reverts to specified new parents and makes sure none
     of the extra files are left around.
 
     :param wt: Working tree to use for rebase

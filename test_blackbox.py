@@ -1,5 +1,5 @@
 # Copyright (C) 2007 by Jelmer Vernooij <jelmer@samba.org>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -57,11 +57,11 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m bloe')
         os.chdir('../feature')
         self.check_output("Base branch is descendant of current branch. Pulling instead.\n", 'rebase ../main')
-        self.assertEquals(Branch.open("../feature").revision_history(), 
+        self.assertEquals(Branch.open("../feature").revision_history(),
                           Branch.open("../main").revision_history())
 
     def test_no_pending_merges(self):
-        self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'], 
+        self.run_bzr_error(['bzr: ERROR: No pending merges present.\n'],
                            ['rebase', '--pending-merges'])
 
     def test_pending_merges(self):
@@ -178,15 +178,15 @@ class TestRebaseSimple(ExternalBase):
         self.check_output('3\n', 'revno')
 
     def test_continue_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase to continue'], 
+        self.run_bzr_error(['bzr: ERROR: No rebase to continue'],
                            ['rebase-continue'])
 
     def test_abort_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase to abort'], 
+        self.run_bzr_error(['bzr: ERROR: No rebase to abort'],
                            ['rebase-abort'])
 
     def test_todo_nothing(self):
-        self.run_bzr_error(['bzr: ERROR: No rebase in progress'], 
+        self.run_bzr_error(['bzr: ERROR: No rebase in progress'],
                            ['rebase-todo'])
 
     def test_onto(self):

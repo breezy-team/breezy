@@ -1,5 +1,5 @@
 # Copyright (C) 2009 by Jelmer Vernooij <jelmer@samba.org>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -93,7 +93,7 @@ def extract_foreign_revids(rev):
     except errors.InvalidRevisionId:
         pass
     else:
-        ret.add((mapping.vcs.abbreviation, 
+        ret.add((mapping.vcs.abbreviation,
             mapping.vcs.serialize_foreign_revid(foreign_revid)))
 
     return ret
