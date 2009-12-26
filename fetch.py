@@ -348,6 +348,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     :param mapping: Mapping to use
     :param object_iter: Iterator over Git objects.
     """
+    target_git_object_retriever._idmap.start_write_group() # FIXME: try/finally
     def lookup_object(sha):
         try:
             return object_iter[sha]
@@ -406,7 +407,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             hint = repo.commit_write_group()
             if hint is not None:
                 pack_hints.extend(hint)
-    target_git_object_retriever._idmap.commit()
+    target_git_object_retriever._idmap.commit_write_group()
     return pack_hints
 
 

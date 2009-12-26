@@ -121,8 +121,14 @@ class GitShaMap(object):
         """List the SHA1s."""
         raise NotImplementedError(self.sha1s)
 
-    def commit(self):
+    def start_write_group(self):
+        """Start writing changes."""
+
+    def commit_write_group(self):
         """Commit any pending changes."""
+
+    def abort_write_group(self):
+        """Abort any pending changes."""
 
 
 class DictGitShaMap(GitShaMap):
@@ -195,7 +201,7 @@ class SqliteGitShaMap(GitShaMap):
             return row[0].encode("utf-8")
         raise KeyError
 
-    def commit(self):
+    def commit_write_group(self):
         self.db.commit()
 
     def add_entries(self, entries):
@@ -320,9 +326,6 @@ class TdbGitShaMap(GitShaMap):
 
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
-
-    def commit(self):
-        pass
 
     def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
