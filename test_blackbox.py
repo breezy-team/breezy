@@ -237,6 +237,12 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m merge')
         self.run_bzr('rebase')
 
+    def strip_last_revid_part(self, revid):
+        """Assume revid is a revid in the default form, and strip the part
+        which would be random.
+        """
+        return revid[:revid.rindex('-')]
+
     def test_always_rebase_merges(self):
         trunk = self.make_branch_and_tree('trunk')
         trunk.commit('base')
@@ -256,7 +262,8 @@ class TestRebaseSimple(ExternalBase):
         tip = feature.last_revision()
         merge_id = repo.get_graph().get_parent_map([tip])[tip][0]
         merge_parents = repo.get_graph().get_parent_map([merge_id])[merge_id]
-        self.assertEqual(revid2, merge_parents[1])
+        self.assertEqual(self.strip_last_revid_part(revid2),
+                         self.strip_last_revid_part(merge_parents[1]))
     
     def test_rebase_merge(self):
         trunk = self.make_branch_and_tree('trunk')
@@ -277,7 +284,8 @@ class TestRebaseSimple(ExternalBase):
         tip = feature.last_revision()
         merge_id = repo.get_graph().get_parent_map([tip])[tip][0]
         merge_parents = repo.get_graph().get_parent_map([merge_id])[merge_id]
-        self.assertEqual(revid2, merge_parents[1])
+        self.assertEqual(self.strip_last_revid_part(revid2),
+                         self.strip_last_revid_part(merge_parents[1]))
 
 class ReplayTests(ExternalBase):
     def test_replay(self):
