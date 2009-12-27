@@ -537,7 +537,10 @@ class _PushbackSequence(object):
 class _Whitespace(object):
     def process(self, next_char, seq, context):
         if _whitespace_match(next_char):
-            return self
+            if len(context.token) > 0:
+                return None
+            else:
+                return self
         elif next_char == u'"':
             context.quoted = True
             return _Quotes(self)
