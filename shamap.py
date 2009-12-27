@@ -173,6 +173,7 @@ class SqliteGitShaMap(GitShaMap):
             if not mapdbs().has_key(path):
                 mapdbs()[path] = sqlite3.connect(path)
             self.db = mapdbs()[path]
+        self.db.text_factory = str
         self.db.executescript("""
         create table if not exists commits(sha1 text, revid text, tree_sha text);
         create index if not exists commit_sha1 on commits(sha1);
@@ -198,7 +199,7 @@ class SqliteGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
         if row is not None:
-            return row[0].encode("utf-8")
+            return row[0]
         raise KeyError
 
     def commit_write_group(self):
@@ -210,8 +211,7 @@ class SqliteGitShaMap(GitShaMap):
         for sha, type, type_data in entries:
             assert isinstance(type_data[0], str)
             assert isinstance(type_data[1], str)
-            entry = (sha.decode("utf-8"), type_data[0].decode("utf-8"), 
-                     type_data[1].decode("utf-8"))
+            entry = (sha, type_data[0], type_data[1])
             if type == "tree":
                 trees.append(entry)
             elif type == "blob":
@@ -240,13 +240,13 @@ class SqliteGitShaMap(GitShaMap):
         row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
         if row is None:
             raise KeyError((fileid, revid))
-        return row[0].encode("utf-8")
+        return row[0]
 
     def lookup_blob(self, fileid, revid):
         row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
         if row is None:
             raise KeyError((fileid, revid))
-        return row[0].encode("utf-8")
+        return row[0]
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -256,7 +256,7 @@ class SqliteGitShaMap(GitShaMap):
             revision: revid, tree sha
         """
         def format(type, row):
-            return (type, (row[0].encode("utf-8"), row[1].encode("utf-8")))
+            return (type, (row[0], row[1]))
         row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return format("commit", row)
@@ -271,13 +271,13 @@ class SqliteGitShaMap(GitShaMap):
     def revids(self):
         """List the revision ids known."""
         for row in self.db.execute("select revid from commits").fetchall():
-            yield row[0].encode("utf-8")
+            yield row[0]
 
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
             for row in self.db.execute("select sha1 from %s" % table).fetchall():
-                yield row[0].encode("utf-8")
+                yield row[0]
 
 
 TDB_MAP_VERSION = 2
