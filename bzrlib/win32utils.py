@@ -517,101 +517,123 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-
-class UnicodeShlex(object):
-    """This is a very simplified version of shlex.shlex.
-
-    The main change is that it supports non-ascii input streams. The internal
-    structure is quite simplified relative to shlex.shlex, since we aren't
-    trying to handle multiple input streams, etc. In fact, we don't use a
-    file-like api either.
-    """
-
-    def __init__(self, uni_string):
-        self._input = uni_string
-        self._input_iter = iter(self._input)
-        self._whitespace_match = re.compile(u'\s').match
-        self._word_match = re.compile(u'\S').match
-        self._quote_chars = u'"'
-        # self._quote_match = re.compile(u'[\'"]').match
-        self._escape_match = lambda x: None # Never matches
-        self._escape = '\\'
-        # State can be
-        #   ' ' - after whitespace, starting a new token
-        #   'a' - after text, currently working on a token
-        #   '"' - after ", currently in a "-delimited quoted section
-        #   "\" - after '\', checking the next char
-        self._state = ' '
-        self._token = [] # Current token being parsed
-
-    def _get_token(self):
-        # Were there quote chars as part of this token?
-        quoted = False
-        quoted_state = None
-        for nextchar in self._input_iter:
-            if self._state == ' ':
-                if self._whitespace_match(nextchar):
-                    # if self._token: return token
-                    continue
-                elif nextchar in self._quote_chars:
-                    self._state = nextchar # quoted state
-                elif self._word_match(nextchar):
-                    self._token.append(nextchar)
-                    self._state = 'a'
-                else:
-                    raise AssertionError('wtttf?')
-            elif self._state in self._quote_chars:
-                quoted = True
-                if nextchar == self._state: # End of quote
-                    self._state = 'a' # posix allows 'foo'bar to translate to
-                                      # foobar
-                elif self._state == '"' and nextchar == self._escape:
-                    quoted_state = self._state
-                    self._state = nextchar
-                else:
-                    self._token.append(nextchar)
-            elif self._state == self._escape:
-                if nextchar == '\\':
-                    self._token.append('\\')
-                elif nextchar == '"':
-                    self._token.append(nextchar)
-                else:
-                    self._token.append('\\' + nextchar)
-                self._state = quoted_state
-            elif self._state == 'a':
-                if self._whitespace_match(nextchar):
-                    if self._token:
-                        break # emit this token
-                    else:
-                        continue # no token to emit
-                elif nextchar in self._quote_chars:
-                    # Start a new quoted section
-                    self._state = nextchar
-                # escape?
-                elif (self._word_match(nextchar)
-                      or nextchar in self._quote_chars
-                      # or whitespace_split?
-                      ):
-                    self._token.append(nextchar)
-                else:
-                    raise AssertionError('state == "a", char: %r'
-                                         % (nextchar,))
-            else:
-                raise AssertionError('unknown state: %r' % (self._state,))
-        result = ''.join(self._token)
-        self._token = []
-        if not quoted and result == '':
-            result = None
-        return quoted, result
-
+class _PushbackSequence(object):
+    def __init__(self, orig):
+        self._iter = iter(orig)
+        self._pushback_buffer = []
+        
+    def next(self):
+        if len(self._pushback_buffer) > 0:
+            return self._pushback_buffer.pop()
+        else:
+            return self._iter.next()
+    
+    def pushback(self, char):
+        self._pushback_buffer.append(char)
+        
     def __iter__(self):
         return self
 
+class _Whitespace(object):
+    def process(self, next_char, seq, context):
+        if _whitespace_match(next_char):
+            return self
+        elif next_char == u'"':
+            context.quoted = True
+            return _Quotes(self)
+        elif next_char == u'\\':
+            return _Backslash(self)
+        else:
+            context.token.append(next_char)
+            return _Word()
+
+class _Quotes(object):
+    def __init__(self, exit_state):
+        self.exit_state = exit_state
+
+    def process(self, next_char, seq, context):
+        if next_char == u'\\':
+            return _Backslash(self)
+        elif next_char == u'"':
+            return self.exit_state
+        else:
+            context.token.append(next_char)
+            return self
+    
+class _Backslash(object):
+    # See http://msdn.microsoft.com/en-us/library/bb776391(VS.85).aspx
+    def __init__(self, exit_state):
+        self.exit_state = exit_state
+        self.count = 1
+        
+    def process(self, next_char, seq, context):
+        if next_char == u'\\':
+            self.count += 1
+            return self
+        elif next_char == u'"':
+            # 2N backslashes followed by '"' are N backslashes
+            context.token.append(u'\\' * (self.count/2))
+            # 2N+1 backslashes follwed by '"' are N backslashes followed by '"'
+            # which should not be processed as the start or end of quoted arg
+            if self.count % 2 == 1:
+                context.token.append(next_char) # odd number of '\' escapes the '"'
+            else:
+                seq.pushback(next_char) # let exit_state handle next_char
+            self.count = 0
+            return self.exit_state
+        else:
+            # N backslashes not followed by '"' are just N backslashes
+            if self.count > 0:
+                context.token.append(u'\\' * self.count)
+                self.count = 0
+            seq.pushback(next_char) # let exit_state handle next_char
+            return self.exit_state
+    
+    def finish(self, context):
+        if self.count > 0:
+            context.token.append(u'\\' * self.count)
+
+    
+class _Word(object):
+    def process(self, next_char, seq, context):
+        if _whitespace_match(next_char):
+            return None
+        elif next_char == u'"':
+            return _Quotes(self)
+        elif next_char == u'\\':
+            return _Backslash(self)
+        else:
+            context.token.append(next_char)
+            return self
+
+_whitespace_match = re.compile(u'\s').match
+class UnicodeCommandLineSplitter(object):
+    def __init__(self, command_line):
+        self._seq = _PushbackSequence(command_line)
+    
+    def __iter__(self):
+        return self
+    
     def next(self):
         quoted, token = self._get_token()
         if token is None:
             raise StopIteration
         return quoted, token
+    
+    def _get_token(self):
+        self.quoted = False
+        self.token = []
+        state = _Whitespace()
+        for next_char in self._seq:
+            state = state.process(next_char, self._seq, self)
+            if state is None:
+                break
+        if not state is None and not getattr(state, 'finish', None) is None:
+            state.finish(self)
+        result = u''.join(self.token)
+        if not self.quoted and result == '':
+            result = None
+        return self.quoted, result
 
 
 def command_line_to_argv(command_line, wildcard_expansion=True):
@@ -626,7 +648,7 @@ def command_line_to_argv(command_line, wildcard_expansion=True):
                                each argument. True by default.
     :return: A list of unicode strings.
     """
-    s = UnicodeShlex(command_line)
+    s = UnicodeCommandLineSplitter(command_line)
     # Now that we've split the content, expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs

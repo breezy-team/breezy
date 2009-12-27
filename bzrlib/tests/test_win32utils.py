@@ -291,11 +291,10 @@ class TestSetHidden(TestCaseInTempDir):
         win32utils.set_file_attr_hidden(path)
 
 
-
-class TestUnicodeShlex(tests.TestCase):
+class TestUnicodeCommandLineSplitter(tests.TestCase):
 
     def assertAsTokens(self, expected, line):
-        s = win32utils.UnicodeShlex(line)
+        s = win32utils.UnicodeCommandLineSplitter(line)
         self.assertEqual(expected, list(s))
 
     def test_simple(self):
@@ -310,14 +309,6 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_ignore_trailing_space(self):
         self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo bar  ')
-
-    def test_posix_quotations(self):
-        self.assertAsTokens([(True, u'foo bar')], u'"foo bar"')
-        self.assertAsTokens([(False, u"'fo''o"), (False, u"b''ar'")],
-            u"'fo''o b''ar'")
-        self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"')
-        self.assertAsTokens([(True, u"fo'o"), (True, u"b'ar")],
-            u'"fo"\'o b\'"ar"')
 
     def test_nested_quotations(self):
         self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
@@ -343,9 +334,11 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_escape_quote(self):
         self.assertAsTokens([(True, u'foo"bar')], u'"foo\\"bar"')
+        self.assertAsTokens([(True, u'foo\\"bar')], u'"foo\\\\\\"bar"')
+        self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\"bar"')
 
     def test_double_escape(self):
-        self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\bar"')
+        self.assertAsTokens([(True, u'foo\\\\bar')], u'"foo\\\\bar"')
         self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
 
 
