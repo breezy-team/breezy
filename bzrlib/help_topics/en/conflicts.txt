@@ -360,6 +360,8 @@ retained for the file, directory or symlink involved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 .. FIXME: Arguably .OTHER should be used instead of .new.
+.. FIXME: If .new doesn't exist anymore, --auto may consider
+marking the conflict resolved.
 
 MalformedTransform
 ------------------

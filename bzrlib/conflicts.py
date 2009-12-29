@@ -127,6 +127,11 @@ class cmd_resolve(commands.Command):
             tree, file_list = builtins.tree_files(file_list)
             if file_list is None:
                 if action is None:
+                    # FIXME: There is a special case here related to the option
+                    # handling that could be clearer and easier to discover by
+                    # providing an --auto action (bug #344013 and #383396) and
+                    # make it mandatory instead of implicit and active only
+                    # when no file_list is provided -- vila 091229
                     action = 'auto'
             else:
                 if action is None:
@@ -145,7 +150,7 @@ class cmd_resolve(commands.Command):
                     return 0
             else:
                 # FIXME: This can never occur but the block above needs some
-                # refactoring so transfer tree.auto_resolve() to
+                # refactoring to transfer tree.auto_resolve() to
                 # conflict.auto(tree) --vila 091242
                 pass
         else:
@@ -339,7 +344,7 @@ class ConflictList(object):
 class Conflict(object):
     """Base class for all types of conflict"""
 
-    # FIXME: cleanup should take care of that
+    # FIXME: cleanup should take care of that ? -- vila 091229
     has_files = False
 
     def __init__(self, path, file_id=None):
