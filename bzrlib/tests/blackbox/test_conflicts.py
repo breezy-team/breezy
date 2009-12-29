@@ -67,8 +67,8 @@ class TestConflicts(TestConflictsBase):
         self.assertEqual(3, len(out.splitlines()))
 
     def test_conflicts_text(self):
-        lines = self.run_bzr('conflicts --text')[0].splitlines()
-        self.assertEqual(['my_other_file', 'myfile'], lines)
+        out, err = self.run_bzr('conflicts --text')
+        self.assertEqual(['my_other_file', 'myfile'], out.splitlines())
 
 
 class TestResolve(TestConflictsBase):
@@ -94,8 +94,8 @@ class TestResolve(TestConflictsBase):
         self.run_bzr("resolve ../a/myfile", working_dir='b')
         wt = workingtree.WorkingTree.open_containing('b')[0]
         conflicts = wt.conflicts()
-        if not conflicts.is_empty():
-            self.fail("tree still contains conflicts: %r" % conflicts)
+        self.assertEqual(True, conflicts.is_empty(),
+                         "tree still contains conflicts: %r" % conflicts)
 
     def test_auto_resolve(self):
         """Text conflicts can be resolved automatically"""
