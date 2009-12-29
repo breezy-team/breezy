@@ -73,7 +73,7 @@ class BazaarObjectStore(BaseObjectStore):
             heads = graph.heads(self.repository.all_revision_ids())
         else:
             heads = set([stop_revision])
-        missing_revids = set()
+        missing_revids = self._idmap.missing_revisions(heads)
         while heads:
             parents = graph.get_parent_map(heads)
             todo = set()
