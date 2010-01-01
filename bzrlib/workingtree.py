@@ -1741,14 +1741,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         r"""Check whether the filename matches an ignore pattern.
 
         Patterns containing '/' or '\' need to match the whole path;
-        others match against only the last component.
+        others match against only the last component.  Patterns starting
+        with '!' are ignore exclusions.  Exclusions take precedence
+        over regular patterns and cause the filename to not be ignored.
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
-        return self._ignoreglobster.match(filename)
+            self._ignoreglobster = globbing.Globster([i for i in self.get_ignore_list() if not i.startswith(u'!')])
+            self._exclusionglobster = globbing.Globster([i[1:] for i in self.get_ignore_list() if i.startswith(u'!')])
+        if self._exclusionglobster.match(filename):
+            return None
+        else:
+            return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))
