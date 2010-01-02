@@ -215,6 +215,29 @@ class Globster(object):
                 return patterns[match.lastindex -1]
         return None
 
+class ExcludingGlobster(object):
+    """A Globster that supports exclusion patterns."""
+    
+    def __init__(self,patterns):
+        ignores = []
+        excludes = []
+        for p in patterns:
+            if p.startswith(u'!'):
+                excludes.append(p[1:])
+            else:
+                ignores.append(p)
+        self._ignores = Globster(ignores)
+        self._excludes = Globster(excludes)
+        
+    def match(self, filename):
+        """Searches for a pattern that matches the given filename.
+
+        :return A matching pattern or None if there is no matching pattern.
+        """
+        if self._excludes.match(filename):
+            return None
+        else:
+            return self._ignores.match(filename)
 
 class _OrderedGlobster(Globster):
     """A Globster that keeps pattern order."""

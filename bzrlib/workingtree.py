@@ -1749,12 +1749,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.Globster([i for i in self.get_ignore_list() if not i.startswith(u'!')])
-            self._exclusionglobster = globbing.Globster([i[1:] for i in self.get_ignore_list() if i.startswith(u'!')])
-        if self._exclusionglobster.match(filename):
-            return None
-        else:
-            return self._ignoreglobster.match(filename)
+            self._ignoreglobster = globbing.ExcludingGlobster(self.get_ignore_list())
+        return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
         return file_kind(self.id2abspath(file_id))

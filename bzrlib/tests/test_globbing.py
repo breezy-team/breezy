@@ -17,6 +17,7 @@
 
 from bzrlib.globbing import (
     Globster,
+    ExcludingGlobster,
     _OrderedGlobster,
     normalize_pattern
     )
@@ -307,6 +308,29 @@ class TestGlobster(TestCase):
             self.assertEqual(patterns[x],globster.match(filename))
         self.assertEqual(None,globster.match('foobar.300'))
 
+class TestExcludingGlobster(TestCase):
+
+    def test_exclusion_patterns(self):
+        """test that exclusion patterns are not matched"""
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*' ]
+        globster = ExcludingGlobster(patterns)
+        self.assertEqual(u'*', globster.match('tmp/foo.txt'))
+        self.assertEqual(None, globster.match('local'))
+        self.assertEqual(None, globster.match('local/bin/wombat'))
+        self.assertEqual(None, globster.match('.zshrc'))
+        self.assertEqual(None, globster.match('.zfunctions/fiddle/flam'))
+
+    def test_exclusion_order(self):
+        """test that ordering of exclusion patterns does not matter"""
+        patterns = [ u'static/**/*.html', u'!static/**/versionable.html']
+        globster = ExcludingGlobster(patterns)
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
+        globster = ExcludingGlobster(reversed(patterns))
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
 
 class TestOrderedGlobster(TestCase):
 
