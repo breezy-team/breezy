@@ -45,6 +45,8 @@ from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revisionspec import RevisionSpec
 
+from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
+
 
 class _AttribFeature(Feature):
 
@@ -1305,8 +1307,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                          diff_obj._get_command('old-path', 'new-path'))
         
     def test_from_string_path_with_backslashes(self):
-        if sys.platform != 'win32':
-            raise TestSkipped('only win32 has paths with backslashes')
+        self.requireFeature(BackslashDirSeparatorFeature)
         tool = 'C:\\Tools\\Diff.exe'
         diff_obj = DiffFromTool.from_string(tool, None, None, None)
         self.addCleanup(diff_obj.finish)
