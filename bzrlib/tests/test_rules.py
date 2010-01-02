@@ -63,8 +63,12 @@ class TestIniBasedRulesSearcher(tests.TestCase):
             rs.get_selected_items('a.txt', ['foo']))
 
     def test_get_items_from_multiple_glob_match(self):
-        rs = self.make_searcher(
-            "[name *.txt *.py 'x x' \"y y\"]\nfoo=bar\na=True\n")
+        # win32 doesn't support single quotes for quoting args with spaces
+        if sys.platform == 'win32':
+            text = '[name *.txt *.py "x x" "y y"]\nfoo=bar\na=True\n'
+        else:
+            text = """[name *.txt *.py 'x x' "y y"]\nfoo=bar\na=True\n"""
+        rs = self.make_searcher(text)
         self.assertEquals((), rs.get_items('NEWS'))
         self.assertEquals((('foo', 'bar'), ('a', 'True')),
             rs.get_items('a.py'))
