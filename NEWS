@@ -17,6 +17,11 @@ Compatibility Breaks
 New Features
 ************
 
+* Exclusions are now supported for ignore patterns.  An exclusion is an
+  ignore pattern prefixed with a an exclamation point '!'.  Exclusion
+  patterns take precedence over other ignore patterns, and prevent
+  matched files from being ignored (John Whitley, #428031)
+
 * Add bug information to log output when available.
   (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
 

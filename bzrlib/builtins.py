@@ -2611,9 +2611,13 @@ class cmd_ignore(Command):
 
             bzr ignore ./Makefile
 
-        Ignore class files in all directories::
+        Ignore class files in all directories...::
 
             bzr ignore "*.class"
+
+        ...but do not ignore "special.class"::
+
+            bzr ignore "!special.class"
 
         Ignore .o files under the lib directory::
 
