@@ -216,7 +216,13 @@ class Globster(object):
         return None
 
 class ExcludingGlobster(object):
-    """A Globster that supports exclusion patterns."""
+    """A Globster that supports exclusion patterns.
+    
+    These are ignore patterns prefixed with '!'.  Exclusion
+    patterns take precedence over regular patterns and negate the
+    normal matching logic, causing a matching filename to return
+    None from the match() function.
+    """
     
     def __init__(self,patterns):
         ignores = []
@@ -267,7 +273,6 @@ def normalize_pattern(pattern):
 
     Doesn't normalize regular expressions - they may contain escapes.
     """
-
     if not (pattern.startswith('RE:') or pattern.startswith('!RE:')):
         pattern = _slashes.sub('/', pattern)
     if len(pattern) > 1:
