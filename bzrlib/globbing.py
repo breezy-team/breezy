@@ -268,7 +268,7 @@ def normalize_pattern(pattern):
     Doesn't normalize regular expressions - they may contain escapes.
     """
 
-    if not pattern.startswith('RE:'):
+    if not (pattern.startswith('RE:') or pattern.startswith('!RE:')):
         pattern = _slashes.sub('/', pattern)
     if len(pattern) > 1:
         pattern = pattern.rstrip('/')
