@@ -647,7 +647,7 @@ line-origin detection instead of a basis revision to determine the cause of
 differences.
 """
 
-_branches_out_of_sync = """Branches out of sync
+_branches_out_of_sync = """Branches Out of Sync
 
 When reconfiguring a checkout, tree or branch into a lightweight checkout,
 a local branch must be destroyed.  (For checkouts, this is the local branch
@@ -742,14 +742,12 @@ topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
-topic_registry.register('conflicts', _load_from_file,
+topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
-topic_registry.register('diverged-branches', _load_from_file,
-                        'How to fix diverged branches')
 
 
 # Register concept topics.
@@ -762,6 +760,9 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('content-filters', _load_from_file,
                         'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches',
                         SECT_CONCEPT)
 topic_registry.register('eol', _load_from_file,
                         'Information on end-of-line handling',
