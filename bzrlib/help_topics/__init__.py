@@ -306,7 +306,7 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --profile help").
+command.  (e.g. ``bzr --profile help``).
 
 --version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
@@ -325,9 +325,11 @@ command.  (e.g. "bzr --profile help").
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
-See doc/developers/profiling.txt for more information on profiling.
+See http://doc.bazaar.canonical.com/developers/profiling.html for more
+information on profiling.
+
 A number of debug flags are also available to assist troubleshooting and
-development.  See `bzr help debug-flags`.
+development.  See :doc:`debug-flags-help`.
 """
 
 _standard_options = \
