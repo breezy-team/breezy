@@ -682,18 +682,20 @@ project is not using 2a, then you should suggest to the
 project owner to upgrade.
 
 
-Note: Some of the older formats have two variants:
-a plain one and a rich-root one. The latter include an additional
-field about the root of the tree. There is no performance cost
-for using a rich-root format but you cannot easily merge changes
-from a rich-root format into a plain format. As a consequence,
-moving a project to a rich-root format takes some co-ordination
-in that all contributors need to upgrade their repositories
-around the same time. 2a and all future formats will be
-implicitly rich-root.
+.. note::
 
-See ``bzr help current-formats`` for the complete list of
-currently supported formats. See ``bzr help other-formats`` for
+   Some of the older formats have two variants:
+   a plain one and a rich-root one. The latter include an additional
+   field about the root of the tree. There is no performance cost
+   for using a rich-root format but you cannot easily merge changes
+   from a rich-root format into a plain format. As a consequence,
+   moving a project to a rich-root format takes some co-ordination
+   in that all contributors need to upgrade their repositories
+   around the same time. 2a and all future formats will be
+   implicitly rich-root.
+
+See :doc:`current-formats-help` for the complete list of
+currently supported formats. See :doc:`other-formats-help` for
 descriptions of any available experimental and deprecated formats.
 """
 
