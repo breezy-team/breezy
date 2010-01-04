@@ -66,6 +66,10 @@ Bug Fixes
 Improvements
 ************
 
+* Push will now inform the user when they are trying to push to a foreign 
+  VCS for which roundtripping is not supported, and will suggest them to 
+  use dpush. (Jelmer Vernooij)
+
 * Transport network activity indicator is shown more of the time when
   Bazaar is doing network IO.
   (Martin Pool)
@@ -95,6 +99,9 @@ Internals
   objects but passes str objects straight through. This is used for
   selftest but may be useful for diff and other operations that generate
   mixed output. (Robert Collins)
+
+* New exception ``NoRoundtrippingSupport``, for use by foreign branch 
+  plugins. (Jelmer Vernooij)
 
 Testing
 *******
