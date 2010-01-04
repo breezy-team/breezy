@@ -84,6 +84,13 @@ cdef int _check_match_ranges(parent_annotations, annotations,
 
 
 cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos):
+    """Return the next entry from this tuple.
+
+    :param tpl: The tuple we are investigating, *must* be a PyTuple
+    :param pos: The last item we found. Will be updated to the new position.
+    
+    This cannot raise an exception, as it does no error checking.
+    """
     pos[0] = pos[0] + 1
     if pos[0] >= PyTuple_GET_SIZE(tpl):
         return NULL
