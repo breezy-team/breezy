@@ -17,28 +17,116 @@ Compatibility Breaks
 New Features
 ************
 
+* The ``suppress_warnings`` configuration option has been introduced and
+  accept the ``format_deprecation`` value to disable the corresponding
+  warning for repositories. It can be set to in either ``bazaar.conf``,
+  ``locations.conf`` or ``branch.conf``.
+  (Ted Gould, Matthew Fuller, Vincent Ladeuil)
+
+* ``bzr update`` now takes a ``--revision`` argument. This lets you
+  change the revision of the working tree to any revision in the
+  ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
+  Martin Pool, #45719)
+
 Bug Fixes
 *********
+
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
+
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
+* ``bzr unshelve`` has improved messages about what it is doing.
+  (Neil Martinsen-Burrell, #496917)
+
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* Listen to the SIGWINCH signal to update the terminal width.
+  (Vincent Ladeuil, #316357)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
 
 Improvements
 ************
 
+* Push will now inform the user when they are trying to push to a foreign 
+  VCS for which roundtripping is not supported, and will suggest them to 
+  use dpush. (Jelmer Vernooij)
+
+* Transport network activity indicator is shown more of the time when
+  Bazaar is doing network IO.
+  (Martin Pool)
+
 Documentation
 *************
+
+* There is a System Administrator's Guide in ``doc/en/admin-guide``,
+  including discussions of installation, relevant plugins, security and 
+  backup.
 
 API Changes
 ***********
 
+* Many test features were renamed from ``FooFeature`` to ``foo_feature``
+  to be consistent with instances being lower case and classes being
+  CamelCase. For the features that were more likely to be used, we added a
+  deprecation thunk, but not all. (John Arbash Meinel)
+
+* ``WorkingTree.update`` implementations must now accept a ``revision``
+  parameter.
+
 Internals
 *********
+
+* New helper osutils.UnicodeOrBytesToBytesWriter which encodes unicode
+  objects but passes str objects straight through. This is used for
+  selftest but may be useful for diff and other operations that generate
+  mixed output. (Robert Collins)
+
+* New exception ``NoRoundtrippingSupport``, for use by foreign branch 
+  plugins. (Jelmer Vernooij)
 
 Testing
 *******
 
+* ``bzrlib.tests.permute_for_extension`` is a helper that simplifies
+  running all tests in the current module, once against a pure python
+  implementation, and once against an extension (pyrex/C) implementation.
+  It can be used to dramatically simplify the implementation of
+  ``load_tests``.  (John Arbash Meinel)
+
+* ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
+  This permits features in testtools such as getUniqueInteger and
+  getUniqueString to be used. Because of this, testtools version 0.9.2 or
+  newer is now a dependency to run bzr selftest. Running with versions of
+  testtools less than 0.9.2 will cause bzr to error while loading the test
+  suite. (Robert Collins)
+
+* The test progress bar no longer distinguishes tests that 'errored' from
+  tests that 'failed' - they're all just failures.
+  (Martin Pool)
+
 bzr 2.0.4 (not released yet)
 ############################
 
-:Codename: template
+:Codename:
 :2.0.4: ???
 
 Compatibility Breaks
@@ -49,6 +137,28 @@ New Features
 
 Bug Fixes
 *********
+
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
+
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
 
 Improvements
 ************
@@ -107,6 +217,12 @@ New Features
   appropriate. Pagers can use it to get a better control of the line
   lengths. 
   (Vincent Ladeuil)
+
+* The new command ``bzr lp-mirror`` will request that Launchpad update its
+  mirror of a local branch. This command will only function if launchpadlib
+  is installed.
+  (Jonathan Lange)
+
 
 Bug Fixes
 *********
@@ -210,6 +326,11 @@ API Changes
 ***********
 
 * ``bzrlib.textui`` (vestigial module) removed.  (Martin Pool)
+
+* The Launchpad plugin now has a function ``login`` which will log in to
+  Launchpad with launchpadlib, and ``load_branch`` which will return the
+  Launchpad Branch object corresponding to a given Bazaar Branch object.
+  (Jonathan Lange)
 
 Internals
 *********
@@ -2720,7 +2841,7 @@ New Features
 * Multiple authors for a commit can now be recorded by using the "--author"
   option multiple times. (James Westby, #185772)
 
-* New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernoij)
+* New clean-tree command, from bzrtools.  (Aaron Bentley, Jelmer Vernooij)
 
 * New command ``bzr launchpad-open`` opens a Launchpad web page for that
   branch in your web browser, as long as the branch is on Launchpad at all.

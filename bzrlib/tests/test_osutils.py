@@ -53,7 +53,7 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
-TermIOSFeature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = tests.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -82,7 +82,7 @@ def dir_reader_scenarios():
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
-    if test__walkdirs_win32.Win32ReadDirFeature.available():
+    if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from bzrlib import _walkdirs_win32
             scenarios.append(
@@ -989,7 +989,7 @@ class TestChunksToLines(tests.TestCase):
 
     def test_osutils_binding(self):
         from bzrlib.tests import test__chunks_to_lines
-        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
@@ -1181,14 +1181,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
@@ -1345,7 +1345,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_win32readdir(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
@@ -1402,7 +1402,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
@@ -1426,7 +1426,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
@@ -1987,8 +1987,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(None, osutils.terminal_width())
 
     def test_no_TIOCGWINSZ(self):
-        self.requireFeature(TermIOSFeature)
-        termios = TermIOSFeature.module
+        self.requireFeature(term_ios_feature)
+        termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
             orig = termios.TIOCGWINSZ

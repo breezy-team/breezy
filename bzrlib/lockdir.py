@@ -242,8 +242,16 @@ class LockDir(lock.Lock):
         # incorrect.  It's possible some other servers or filesystems will
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
+        #
+        # See <https://bugs.edge.launchpad.net/bzr/+bug/498378> for one case.
+        #
+        # Strictly the check is unnecessary and a waste of time for most
+        # people, but probably worth trapping if something is wrong.
         info = self.peek()
         self._trace("after locking, info=%r", info)
+        if info is None:
+            raise LockFailed(self, "lock was renamed into place, but "
+                "now is missing!")
         if info['nonce'] != self.nonce:
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")

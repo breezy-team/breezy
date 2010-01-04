@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import collections
 from cStringIO import StringIO
 import struct
 import sys
+import thread
 import threading
 import time
 
@@ -1066,9 +1067,11 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 class _ProtocolThreeEncoder(object):
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
+    BUFFER_SIZE = 1024*1024 # 1 MiB buffer before flushing
 
     def __init__(self, write_func):
         self._buf = []
+        self._buf_len = 0
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
@@ -1081,13 +1084,15 @@ class _ProtocolThreeEncoder(object):
         #       Note that osutils.send_all always sends 64kB chunks anyway, so
         #       we might just push out smaller bits at a time?
         self._buf.append(bytes)
-        if len(self._buf) > 100:
+        self._buf_len += len(bytes)
+        if self._buf_len > self.BUFFER_SIZE:
             self.flush()
 
     def flush(self):
         if self._buf:
             self._real_write_func(''.join(self._buf))
             del self._buf[:]
+            self._buf_len = 0
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -1143,7 +1148,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            self._thread_id = threading.currentThread().get_ident()
+            self._thread_id = thread.get_ident()
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
