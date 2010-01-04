@@ -31,6 +31,11 @@ Bug Fixes
   This will likely have an impact on any other process that is serving for
   an extended period of time.  (John Arbash Meinel, #494406)
 
+* ``_update_current_block`` no longer suppresses exceptions, so ^C at just
+  the right time will get propagated, rather than silently failing to move
+  the block pointer. (John Arbash Meinel, #495023)
+
+
 Improvements
 ************
 
