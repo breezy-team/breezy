@@ -108,14 +108,14 @@ cdef class _KnownGraphNode:
             parent_keys, child_keys)
 
 
-cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
+cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos): # no except
     cdef PyObject *temp_node
 
     temp_node = PyList_GET_ITEM(lst, pos)
     return <_KnownGraphNode>temp_node
 
 
-cdef _KnownGraphNode _get_tuple_node(tpl, Py_ssize_t pos):
+cdef _KnownGraphNode _get_tuple_node(tpl, Py_ssize_t pos): # no except
     cdef PyObject *temp_node
 
     temp_node = PyTuple_GET_ITEM(tpl, pos)
@@ -208,7 +208,10 @@ cdef class KnownGraph:
             child = <_KnownGraphNode>temp_node
             child.clear_references()
 
-    cdef _KnownGraphNode _get_or_create_node(self, key):
+    # Note: We don't need to set an 'except clause because _KnownGraphNode is
+    #       an object type. However our crude test_source parser doesn't know
+    #       how to tell that
+    cdef _KnownGraphNode _get_or_create_node(self, key): # no except
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
 
@@ -591,7 +594,7 @@ cdef class _MergeSortNode:
             self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
 
-    cdef int has_pending_parents(self):
+    cdef int has_pending_parents(self): # no except
         if self.left_pending_parent is not None or self.pending_parents:
             return 1
         return 0
@@ -642,7 +645,8 @@ cdef class _MergeSorter:
             node = self.graph._nodes[tip_key]
             self._push_node(node, 0)
 
-    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
+    # Note: _MergeSortNode is an object type so there is an implied except
+    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node): # no except
         cdef PyObject *temp_node
         cdef _MergeSortNode ms_node
 

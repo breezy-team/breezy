@@ -405,8 +405,8 @@ class TestSource(TestSourceHelper):
             error_msg.extend(('', ''))
         if missing_except:
             error_msg.append('The following functions have fixed return types,'
-                             ' but no except clause. Either add an except'
-                             ' or append "# no except".')
+                             ' but no except clause.')
+            error_msg.append(' Either add an except or append "# no except".')
             for fname, func in missing_except:
                 error_msg.append('%s:%s' % (fname, func))
             error_msg.extend(('', ''))
