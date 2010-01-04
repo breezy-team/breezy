@@ -379,6 +379,9 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
+        # TODO: Add a class re to find what classes are defined in this module
+        #       A function that returns a class is the same as one that returns
+        #       an 'object', the exception handling is implied
         except_re = re.compile(r'\s*cdef\s*' # start with cdef
                                r'([\w *]*?)\s*' # this is the return signature
                                r'(\w+)\s*\(' # the function name
