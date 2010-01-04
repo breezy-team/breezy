@@ -50,7 +50,7 @@ Compartiendo con tus pares
 .. include later - partner_intro.txt
 .. include later - branching_a_project.txt
 .. include later - merging_changes.txt
-.. include:: resolving_conflicts.txt
+.. include later - resolving_conflicts.txt
 .. include later - annotating_changes.txt
 
 
