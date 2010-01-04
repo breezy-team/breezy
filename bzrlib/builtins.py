@@ -1270,7 +1270,7 @@ class cmd_branch(Command):
                 # Bind to the parent
                 parent_branch = Branch.open(from_location)
                 branch.bind(parent_branch)
-                note('New branch bound to %s.' % from_location)
+                note('New branch bound to %s' % from_location)
             if switch:
                 # Switch to the new branch
                 wt, _ = WorkingTree.open_containing('.')
