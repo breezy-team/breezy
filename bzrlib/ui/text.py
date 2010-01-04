@@ -428,16 +428,16 @@ class TextProgressView(object):
                 transfer_time = 0.001
             bps = self._total_byte_count / transfer_time
 
-        msg = ('Transferred: %.3fMiB'
-               ' (%.1fKiB/s r:%.3fMiB w:%.3fMiB'
-               % (self._total_byte_count / 1024. / 1024.,
+        msg = ('Transferred: %.0fKiB'
+               ' (%.1fK/s r:%.0fK w:%.0fK'
+               % (self._total_byte_count / 1024.,
                   bps / 1024.,
-                  self._bytes_by_direction['read'] / 1024. / 1024.,
-                  self._bytes_by_direction['write'] / 1024. / 1024.,
+                  self._bytes_by_direction['read'] / 1024.,
+                  self._bytes_by_direction['write'] / 1024.,
                  ))
         if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.3fMiB)' % (
-                self._bytes_by_direction['unknown'] / 1024. / 1024.
+            msg += ' u:%.0fK)' % (
+                self._bytes_by_direction['unknown'] / 1024.
                 )
         else:
             msg += ')'
@@ -446,7 +446,7 @@ class TextProgressView(object):
     def log_transport_activity(self, display=False):
         msg = self._format_bytes_by_direction()
         trace.mutter(msg)
-        if display:
+        if display and self._total_byte_count > 0:
             self.clear()
             self._term_file.write(msg + '\n')
 

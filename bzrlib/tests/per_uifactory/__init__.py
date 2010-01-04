@@ -96,6 +96,12 @@ class UIFactoryTestMixin(object):
         self.factory.log_transport_activity(display=True)
         self._check_log_transport_activity_display()
 
+    def test_no_transport_activity(self):
+        # No activity to report
+        t = transport.get_transport('memory:///')
+        self.factory.log_transport_activity(display=True)
+        self._check_log_transport_activity_display_no_bytes()
+
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
@@ -135,6 +141,11 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         # Without a TTY, we shouldn't display anything
         self.assertEqual('', self.stderr.getvalue())
 
+    def _check_log_transport_activity_display_no_bytes(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Without a TTY, we shouldn't display anything
+        self.assertEqual('', self.stderr.getvalue())
+
 
 class TestTTYTextUIFactory(TestTextUIFactory):
 
@@ -168,8 +179,13 @@ class TestTTYTextUIFactory(TestTextUIFactory):
         self.assertEqual('', self.stdout.getvalue())
         # Displaying the result should write to the progress stream
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 0\.007MiB'
-            r' \(\d+\.\dKiB/s r:0\.002MiB w:0\.001MiB u:0\.004MiB\)')
+            r'Transferred: 7KiB'
+            r' \(\d+\.\dK/s r:2K w:1K u:4K\)')
+
+    def _check_log_transport_activity_display_no_bytes(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Without actual bytes transferred, we should report nothing
+        self.assertEqual('', self.stderr.getvalue())
 
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
@@ -198,6 +214,9 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     def _check_log_transport_activity_display(self):
         pass
 
+    def _check_log_transport_activity_display_no_bytes(self):
+        pass
+
 
 class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, reads input from variables
@@ -222,4 +241,7 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
         pass
 
     def _check_log_transport_activity_display(self):
+        pass
+
+    def _check_log_transport_activity_display_no_bytes(self):
         pass
