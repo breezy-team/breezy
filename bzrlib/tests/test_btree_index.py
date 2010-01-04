@@ -43,26 +43,14 @@ def load_tests(standard_tests, module, loader):
         condition_isinstance(TestBTreeNodes))
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
-    if CompiledBtreeParserFeature.available():
-        # Is there a way to do this that gets missing feature failures rather
-        # than no indication to the user?
-        import bzrlib._btree_serializer_pyx as c_module
-        scenarios.append(('C', {'parse_btree': c_module}))
+    if compiled_btreeparser_feature.available():
+        scenarios.append(('C', {'parse_btree':
+                                compiled_btreeparser_feature.module}))
     return multiply_tests(node_tests, scenarios, others)
 
 
-class _CompiledBtreeParserFeature(tests.Feature):
-    def _probe(self):
-        try:
-            import bzrlib._btree_serializer_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._btree_serializer_pyx'
-
-CompiledBtreeParserFeature = _CompiledBtreeParserFeature()
+compiled_btreeparser_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -1293,7 +1281,7 @@ class TestCompiledBtree(tests.TestCase):
     def test_exists(self):
         # This is just to let the user know if they don't have the feature
         # available
-        self.requireFeature(CompiledBtreeParserFeature)
+        self.requireFeature(compiled_btreeparser_feature)
 
 
 class TestMultiBisectRight(tests.TestCase):

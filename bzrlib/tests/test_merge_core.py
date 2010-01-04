@@ -15,32 +15,26 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 import sys
 
 import bzrlib
 from bzrlib import (
+    errors,
     generate_ids,
     merge_directive,
     osutils,
     )
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
-from bzrlib import errors
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-from bzrlib import  inventory
 from bzrlib.merge import (
     Merge3Merger,
     Diff3Merger,
     WeaveMerger,
     Merger,
     )
-from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
-                            sha_file,
-                            )
+from bzrlib.osutils import getcwd, pathjoin
 from bzrlib import progress
 from bzrlib.transform import TreeTransform
-from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 
@@ -277,7 +271,7 @@ class MergeTest(TestCaseWithTransport):
                               " and therefore always fails on win32")
         try:
             self.do_contents_test(Diff3Merger)
-        except NoDiff3:
+        except errors.NoDiff3:
             raise TestSkipped("diff3 not available")
 
     def test_contents_merge3(self):
