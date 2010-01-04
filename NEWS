@@ -31,10 +31,20 @@ Bug Fixes
   This will likely have an impact on any other process that is serving for
   an extended period of time.  (John Arbash Meinel, #494406)
 
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
+
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
   the block pointer. (John Arbash Meinel, #495023)
-
 
 Improvements
 ************
