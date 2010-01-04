@@ -44,7 +44,7 @@ Bug Fixes
 
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
-  the block pointer. (John Arbash Meinel, #495023)
+  the block pointer. (John Arbash Meinel, Gareth White, #495023)
 
 Improvements
 ************
