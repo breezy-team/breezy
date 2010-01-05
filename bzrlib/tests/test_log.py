@@ -1529,22 +1529,6 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
 
-def make_commits_with_bugs(wt):
-    """Helper method for LogFormatter tests"""
-    open('a', 'wb').write('hello moto\n')
-    wt.add('a')
-    wt.commit('simple log message', rev_id='a1',
-              timestamp=1132586655.459960938, timezone=-6*3600,
-              committer='Joe Foo <joe@foo.com>',
-              revprops={'bugs': 'test://bug/id fixed'})
-    open('b', 'wb').write('goodbye\n')
-    wt.add('b')
-    wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
-              timestamp=1132586842.411175966, timezone=-6*3600,
-              committer='Joe Foo <joe@foo.com>',
-              authors=['Joe Bar <joe@bar.com>'],
-              revprops={'bugs': 'test://bug/id fixed\ntest://bug/2 fixed'})
-
 
 class TestLogWithBugs(TestCaseForLogFormatter):
 
@@ -1554,9 +1538,27 @@ class TestLogWithBugs(TestCaseForLogFormatter):
             'bugs_properties_handler',
             log._bugs_properties_handler)
 
-    def test_long_bugs(self):
+    def make_commits_with_bugs(self):
+        """Helper method for LogFormatter tests"""
         tree = self.make_branch_and_tree(u'.')
-        make_commits_with_bugs(tree)
+        self.build_tree(['a', 'b'])
+        tree.add('a')
+        tree.commit('simple log message', rev_id='a1',
+                    timestamp=1132586655.459960938, timezone=-6*3600,
+                    committer='Joe Foo <joe@foo.com>',
+                    revprops={'bugs': 'test://bug/id fixed'})
+        tree.add('b')
+        tree.commit('multiline\nlog\nmessage\n', rev_id='a2',
+                    timestamp=1132586842.411175966, timezone=-6*3600,
+                    committer='Joe Foo <joe@foo.com>',
+                    authors=['Joe Bar <joe@bar.com>'],
+                    revprops={'bugs': 'test://bug/id fixed\n'
+                                      'test://bug/2 fixed'})
+        return tree
+
+
+    def test_long_bugs(self):
+        tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2
@@ -1581,8 +1583,7 @@ message:
             tree.branch, log.LongLogFormatter)
 
     def test_short_bugs(self):
-        tree = self.make_branch_and_tree(u'.')
-        make_commits_with_bugs(tree)
+        tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
     2 Joe Bar\t2005-11-21
       fixes bug(s): test://bug/id test://bug/2
@@ -1610,3 +1611,6 @@ message:
 
 """,
             tree.branch, log.ShortLogFormatter)
+
+    def test_bugs_handler_present(self):
+        self.properties_handler_registry.get('bugs_properties_handler')

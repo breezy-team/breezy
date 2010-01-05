@@ -1983,12 +1983,13 @@ properties_handler_registry = registry.Registry()
 # Use the properties handlers to print out bug information if available
 def _bugs_properties_handler(revision):
     if revision.properties.has_key('bugs'):
-        bug_list =  [val.split()[0] for val in
-                     revision.properties['bugs'].split('\n') if
-                     val.split()[1] == 'fixed'
-                    ]
-        if bug_list:
-            return {'fixes bug(s)': ' '.join(bug_list)}
+        bug_lines = revision.properties['bugs'].split('\n')
+        bug_rows = [line.split(' ', 1) for line in bug_lines]
+        fixed_bug_urls = [row[0] for row in bug_rows if
+                          len(row) > 1 and row[1] == 'fixed']
+        
+        if fixed_bug_urls:
+            return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}
 
 properties_handler_registry.register('bugs_properties_handler',
