@@ -108,14 +108,14 @@ cdef class _KnownGraphNode:
             parent_keys, child_keys)
 
 
-cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos): # no except
+cdef _KnownGraphNode _get_list_node(lst, Py_ssize_t pos):
     cdef PyObject *temp_node
 
     temp_node = PyList_GET_ITEM(lst, pos)
     return <_KnownGraphNode>temp_node
 
 
-cdef _KnownGraphNode _get_tuple_node(tpl, Py_ssize_t pos): # no except
+cdef _KnownGraphNode _get_tuple_node(tpl, Py_ssize_t pos):
     cdef PyObject *temp_node
 
     temp_node = PyTuple_GET_ITEM(tpl, pos)
@@ -211,7 +211,7 @@ cdef class KnownGraph:
     # Note: We don't need to set an 'except clause because _KnownGraphNode is
     #       an object type. However our crude test_source parser doesn't know
     #       how to tell that
-    cdef _KnownGraphNode _get_or_create_node(self, key): # no except
+    cdef _KnownGraphNode _get_or_create_node(self, key):
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
 
@@ -646,7 +646,7 @@ cdef class _MergeSorter:
             self._push_node(node, 0)
 
     # Note: _MergeSortNode is an object type so there is an implied except
-    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node): # no except
+    cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
         cdef PyObject *temp_node
         cdef _MergeSortNode ms_node
 

@@ -379,10 +379,8 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
-        # TODO: Add a class re to find what classes are defined in this module
-        #       A function that returns a class is the same as one that returns
-        #       an 'object', the exception handling is implied
-        except_re = re.compile(r'\s*cdef\s*' # start with cdef
+        class_re = re.compile(r'^(cdef\s+)?class (\w+).*:', re.MULTILINE)
+        except_re = re.compile(r'cdef\s*' # start with cdef
                                r'([\w *]*?)\s*' # this is the return signature
                                r'(\w+)\s*\(' # the function name
                                r'[^)]*\)\s*' # parameters
@@ -391,9 +389,10 @@ class TestSource(TestSourceHelper):
                               )
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
+            known_classes = set([m[1] for m in class_re.findall(text)])
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
-                if not sig:
+                if not sig or sig in known_classes:
                     sig = 'object'
                 if exc_clause and no_exc_comment:
                     both_exc_and_no_exc.append((fname, func))
@@ -409,7 +408,7 @@ class TestSource(TestSourceHelper):
         if missing_except:
             error_msg.append('The following functions have fixed return types,'
                              ' but no except clause.')
-            error_msg.append(' Either add an except or append "# no except".')
+            error_msg.append('Either add an except or append "# no except".')
             for fname, func in missing_except:
                 error_msg.append('%s:%s' % (fname, func))
             error_msg.extend(('', ''))
