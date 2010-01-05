@@ -27,6 +27,7 @@ import threading
 
 from bzrlib import (
     builtins,
+    debug,
     errors,
     osutils,
     revision as _mod_revision,
@@ -37,13 +38,13 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    ParamikoFeature,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
+
 
 class TestBzrServeBase(TestCaseWithTransport):
 
@@ -130,7 +131,9 @@ class TestBzrServe(TestBzrServeBase):
             finish_bzr_subprocess, a client for the server, and a transport.
         """
         # Serve from the current directory
-        process = self.start_bzr_subprocess(['serve', '--inet'])
+        args = ['serve', '--inet']
+        args.extend(extra_options)
+        process = self.start_bzr_subprocess(args)
 
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
@@ -180,9 +183,10 @@ class TestBzrServe(TestBzrServeBase):
 
         process, transport = self.start_server_inet(['--allow-writes'])
 
-        # We get a working branch
+        # We get a working branch, and can create a directory
         branch = BzrDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
+        transport.mkdir('adir')
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -214,6 +218,21 @@ class TestBzrServe(TestBzrServeBase):
         branch = Branch.open(url)
         self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
+
+    def test_bzr_serve_dhpss(self):
+        # This is a smoke test that the server doesn't crash when run with
+        # -Dhpss, and does drop some hpss logging to the file.
+        self.make_branch('.')
+        log_fname = os.getcwd() + '/server.log'
+        self._captureVar('BZR_LOG', log_fname)
+        process, transport = self.start_server_inet(['-Dhpss'])
+        branch = BzrDir.open_from_transport(transport).open_branch()
+        self.make_read_requests(branch)
+        self.assertInetServerShutsdownCleanly(process)
+        f = open(log_fname, 'rb')
+        content = f.read()
+        f.close()
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
 
 class TestCmdServeChrooting(TestBzrServeBase):

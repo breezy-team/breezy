@@ -137,6 +137,10 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  See "bzr help diverged-branches"'
                                     ' for more information.')
+        except errors.NoRoundtrippingSupport, e:
+            raise errors.BzrCommandError("It is not possible to losslessly "
+                "push to %s. You may want to use dpush instead." % 
+                    e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
             # we have a bzrdir but no branch or repository
             # XXX: Figure out what to do other than complain.
