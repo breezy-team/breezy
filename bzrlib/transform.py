@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1131,6 +1132,7 @@ class DiskTreeTransform(TreeTransformBase):
                 raise
 
             f.writelines(contents)
+            self._set_mtime(f)
         finally:
             f.close()
         self._set_mode(trans_id, mode_id, S_ISREG)
@@ -1298,6 +1300,7 @@ class TreeTransform(DiskTreeTransform):
         DiskTreeTransform.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
         self._deletiondir = deletiondir
+        self._creation_mtime = None
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
@@ -1359,6 +1362,34 @@ class TreeTransform(DiskTreeTransform):
                 raise
         if typefunc(mode):
             os.chmod(self._limbo_name(trans_id), mode)
+
+    def _set_mtime(self, f):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        import ctypes, msvcrt
+        class BASIC_INFO(ctypes.Structure):
+             _fields_ = [('CreationTime', ctypes.c_int64),
+                         ('LastAccessTime', ctypes.c_int64),
+                         ('LastWriteTime', ctypes.c_int64),
+                         ('ChangeTime', ctypes.c_int64),
+                         ('FileAttributes', ctypes.c_uint32),
+                        ]
+        bi = BASIC_INFO()
+        gfi = ctypes.windll.kernel32.GetFileInformationByHandleEx
+        handle = msvcrt.get_osfhandle(f.fileno())
+        ret = gfi(handle, 0, ctypes.byref(bi), ctypes.sizeof(bi))
+        assert ret, "failed to get file information: %d" % (
+            ctypes.GetLastError(),)
+        sfi = ctypes.windll.kernel32.SetFileInformationByHandle
+        bi.LastWriteTime = int((self._creation_mtime + 11644473600.0) * 1.0e7)
+        ret = sfi(handle, 0, ctypes.byref(bi), ctypes.sizeof(bi))
+        assert ret, "Failed to set file information: %d" % (
+            ctypes.GetLastError(),)
+
 
     def iter_tree_children(self, parent_id):
         """Iterate through the entry's tree children, if any"""
