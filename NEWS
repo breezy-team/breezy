@@ -29,7 +29,7 @@ New Features
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
 * Tree-shape conflicts can be resolved by providing ``--keep-mine`` and
-  ``--take-their`` to the ``bzr resolve`` command. Just marking the conflict
+  ``--take-theirs`` to the ``bzr resolve`` command. Just marking the conflict
   as resolved is still accessible via the ``--done`` default action.
   (Vincent Ladeuil, #257297, #232512)
 

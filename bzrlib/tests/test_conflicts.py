@@ -224,7 +224,7 @@ $ bzr resolve file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_their(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr mv file.OTHER file
 $ bzr resolve file
@@ -237,9 +237,9 @@ $ bzr resolve --keep-mine file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their file
+$ bzr resolve --take-theirs file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -292,9 +292,9 @@ $ bzr resolve --keep-mine file2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their file2
+$ bzr resolve --take-theirs file2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -335,7 +335,7 @@ $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_their(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
@@ -396,9 +396,9 @@ $ bzr resolve --keep-mine dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their dir
+$ bzr resolve --take-theirs dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -456,9 +456,9 @@ $ bzr resolve --keep-mine dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their dir
+$ bzr resolve --take-theirs dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -504,9 +504,9 @@ $ bzr resolve --keep-mine file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their file-in-branch
+$ bzr resolve --take-theirs file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -538,7 +538,7 @@ $ bzr resolve dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_their(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr mv dir2/dir1 dir1
 $ bzr mv dir2 dir1
@@ -552,9 +552,9 @@ $ bzr resolve --keep-mine dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their dir2
+$ bzr resolve --take-theirs dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -595,7 +595,7 @@ $ bzr resolve foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_their(self):
+    def test_take_theirs(self):
         self.run_script("""
 $ bzr rm foo --force
 $ bzr mv foo.new foo
@@ -609,9 +609,9 @@ $ bzr resolve --keep-mine foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_their(self):
+    def test_resolve_taking_theirs(self):
         self.run_script("""
-$ bzr resolve --take-their foo.new
+$ bzr resolve --take-theirs foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -667,8 +667,8 @@ class TestResolveActionOption(tests.TestCase):
         opts, args = self.parse(['--keep-mine'])
         self.assertEqual({'action': 'keep_mine'}, opts)
 
-    def test_take_their(self):
-        opts, args = self.parse(['--action', 'take-their'])
-        self.assertEqual({'action': 'take_their'}, opts)
-        opts, args = self.parse(['--take-their'])
-        self.assertEqual({'action': 'take_their'}, opts)
+    def test_take_theirs(self):
+        opts, args = self.parse(['--action', 'take-theirs'])
+        self.assertEqual({'action': 'take_theirs'}, opts)
+        opts, args = self.parse(['--take-theirs'])
+        self.assertEqual({'action': 'take_theirs'}, opts)
