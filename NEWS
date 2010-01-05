@@ -64,6 +64,14 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* Operations which update the working tree should now create all files
+  with the same mtime. So if you version a generated file and its source,
+  when updating you should get the same mtime for both files. We use
+  ``SetFileInformationByHandle`` on Windows, and ``futimes()`` on POSIX
+  systems to achieve this effect. This only works when extensions are
+  compiled as pure-python does not expose similar functionality.
+  (John Arbash Meinel, #488724)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
