@@ -18,8 +18,16 @@
 
 import cStringIO
 
-from bzrlib import errors, inventory, knit, lru_cache, osutils, trace
-from bzrlib import revision as _mod_revision
+from bzrlib import (
+    errors,
+    graph as _mod_graph,
+    inventory,
+    knit,
+    lru_cache,
+    osutils,
+    revision as _mod_revision,
+    trace,
+    )
 
 
 class _TreeShim(object):
@@ -159,6 +167,8 @@ class AbstractRevisionStore(object):
         :param repository: the target repository
         """
         self.repo = repo
+        self._graph = None
+        self._use_known_graph = True
         self._supports_chks = getattr(repo._format, 'supports_chks', False)
 
     def expects_rich_root(self):
@@ -355,6 +365,28 @@ class AbstractRevisionStore(object):
             parents=rev.parent_ids, config=None, timestamp=rev.timestamp,
             timezone=rev.timezone, committer=rev.committer,
             revprops=rev.properties, revision_id=rev.revision_id)
+        if self._graph is None and self._use_known_graph:
+            if (getattr(_mod_graph, 'GraphThunkIdsToKeys', None) is None
+                or getattr(_mod_graph.KnownGraph, 'add_node', None) is None):
+                self._use_known_graph = False
+            else:
+                self._graph = self.repo.revisions.get_known_graph_ancestry(
+                    [(r,) for r in rev.parent_ids])
+        if self._graph is not None:
+            orig_heads = builder._heads
+            def thunked_heads(file_id, revision_ids):
+                # self._graph thinks in terms of keys, not ids, so translate
+                # them
+                # old_res = orig_heads(file_id, revision_ids)
+                if len(revision_ids) < 2:
+                    res = set(revision_ids)
+                else:
+                    res = set([h[0] for h in
+                              self._graph.heads([(r,) for r in revision_ids])])
+                # if old_res != res:
+                #     import pdb; pdb.set_trace()
+                return res
+            builder._heads = thunked_heads
 
         if rev.parent_ids:
             basis_rev_id = rev.parent_ids[0]
@@ -379,6 +411,10 @@ class AbstractRevisionStore(object):
         rev.inv_sha1 = builder.inv_sha1
         builder.repository.add_revision(builder._new_revision_id, rev,
             builder.new_inventory, builder._config)
+        if self._graph is not None:
+            # TODO: Use StaticTuple and .intern() for these things
+            self._graph.add_node((builder._new_revision_id,),
+                                 [(p,) for p in rev.parent_ids])
 
         if signature is not None:
             raise AssertionError('signatures not guaranteed yet')
