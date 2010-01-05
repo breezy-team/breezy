@@ -1889,6 +1889,48 @@ def recv_all(socket, bytes):
     return b
 
 
+def _noop_fset_mtime(fileno, mtime):
+    """Do nothing.
+
+    This pretends to set the mtime of a file, but we were unable to import an
+    extension which would provide that functionality. So we just skip.
+
+    :seealso: fset_mtime
+    """
+
+
+_set_mtime_func = None
+def fset_mtime(fileno, mtime):
+    """Set the last-modified time (mtime) for this file handle.
+
+    This uses native OS functionality to set file times. As such, if extensions
+    are not compiled, this function becomes a no-op.
+
+    :param fileno: The fileno for the file, usually obtained from f.fileno()
+    :param mtime: time-since-epoch to set the mtime to. (same as time.time(),
+        or st.st_mtime, etc.). This can be a floating point number, but we
+        don't guarantee better than 1s resolution.
+    :return: None
+    """
+    global _set_mtime_func
+    if _set_mtime_func is None:
+        if sys.platform == "win32":
+            try:
+                from bzrlib._walkdirs_win32 import fset_mtime
+            except ImportError:
+                _set_mtime_func = _noop_fset_mtime
+            else:
+                _set_mtime_func = fset_mtime
+        else:
+            try:
+                from bzrlib._readdir_pyx import fset_mtime
+            except ImportError:
+                _set_mtime_func = _noop_fset_mtime
+            else:
+                _set_mtime_func = fset_mtime
+    return _set_mtime_func(fileno, mtime)
+
+
 def send_all(socket, bytes, report_activity=None):
     """Send all bytes on a socket.
 

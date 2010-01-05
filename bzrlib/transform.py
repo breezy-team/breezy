@@ -1024,6 +1024,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        self._creation_mtime = None
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1146,6 +1147,15 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
+
+    def _set_mtime(self, f):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        osutils.fset_mtime(f.fileno(), self._creation_mtime)
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
@@ -1300,7 +1310,6 @@ class TreeTransform(DiskTreeTransform):
         DiskTreeTransform.__init__(self, tree, limbodir, pb,
                                    tree.case_sensitive)
         self._deletiondir = deletiondir
-        self._creation_mtime = None
 
     def canonical_path(self, path):
         """Get the canonical tree-relative path"""
@@ -1362,34 +1371,6 @@ class TreeTransform(DiskTreeTransform):
                 raise
         if typefunc(mode):
             os.chmod(self._limbo_name(trans_id), mode)
-
-    def _set_mtime(self, f):
-        """All files that are created get the same mtime.
-
-        This time is set by the first object to be created.
-        """
-        if self._creation_mtime is None:
-            self._creation_mtime = time.time()
-        import ctypes, msvcrt
-        class BASIC_INFO(ctypes.Structure):
-             _fields_ = [('CreationTime', ctypes.c_int64),
-                         ('LastAccessTime', ctypes.c_int64),
-                         ('LastWriteTime', ctypes.c_int64),
-                         ('ChangeTime', ctypes.c_int64),
-                         ('FileAttributes', ctypes.c_uint32),
-                        ]
-        bi = BASIC_INFO()
-        gfi = ctypes.windll.kernel32.GetFileInformationByHandleEx
-        handle = msvcrt.get_osfhandle(f.fileno())
-        ret = gfi(handle, 0, ctypes.byref(bi), ctypes.sizeof(bi))
-        assert ret, "failed to get file information: %d" % (
-            ctypes.GetLastError(),)
-        sfi = ctypes.windll.kernel32.SetFileInformationByHandle
-        bi.LastWriteTime = int((self._creation_mtime + 11644473600.0) * 1.0e7)
-        ret = sfi(handle, 0, ctypes.byref(bi), ctypes.sizeof(bi))
-        assert ret, "Failed to set file information: %d" % (
-            ctypes.GetLastError(),)
-
 
     def iter_tree_children(self, parent_id):
         """Iterate through the entry's tree children, if any"""

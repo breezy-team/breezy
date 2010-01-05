@@ -59,6 +59,31 @@ cdef extern from "python-compat.h":
     # Wide character functions
     DWORD wcslen(WCHAR *)
 
+    ctypedef struct LARGE_INTEGER:
+        DWORD LowPart
+        DWORD HighPart
+
+    # TODO: Why does the win32 api use LARGE_INTEGER for this structure, but
+    #       FILETIME for the return from FindFirstFileW
+    ctypedef struct FILE_BASIC_INFO:
+         LARGE_INTEGER CreationTime
+         LARGE_INTEGER LastAccessTime
+         LARGE_INTEGER LastWriteTime
+         LARGE_INTEGER ChangeTime
+         DWORD FileAttributes
+
+    ctypedef enum FILE_INFO_BY_HANDLE_CLASS:
+        FileBasicInfo
+
+    int GetFileInformationByHandleEx(
+        HANDLE hFile, FILE_INFO_BY_HANDLE_CLASS type,
+        void* fileInformationBuffer, DWORD bufSize)
+    int SetFileInformationByHandle(
+        HANDLE hFile, FILE_INFO_BY_HANDLE_CLASS type,
+        void* fileInformationBuffer, DWORD bufSize)
+
+    long _get_osfhandle(int)
+
 
 cdef extern from "Python.h":
     WCHAR *PyUnicode_AS_UNICODE(object)
@@ -68,6 +93,7 @@ cdef extern from "Python.h":
     object PyUnicode_AsUTF8String(object)
 
 
+import msvcrt
 import operator
 import stat
 
@@ -145,6 +171,17 @@ cdef double _ftime_to_timestamp(FILETIME *ft):
     # secs between epochs: 11,644,473,600
     val = ((<__int64>ft.dwHighDateTime) << 32) + ft.dwLowDateTime
     return (val * 1.0e-7) - 11644473600.0
+
+
+cdef FILETIME _timestamp_to_ftime(double timestamp):
+    """Convert a time-since-epoch to a FILETIME."""
+    cdef __int64 val
+    cdef FILETIME result
+
+    val = <__int64>((timestamp + 11644473600.0) * 1.0e7)
+    result.dwHighDateTime = val >> 32
+    result.dwLowDateTime = val & 0xFFFFFFFF
+    return result
 
 
 cdef int _should_skip(WIN32_FIND_DATAW *data):
@@ -250,3 +287,26 @@ cdef class Win32ReadDir:
                 #       earlier Exception, so for now, I'm ignoring this
         dirblock.sort(key=operator.itemgetter(1))
         return dirblock
+
+
+def fset_mtime(fileno, mtime):
+    """See osutils.fset_mtime."""
+    cdef HANDLE the_handle
+    cdef FILE_BASIC_INFO bi
+    cdef FILETIME ft
+    cdef int retval
+
+    ft = _timestamp_to_ftime(mtime)
+    the_handle = <HANDLE>(_get_osfhandle(fileno))
+    if the_handle == <HANDLE>(-1):
+        raise OSError('Invalid fileno') # IOError?
+    retval = GetFileInformationByHandleEx(the_handle, FileBasicInfo,
+                                          &bi, sizeof(FILE_BASIC_INFO))
+    if retval != 1:
+        raise OSError('Failed to GetFileInformationByHandleEx')
+    bi.LastWriteTime.LowPart = ft.dwLowDateTime
+    bi.LastWriteTime.HighPart = ft.dwHighDateTime
+    retval = SetFileInformationByHandle(the_handle, FileBasicInfo,
+                                        &bi, sizeof(FILE_BASIC_INFO))
+    if retval != 1:
+        raise OSError('Failed to SetFileInformationByHandle')
