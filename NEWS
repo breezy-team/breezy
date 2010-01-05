@@ -17,16 +17,21 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr update`` now takes a ``--revision`` argument. This lets you
+  change the revision of the working tree to any revision in the
+  ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
+  Martin Pool, #45719)
+
+* ``-Dbytes`` can now be used to display the total number of bytes
+  transferred for the current command. This information is always logged
+  to ``.bzr.log`` for later inspection. (John Arbash Meinel)
+
 * The ``suppress_warnings`` configuration option has been introduced and
   accept the ``format_deprecation`` value to disable the corresponding
   warning for repositories. It can be set to in either ``bazaar.conf``,
   ``locations.conf`` or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
-* ``bzr update`` now takes a ``--revision`` argument. This lets you
-  change the revision of the working tree to any revision in the
-  ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
-  Martin Pool, #45719)
 
 Bug Fixes
 *********
