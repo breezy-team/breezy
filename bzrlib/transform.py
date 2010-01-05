@@ -1133,6 +1133,10 @@ class DiskTreeTransform(TreeTransformBase):
                 raise
 
             f.writelines(contents)
+            # We have to flush before calling _set_mtime, otherwise buffered
+            # data can be written after we force the mtime. This shouldn't have
+            # a huge performance impact, because 'close()' will flush anyway
+            f.flush()
             self._set_mtime(f)
         finally:
             f.close()

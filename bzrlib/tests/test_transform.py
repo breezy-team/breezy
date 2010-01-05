@@ -154,8 +154,10 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         fo.close()
         fo, st2 = self.wt.get_file_with_stat(None, path='two', filtered=False)
         fo.close()
+        # We only guarantee 1s resolution
+        self.assertEqual(int(transform._creation_mtime), int(st1.st_mtime))
+        # But if we have more than that, all files should get the same result
         self.assertEqual(st1.st_mtime, st2.st_mtime)
-        self.assertEqual(transform._creation_mtime, st1.st_mtime)
 
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
