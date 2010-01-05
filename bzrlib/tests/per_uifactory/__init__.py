@@ -134,7 +134,8 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_noarg(self):
         self.assertEqual('', self.stdout.getvalue())
-        self.assertEqual('', self.stderr.getvalue())
+        self.assertContainsRe(self.stderr.getvalue(), r'\d+KB\s+\dKB/s |')
+        self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
