@@ -594,7 +594,7 @@ cdef class _MergeSortNode:
             self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
 
-    cdef int has_pending_parents(self): # no except
+    cdef int has_pending_parents(self): # cannot_raise
         if self.left_pending_parent is not None or self.pending_parents:
             return 1
         return 0

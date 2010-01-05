@@ -374,7 +374,7 @@ class TestSource(TestSourceHelper):
         """Extension functions should propagate exceptions.
 
         Either they should return an object, have an 'except' clause, or have a
-        #no except to indicate that we've audited them and defined them as not
+        "# cannot_raise" to indicate that we've audited them and defined them as not
         raising exceptions.
         """
         both_exc_and_no_exc = []
@@ -385,7 +385,7 @@ class TestSource(TestSourceHelper):
                                r'(\w+)\s*\(' # the function name
                                r'[^)]*\)\s*' # parameters
                                r'(.*)\s*:' # the except clause
-                               r'\s*(#\s*no except)?' # no except comment
+                               r'\s*(#\s*cannot[- _]raise)?' # cannot raise comment
                               )
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
@@ -400,7 +400,7 @@ class TestSource(TestSourceHelper):
                     missing_except.append((fname, func))
         error_msg = []
         if both_exc_and_no_exc:
-            error_msg.append('The following functions had no except comments'
+            error_msg.append('The following functions had "cannot raise" comments'
                              ' but did have an except clause set:')
             for fname, func in both_exc_and_no_exc:
                 error_msg.append('%s:%s' % (fname, func))
@@ -408,7 +408,7 @@ class TestSource(TestSourceHelper):
         if missing_except:
             error_msg.append('The following functions have fixed return types,'
                              ' but no except clause.')
-            error_msg.append('Either add an except or append "# no except".')
+            error_msg.append('Either add an except or append "# cannot_raise".')
             for fname, func in missing_except:
                 error_msg.append('%s:%s' % (fname, func))
             error_msg.extend(('', ''))

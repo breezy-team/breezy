@@ -119,7 +119,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 
-cdef void* _my_memrchr(void *s, int c, size_t n): # no except
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start
@@ -165,7 +165,7 @@ cdef object safe_string_from_size(char *s, Py_ssize_t size):
     return PyString_FromStringAndSize(s, size)
 
 
-cdef int _is_aligned(void *ptr): # no except
+cdef int _is_aligned(void *ptr): # cannot_raise
     """Is this pointer aligned to an integer size offset?
 
     :return: 1 if this pointer is aligned, 0 otherwise.
@@ -173,7 +173,7 @@ cdef int _is_aligned(void *ptr): # no except
     return ((<intptr_t>ptr) & ((sizeof(int))-1)) == 0
 
 
-cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # no except
+cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_raise
     cdef unsigned char *cur1
     cdef unsigned char *cur2
     cdef unsigned char *end1
@@ -295,7 +295,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
-                                      char *path2, int path2_len): # no except
+                                      char *path2, int path2_len): # cannot_raise
     """Compare two paths by what directory they are in.
 
     see ``_cmp_path_by_dirblock`` for details.
@@ -768,7 +768,7 @@ def _read_dirblocks(state):
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
 
-cdef int minikind_from_mode(int mode): # no except
+cdef int minikind_from_mode(int mode): # cannot_raise
     # in order of frequency:
     if S_ISREG(mode):
         return c"f"
@@ -954,7 +954,7 @@ cdef object _minikind_to_kind(char minikind):
     raise KeyError(PyString_FromStringAndSize(_minikind, 1))
 
 
-cdef int _versioned_minikind(char minikind): # no except
+cdef int _versioned_minikind(char minikind): # cannot_raise
     """Return non-zero if minikind is in fltd"""
     return (minikind == c'f' or
             minikind == c'd' or

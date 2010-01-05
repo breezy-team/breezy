@@ -65,7 +65,7 @@ _InternalNode = None
 _unknown = None
 
 # We shouldn't just copy this from _dirstate_helpers_pyx
-cdef void* _my_memrchr(void *s, int c, size_t n): # no except
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start

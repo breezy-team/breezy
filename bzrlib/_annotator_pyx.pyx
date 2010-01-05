@@ -83,7 +83,7 @@ cdef int _check_match_ranges(parent_annotations, annotations,
     return 0
 
 
-cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos): # no except
+cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos): # cannot_raise
     """Return the next entry from this tuple.
 
     :param tpl: The tuple we are investigating, *must* be a PyTuple
