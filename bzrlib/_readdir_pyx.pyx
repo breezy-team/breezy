@@ -60,6 +60,7 @@ cdef extern from 'sys/stat.h':
         off_t st_size
         int st_dev
         ino_t st_ino
+        time_t st_atime
         int st_mtime
         int st_ctime
     int fstat(int fd, stat *buf)

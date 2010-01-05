@@ -2034,4 +2034,7 @@ class TestFSetMtime(tests.TestCaseInTempDir):
         finally:
             f.close()
         self.assertNotEqual(mtime, new_mtime)
-        self.assertEqual(new_mtime, os.lstat('test').st_mtime)
+        # We don't guarantee any better than 1s resolution, though we try to
+        # use functions that have at least microsecond resolution (1us on
+        # POSIX, 100ns on Windows)
+        self.assertEqual(int(new_mtime), int(os.lstat('test').st_mtime))
