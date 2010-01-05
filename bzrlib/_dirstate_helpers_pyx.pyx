@@ -1392,7 +1392,7 @@ cdef class ProcessEntryC:
             # provide.
             self.search_specific_file_parents.add('')
 
-    cdef void _update_current_block(self):
+    cdef int _update_current_block(self) except -1:
         if (self.block_index < len(self.state._dirblocks) and
             osutils.is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
             self.current_block = self.state._dirblocks[self.block_index]
@@ -1401,6 +1401,7 @@ cdef class ProcessEntryC:
         else:
             self.current_block = None
             self.current_block_list = None
+        return 0
 
     def __next__(self):
         # Simple thunk to allow tail recursion without pyrex confusion
