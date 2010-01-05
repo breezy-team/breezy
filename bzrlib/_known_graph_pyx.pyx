@@ -208,9 +208,6 @@ cdef class KnownGraph:
             child = <_KnownGraphNode>temp_node
             child.clear_references()
 
-    # Note: We don't need to set an 'except clause because _KnownGraphNode is
-    #       an object type. However our crude test_source parser doesn't know
-    #       how to tell that
     cdef _KnownGraphNode _get_or_create_node(self, key):
         cdef PyObject *temp_node
         cdef _KnownGraphNode node
@@ -645,7 +642,6 @@ cdef class _MergeSorter:
             node = self.graph._nodes[tip_key]
             self._push_node(node, 0)
 
-    # Note: _MergeSortNode is an object type so there is an implied except
     cdef _MergeSortNode _get_ms_node(self, _KnownGraphNode node):
         cdef PyObject *temp_node
         cdef _MergeSortNode ms_node
