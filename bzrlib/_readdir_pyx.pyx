@@ -62,6 +62,7 @@ cdef extern from 'sys/stat.h':
         ino_t st_ino
         int st_mtime
         int st_ctime
+    int fstat(int fd, stat *buf)
     int lstat(char *path, stat *buf)
     int S_ISDIR(int mode)
     int S_ISCHR(int mode)
@@ -75,6 +76,14 @@ cdef extern from 'sys/stat.h':
 cdef extern from 'fcntl.h':
     int O_RDONLY
     int open(char *pathname, int flags, mode_t mode)
+
+
+cdef extern from "sys/time.h":
+    struct timeval:
+        long tv_sec
+        long tv_usec
+    # atime, mtime
+    int futimes(int fd, timeval tv[2])
 
 
 cdef extern from 'Python.h':
@@ -379,5 +388,26 @@ cdef _read_dir(path):
 
     return result
 
+
+def fset_mtime(fileno, mtime):
+    """See osutils.fset_mtime."""
+    cdef int fd
+    cdef int retval
+    cdef double d_mtime
+    cdef timeval tv[2]
+    cdef stat st
+
+    fd = fileno
+    d_mtime = mtime
+    tv[1].tv_sec = <int>(d_mtime)
+    tv[1].tv_usec = <int>((d_mtime - tv[1].tv_sec) * 1000000.0)
+    retval = fstat(fd, &st)
+    if retval != 0:
+        raise OSError('Failed to fstat()')
+    tv[0].tv_sec = st.st_atime
+    tv[0].tv_usec = 0
+    retval = futimes(fd, tv)
+    if retval != 0:
+        raise OSError('Failed to futimes()')
 
 # vim: tw=79 ai expandtab sw=4 sts=4
