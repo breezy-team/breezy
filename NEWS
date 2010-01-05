@@ -127,7 +127,7 @@ bzr 2.0.4 (not released yet)
 ############################
 
 :Codename:
-:2.0.4: ???
+:2.0.4: smooth sailing
 
 Compatibility Breaks
 ********************
@@ -159,6 +159,10 @@ Bug Fixes
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
+
+* ``_update_current_block`` no longer suppresses exceptions, so ^C at just
+  the right time will get propagated, rather than silently failing to move
+  the block pointer. (John Arbash Meinel, Gareth White, #495023)
 
 Improvements
 ************
