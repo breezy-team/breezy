@@ -312,13 +312,14 @@ class TestExcludingGlobster(TestCase):
 
     def test_exclusion_patterns(self):
         """test that exclusion patterns are not matched"""
-        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*' ]
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*',u'!!./.zcompdump' ]
         globster = ExcludingGlobster(patterns)
         self.assertEqual(u'*', globster.match('tmp/foo.txt'))
         self.assertEqual(None, globster.match('local'))
         self.assertEqual(None, globster.match('local/bin/wombat'))
         self.assertEqual(None, globster.match('.zshrc'))
         self.assertEqual(None, globster.match('.zfunctions/fiddle/flam'))
+        self.assertEqual(u'!!./.zcompdump', globster.match('.zcompdump'))
 
     def test_exclusion_order(self):
         """test that ordering of exclusion patterns does not matter"""

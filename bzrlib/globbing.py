@@ -226,21 +226,27 @@ class ExcludingGlobster(object):
     
     def __init__(self,patterns):
         ignores = []
-        excludes = []
+        excludes = [[], []]
         for p in patterns:
-            if p.startswith(u'!'):
-                excludes.append(p[1:])
+            if p.startswith(u'!!'):
+                excludes[1].append(p[2:])
+            elif p.startswith(u'!'):
+                excludes[0].append(p[1:])
             else:
                 ignores.append(p)
         self._ignores = Globster(ignores)
-        self._excludes = Globster(excludes)
+        self._excludes = [Globster(i) for i in excludes]
         
     def match(self, filename):
         """Searches for a pattern that matches the given filename.
 
         :return A matching pattern or None if there is no matching pattern.
         """
-        if self._excludes.match(filename):
+        double_neg = self._excludes[1].match(filename)
+        if double_neg:
+            return "!!%s" % double_neg
+
+        if self._excludes[0].match(filename):
             return None
         else:
             return self._ignores.match(filename)

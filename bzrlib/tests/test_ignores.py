@@ -35,6 +35,7 @@ class TestParseIgnoreFile(TestCase):
                 '#comment\n'
                 ' xx \n' # whitespace
                 '!RE:^\.z.*\n'
+                '!!./.zcompdump\n'
                 ))
         self.assertEqual(set(['./rootdir',
                           'randomfile*',
@@ -43,6 +44,7 @@ class TestParseIgnoreFile(TestCase):
                           'dos',
                           ' xx ',
                           '!RE:^\.z.*',
+                          '!!./.zcompdump',
                          ]), ignored)
 
     def test_parse_empty(self):
