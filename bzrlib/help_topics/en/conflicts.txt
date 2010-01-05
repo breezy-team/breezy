@@ -7,23 +7,23 @@ may conflict with the current state of your working tree.
 
 When conflicts are present in your working tree (as shown by ``bzr
 conflicts``), you should resolve them and then inform bzr that the conflicts
-has been resolved.
+have been resolved.
 
 Resolving conflicts is sometimes not obvious. Either because the user that
 should resolve them is not the one responsible for their occurrence, as is the
-case when merging other people work or because some conflicts are presented in
-a way that is not easy to understand.
+case when merging other people's work or because some conflicts are presented
+in a way that is not easy to understand.
 
-Bazaar try to avoid conflicts, its aim is to ask you to resolve the conflict
-if and only if there's an actual conceptual conflict in the source tree.
-Because Bazaar doesn't understand the real meaning of the files being
-versioned it can, when faced with ambiguities, fall short in either direction
+Bazaar tries to avoid conflicts ; its aim is to ask you to resolve the
+conflict if and only if there's an actual conceptual conflict in the source
+tree.  Because Bazaar doesn't understand the real meaning of the files being
+versioned, it can, when faced with ambiguities, fall short in either direction
 trying to resolve the conflict itself. Many kinds of changes can be combined
 programmatically, but sometimes only a human can determine the right thing to
 do.
 
 When Bazaar generates a conflict, it adds information into the working tree to
-present the conflicting versions and it's up to you to find the correct
+present the conflicting versions, and it's up to you to find the correct
 resolution.
 
 Whatever the conflict is, resolving it is roughly done in two steps:
@@ -36,10 +36,10 @@ Whatever the conflict is, resolving it is roughly done in two steps:
 
 For most conflict types, there are some obvious ways to modify the working
 tree and put it into the desired state. For some types of conflicts, Bazaar
-itself already made a choice when possible.
+itself already made a choice, when possible.
 
-Yet, whether Bazaar made a choice or not, there are some other simple but
-alternative ways to resolve the conflict.
+Yet, whether Bazaar makes a choice or not, there are some other simple but
+different ways to resolve the conflict.
 
 Each type of conflict is explained below, and the action which must be done to
 resolve the conflict is outlined.
@@ -143,7 +143,7 @@ Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 .. TODO: if either .THIS or .OTHER doesn't exist anymore and FILE exists
-again, --auto may consider the conflict as resolved.
+again, --auto could consider the conflict as resolved.
 
 Tag conflicts
 -------------
