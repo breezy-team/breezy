@@ -382,8 +382,9 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
-        class_re = re.compile(r'^(cdef\s+)?class (\w+).*:', re.MULTILINE)
-        except_re = re.compile(r'cdef\s*' # start with cdef
+        class_re = re.compile(r'^(cdef\s+)?(public\s+)?(api\s+)?class (\w+).*:',
+                              re.MULTILINE)
+        except_re = re.compile(r'cdef\s+' # start with cdef
                                r'([\w *]*?)\s*' # this is the return signature
                                r'(\w+)\s*\(' # the function name
                                r'[^)]*\)\s*' # parameters
@@ -392,11 +393,15 @@ class TestSource(TestSourceHelper):
                               )
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
-            known_classes = set([m[1] for m in class_re.findall(text)])
+            known_classes = set([m[-1] for m in class_re.findall(text)])
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
+                if sig.startswith('api '):
+                    sig = sig[4:]
                 if not sig or sig in known_classes:
                     sig = 'object'
+                if 'nogil' in exc_clause:
+                    exc_clause = exc_clause.replace('nogil', '').strip()
                 if exc_clause and no_exc_comment:
                     both_exc_and_no_exc.append((fname, func))
                 if sig != 'object' and not (exc_clause or no_exc_comment):
