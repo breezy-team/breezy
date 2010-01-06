@@ -305,19 +305,15 @@ class BzrUploader(object):
         return ignored
 
     def upload_file(self, relpath, id, mode=None):
-        if not self.is_ignored(relpath):
-            if mode is None:
-                if self.tree.is_executable(id):
-                    mode = 0775
-                else:
-                    mode = 0664
-            if not self.quiet:
-                self.outf.write('Uploading %s\n' % relpath)
-            self.to_transport.put_bytes(relpath, self.tree.get_file_text(id),
-                                        mode)
-        else:
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if mode is None:
+            if self.tree.is_executable(id):
+                mode = 0775
+            else:
+                mode = 0664
+        if not self.quiet:
+            self.outf.write('Uploading %s\n' % relpath)
+        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id),
+                                    mode)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
@@ -338,13 +334,9 @@ class BzrUploader(object):
         self.upload_file(relpath, id, mode)
 
     def make_remote_dir(self, relpath, mode=None):
-        if not self.is_ignored(relpath):
-            if mode is None:
-                mode = 0775
-            self.to_transport.mkdir(relpath, mode)
-        else:
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if mode is None:
+            mode = 0775
+        self.to_transport.mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
@@ -367,24 +359,16 @@ class BzrUploader(object):
         self.make_remote_dir(relpath, mode)
 
     def delete_remote_file(self, relpath):
-        if not self.is_ignored(relpath):
-            if not self.quiet:
-                self.outf.write('Deleting %s\n' % relpath)
-            self.to_transport.delete(relpath)
-        else:
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if not self.quiet:
+            self.outf.write('Deleting %s\n' % relpath)
+        self.to_transport.delete(relpath)
 
     def delete_remote_dir(self, relpath):
-        if not self.is_ignored(relpath):
-            if not self.quiet:
-                self.outf.write('Deleting %s\n' % relpath)
-            self.to_transport.rmdir(relpath)
-        else:
-            # XXX: Add a test where a subdir is ignored but we still want to
-            # delete the dir -- vila 100106
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if not self.quiet:
+            self.outf.write('Deleting %s\n' % relpath)
+        self.to_transport.rmdir(relpath)
+        # XXX: Add a test where a subdir is ignored but we still want to
+        # delete the dir -- vila 100106
 
     def delete_remote_dir_maybe(self, relpath):
         """Try to delete relpath, keeping failures to retry later."""
