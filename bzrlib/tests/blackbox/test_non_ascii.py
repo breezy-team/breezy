@@ -40,7 +40,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         super(TestNonAscii, self).setUp()
         self._check_can_encode_paths()
 
-        self.addCleanup(osutils.__setattr__, "_cached_user_encoding",
+        self.addCleanup(setattr, osutils, "_cached_user_encoding",
             osutils._cached_user_encoding)
         osutils._cached_user_encoding = self.encoding
         email = self.info['committer'] + ' <joe@foo.com>'
