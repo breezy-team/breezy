@@ -494,9 +494,7 @@ class Unshelver(object):
     def write_diff(self, merger):
         """Write this operation's diff to self.write_diff_to."""
         tree_merger = merger.make_merger()
-        merger.change_reporter.report = lambda *args: None
         tt = tree_merger.make_preview_transform()
-        # Show the diff that would've been applied if this was for real.
         new_tree = tt.get_preview_tree()
         diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
         tt.finalize()
