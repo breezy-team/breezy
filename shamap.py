@@ -175,13 +175,25 @@ class SqliteGitShaMap(GitShaMap):
             self.db = mapdbs()[path]
         self.db.text_factory = str
         self.db.executescript("""
-        create table if not exists commits(sha1 text, revid text, tree_sha text);
+        create table if not exists commits(
+            sha1 text not null check(length(sha1) == 40),
+            revid text not null,
+            tree_sha text not null check(length(tree_sha) == 40)
+        );
         create index if not exists commit_sha1 on commits(sha1);
         create unique index if not exists commit_revid on commits(revid);
-        create table if not exists blobs(sha1 text, fileid text, revid text);
+        create table if not exists blobs(
+            sha1 text not null check(length(sha1) == 40),
+            fileid text not null,
+            revid text not null
+        );
         create index if not exists blobs_sha1 on blobs(sha1);
         create unique index if not exists blobs_fileid_revid on blobs(fileid, revid);
-        create table if not exists trees(sha1 text, fileid text, revid text);
+        create table if not exists trees(
+            sha1 text not null check(length(sha1) == 40),
+            fileid text not null,
+            revid text not null
+        );
         create index if not exists trees_sha1 on trees(sha1);
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
