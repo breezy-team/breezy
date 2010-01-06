@@ -1159,7 +1159,7 @@ class DiskTreeTransform(TreeTransformBase):
         """
         if self._creation_mtime is None:
             self._creation_mtime = time.time()
-        osutils.fset_mtime(f.fileno(), self._creation_mtime)
+        osutils.fset_mtime(f, self._creation_mtime)
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""

@@ -2008,29 +2008,22 @@ class TestTerminalWidth(tests.TestCase):
 
 class TestFSetMtime(tests.TestCaseInTempDir):
 
-    def have_extension(self):
-        return (UTF8DirReaderFeature.available()
-                or test__walkdirs_win32.win32_readdir_feature.available())
-
-    def test__noop(self):
-        # The _noop_fset_mtime function doesn't change the mtime
+    def test__utime_fset_mtime(self):
         f = open('test', 'wb')
         try:
             mtime = os.fstat(f.fileno()).st_mtime
-            osutils._noop_fset_mtime(f.fileno(), time.time()-20)
+            new_mtime = mtime - 20
+            osutils._utime_fset_mtime(f, new_mtime)
         finally:
             f.close()
-        self.assertEqual(mtime, os.lstat('test').st_mtime)
+        self.assertEqual(int(new_mtime), int(os.lstat('test').st_mtime))
 
     def test_fset_mtime(self):
-        if not self.have_extension():
-            self.knownFailure('Pure python does not expose a way to set'
-                              ' the mtime of a file.')
         f = open('test', 'wb')
         new_mtime = time.time()-20.0
         try:
             mtime = os.fstat(f.fileno()).st_mtime
-            osutils.fset_mtime(f.fileno(), new_mtime)
+            osutils.fset_mtime(f, new_mtime)
         finally:
             f.close()
         self.assertNotEqual(mtime, new_mtime)

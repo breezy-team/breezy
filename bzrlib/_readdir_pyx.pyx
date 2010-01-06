@@ -390,7 +390,7 @@ cdef _read_dir(path):
     return result
 
 
-def fset_mtime(fileno, mtime):
+def fset_mtime(f, mtime):
     """See osutils.fset_mtime."""
     cdef int fd
     cdef int retval
@@ -398,7 +398,7 @@ def fset_mtime(fileno, mtime):
     cdef timeval tv[2]
     cdef stat st
 
-    fd = fileno
+    fd = f.fileno()
     d_mtime = mtime
     tv[1].tv_sec = <int>(d_mtime)
     tv[1].tv_usec = <int>((d_mtime - tv[1].tv_sec) * 1000000.0)

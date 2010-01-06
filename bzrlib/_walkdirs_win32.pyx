@@ -289,7 +289,7 @@ cdef class Win32ReadDir:
         return dirblock
 
 
-def fset_mtime(fileno, mtime):
+def fset_mtime(f, mtime):
     """See osutils.fset_mtime."""
     cdef HANDLE the_handle
     cdef FILE_BASIC_INFO bi
@@ -297,7 +297,7 @@ def fset_mtime(fileno, mtime):
     cdef int retval
 
     ft = _timestamp_to_ftime(mtime)
-    the_handle = <HANDLE>(_get_osfhandle(fileno))
+    the_handle = <HANDLE>(_get_osfhandle(f.fileno()))
     if the_handle == <HANDLE>(-1):
         raise OSError('Invalid fileno') # IOError?
     retval = GetFileInformationByHandleEx(the_handle, FileBasicInfo,
