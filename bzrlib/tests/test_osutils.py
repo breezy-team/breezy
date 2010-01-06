@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2022,10 +2022,11 @@ class TestFSetMtime(tests.TestCaseInTempDir):
         # precision limitations on older filesystems such as FAT, but try to
         # use functions that have at least microsecond resolution (1us on
         # POSIX, 100ns on Windows)
-        self.assertFalse(int((new_mtime - set_mtime) / 2),
+        self.assertTrue(abs(set_mtime - new_mtime) < 2.0,
             "%r != %r within two seconds" % (new_mtime, set_mtime))
 
     def test_fset_mtime(self):
         self._check_fset_mtime(osutils.fset_mtime)
-        if osutils.fset_mtime is not osutils._utime_fset_mtime:
-            self._check_fset_mtime(osutils._utime_fset_mtime)
+
+    def test__utime_fset_mtime(self):
+        self._check_fset_mtime(osutils._utime_fset_mtime)
