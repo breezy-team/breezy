@@ -16,6 +16,11 @@ Compatibility Breaks
 New Features
 ************
 
+* ``.bzrignore-upload`` can be used to avoid uploading some files or
+  directories. It uses the same syntax as ``.bzrignore`` including regular
+  expressions.
+  (Martin Albisetti, Vincent Ladeuil, #499525, #499941)
+
 * Remote branches can be used to upload from.
   (Gary van der Merwe, Vincent Ladeuil)
 
