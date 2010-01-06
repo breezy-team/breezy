@@ -56,10 +56,13 @@ you use one of these bug trackers then there is no setup required to
 use this feature, you just need to know the tracker identifier to use.
 These are the bugtrackers that are built in:
 
-     URL                          | Abbreviation | Example
-     https://bugs.launchpad.net/  | lp           | lp:12345
-     http://bugs.debian.org/      | deb          | deb:12345
-     http://bugzilla.gnome.org/   | gnome        | gnome:12345
+    ============================= ============= ================
+    URL                           Abbreviation  Example
+    ============================= ============= ================
+    https://bugs.launchpad.net/   lp            lp:12345
+    http://bugs.debian.org/       deb           deb:12345
+    http://bugzilla.gnome.org/    gnome         gnome:12345
+    ============================= ============= ================
 
 For the bug trackers not listed above configuration is required.
 Support for generating the URLs for any project using Bugzilla or Trac
