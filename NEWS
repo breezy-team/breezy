@@ -184,6 +184,11 @@ Internals
 Testing
 *******
 
+* We have a new ``test_source`` that ensures all pyrex ``cdef`` functions
+  handle exceptions somehow. (Possibly by setting ``# cannot_raise``
+  rather than an ``except ?:`` clause.) This should help prevent bugs like
+  bug #495023. (John Arbash Meinel)
+
 
 bzr 2.1.0b4
 ###########
