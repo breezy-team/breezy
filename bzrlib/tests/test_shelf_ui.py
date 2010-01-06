@@ -492,30 +492,22 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
-    # XXX: Shamelessly copied from test_osutils.py. Is there a better place
-    # where it could live in order to be shared by both?
-    def replace_stdout(self, new):
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = new
-
-    def test_unshelve_args_dry_run(self):
+    def test_unshelve_args_preview(self):
         tree = self.create_tree_with_shelf()
-        unshelver = shelf_ui.Unshelver.from_args(directory='tree',
-            action='dry-run')
-        stdout = StringIO()
-        self.replace_stdout(stdout)
+        write_diff_to = StringIO()
+        unshelver = shelf_ui.Unshelver.from_args(
+            directory='tree', action='preview', write_diff_to=write_diff_to)
         try:
             unshelver.run()
         finally:
             unshelver.tree.unlock()
+        # The changes were not unshelved.
         self.assertFileEqual(LINES_AJ, 'tree/foo')
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
-        # Now check that the diff was written to our fake stdout.
-        stdout.seek(0)
-        lines = stdout.read().split()
+
+        # But the diff was written to write_diff_to.
+        write_diff_to.seek(0)
+        lines = write_diff_to.read().split()
         self.assertTrue('-a' in lines, lines)
         self.assertTrue('-j' in lines, lines)
         self.assertTrue('+z' in lines, lines)

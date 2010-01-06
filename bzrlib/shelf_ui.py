@@ -382,16 +382,18 @@ class Unshelver(object):
     """Unshelve changes into a working tree."""
 
     @classmethod
-    def from_args(klass, shelf_id=None, action='apply', directory='.'):
+    def from_args(klass, shelf_id=None, action='apply', directory='.',
+                  write_diff_to=None):
         """Create an unshelver from commandline arguments.
 
-        The returned shelver wil have a tree that is locked and should
+        The returned shelver will have a tree that is locked and should
         be unlocked.
 
         :param shelf_id: Integer id of the shelf, as a string.
         :param action: action to perform.  May be 'apply', 'dry-run',
             'delete', 'preview'.
         :param directory: The directory to unshelve changes into.
+        :param write_diff_to: See Unshelver.__init__().
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         tree.lock_tree_write()
@@ -428,10 +430,11 @@ class Unshelver(object):
             tree.unlock()
             raise
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
-                     read_shelf, show_diff)
+                     read_shelf, show_diff, write_diff_to)
 
     def __init__(self, tree, manager, shelf_id, apply_changes=True,
-                 delete_shelf=True, read_shelf=True, show_diff=False):
+                 delete_shelf=True, read_shelf=True, show_diff=False,
+                 write_diff_to=None):
         """Constructor.
 
         :param tree: The working tree to unshelve into.
@@ -443,6 +446,9 @@ class Unshelver(object):
         :param read_shelf: If True, read the changes from the shelf.
         :param show_diff: If True, show the diff that would result from
             unshelving the changes.
+        :param write_diff_to: A file-like object where the diff will be
+            written to. If None, ui.ui_factory.make_output_stream() will
+            be used.
         """
         self.tree = tree
         manager = tree.get_shelf_manager()
@@ -452,8 +458,11 @@ class Unshelver(object):
         self.delete_shelf = delete_shelf
         self.read_shelf = read_shelf
         self.show_diff = show_diff
+        self.write_diff_to = write_diff_to
+        if self.write_diff_to is None:
+            self.write_diff_to = ui.ui_factory.make_output_stream()
 
-    def run(self, diff_output=None):
+    def run(self):
         """Perform the unshelving operation."""
         self.tree.lock_tree_write()
         cleanups = [self.tree.unlock]
@@ -471,7 +480,7 @@ class Unshelver(object):
                     if self.apply_changes:
                         merger.do_merge()
                     elif self.show_diff:
-                        self.write_diff(merger, diff_output)
+                        self.write_diff(merger)
                     else:
                         self.show_changes(merger)
                 finally:
@@ -482,23 +491,19 @@ class Unshelver(object):
             for cleanup in reversed(cleanups):
                 cleanup()
 
-    def write_diff(self, merger, diff_output=None):
+    def write_diff(self, merger):
+        """Write this operation's diff to self.write_diff_to."""
         tree_merger = merger.make_merger()
-        # This would implicitly show the changes via the reporter, but we
-        # don't want that, so we silence it.
         merger.change_reporter.report = lambda *args: None
         tt = tree_merger.make_preview_transform()
-        # And now we show the diff that would've been applied if this was
-        # for real.
+        # Show the diff that would've been applied if this was for real.
         new_tree = tt.get_preview_tree()
-        if diff_output is None:
-            diff_output = ui.ui_factory.make_output_stream()
-        diff.show_diff_trees(merger.this_tree, new_tree, diff_output)
+        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
         tt.finalize()
 
     def show_changes(self, merger):
         """Show the changes that this operation specifies."""
         tree_merger = merger.make_merger()
-        # This implicitly shows the changes via the reporter.
+        # This implicitly shows the changes via the reporter, so we're done...
         tt = tree_merger.make_preview_transform()
         tt.finalize()
