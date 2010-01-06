@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2004,29 +2004,3 @@ class TestTerminalWidth(tests.TestCase):
         del os.environ['COLUMNS']
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
-
-
-class TestFSetMtime(tests.TestCaseInTempDir):
-
-    def _check_fset_mtime(self, func):
-        f = open('test', 'wb')
-        try:
-            mtime = os.fstat(f.fileno()).st_mtime
-            new_mtime = mtime - 20
-            func(f, new_mtime)
-        finally:
-            f.close()
-        self.assertNotEqual(mtime, new_mtime)
-        set_mtime = os.lstat('test').st_mtime
-        # We don't guarantee any better than 2s resolution, due to timestamp
-        # precision limitations on older filesystems such as FAT, but try to
-        # use functions that have at least microsecond resolution (1us on
-        # POSIX, 100ns on Windows)
-        self.assertTrue(abs(set_mtime - new_mtime) < 2.0,
-            "%r != %r within two seconds" % (new_mtime, set_mtime))
-
-    def test_fset_mtime(self):
-        self._check_fset_mtime(osutils.fset_mtime)
-
-    def test__utime_fset_mtime(self):
-        self._check_fset_mtime(osutils._utime_fset_mtime)

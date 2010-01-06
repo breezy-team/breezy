@@ -59,12 +59,6 @@ cdef extern from "python-compat.h":
     # Wide character functions
     DWORD wcslen(WCHAR *)
 
-    int SetFileTime(
-        HANDLE hFile, FILETIME *lpCreationTime, FILETIME *lpLastAccessTime,
-        FILETIME *lpLastWriteTime)
-
-    long _get_osfhandle(int)
-
 
 cdef extern from "Python.h":
     WCHAR *PyUnicode_AS_UNICODE(object)
@@ -151,17 +145,6 @@ cdef double _ftime_to_timestamp(FILETIME *ft):
     # secs between epochs: 11,644,473,600
     val = ((<__int64>ft.dwHighDateTime) << 32) + ft.dwLowDateTime
     return (val * 1.0e-7) - 11644473600.0
-
-
-cdef FILETIME _timestamp_to_ftime(double timestamp):
-    """Convert a time-since-epoch to a FILETIME."""
-    cdef __int64 val
-    cdef FILETIME result
-
-    val = <__int64>((timestamp + 11644473600.0) * 1.0e7)
-    result.dwHighDateTime = <DWORD>(val >> 32)
-    result.dwLowDateTime = <DWORD>(val & 0xFFFFFFFF)
-    return result
 
 
 cdef int _should_skip(WIN32_FIND_DATAW *data):
@@ -267,18 +250,3 @@ cdef class Win32ReadDir:
                 #       earlier Exception, so for now, I'm ignoring this
         dirblock.sort(key=operator.itemgetter(1))
         return dirblock
-
-
-def fset_mtime(f, mtime):
-    """See osutils.fset_mtime."""
-    cdef HANDLE the_handle
-    cdef FILETIME ft
-    cdef int retval
-
-    ft = _timestamp_to_ftime(mtime)
-    the_handle = <HANDLE>(_get_osfhandle(f.fileno()))
-    if the_handle == <HANDLE>(-1):
-        raise OSError('Invalid fileno') # IOError?
-    retval = SetFileTime(the_handle, NULL, NULL, &ft)
-    if retval == 0:
-        raise WindowsError(GetLastError(), "Failed to set file modified time")

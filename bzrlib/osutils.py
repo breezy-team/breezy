@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1887,39 +1887,6 @@ def recv_all(socket, bytes):
             break # eof
         b += new
     return b
-
-
-def _utime_fset_mtime(f, mtime):
-    """Use 'os.utime' to set the mtime.
-
-    This will cause a second lookup of the path, etc, but it works.
-    :seealso: fset_mtime
-    """
-    os.utime(f.name, (mtime, mtime))
-
-
-_set_mtime_func = None
-def fset_mtime(f, mtime):
-    """Set the last-modified time (mtime) for this file handle.
-
-    :param f: A File object (from open()).
-    :param mtime: time-since-epoch to set the mtime to. (same as time.time(),
-        or st.st_mtime, etc.). This can be a floating point number, but we
-        don't guarantee better than 1s resolution.
-    :return: None
-    """
-    global _set_mtime_func
-    if _set_mtime_func is None:
-        try:
-            if sys.platform == "win32":
-                from bzrlib._walkdirs_win32 import fset_mtime
-            else:
-                from bzrlib._readdir_pyx import fset_mtime
-        except ImportError:
-            _set_mtime_func = _utime_fset_mtime
-        else:
-            _set_mtime_func = fset_mtime
-    return _set_mtime_func(f, mtime)
 
 
 def send_all(socket, bytes, report_activity=None):

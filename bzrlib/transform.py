@@ -1133,13 +1133,9 @@ class DiskTreeTransform(TreeTransformBase):
                 raise
 
             f.writelines(contents)
-            # We have to flush before calling _set_mtime, otherwise buffered
-            # data can be written after we force the mtime. This shouldn't have
-            # a huge performance impact, because 'close()' will flush anyway
-            f.flush()
-            self._set_mtime(f)
         finally:
             f.close()
+        self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _read_file_chunks(self, trans_id):
@@ -1152,14 +1148,14 @@ class DiskTreeTransform(TreeTransformBase):
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
 
-    def _set_mtime(self, f):
+    def _set_mtime(self, path):
         """All files that are created get the same mtime.
 
         This time is set by the first object to be created.
         """
         if self._creation_mtime is None:
             self._creation_mtime = time.time()
-        osutils.fset_mtime(f, self._creation_mtime)
+        os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
