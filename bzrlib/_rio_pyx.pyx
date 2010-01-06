@@ -49,7 +49,7 @@ cdef extern from "string.h":
 
 from bzrlib.rio import Stanza
 
-cdef int _valid_tag_char(char c):
+cdef int _valid_tag_char(char c): # cannot_raise
     return (c == c'_' or c == c'-' or 
             (c >= c'a' and c <= c'z') or
             (c >= c'A' and c <= c'Z') or
