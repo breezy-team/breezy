@@ -14,6 +14,8 @@
   * Refuse pulling into non-rich-root branches rather than erroring 
     out with an AttributeError. (#449507, Jelmer Vernooij)
 
+  * Unquote paths extracted from URLs. (#445156, Jelmer Vernooij)
+
  PERFORMANCE
 
   * Improve performance of WorkingTree.extras() by not looking up the 

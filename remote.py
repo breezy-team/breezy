@@ -86,7 +86,8 @@ class GitSmartTransport(Transport):
     def __init__(self, url, _client=None):
         Transport.__init__(self, url)
         (scheme, _, loc, _, _) = urlparse.urlsplit(url)
-        hostport, self._path = urllib.splithost(loc)
+        hostport, escaped_path = urllib.splithost(loc)
+        self._path = urllib.unquote(escaped_path)
         (self._username, hostport) = urllib.splituser(hostport)
         (self._host, self._port) = urllib.splitnport(hostport, None)
         self._client = _client
