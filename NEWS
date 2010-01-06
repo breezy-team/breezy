@@ -11,6 +11,9 @@
 
   * Fix fetching between git repositories. (#449507, Jelmer Vernooij)
 
+  * Refuse pulling into non-rich-root branches rather than erroring 
+    out with an AttributeError. (#449507, Jelmer Vernooij)
+
  PERFORMANCE
 
   * Improve performance of WorkingTree.extras() by not looking up the 

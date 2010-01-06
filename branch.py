@@ -231,7 +231,7 @@ class GitBranch(ForeignBranch):
         return branch.InterBranch.get(self, target)._basic_push(
             overwrite, stop_revision)
 
- 
+
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
@@ -351,15 +351,20 @@ class InterFromGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
     @classmethod
-    def is_compatible(self, source, target):
-        return (isinstance(source, GitBranch) and 
-                not isinstance(target, GitBranch))
+    def _get_interrepo(self, source, target):
+        return repository.InterRepository.get(source.repository,
+            target.repository)
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        return (isinstance(source, GitBranch) and
+                not isinstance(target, GitBranch) and
+                (getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None))
 
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
         """See InterBranch.update_revisions()."""
-        interrepo = repository.InterRepository.get(self.source.repository, 
-            self.target.repository)
+        interrepo = self._get_interrepo(self.source, self.target)
         self._head = None
         self._last_revid = None
         def determine_wants(heads):
