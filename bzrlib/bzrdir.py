@@ -3110,6 +3110,10 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         BzrDirMetaFormat1.__init__(self)
         self._network_name = None
 
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
+
     def get_format_description(self):
         if self._network_name:
             real_format = network_format_registry.get(self._network_name)
