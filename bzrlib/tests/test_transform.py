@@ -155,7 +155,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         fo, st2 = self.wt.get_file_with_stat(None, path='two', filtered=False)
         fo.close()
         # We only guarantee 2s resolution
-        self.assertTrue(abs(new_time - set_mtime) < 2
+        self.assertTrue(abs(creation_mtime - st1.st_mtime) < 2.0,
             "%s != %s within 2 seconds" % (creation_mtime, st1.st_mtime))
         # But if we have more than that, all files should get the same result
         self.assertEqual(st1.st_mtime, st2.st_mtime)
