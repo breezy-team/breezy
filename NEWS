@@ -67,9 +67,8 @@ Bug Fixes
 * Operations which update the working tree should now create all files
   with the same mtime. So if you version a generated file and its source,
   when updating you should get the same mtime for both files. We use
-  ``SetFileInformationByHandle`` on Windows, and ``futimes()`` on POSIX
-  systems to achieve this effect. This only works when extensions are
-  compiled as pure-python does not expose similar functionality.
+  ``SetFileInformationByHandle`` on Windows, ``futimes()`` on POSIX, an
+  ``os.utime`` otherwise to achieve this effect.
   (John Arbash Meinel, #488724)
 
 * The 2a format wasn't properly restarting autopacks when something

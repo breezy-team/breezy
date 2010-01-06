@@ -93,7 +93,6 @@ cdef extern from "Python.h":
     object PyUnicode_AsUTF8String(object)
 
 
-import msvcrt
 import operator
 import stat
 
