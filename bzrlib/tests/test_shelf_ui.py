@@ -492,6 +492,17 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_ZY, 'tree/foo')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
+    def test_unshelve_args_dry_run(self):
+        tree = self.create_tree_with_shelf()
+        unshelver = shelf_ui.Unshelver.from_args(directory='tree',
+            action='dry-run')
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+        self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+
     def test_unshelve_args_preview(self):
         tree = self.create_tree_with_shelf()
         write_diff_to = StringIO()
@@ -506,12 +517,9 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
 
         # But the diff was written to write_diff_to.
-        write_diff_to.seek(0)
-        lines = write_diff_to.read().split()
-        self.assertTrue('-a' in lines, lines)
-        self.assertTrue('-j' in lines, lines)
-        self.assertTrue('+z' in lines, lines)
-        self.assertTrue('+y' in lines, lines)
+        diff = write_diff_to.getvalue()
+        self.assertContainsRe(diff, '-a\n\+z')
+        self.assertContainsRe(diff, '-j\n\+y')
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')
