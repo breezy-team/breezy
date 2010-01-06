@@ -94,6 +94,10 @@ API Changes
   CamelCase. For the features that were more likely to be used, we added a
   deprecation thunk, but not all. (John Arbash Meinel)
 
+* The Transport ``Server.tearDown`` method is now renamed to
+  ``stop_server`` for consistency with general naming, and to avoid
+  confusion with Python's ``TestCase.tearDown``.  (Martin Pool)
+
 * ``WorkingTree.update`` implementations must now accept a ``revision``
   parameter.
 

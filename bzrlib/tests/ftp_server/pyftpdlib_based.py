@@ -186,8 +186,8 @@ class FTPTestServer(transport.Server):
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
+        """See bzrlib.transport.Server.stop_server."""
         # Tell the server to stop, but also close the server socket for tests
         # that start the server but never initiate a connection. Closing the
         # socket should be done first though, to avoid further connections.
@@ -196,7 +196,7 @@ class FTPTestServer(transport.Server):
         self._ftpd_thread.join()
 
     def _run_server(self):
-        """Run the server until tearDown is called, shut it down properly then.
+        """Run the server until stop_server is called, shut it down properly then.
         """
         self._ftpd_running = True
         self._ftpd_starting.release()

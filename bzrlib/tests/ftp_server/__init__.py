@@ -69,7 +69,7 @@ class UnavailableFTPTestServer(object):
     def setUp(self, vfs_server=None):
         pass
 
-    def tearDown(self):
+    def stop_server(self):
         pass
 
     def get_url(self):

@@ -1486,7 +1486,7 @@ class TestTestCase(tests.TestCase):
         # machinery)
         transport_server = MemoryServer()
         transport_server.setUp()
-        self.addCleanup(transport_server.tearDown)
+        self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
         bzrdir.BzrDir.create(t.base)
         self.assertRaises(errors.BzrError,
@@ -2601,7 +2601,7 @@ class TestBlackboxSupport(tests.TestCase):
         # code.
         transport_server = MemoryServer()
         transport_server.setUp()
-        self.addCleanup(transport_server.tearDown)
+        self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()
         self.permit_url(url)
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)

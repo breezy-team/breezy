@@ -114,7 +114,7 @@ class SmartWSGIApp(object):
         # protocol dictionary, we don't *just in case* there are parts of
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
-        #self.chroot_server.tearDown()
+        #self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""

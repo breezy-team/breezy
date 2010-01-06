@@ -63,7 +63,7 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
             t = get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
-            chroot_server.tearDown()
+            chroot_server.stop_server()
 
     def do_POST_inner(self, chrooted_transport):
         self.send_response(200)

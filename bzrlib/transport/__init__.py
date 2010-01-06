@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1675,7 +1675,7 @@ class Server(object):
     def setUp(self):
         """Setup the server to service requests."""
 
-    def tearDown(self):
+    def stop_server(self):
         """Remove the server and cleanup any resources it owns."""
 
     def get_url(self):

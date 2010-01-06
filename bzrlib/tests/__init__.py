@@ -1020,7 +1020,7 @@ class TestCase(testtools.TestCase):
             transport_server.setUp()
         else:
             transport_server.setUp(backing_server)
-        self.addCleanup(transport_server.tearDown)
+        self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
         t = get_transport(transport_server.get_url())

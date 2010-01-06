@@ -255,8 +255,7 @@ class FTPTestServer(transport.Server):
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()

@@ -199,10 +199,9 @@ class DecoratorServer(Server):
             self._server = LocalURLServer()
             self._server.setUp()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         if self._made_server:
-            self._server.tearDown()
+            self._server.stop_server()
 
     def get_decorator_class(self):
         """Return the class of the decorators we should be constructing."""

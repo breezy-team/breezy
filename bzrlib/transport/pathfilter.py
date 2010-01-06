@@ -63,7 +63,7 @@ class PathFilteringServer(Server):
         self.scheme = 'filtered-%d:///' % id(self)
         register_transport(self.scheme, self._factory)
 
-    def tearDown(self):
+    def stop_server(self):
         unregister_transport(self.scheme, self._factory)
 
 

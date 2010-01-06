@@ -1103,8 +1103,7 @@ class SFTPServer(Server):
         self._listener.setDaemon(True)
         self._listener.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._listener.stop()
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 

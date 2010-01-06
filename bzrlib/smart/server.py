@@ -279,9 +279,9 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread(self.thread_name_suffix)
 
-    def tearDown(self):
+    def stop_server(self):
         self.stop_background_thread()
-        self.chroot_server.tearDown()
+        self.chroot_server.stop_server()
 
     def get_url(self):
         url = super(SmartTCPServer_for_testing, self).get_url()
@@ -387,14 +387,14 @@ class BzrServerFactory(object):
         self.base_path = self.get_base_path(transport)
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.setUp()
-        self.cleanups.append(chroot_server.tearDown)
+        self.cleanups.append(chroot_server.stop_server)
         transport = get_transport(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.setUp()
-            self.cleanups.append(expand_userdirs.tearDown)
+            self.cleanups.append(expand_userdirs.stop_server)
             transport = get_transport(expand_userdirs.get_url())
         self.transport = transport
 

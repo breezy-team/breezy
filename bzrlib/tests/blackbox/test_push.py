@@ -598,7 +598,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         result._locks = self._locks
         return result
 
-    def tearDown(self):
+    def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
 
 

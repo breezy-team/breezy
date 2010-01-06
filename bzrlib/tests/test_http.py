@@ -247,7 +247,7 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             self._sock.close()
         except socket.error:
@@ -308,7 +308,7 @@ class TestHTTPServer(tests.TestCase):
         try:
             self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_force_invalid_protocol(self):
@@ -316,7 +316,7 @@ class TestHTTPServer(tests.TestCase):
         try:
             self.assertRaises(httplib.UnknownProtocol, server.setUp)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_server_start_and_stop(self):
@@ -325,7 +325,7 @@ class TestHTTPServer(tests.TestCase):
         try:
             self.assertTrue(server._http_running)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -433,7 +433,7 @@ class TestHttpTransportUrls(tests.TestCase):
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
@@ -763,14 +763,14 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
-    def test_setUp_and_tearDown(self):
+    def test_setUp_and_stop(self):
         server = RecordingServer(expect_body_tail=None)
         server.setUp()
         try:
             self.assertNotEqual(None, server.host)
             self.assertNotEqual(None, server.port)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
@@ -1979,7 +1979,7 @@ class TestActivityMixin(object):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def get_transport(self):
@@ -2120,7 +2120,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
 
@@ -2146,7 +2146,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def assertActivitiesMatch(self):

@@ -1868,7 +1868,7 @@ class _DisconnectingTCPServer(object):
     def get_url(self):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             # make sure the thread dies by connecting to the listening socket,
             # just in case the test failed to do so.
@@ -1879,4 +1879,3 @@ class _DisconnectingTCPServer(object):
             pass
         self.sock.close()
         self.thread.join()
-

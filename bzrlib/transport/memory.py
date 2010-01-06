@@ -317,9 +317,10 @@ class MemoryServer(Server):
             return result
         register_transport(self._scheme, memory_factory)
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
+        """See bzrlib.transport.Server.stop_server."""
         # unregister this server
+        # XXX: why isn't this done? -- mbp 20100106
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

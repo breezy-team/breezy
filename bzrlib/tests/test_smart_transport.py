@@ -1001,7 +1001,7 @@ class SmartTCPTests(tests.TestCase):
         if not backing_transport:
             mem_server = memory.MemoryServer()
             mem_server.setUp()
-            self.addCleanup(mem_server.tearDown)
+            self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
             self.backing_transport = get_transport(mem_server.get_url())
         else:
@@ -1021,6 +1021,7 @@ class SmartTCPTests(tests.TestCase):
             del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
+            # XXX: why not .stop_server() -- mbp 20100106
             del self.server
 
 

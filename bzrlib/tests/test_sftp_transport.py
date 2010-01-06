@@ -199,7 +199,7 @@ class SFTPNonServerTest(TestCase):
             self.assertTrue(transport.abspath('/').endswith('/'))
             del transport
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
