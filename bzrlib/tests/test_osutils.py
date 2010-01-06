@@ -2008,26 +2008,24 @@ class TestTerminalWidth(tests.TestCase):
 
 class TestFSetMtime(tests.TestCaseInTempDir):
 
-    def test__utime_fset_mtime(self):
+    def _check_fset_mtime(self, func):
         f = open('test', 'wb')
         try:
             mtime = os.fstat(f.fileno()).st_mtime
             new_mtime = mtime - 20
-            osutils._utime_fset_mtime(f, new_mtime)
-        finally:
-            f.close()
-        self.assertEqual(int(new_mtime), int(os.lstat('test').st_mtime))
-
-    def test_fset_mtime(self):
-        f = open('test', 'wb')
-        new_mtime = time.time()-20.0
-        try:
-            mtime = os.fstat(f.fileno()).st_mtime
-            osutils.fset_mtime(f, new_mtime)
+            func(f, new_mtime)
         finally:
             f.close()
         self.assertNotEqual(mtime, new_mtime)
-        # We don't guarantee any better than 1s resolution, though we try to
+        set_mtime = os.lstat('test').st_mtime
+        # We don't guarantee any better than 2s resolution, due to timestamp
+        # precision limitations on older filesystems such as FAT, but try to
         # use functions that have at least microsecond resolution (1us on
         # POSIX, 100ns on Windows)
-        self.assertEqual(int(new_mtime), int(os.lstat('test').st_mtime))
+        self.assertFalse(int((new_mtime - set_mtime) / 2),
+            "%r != %r within two seconds" % (new_mtime, set_mtime))
+
+    def test_fset_mtime(self):
+        self._check_fset_mtime(osutils.fset_mtime)
+        if osutils.fset_mtime is not osutils._utime_fset_mtime:
+            self._check_fset_mtime(osutils._utime_fset_mtime)

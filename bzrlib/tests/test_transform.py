@@ -143,7 +143,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(self.wt.unlock)
         # Roll back the clock, so that we know everything is being set to the
         # exact time
-        transform._creation_mtime = time.time() - 10.0
+        transform._creation_mtime = creation_mtime = time.time() - 10.0
         transform.create_file('content-one',
                               transform.create_path('one', root))
         time.sleep(1) # *ugly*
@@ -154,8 +154,9 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         fo.close()
         fo, st2 = self.wt.get_file_with_stat(None, path='two', filtered=False)
         fo.close()
-        # We only guarantee 1s resolution
-        self.assertEqual(int(transform._creation_mtime), int(st1.st_mtime))
+        # We only guarantee 2s resolution
+        self.assertFalse(int((creation_mtime - st1.st_mtime) / 2),
+            "%r != %r within two seconds" % (creation_mtime, st1.st_mtime))
         # But if we have more than that, all files should get the same result
         self.assertEqual(st1.st_mtime, st2.st_mtime)
 
