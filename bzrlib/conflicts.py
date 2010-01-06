@@ -31,6 +31,7 @@ from bzrlib import (
     osutils,
     rio,
     trace,
+    transform,
     workingtree,
     )
 """)
@@ -607,11 +608,19 @@ class ParentLoop(HandledPathConflict):
     def take_theirs(self, tree):
         # FIXME: We shouldn't have to manipulate so many paths here (and there
         # is probably a bug or two...)
-        conflict_base_path = osutils.basename(self.conflict_path)
         base_path = osutils.basename(self.path)
-        tree.rename_one(self.conflict_path, conflict_base_path)
-        tree.rename_one(self.path,
-                        osutils.joinpath([conflict_base_path, base_path]))
+        conflict_base_path = osutils.basename(self.conflict_path)
+        tt = transform.TreeTransform(tree)
+        try:
+            p_tid = tt.trans_id_file_id(self.file_id)
+            parent_tid = tt.get_tree_parent(p_tid)
+            cp_tid = tt.trans_id_file_id(self.conflict_file_id)
+            cparent_tid = tt.get_tree_parent(cp_tid)
+            tt.adjust_path(base_path, cparent_tid, cp_tid)
+            tt.adjust_path(conflict_base_path, parent_tid, p_tid)
+            tt.apply()
+        finally:
+            tt.finalize()
 
 
 class UnversionedParent(HandledConflict):

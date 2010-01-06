@@ -551,12 +551,14 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 $ bzr resolve --keep-mine dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
+        self.failUnlessExists('dir2')
 
     def test_resolve_taking_theirs(self):
         self.run_script("""
 $ bzr resolve --take-theirs dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
+        self.failUnlessExists('dir1')
 
 
 class TestResolveNonDirectoryParent(TestResolveConflicts):
