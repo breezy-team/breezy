@@ -927,6 +927,7 @@ def run_bzr(argv):
     --concurrency
         Specify the number of processes that can be run concurrently (selftest).
     """
+    trace.mutter("bazaar version: " + bzrlib.__version__)
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
