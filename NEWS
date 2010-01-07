@@ -17,6 +17,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Add bug information to log output when available.
+  (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
+
 * ``bzr update`` now takes a ``--revision`` argument. This lets you
   change the revision of the working tree to any revision in the
   ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
