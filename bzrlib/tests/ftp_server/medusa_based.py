@@ -213,7 +213,7 @@ class ftp_server(medusa.ftp_server.ftp_server):
 class FTPTestServer(transport.Server):
     """Common code for FTP server facilities."""
 
-    _no_unicode_support = True
+    no_unicode_support = True
 
     def __init__(self):
         self._root = None

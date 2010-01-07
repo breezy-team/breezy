@@ -1497,9 +1497,9 @@ class TransportTests(TestTransportImplementation):
                  u'\u65e5', # Kanji person
                 ]
 
-        no_unicode_support = getattr(self._server, '_no_unicode_support', False)
+        no_unicode_support = getattr(self._server, 'no_unicode_support', False)
         if no_unicode_support:
-            raise TestSkipped("test server cannot handle unicode paths")
+            raise tests.KnownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')
