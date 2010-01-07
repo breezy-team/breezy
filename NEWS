@@ -44,6 +44,9 @@ Bug Fixes
 Improvements
 ************
 
+* The version of bzr being run is now written to the log file.
+  (__monty__, #257170)
+
 * Transport network activity indicator is shown more of the time when
   Bazaar is doing network IO.
   (Martin Pool)
