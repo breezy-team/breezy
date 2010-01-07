@@ -50,14 +50,15 @@ class BzrConformingFS(ftpserver.AbstractedFS):
 
     def listdir(self, path):
         """List the content of a directory."""
-        # FIXME: need tests with unicode paths
         return [osutils.safe_utf8(s) for s in os.listdir(path)]
 
     def fs2ftp(self, fspath):
         p = ftpserver.AbstractedFS.fs2ftp(self, fspath)
-        # FIXME: need tests with unicode paths
         return osutils.safe_utf8(p)
 
+    def ftp2fs(self, ftppath):
+        p = osutils.safe_unicode(ftppath)
+        return ftpserver.AbstractedFS.ftp2fs(self, p)
 
 class BzrConformingFTPHandler(ftpserver.FTPHandler):
 
