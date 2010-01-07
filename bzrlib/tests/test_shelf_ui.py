@@ -18,6 +18,7 @@
 from cStringIO import StringIO
 import os
 import sys
+from textwrap import dedent
 
 from bzrlib import (
     errors,
@@ -518,8 +519,22 @@ class TestUnshelver(tests.TestCaseWithTransport):
 
         # But the diff was written to write_diff_to.
         diff = write_diff_to.getvalue()
-        self.assertContainsRe(diff, '-a\n\+z')
-        self.assertContainsRe(diff, '-j\n\+y')
+        expected = dedent("""\
+            @@ -1,4 +1,4 @@
+            -a
+            +z
+             b
+             c
+             d
+            @@ -7,4 +7,4 @@
+             g
+             h
+             i
+            -j
+            +y
+
+            """)
+        self.assertEqualDiff(expected, diff[-len(expected):])
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')
