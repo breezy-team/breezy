@@ -164,6 +164,7 @@ import stat
 from bzrlib import (
     bzrdir,
     errors,
+    globbing,
     ignores,
     revisionspec,
     transport,
@@ -262,6 +263,7 @@ class BzrUploader(object):
         self._pending_deletions = []
         self._pending_renames = []
         self._uploaded_revid = None
+        self._ignored = None
 
     def set_uploaded_revid(self, rev_id):
         # XXX: Add tests for concurrent updates, etc.
@@ -279,28 +281,39 @@ class BzrUploader(object):
                 self._uploaded_revid = revision.NULL_REVISION
         return self._uploaded_revid
 
-    def get_ignored(self):
-        """Get upload-specific ignored files from the current branch"""
-        try:
-            ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
-            return ignores.parse_ignore_file(ignore_file)
-        except errors.NoSuchId:
-            return []
+    def _get_ignored(self):
+        if self._ignored is None:
+            try:
+                ignore_file = self.tree.get_file_by_path('.bzrignore-upload')
+                ignored_patterns = ignores.parse_ignore_file(ignore_file)
+            except errors.NoSuchId:
+                ignored_patterns = []
+            self._ignored = globbing.Globster(ignored_patterns)
+        return self._ignored
+
+    def is_ignored(self, relpath):
+        glob = self._get_ignored()
+        ignored = glob.match(relpath)
+        import os
+        if not ignored:
+            # We still need to check that all parents are not ignored
+            dir = os.path.dirname(relpath)
+            while dir and not ignored:
+                ignored = glob.match(dir)
+                if not ignored:
+                    dir = os.path.dirname(dir)
+        return ignored
 
     def upload_file(self, relpath, id, mode=None):
-        ignored_files = self.get_ignored()
-        if relpath not in ignored_files:
-            if mode is None:
-                if self.tree.is_executable(id):
-                    mode = 0775
-                else:
-                    mode = 0664
-            if not self.quiet:
-                self.outf.write('Uploading %s\n' % relpath)
-            self.to_transport.put_bytes(relpath, self.tree.get_file_text(id), mode)
-        else:
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if mode is None:
+            if self.tree.is_executable(id):
+                mode = 0775
+            else:
+                mode = 0664
+        if not self.quiet:
+            self.outf.write('Uploading %s\n' % relpath)
+        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id),
+                                    mode)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
@@ -321,14 +334,9 @@ class BzrUploader(object):
         self.upload_file(relpath, id, mode)
 
     def make_remote_dir(self, relpath, mode=None):
-        ignored_files = self.get_ignored()
-        if relpath not in ignored_files:
-            if mode is None:
-                mode = 0775
-            self.to_transport.mkdir(relpath, mode)
-        else:
-            if not self.quiet:
-                self.outf.write('Ignoring %s\n' % relpath)
+        if mode is None:
+            mode = 0775
+        self.to_transport.mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
@@ -359,6 +367,8 @@ class BzrUploader(object):
         if not self.quiet:
             self.outf.write('Deleting %s\n' % relpath)
         self.to_transport.rmdir(relpath)
+        # XXX: Add a test where a subdir is ignored but we still want to
+        # delete the dir -- vila 100106
 
     def delete_remote_dir_maybe(self, relpath):
         """Try to delete relpath, keeping failures to retry later."""
@@ -416,8 +426,12 @@ class BzrUploader(object):
             for relpath, ie in self.tree.inventory.iter_entries():
                 if relpath in ('', '.bzrignore', '.bzrignore-upload'):
                     # skip root ('')
-                    # .bzrignore has no meaning outside of a working tree
-                    # so do not upload it
+                    # .bzrignore and .bzrignore-upload have no meaning outside
+                    # a working tree so do not upload them
+                    continue
+                if self.is_ignored(relpath):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % relpath)
                     continue
                 if ie.kind == 'file':
                     self.upload_file_robustly(relpath, ie.file_id)
@@ -456,6 +470,10 @@ class BzrUploader(object):
         self.tree.lock_read()
         try:
             for (path, id, kind) in changes.removed:
+                if self.is_ignored(path):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % path)
+                    continue
                 if kind is 'file':
                     self.delete_remote_file(path)
                 elif kind is  'directory':
@@ -465,6 +483,11 @@ class BzrUploader(object):
 
             for (old_path, new_path, id, kind,
                  content_change, exec_change) in changes.renamed:
+                if self.is_ignored(old_path) and self.is_ignored(new_path):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % old_path)
+                        self.outf.write('Ignoring %s\n' % new_path)
+                    continue
                 if content_change:
                     # We update the old_path content because renames and
                     # deletions are differed.
@@ -474,6 +497,10 @@ class BzrUploader(object):
             self.finish_deletions()
 
             for (path, id, old_kind, new_kind) in changes.kind_changed:
+                if self.is_ignored(path):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % path)
+                    continue
                 if old_kind is 'file':
                     self.delete_remote_file(path)
                 elif old_kind is  'directory':
@@ -489,6 +516,10 @@ class BzrUploader(object):
                     raise NotImplementedError
 
             for (path, id, kind) in changes.added:
+                if self.is_ignored(path):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % path)
+                    continue
                 if kind is 'file':
                     self.upload_file(path, id)
                 elif kind is 'directory':
@@ -499,6 +530,10 @@ class BzrUploader(object):
             # XXX: Add a test for exec_change
             for (path, id, kind,
                  content_change, exec_change) in changes.modified:
+                if self.is_ignored(path):
+                    if not self.quiet:
+                        self.outf.write('Ignoring %s\n' % path)
+                    continue
                 if kind is 'file':
                     self.upload_file(path, id)
                 else:

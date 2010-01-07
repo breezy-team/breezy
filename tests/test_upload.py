@@ -203,7 +203,9 @@ class UploadUtilsMixin(object):
         # We don't want to use run_bzr here because redirected output are a
         # pain to debug. But we need to provides a valid outf.
         # XXX: Should a bug against bzr be filled about that ?
-        cmd._setup_outf()
+
+        # Short story: we don't expect any output so we may just use stdout
+        cmd.outf = sys.stdout
         return cmd
 
     def do_full_upload(self, *args, **kwargs):
@@ -445,7 +447,17 @@ class TestUploadMixin(UploadUtilsMixin):
     def test_ignore_file(self):
         self.make_branch_and_working_tree()
         self.do_full_upload()
-        self.add_file('.bzrignore-upload','foo')
+        self.add_file('.bzrignore-upload', 'foo')
+        self.add_file('foo', 'bar')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('foo')
+
+    def test_ignore_regexp(self):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload', 'f*')
         self.add_file('foo', 'bar')
 
         self.do_upload()
@@ -455,12 +467,74 @@ class TestUploadMixin(UploadUtilsMixin):
     def test_ignore_directory(self):
         self.make_branch_and_working_tree()
         self.do_full_upload()
-        self.add_file('.bzrignore-upload','dir')
+        self.add_file('.bzrignore-upload', 'dir')
         self.add_dir('dir')
 
         self.do_upload()
 
         self.failIfUpFileExists('dir')
+
+    def test_ignore_nested_directory(self):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload', 'dir')
+        self.add_dir('dir')
+        self.add_dir('dir/foo')
+        self.add_file('dir/foo/bar', 'bar contents')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('dir')
+        self.failIfUpFileExists('dir/foo/bar')
+
+    def test_ignore_change_file_into_dir(self):
+        self.make_branch_and_working_tree()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload', 'hello')
+        self.transform_file_into_dir('hello')
+        self.add_file('hello/file', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('foo', 'hello')
+
+    def test_ignore_change_dir_into_file(self):
+        self.make_branch_and_working_tree()
+        self.add_dir('hello')
+        self.add_file('hello/file', 'foo')
+        self.do_full_upload()
+
+        self.add_file('.bzrignore-upload', 'hello')
+        self.delete_any('hello/file')
+        self.transform_dir_into_file('hello', 'bar')
+
+        self.assertUpFileEqual('foo', 'hello/file')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('foo', 'hello/file')
+
+    def test_ignore_delete_dir_in_subdir(self):
+        self.make_branch_and_working_tree()
+        self.add_dir('dir')
+        self.add_dir('dir/subdir')
+        self.add_file('dir/subdir/a', 'foo')
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload', 'dir/subdir')
+        self.rename_any('dir/subdir/a', 'dir/a')
+        self.delete_any('dir/subdir')
+
+        self.assertUpFileEqual('foo', 'dir/subdir/a')
+
+        self.do_upload()
+
+        # The file in the dir is not ignored. This a bit contrived but
+        # indicates that we may encounter problems when ignored items appear
+        # and disappear... -- vila 100106
+        self.assertUpFileEqual('foo', 'dir/a')
 
 
 class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
@@ -575,6 +649,19 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.do_upload()
 
         self.assertUpFileEqual('bar', 'hello')
+
+    def test_ignore_delete_one_file(self):
+        self.make_branch_and_working_tree()
+        self.add_file('hello', 'foo')
+        self.do_full_upload()
+        self.add_file('.bzrignore-upload', 'hello')
+        self.delete_any('hello')
+
+        self.assertUpFileEqual('foo', 'hello')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('foo', 'hello')
 
 
 class TestBranchUploadLocations(per_branch.TestCaseWithBranch):
