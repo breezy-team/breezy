@@ -106,7 +106,7 @@ class SmartWSGIApp(object):
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
         self.chroot_server = chroot.ChrootServer(backing_transport)
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = get_transport(self.chroot_server.get_url())
         self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,

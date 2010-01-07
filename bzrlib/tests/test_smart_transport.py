@@ -987,10 +987,10 @@ class SmartTCPTests(tests.TestCase):
     All of these tests are run with a server running on another thread serving
     a MemoryTransport, and a connection to it already open.
 
-    the server is obtained by calling self.setUpServer(readonly=False).
+    the server is obtained by calling self.start_server(readonly=False).
     """
 
-    def setUpServer(self, readonly=False, backing_transport=None):
+    def start_server(self, readonly=False, backing_transport=None):
         """Setup the server.
 
         :param readonly: Create a readonly server.
@@ -1000,7 +1000,7 @@ class SmartTCPTests(tests.TestCase):
         # self.vfs_transport_factory etc.
         if not backing_transport:
             mem_server = memory.MemoryServer()
-            mem_server.setUp()
+            mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
             self.backing_transport = get_transport(mem_server.get_url())
@@ -1029,7 +1029,7 @@ class TestServerSocketUsage(SmartTCPTests):
 
     def test_server_setup_teardown(self):
         """It should be safe to teardown the server with no requests."""
-        self.setUpServer()
+        self.start_server()
         server = self.server
         transport = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
@@ -1037,7 +1037,7 @@ class TestServerSocketUsage(SmartTCPTests):
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
-        self.setUpServer()
+        self.start_server()
         server = self.server
         self.transport.has('.')
         self.tearDownServer()
@@ -1052,7 +1052,7 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def setUp(self):
         super(WritableEndToEndTests, self).setUp()
-        self.setUpServer()
+        self.start_server()
 
     def test_start_tcp_server(self):
         url = self.server.get_url()
@@ -1131,7 +1131,7 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
     def test_mkdir_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
         self._captureVar('BZR_NO_SMART_VFS', None)
-        self.setUpServer(readonly=True)
+        self.start_server(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
 
@@ -1147,7 +1147,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.setUpServer()
+        self.start_server()
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1161,7 +1161,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.setUpServer(backing_transport=get_transport("."))
+        self.start_server(backing_transport=get_transport("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1177,7 +1177,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.setUpServer()
+        self.start_server()
         result = [([self.backing_transport.base], self.transport.base)]
         # check the stopping message isn't emitted up front.
         self.assertEqual([], self.hook_calls)
@@ -1194,7 +1194,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.setUpServer(backing_transport=get_transport("."))
+        self.start_server(backing_transport=get_transport("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]

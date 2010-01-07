@@ -95,8 +95,9 @@ API Changes
   deprecation thunk, but not all. (John Arbash Meinel)
 
 * The Transport ``Server.tearDown`` method is now renamed to
-  ``stop_server`` for consistency with general naming, and to avoid
-  confusion with Python's ``TestCase.tearDown``.  (Martin Pool)
+  ``stop_server`` and ``setUp`` to ``start_server`` for consistency with
+  our normal naming pattern, and to avoid confusion with Python's
+  ``TestCase.tearDown``.  (Martin Pool)
 
 * ``WorkingTree.update`` implementations must now accept a ``revision``
   parameter.

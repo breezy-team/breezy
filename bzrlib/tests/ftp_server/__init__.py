@@ -66,7 +66,7 @@ class UnavailableFTPTestServer(object):
     never called).
     """
 
-    def setUp(self, vfs_server=None):
+    def start_server(self, vfs_server=None):
         pass
 
     def stop_server(self):

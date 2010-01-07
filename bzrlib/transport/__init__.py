@@ -1666,13 +1666,13 @@ class Server(object):
     The Server interface provides a server for a given transport. We use
     these servers as loopback testing tools. For any given transport the
     Servers it provides must either allow writing, or serve the contents
-    of os.getcwdu() at the time setUp is called.
+    of os.getcwdu() at the time start_server is called.
 
     Note that these are real servers - they must implement all the things
     that we want bzr transports to take advantage of.
     """
 
-    def setUp(self):
+    def start_server(self):
         """Setup the server to service requests."""
 
     def stop_server(self):
@@ -1685,7 +1685,7 @@ class Server(object):
         a database like svn, or a memory only transport, it should return
         a connection to a newly established resource for this Server.
         Otherwise it should return a url that will provide access to the path
-        that was os.getcwdu() when setUp() was called.
+        that was os.getcwdu() when start_server() was called.
 
         Subsequent calls will return the same resource.
         """

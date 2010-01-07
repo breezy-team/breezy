@@ -430,7 +430,7 @@ class ChrootServerTest(TestCase):
     def test_setUp(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertTrue(server.scheme in _get_protocol_handlers().keys())
         finally:
@@ -439,14 +439,14 @@ class ChrootServerTest(TestCase):
     def test_stop_server(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         server.stop_server()
         self.assertFalse(server.scheme in _get_protocol_handlers().keys())
 
     def test_get_url(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertEqual('chroot-%d:///' % id(server), server.get_url())
         finally:
@@ -460,7 +460,7 @@ class PathFilteringDecoratorTransportTest(TestCase):
         # The abspath is always relative to the base of the backing transport.
         server = PathFilteringServer(get_transport('memory:///foo/bar/'),
             lambda x: x)
-        server.setUp()
+        server.start_server()
         transport = get_transport(server.get_url())
         self.assertEqual(server.get_url(), transport.abspath('/'))
 
@@ -477,7 +477,7 @@ class PathFilteringDecoratorTransportTest(TestCase):
             filter_func = lambda x: x
         server = PathFilteringServer(
             get_transport('memory:///foo/bar/'), filter_func)
-        server.setUp()
+        server.start_server()
         self.addCleanup(server.stop_server)
         return get_transport(server.get_url())
 

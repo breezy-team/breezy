@@ -584,7 +584,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
 
-    def setUp(self):
+    def start_server(self):
         self._dirs = {'/': None}
         self._files = {}
         self._locks = {}

@@ -521,8 +521,8 @@ class HttpServer(transport.Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self, backing_transport_server=None):
-        """See bzrlib.transport.Server.setUp.
+    def start_server(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.start_server.
 
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not

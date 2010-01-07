@@ -1485,7 +1485,7 @@ class TestTestCase(tests.TestCase):
         # Manually set one up (TestCase doesn't and shouldn't provide magic
         # machinery)
         transport_server = MemoryServer()
-        transport_server.setUp()
+        transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
         bzrdir.BzrDir.create(t.base)
@@ -2600,7 +2600,7 @@ class TestBlackboxSupport(tests.TestCase):
         # caught in the regular way and turned into an error message plus exit
         # code.
         transport_server = MemoryServer()
-        transport_server.setUp()
+        transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()
         self.permit_url(url)

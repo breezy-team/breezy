@@ -192,7 +192,7 @@ class SFTPNonServerTest(TestCase):
     def test_abspath_root_sibling_server(self):
         from bzrlib.transport.sftp import SFTPSiblingAbsoluteServer
         server = SFTPSiblingAbsoluteServer()
-        server.setUp()
+        server.start_server()
         try:
             transport = get_transport(server.get_url())
             self.assertFalse(transport.abspath('/').endswith('/~/'))
