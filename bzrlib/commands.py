@@ -1104,6 +1104,8 @@ def main(argv=None):
             raise errors.BzrError("argv should be list of unicode strings.")
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
+    bzrlib.ui.ui_factory.log_transport_activity(
+        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     osutils.report_extension_load_failures()
     return ret

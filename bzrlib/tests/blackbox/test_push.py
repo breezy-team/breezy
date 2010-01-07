@@ -31,7 +31,11 @@ from bzrlib import (
     workingtree
     )
 from bzrlib.repofmt import knitrepo
-from bzrlib.tests import http_server
+from bzrlib.tests import (
+    blackbox,
+    http_server,
+    test_foreign,
+    )
 from bzrlib.transport import memory
 
 
@@ -768,3 +772,26 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])
+
+
+class TestPushForeign(blackbox.ExternalBase):
+
+    def setUp(self):
+        super(TestPushForeign, self).setUp()
+        test_foreign.register_dummy_foreign_for_test(self)
+
+    def make_dummy_builder(self, relpath):
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
+            [('add', ('', 'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', 'fooid', 'file', 'bar'))])
+        return builder
+
+    def test_no_roundtripping(self):
+        target_branch = self.make_dummy_builder('dp').get_branch()
+        source_tree = self.make_branch_and_tree("dc")
+        output, error = self.run_bzr("push -d dc dp", retcode=3)
+        self.assertEquals("", output)
+        self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use dpush instead.\n")
