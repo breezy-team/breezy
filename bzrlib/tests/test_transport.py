@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
 
 from cStringIO import StringIO
 
-import bzrlib
 from bzrlib import (
     errors,
     osutils,
+    transport as _mod_transport,
     urlutils,
+    )
+from bzrlib.transport import (
+    memory,
     )
 from bzrlib.errors import (DependencyNotPresent,
                            FileExists,
@@ -45,7 +48,6 @@ from bzrlib.transport import (_clear_protocol_handlers,
                               Transport,
                               )
 from bzrlib.transport.chroot import ChrootServer
-from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.local import (LocalTransport,
                                     EmulatedWin32LocalTransport)
 
@@ -159,7 +161,7 @@ class TestTransport(TestCase):
 
     def test_local_abspath_non_local_transport(self):
         # the base implementation should throw
-        t = MemoryTransport()
+        t = memory.MemoryTransport()
         e = self.assertRaises(errors.NotLocalUrl, t.local_abspath, 't')
         self.assertEqual('memory:///t is not a local path.', str(e))
 
@@ -249,68 +251,83 @@ class TestCoalesceOffsets(TestCase):
                    max_size=1*1024*1024*1024)
 
 
+class TestMemoryServer(TestCase):
+
+    def test_create_server(self):
+        server = memory.MemoryServer()
+        server.setUp()
+        url = server.get_url()
+        self.assertTrue(url in _mod_transport.transport_list_registry)
+        t = _mod_transport.get_transport(url)
+        del t
+        server.tearDown()
+        self.assertFalse(url in _mod_transport.transport_list_registry)
+        self.assertRaises(errors.UnsupportedProtocol,
+                          _mod_transport.get_transport, url)
+
+
 class TestMemoryTransport(TestCase):
 
     def test_get_transport(self):
-        MemoryTransport()
+        memory.MemoryTransport()
 
     def test_clone(self):
-        transport = MemoryTransport()
-        self.assertTrue(isinstance(transport, MemoryTransport))
+        transport = memory.MemoryTransport()
+        self.assertTrue(isinstance(transport, memory.MemoryTransport))
         self.assertEqual("memory:///", transport.clone("/").base)
 
     def test_abspath(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertEqual("memory:///relpath", transport.abspath('relpath'))
 
     def test_abspath_of_root(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertEqual("memory:///", transport.base)
         self.assertEqual("memory:///", transport.abspath('/'))
 
     def test_abspath_of_relpath_starting_at_root(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertEqual("memory:///foo", transport.abspath('/foo'))
 
     def test_append_and_get(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.append_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
         transport.append_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'contentcontent')
 
     def test_put_and_get(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.put_file('path', StringIO('content'))
         self.assertEqual(transport.get('path').read(), 'content')
         transport.put_bytes('path', 'content')
         self.assertEqual(transport.get('path').read(), 'content')
 
     def test_append_without_dir_fails(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertRaises(NoSuchFile,
                           transport.append_bytes, 'dir/path', 'content')
 
     def test_put_without_dir_fails(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertRaises(NoSuchFile,
                           transport.put_file, 'dir/path', StringIO('content'))
 
     def test_get_missing(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertRaises(NoSuchFile, transport.get, 'foo')
 
     def test_has_missing(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertEquals(False, transport.has('foo'))
 
     def test_has_present(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.append_bytes('foo', 'content')
         self.assertEquals(True, transport.has('foo'))
 
     def test_list_dir(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.put_bytes('foo', 'content')
         transport.mkdir('dir')
         transport.put_bytes('dir/subfoo', 'content')
@@ -320,28 +337,28 @@ class TestMemoryTransport(TestCase):
         self.assertEquals(['subfoo'], sorted(transport.list_dir('dir')))
 
     def test_mkdir(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.mkdir('dir')
         transport.append_bytes('dir/path', 'content')
         self.assertEqual(transport.get('dir/path').read(), 'content')
 
     def test_mkdir_missing_parent(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertRaises(NoSuchFile,
                           transport.mkdir, 'dir/dir')
 
     def test_mkdir_twice(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.mkdir('dir')
         self.assertRaises(FileExists, transport.mkdir, 'dir')
 
     def test_parameters(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         self.assertEqual(True, transport.listable())
         self.assertEqual(False, transport.is_readonly())
 
     def test_iter_files_recursive(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.mkdir('dir')
         transport.put_bytes('dir/foo', 'content')
         transport.put_bytes('dir/bar', 'content')
@@ -350,7 +367,7 @@ class TestMemoryTransport(TestCase):
         self.assertEqual(set(['dir/foo', 'dir/bar', 'bar']), paths)
 
     def test_stat(self):
-        transport = MemoryTransport()
+        transport = memory.MemoryTransport()
         transport.put_bytes('foo', 'content')
         transport.put_bytes('bar', 'phowar')
         self.assertEqual(7, transport.stat('foo').st_size)
@@ -420,25 +437,25 @@ class ChrootDecoratorTransportTest(TestCase):
 class ChrootServerTest(TestCase):
 
     def test_construct(self):
-        backing_transport = MemoryTransport()
+        backing_transport = memory.MemoryTransport()
         server = ChrootServer(backing_transport)
         self.assertEqual(backing_transport, server.backing_transport)
 
     def test_setUp(self):
-        backing_transport = MemoryTransport()
+        backing_transport = memory.MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
         self.assertTrue(server.scheme in _get_protocol_handlers().keys())
 
     def test_tearDown(self):
-        backing_transport = MemoryTransport()
+        backing_transport = memory.MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
         server.tearDown()
         self.assertFalse(server.scheme in _get_protocol_handlers().keys())
 
     def test_get_url(self):
-        backing_transport = MemoryTransport()
+        backing_transport = memory.MemoryTransport()
         server = ChrootServer(backing_transport)
         server.setUp()
         self.assertEqual('chroot-%d:///' % id(server), server.get_url())
