@@ -81,6 +81,8 @@ class BazaarObjectStore(BaseObjectStore):
                 todo.update([x for x in p if x not in missing_revids])
             heads = self._idmap.missing_revisions(todo)
             missing_revids.update(heads)
+        if NULL_REVISION in missing_revids:
+            missing_revids.remove(NULL_REVISION)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
