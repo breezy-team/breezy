@@ -8,8 +8,8 @@ Bazaar Release Notes
 bzr 2.0.4 (not released yet)
 ############################
 
-:Codename: template
-:2.0.4: ???
+:Codename:
+:2.0.4: smooth sailing
 
 Compatibility Breaks
 ********************
@@ -22,6 +22,32 @@ Bug Fixes
 
 * ``bzr annotate`` on another branch with ``-r branch:...`` no longer
   fails with an ``ObjectNotLocked`` error.  (Andrew Bennetts, #496590)
+
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
+
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
+
+* ``_update_current_block`` no longer suppresses exceptions, so ^C at just
+  the right time will get propagated, rather than silently failing to move
+  the block pointer. (John Arbash Meinel, Gareth White, #495023)
 
 Improvements
 ************
@@ -37,6 +63,11 @@ Internals
 
 Testing
 *******
+
+* We have a new ``test_source`` that ensures all pyrex ``cdef`` functions
+  handle exceptions somehow. (Possibly by setting ``# cannot_raise``
+  rather than an ``except ?:`` clause.) This should help prevent bugs like
+  bug #495023. (John Arbash Meinel)
 
 
 bzr 2.0.3
