@@ -64,15 +64,15 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
-* Operations which update the working tree should now create all files
-  with the same mtime. So if you version a generated file and its source,
-  when updating you should get the same mtime for both files. We use
-  ``os.utime`` to achieve this effect.
-  (John Arbash Meinel, Martin <gzlist>, #488724)
-
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
+
+* When operations update the working tree, all affected files should end
+  up with the same mtime. (eg. when versioning a generated file, if you
+  update the source and the generated file together, the generated file
+  should appear up-to-date.)
+  (John Arbash Meinel, Martin <gzlist>, #488724)
 
 Improvements
 ************
