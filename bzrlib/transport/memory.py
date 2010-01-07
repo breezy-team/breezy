@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
+from bzrlib import (
+    urlutils,
+    )
 from bzrlib.errors import (
     FileExists,
     LockError,
@@ -42,8 +45,8 @@ from bzrlib.transport import (
     register_transport,
     Server,
     Transport,
+    unregister_transport,
     )
-import bzrlib.urlutils as urlutils
 
 
 
@@ -315,11 +318,13 @@ class MemoryServer(Server):
             result._files = self._files
             result._locks = self._locks
             return result
-        register_transport(self._scheme, memory_factory)
+        self._memory_factory = memory_factory
+        register_transport(self._scheme, self._memory_factory)
 
     def tearDown(self):
         """See bzrlib.transport.Server.tearDown."""
         # unregister this server
+        unregister_transport(self._scheme, self._memory_factory)
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
