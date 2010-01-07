@@ -1745,10 +1745,60 @@ class SourceExtractor(object):
 
 
 class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
-    pass
+
+    def extract(self):
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        self.extracted_upstream = None
+        for part in self.dsc['files']:
+            if part['name'].endswith(".tar.gz"):
+                self.unextracted_debian_md5 = part['md5sum']
+
 
 class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
-    pass
+
+    def extract(self):
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source --skip-debianization -x %s"
+                % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        self.extracted_upstream = self.extracted_debianised + ".orig"
+        os.rename(self.extracted_debianised, self.extracted_upstream)
+        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        for part in self.dsc['files']:
+            if part['name'].endswith(".orig.tar.gz"):
+                assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+                self.unextracted_upstream = os.path.abspath(
+                        os.path.join(osutils.dirname(self.dsc_path),
+                            part['name']))
+                self.unextracted_upstream_md5 = part['md5sum']
+            elif part['name'].endswith(".debian.tar.gz"):
+                self.unextracted_debian_md5 = part['md5sum']
+
 
 SOURCE_EXTRACTORS = {}
 SOURCE_EXTRACTORS["1.0"] = SourceExtractor

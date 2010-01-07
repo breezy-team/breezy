@@ -27,7 +27,6 @@ from debian_bundle.changelog import Version
 from debian_bundle import deb822
 
 from bzrlib import (
-  errors,
   tests,
   )
 
@@ -35,6 +34,8 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         SourceExtractor,
+        ThreeDotZeroNativeSourceExtractor,
+        ThreeDotZeroQuiltSourceExtractor,
         )
 from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 
@@ -1422,5 +1423,82 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
                             "README")))
             self.assertFalse(os.path.exists(os.path.join(orig_dir,
                             "debian", "control")))
+            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format1_native(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, native=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertEqual(None, orig_dir)
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format3_native(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, native=True,
+                version3=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        extractor = ThreeDotZeroNativeSourceExtractor(builder.dsc_name(),
+                dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertEqual(None, orig_dir)
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format3_quilt(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertTrue(os.path.exists(orig_dir))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(os.path.join(orig_dir,
+                            "README")))
+            self.assertFalse(os.path.exists(os.path.join(orig_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
         finally:
             extractor.cleanup()
