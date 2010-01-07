@@ -51,6 +51,11 @@ import unittest
 import warnings
 
 import testtools
+# nb: check this before importing anything else from within it
+_testtools_version = getattr(testtools, '__version__', ())
+if _testtools_version < (0, 9, 2):
+    raise ImportError("need at least testtools 0.9.2: %s is %r"
+        % (testtools.__file__, _testtools_version))
 from testtools import content
 
 from bzrlib import (
@@ -3575,6 +3580,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
         'bzrlib.tests.test__annotator',
+        'bzrlib.tests.test__bencode',
         'bzrlib.tests.test__chk_map',
         'bzrlib.tests.test__dirstate_helpers',
         'bzrlib.tests.test__groupcompress',
@@ -3588,7 +3594,6 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_api',
         'bzrlib.tests.test_atomicfile',
         'bzrlib.tests.test_bad_files',
-        'bzrlib.tests.test_bencode',
         'bzrlib.tests.test_bisect_multi',
         'bzrlib.tests.test_branch',
         'bzrlib.tests.test_branchbuilder',
@@ -3954,6 +3959,47 @@ def clone_test(test, new_id):
     new_test = copy(test)
     new_test.id = lambda: new_id
     return new_test
+
+
+def permute_tests_for_extension(standard_tests, loader, py_module_name,
+                                ext_module_name):
+    """Helper for permutating tests against an extension module.
+
+    This is meant to be used inside a modules 'load_tests()' function. It will
+    create 2 scenarios, and cause all tests in the 'standard_tests' to be run
+    against both implementations. Setting 'test.module' to the appropriate
+    module. See bzrlib.tests.test__chk_map.load_tests as an example.
+
+    :param standard_tests: A test suite to permute
+    :param loader: A TestLoader
+    :param py_module_name: The python path to a python module that can always
+        be loaded, and will be considered the 'python' implementation. (eg
+        'bzrlib._chk_map_py')
+    :param ext_module_name: The python path to an extension module. If the
+        module cannot be loaded, a single test will be added, which notes that
+        the module is not available. If it can be loaded, all standard_tests
+        will be run against that module.
+    :return: (suite, feature) suite is a test-suite that has all the permuted
+        tests. feature is the Feature object that can be used to determine if
+        the module is available.
+    """
+
+    py_module = __import__(py_module_name, {}, {}, ['NO_SUCH_ATTRIB'])
+    scenarios = [
+        ('python', {'module': py_module}),
+    ]
+    suite = loader.suiteClass()
+    feature = ModuleAvailableFeature(ext_module_name)
+    if feature.available():
+        scenarios.append(('C', {'module': feature.module}))
+    else:
+        # the compiled module isn't available, so we add a failing test
+        class FailWithoutFeature(TestCase):
+            def test_fail(self):
+                self.requireFeature(feature)
+        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
+    result = multiply_tests(standard_tests, scenarios, suite)
+    return result, feature
 
 
 def _rmtree_temp_dir(dirname, test_id=None):

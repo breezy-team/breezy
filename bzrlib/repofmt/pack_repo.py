@@ -1423,6 +1423,9 @@ class RepositoryPackCollection(object):
         # resumed packs
         self._resumed_packs = []
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.repo)
+
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
 

@@ -39,6 +39,7 @@ import unittest
 
 from bzrlib import (
     tests,
+    transport,
     ui,
     )
 
@@ -83,6 +84,24 @@ class UIFactoryTestMixin(object):
             raise tests.TestSkipped(str(e))
         output_stream.write('hello!')
 
+    def test_transport_activity(self):
+        # It doesn't matter what the implementation does, we just want to make
+        # sure the interface is there
+        t = transport.get_transport('memory:///')
+        self.factory.report_transport_activity(t, 1000, 'write')
+        self.factory.report_transport_activity(t, 2000, 'read')
+        self.factory.report_transport_activity(t, 4000, None)
+        self.factory.log_transport_activity()
+        self._check_log_transport_activity_noarg()
+        self.factory.log_transport_activity(display=True)
+        self._check_log_transport_activity_display()
+
+    def test_no_transport_activity(self):
+        # No activity to report
+        t = transport.get_transport('memory:///')
+        self.factory.log_transport_activity(display=True)
+        self._check_log_transport_activity_display_no_bytes()
+
 
 class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
@@ -113,6 +132,62 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
             self.stderr.getvalue())
         self.assertEquals("", self.stdout.getvalue())
 
+    def _check_log_transport_activity_noarg(self):
+        self.assertEqual('', self.stdout.getvalue())
+        self.assertContainsRe(self.stderr.getvalue(), r'\d+KB\s+\dKB/s |')
+        self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
+
+    def _check_log_transport_activity_display(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Without a TTY, we shouldn't display anything
+        self.assertEqual('', self.stderr.getvalue())
+
+    def _check_log_transport_activity_display_no_bytes(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Without a TTY, we shouldn't display anything
+        self.assertEqual('', self.stderr.getvalue())
+
+
+class TestTTYTextUIFactory(TestTextUIFactory):
+
+    def setUp(self):
+        super(TestTTYTextUIFactory, self).setUp()
+
+        class TTYStringIO(object):
+            """Thunk over to StringIO() for everything but 'isatty'"""
+
+            def __init__(self):
+                self.__dict__['_sio'] = StringIO()
+
+            def isatty(self):
+                return True
+
+            def __getattr__(self, name):
+                return getattr(self._sio, name)
+
+            def __setattr__(self, name, value):
+                return setattr(self._sio, name, value)
+                
+        # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
+        # real terminal, even though isatty returns True
+        self._captureVar('TERM', None)
+        self.stderr = TTYStringIO()
+        self.stdout = TTYStringIO()
+        self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
+            self.stderr)
+
+    def _check_log_transport_activity_display(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Displaying the result should write to the progress stream
+        self.assertContainsRe(self.stderr.getvalue(),
+            r'Transferred: 7KiB'
+            r' \(\d+\.\dK/s r:2K w:1K u:4K\)')
+
+    def _check_log_transport_activity_display_no_bytes(self):
+        self.assertEqual('', self.stdout.getvalue())
+        # Without actual bytes transferred, we should report nothing
+        self.assertEqual('', self.stderr.getvalue())
+
 
 class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, therefore tests for output expect nothing
@@ -132,6 +207,15 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
         pass
 
     def _check_show_warning(self, msg):
+        pass
+
+    def _check_log_transport_activity_noarg(self):
+        pass
+
+    def _check_log_transport_activity_display(self):
+        pass
+
+    def _check_log_transport_activity_display_no_bytes(self):
         pass
 
 
@@ -154,4 +238,11 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     def _check_show_warning(self, msg):
         pass
 
+    def _check_log_transport_activity_noarg(self):
+        pass
 
+    def _check_log_transport_activity_display(self):
+        pass
+
+    def _check_log_transport_activity_display_no_bytes(self):
+        pass
