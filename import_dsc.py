@@ -36,7 +36,7 @@ except ImportError:
 import os
 import shutil
 import stat
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from StringIO import StringIO
 import tempfile
 
@@ -1280,51 +1280,6 @@ class DistributionBranch(object):
                 timezone=timezone)
         self.tag_version(version)
 
-    def _get_dsc_part(self, dsc, end):
-        """Get the path and md5 of a file ending with end in dsc."""
-        files = dsc['files']
-        for file_info in files:
-            name = file_info['name']
-            if name.endswith(end):
-                filename = name
-                md5 = file_info['md5sum']
-                return (filename, md5)
-        return (None, None)
-
-    def get_upstream_part(self, dsc):
-        """Gets the information about the upstream part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .orig.tar.gz, the latter being the md5
-            reported for it. If there is no upstream part both will
-            be None.
-        """
-        return self._get_dsc_part(dsc, ".orig.tar.gz")
-
-    def get_diff_part(self, dsc):
-        """Gets the information about the diff part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .diff.gz, the latter being the md5
-            reported for it. If there is no diff part both will be
-            None.
-        """
-        return self._get_dsc_part(dsc, ".diff.gz")
-
-    def get_native_part(self, dsc):
-        """Gets the information about the native part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .tar.gz, the latter being the md5 reported
-            for it. If there is not native part both will be None.
-        """
-        (path, md5) = self._get_dsc_part(dsc, ".tar.gz")
-        assert not path.endswith(".orig.tar.gz")
-        return (path, md5)
-
     def upstream_parents(self, versions, version):
         """Get the parents for importing a new upstream.
 
@@ -1376,18 +1331,6 @@ class DistributionBranch(object):
         cl = Changelog()
         cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
-
-    def extract_dsc(self, dsc_filename):
-        """Extract a dsc file in to a temporary directory."""
-        tempdir = tempfile.mkdtemp()
-        dsc_filename = os.path.abspath(dsc_filename)
-        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
-                cwd=tempdir, stdout=PIPE, stderr=PIPE,
-                preexec_fn=subprocess_setup)
-        (stdout, stderr) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
-                    (stdout, stderr)
-        return tempdir
 
     def _do_import_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_md5, upstream_tarball=None,
@@ -1503,29 +1446,15 @@ class DistributionBranch(object):
         base_path = osutils.dirname(dsc_filename)
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
-        name = dsc['Source']
-        upstream_tarball = None
-        for part in dsc['files']:
-            if part['name'].endswith(".orig.tar.gz"):
-                assert upstream_tarball is None, "Two .orig.tar.gz?"
-                upstream_tarball = os.path.abspath(
-                        os.path.join(base_path, part['name']))
-        tempdir = self.extract_dsc(dsc_filename)
+        format = dsc['Format'].strip()
+        extractor_cls = SOURCE_EXTRACTORS.get(format)
+        if extractor_cls is None:
+            raise AssertionError("Don't know how to import source format %s yet"
+                    % format)
+        extractor = extractor_cls(dsc_filename, dsc)
         try:
-            # TODO: make more robust against strange .dsc files.
-            upstream_part = os.path.join(tempdir,
-                    "%s-%s.orig" % (name, str(version.upstream_version)))
-            debian_part = os.path.join(tempdir,
-                    "%s-%s" % (name, str(version.upstream_version)))
-            native = False
-            if not os.path.exists(upstream_part):
-                mutter("It's a native package")
-                native = True
-                (_, md5) = self.get_native_part(dsc)
-            else:
-                (_, upstream_md5) = self.get_upstream_part(dsc)
-                (_, md5) = self.get_diff_part(dsc)
-            cl = self.get_changelog_from_source(debian_part)
+            extractor.extract()
+            cl = self.get_changelog_from_source(extractor.extracted_debianised)
             timestamp = None
             author = None
             if use_time_from_changelog and len(cl._blocks) > 0:
@@ -1541,17 +1470,22 @@ class DistributionBranch(object):
             #TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
-            if not native:
-                self._do_import_package(version, versions, debian_part, md5,
-                        upstream_part, upstream_md5,
-                        upstream_tarball=upstream_tarball,
+            if extractor.extracted_upstream is not None:
+                self._do_import_package(version, versions,
+                        extractor.extracted_debianised,
+                        extractor.unextracted_debian_md5,
+                        extractor.extracted_upstream,
+                        extractor.unextracted_upstream_md5,
+                        upstream_tarball=extractor.unextracted_upstream,
                         timestamp=timestamp, author=author,
                         file_ids_from=file_ids_from)
             else:
-                self._import_native_package(version, versions, debian_part,
-                        md5, timestamp=timestamp, file_ids_from=file_ids_from)
+                self._import_native_package(version, versions,
+                        extractor.extracted_debianised,
+                        extractor.unextracted_debian_md5,
+                        timestamp=timestamp, file_ids_from=file_ids_from)
         finally:
-            shutil.rmtree(tempdir)
+            extractor.cleanup()
 
     def extract_upstream_tree(self, upstream_tip, basedir):
         # Extract that to a tempdir so we can get a working
@@ -1758,3 +1692,65 @@ class DistributionBranch(object):
             return stdout
         finally:
             shutil.rmtree(tmpdir)
+
+
+class SourceExtractor(object):
+    """A class to extract a source package to its constituent parts"""
+
+    def __init__(self, dsc_path, dsc):
+        self.dsc_path = dsc_path
+        self.dsc = dsc
+        self.extracted_upstream = None
+        self.extracted_debianised = None
+        self.unextracted_upstream = None
+        self.unextracted_debian_md5 = None
+        self.unextracted_upstream_md5 = None
+
+    def extract(self):
+        """Extract the package to a new temporary directory."""
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_upstream = os.path.join(self.tempdir,
+                "%s-%s.orig" % (name, str(version.upstream_version)))
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        if not os.path.exists(self.extracted_upstream):
+            mutter("It's a native package")
+            self.extracted_upstream = None
+        for part in self.dsc['files']:
+            if self.extracted_upstream is None:
+                if part['name'].endswith(".tar.gz"):
+                    self.unextracted_debian_md5 = part['md5sum']
+            else:
+                if part['name'].endswith(".orig.tar.gz"):
+                    assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+                    self.unextracted_upstream = os.path.abspath(
+                            os.path.join(osutils.dirname(self.dsc_path),
+                                part['name']))
+                    self.unextracted_upstream_md5 = part['md5sum']
+                elif part['name'].endswith(".diff.gz"):
+                    self.unextracted_debian_md5 = part['md5sum']
+
+    def cleanup(self):
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
+
+
+class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
+    pass
+
+class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
+    pass
+
+SOURCE_EXTRACTORS = {}
+SOURCE_EXTRACTORS["1.0"] = SourceExtractor
+SOURCE_EXTRACTORS["3.0 (native)"] = ThreeDotZeroNativeSourceExtractor
+SOURCE_EXTRACTORS["3.0 (quilt)"] = ThreeDotZeroQuiltSourceExtractor
