@@ -31,14 +31,6 @@ import bzrlib.commands
 import bzrlib.osutils
 
 
-# Set this to True to generate a file per topic.
-# This probably ought to be an option. The files probably
-# ought to be prefixed with their section name as well so
-# there's zero risk of clashing with a standard sphinx
-# topic (like search.html).
-FILE_PER_TOPIC = True
-
-
 def get_filename(options):
     """Provides name of manual"""
     return "%s_man.txt" % (options.bzr_name)
@@ -85,22 +77,10 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
     If output_dir is not None, topics are dumped into text files there
     during processing, as well as being included in the return result.
     """
+    file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]
-    if FILE_PER_TOPIC:
+    if file_per_topic:
         lines.extend([".. toctree::", "   :maxdepth: 1", ""])
-
-    # docutils treats section heading as implicit link target.
-    # But in some cases topic and heading are different, e.g.:
-    #
-    # `bugs' vs. `Bug Trackers'
-    # `working-tree' vs. `Working Trees'
-    #
-    # So for building proper cross-reference between topic names
-    # and corresponding sections in document, we need provide
-    # simple glue in the form:
-    #
-    # .. _topic: `heading`_
-    links_glue = []
 
     topics = sorted(registry.get_topics_for_section(section))
     for topic in topics:
@@ -111,20 +91,11 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
             help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
         else:
             help = "%s\n%s\n\n" % (heading, text)
-        if FILE_PER_TOPIC:
+        if file_per_topic:
             topic_id = _dump_text(output_dir, topic, help)
             lines.append("   %s" % topic_id)
         else:
             lines.append(help)
-
-        # check that topic match heading
-        if topic != heading.lower():
-            links_glue.append((topic, heading))
-
-    # provide links glue for topics that don't match headings
-    #lines.append('')
-    #lines.extend([".. _%s: `%s`_" % i for i in links_glue])
-    #lines.append('')
 
     return "\n" + "\n".join(lines) + "\n"
 
@@ -132,8 +103,9 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
 def _get_commands_section(registry, title="Commands", hdg_level1="#",
         hdg_level2="=", output_dir=None):
     """Build the commands reference section of the manual."""
+    file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]
-    if FILE_PER_TOPIC:
+    if file_per_topic:
         lines.extend([".. toctree::", "   :maxdepth: 1", ""])
 
     cmds = sorted(bzrlib.commands.builtin_command_names())
@@ -145,7 +117,7 @@ def _get_commands_section(registry, title="Commands", hdg_level1="#",
         underline = hdg_level2 * len(heading)
         text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
         help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
-        if FILE_PER_TOPIC:
+        if file_per_topic:
             topic_id = _dump_text(output_dir, cmd_name, help)
             lines.append("   %s" % topic_id)
         else:

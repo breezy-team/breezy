@@ -861,6 +861,7 @@ class RegisteredTopic(object):
 
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
+    import re
     lines = text.splitlines()
     result = []
     for line in lines:
@@ -868,5 +869,7 @@ def help_as_plain_text(text):
             line = line[1:]
         elif line.endswith('::'):
             line = line[:-1]
+        # Map :doc:`xxx-help` to ``bzr help xxx``
+        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"
