@@ -29,7 +29,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.transport import (
+    fakenfs,
     memory,
+    readonly,
     )
 from bzrlib.errors import (DependencyNotPresent,
                            FileExists,
@@ -262,12 +264,12 @@ class TestMemoryServer(TestCase):
 
     def test_create_server(self):
         server = memory.MemoryServer()
-        server.setUp()
+        server.start_server()
         url = server.get_url()
         self.assertTrue(url in _mod_transport.transport_list_registry)
         t = _mod_transport.get_transport(url)
         del t
-        server.tearDown()
+        server.stop_server()
         self.assertFalse(url in _mod_transport.transport_list_registry)
         self.assertRaises(errors.UnsupportedProtocol,
                           _mod_transport.get_transport, url)
@@ -558,7 +560,6 @@ class ReadonlyDecoratorTransportTest(TestCase):
     """Readonly decoration specific tests."""
 
     def test_local_parameters(self):
-        import bzrlib.transport.readonly as readonly
         # connect to . in readonly mode
         transport = readonly.ReadonlyTransportDecorator('readonly+.')
         self.assertEqual(True, transport.listable())
@@ -566,7 +567,6 @@ class ReadonlyDecoratorTransportTest(TestCase):
 
     def test_http_parameters(self):
         from bzrlib.tests.http_server import HttpServer
-        import bzrlib.transport.readonly as readonly
         # connect to '.' via http which is not listable
         server = HttpServer()
         self.start_server(server)
@@ -581,7 +581,6 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
     """NFS decorator specific tests."""
 
     def get_nfs_transport(self, url):
-        import bzrlib.transport.fakenfs as fakenfs
         # connect to url with nfs decoration
         return fakenfs.FakeNFSTransportDecorator('fakenfs+' + url)
 
@@ -601,13 +600,12 @@ class FakeNFSDecoratorTests(TestCaseInTempDir):
         self.start_server(server)
         transport = self.get_nfs_transport(server.get_url())
         self.assertIsInstance(
-            transport, bzrlib.transport.fakenfs.FakeNFSTransportDecorator)
+            transport, fakenfs.FakeNFSTransportDecorator)
         self.assertEqual(False, transport.listable())
         self.assertEqual(True, transport.is_readonly())
 
     def test_fakenfs_server_default(self):
         # a FakeNFSServer() should bring up a local relpath server for itself
-        import bzrlib.transport.fakenfs as fakenfs
         server = fakenfs.FakeNFSServer()
         self.start_server(server)
         # the url should be decorated appropriately
