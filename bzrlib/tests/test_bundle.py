@@ -1850,7 +1850,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
 class _DisconnectingTCPServer(object):
     """A TCP server that immediately closes any connection made to it."""
 
-    def setUp(self):
+    def start_server(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('127.0.0.1', 0))
         self.sock.listen(1)
