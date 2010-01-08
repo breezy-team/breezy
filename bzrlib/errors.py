@@ -2942,12 +2942,17 @@ class UnknownRules(BzrError):
 class HookFailed(BzrError):
     """Raised when a pre_change_branch_tip hook function fails anything other
     than TipChangeRejected.
+
+    Note that this exception is no longer raised, and the import is only left
+    to be nice to code which might catch it in a plugin.
     """
 
     _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
             "%(traceback_text)s%(exc_value)s")
 
     def __init__(self, hook_stage, hook_name, exc_info):
+        warn("BzrError HookFailed has been deprecated as of bzrlib 2.1.",
+                DeprecationWarning)
         import traceback
         self.hook_stage = hook_stage
         self.hook_name = hook_name
