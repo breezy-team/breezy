@@ -1168,6 +1168,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # check some arbitrary big numbers
         self.assertEqual(25, packs._max_pack_count(112894))
 
+    def test_repr(self):
+        packs = self.get_packs()
+        self.assertContainsRe(repr(packs),
+            'RepositoryPackCollection(.*Repository(.*))')
+
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))

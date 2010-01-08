@@ -32,16 +32,16 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'_gc_module': _groupcompress_py}),
         ]
-    if CompiledGroupCompressFeature.available():
-        from bzrlib import _groupcompress_pyx
+    if compiled_groupcompress_feature.available():
+        gc_module = compiled_groupcompress_feature.module
         scenarios.append(('C',
-            {'_gc_module': _groupcompress_pyx}))
+            {'_gc_module': gc_module}))
         two_way_scenarios.extend([
-            ('CC', {'make_delta': _groupcompress_pyx.make_delta,
-                    'apply_delta': _groupcompress_pyx.apply_delta}),
+            ('CC', {'make_delta': gc_module.make_delta,
+                    'apply_delta': gc_module.apply_delta}),
             ('PC', {'make_delta': _groupcompress_py.make_delta,
-                    'apply_delta': _groupcompress_pyx.apply_delta}),
-            ('CP', {'make_delta': _groupcompress_pyx.make_delta,
+                    'apply_delta': gc_module.apply_delta}),
+            ('CP', {'make_delta': gc_module.make_delta,
                     'apply_delta': _groupcompress_py.apply_delta}),
             ])
     to_adapt, result = tests.split_suite_by_condition(
@@ -54,21 +54,8 @@ def load_tests(standard_tests, module, loader):
     return result
 
 
-class _CompiledGroupCompressFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._groupcompress_pyx
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'bzrlib._groupcompress_pyx'
-
-
-CompiledGroupCompressFeature = _CompiledGroupCompressFeature()
+compiled_groupcompress_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._groupcompress_pyx')
 
 _text1 = """\
 This is a bit
@@ -264,9 +251,8 @@ class TestDeltaIndex(tests.TestCase):
         # This test isn't multiplied, because we only have DeltaIndex for the
         # compiled form
         # We call this here, because _test_needs_features happens after setUp
-        self.requireFeature(CompiledGroupCompressFeature)
-        from bzrlib import _groupcompress_pyx
-        self._gc_module = _groupcompress_pyx
+        self.requireFeature(compiled_groupcompress_feature)
+        self._gc_module = compiled_groupcompress_feature.module
 
     def test_repr(self):
         di = self._gc_module.DeltaIndex('test text\n')

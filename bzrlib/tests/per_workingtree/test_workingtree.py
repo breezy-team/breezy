@@ -590,6 +590,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(master_tree.branch.revision_history(),
             tree.branch.revision_history())
 
+    def test_update_takes_revision_parameter(self):
+        wt = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/a', 'old content')])
+        wt.add(['a'])
+        rev1 = wt.commit('first master commit')
+        self.build_tree_contents([('wt/a', 'new content')])
+        rev2 = wt.commit('second master commit')
+        # https://bugs.edge.launchpad.net/bzr/+bug/45719/comments/20
+        # when adding 'update -r' we should make sure all wt formats support
+        # it
+        conflicts = wt.update(revision=rev1)
+        self.assertFileEqual('old content', 'wt/a')
+        self.assertEqual([rev1], wt.get_parent_ids())
+
     def test_merge_modified_detects_corruption(self):
         # FIXME: This doesn't really test that it works; also this is not
         # implementation-independent. mbp 20070226
