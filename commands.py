@@ -154,9 +154,6 @@ class cmd_rebase(Command):
 
             if stop_revid is None:
                 stop_revid = wt.branch.last_revision()
-            elif not pending_merges:
-                stop_revid = wt.branch.repository.get_parent_map(
-                    [stop_revid])[stop_revid][0]
             repo_graph = wt.branch.repository.get_graph()
             our_new, onto_unique = repo_graph.find_difference(stop_revid, onto)
 
