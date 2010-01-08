@@ -34,6 +34,7 @@ from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
         SourceExtractor,
+        SOURCE_EXTRACTORS,
         ThreeDotZeroNativeSourceExtractor,
         ThreeDotZeroQuiltSourceExtractor,
         )
@@ -1408,6 +1409,7 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
         extractor = SourceExtractor(builder.dsc_name(), dsc)
         try:
             extractor.extract()
@@ -1436,6 +1438,7 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
         extractor = SourceExtractor(builder.dsc_name(), dsc)
         try:
             extractor.extract()
@@ -1460,6 +1463,8 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(ThreeDotZeroNativeSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
         extractor = ThreeDotZeroNativeSourceExtractor(builder.dsc_name(),
                 dsc)
         try:
@@ -1478,13 +1483,15 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
     def test_extract_format3_quilt(self):
         version = Version("0.1-1")
         name = "package"
-        builder = SourcePackageBuilder(name, version)
+        builder = SourcePackageBuilder(name, version, version3=True)
         builder.add_upstream_file("README", "Hi\n")
         builder.add_upstream_file("BUGS")
         builder.add_default_control()
         builder.build()
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
-        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
         try:
             extractor.extract()
             unpacked_dir = extractor.extracted_debianised
