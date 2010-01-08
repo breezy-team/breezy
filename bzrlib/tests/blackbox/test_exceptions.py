@@ -22,8 +22,11 @@ import sys
 
 from bzrlib import (
     bzrdir,
+    config,
     errors,
+    osutils,
     repository,
+    tests,
     trace,
     )
 
@@ -45,18 +48,69 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
 
 
-class TestDeprecationWarning(TestCaseInTempDir):
+class TestDeprecationWarning(tests.TestCaseWithTransport):
+    """The deprecation warning is controlled via a global variable:
+    repository._deprecation_warning_done. As such, it can be emitted only once
+    during a bzr invocation, no matter how many repositories are involved.
+
+    It would be better if it was a repo attribute instead but that's far more
+    work than I want to do right now -- vila 20091215.
+    """
+
+    def setUp(self):
+        super(TestDeprecationWarning, self).setUp()
+        self.disable_deprecation_warning()
+
+    def enable_deprecation_warning(self, repo=None):
+        """repo is not used yet since _deprecation_warning_done is a global"""
+        repository._deprecation_warning_done = False
+
+    def disable_deprecation_warning(self, repo=None):
+        """repo is not used yet since _deprecation_warning_done is a global"""
+        repository._deprecation_warning_done = True
+
+    def make_obsolete_repo(self, path):
+        # We don't want the deprecation raising during the repo creation
+        tree = self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        return tree
+
+    def check_warning(self, present):
+        if present:
+            check = self.assertContainsRe
+        else:
+            check = self.assertNotContainsRe
+        check(self._get_log(keep_log_file=True), 'WARNING.*bzr upgrade')
 
     def test_repository_deprecation_warning(self):
         """Old formats give a warning"""
-        # the warning's normally off for testing but we reenable it
-        repository._deprecation_warning_done = False
-        try:
-            os.mkdir('foo')
-            bzrdir.BzrDirFormat5().initialize('foo')
-            out, err = self.run_bzr("status foo")
-            self.assertContainsRe(self._get_log(keep_log_file=True),
-                                  "bzr upgrade")
-        finally:
-            repository._deprecation_warning_done = True
+        self.make_obsolete_repo('foo')
+        self.enable_deprecation_warning()
+        out, err = self.run_bzr('status', working_dir='foo')
+        self.check_warning(True)
 
+    def test_repository_deprecation_warning_suppressed_global(self):
+        """Old formats give a warning"""
+        conf = config.GlobalConfig()
+        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        self.make_obsolete_repo('foo')
+        self.enable_deprecation_warning()
+        out, err = self.run_bzr('status', working_dir='foo')
+        self.check_warning(False)
+
+    def test_repository_deprecation_warning_suppressed_locations(self):
+        """Old formats give a warning"""
+        self.make_obsolete_repo('foo')
+        conf = config.LocationConfig(osutils.pathjoin(self.test_dir, 'foo'))
+        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        self.enable_deprecation_warning()
+        out, err = self.run_bzr('status', working_dir='foo')
+        self.check_warning(False)
+
+    def test_repository_deprecation_warning_suppressed_branch(self):
+        """Old formats give a warning"""
+        tree = self.make_obsolete_repo('foo')
+        conf = tree.branch.get_config()
+        conf.set_user_option('suppress_warnings', 'format_deprecation')
+        self.enable_deprecation_warning()
+        out, err = self.run_bzr('status', working_dir='foo')
+        self.check_warning(False)

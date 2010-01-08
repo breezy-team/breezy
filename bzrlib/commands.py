@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,6 +45,7 @@ from bzrlib import (
     option,
     osutils,
     trace,
+    ui,
     win32utils,
     )
 """)
@@ -56,6 +57,7 @@ from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
+    deprecated_method,
     suppress_deprecation_warnings,
     )
 
@@ -383,18 +385,18 @@ class Command(object):
         # List of standard options directly supported
         self.supported_std_options = []
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
+
+        Not used anymore, now that the bzr command-line parser globs on
+        Windows.
 
         :return: A possibly empty list of unicode paths.
 
         Introduced in bzrlib 0.18.
         """
-        if not file_list:
-            file_list = []
-        if sys.platform == 'win32':
-            file_list = win32utils.glob_expand(file_list)
-        return list(file_list)
+        return file_list
 
     def _usage(self):
         """Return single-line grammar for this command.
@@ -594,26 +596,8 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        # Originally I was using self.stdout, but that looks
-        # *way* too much like sys.stdout
-        if self.encoding_type == 'exact':
-            # force sys.stdout to be binary stream on win32
-            if sys.platform == 'win32':
-                fileno = getattr(sys.stdout, 'fileno', None)
-                if fileno:
-                    import msvcrt
-                    msvcrt.setmode(fileno(), os.O_BINARY)
-            self.outf = sys.stdout
-            return
-
-        output_encoding = osutils.get_terminal_encoding()
-
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
-                        errors=self.encoding_type)
-        # For whatever reason codecs.getwriter() does not advertise its encoding
-        # it just returns the encoding of the wrapped file, which is completely
-        # bogus. So set the attribute, so we can find the correct encoding later.
-        self.outf.encoding = output_encoding
+        self.outf = ui.ui_factory.make_output_stream(
+            encoding_type=self.encoding_type)
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
@@ -939,7 +923,11 @@ def run_bzr(argv):
 
     --coverage
         Generate line coverage report in the specified directory.
+
+    --concurrency
+        Specify the number of processes that can be run concurrently (selftest).
     """
+    trace.mutter("bazaar version: " + bzrlib.__version__)
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
@@ -969,6 +957,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--concurrency':
+            os.environ['BZR_CONCURRENCY'] = argv[i + 1]
+            i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
@@ -1097,7 +1088,7 @@ def main(argv=None):
 
     # Is this a final release version? If so, we should suppress warnings
     if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=False)
+        suppress_deprecation_warnings(override=True)
     if argv is None:
         argv = osutils.get_unicode_argv()
     else:
@@ -1113,6 +1104,8 @@ def main(argv=None):
             raise errors.BzrError("argv should be list of unicode strings.")
         argv = new_argv
     ret = run_bzr_catch_errors(argv)
+    bzrlib.ui.ui_factory.log_transport_activity(
+        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     osutils.report_extension_load_failures()
     return ret

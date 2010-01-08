@@ -65,7 +65,6 @@ from bzrlib import (
     merge,
     revision as _mod_revision,
     revisiontree,
-    textui,
     trace,
     transform,
     ui,
@@ -544,11 +543,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             parents = [last_rev]
         try:
-            merges_file = self._transport.get('pending-merges')
+            merges_bytes = self._transport.get_bytes('pending-merges')
         except errors.NoSuchFile:
             pass
         else:
-            for l in merges_file.readlines():
+            for l in osutils.split_lines(merges_bytes):
                 revision_id = l.rstrip('\n')
                 parents.append(revision_id)
         return parents
@@ -636,6 +635,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     def _is_executable_from_path_and_stat_from_basis(self, path, stat_result):
         file_id = self.path2id(path)
+        if file_id is None:
+            # For unversioned files on win32, we just assume they are not
+            # executable
+            return False
         return self._inventory[file_id].executable
 
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
@@ -1841,7 +1844,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     def _reset_data(self):
         """Reset transient data that cannot be revalidated."""
         self._inventory_is_modified = False
-        result = self._deserialize(self._transport.get('inventory'))
+        f = self._transport.get('inventory')
+        try:
+            result = self._deserialize(f)
+        finally:
+            f.close()
         self._set_inventory(result, dirty=False)
 
     @needs_tree_write_lock
@@ -1923,7 +1930,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # binary.
         if self._inventory_is_modified:
             raise errors.InventoryModified(self)
-        result = self._deserialize(self._transport.get('inventory'))
+        f = self._transport.get('inventory')
+        try:
+            result = self._deserialize(f)
+        finally:
+            f.close()
         self._set_inventory(result, dirty=False)
         return result
 
@@ -1944,6 +1955,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         new_files=set()
         unknown_nested_files=set()
+        if to_file is None:
+            to_file = sys.stdout
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2019,8 +2032,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                         new_status = 'I'
                     else:
                         new_status = '?'
-                    textui.show_status(new_status, self.kind(fid), f,
-                                       to_file=to_file)
+                    # XXX: Really should be a more abstract reporter interface
+                    kind_ch = osutils.kind_marker(self.kind(fid))
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
                 # Unversion file
                 inv_delta.append((f, None, fid, None))
                 message = "removed %s" % (f,)
@@ -2177,7 +2191,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self, change_reporter=None, possible_transports=None):
+    _marker = object()
+
+    def update(self, change_reporter=None, possible_transports=None,
+               revision=None, old_tip=_marker):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2201,10 +2218,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         - Merge current state -> basis tree of the master w.r.t. the old tree
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
         """
         if self.branch.get_bound_location() is not None:
             self.lock_write()
-            update_branch = True
+            update_branch = (old_tip is self._marker)
         else:
             self.lock_tree_write()
             update_branch = False
@@ -2212,13 +2235,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if update_branch:
                 old_tip = self.branch.update(possible_transports)
             else:
-                old_tip = None
-            return self._update_tree(old_tip, change_reporter)
+                if old_tip is self._marker:
+                    old_tip = None
+            return self._update_tree(old_tip, change_reporter, revision)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None, change_reporter=None):
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2239,12 +2263,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = self.get_parent_ids()[0]
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
-        if last_rev != _mod_revision.ensure_null(self.branch.last_revision()):
-            # merge tree state up to new branch tip.
+        if revision is None:
+            revision = self.branch.last_revision()
+        else:
+            if revision not in self.branch.revision_history():
+                raise errors.NoSuchRevision(self.branch, revision)
+        if last_rev != _mod_revision.ensure_null(revision):
+            # merge tree state up to specified revision.
             basis = self.basis_tree()
             basis.lock_read()
             try:
-                to_tree = self.branch.basis_tree()
+                to_tree = self.branch.repository.revision_tree(revision)
                 if basis.inventory.root is None:
                     self.set_root_id(to_tree.get_root_id())
                     self.flush()
@@ -2254,11 +2283,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                       basis,
                                       this_tree=self,
                                       change_reporter=change_reporter)
+                self.set_last_revision(revision)
             finally:
                 basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
-            parent_trees = [(self.branch.last_revision(), to_tree)]
+            parent_trees = [(revision, to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
             # tree can decide whether to give us the entire tree or give us a
@@ -2294,8 +2324,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             #       should be able to remove this extra flush.
             self.flush()
             graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
-                                                old_tip)
+            base_rev_id = graph.find_unique_lca(revision, old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             result += merge.merge_inner(
@@ -2580,7 +2609,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         return
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
         if self._rules_searcher is None:
@@ -2765,7 +2793,7 @@ class WorkingTreeFormat(object):
         """Return the format for the working tree object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_workingtree_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)

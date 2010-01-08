@@ -64,7 +64,13 @@ def _run_editor(filename):
             x = call(edargs + [filename])
         except OSError, e:
             # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, errno.EACCES):
+            # errno 193 is ERROR_BAD_EXE_FORMAT on Windows. Python2.4 uses the
+            # winerror for errno. Python2.5+ use errno ENOEXEC and set winerror
+            # to 193. However, catching 193 here should be fine. Other
+            # platforms aren't likely to have that high of an error. And even
+            # if they do, it is still reasonable to fall back to the next
+            # editor.
+            if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOEXEC, 193):
                 if candidate_source is not None:
                     # We tried this editor because some user configuration (an
                     # environment variable or config file) said to try it.  Let

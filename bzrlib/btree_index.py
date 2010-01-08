@@ -31,6 +31,7 @@ from bzrlib import (
     index,
     lru_cache,
     osutils,
+    static_tuple,
     trace,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
@@ -159,15 +160,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
+        # Ensure that 'key' is a StaticTuple
+        key = static_tuple.StaticTuple.from_sequence(key).intern()
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = (node_refs, value)
-        self._keys.add(key)
+        self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
-        if len(self._keys) < self._spill_at:
+        if len(self._nodes) < self._spill_at:
             return
         self._spill_mem_keys_to_disk()
 
@@ -202,7 +204,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 self._backing_indices[backing_pos] = None
         else:
             self._backing_indices.append(new_backing)
-        self._keys = set()
         self._nodes = {}
         self._nodes_by_key = None
 
@@ -410,7 +411,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # Special case the first node as it may be prefixed
             node = row.spool.read(_PAGE_SIZE)
             result.write(node[reserved:])
-            result.write("\x00" * (reserved - position))
+            if len(node) == _PAGE_SIZE:
+                result.write("\x00" * (reserved - position))
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
@@ -461,14 +463,22 @@ class BTreeBuilder(index.GraphIndexBuilder):
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
-        local_keys = keys.intersection(self._keys)
+        # Note: We don't use keys.intersection() here. If you read the C api,
+        #       set.intersection(other) special cases when other is a set and
+        #       will iterate the smaller of the two and lookup in the other.
+        #       It does *not* do this for any other type (even dict, unlike
+        #       some other set functions.) Since we expect keys is generally <<
+        #       self._nodes, it is faster to iterate over it in a list
+        #       comprehension
+        nodes = self._nodes
+        local_keys = [key for key in keys if key in nodes]
         if self.reference_lists:
             for key in local_keys:
-                node = self._nodes[key]
+                node = nodes[key]
                 yield self, key, node[1], node[0]
         else:
             for key in local_keys:
-                node = self._nodes[key]
+                node = nodes[key]
                 yield self, key, node[1]
         # Find things that are in backing indices that have not been handled
         # yet.
@@ -584,7 +594,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
         For InMemoryGraphIndex the estimate is exact.
         """
-        return len(self._keys) + sum(backing.key_count() for backing in
+        return len(self._nodes) + sum(backing.key_count() for backing in
             self._backing_indices if backing is not None)
 
     def validate(self):
@@ -622,10 +632,11 @@ class _InternalNode(object):
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
+        as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(tuple(map(intern, line.split('\0'))))
+            nodes.append(as_st(map(intern, line.split('\0'))).intern())
         return nodes
 
 
@@ -636,7 +647,7 @@ class BTreeGraphIndex(object):
     memory except when very large walks are done.
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False):
         """Create a B+Tree index object on the index name.
 
         :param transport: The transport to read data for the index from.
@@ -646,6 +657,9 @@ class BTreeGraphIndex(object):
             the initial read (to read the root node header) can be done
             without over-reading even on empty indices, and on small indices
             allows single-IO to read the entire index.
+        :param unlimited_cache: If set to True, then instead of using an
+            LRUCache with size _NODE_CACHE_SIZE, we will use a dict and always
+            cache all leaf nodes.
         """
         self._transport = transport
         self._name = name
@@ -655,12 +669,15 @@ class BTreeGraphIndex(object):
         self._root_node = None
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
-        self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        # We could limit this, but even a 300k record btree has only 3k leaf
-        # nodes, and only 20 internal nodes. So the default of 100 nodes in an
-        # LRU would mean we always cache everything anyway, no need to pay the
-        # overhead of LRU
-        self._internal_node_cache = fifo_cache.FIFOCache(100)
+        if unlimited_cache:
+            self._leaf_node_cache = {}
+            self._internal_node_cache = {}
+        else:
+            self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
+            # We use a FIFO here just to prevent possible blowout. However, a
+            # 300k record btree has only 3k leaf nodes, and only 20 internal
+            # nodes. A value of 100 scales to ~100*100*100 = 1M records.
+            self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
@@ -698,9 +715,9 @@ class BTreeGraphIndex(object):
                 if start_of_leaves is None:
                     start_of_leaves = self._row_offsets[-2]
                 if node_pos < start_of_leaves:
-                    self._internal_node_cache.add(node_pos, node)
+                    self._internal_node_cache[node_pos] = node
                 else:
-                    self._leaf_node_cache.add(node_pos, node)
+                    self._leaf_node_cache[node_pos] = node
             found[node_pos] = node
         return found
 
@@ -844,6 +861,19 @@ class BTreeGraphIndex(object):
             final_offsets.update(next_tips)
             new_tips = next_tips
         return final_offsets
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+        # Note that we don't touch self._root_node or self._internal_node_cache
+        # We don't expect either of those to be big, and it can save
+        # round-trips in the future. We may re-evaluate this if InternalNode
+        # memory starts to be an issue.
+        self._leaf_node_cache.clear()
 
     def external_references(self, ref_list_num):
         if self._root_node is None:

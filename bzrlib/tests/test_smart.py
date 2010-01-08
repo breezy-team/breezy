@@ -43,6 +43,7 @@ import bzrlib.smart.branch
 import bzrlib.smart.bzrdir, bzrlib.smart.bzrdir as smart_dir
 import bzrlib.smart.packrepository
 import bzrlib.smart.repository
+import bzrlib.smart.vfs
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -170,6 +171,18 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, 'bar/')
         self.assertEqual('./baz', request.translate_client_path('foo/baz'))
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path('foo/' + e_acute))
+
+    def test_translate_client_path_vfs(self):
+        """VfsRequests receive escaped paths rather than raw UTF-8."""
+        transport = self.get_transport()
+        request = smart.vfs.VfsRequest(transport, 'foo/')
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
+        escaped = urlutils.escape('foo/' + e_acute)
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path(escaped))
 
     def test_transport_from_client_path(self):
         transport = self.get_transport()
@@ -1704,6 +1717,19 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
             backing)
         response = request.execute('')
         self.assertEqual(SmartServerResponse(('ok',)), response)
+
+
+class TestSmartServerVfsGet(tests.TestCaseWithMemoryTransport):
+
+    def test_unicode_path(self):
+        """VFS requests expect unicode paths to be escaped."""
+        filename = u'foo\N{INTERROBANG}'
+        filename_escaped = urlutils.escape(filename)
+        backing = self.get_transport()
+        request = smart.vfs.GetRequest(backing)
+        backing.put_bytes_non_atomic(filename_escaped, 'contents')
+        self.assertEqual(SmartServerResponse(('ok', ), 'contents'),
+            request.execute(filename_escaped))
 
 
 class TestHandlers(tests.TestCase):

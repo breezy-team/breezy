@@ -697,7 +697,6 @@ class Tree(object):
                 for path in path_names:
                     yield searcher.get_items(path)
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
@@ -852,6 +851,12 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
+    # Formats that will be used to test this InterTree. If both are
+    # None, this InterTree will not be tested (e.g. because a complex
+    # setup is required)
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+
     _optimisers = []
 
     def _changes_from_entries(self, source_entry, target_entry,
@@ -954,8 +959,6 @@ class InterTree(InterObject):
             a PathsNotVersionedError will be thrown.
         :param want_unversioned: Scan for unversioned paths.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)

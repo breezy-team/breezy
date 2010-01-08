@@ -46,6 +46,13 @@ from subprocess import (
     Popen,
     PIPE,
     )
+import sys
+
+# We want to use the right bzrlib: the one we are part of
+# FIXME: The fllowing is correct but looks a bit ugly 
+_dir = os.path.dirname
+our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
+sys.path.insert(0, our_bzr)
 
 from bzrlib import (
     osutils,
@@ -105,7 +112,7 @@ ssl_params=dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='localhost', # Always accessed under that name
+    server_name='127.0.0.1', # Always accessed under that name
     server_email='https_server@locahost',
     server_optional_company_name='',
     )

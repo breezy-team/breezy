@@ -1,0 +1,20 @@
+# Specify startup options for bzr --serve
+
+# WARNING
+# When bazaar runs in serve mode there is no authentication. You will
+# be publishing your tree as readable or potentially writeable to everyone
+
+# You need to uncomment the line below to enable this service
+#ENABLED=1
+
+# Specify a user and group to run as
+#USER=bzr
+#GROUP=bzr
+
+# Specify the path to the repository
+#REPO=/srv/bzr
+
+# Other arguments
+# Add --allow-writes for RW access
+# Example config listens on localhost
+DAEMON_ARGS="--port=127.0.0.1:4155"

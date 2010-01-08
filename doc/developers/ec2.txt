@@ -8,7 +8,7 @@ building Windows packages and general testing on Windows.  As of
 but we aim to use it for the production Windows installer build of 1.13 in
 March.
 
-See also: 
+See also:
 
 * `Bazaar Developer Documentation Catalog <index.html>`_.
 
@@ -20,8 +20,8 @@ Goals
 =====
 
 * The instance is only running (and incurring charges) when it's needed
-  for testing or packaging.  
-  
+  for testing or packaging.
+
 * It can be started or stopped by anyone on the team using a
   straightforward script.
 
@@ -41,7 +41,7 @@ Approach
 ========
 
 The working disk and the AMI images are stored in one person's account for
-billing purposes.  
+billing purposes.
 
 Ideally we want to give other people access to run this machine without
 giving full access to the account.  I'm not sure if that's feasible.  If
@@ -76,7 +76,7 @@ Amazon and returns the private path. One keypair is all that is needed.
 This is distinct from the account identifier - likely due to the different
 toolchains in use (the keypairs are used for unix ssh keys, and I (Robert)
 suspect a rather unix friendly core at Amazon).
-Once a custom image is made with a saved password, you can skip using 
+Once a custom image is made with a saved password, you can skip using
 ``ec2-get-password`` (which is only needed for Windows anyway).
 
 It would be nice if rdesktop could use private key authentication but
@@ -125,9 +125,9 @@ Preparation
 * Install the rdesktop client, to actually access the machine.
 
 * Possibly read some of the `EC2 documentation`_ for background.
-   
-.. _`bug 330930`: https://bugs.edge.launchpad.net/ubuntu/+bug/330930 
-.. _`Amazon EC2 API tools`: 
+
+.. _`bug 330930`: https://bugs.edge.launchpad.net/ubuntu/+bug/330930
+.. _`Amazon EC2 API tools`:
      http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
 .. _`EC2 documentation`: http://aws.amazon.com/
 .. _`ami-bdfe19d4`:
@@ -138,7 +138,7 @@ Preparation
     ec2-add-group desolation-group -d 'bzr win32 build machine'
     ec2-authorize desolation-group -p 3389 -s 1.2.3.4/32
     ec2-authorize desolation-group -t -1:-1 -P icmp
-  
+
   Add your public IP there.  You can repeat that command to allow others
   in.
 
@@ -149,11 +149,11 @@ To start up an instance
 1. Get the right AMI image ID from another developer.
 
 1. Start the instance::
-   
+
      ec2-run-instances $image_id -g desolation-group
 
    This will print out some information including the image id, something
-   like ``i-31a74258``.  
+   like ``i-31a74258``.
 
 1. Actually starting the machine will take a few minutes.  Once it's in
    the *running* state, get the machine's public IP with ::
@@ -171,18 +171,18 @@ Don't forget to shut it down when you're done, and check with
 To save a system snapshot as an image
 -------------------------------------
 
-1. Bundle the current state.  *Doing this will reboot the machine.* 
+1. Bundle the current state.  *Doing this will reboot the machine.*
    You need to choose a unique s3 bucket name,
-   typically based on a domain or email address, which can contain 
+   typically based on a domain or email address, which can contain
    any number of images.  You also need a name unique within the bucket
-   for this image, like ``desolation-vs2008-20090219``.  And finally 
+   for this image, like ``desolation-vs2008-20090219``.  And finally
    it needs your AWS S3 access key and secret key, which should be set in
    ``~/.aws``::
-    
+
       ec2-bundle-instance -b ec2.sourcefrog.net \
           -p desolation-vs2008-2009021 \
           -o "$AWS_ACCESS_KEY_ID" \
-          -w "$AWS_SECRET_ACCESS_KEY" 
+          -w "$AWS_SECRET_ACCESS_KEY"
 
 1.  This will take several minutes:  You can check progress with ::
 

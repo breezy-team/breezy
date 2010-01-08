@@ -84,6 +84,7 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
+        super(RioVersionInfoBuilderHooks, self).__init__()
         self.create_hook(hooks.HookPoint('revision',
             "Invoked when adding information about a revision to the"
             " RIO stanza that is printed. revision is called with a"

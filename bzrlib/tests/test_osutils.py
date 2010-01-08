@@ -53,13 +53,11 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
+term_ios_feature = tests.ModuleAvailableFeature('termios')
+
 
 def _already_unicode(s):
     return s
-
-
-def _fs_enc_to_unicode(s):
-    return s.decode(osutils._fs_enc)
 
 
 def _utf8_to_unicode(s):
@@ -84,15 +82,13 @@ def dir_reader_scenarios():
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
-    if test__walkdirs_win32.Win32ReadDirFeature.available():
+    if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from bzrlib import _walkdirs_win32
-            # TODO: check on windows, it may be that we need to use/add
-            # safe_unicode instead of _fs_enc_to_unicode
             scenarios.append(
                 ('win32',
                  dict(_dir_reader_class=_walkdirs_win32.Win32ReadDir,
-                      _native_to_unicode=_fs_enc_to_unicode)))
+                      _native_to_unicode=_already_unicode)))
         except ImportError:
             pass
     return scenarios
@@ -126,33 +122,51 @@ class TestContainsWhitespace(tests.TestCase):
 
 class TestRename(tests.TestCaseInTempDir):
 
+    def create_file(self, filename, content):
+        f = open(filename, 'wb')
+        try:
+            f.write(content)
+        finally:
+            f.close()
+
+    def _fancy_rename(self, a, b):
+        osutils.fancy_rename(a, b, rename_func=os.rename,
+                             unlink_func=os.unlink)
+
     def test_fancy_rename(self):
         # This should work everywhere
-        def rename(a, b):
-            osutils.fancy_rename(a, b,
-                    rename_func=os.rename,
-                    unlink_func=os.unlink)
-
-        open('a', 'wb').write('something in a\n')
-        rename('a', 'b')
+        self.create_file('a', 'something in a\n')
+        self._fancy_rename('a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
         self.check_file_contents('b', 'something in a\n')
 
-        open('a', 'wb').write('new something in a\n')
-        rename('b', 'a')
+        self.create_file('a', 'new something in a\n')
+        self._fancy_rename('b', 'a')
 
         self.check_file_contents('a', 'something in a\n')
 
+    def test_fancy_rename_fails_source_missing(self):
+        # An exception should be raised, and the target should be left in place
+        self.create_file('target', 'data in target\n')
+        self.assertRaises((IOError, OSError), self._fancy_rename,
+                          'missingsource', 'target')
+        self.failUnlessExists('target')
+        self.check_file_contents('target', 'data in target\n')
+
+    def test_fancy_rename_fails_if_source_and_target_missing(self):
+        self.assertRaises((IOError, OSError), self._fancy_rename,
+                          'missingsource', 'missingtarget')
+
     def test_rename(self):
         # Rename should be semi-atomic on all platforms
-        open('a', 'wb').write('something in a\n')
+        self.create_file('a', 'something in a\n')
         osutils.rename('a', 'b')
         self.failIfExists('a')
         self.failUnlessExists('b')
         self.check_file_contents('b', 'something in a\n')
 
-        open('a', 'wb').write('new something in a\n')
+        self.create_file('a', 'new something in a\n')
         osutils.rename('b', 'a')
 
         self.check_file_contents('a', 'something in a\n')
@@ -366,6 +380,14 @@ class TestDateTime(tests.TestCase):
         # Instead blackbox.test_locale should check for localized
         # dates once they do occur in output strings.
 
+    def test_format_date_with_offset_in_original_timezone(self):
+        self.assertEqual("Thu 1970-01-01 00:00:00 +0000",
+            osutils.format_date_with_offset_in_original_timezone(0))
+        self.assertEqual("Fri 1970-01-02 03:46:40 +0000",
+            osutils.format_date_with_offset_in_original_timezone(100000))
+        self.assertEqual("Fri 1970-01-02 05:46:40 +0200",
+            osutils.format_date_with_offset_in_original_timezone(100000, 7200))
+
     def test_local_time_offset(self):
         """Test that local_time_offset() returns a sane value."""
         offset = osutils.local_time_offset()
@@ -455,6 +477,49 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
         actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
         self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
+
+
+class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
+
+    def assertRelpath(self, expected, base, path):
+        actual = osutils._cicp_canonical_relpath(base, path)
+        self.assertEqual(expected, actual)
+
+    def test_simple(self):
+        self.build_tree(['MixedCaseName'])
+        base = osutils.realpath(self.get_transport('.').local_abspath('.'))
+        self.assertRelpath('MixedCaseName', base, 'mixedcAsename')
+
+    def test_subdir_missing_tail(self):
+        self.build_tree(['MixedCaseParent/', 'MixedCaseParent/a_child'])
+        base = osutils.realpath(self.get_transport('.').local_abspath('.'))
+        self.assertRelpath('MixedCaseParent/a_child', base,
+                           'MixedCaseParent/a_child')
+        self.assertRelpath('MixedCaseParent/a_child', base,
+                           'MixedCaseParent/A_Child')
+        self.assertRelpath('MixedCaseParent/not_child', base,
+                           'MixedCaseParent/not_child')
+
+    def test_at_root_slash(self):
+        # We can't test this on Windows, because it has a 'MIN_ABS_PATHLENGTH'
+        # check...
+        if osutils.MIN_ABS_PATHLENGTH > 1:
+            raise tests.TestSkipped('relpath requires %d chars'
+                                    % osutils.MIN_ABS_PATHLENGTH)
+        self.assertRelpath('foo', '/', '/foo')
+
+    def test_at_root_drive(self):
+        if sys.platform != 'win32':
+            raise tests.TestNotApplicable('we can only test drive-letter relative'
+                                          ' paths on Windows where we have drive'
+                                          ' letters.')
+        # see bug #322807
+        # The specific issue is that when at the root of a drive, 'abspath'
+        # returns "C:/" or just "/". However, the code assumes that abspath
+        # always returns something like "C:/foo" or "/foo" (no trailing slash).
+        self.assertRelpath('foo', 'C:/', 'C:/foo')
+        self.assertRelpath('foo', 'X:/', 'X:/foo')
+        self.assertRelpath('foo', 'X:/', 'X://foo')
 
 
 class TestPumpFile(tests.TestCase):
@@ -924,7 +989,7 @@ class TestChunksToLines(tests.TestCase):
 
     def test_osutils_binding(self):
         from bzrlib.tests import test__chunks_to_lines
-        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
@@ -1116,14 +1181,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
@@ -1280,7 +1345,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_win32readdir(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
@@ -1337,7 +1402,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
@@ -1361,7 +1426,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
@@ -1570,7 +1635,7 @@ class TestSizeShaFile(tests.TestCaseInTempDir):
         text = 'test\r\nwith\nall\rpossible line endings\r\n'
         self.build_tree_contents([('foo', text)])
         expected_sha = osutils.sha_string(text)
-        f = open('foo')
+        f = open('foo', 'rb')
         self.addCleanup(f.close)
         size, sha = osutils.size_sha_file(f)
         self.assertEqual(38, size)
@@ -1792,9 +1857,31 @@ class TestReadLink(tests.TestCaseInTempDir):
 
 class TestConcurrency(tests.TestCase):
 
+    def setUp(self):
+        super(TestConcurrency, self).setUp()
+        orig = osutils._cached_local_concurrency
+        def restore():
+            osutils._cached_local_concurrency = orig
+        self.addCleanup(restore)
+
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
         self.assertIsInstance(concurrency, int)
+
+    def test_local_concurrency_environment_variable(self):
+        os.environ['BZR_CONCURRENCY'] = '2'
+        self.assertEqual(2, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = '3'
+        self.assertEqual(3, osutils.local_concurrency(use_cache=False))
+        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.assertEqual(1, osutils.local_concurrency(use_cache=False))
+
+    def test_option_concurrency(self):
+        os.environ['BZR_CONCURRENCY'] = '1'
+        self.run_bzr('rocks --concurrency 42')
+        # Command line overrides envrionment variable
+        self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
+        self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
 
 class TestFailedToLoadExtension(tests.TestCase):
@@ -1837,3 +1924,83 @@ class TestFailedToLoadExtension(tests.TestCase):
             r"bzr: warning: some compiled extensions could not be loaded; "
             "see <https://answers\.launchpad\.net/bzr/\+faq/703>\n"
             )
+
+
+class TestTerminalWidth(tests.TestCase):
+
+    def replace_stdout(self, new):
+        orig_stdout = sys.stdout
+        def restore():
+            sys.stdout = orig_stdout
+        self.addCleanup(restore)
+        sys.stdout = new
+
+    def replace__terminal_size(self, new):
+        orig__terminal_size = osutils._terminal_size
+        def restore():
+            osutils._terminal_size = orig__terminal_size
+        self.addCleanup(restore)
+        osutils._terminal_size = new
+
+    def set_fake_tty(self):
+
+        class I_am_a_tty(object):
+            def isatty(self):
+                return True
+
+        self.replace_stdout(I_am_a_tty())
+
+    def test_default_values(self):
+        self.assertEqual(80, osutils.default_terminal_width)
+
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
+        self.assertEqual(12, osutils.terminal_width())
+
+    def test_falls_back_to_COLUMNS(self):
+        del os.environ['BZR_COLUMNS']
+        self.assertNotEqual('42', os.environ['COLUMNS'])
+        self.set_fake_tty()
+        os.environ['COLUMNS'] = '42'
+        self.assertEqual(42, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+
+        def terminal_size(w, h):
+            return 42, 42
+
+        self.set_fake_tty()
+        # We need to override the osutils definition as it depends on the
+        # running environment that we can't control (PQM running without a
+        # controlling terminal is one example).
+        self.replace__terminal_size(terminal_size)
+        self.assertEqual(42, osutils.terminal_width())
+
+    def test_non_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        self.replace_stdout(None)
+        self.assertEqual(None, osutils.terminal_width())
+
+    def test_no_TIOCGWINSZ(self):
+        self.requireFeature(term_ios_feature)
+        termios = term_ios_feature.module
+        # bug 63539 is about a termios without TIOCGWINSZ attribute
+        try:
+            orig = termios.TIOCGWINSZ
+        except AttributeError:
+            # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
+            pass
+        else:
+            def restore():
+                termios.TIOCGWINSZ = orig
+            self.addCleanup(restore)
+            del termios.TIOCGWINSZ
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+        # Whatever the result is, if we don't raise an exception, it's ok.
+        osutils.terminal_width()

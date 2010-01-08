@@ -74,9 +74,13 @@ class DummyForeignVcs(foreign.ForeignVcs):
         self.mapping_registry = DummyForeignVcsMappingRegistry()
         self.mapping_registry.register("v1", DummyForeignVcsMapping(self),
                                        "Version 1")
+        self.abbreviation = "dummy"
 
     def show_foreign_revid(self, foreign_revid):
         return { "dummy ding": "%s/%s\\%s" % foreign_revid }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        return "%s|%s|%s" % foreign_revid
 
 
 class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
@@ -98,6 +102,9 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
     @staticmethod
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
+
+    def push(self, overwrite=False, stop_revision=None):
+        raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     def lossy_push(self, stop_revision=None):
         result = branch.BranchPushResult()
@@ -346,6 +353,13 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir",
                              newdir._format.get_format_string())
+
+    def test_push_not_supported(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        self.assertRaises(errors.NoRoundtrippingSupport, 
+            source_tree.branch.push, target_tree.branch)
 
     def test_lossy_push_empty(self):
         source_tree = self.make_branch_and_tree("source")

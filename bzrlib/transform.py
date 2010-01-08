@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1023,6 +1024,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        self._creation_mtime = None
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1054,46 +1056,19 @@ class DiskTreeTransform(TreeTransformBase):
     def _limbo_name(self, trans_id):
         """Generate the limbo name of a file"""
         limbo_name = self._limbo_files.get(trans_id)
-        if limbo_name is not None:
-            return limbo_name
-        parent = self._new_parent.get(trans_id)
-        # if the parent directory is already in limbo (e.g. when building a
-        # tree), choose a limbo name inside the parent, to reduce further
-        # renames.
-        use_direct_path = False
-        if self._new_contents.get(parent) == 'directory':
-            filename = self._new_name.get(trans_id)
-            if filename is not None:
-                if parent not in self._limbo_children:
-                    self._limbo_children[parent] = set()
-                    self._limbo_children_names[parent] = {}
-                    use_direct_path = True
-                # the direct path can only be used if no other file has
-                # already taken this pathname, i.e. if the name is unused, or
-                # if it is already associated with this trans_id.
-                elif self._case_sensitive_target:
-                    if (self._limbo_children_names[parent].get(filename)
-                        in (trans_id, None)):
-                        use_direct_path = True
-                else:
-                    for l_filename, l_trans_id in\
-                        self._limbo_children_names[parent].iteritems():
-                        if l_trans_id == trans_id:
-                            continue
-                        if l_filename.lower() == filename.lower():
-                            break
-                    else:
-                        use_direct_path = True
-
-        if use_direct_path:
-            limbo_name = pathjoin(self._limbo_files[parent], filename)
-            self._limbo_children[parent].add(trans_id)
-            self._limbo_children_names[parent][filename] = trans_id
-        else:
-            limbo_name = pathjoin(self._limbodir, trans_id)
-            self._needs_rename.add(trans_id)
-        self._limbo_files[trans_id] = limbo_name
+        if limbo_name is None:
+            limbo_name = self._generate_limbo_path(trans_id)
+            self._limbo_files[trans_id] = limbo_name
         return limbo_name
+
+    def _generate_limbo_path(self, trans_id):
+        """Generate a limbo path using the trans_id as the relative path.
+
+        This is suitable as a fallback, and when the transform should not be
+        sensitive to the path encoding of the limbo directory.
+        """
+        self._needs_rename.add(trans_id)
+        return pathjoin(self._limbodir, trans_id)
 
     def adjust_path(self, name, parent, trans_id):
         previous_parent = self._new_parent.get(trans_id)
@@ -1122,6 +1097,17 @@ class DiskTreeTransform(TreeTransformBase):
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            for descendant in self._limbo_descendants(trans_id):
+                desc_path = self._limbo_files[descendant]
+                desc_path = new_path + desc_path[len(old_path):]
+                self._limbo_files[descendant] = desc_path
+
+    def _limbo_descendants(self, trans_id):
+        """Return the set of trans_ids whose limbo paths descend from this."""
+        descendants = set(self._limbo_children.get(trans_id, []))
+        for descendant in list(descendants):
+            descendants.update(self._limbo_descendants(descendant))
+        return descendants
 
     def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
@@ -1149,6 +1135,7 @@ class DiskTreeTransform(TreeTransformBase):
             f.writelines(contents)
         finally:
             f.close()
+        self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _read_file_chunks(self, trans_id):
@@ -1160,6 +1147,15 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
+
+    def _set_mtime(self, path):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
@@ -1395,6 +1391,54 @@ class TreeTransform(DiskTreeTransform):
             if self._tree.is_control_filename(childpath):
                 continue
             yield self.trans_id_tree_path(childpath)
+
+    def _generate_limbo_path(self, trans_id):
+        """Generate a limbo path using the final path if possible.
+
+        This optimizes the performance of applying the tree transform by
+        avoiding renames.  These renames can be avoided only when the parent
+        directory is already scheduled for creation.
+
+        If the final path cannot be used, falls back to using the trans_id as
+        the relpath.
+        """
+        parent = self._new_parent.get(trans_id)
+        # if the parent directory is already in limbo (e.g. when building a
+        # tree), choose a limbo name inside the parent, to reduce further
+        # renames.
+        use_direct_path = False
+        if self._new_contents.get(parent) == 'directory':
+            filename = self._new_name.get(trans_id)
+            if filename is not None:
+                if parent not in self._limbo_children:
+                    self._limbo_children[parent] = set()
+                    self._limbo_children_names[parent] = {}
+                    use_direct_path = True
+                # the direct path can only be used if no other file has
+                # already taken this pathname, i.e. if the name is unused, or
+                # if it is already associated with this trans_id.
+                elif self._case_sensitive_target:
+                    if (self._limbo_children_names[parent].get(filename)
+                        in (trans_id, None)):
+                        use_direct_path = True
+                else:
+                    for l_filename, l_trans_id in\
+                        self._limbo_children_names[parent].iteritems():
+                        if l_trans_id == trans_id:
+                            continue
+                        if l_filename.lower() == filename.lower():
+                            break
+                    else:
+                        use_direct_path = True
+
+        if not use_direct_path:
+            return DiskTreeTransform._generate_limbo_path(self, trans_id)
+
+        limbo_name = pathjoin(self._limbo_files[parent], filename)
+        self._limbo_children[parent].add(trans_id)
+        self._limbo_children_names[parent][filename] = trans_id
+        return limbo_name
+
 
     def apply(self, no_conflicts=False, precomputed_delta=None, _mover=None):
         """Apply all changes to the inventory and filesystem.
@@ -1941,7 +1985,7 @@ class _PreviewTree(tree.Tree):
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
                 if not supports_executable():
-                    executable = None
+                    executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
             else:
@@ -1949,8 +1993,7 @@ class _PreviewTree(tree.Tree):
                 executable = None
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
+        executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
@@ -2269,8 +2312,12 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
-                         in iter if not (c or e[0] != e[1]))
+        unchanged = [(f, p[1]) for (f, p, c, v, d, n, k, e)
+                     in iter if not (c or e[0] != e[1])]
+        if accelerator_tree.supports_content_filtering():
+            unchanged = [(f, p) for (f, p) in unchanged
+                         if not accelerator_tree.iter_search_rules([p]).next()]
+        unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
         for file_id, (trans_id, tree_path) in desired_files:
@@ -2399,8 +2446,14 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
-    """Create new file contents according to tree contents."""
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+    filter_tree_path=None):
+    """Create new file contents according to tree contents.
+    
+    :param filter_tree_path: the tree path to use to lookup
+      content filters to apply to the bytes output in the working tree.
+      This only applies if the working tree supports content filtering.
+    """
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
@@ -2411,6 +2464,11 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
                 bytes = tree_file.readlines()
             finally:
                 tree_file.close()
+        wt = tt._tree
+        if wt.supports_content_filtering() and filter_tree_path is not None:
+            filters = wt._content_filter_stack(filter_tree_path)
+            bytes = filtered_output_bytes(bytes, filters,
+                ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
@@ -2607,9 +2665,22 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                 tt.adjust_path(name[1], parent_trans, trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
-        for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
-            deferred_files):
-            tt.create_file(bytes, trans_id, mode_id)
+        if working_tree.supports_content_filtering():
+            for index, ((trans_id, mode_id), bytes) in enumerate(
+                target_tree.iter_files_bytes(deferred_files)):
+                file_id = deferred_files[index][0]
+                # We're reverting a tree to the target tree so using the
+                # target tree to find the file path seems the best choice
+                # here IMO - Ian C 27/Oct/2009
+                filter_tree_path = target_tree.id2path(file_id)
+                filters = working_tree._content_filter_stack(filter_tree_path)
+                bytes = filtered_output_bytes(bytes, filters,
+                    ContentFilterContext(filter_tree_path, working_tree))
+                tt.create_file(bytes, trans_id, mode_id)
+        else:
+            for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
+                deferred_files):
+                tt.create_file(bytes, trans_id, mode_id)
     finally:
         if basis_tree is not None:
             basis_tree.unlock()

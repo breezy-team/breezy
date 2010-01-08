@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    branch,
     bzrdir,
     config,
     errors,
@@ -36,7 +37,6 @@ from bzrlib import (
     pack,
     remote,
     repository,
-    smart,
     tests,
     treebuilder,
     urlutils,
@@ -61,9 +61,8 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
-    KnownFailure,
     )
-from bzrlib.transport import get_transport, http
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -1782,6 +1781,20 @@ class TestRemoteRepository(TestRemote):
         return repo, client
 
 
+def remoted_description(format):
+    return 'Remote: ' + format.get_format_description()
+
+
+class TestBranchFormat(tests.TestCase):
+
+    def test_get_format_description(self):
+        remote_format = RemoteBranchFormat()
+        real_format = branch.BranchFormat.get_default_format()
+        remote_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_format.get_format_description())
+
+
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
@@ -1793,6 +1806,13 @@ class TestRepositoryFormat(TestRemoteRepository):
         false_format = RemoteRepositoryFormat()
         false_format._network_name = false_name
         self.assertEqual(False, false_format.fast_deltas)
+
+    def test_get_format_description(self):
+        remote_repo_format = RemoteRepositoryFormat()
+        real_format = repository.RepositoryFormat.get_default_format()
+        remote_repo_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_repo_format.get_format_description())
 
 
 class TestRepositoryGatherStats(TestRemoteRepository):
@@ -2200,6 +2220,26 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
             errors.NoSuchRevision,
             repo.get_rev_id_for_revno, 5, (42, 'rev-foo'))
         self.assertFinished(client)
+
+    def test_branch_fallback_locking(self):
+        """RemoteBranch.get_rev_id takes a read lock, and tries to call the
+        get_rev_id_for_revno verb.  If the verb is unknown the VFS fallback
+        will be invoked, which will fail if the repo is unlocked.
+        """
+        self.setup_smart_server_with_call_log()
+        tree = self.make_branch_and_memory_tree('.')
+        tree.lock_write()
+        rev1 = tree.commit('First')
+        rev2 = tree.commit('Second')
+        tree.unlock()
+        branch = tree.branch
+        self.assertFalse(branch.is_locked())
+        self.reset_smart_call_log()
+        verb = 'Repository.get_rev_id_for_revno'
+        self.disable_verb(verb)
+        self.assertEqual(rev1, branch.get_rev_id(1))
+        self.assertLength(1, [call for call in self.hpss_calls if
+                              call.call.method == verb])
 
 
 class TestRepositoryIsShared(TestRemoteRepository):
@@ -2853,7 +2893,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
         self.assertContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             "Missing key 'branch' in context")
 
     def test_path_missing(self):
@@ -2867,8 +2907,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
-        self.assertContainsRe(
-            self._get_log(keep_log_file=True), "Missing key 'path' in context")
+        self.assertContainsRe(self.get_log(), "Missing key 'path' in context")
 
 
 class TestStacking(tests.TestCaseWithTransport):
@@ -3002,6 +3041,7 @@ class TestStacking(tests.TestCaseWithTransport):
             local_tree.commit('more local changes are better')
             branch = Branch.open(self.get_url('tree3'))
             branch.lock_read()
+            self.addCleanup(branch.unlock)
             return None, branch
         rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
             branch_factory=make_stacked_stacked)

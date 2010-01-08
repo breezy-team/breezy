@@ -688,7 +688,7 @@ create_delta_index_from_delta(const struct source_info *src,
     const unsigned char *data, *buffer, *top;
     unsigned char cmd;
     struct delta_index *new_index;
-    struct index_entry *entry, *entries, *old_entry;
+    struct index_entry *entry, *entries;
 
     if (!src->buf || !src->size)
         return NULL;
@@ -789,6 +789,7 @@ create_delta_index_from_delta(const struct source_info *src,
     entry = entries;
     num_inserted = 0;
     for (; num_entries > 0; --num_entries, ++entry) {
+        struct index_entry *next_bucket_entry, *cur_entry, *bucket_first_entry;
         hash_offset = (entry->val & old_index->hash_mask);
         /* The basic structure is a hash => packed_entries that fit in that
          * hash bucket. Things are structured such that the hash-pointers are
@@ -797,15 +798,19 @@ create_delta_index_from_delta(const struct source_info *src,
          * forward. If there are no NULL targets, then we know because
          * entry->ptr will not be NULL.
          */
-        old_entry = old_index->hash[hash_offset + 1];
-        old_entry--;
-        while (old_entry->ptr == NULL
-               && old_entry >= old_index->hash[hash_offset]) {
-            old_entry--;
+        // The start of the next bucket, this may point past the end of the
+        // entry table if hash_offset is the last bucket.
+        next_bucket_entry = old_index->hash[hash_offset + 1];
+        // First entry in this bucket
+        bucket_first_entry = old_index->hash[hash_offset];
+        cur_entry = next_bucket_entry - 1;
+        while (cur_entry->ptr == NULL && cur_entry >= bucket_first_entry) {
+            cur_entry--;
         }
-        old_entry++;
-        if (old_entry->ptr != NULL
-            || old_entry >= old_index->hash[hash_offset + 1]) {
+        // cur_entry now either points at the first NULL, or it points to
+        // next_bucket_entry if there were no blank spots.
+        cur_entry++;
+        if (cur_entry >= next_bucket_entry || cur_entry->ptr != NULL) {
             /* There is no room for this entry, we have to resize */
             // char buff[128];
             // get_text(buff, entry->ptr);
@@ -822,7 +827,7 @@ create_delta_index_from_delta(const struct source_info *src,
             break;
         }
         num_inserted++;
-        *old_entry = *entry;
+        *cur_entry = *entry;
         /* For entries which we *do* manage to insert into old_index, we don't
          * want them double copied into the final output.
          */

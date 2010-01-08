@@ -17,6 +17,7 @@
 """Test that we can use smart_add on all Tree implementations."""
 
 from cStringIO import StringIO
+import sys
 
 from bzrlib import (
     add,
@@ -53,7 +54,12 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     def assertFilenameSkipped(self, filename):
         tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/'+filename])
+        try:
+            self.build_tree(['tree/'+filename])
+        except errors.NoSuchFile:
+            if sys.platform == 'win32':
+                raise tests.TestNotApplicable('Cannot create files named %r on'
+                    ' win32' % (filename,))
         tree.smart_add(['tree'])
         self.assertEqual(None, tree.path2id(filename))
 

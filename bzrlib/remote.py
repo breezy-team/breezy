@@ -154,6 +154,10 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         Used before calls to self._real_bzrdir.
         """
         if not self._real_bzrdir:
+            if 'hpssvfs' in debug.debug_flags:
+                import traceback
+                warning('VFS BzrDir access triggered\n%s',
+                    ''.join(traceback.format_stack()))
             self._real_bzrdir = BzrDir.open_from_transport(
                 self.root_transport, _server_formats=False)
             self._format._network_name = \
@@ -597,7 +601,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._fetch_reconcile
 
     def get_format_description(self):
-        return 'bzr remote repository'
+        self._ensure_real()
+        return 'Remote: ' + self._custom_format.get_format_description()
 
     def __eq__(self, other):
         return self.__class__ is other.__class__
@@ -945,6 +950,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
 
     def is_write_locked(self):
         return self._lock_mode == 'w'
+
+    def _warn_if_deprecated(self, branch=None):
+        # If we have a real repository, the check will be done there, if we
+        # don't the check will be done remotely.
+        pass
 
     def lock_read(self):
         # wrong eventually - want a local lock cache context
@@ -1995,7 +2005,8 @@ class RemoteBranchFormat(branch.BranchFormat):
                 self._network_name)
 
     def get_format_description(self):
-        return 'Remote BZR Branch'
+        self._ensure_real()
+        return 'Remote: ' + self._custom_format.get_format_description()
 
     def network_name(self):
         return self._network_name
@@ -2434,6 +2445,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise NotImplementedError(self.dont_leave_lock_in_place)
         self._leave_lock = False
 
+    @needs_read_lock
     def get_rev_id(self, revno, history=None):
         if revno == 0:
             return _mod_revision.NULL_REVISION

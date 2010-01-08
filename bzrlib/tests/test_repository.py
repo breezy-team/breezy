@@ -24,6 +24,7 @@ also see this file.
 
 from stat import S_ISDIR
 from StringIO import StringIO
+import sys
 
 import bzrlib
 from bzrlib.errors import (NotBranchError,
@@ -252,7 +253,14 @@ class TestFormat7(TestCaseWithTransport):
         tree = control.create_workingtree()
         tree.add(['foo'], ['Foo:Bar'], ['file'])
         tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
-        tree.commit('first post', rev_id='first')
+        try:
+            tree.commit('first post', rev_id='first')
+        except errors.IllegalPath:
+            if sys.platform != 'win32':
+                raise
+            self.knownFailure('Foo:Bar cannot be used as a file-id on windows'
+                              ' in repo format 7')
+            return
         self.assertEqualDiff(
             '# bzr weave file v5\n'
             'i\n'
@@ -1160,6 +1168,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # check some arbitrary big numbers
         self.assertEqual(25, packs._max_pack_count(112894))
 
+    def test_repr(self):
+        packs = self.get_packs()
+        self.assertContainsRe(repr(packs),
+            'RepositoryPackCollection(.*Repository(.*))')
+
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
@@ -1419,6 +1432,7 @@ class TestNewPack(TestCaseWithTransport):
             index_class=BTreeGraphIndex,
             use_chk_index=False)
         pack = pack_repo.NewPack(collection)
+        self.addCleanup(pack.abort) # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
@@ -1477,6 +1491,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
+        self.addCleanup(new_pack.abort) # ensure cleanup
         self.assertIsInstance(new_pack, pack_repo.NewPack)
         self.assertTrue(new_pack.revision_index._optimize_for_size)
         self.assertTrue(new_pack.inventory_index._optimize_for_size)

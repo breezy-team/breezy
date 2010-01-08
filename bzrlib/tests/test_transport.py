@@ -36,7 +36,7 @@ from bzrlib.errors import (DependencyNotPresent,
                            ReadError,
                            UnsupportedProtocol,
                            )
-from bzrlib.tests import ParamikoFeature, TestCase, TestCaseInTempDir
+from bzrlib.tests import features, TestCase, TestCaseInTempDir
 from bzrlib.transport import (_clear_protocol_handlers,
                               _CoalescedOffset,
                               ConnectedTransport,
@@ -430,27 +430,27 @@ class ChrootServerTest(TestCase):
     def test_setUp(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertTrue(server.scheme in _get_protocol_handlers().keys())
         finally:
-            server.tearDown()
+            server.stop_server()
 
-    def test_tearDown(self):
+    def test_stop_server(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
-        server.tearDown()
+        server.start_server()
+        server.stop_server()
         self.assertFalse(server.scheme in _get_protocol_handlers().keys())
 
     def test_get_url(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertEqual('chroot-%d:///' % id(server), server.get_url())
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class PathFilteringDecoratorTransportTest(TestCase):
@@ -460,13 +460,13 @@ class PathFilteringDecoratorTransportTest(TestCase):
         # The abspath is always relative to the base of the backing transport.
         server = PathFilteringServer(get_transport('memory:///foo/bar/'),
             lambda x: x)
-        server.setUp()
+        server.start_server()
         transport = get_transport(server.get_url())
         self.assertEqual(server.get_url(), transport.abspath('/'))
 
         subdir_transport = transport.clone('subdir')
         self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
-        server.tearDown()
+        server.stop_server()
 
     def make_pf_transport(self, filter_func=None):
         """Make a PathFilteringTransport backed by a MemoryTransport.
@@ -477,8 +477,8 @@ class PathFilteringDecoratorTransportTest(TestCase):
             filter_func = lambda x: x
         server = PathFilteringServer(
             get_transport('memory:///foo/bar/'), filter_func)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        server.start_server()
+        self.addCleanup(server.stop_server)
         return get_transport(server.get_url())
 
     def test__filter(self):
@@ -895,7 +895,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # A reasonable evolution for this would be to simply check inside
         # check_channel_exec_request that the command is appropriate, and then
         # satisfy requests in-process.
-        self.requireFeature(ParamikoFeature)
+        self.requireFeature(features.paramiko)
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
@@ -908,6 +908,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # executes commands, and manage the hooking up of stdin/out/err to the
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
+        started = []
         class StubSSHServer(StubServer):
 
             test = self
@@ -933,10 +934,12 @@ class TestSSHConnections(tests.TestCaseWithTransport):
                     (channel.recv, proc.stdin.write, proc.stdin.close),
                     (proc.stdout.read, channel.sendall, channel.close),
                     (proc.stderr.read, channel.sendall_stderr, channel.close)]
+                started.append(proc)
                 for read, write, close in file_functions:
                     t = threading.Thread(
                         target=ferry_bytes, args=(read, write, close))
                     t.start()
+                    started.append(t)
 
                 return True
 
@@ -967,3 +970,13 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         self.assertEqual(
             ['%s serve --inet --directory=/ --allow-writes' % bzr_remote_path],
             self.command_executed)
+        # Make sure to disconnect, so that the remote process can stop, and we
+        # can cleanup. Then pause the test until everything is shutdown
+        t._client._medium.disconnect()
+        if not started:
+            return
+        # First wait for the subprocess
+        started[0].wait()
+        # And the rest are threads
+        for t in started[1:]:
+            t.join()

@@ -225,10 +225,14 @@ class Pack(object):
         return self.index_name('text', name)
 
     def _replace_index_with_readonly(self, index_type):
+        unlimited_cache = False
+        if index_type == 'chk':
+            unlimited_cache = True
         setattr(self, index_type + '_index',
             self.index_class(self.index_transport,
                 self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)]))
+                self.index_sizes[self.index_offset(index_type)],
+                unlimited_cache=unlimited_cache))
 
 
 class ExistingPack(Pack):
@@ -1113,7 +1117,7 @@ class Packer(object):
             iterator is a tuple with:
             index, readv_vector, node_vector. readv_vector is a list ready to
             hand to the transport readv method, and node_vector is a list of
-            (key, eol_flag, references) for the the node retrieved by the
+            (key, eol_flag, references) for the node retrieved by the
             matching readv_vector.
         """
         # group by pack so we do one readv per pack
@@ -1419,6 +1423,9 @@ class RepositoryPackCollection(object):
         # resumed packs
         self._resumed_packs = []
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.repo)
+
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
 
@@ -1675,7 +1682,7 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix')
+                chk_index = self._make_index(name, '.cix', unlimited_cache=True)
             else:
                 chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
@@ -1700,7 +1707,8 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix', resume=True)
             sig_index = self._make_index(name, '.six', resume=True)
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', resume=True)
+                chk_index = self._make_index(name, '.cix', resume=True,
+                                             unlimited_cache=True)
             else:
                 chk_index = None
             result = self.resumed_pack_factory(name, rev_index, inv_index,
@@ -1736,7 +1744,7 @@ class RepositoryPackCollection(object):
         return self._index_class(self.transport, 'pack-names', None
                 ).iter_all_entries()
 
-    def _make_index(self, name, suffix, resume=False):
+    def _make_index(self, name, suffix, resume=False, unlimited_cache=False):
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
         if resume:
@@ -1745,7 +1753,8 @@ class RepositoryPackCollection(object):
         else:
             transport = self._index_transport
             index_size = self._names[name][size_offset]
-        return self._index_class(transport, index_name, index_size)
+        return self._index_class(transport, index_name, index_size,
+                                 unlimited_cache=unlimited_cache)
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -2228,16 +2237,10 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         # This class isn't deprecated, but one sub-format is
         if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            from bzrlib import repository
-            if repository._deprecation_warning_done:
-                return
-            repository._deprecation_warning_done = True
-            warning("Format %s for %s is deprecated - please use"
-                    " 'bzr upgrade --1.6.1-rich-root'"
-                    % (self._format, self.bzrdir.transport.base))
+            super(KnitPackRepository, self)._warn_if_deprecated(branch)
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()

@@ -12,7 +12,7 @@ to the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The current version of this document is available in the file
-``doc/developers/overview.txt`` in the source tree, and available online 
+``doc/developers/overview.txt`` in the source tree, and available online
 within the developer documentation, <http://doc.bazaar-vcs.org/developers/>.
 
 
@@ -101,11 +101,11 @@ first commit to a new, empty repository with fallback repositories will
 store a full text of the inventory, and of every new file text.
 
 At runtime, repository stacking is actually configured by the branch, not
-the repository.  So doing ``a_bzrdir.open_repository()`` 
-gets you just the single physical repository, while 
-``a_bzrdir.open_branch().repository`` gets one configured with a stacking. 
+the repository.  So doing ``a_bzrdir.open_repository()``
+gets you just the single physical repository, while
+``a_bzrdir.open_branch().repository`` gets one configured with a stacking.
 Therefore, to permanently change the fallback repository stored on disk,
-you must use ``Branch.set_stacked_on_url``.  
+you must use ``Branch.set_stacked_on_url``.
 
 Changing away from an existing stacked-on URL will copy across any
 necessary history so that the repository remains usable.

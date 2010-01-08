@@ -152,10 +152,16 @@ def _help_on_revisionspec(name):
     out.append(
 """Revision Identifiers
 
-A revision identifier refers to a specific state of a branch's history. It can
-be a revision number, or a keyword followed by ':' and often other
-parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
-and 'submit:'.
+A revision identifier refers to a specific state of a branch's history.  It
+can be expressed in several ways.  It can begin with a keyword to
+unambiguously specify a given lookup type; some examples are 'last:1',
+'before:yesterday' and 'submit:'.
+
+Alternately, it can be given without a keyword, in which case it will be
+checked as a revision number, a tag, a revision id, a date specification, or a
+branch specification, in that order.  For example, 'date:today' could be
+written as simply 'today', though if you have a tag called 'today' that will
+be found first.
 
 If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
 revision range. Examples: '3647..3649', 'date:yesterday..-1' and
@@ -245,6 +251,26 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+"""
+
     return out
 
 
@@ -287,6 +313,7 @@ command.  (e.g. "bzr --profile help").
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -378,7 +405,9 @@ You can change the master of a checkout by using the "bind" command (see "help
 bind"). This will change the location that the commits are sent to. The bind
 command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+commit is local, you can use the "unbind" command. To see whether or not a
+branch is bound or not you can use the "info" command. If the branch is bound
+it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -392,6 +421,8 @@ Related commands::
               be sent to
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \
@@ -555,9 +586,11 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS      Override implicit terminal width.
+BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
 ================ =================================================================
 """
 
@@ -644,38 +677,20 @@ new features requiring new metadata are added. New storage
 formats may also be introduced to improve performance and
 scalability.
 
-Use the following guidelines to select a format (stopping
-as soon as a condition is true):
+The newest format, 2a, is highly recommended. If your
+project is not using 2a, then you should suggest to the
+project owner to upgrade.
 
-* If you are working on an existing project, use whatever
-  format that project is using. (Bazaar will do this for you
-  by default).
 
-* If you are using bzr-svn to interoperate with a Subversion
-  repository, use 1.14-rich-root.
-
-* If you are working on a project with big trees (5000+ paths)
-  or deep history (5000+ revisions), use 1.14.
-
-* Otherwise, use the default format - it is good enough for
-  most projects.
-
-If some of your developers are unable to use the most recent
-version of Bazaar (due to distro package availability say), be
-sure to adjust the guidelines above accordingly. For example,
-you may need to select 1.9 instead of 1.14 if your project has
-standardized on Bazaar 1.13.1 say.
-
-Note: Many of the currently supported formats have two variants:
+Note: Some of the older formats have two variants:
 a plain one and a rich-root one. The latter include an additional
 field about the root of the tree. There is no performance cost
 for using a rich-root format but you cannot easily merge changes
 from a rich-root format into a plain format. As a consequence,
 moving a project to a rich-root format takes some co-ordination
 in that all contributors need to upgrade their repositories
-around the same time. (It is for this reason that we have delayed
-making a rich-root format the default so far, though we will do
-so at some appropriate time in the future.)
+around the same time. 2a and all future formats will be
+implicitly rich-root.
 
 See ``bzr help current-formats`` for the complete list of
 currently supported formats. See ``bzr help other-formats`` for

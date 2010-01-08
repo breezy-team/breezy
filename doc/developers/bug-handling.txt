@@ -51,7 +51,7 @@ the fix is shipped in a release.  Users like getting a response to their
 report, but they generally care more about getting bugs fixed.
 
 The aim of investigating bugs before starting concentrated work on them is
-therefore only to: 
+therefore only to:
 
 * determine if they are critical or high priority (and
   should displace existing work)
@@ -76,7 +76,7 @@ Martin Pitt says:
  | One of the things you should not do often is to start asking
  | questions/for more debug info and then forget about the bug. It's just
  | a waste of the reporter's and your time, and will create frustration
- | on the reporter side. 
+ | on the reporter side.
 
 
 Priorities
@@ -85,7 +85,7 @@ Priorities
 The suggested priorities for bug work are:
 
 1. Fix critical bugs.
-   
+
 2. Get existing fixes through review and landed.
 
 3. Fix bugs that are already in progress.
@@ -137,7 +137,7 @@ New
 Incomplete
     The bug requires more information from the reporter to make progress.
 Confirmed
-    The bug report has been seen by a developer and we agree it's a bug.  
+    The bug report has been seen by a developer and we agree it's a bug.
     You don't have to reproduce the bug to mark it confirmed.  (Generally
     it's not a good idea for a developer to spend time reproducing the bug
     until they're going to work on it.)
@@ -256,53 +256,53 @@ Here are some bug tags we use.  In Malone tags are currently of limited use, so 
 authentication
     authenticating to servers
 
-backport 
+backport
     candidate for backporting to an update of the previous release
 
-dirstate 
+dirstate
     WorkingTree4
 
-easy 
+easy
     should be possible to finish in an hour or two
 
-hpss 
+hpss
     bugs about the High-Performance Smart Server, i.e. bzr+ssh://, etc.
 
-hpssvfs 
+hpssvfs
     bugs for causes of VFS methods of the smart server
 
-launchpad 
+launchpad
     bugs about interactions with launchpad (typically this means bzrlib.plugins.launchpad).
 
-locale 
+locale
     problems using locales other than English
 
-memory 
+memory
     problems where we use too much memory for some reason
 
-newformat 
+newformat
     fixing this would need a new disk format
 
-performance 
+performance
     bugs about performance problems.
 
-test 
+test
     needs changes to the test framework
 
-transport 
+transport
     virtual filesystem for http, sftp, etc
 
-trivial 
+trivial
     should be very easy to fix (10-20 minutes) and easily landed: typically just spelling errors and the like
 
-ui 
+ui
     bugs relating to the bzr user interface, e.g. confusing error messages.
 
-win32 
-    bugs that mainly affects Windows. Also there is cygwin and win98 tags for marking specific bugs. 
+win32
+    bugs that mainly affects Windows. Also there is cygwin and win98 tags for marking specific bugs.
 
 You can see the full list of tags in use at
 <https://bugs.edge.launchpad.net/bzr/+bugs>.  As of September 2008 the
-list is on the right. 
+list is on the right.
 
 .. vim: ft=rst

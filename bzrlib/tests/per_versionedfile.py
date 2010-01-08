@@ -1581,6 +1581,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # All texts should be output.
         self.assertEqual(set(keys), seen)
 
+    def test_clear_cache(self):
+        files = self.get_versionedfiles()
+        files.clear_cache()
+
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()
@@ -2433,6 +2437,43 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             files.check()
         else:
             self.assertIdenticalVersionedFile(source, files)
+
+    def test_insert_record_stream_long_parent_chain_out_of_order(self):
+        """An out of order stream can either error or work."""
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
+        # Create a reasonably long chain of records based on each other, where
+        # most will be deltas.
+        source = self.get_versionedfiles('source')
+        parents = ()
+        keys = []
+        content = [('same same %d\n' % n) for n in range(500)]
+        for letter in 'abcdefghijklmnopqrstuvwxyz':
+            key = ('key-' + letter,)
+            if self.key_length == 2:
+                key = ('prefix',) + key
+            content.append('content for ' + letter + '\n')
+            source.add_lines(key, parents, content)
+            keys.append(key)
+            parents = (key,)
+        # Create a stream of these records, excluding the first record that the
+        # rest ultimately depend upon, and insert it into a new vf.
+        streams = []
+        for key in reversed(keys):
+            streams.append(source.get_record_stream([key], 'unordered', False))
+        deltas = chain(*streams[:-1])
+        files = self.get_versionedfiles()
+        try:
+            files.insert_record_stream(deltas)
+        except RevisionNotPresent:
+            # Must not have corrupted the file.
+            files.check()
+        else:
+            # Must only report either just the first key as a missing parent,
+            # no key as missing (for nodelta scenarios).
+            missing = set(files.get_missing_compression_parent_keys())
+            missing.discard(keys[0])
+            self.assertEqual(set(), missing)
 
     def get_knit_delta_source(self):
         """Get a source that can produce a stream with knit delta records,

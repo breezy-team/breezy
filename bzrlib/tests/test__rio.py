@@ -23,36 +23,9 @@ from bzrlib import (
 
 
 def load_tests(standard_tests, module, loader):
-    # parameterize all tests in this module
-    suite = loader.suiteClass()
-    import bzrlib._rio_py as py_module
-    scenarios = [('python', {'module': py_module})]
-    if CompiledRioFeature.available():
-        import bzrlib._rio_pyx as c_module
-        scenarios.append(('C', {'module': c_module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledRioFeature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._rio_py', 'bzrlib._rio_pyx')
     return suite
-
-
-class _CompiledRioFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._rio_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._rio_pyx'
-
-CompiledRioFeature = _CompiledRioFeature()
 
 
 class TestValidTag(tests.TestCase):

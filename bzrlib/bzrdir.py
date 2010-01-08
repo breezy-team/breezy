@@ -1868,7 +1868,7 @@ class BzrDirFormat(object):
     def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
-            format_string = transport.get(".bzr/branch-format").read()
+            format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 
@@ -3151,7 +3151,14 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         BzrDirMetaFormat1.__init__(self)
         self._network_name = None
 
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
+
     def get_format_description(self):
+        if self._network_name:
+            real_format = network_format_registry.get(self._network_name)
+            return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
     def get_format_string(self):
