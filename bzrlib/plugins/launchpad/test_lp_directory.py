@@ -274,12 +274,12 @@ class TestXMLRPCTransport(tests.TestCase):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self.server_class()
-        self.server.setUp()
+        self.server.start_server()
         # Ensure we don't clobber env
         self._captureVar('BZR_LP_XMLRPC_URL', None)
 
     def tearDown(self):
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def set_canned_response(self, server, path):

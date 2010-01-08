@@ -1078,7 +1078,7 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
         if not (backing_server is None or
@@ -1103,8 +1103,7 @@ class SFTPServer(Server):
         self._listener.setDaemon(True)
         self._listener.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._listener.stop()
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
@@ -1203,9 +1202,9 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     It does this by serving from a deeply-nested directory that doesn't exist.
     """
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
-        super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
+        super(SFTPSiblingAbsoluteServer, self).start_server(backing_server)
 
 
 def get_test_permutations():

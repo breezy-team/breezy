@@ -157,7 +157,7 @@ class FTPTestServer(transport.Server):
         """This is used by ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self, vfs_server=None):
+    def start_server(self, vfs_server=None):
         from bzrlib.transport.local import LocalURLServer
         if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
             raise AssertionError(
@@ -187,8 +187,8 @@ class FTPTestServer(transport.Server):
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
+        """See bzrlib.transport.Server.stop_server."""
         # Tell the server to stop, but also close the server socket for tests
         # that start the server but never initiate a connection. Closing the
         # socket should be done first though, to avoid further connections.
@@ -197,7 +197,7 @@ class FTPTestServer(transport.Server):
         self._ftpd_thread.join()
 
     def _run_server(self):
-        """Run the server until tearDown is called, shut it down properly then.
+        """Run the server until stop_server is called, shut it down properly then.
         """
         self._ftpd_running = True
         self._ftpd_starting.release()

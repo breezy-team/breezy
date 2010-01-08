@@ -235,7 +235,7 @@ class FTPTestServer(transport.Server):
         """This is used by medusa.ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self, vfs_server=None):
+    def start_server(self, vfs_server=None):
         from bzrlib.transport.local import LocalURLServer
         if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
             raise AssertionError(
@@ -257,8 +257,7 @@ class FTPTestServer(transport.Server):
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()

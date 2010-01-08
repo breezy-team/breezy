@@ -285,8 +285,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         self.lockable = self.get_lockable()
         self.lockable.create_lock()
 
-    def tearDown(self):
-        super(TestLockableFiles_TransportLock, self).tearDown()
+    def stop_server(self):
+        super(TestLockableFiles_TransportLock, self).stop_server()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
         try:
