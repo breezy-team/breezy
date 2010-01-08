@@ -1798,6 +1798,10 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 self.unextracted_upstream_md5 = part['md5sum']
             elif part['name'].endswith(".debian.tar.gz"):
                 self.unextracted_debian_md5 = part['md5sum']
+        assert self.unextracted_upstream is not None, \
+            "Can't handle non gz tarballs yet"
+        assert self.unextracted_debian_md5 is not None, \
+            "Can't handle non gz tarballs yet"
 
 
 SOURCE_EXTRACTORS = {}
