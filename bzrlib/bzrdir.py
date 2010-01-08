@@ -3517,7 +3517,7 @@ class BzrDirFormatRegistry(registry.Registry):
                 experimental_pairs.append((key, help))
             else:
                 output += wrapped(key, help, info)
-        output += "\nSee ``bzr help formats`` for more about storage formats."
+        output += "\nSee :doc:`formats-help` for more about storage formats."
         other_output = ""
         if len(experimental_pairs) > 0:
             other_output += "Experimental formats are shown below.\n\n"
@@ -3536,7 +3536,7 @@ class BzrDirFormatRegistry(registry.Registry):
             other_output += \
                 "\nNo deprecated formats are available.\n\n"
         other_output += \
-            "\nSee ``bzr help formats`` for more about storage formats."
+                "\nSee :doc:`formats-help` for more about storage formats."
 
         if topic == 'other-formats':
             return other_output

@@ -99,7 +99,14 @@ Documentation
 
 * There is a System Administrator's Guide in ``doc/en/admin-guide``,
   including discussions of installation, relevant plugins, security and 
-  backup.
+  backup. (Neil Martinsen-Burrell)
+
+* The ``conflicts`` help topic has been renamed to ``conflict-types``.
+  (Ian Clatworthy)
+
+* The User Reference is now presented as a series of topics.
+  Many of the included topics have link and format tweaks applied.
+  (Ian Clatworthy)
 
 API Changes
 ***********
