@@ -303,8 +303,7 @@ class _MemoryLock(object):
 class MemoryServer(Server):
     """Server for the MemoryTransport for testing with."""
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def start_server(self):
         self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
@@ -317,9 +316,10 @@ class MemoryServer(Server):
             return result
         register_transport(self._scheme, memory_factory)
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         # unregister this server
+        # XXX: why isn't this done? -- mbp 20100106
+        pass
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

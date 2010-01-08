@@ -1017,10 +1017,10 @@ class TestCase(testtools.TestCase):
         server's urls to be used.
         """
         if backing_server is None:
-            transport_server.setUp()
+            transport_server.start_server()
         else:
-            transport_server.setUp(backing_server)
-        self.addCleanup(transport_server.tearDown)
+            transport_server.start_server(backing_server)
+        self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
         t = get_transport(transport_server.get_url())

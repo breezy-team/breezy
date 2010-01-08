@@ -1247,8 +1247,8 @@ class NotAncestor(BzrError):
 class AmbiguousBase(BzrError):
 
     def __init__(self, bases):
-        warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
-                DeprecationWarning)
+        symbol_versioning.warn("BzrError AmbiguousBase has been deprecated "
+            "as of bzrlib 0.8.", DeprecationWarning, stacklevel=2)
         msg = ("The correct base is unclear, because %s are all equally close"
                 % ", ".join(bases))
         BzrError.__init__(self, msg)
@@ -2942,12 +2942,18 @@ class UnknownRules(BzrError):
 class HookFailed(BzrError):
     """Raised when a pre_change_branch_tip hook function fails anything other
     than TipChangeRejected.
+
+    Note that this exception is no longer raised, and the import is only left
+    to be nice to code which might catch it in a plugin.
     """
 
     _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
             "%(traceback_text)s%(exc_value)s")
 
-    def __init__(self, hook_stage, hook_name, exc_info):
+    def __init__(self, hook_stage, hook_name, exc_info, warn=True):
+        if warn:
+            symbol_versioning.warn("BzrError HookFailed has been deprecated "
+                "as of bzrlib 2.1.", DeprecationWarning, stacklevel=2)
         import traceback
         self.hook_stage = hook_stage
         self.hook_name = hook_name

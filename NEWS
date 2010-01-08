@@ -17,6 +17,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Add bug information to log output when available.
+  (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
+
 * ``bzr update`` now takes a ``--revision`` argument. This lets you
   change the revision of the working tree to any revision in the
   ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
@@ -62,6 +65,9 @@ Bug Fixes
   that caused some tests to fail when run in a non-default order.
   Probably no user impact.  (Martin Pool, #504102)
 
+* FTP transports support Unicode paths by encoding/decoding them as utf8.
+  (Vincent Ladeuil, #472161)
+
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
@@ -72,12 +78,21 @@ Bug Fixes
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
 
+* When operations update the working tree, all affected files should end
+  up with the same mtime. (eg. when versioning a generated file, if you
+  update the source and the generated file together, the generated file
+  should appear up-to-date.)
+  (John Arbash Meinel, Martin <gzlist>, #488724)
+
 Improvements
 ************
 
 * Push will now inform the user when they are trying to push to a foreign 
   VCS for which roundtripping is not supported, and will suggest them to 
   use dpush. (Jelmer Vernooij)
+
+* The version of bzr being run is now written to the log file.
+  (__monty__, #257170)
 
 * Transport network activity indicator is shown more of the time when
   Bazaar is doing network IO.
@@ -97,6 +112,14 @@ API Changes
   to be consistent with instances being lower case and classes being
   CamelCase. For the features that were more likely to be used, we added a
   deprecation thunk, but not all. (John Arbash Meinel)
+
+* The Branch hooks pre_change_branch_tip no longer masks exceptions raised
+  by plugins - the original exceptions are now preserved. (Robert Collins)
+
+* The Transport ``Server.tearDown`` method is now renamed to
+  ``stop_server`` and ``setUp`` to ``start_server`` for consistency with
+  our normal naming pattern, and to avoid confusion with Python's
+  ``TestCase.tearDown``.  (Martin Pool)
 
 * ``WorkingTree.update`` implementations must now accept a ``revision``
   parameter.
@@ -187,6 +210,11 @@ Internals
 
 Testing
 *******
+
+* We have a new ``test_source`` that ensures all pyrex ``cdef`` functions
+  handle exceptions somehow. (Possibly by setting ``# cannot_raise``
+  rather than an ``except ?:`` clause.) This should help prevent bugs like
+  bug #495023. (John Arbash Meinel)
 
 
 bzr 2.1.0b4

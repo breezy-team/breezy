@@ -430,27 +430,27 @@ class ChrootServerTest(TestCase):
     def test_setUp(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertTrue(server.scheme in _get_protocol_handlers().keys())
         finally:
-            server.tearDown()
+            server.stop_server()
 
-    def test_tearDown(self):
+    def test_stop_server(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
-        server.tearDown()
+        server.start_server()
+        server.stop_server()
         self.assertFalse(server.scheme in _get_protocol_handlers().keys())
 
     def test_get_url(self):
         backing_transport = MemoryTransport()
         server = ChrootServer(backing_transport)
-        server.setUp()
+        server.start_server()
         try:
             self.assertEqual('chroot-%d:///' % id(server), server.get_url())
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class PathFilteringDecoratorTransportTest(TestCase):
@@ -460,13 +460,13 @@ class PathFilteringDecoratorTransportTest(TestCase):
         # The abspath is always relative to the base of the backing transport.
         server = PathFilteringServer(get_transport('memory:///foo/bar/'),
             lambda x: x)
-        server.setUp()
+        server.start_server()
         transport = get_transport(server.get_url())
         self.assertEqual(server.get_url(), transport.abspath('/'))
 
         subdir_transport = transport.clone('subdir')
         self.assertEqual(server.get_url(), subdir_transport.abspath('/'))
-        server.tearDown()
+        server.stop_server()
 
     def make_pf_transport(self, filter_func=None):
         """Make a PathFilteringTransport backed by a MemoryTransport.
@@ -477,8 +477,8 @@ class PathFilteringDecoratorTransportTest(TestCase):
             filter_func = lambda x: x
         server = PathFilteringServer(
             get_transport('memory:///foo/bar/'), filter_func)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        server.start_server()
+        self.addCleanup(server.stop_server)
         return get_transport(server.get_url())
 
     def test__filter(self):
