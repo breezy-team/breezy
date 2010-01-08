@@ -385,21 +385,45 @@ After doing this for the 2.0 cycle (September 2009 through to early
 Reviewing for the Stable Branch
 *******************************
 
+These are guidelines and can be interpreted case-by-case.
+
 * All changes to the stable branch should fix a bug, even if you would not
   normally file a bug for the change.  The bug description should if at
   all possible explain how to manually verify the bug in a way that will
   fail before and pass after the change.  (These are requirements for the
   SRU process.)
 
-* The change should be reasonably small and conservative.  Be extra
-  careful of things that could break on other platforms or locales.
+* The change should be reasonably small and conservative.  
+
+* Remember that the patch will be read during the SRU
+  process and so keeping the patch small is useful even beyond keeping the
+  logical changes small.  Avoid doing mechanical bulk changes on the
+  stable branch.
+
+* Use particular care for things that may behave differently across
+  platforms, encodings or locales.  It's harder to thoroughly test these
+  things before a release.
+
+* Generally speaking, just cleaning things up is not a sufficient reason
+  to make changes to the stable branch.  It has to actually fix a bug.
+
+* Changes to the stable branch should include tests as usual.  
+
+* Don't change or remove existing APIs that might be used by plugins, even
+  if they are underscore-prefixed.  Adding APIs that are also being added
+  to the trunk branch may make sense.
+
+* Keeping consistency with trunk is useful, but less important than
+  keeping the stable branch stable.
 
 * (more items welcome)
 
 References
 **********
 
-#. List thread "[rfc] six-month stable release cycles", July 2009.
+#. List thread "`[rfc] six-month stable release cycles`__", July 2009.
+
+.. __: https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4
