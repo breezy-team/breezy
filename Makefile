@@ -199,7 +199,6 @@ rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=s
 
 # translate txt docs to html
 derived_txt_files = \
-	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
 txt_all = \
 	doc/en/tutorials/tutorial.txt \
@@ -295,9 +294,6 @@ doc/index.%.html: doc/index.%.txt
 
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
-
-doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"

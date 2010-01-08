@@ -511,8 +511,9 @@ class Command(object):
                         # so don't create a real link
                         see_also_links.append(item)
                     else:
-                        # Use a reST link for this entry
-                        see_also_links.append("`%s`_" % (item,))
+                        # Use a Sphinx link for this entry
+                        link_text = ":doc:`%s <%s-help>`" % (item, item)
+                        see_also_links.append(link_text)
                 see_also = see_also_links
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
