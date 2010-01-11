@@ -657,7 +657,11 @@ class Command(object):
 
         self._setup_outf()
 
-        return self._operation.run_simple(**all_cmd_args)
+        return self.run_direct(**all_cmd_args)
+
+    def run_direct(self, *args, **kwargs):
+        """Call run directly with objects (without parsing an argv list)."""
+        return self._operation.run_simple(*args, **kwargs)
 
     def run(self):
         """Actually run the command.
