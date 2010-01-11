@@ -2602,6 +2602,13 @@ class cmd_ignore(Command):
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
     it.
+    
+    Patterns prefixed with '!' are exceptions to ignore patterns and take
+    precedence over regular ignores.  Such exceptions are used to specify
+    files that should be versioned which would otherwise be ignored.
+    
+    Patterns prefixed with '!!' act as regular ignore patterns, but have
+    precedence over the '!' exception patterns.
 
     Note: ignore patterns containing shell wildcards must be quoted from
     the shell on Unix.
@@ -2611,7 +2618,7 @@ class cmd_ignore(Command):
 
             bzr ignore ./Makefile
 
-        Ignore class files in all directories...::
+        Ignore .class files in all directories...::
 
             bzr ignore "*.class"
 
@@ -2630,6 +2637,13 @@ class cmd_ignore(Command):
         Ignore everything but the "debian" toplevel directory::
 
             bzr ignore "RE:(?!debian/).*"
+        
+        Ignore everything except the "local" toplevel directory,
+        but always ignore "*~" autosave files, even under local/::
+        
+            bzr ignore "*"
+            bzr ignore "!./local"
+            bzr ignore "!!*~"
     """
 
     _see_also = ['status', 'ignored', 'patterns']
