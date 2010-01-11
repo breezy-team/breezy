@@ -126,6 +126,6 @@ Location:
         self.assertEqual(out, "")
         self.assertEqual(err, "")
         dir = BzrDir.open('a')
-        self.assertIs(dir.has_repository(), True)
+        dir.open_repository() # there is a repository there
         e = self.assertRaises(errors.NotBranchError, dir.open_branch)
-        self.assertEqual(e.detail, "location is a repository")
+        self.assertContainsRe(str(e), "location is a repository")
