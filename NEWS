@@ -51,6 +51,13 @@ Bug Fixes
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
 
+* ``TreeTransform`` can now handle when a delta says that the file id for
+  the tree root changes. Rather than trying to rename your working
+  directory, or failing early saying that you can't have multiple
+  tree roots. This also fixes ``bzr revert`` when the root id changes.
+  (Currently ``bzr update`` is still broken.)
+  (John Arbash Meinel, #494269)
+
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
   the block pointer. (John Arbash Meinel, Gareth White, #495023)
