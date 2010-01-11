@@ -704,11 +704,12 @@ class NotBranchError(PathError):
 
     _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
-    def __init__(self, path, bzrdir=None):
+    def __init__(self, path, detail=None, bzrdir=None):
        import bzrlib.urlutils as urlutils
        path = urlutils.unescape_for_display(path, 'ascii')
-       # remember the detail in case of remote serialization
-       self.detail = None
+       if detail is not None:
+           detail = ': ' + detail
+       self.detail = detail
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
 
