@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -873,15 +873,23 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             # check precondition to be sure the state does change appropriately.
-            self.assertEqual(
-                [(('', '', 'TREE_ROOT'), [('d', '', 0, False,
-                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])],
-                list(state._iter_entries()))
+            root_entry = (('', '', 'TREE_ROOT'), [('d', '', 0, False, 'x'*32)])
+            self.assertEqual([root_entry], list(state._iter_entries()))
+            self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(root_entry,
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='foobarbaz'))
             state.set_path_id('', 'foobarbaz')
-            expected_rows = [
-                (('', '', 'foobarbaz'), [('d', '', 0, False,
-                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])]
+            new_root_entry = (('', '', 'foobarbaz'),
+                              [('d', '', 0, False, 'x'*32)])
+            expected_rows = [new_root_entry]
             self.assertEqual(expected_rows, list(state._iter_entries()))
+            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(new_root_entry, 
+                             state._get_entry(0, fileid_utf8='foobarbaz'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
             # should work across save too
             state.save()
         finally:
