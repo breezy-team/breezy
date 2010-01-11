@@ -87,6 +87,11 @@ Bug Fixes
 Improvements
 ************
 
+* Added ``add_cleanup`` and ``cleanup_now`` to ``bzrlib.command.Command``.
+  All the builtin commands now use ``add_cleanup`` rather than
+  ``try``/``finally`` blocks where applicable as it is simpler and more
+  robust.  (Andrew Bennetts)
+
 * Push will now inform the user when they are trying to push to a foreign 
   VCS for which roundtripping is not supported, and will suggest them to 
   use dpush. (Jelmer Vernooij)
