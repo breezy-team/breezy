@@ -55,7 +55,6 @@ Bug Fixes
   the tree root changes. Rather than trying to rename your working
   directory, or failing early saying that you can't have multiple
   tree roots. This also fixes ``bzr revert`` when the root id changes.
-  (Currently ``bzr update`` is still broken.)
   (John Arbash Meinel, #494269)
 
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
