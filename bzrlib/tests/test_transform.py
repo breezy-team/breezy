@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2428,7 +2428,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
 
     def test_file_content_summary_executable(self):
         if not osutils.supports_executable():
-            raise TestNotApplicable()
+            raise tests.TestNotApplicable()
         preview = self.get_empty_preview()
         path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
         preview.set_executability(True, path_id)
@@ -2443,8 +2443,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertIs(None, summary[3])
 
     def test_change_executability(self):
-        if not osutils.supports_executable():
-            raise TestNotApplicable()
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/path'])
         tree.add('path')
