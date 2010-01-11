@@ -136,6 +136,36 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
         transform.finalize()
 
+    def test_change_root_id(self):
+        transform, root = self.get_transform()
+        self.assertNotEqual('new-root-id', self.wt.get_root_id())
+        transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        transform.apply()
+        self.assertEqual('new-root-id', self.wt.get_root_id())
+
+    def test_change_root_id_add_files(self):
+        transform, root = self.get_transform()
+        self.assertNotEqual('new-root-id', self.wt.get_root_id())
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        transform.new_file('file', new_trans_id, ['new-contents\n'],
+                           'new-file-id')
+        transform.delete_contents(root)
+        transform.unversion_file(root)
+        transform.fixup_new_roots()
+        transform.apply()
+        self.assertEqual('new-root-id', self.wt.get_root_id())
+        self.assertEqual('new-file-id', self.wt.path2id('file'))
+        self.assertFileEqual('new-contents\n', self.wt.abspath('file'))
+
+    def test_add_two_roots(self):
+        transform, root = self.get_transform()
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'new-root-id')
+        new_trans_id = transform.new_directory('', ROOT_PARENT, 'alt-root-id')
+        self.assertRaises(ValueError, transform.fixup_new_roots)
+
     def test_hardlink(self):
         self.requireFeature(HardlinkFeature)
         transform, root = self.get_transform()
@@ -746,7 +776,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         create.apply()
         transform, root = self.get_transform()
         transform.adjust_root_path('oldroot', fun)
-        new_root=transform.trans_id_tree_path('')
+        new_root = transform.trans_id_tree_path('')
         transform.version_file('new-root', new_root)
         transform.apply()
 
