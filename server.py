@@ -1,3 +1,5 @@
+# Copyright (C) 2008 Jelmer Vernooij
+# Copyright (C) 2008 John Carr
 # Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -78,7 +80,7 @@ class BzrBackend(Backend):
         return ret
 
     def apply_pack(self, refs, read):
-        """ apply pack from client to current repository """
+        """apply pack from client to current repository"""
 
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'w')

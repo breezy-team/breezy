@@ -242,7 +242,7 @@ class LocalGitBranch(GitBranch):
             t.ensure_base()
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
-            from_branch = branch.BranchReferenceFormat().initialize(checkout, 
+            from_branch = branch.BranchReferenceFormat().initialize(checkout,
                 self)
             tree = checkout.create_workingtree(revision_id,
                 from_branch=from_branch, hardlink=hardlink)
@@ -251,7 +251,7 @@ class LocalGitBranch(GitBranch):
             return self._create_heavyweight_checkout(to_location, revision_id,
             hardlink)
 
-    def _create_heavyweight_checkout(self, to_location, revision_id=None, 
+    def _create_heavyweight_checkout(self, to_location, revision_id=None,
                                      hardlink=False):
         """Create a new heavyweight checkout of this branch.
 
@@ -264,7 +264,7 @@ class LocalGitBranch(GitBranch):
             to_location, force_new_tree=False, format=get_rich_root_format())
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
-        # pull up to the specified revision_id to set the initial 
+        # pull up to the specified revision_id to set the initial
         # branch tip correctly, and seed it with history.
         checkout_branch.pull(self, stop_revision=revision_id)
         return checkout.create_workingtree(revision_id, hardlink=hardlink)
@@ -322,7 +322,7 @@ class GitBranchPullResult(branch.PullResult):
             if self.old_revid == self.new_revid:
                 to_file.write('No revisions to pull.\n')
             else:
-                to_file.write('Now on revision %d (git sha: %s).\n' % 
+                to_file.write('Now on revision %d (git sha: %s).\n' %
                         (self.new_revno, self.new_git_head))
         self._show_tag_conficts(to_file)
 
@@ -417,7 +417,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self.update_revisions(stop_revision, overwrite=overwrite, 
+            self.update_revisions(stop_revision, overwrite=overwrite,
                 graph=graph)
             result.new_git_head = self._head
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
@@ -442,8 +442,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         graph = self.target.repository.get_graph(self.source.repository)
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.update_revisions(stop_revision, overwrite=overwrite, 
-            graph=graph)
+        self.update_revisions(stop_revision, overwrite=overwrite, graph=graph)
         result.new_git_head = self._head
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite)
@@ -461,7 +460,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
     @classmethod
     def is_compatible(self, source, target):
         from bzrlib.plugins.git.remote import RemoteGitBranch
-        return (isinstance(source, LocalGitBranch) and 
+        return (isinstance(source, LocalGitBranch) and
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
@@ -478,7 +477,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
                 refs["refs/tags/%s" % name] = sha
             return refs
-        self.target.repository.send_pack(get_changed_refs, 
+        self.target.repository.send_pack(get_changed_refs,
                 self.source.repository._git.object_store.generate_pack_contents)
         return result
 
@@ -489,7 +488,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
     @classmethod
     def is_compatible(self, source, target):
         from bzrlib.plugins.git.remote import RemoteGitBranch
-        return (isinstance(source, RemoteGitBranch) and 
+        return (isinstance(source, RemoteGitBranch) and
                 isinstance(target, LocalGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
@@ -509,7 +508,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
             self.target.tags.set_tag(name, revid)
 
     def update_refs(self, stop_revision=None):
-        interrepo = repository.InterRepository.get(self.source.repository, 
+        interrepo = repository.InterRepository.get(self.source.repository,
             self.target.repository)
         if stop_revision is None:
             refs = interrepo.fetch_refs(branches=["HEAD"])
@@ -518,7 +517,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
             refs = interrepo.fetch_refs(revision_id=stop_revision)
         return refs, stop_revision
 
-    def pull(self, stop_revision=None, overwrite=False, 
+    def pull(self, stop_revision=None, overwrite=False,
         possible_transports=None, local=False):
         # This type of branch can't be bound.
         if local:
@@ -533,7 +532,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.new_revid = self.target.last_revision()
         return result
 
-    
+
 class InterToGitBranch(branch.InterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
@@ -543,13 +542,13 @@ class InterToGitBranch(branch.InterBranch):
 
     @classmethod
     def is_compatible(self, source, target):
-        return (not isinstance(source, GitBranch) and 
+        return (not isinstance(source, GitBranch) and
                 isinstance(target, GitBranch))
 
     def update_revisions(self, *args, **kwargs):
         raise NoPushSupport()
 
-    def push(self, overwrite=True, stop_revision=None, 
+    def push(self, overwrite=True, stop_revision=None,
              _override_hook_source_branch=None):
         raise NoPushSupport()
 

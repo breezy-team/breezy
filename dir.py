@@ -124,7 +124,7 @@ class LocalGitDir(GitDir):
     def open_workingtree(self, recommend_upgrade=True):
         if not self._git.bare and self._git.has_index():
             from bzrlib.plugins.git.workingtree import GitWorkingTree
-            return GitWorkingTree(self, self.open_repository(), 
+            return GitWorkingTree(self, self.open_repository(),
                                                   self.open_branch())
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)

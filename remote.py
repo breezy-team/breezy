@@ -75,7 +75,7 @@ import urlparse
 from dulwich.pack import load_pack_index
 
 
-# Don't run any tests on GitSmartTransport as it is not intended to be 
+# Don't run any tests on GitSmartTransport as it is not intended to be
 # a full implementation of Transport
 def get_test_permutations():
     return []
@@ -110,7 +110,7 @@ class GitSmartTransport(Transport):
                 info("git: %s" % text)
         client = self._get_client(thin_packs=False)
         try:
-            return client.fetch_pack(self._get_path(), determine_wants, 
+            return client.fetch_pack(self._get_path(), determine_wants,
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -118,7 +118,7 @@ class GitSmartTransport(Transport):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client(thin_packs=False)
         try:
-            return client.send_pack(self._get_path(), get_changed_refs, 
+            return client.send_pack(self._get_path(), get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -254,11 +254,11 @@ class RemoteGitRepository(GitRepository):
     def get_refs(self):
         if self._refs is not None:
             return self._refs
-        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None, 
+        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
         return self._refs
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, 
+    def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
         return self._transport.fetch_pack(determine_wants, graph_walker,
                                           pack_data, progress)
@@ -266,9 +266,11 @@ class RemoteGitRepository(GitRepository):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         return self._transport.send_pack(get_changed_refs, generate_pack_contents)
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
+    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
+                      progress=None):
         fd, path = tempfile.mkstemp(suffix=".pack")
-        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
+        self.fetch_pack(determine_wants, graph_walker,
+            lambda x: os.write(fd, x), progress)
         os.close(fd)
         if os.path.getsize(path) == 0:
             return EmptyObjectStoreIterator()
@@ -303,7 +305,7 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
         self._ref = None
-        super(RemoteGitBranch, self).__init__(bzrdir, repository, name, 
+        super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
 
     def revision_history(self):
@@ -333,7 +335,7 @@ class RemoteGitBranch(GitBranch):
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""
         destination.generate_revision_history(self.last_revision())
- 
+
     def get_push_location(self):
         return None
 

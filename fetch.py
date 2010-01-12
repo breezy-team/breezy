@@ -180,7 +180,8 @@ def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie,
         oldpath = None
     else:
         oldpath = path
-        if base_ie.kind == ie.kind and base_ie.reference_revision == ie.reference_revision:
+        if (base_ie.kind == ie.kind and
+            base_ie.reference_revision == ie.reference_revision):
             ie.revision = base_ie.revision
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
@@ -563,16 +564,19 @@ class InterGitGitRepository(InterGitRepository):
         def progress(text):
             trace.note("git: %s", text)
         graphwalker = self.target._git.get_graph_walker()
-        if isinstance(self.source, LocalGitRepository) and isinstance(self.target, LocalGitRepository):
+        if (isinstance(self.source, LocalGitRepository) and
+            isinstance(self.target, LocalGitRepository)):
             return self.source._git.fetch(self.target._git, determine_wants,
                 progress)
-        elif isinstance(self.source, LocalGitRepository) and isinstance(self.target, RemoteGitRepository):
+        elif (isinstance(self.source, LocalGitRepository) and
+              isinstance(self.target, RemoteGitRepository)):
             raise NotImplementedError
-        elif isinstance(self.source, RemoteGitRepository) and isinstance(self.target, LocalGitRepository):
+        elif (isinstance(self.source, RemoteGitRepository) and
+              isinstance(self.target, LocalGitRepository)):
             f, commit = self.target._git.object_store.add_thin_pack()
             try:
-                refs = self.source._git.fetch_pack(determine_wants, graphwalker,
-                                                   f.write, progress)
+                refs = self.source._git.fetch_pack(determine_wants,
+                    graphwalker, f.write, progress)
                 commit()
                 return refs
             except:

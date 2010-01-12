@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Custom revision specifier for Subversion."""
 
-# Please note that imports are delayed as much as possible here since 
+# Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 
 from bzrlib.errors import (
@@ -43,7 +43,7 @@ class RevisionSpec_git(RevisionSpec):
 
     help_txt = """Selects a revision using a Git revision sha1.
     """
-    
+
     prefix = 'git:'
     wants_revision_history = False
 

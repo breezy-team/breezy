@@ -67,7 +67,8 @@ class GitInventoryFile(GitInventoryEntry):
     _git_class = Blob
 
     def __init__(self, inv, parent_id, hexsha, path, basename, executable):
-        super(GitInventoryFile, self).__init__(inv, parent_id, hexsha, path, basename, executable)
+        super(GitInventoryFile, self).__init__(inv, parent_id, hexsha, path,
+            basename, executable)
         self.kind = 'file'
         self.text_id = None
         self.symlink_target = None
@@ -95,7 +96,8 @@ class GitInventoryFile(GitInventoryEntry):
         return ''
 
     def copy(self):
-        other = inventory.InventoryFile(self.file_id, self.name, self.parent_id)
+        other = inventory.InventoryFile(self.file_id, self.name,
+            self.parent_id)
         other.executable = self.executable
         other.text_id = self.text_id
         other.text_sha1 = self.text_sha1
@@ -183,7 +185,7 @@ class GitInventoryDirectory(GitInventoryEntry):
             self._children[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
 
     def copy(self):
-        other = inventory.InventoryDirectory(self.file_id, self.name, 
+        other = inventory.InventoryDirectory(self.file_id, self.name,
                                              self.parent_id)
         other.revision = self.revision
         # note that children are *not* copied; they're pulled across when
@@ -205,7 +207,7 @@ class GitInventory(inventory.Inventory):
         parts = path.split("/")
         ie = self.root
         for name in parts:
-            ie = ie.children[name] 
+            ie = ie.children[name]
         return ie
 
     def has_filename(self, path):
@@ -255,7 +257,7 @@ class GitIndexInventory(inventory.Inventory):
         self.mapping = mapping
         self.index = index
         self._contents_read = False
-        self.root = self.add_path("", 'directory', 
+        self.root = self.add_path("", 'directory',
             self.mapping.generate_file_id(""), None)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
@@ -299,7 +301,7 @@ class GitIndexInventory(inventory.Inventory):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (path, value) in enumerate(self.index.iteritems()):
-                pb.update("creating working inventory from index", 
+                pb.update("creating working inventory from index",
                         i, len(self.index))
                 assert isinstance(path, str)
                 assert isinstance(value, tuple) and len(value) == 10
@@ -318,7 +320,8 @@ class GitIndexInventory(inventory.Inventory):
                     self.add_parents(path)
                     self.add(old_ie)
                 else:
-                    ie = self.add_path(path, kind, file_id, self.add_parents(path))
+                    ie = self.add_path(path, kind, file_id,
+                        self.add_parents(path))
                     data = store[sha].data
                     if kind == "symlink":
                         ie.symlink_target = data
@@ -337,7 +340,7 @@ class GitIndexInventory(inventory.Inventory):
                 parent_fid = None
             else:
                 parent_fid = self.add_parents(dirname)
-            ie = self.add_path(dirname, 'directory', 
+            ie = self.add_path(dirname, 'directory',
                     self.mapping.generate_file_id(dirname), parent_fid)
             if ie.file_id in self.basis_inv:
                 ie.revision = self.basis_inv[ie.file_id].revision

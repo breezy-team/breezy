@@ -36,8 +36,8 @@ from bzrlib.inventory import (
     ROOT_ID,
     )
 from bzrlib.foreign import (
-    ForeignVcs, 
-    VcsMappingRegistry, 
+    ForeignVcs,
+    VcsMappingRegistry,
     ForeignRevision,
     )
 from bzrlib.plugins.git.hg import (
@@ -88,7 +88,7 @@ def warn_unusual_mode(commit, path, mode):
 
 def squash_revision(target_repo, rev):
     """Remove characters that can't be stored from a revision, if necessary.
-    
+
     :param target_repo: Repository in which the revision will be stored
     :param rev: Revision object, will be modified in-place
     """
@@ -229,7 +229,7 @@ class BzrGitMapping(foreign.VcsMapping):
         if 'author-timezone' in rev.properties:
             commit.author_timezone = int(rev.properties['author-timezone'])
         else:
-            commit.author_timezone = commit.commit_timezone 
+            commit.author_timezone = commit.commit_timezone
         commit.message = self._encode_commit_message(rev, rev.message)
         return commit
 
@@ -439,7 +439,7 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
         cur = ""
     tree = Tree()
 
-    # stack contains the set of trees that we haven't 
+    # stack contains the set of trees that we haven't
     # finished constructing
     for path, entry in inventory.iter_entries():
         while stack and not path.startswith(osutils.pathjoin(cur, "")):

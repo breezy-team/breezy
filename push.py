@@ -127,7 +127,7 @@ class MissingObjectsIterator(object):
                 self.pb.update("writing pack objects", i, len(self))
             if isinstance(object, tuple):
                 object = self._object_store._get_ie_object(*object)
-            yield (object, path)   
+            yield (object, path)
 
 
 class InterToGitRepository(InterRepository):
@@ -148,7 +148,7 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, 
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
         raise NoPushSupport()
 
@@ -204,7 +204,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
-                target_store.add_objects(object_generator) 
+                target_store.add_objects(object_generator)
             finally:
                 pb.finished()
         finally:
@@ -214,7 +214,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        return (not isinstance(source, GitRepository) and 
+        return (not isinstance(source, GitRepository) and
                 isinstance(target, LocalGitRepository))
 
 
@@ -239,5 +239,5 @@ class InterToRemoteGitRepository(InterToGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        return (not isinstance(source, GitRepository) and 
+        return (not isinstance(source, GitRepository) and
                 isinstance(target, RemoteGitRepository))

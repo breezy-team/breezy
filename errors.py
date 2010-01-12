@@ -39,10 +39,10 @@ class GitCommandError(BzrGitError):
 
 
 class NoSuchRef(BzrGitError):
-    """Raised when a ref can not be found.""" 
+    """Raised when a ref can not be found."""
 
     _fmt = "The ref %(ref)s was not found."
-    
+
     def __init__(self, ref, present_refs=None):
         self.ref = ref
         self.present_refs = present_refs

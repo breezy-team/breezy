@@ -81,7 +81,8 @@ def lazy_check_versions():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
-        raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
+        raise bzr_errors.DependencyNotPresent("dulwich",
+            "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < dulwich_minimum_version:
             raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
