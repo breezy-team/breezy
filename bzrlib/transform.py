@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -161,14 +161,12 @@ class TreeTransformBase(object):
 
     def adjust_path(self, name, parent, trans_id):
         """Change the path that is assigned to a transaction id."""
+        if parent is None:
+            raise ValueError("Parent trans-id may not be None")
         if trans_id == self._new_root:
             raise CantMoveRoot
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
-        if parent == ROOT_PARENT:
-            if self._new_root is not None:
-                raise ValueError("Cannot have multiple roots.")
-            self._new_root = trans_id
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -201,6 +199,67 @@ class TreeTransformBase(object):
         self.create_directory(old_root)
         self.version_file(old_root_file_id, old_root)
         self.unversion_file(self._new_root)
+
+    def fixup_new_roots(self):
+        """Reinterpret requests to change the root directory
+
+        Instead of creating a root directory, or moving an existing directory,
+        all the attributes and children of the new root are applied to the
+        existing root directory.
+
+        This means that the old root trans-id becomes obsolete, so it is
+        recommended only to invoke this after the root trans-id has become
+        irrelevant.
+        """
+        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+                     ROOT_PARENT]
+        if len(new_roots) < 1:
+            return
+        if len(new_roots) != 1:
+            raise ValueError('A tree cannot have two roots!')
+        if self._new_root is None:
+            self._new_root = new_roots[0]
+            return
+        old_new_root = new_roots[0]
+        # TODO: What to do if a old_new_root is present, but self._new_root is
+        #       not listed as being removed? This code explicitly unversions
+        #       the old root and versions it with the new file_id. Though that
+        #       seems like an incomplete delta
+
+        # unversion the new root's directory.
+        file_id = self.final_file_id(old_new_root)
+        if old_new_root in self._new_id:
+            self.cancel_versioning(old_new_root)
+        else:
+            self.unversion_file(old_new_root)
+        # if, at this stage, root still has an old file_id, zap it so we can
+        # stick a new one in.
+        if (self.tree_file_id(self._new_root) is not None and
+            self._new_root not in self._removed_id):
+            self.unversion_file(self._new_root)
+        self.version_file(file_id, self._new_root)
+
+        # Now move children of new root into old root directory.
+        # Ensure all children are registered with the transaction, but don't
+        # use directly-- some tree children have new parents
+        list(self.iter_tree_children(old_new_root))
+        # Move all children of new root into old root directory.
+        for child in self.by_parent().get(old_new_root, []):
+            self.adjust_path(self.final_name(child), self._new_root, child)
+
+        # Ensure old_new_root has no directory.
+        if old_new_root in self._new_contents:
+            self.cancel_creation(old_new_root)
+        else:
+            self.delete_contents(old_new_root)
+
+        # prevent deletion of root directory.
+        if self._new_root in self._removed_contents:
+            self.cancel_deletion(self._new_root)
+
+        # destroy path info for old_new_root.
+        del self._new_parent[old_new_root]
+        del self._new_name[old_new_root]
 
     def trans_id_tree_file_id(self, inventory_id):
         """Determine the transaction id of a working tree file.
@@ -253,6 +312,8 @@ class TreeTransformBase(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
+        # Ensure that the object exists in the WorkingTree, this will raise an
+        # exception if there is a problem
         self.tree_kind(trans_id)
         self._removed_contents.add(trans_id)
 
@@ -1075,8 +1136,10 @@ class DiskTreeTransform(TreeTransformBase):
         if (trans_id in self._limbo_files and
             trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
-            self._limbo_children[previous_parent].remove(trans_id)
-            del self._limbo_children_names[previous_parent][previous_name]
+            if previous_parent != parent:
+                self._limbo_children[previous_parent].remove(trans_id)
+            if previous_parent != parent or previous_name != name:
+                del self._limbo_children_names[previous_parent][previous_name]
 
     def _rename_in_limbo(self, trans_ids):
         """Fix limbo names so that the right final path is produced.
@@ -1542,10 +1605,10 @@ class TreeTransform(DiskTreeTransform):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
-                                     trans_id))
-                elif trans_id in self._new_name or trans_id in \
-                    self._new_parent:
+                    delete_path = os.path.join(self._deletiondir, trans_id)
+                    mover.pre_delete(full_path, delete_path)
+                elif (trans_id in self._new_name
+                      or trans_id in self._new_parent):
                     try:
                         mover.rename(full_path, self._limbo_name(trans_id))
                     except OSError, e:
@@ -2636,7 +2699,10 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     parent_trans = ROOT_PARENT
                 else:
                     parent_trans = tt.trans_id_file_id(parent[1])
-                tt.adjust_path(name[1], parent_trans, trans_id)
+                if parent[0] is None and versioned[0]:
+                    tt.adjust_root_path(name[1], parent_trans)
+                else:
+                    tt.adjust_path(name[1], parent_trans, trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
         if working_tree.supports_content_filtering():
@@ -2655,6 +2721,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
                 deferred_files):
                 tt.create_file(bytes, trans_id, mode_id)
+        tt.fixup_new_roots()
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
