@@ -542,7 +542,7 @@ class TestErrors(TestCaseWithTransport):
             1/0
         except ZeroDivisionError:
             exc_info = sys.exc_info()
-        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
         self.assertStartsWith(
             str(err), 'Hook \'hook name\' during hook stage failed:\n')
         self.assertEndsWith(

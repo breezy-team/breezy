@@ -22,9 +22,7 @@ from bzrlib import (
     conflicts,
     errors,
     tests,
-    workingtree,
     )
-from bzrlib.tests import script
 
 
 # TODO: Test commit with some added, and added-but-missing files

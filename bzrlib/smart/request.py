@@ -32,6 +32,7 @@ Interesting module attributes:
 
 
 import tempfile
+import thread
 import threading
 
 from bzrlib import (
@@ -291,7 +292,7 @@ class SmartServerRequestHandler(object):
         self._command = None
         if 'hpss' in debug.debug_flags:
             self._request_start_time = osutils.timer_func()
-            self._thread_id = threading.currentThread().get_ident()
+            self._thread_id = thread.get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of 

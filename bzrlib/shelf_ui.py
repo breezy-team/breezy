@@ -408,7 +408,6 @@ class Unshelver(object):
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
                     raise errors.BzrCommandError('No changes are shelved.')
-                trace.note('Unshelving changes with id "%d".' % shelf_id)
             apply_changes = True
             delete_shelf = True
             read_shelf = True
@@ -468,6 +467,7 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
+                trace.note('Using changes with id "%d".' % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
@@ -487,6 +487,7 @@ class Unshelver(object):
                     task.finished()
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
+                trace.note('Deleted changes with id "%d".' % self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()

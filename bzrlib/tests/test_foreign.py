@@ -103,6 +103,9 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
 
+    def push(self, overwrite=False, stop_revision=None):
+        raise errors.NoRoundtrippingSupport(self.source, self.target)
+
     def lossy_push(self, stop_revision=None):
         result = branch.BranchPushResult()
         result.source_branch = self.source
@@ -350,6 +353,13 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir",
                              newdir._format.get_format_string())
+
+    def test_push_not_supported(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        self.assertRaises(errors.NoRoundtrippingSupport, 
+            source_tree.branch.push, target_tree.branch)
 
     def test_lossy_push_empty(self):
         source_tree = self.make_branch_and_tree("source")

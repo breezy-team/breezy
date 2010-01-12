@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3108,7 +3108,15 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def __init__(self):
         BzrDirMetaFormat1.__init__(self)
+        # XXX: It's a bit ugly that the network name is here, because we'd
+        # like to believe that format objects are stateless or at least
+        # immutable,  However, we do at least avoid mutating the name after
+        # it's returned.  See <https://bugs.edge.launchpad.net/bzr/+bug/504102>
         self._network_name = None
+
+    def __repr__(self):
+        return "%s(_network_name=%r)" % (self.__class__.__name__,
+            self._network_name)
 
     def get_format_description(self):
         if self._network_name:
@@ -3252,12 +3260,11 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         args.append(self._serialize_NoneString(repo_format_name))
         args.append(self._serialize_NoneTrueFalse(make_working_trees))
         args.append(self._serialize_NoneTrueFalse(shared_repo))
-        if self._network_name is None:
-            self._network_name = \
+        request_network_name = self._network_name or \
             BzrDirFormat.get_default_format().network_name()
         try:
             response = client.call('BzrDirFormat.initialize_ex_1.16',
-                self.network_name(), path, *args)
+                request_network_name, path, *args)
         except errors.UnknownSmartMethod:
             client._medium._remember_remote_is_before((1,16))
             local_dir_format = BzrDirMetaFormat1()
@@ -3513,7 +3520,7 @@ class BzrDirFormatRegistry(registry.Registry):
                 experimental_pairs.append((key, help))
             else:
                 output += wrapped(key, help, info)
-        output += "\nSee ``bzr help formats`` for more about storage formats."
+        output += "\nSee :doc:`formats-help` for more about storage formats."
         other_output = ""
         if len(experimental_pairs) > 0:
             other_output += "Experimental formats are shown below.\n\n"
@@ -3532,7 +3539,7 @@ class BzrDirFormatRegistry(registry.Registry):
             other_output += \
                 "\nNo deprecated formats are available.\n\n"
         other_output += \
-            "\nSee ``bzr help formats`` for more about storage formats."
+                "\nSee :doc:`formats-help` for more about storage formats."
 
         if topic == 'other-formats':
             return other_output

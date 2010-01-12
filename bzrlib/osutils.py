@@ -202,13 +202,15 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
-    :param unlink_func: A way to delete the target file if the full rename succeeds
+    :param unlink_func: A way to delete the target file if the full rename
+        succeeds
     """
-
+    new = safe_unicode(new)
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
+    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(),
+                                       os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -2087,3 +2089,18 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
+
+
+class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
+    """A stream writer that doesn't decode str arguments."""
+
+    def __init__(self, encode, stream, errors='strict'):
+        codecs.StreamWriter.__init__(self, stream, errors)
+        self.encode = encode
+
+    def write(self, object):
+        if type(object) is str:
+            self.stream.write(object)
+        else:
+            data, _ = self.encode(object, self.errors)
+            self.stream.write(data)

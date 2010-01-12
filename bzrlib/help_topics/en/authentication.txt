@@ -110,10 +110,8 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 File format
 -----------
 
-The general rules for `configuration files`_ apply except for the variable
-policies.
-
-.. _configuration files: #configuration-settings
+The general rules for :doc:`configuration files <configuration-help>`
+apply except for the variable policies.
 
 Each section describes an authentication definition.
 

@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1023,6 +1024,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        self._creation_mtime = None
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1133,6 +1135,7 @@ class DiskTreeTransform(TreeTransformBase):
             f.writelines(contents)
         finally:
             f.close()
+        self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _read_file_chunks(self, trans_id):
@@ -1144,6 +1147,15 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
+
+    def _set_mtime(self, path):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
