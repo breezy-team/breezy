@@ -39,8 +39,8 @@ New Features
 Bug Fixes
 *********
 
-* Better message when Windows reports "error 123" when trying to start an
-  editor.  (Martin Pool, #504842)
+* Better message when Windows reports "error 123" (literally number 123)
+  when trying to start an editor.  (Martin Pool, #504842)
 
 * ``bzr export dir`` now requests all file content as a record stream,
   rather than requsting the file content one file-at-a-time. This can make
