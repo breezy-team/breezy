@@ -70,7 +70,10 @@ def _run_editor(filename):
             # platforms aren't likely to have that high of an error. And even
             # if they do, it is still reasonable to fall back to the next
             # editor.
-            if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOEXEC, 193):
+            # 123 is "The Filename, Directory Name, or Volume Label Syntax Is
+            # Incorrect" (see
+            # <https://bugs.edge.launchpad.net/bzr/+bug/504842>)
+            if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOEXEC, 193, 123):
                 if candidate_source is not None:
                     # We tried this editor because some user configuration (an
                     # environment variable or config file) said to try it.  Let
