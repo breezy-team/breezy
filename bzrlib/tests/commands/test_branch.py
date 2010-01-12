@@ -28,16 +28,16 @@ class TestBranch(TestCaseWithConnectionHookedTransport):
 
     def test_branch_remote_local(self):
         cmd = cmd_branch()
-        cmd.run(self.get_url('branch'), 'local')
+        cmd.run_direct(self.get_url('branch'), 'local')
         self.assertEquals(1, len(self.connections))
 
     def test_branch_local_remote(self):
         cmd = cmd_branch()
-        cmd.run('branch', self.get_url('remote'))
+        cmd.run_direct('branch', self.get_url('remote'))
         self.assertEquals(1, len(self.connections))
 
     def test_branch_remote_remote(self):
         cmd = cmd_branch()
-        cmd.run(self.get_url('branch'), self.get_url('remote'))
+        cmd.run_direct(self.get_url('branch'), self.get_url('remote'))
         self.assertEquals(2, len(self.connections))
 

@@ -61,6 +61,10 @@ Bug Fixes
   returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
   optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
 
+* Fixed a side effect mutation of ``RemoteBzrDirFormat._network_name``
+  that caused some tests to fail when run in a non-default order.
+  Probably no user impact.  (Martin Pool, #504102)
+
 * FTP transports support Unicode paths by encoding/decoding them as utf8.
   (Vincent Ladeuil, #472161)
 
@@ -83,6 +87,11 @@ Bug Fixes
 Improvements
 ************
 
+* Added ``add_cleanup`` and ``cleanup_now`` to ``bzrlib.command.Command``.
+  All the builtin commands now use ``add_cleanup`` rather than
+  ``try``/``finally`` blocks where applicable as it is simpler and more
+  robust.  (Andrew Bennetts)
+
 * Attempts to open a shared repository as a branch (e.g. ``bzr branch
   path/to/repo``) will now include "location is a repository" as a hint in
   the error message.  (Brian de Alwis, Andrew Bennetts, #440952)
@@ -103,7 +112,14 @@ Documentation
 
 * There is a System Administrator's Guide in ``doc/en/admin-guide``,
   including discussions of installation, relevant plugins, security and 
-  backup.
+  backup. (Neil Martinsen-Burrell)
+
+* The ``conflicts`` help topic has been renamed to ``conflict-types``.
+  (Ian Clatworthy)
+
+* The User Reference is now presented as a series of topics.
+  Many of the included topics have link and format tweaks applied.
+  (Ian Clatworthy)
 
 API Changes
 ***********
@@ -112,6 +128,9 @@ API Changes
   to be consistent with instances being lower case and classes being
   CamelCase. For the features that were more likely to be used, we added a
   deprecation thunk, but not all. (John Arbash Meinel)
+
+* The Branch hooks pre_change_branch_tip no longer masks exceptions raised
+  by plugins - the original exceptions are now preserved. (Robert Collins)
 
 * The Transport ``Server.tearDown`` method is now renamed to
   ``stop_server`` and ``setUp`` to ``start_server`` for consistency with
