@@ -2644,7 +2644,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview = self.get_empty_preview()
         root = preview.new_directory('', ROOT_PARENT, 'tree-root')
         # FIXME: new_directory should mark root.
-        preview.adjust_path('', ROOT_PARENT, root)
+        preview.fixup_new_roots()
         preview_tree = preview.get_preview_tree()
         file_trans_id = preview.new_file('a', preview.root, 'contents',
                                          'a-id')
