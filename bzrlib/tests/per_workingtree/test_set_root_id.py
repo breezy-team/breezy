@@ -48,6 +48,7 @@ class TestSetRootId(TestCaseWithWorkingTree):
         # should still be retained
         tree = tree.bzrdir.open_workingtree()
         self.assertEqual(root_id, tree.get_root_id())
+        tree._validate()
 
     def test_set_root_id(self):
         tree = self.make_branch_and_tree('.')
@@ -62,3 +63,4 @@ class TestSetRootId(TestCaseWithWorkingTree):
         self.assertEqual('custom-root-id', tree.path2id(''))
         self.assertEqual('', tree.id2path('custom-root-id'))
         self.assertRaises(errors.NoSuchId, tree.id2path, orig_root_id)
+        tree._validate()
