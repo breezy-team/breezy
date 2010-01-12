@@ -3984,7 +3984,7 @@ class InterDifferingSerializer(InterRepository):
         #
         # nb this is only active for local-local fetches; other things using
         # streaming.
-        trace.warning("Fetching repositories with different serialization\n"
+        trace.warning("Fetching between repositories with different formats\n"
             "from %s to %s.\n"
             "This may take some time. Upgrade the branches to the same format \n"
             "for better results.\n"
