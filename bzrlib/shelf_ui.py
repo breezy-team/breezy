@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -458,8 +458,6 @@ class Unshelver(object):
         self.read_shelf = read_shelf
         self.show_diff = show_diff
         self.write_diff_to = write_diff_to
-        if self.write_diff_to is None:
-            self.write_diff_to = ui.ui_factory.make_output_stream()
 
     def run(self):
         """Perform the unshelving operation."""
@@ -497,6 +495,8 @@ class Unshelver(object):
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
         new_tree = tt.get_preview_tree()
+        if self.write_diff_to is None:
+            self.write_diff_to = ui.ui_factory.make_output_stream()
         diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
         tt.finalize()
 
