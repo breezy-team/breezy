@@ -83,6 +83,10 @@ Bug Fixes
 Improvements
 ************
 
+* Attempts to open a shared repository as a branch (e.g. ``bzr branch
+  path/to/repo``) will now include "location is a repository" as a hint in
+  the error message.  (Brian de Alwis, Andrew Bennetts, #440952)
+
 * Push will now inform the user when they are trying to push to a foreign 
   VCS for which roundtripping is not supported, and will suggest them to 
   use dpush. (Jelmer Vernooij)
@@ -120,6 +124,10 @@ API Changes
 Internals
 *********
 
+* Added ``BzrDir.open_branchV3`` smart server request, which can receive
+  a string of details (such as "location is a repository") as part of a
+  ``nobranch`` response.  (Andrew Bennetts, #440952)
+  
 * New helper osutils.UnicodeOrBytesToBytesWriter which encodes unicode
   objects but passes str objects straight through. This is used for
   selftest but may be useful for diff and other operations that generate
