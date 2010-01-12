@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2245,8 +2245,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             basis.lock_read()
             try:
                 to_tree = self.branch.basis_tree()
-                if basis.inventory.root is None:
-                    self.set_root_id(to_tree.get_root_id())
+                to_root_id = to_tree.get_root_id()
+                if (basis.inventory.root is None
+                    or basis.inventory.root.file_id != to_root_id):
+                    self.set_root_id(to_root_id)
                     self.flush()
                 result += merge.merge_inner(
                                       self.branch,
