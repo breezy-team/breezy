@@ -3013,6 +3013,13 @@ class DirState(object):
             if absent_positions == tree_count:
                 raise AssertionError(
                     "entry %r has no data for any tree." % (entry,))
+        if self._id_index is not None:
+            for file_id, entry_keys in self._id_index.iteritems():
+                for entry_key in entry_keys:
+                    if entry_key[2] != file_id:
+                        raise AssertionError(
+                            'file_id %r did not match entry key %s'
+                            % (file_id, entry_key))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
