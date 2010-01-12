@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,115 +12,98 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
 """Black-box tests for default log_formats/log_formatters
 """
 
+
 import os
 
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseInTempDir
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
+from bzrlib import (
+    config,
+    tests,
+    workingtree,
+    )
 
 
-class TestLogFormats(TestCaseInTempDir):
+class TestLogFormats(tests.TestCaseWithTransport):
 
-    def bzr(self, *args, **kwargs):
-        return self.run_bzr(*args, **kwargs)[0]
+    def setUp(self):
+        super(TestLogFormats, self).setUp()
+
+        # Create a config file with some useful variables
+        conf_path = config.config_filename()
+        if os.path.isfile(conf_path):
+                # Something is wrong in environment,
+                # we risk overwriting users config
+                self.fail("%s exists" % conf_path)
+
+        config.ensure_config_dir_exists()
+        f = open(conf_path,'wb')
+        try:
+            f.write("""[DEFAULT]
+email=Joe Foo <joe@foo.com>
+log_format=line
+""")
+        finally:
+            f.close()
+
+    def _make_simple_branch(self, relpath='.'):
+        wt = self.make_branch_and_tree(relpath)
+        wt.commit('first revision')
+        wt.commit('second revision')
+        return wt
 
     def test_log_default_format(self):
-        self.setup_config()
-
-        self.bzr('init')
-        open('a', 'wb').write('foo\n')
-        self.bzr('add a')
-
-        self.bzr('commit -m 1')
-        open('a', 'wb').write('baz\n')
-
-        self.bzr('commit -m 2')
-
-        # only the lines formatter is this short
-        self.assertEquals(3, len(self.bzr('log').split('\n')))
+        self._make_simple_branch()
+        # only the lines formatter is this short, one line by revision
+        log = self.run_bzr('log')[0]
+        self.assertEquals(2, len(log.splitlines()))
 
     def test_log_format_arg(self):
-        self.bzr('init')
-        open('a', 'wb').write('foo\n')
-        self.bzr('add a')
-
-        self.bzr('commit -m 1')
-        open('a', 'wb').write('baz\n')
-
-        self.bzr('commit -m 2')
-
-        # only the lines formatter is this short
-        self.assertEquals(7, len(self.bzr('log --log-format short').split('\n')))
+        self._make_simple_branch()
+        log = self.run_bzr(['log', '--log-format', 'short'])[0]
 
     def test_missing_default_format(self):
-        self.setup_config()
+        wt = self._make_simple_branch('a')
+        self.run_bzr(['branch', 'a', 'b'])
+        wt.commit('third revision')
+        wt.commit('fourth revision')
 
-        os.mkdir('a')
-        os.chdir('a')
-        self.bzr('init')
-
-        open('a', 'wb').write('foo\n')
-        self.bzr('add a')
-        self.bzr('commit -m 1')
-
-        os.chdir('..')
-        self.bzr('branch a b')
-        os.chdir('a')
-
-        open('a', 'wb').write('bar\n')
-        self.bzr('commit -m 2')
-
-        open('a', 'wb').write('baz\n')
-        self.bzr('commit -m 3')
-
-        os.chdir('../b')
-
-        self.assertEquals(5, len(self.bzr('missing', retcode=1).split('\n')))
-
-        os.chdir('..')
+        missing = self.run_bzr('missing', retcode=1, working_dir='b')[0]
+        # one line for 'Using save location'
+        # one line for 'You are missing 2 revision(s)'
+        # one line by missing revision (the line log format is used as
+        # configured)
+        self.assertEquals(4, len(missing.splitlines()))
 
     def test_missing_format_arg(self):
-        self.setup_config()
+        wt = self._make_simple_branch('a')
+        self.run_bzr(['branch', 'a', 'b'])
+        wt.commit('third revision')
+        wt.commit('fourth revision')
 
-        os.mkdir('a')
-        os.chdir('a')
-        self.bzr('init')
+        missing = self.run_bzr(['missing', '--log-format', 'short'],
+                               retcode=1, working_dir='b')[0]
+        # one line for 'Using save location'
+        # one line for 'You are missing 2 revision(s)'
+        # three lines by missing revision
+        self.assertEquals(8, len(missing.splitlines()))
 
-        open('a', 'wb').write('foo\n')
-        self.bzr('add a')
-        self.bzr('commit -m 1')
+    def test_logformat_gnu_changelog(self):
+        # from http://launchpad.net/bugs/29582/
+        wt = self.make_branch_and_tree('.')
+        wt.commit('first revision', timestamp=1236045060,
+                  timezone=0) # Aka UTC
 
-        os.chdir('..')
-        self.bzr('branch a b')
-        os.chdir('a')
+        log, err = self.run_bzr(['log', '--log-format', 'gnu-changelog',
+                                 '--timezone=utc'])
+        self.assertEquals('', err)
+        expected = """2009-03-03  Joe Foo  <joe@foo.com>
 
-        open('a', 'wb').write('bar\n')
-        self.bzr('commit -m 2')
+\tfirst revision
 
-        open('a', 'wb').write('baz\n')
-        self.bzr('commit -m 3')
-
-        os.chdir('../b')
-
-        self.assertEquals(9, len(self.bzr('missing --log-format short',
-                                          retcode=1).split('\n')))
-
-        os.chdir('..')
-
-
-    def setup_config(self):
-        if os.path.isfile(config_filename()):
-                # Something is wrong in environment, 
-                # we risk overwriting users config 
-                self.assert_(config_filename() + "exists, abort")
-            
-        ensure_config_dir_exists()
-        CONFIG=("[DEFAULT]\n"
-                "email=Joe Foo <joe@foo.com>\n"
-                "log_format=line\n")
-
-        open(config_filename(),'wb').write(CONFIG)
+"""
+        self.assertEqualDiff(expected, log)

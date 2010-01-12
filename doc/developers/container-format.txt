@@ -129,14 +129,14 @@ Addressing records
 ------------------
 
 There is a requirement that each object can be given an arbitrary name.
-Some revision control systems address all content by the SHA-1 digest of
+Some version control systems address all content by the SHA-1 digest of
 that content, but this scheme is unsatisfactory for Bazaar's revision
 objects.  We can still allow addressing by SHA-1 digest for those content
 types where it makes sense.
 
 Some proposed object names:
 
-  * to name a revision: "``revision:``\ *revision-id*".  e.g., 
+  * to name a revision: "``revision:``\ *revision-id*".  e.g.,
     `revision:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5`.
   * to name an inventory delta: "``inventory.delta:``\ *revision-id*".  e.g.,
     `inventory.delta:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5`.
@@ -147,7 +147,7 @@ record).
 
 Although records are in principle addressable by name, this specification
 alone doesn't provide for efficient access to a particular record given
-its name.  It is intended that seperate indexes will be maintained to
+its name.  It is intended that separate indexes will be maintained to
 provide this.
 
 It is acceptable to have records with no explicit name, if the expected
@@ -155,7 +155,7 @@ use of them does not require them.  For example:
 
   * a record's content could be self-describing in the context of a
     particular container, or
-  * a record could be accessed via an index based on SHA-1, or 
+  * a record could be accessed via an index based on SHA-1, or
   * when streaming, the first record could be treated specially.
 
 Reasonably cheap for small records
@@ -203,12 +203,12 @@ Bytes
 A **Bytes** record:
 
   * has a kind marker of "``B``",
-  * followed by a mandatory **content length** [1]_: 
+  * followed by a mandatory **content length** [1]_:
     "*number*\ ``\n``", where *number* is in decimal, e.g::
 
       1234
 
-  * followed by zero or more optional **names**: 
+  * followed by zero or more optional **names**:
     "*name*\ ``\n``", e.g.::
 
       revision:pqm@pqm.ubuntu.com-20070531210833-8ptk86ocu822hjd5

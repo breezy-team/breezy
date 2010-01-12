@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for smart transport"""
 
@@ -68,17 +68,17 @@ class StringIOSSHConnection(object):
 
     def __init__(self, vendor):
         self.vendor = vendor
-    
+
     def close(self):
         self.vendor.calls.append(('close', ))
-        
+
     def get_filelike_channels(self):
         return self.vendor.read_from, self.vendor.write_to
 
 
 class _InvalidHostnameFeature(tests.Feature):
     """Does 'non_existent.invalid' fail to resolve?
-    
+
     RFC 2606 states that .invalid is reserved for invalid domain names, and
     also underscores are not a valid character in domain names.  Despite this,
     it's possible a badly misconfigured name server might decide to always
@@ -132,14 +132,14 @@ class SmartClientMediumTests(tests.TestCase):
         t = threading.Thread(target=_receive_bytes_on_server)
         t.start()
         return t
-    
+
     def test_construct_smart_simple_pipes_client_medium(self):
         # the SimplePipes client medium takes two pipes:
         # readable pipe, writeable pipe.
         # Constructing one should just save these and do nothing.
         # We test this by passing in None.
         client_medium = medium.SmartSimplePipesClientMedium(None, None, None)
-        
+
     def test_simple_pipes_client_request_type(self):
         # SimplePipesClient should use SmartClientStreamMediumRequest's.
         client_medium = medium.SmartSimplePipesClientMedium(None, None, None)
@@ -148,7 +148,7 @@ class SmartClientMediumTests(tests.TestCase):
 
     def test_simple_pipes_client_get_concurrent_requests(self):
         # the simple_pipes client does not support pipelined requests:
-        # but it does support serial requests: we construct one after 
+        # but it does support serial requests: we construct one after
         # another is finished. This is a smoke test testing the integration
         # of the SmartClientStreamMediumRequest and the SmartClientStreamMedium
         # classes - as the sibling classes share this logic, they do not have
@@ -170,7 +170,7 @@ class SmartClientMediumTests(tests.TestCase):
             None, output, 'base')
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
-    
+
     def test_simple_pipes_client_disconnect_does_nothing(self):
         # calling disconnect does nothing.
         input = StringIO()
@@ -197,7 +197,7 @@ class SmartClientMediumTests(tests.TestCase):
         self.assertFalse(input.closed)
         self.assertFalse(output.closed)
         self.assertEqual('abcabc', output.getvalue())
-    
+
     def test_simple_pipes_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SimplePipes medium
         # does nothing.
@@ -212,9 +212,9 @@ class SmartClientMediumTests(tests.TestCase):
         self.assertEqual('abc', client_medium.read_bytes(3))
         client_medium.disconnect()
         self.assertEqual('def', client_medium.read_bytes(3))
-        
+
     def test_simple_pipes_client_supports__flush(self):
-        # invoking _flush on a SimplePipesClient should flush the output 
+        # invoking _flush on a SimplePipesClient should flush the output
         # pipe. We test this by creating an output pipe that records
         # flush calls made to it.
         from StringIO import StringIO # get regular StringIO
@@ -262,28 +262,7 @@ class SmartClientMediumTests(tests.TestCase):
             'a hostname', 'a port',
             ['bzr', 'serve', '--inet', '--directory=/', '--allow-writes'])],
             vendor.calls)
-    
-    def test_ssh_client_changes_command_when_BZR_REMOTE_PATH_is_set(self):
-        # The only thing that initiates a connection from the medium is giving
-        # it bytes.
-        output = StringIO()
-        vendor = StringIOSSHVendor(StringIO(), output)
-        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        def cleanup_environ():
-            osutils.set_or_unset_env('BZR_REMOTE_PATH', orig_bzr_remote_path)
-        self.addCleanup(cleanup_environ)
-        os.environ['BZR_REMOTE_PATH'] = 'fugly'
-        client_medium = self.callDeprecated(
-            ['bzr_remote_path is required as of bzr 0.92'],
-            medium.SmartSSHClientMedium, 'a hostname', 'a port', 'a username',
-            'a password', 'base', vendor)
-        client_medium._accept_bytes('abc')
-        self.assertEqual('abc', output.getvalue())
-        self.assertEqual([('connect_ssh', 'a username', 'a password',
-            'a hostname', 'a port',
-            ['fugly', 'serve', '--inet', '--directory=/', '--allow-writes'])],
-            vendor.calls)
-    
+
     def test_ssh_client_changes_command_when_bzr_remote_path_passed(self):
         # The only thing that initiates a connection from the medium is giving
         # it bytes.
@@ -350,7 +329,7 @@ class SmartClientMediumTests(tests.TestCase):
             ('close', ),
             ],
             vendor.calls)
-    
+
     def test_ssh_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
@@ -369,7 +348,7 @@ class SmartClientMediumTests(tests.TestCase):
                           1)
 
     def test_ssh_client_supports__flush(self):
-        # invoking _flush on a SSHClientMedium should flush the output 
+        # invoking _flush on a SSHClientMedium should flush the output
         # pipe. We test this by creating an output pipe that records
         # flush calls made to it.
         from StringIO import StringIO # get regular StringIO
@@ -387,7 +366,7 @@ class SmartClientMediumTests(tests.TestCase):
         client_medium._flush()
         client_medium.disconnect()
         self.assertEqual(['flush'], flush_calls)
-        
+
     def test_construct_smart_tcp_client_medium(self):
         # the TCP client medium takes a host and a port.  Constructing it won't
         # connect to anything.
@@ -408,7 +387,7 @@ class SmartClientMediumTests(tests.TestCase):
         t.join()
         sock.close()
         self.assertEqual(['abc'], bytes)
-    
+
     def test_tcp_client_disconnect_does_so(self):
         # calling disconnect on the client terminates the connection.
         # we test this by forcing a short read during a socket.MSG_WAITALL
@@ -425,7 +404,7 @@ class SmartClientMediumTests(tests.TestCase):
         # really did disconnect.
         medium.disconnect()
 
-    
+
     def test_tcp_client_ignores_disconnect_when_not_connected(self):
         # Doing a disconnect on a new (and thus unconnected) TCP medium
         # does not fail.  It's ok to disconnect an unconnected medium.
@@ -468,14 +447,14 @@ class SmartClientMediumTests(tests.TestCase):
 
 class TestSmartClientStreamMediumRequest(tests.TestCase):
     """Tests the for SmartClientStreamMediumRequest.
-    
-    SmartClientStreamMediumRequest is a helper for the three stream based 
+
+    SmartClientStreamMediumRequest is a helper for the three stream based
     mediums: TCP, SSH, SimplePipes, so we only test it once, and then test that
     those three mediums implement the interface it expects.
     """
 
     def test_accept_bytes_after_finished_writing_errors(self):
-        # calling accept_bytes after calling finished_writing raises 
+        # calling accept_bytes after calling finished_writing raises
         # WritingCompleted to prevent bad assumptions on stream environments
         # breaking the needs of message-based environments.
         output = StringIO()
@@ -537,11 +516,11 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
             None, None, 'base')
         request = medium.SmartClientStreamMediumRequest(client_medium)
         self.assertRaises(errors.WritingNotComplete, request.finished_reading)
-        
+
     def test_read_bytes(self):
         # read bytes should invoke _read_bytes on the stream medium.
         # we test this by using the SimplePipes medium - the most trivial one
-        # and checking that the data is supplied. Its possible that a 
+        # and checking that the data is supplied. Its possible that a
         # faulty implementation could poke at the pipe variables them selves,
         # but we trust that this will be caught as it will break the integration
         # smoke tests.
@@ -566,7 +545,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertRaises(errors.WritingNotComplete, request.read_bytes, None)
 
     def test_read_bytes_after_finished_reading_errors(self):
-        # calling read_bytes after calling finished_reading raises 
+        # calling read_bytes after calling finished_reading raises
         # ReadingCompleted to prevent bad assumptions on stream environments
         # breaking the needs of message-based environments.
         output = StringIO()
@@ -604,7 +583,7 @@ class ErrorRaisingProtocol(object):
 
 
 class SampleRequest(object):
-    
+
     def __init__(self, expected_bytes):
         self.accepted_bytes = ''
         self._finished_reading = False
@@ -632,7 +611,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def portable_socket_pair(self):
         """Return a pair of TCP sockets connected to each other.
-        
+
         Unlike socket.socketpair, this should work on Windows.
         """
         listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -643,7 +622,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server_sock, addr = listen_sock.accept()
         listen_sock.close()
         return server_sock, client_sock
-    
+
     def test_smart_query_version(self):
         """Feed a canned query version to a server"""
         # wire-to-wire, using the whole stack
@@ -678,8 +657,10 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # wire-to-wire, using the whole stack, with a UTF-8 filename.
         transport = memory.MemoryTransport('memory:///')
         utf8_filename = u'testfile\N{INTERROBANG}'.encode('utf-8')
+        # VFS requests use filenames, not raw UTF-8.
+        hpss_path = urlutils.escape(utf8_filename)
         transport.put_bytes(utf8_filename, 'contents\nof\nfile\n')
-        to_server = StringIO('get\001' + utf8_filename + '\n')
+        to_server = StringIO('get\001' + hpss_path + '\n')
         from_server = StringIO()
         server = medium.SmartServerPipeStreamMedium(
             to_server, from_server, transport)
@@ -723,7 +704,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         server = medium.SmartServerPipeStreamMedium(to_server, from_server, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
-        
+
     def test_socket_stream_shutdown_detection(self):
         server_sock, client_sock = self.portable_socket_pair()
         client_sock.close()
@@ -731,7 +712,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
             server_sock, None)
         server._serve_one_request(SampleRequest('x'))
         self.assertTrue(server.finished)
-        
+
     def test_socket_stream_incomplete_request(self):
         """The medium should still construct the right protocol version even if
         the initial read only reads part of the request.
@@ -753,7 +734,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
         server_sock.close()
-        self.assertEqual(expected_response, client_sock.recv(50),
+        self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
 
@@ -797,7 +778,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
     def test_pipe_like_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
         # _serve_one_request should still process both of them as if they had
-        # been received seperately.
+        # been received separately.
         sample_request_bytes = 'command\n'
         to_server = StringIO(sample_request_bytes * 2)
         from_server = StringIO()
@@ -815,11 +796,11 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
         self.assertEqual(sample_request_bytes, second_protocol.accepted_bytes)
         self.assertFalse(server.finished)
-        
+
     def test_socket_stream_with_two_requests(self):
         # If two requests are read in one go, then two calls to
         # _serve_one_request should still process both of them as if they had
-        # been received seperately.
+        # been received separately.
         sample_request_bytes = 'command\n'
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
@@ -856,7 +837,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         self.assertEqual('', from_server.getvalue())
         self.assertTrue(self.closed)
         self.assertTrue(server.finished)
-        
+
     def test_socket_stream_error_handling(self):
         server_sock, client_sock = self.portable_socket_pair()
         server = medium.SmartServerSocketStreamMedium(
@@ -867,7 +848,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # closed.
         self.assertEqual('', client_sock.recv(1))
         self.assertTrue(server.finished)
-        
+
     def test_pipe_like_stream_keyboard_interrupt_handling(self):
         to_server = StringIO('')
         from_server = StringIO()
@@ -918,7 +899,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         # Any empty request (i.e. no bytes) is detected as protocol version one.
         server_protocol = self.build_protocol_pipe_like('')
         self.assertProtocolOne(server_protocol)
-        
+
     def test_socket_like_build_protocol_empty_bytes(self):
         # Any empty request (i.e. no bytes) is detected as protocol version one.
         server_protocol = self.build_protocol_socket('')
@@ -959,7 +940,7 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
         self.assertEqual(
             protocol.build_server_protocol_three, protocol_factory)
         self.assertEqual('extra bytes', remainder)
-        
+
     def test_version_two(self):
         result = medium._get_protocol_factory_for_bytes(
             'bzr request 2\nextra bytes')
@@ -967,7 +948,7 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
         self.assertEqual(
             protocol.SmartServerRequestProtocolTwo, protocol_factory)
         self.assertEqual('extra bytes', remainder)
-        
+
     def test_version_one(self):
         """Version one requests have no version markers."""
         result = medium._get_protocol_factory_for_bytes('anything\n')
@@ -975,7 +956,7 @@ class TestGetProtocolFactoryForBytes(tests.TestCase):
         self.assertEqual(
             protocol.SmartServerRequestProtocolOne, protocol_factory)
         self.assertEqual('anything\n', remainder)
-        
+
 
 class TestSmartTCPServer(tests.TestCase):
 
@@ -1006,16 +987,23 @@ class SmartTCPTests(tests.TestCase):
     All of these tests are run with a server running on another thread serving
     a MemoryTransport, and a connection to it already open.
 
-    the server is obtained by calling self.setUpServer(readonly=False).
+    the server is obtained by calling self.start_server(readonly=False).
     """
 
-    def setUpServer(self, readonly=False, backing_transport=None):
+    def start_server(self, readonly=False, backing_transport=None):
         """Setup the server.
 
         :param readonly: Create a readonly server.
         """
+        # NB: Tests using this fall into two categories: tests of the server,
+        # tests wanting a server. The latter should be updated to use
+        # self.vfs_transport_factory etc.
         if not backing_transport:
-            self.backing_transport = memory.MemoryTransport()
+            mem_server = memory.MemoryServer()
+            mem_server.start_server()
+            self.addCleanup(mem_server.stop_server)
+            self.permit_url(mem_server.get_url())
+            self.backing_transport = get_transport(mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
@@ -1025,6 +1013,7 @@ class SmartTCPTests(tests.TestCase):
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
+        self.permit_url(self.server.get_url())
 
     def tearDownServer(self):
         if getattr(self, 'transport', None):
@@ -1032,6 +1021,7 @@ class SmartTCPTests(tests.TestCase):
             del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
+            # XXX: why not .stop_server() -- mbp 20100106
             del self.server
 
 
@@ -1039,7 +1029,7 @@ class TestServerSocketUsage(SmartTCPTests):
 
     def test_server_setup_teardown(self):
         """It should be safe to teardown the server with no requests."""
-        self.setUpServer()
+        self.start_server()
         server = self.server
         transport = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
@@ -1047,7 +1037,7 @@ class TestServerSocketUsage(SmartTCPTests):
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
-        self.setUpServer()
+        self.start_server()
         server = self.server
         self.transport.has('.')
         self.tearDownServer()
@@ -1062,7 +1052,7 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def setUp(self):
         super(WritableEndToEndTests, self).setUp()
-        self.setUpServer()
+        self.start_server()
 
     def test_start_tcp_server(self):
         url = self.server.get_url()
@@ -1090,7 +1080,7 @@ class WritableEndToEndTests(SmartTCPTests):
         self._captureVar('BZR_NO_SMART_VFS', None)
         err = self.assertRaises(
             errors.NoSuchFile, self.transport.get, 'not%20a%20file')
-        self.assertEqual('not%20a%20file', err.path)
+        self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
 
     def test_simple_clone_conn(self):
         """Test that cloning reuses the same connection."""
@@ -1141,7 +1131,7 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
     def test_mkdir_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
         self._captureVar('BZR_NO_SMART_VFS', None)
-        self.setUpServer(readonly=True)
+        self.start_server(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
 
@@ -1157,7 +1147,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.setUpServer()
+        self.start_server()
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1171,7 +1161,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.setUpServer(backing_transport=get_transport("."))
+        self.start_server(backing_transport=get_transport("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1187,7 +1177,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.setUpServer()
+        self.start_server()
         result = [([self.backing_transport.base], self.transport.base)]
         # check the stopping message isn't emitted up front.
         self.assertEqual([], self.hook_calls)
@@ -1204,7 +1194,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.setUpServer(backing_transport=get_transport("."))
+        self.start_server(backing_transport=get_transport("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]
@@ -1229,20 +1219,20 @@ class SmartServerCommandTests(tests.TestCaseWithTransport):
     Note: these tests are rudimentary versions of the command object tests in
     test_smart.py.
     """
-        
+
     def test_hello(self):
         cmd = _mod_request.HelloRequest(None, '/')
         response = cmd.execute()
         self.assertEqual(('ok', '2'), response.args)
         self.assertEqual(None, response.body)
-        
+
     def test_get_bundle(self):
         from bzrlib.bundle import serializer
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('hello', 'hello world')])
         wt.add('hello')
         rev_id = wt.commit('add hello')
-        
+
         cmd = _mod_request.GetBundleRequest(self.get_transport(), '/')
         response = cmd.execute('.', rev_id)
         bundle = serializer.read_bundle(StringIO(response.body))
@@ -1269,10 +1259,10 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def test_hello(self):
         handler = self.build_handler(None)
-        handler.dispatch_command('hello', ())
+        handler.args_received(('hello',))
         self.assertEqual(('ok', '2'), handler.response.args)
         self.assertEqual(None, handler.response.body)
-        
+
     def test_disable_vfs_handler_classes_via_environment(self):
         # VFS handler classes will raise an error from "execute" if
         # BZR_NO_SMART_VFS is set.
@@ -1289,7 +1279,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """The response for a read-only error is ('ReadOnlyError')."""
         handler = self.build_handler(self.get_readonly_transport())
         # send a mkdir for foo, with no explicit mode - should fail.
-        handler.dispatch_command('mkdir', ('foo', ''))
+        handler.args_received(('mkdir', 'foo', ''))
         # and the failure should be an explicit ReadOnlyError
         self.assertEqual(("ReadOnlyError", ), handler.response.args)
         # XXX: TODO: test that other TransportNotPossible errors are
@@ -1300,14 +1290,14 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
     def test_hello_has_finished_body_on_dispatch(self):
         """The 'hello' command should set finished_reading."""
         handler = self.build_handler(None)
-        handler.dispatch_command('hello', ())
+        handler.args_received(('hello',))
         self.assertTrue(handler.finished_reading)
         self.assertNotEqual(None, handler.response)
 
     def test_put_bytes_non_atomic(self):
         """'put_...' should set finished_reading after reading the bytes."""
         handler = self.build_handler(self.get_transport())
-        handler.dispatch_command('put_non_atomic', ('a-file', '', 'F', ''))
+        handler.args_received(('put_non_atomic', 'a-file', '', 'F', ''))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('1234')
         self.assertFalse(handler.finished_reading)
@@ -1316,12 +1306,12 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         self.assertTrue(handler.finished_reading)
         self.assertEqual(('ok', ), handler.response.args)
         self.assertEqual(None, handler.response.body)
-        
+
     def test_readv_accept_body(self):
         """'readv' should set finished_reading after reading offsets."""
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
-        handler.dispatch_command('readv', ('a-file', ))
+        handler.args_received(('readv', 'a-file'))
         self.assertFalse(handler.finished_reading)
         handler.accept_body('2,')
         self.assertFalse(handler.finished_reading)
@@ -1336,7 +1326,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         """'readv' when a short read occurs sets the response appropriately."""
         self.build_tree(['a-file'])
         handler = self.build_handler(self.get_readonly_transport())
-        handler.dispatch_command('readv', ('a-file', ))
+        handler.args_received(('readv', 'a-file'))
         # read beyond the end of the file.
         handler.accept_body('100,1')
         handler.end_of_body()
@@ -1363,7 +1353,7 @@ class RemoteTransportRegistration(tests.TestCase):
 
 
 class TestRemoteTransport(tests.TestCase):
-        
+
     def test_use_connection_factory(self):
         # We want to be able to pass a client as a parameter to RemoteTransport.
         input = StringIO('ok\n3\nbardone\n')
@@ -1468,11 +1458,11 @@ class TestSmartProtocol(tests.TestCase):
     def assertOffsetSerialisation(self, expected_offsets, expected_serialised,
         requester):
         """Check that smart (de)serialises offsets as expected.
-        
+
         We check both serialisation and deserialisation at the same time
         to ensure that the round tripping cannot skew: both directions should
         be as expected.
-        
+
         :param expected_offsets: a readv offset list.
         :param expected_seralised: an expected serial form of the offsets.
         """
@@ -1528,8 +1518,9 @@ class CommonSmartProtocolTestMixin(object):
         ex = self.assertRaises(errors.ConnectionReset,
             response_handler.read_response_tuple)
         self.assertEqual("Connection closed: "
-            "please check connectivity and permissions "
-            "(and try -Dhpss if further diagnosis is required)", str(ex))
+            "Unexpected end of message. Please check connectivity "
+            "and permissions, and report a bug if problems persist. ",
+            str(ex))
 
     def test_server_offset_serialisation(self):
         """The Smart protocol serialises offsets as a comma and \n string.
@@ -1654,13 +1645,13 @@ class TestVersionOneFeaturesInProtocolOne(
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolOne should return a number.
-        
+
         The protocol provides the query_version because the domain level clients
         may all need to be able to probe for capabilities.
         """
         # What we really want to test here is that SmartClientProtocolOne calls
         # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
-        # response of tuple-encoded (ok, 1).  Also, seperately we should test
+        # response of tuple-encoded (ok, 1).  Also, separately we should test
         # the error if the response is a non-understood version.
         input = StringIO('ok\x012\n')
         output = StringIO()
@@ -1925,13 +1916,13 @@ class TestVersionOneFeaturesInProtocolTwo(
 
     def test_query_version(self):
         """query_version on a SmartClientProtocolTwo should return a number.
-        
+
         The protocol provides the query_version because the domain level clients
         may all need to be able to probe for capabilities.
         """
         # What we really want to test here is that SmartClientProtocolTwo calls
         # accept_bytes(tuple_based_encoding_of_hello) and reads and parses the
-        # response of tuple-encoded (ok, 1).  Also, seperately we should test
+        # response of tuple-encoded (ok, 1).  Also, separately we should test
         # the error if the response is a non-understood version.
         input = StringIO(self.response_marker + 'success\nok\x012\n')
         output = StringIO()
@@ -2270,14 +2261,6 @@ class TestVersionOneFeaturesInProtocolThree(
         self.assertEqual(4, smart_protocol.next_read_size())
 
 
-class NoOpRequest(_mod_request.SmartServerRequest):
-
-    def do(self):
-        return _mod_request.SuccessfulSmartServerResponse(())
-
-dummy_registry = {'ARG': NoOpRequest}
-
-
 class LoggingMessageHandler(object):
 
     def __init__(self):
@@ -2324,6 +2307,23 @@ class TestProtocolThree(TestSmartProtocol):
         smart_protocol.accept_bytes(request_bytes)
         self.assertEqual(0, smart_protocol.next_read_size())
         self.assertEqual('', smart_protocol.unused_data)
+
+    def test_repeated_excess(self):
+        """Repeated calls to accept_bytes after the message end has been parsed
+        accumlates the bytes in the unused_data attribute.
+        """
+        output = StringIO()
+        headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
+        end = 'e'
+        request_bytes = headers + end
+        smart_protocol = self.server_protocol_class(LoggingMessageHandler())
+        smart_protocol.accept_bytes(request_bytes)
+        self.assertEqual('', smart_protocol.unused_data)
+        smart_protocol.accept_bytes('aaa')
+        self.assertEqual('aaa', smart_protocol.unused_data)
+        smart_protocol.accept_bytes('bbb')
+        self.assertEqual('aaabbb', smart_protocol.unused_data)
+        self.assertEqual(0, smart_protocol.next_read_size())
 
     def make_protocol_expecting_message_part(self):
         headers = '\0\0\0\x02de'  # length-prefixed, bencoded empty dict
@@ -2393,21 +2393,12 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         return response_handler
 
     def test_interrupted_by_error(self):
-        interrupted_body_stream = (
-            'oS' # successful response
-            's\0\0\0\x02le' # empty args
-            'b\0\0\0\x09chunk one' # first chunk
-            'b\0\0\0\x09chunk two' # second chunk
-            'oE' # error flag
-            's\0\0\0\x0el5:error3:abce' # bencoded error
-            'e' # message end
-            )
         response_handler = self.make_response_handler(interrupted_body_stream)
         stream = response_handler.read_streamed_body()
-        self.assertEqual('chunk one', stream.next())
-        self.assertEqual('chunk two', stream.next())
+        self.assertEqual('aaa', stream.next())
+        self.assertEqual('bbb', stream.next())
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
-        self.assertEqual(('error', 'abc'), exc.error_tuple)
+        self.assertEqual(('error', 'Boom!'), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
@@ -2562,8 +2553,8 @@ class InstrumentedRequestHandler(object):
         self.calls.append(('end_received',))
         self.finished_reading = True
 
-    def dispatch_command(self, cmd, args):
-        self.calls.append(('dispatch_command', cmd, args))
+    def args_received(self, args):
+        self.calls.append(('args_received', args))
 
     def accept_body(self, bytes):
         self.calls.append(('accept_body', bytes))
@@ -2765,7 +2756,7 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
     def test_call_with_body_stream_error(self):
         """call_with_body_stream will abort the streamed body with an
         error if the stream raises an error during iteration.
-        
+
         The resulting request will still be a complete message.
         """
         requester, output = self.make_client_encoder_and_output()
@@ -2774,7 +2765,8 @@ class TestClientEncodingProtocolThree(TestSmartProtocol):
             yield 'aaa'
             yield 'bbb'
             raise Exception('Boom!')
-        requester.call_with_body_stream(('one arg',), stream_that_fails())
+        self.assertRaises(Exception, requester.call_with_body_stream,
+            ('one arg',), stream_that_fails())
         self.assertEquals(
             'bzr message 3 (bzr 1.6)\n' # protocol version
             '\x00\x00\x00\x02de' # headers
@@ -2803,6 +2795,17 @@ class StubMediumRequest(object):
         self.calls.append('finished_writing')
 
 
+interrupted_body_stream = (
+    'oS' # status flag (success)
+    's\x00\x00\x00\x08l4:argse' # args struct ('args,')
+    'b\x00\x00\x00\x03aaa' # body part ('aaa')
+    'b\x00\x00\x00\x03bbb' # body part ('bbb')
+    'oE' # status flag (error)
+    's\x00\x00\x00\x10l5:error5:Boom!e' # err struct ('error', 'Boom!')
+    'e' # EOM
+    )
+
+
 class TestResponseEncodingProtocolThree(tests.TestCase):
 
     def make_response_encoder(self):
@@ -2824,6 +2827,22 @@ class TestResponseEncodingProtocolThree(tests.TestCase):
             # end of message
             'e')
 
+    def test_send_broken_body_stream(self):
+        encoder, out_stream = self.make_response_encoder()
+        encoder._headers = {}
+        def stream_that_fails():
+            yield 'aaa'
+            yield 'bbb'
+            raise Exception('Boom!')
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('args',), body_stream=stream_that_fails())
+        encoder.send_response(response)
+        expected_response = (
+            'bzr message 3 (bzr 1.6)\n'  # protocol marker
+            '\x00\x00\x00\x02de' # headers dict (empty)
+            + interrupted_body_stream)
+        self.assertEqual(expected_response, out_stream.getvalue())
+
 
 class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """Tests for buffering of responses.
@@ -2833,6 +2852,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
     """
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         self.writes = []
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
@@ -2840,7 +2860,7 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.assertEqual(
             expected_count, len(self.writes),
             "Too many writes: %r" % (self.writes,))
-        
+
     def test_send_error_writes_just_once(self):
         """An error response is written to the medium all at once."""
         self.responder.send_error(Exception('An exception string.'))
@@ -2862,17 +2882,28 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder.send_response(response)
         self.assertWriteCount(1)
 
-    def test_send_response_with_body_stream_writes_once_per_chunk(self):
-        """A normal response with a stream body is written to the medium
-        writes to the medium once per chunk.
-        """
+    def test_send_response_with_body_stream_buffers_writes(self):
+        """A normal response with a stream body writes to the medium once."""
         # Construct a response with stream with 2 chunks in it.
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write 3 times: exactly once for each chunk, plus a final
-        # write to end the response.
-        self.assertWriteCount(3)
+        # We will write just once, despite the multiple chunks, due to
+        # buffering.
+        self.assertWriteCount(1)
+
+    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
+        """When there are many bytes (>1MB), multiple writes will occur rather
+        than buffering indefinitely.
+        """
+        # Construct a response with stream with ~1.5MB in it. This should
+        # trigger 2 writes, but not 3
+        onekib = '12345678' * 128
+        body_stream = [onekib] * (1024 + 512)
+        response = _mod_request.SuccessfulSmartServerResponse(
+            ('arg', 'arg'), body_stream=body_stream)
+        self.responder.send_response(response)
+        self.assertWriteCount(2)
 
 
 class TestSmartClientUnicode(tests.TestCase):
@@ -2915,7 +2946,7 @@ class TestSmartClientUnicode(tests.TestCase):
 
 class MockMedium(medium.SmartClientMedium):
     """A mock medium that can be used to test _SmartClient.
-    
+
     It can be given a series of requests to expect (and responses it should
     return for them).  It can also be told when the client is expected to
     disconnect a medium.  Expectations must be satisfied in the order they are
@@ -2933,7 +2964,7 @@ class MockMedium(medium.SmartClientMedium):
         super(MockMedium, self).__init__('dummy base')
         self._mock_request = _MockMediumRequest(self)
         self._expected_events = []
-        
+
     def expect_request(self, request_bytes, response_bytes,
                        allow_partial_read=False):
         """Expect 'request_bytes' to be sent, and reply with 'response_bytes'.
@@ -2942,13 +2973,13 @@ class MockMedium(medium.SmartClientMedium):
         called to send the request.  Similarly, no assumption is made about how
         many times read_bytes/read_line are called by protocol code to read a
         response.  e.g.::
-        
+
             request.accept_bytes('ab')
             request.accept_bytes('cd')
             request.finished_writing()
 
         and::
-        
+
             request.accept_bytes('abcd')
             request.finished_writing()
 
@@ -3139,7 +3170,7 @@ class Test_SmartClientVersionDetection(tests.TestCase):
     def test_first_response_is_error(self):
         """If the server replies with an error, then the version detection
         should be complete.
-        
+
         This test is very similar to test_version_two_server, but catches a bug
         we had in the case where the first reply was an error response.
         """
@@ -3185,7 +3216,7 @@ class Test_SmartClient(tests.TestCase):
 
 class LengthPrefixedBodyDecoder(tests.TestCase):
 
-    # XXX: TODO: make accept_reading_trailer invoke translate_response or 
+    # XXX: TODO: make accept_reading_trailer invoke translate_response or
     # something similar to the ProtocolBase method.
 
     def test_construct(self):
@@ -3227,7 +3258,7 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
         self.assertEqual(1, decoder.next_read_size())
         self.assertEqual('', decoder.read_pending_data())
         self.assertEqual('blarg', decoder.unused_data)
-        
+
     def test_accept_bytes_all_at_once_with_excess(self):
         decoder = protocol.LengthPrefixedBodyDecoder()
         decoder.accept_bytes('1\nadone\nunused')
@@ -3252,7 +3283,7 @@ class LengthPrefixedBodyDecoder(tests.TestCase):
 
 class TestChunkedBodyDecoder(tests.TestCase):
     """Tests for ChunkedBodyDecoder.
-    
+
     This is the body decoder used for protocol version two.
     """
 
@@ -3284,7 +3315,7 @@ class TestChunkedBodyDecoder(tests.TestCase):
         self.assertTrue(decoder.finished_reading)
         self.assertEqual(chunk_content, decoder.read_next_chunk())
         self.assertEqual('', decoder.unused_data)
-        
+
     def test_incomplete_chunk(self):
         """When there are less bytes in the chunk than declared by the length,
         then we haven't finished reading yet.
@@ -3522,7 +3553,7 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         # still work correctly.
         base_transport = remote.RemoteHTTPTransport('bzr+http://host/%7Ea/b')
         new_transport = base_transport.clone('c')
-        self.assertEqual('bzr+http://host/%7Ea/b/c/', new_transport.base)
+        self.assertEqual('bzr+http://host/~a/b/c/', new_transport.base)
         self.assertEqual(
             'c/',
             new_transport._client.remote_path_from_transport(new_transport))
@@ -3555,34 +3586,3 @@ class RemoteHTTPTransportTestCase(tests.TestCase):
         self.assertNotEquals(type(r), type(t))
 
 
-# TODO: Client feature that does get_bundle and then installs that into a
-# branch; this can be used in place of the regular pull/fetch operation when
-# coming from a smart server.
-#
-# TODO: Eventually, want to do a 'branch' command by fetching the whole
-# history as one big bundle.  How?  
-#
-# The branch command does 'br_from.sprout', which tries to preserve the same
-# format.  We don't necessarily even want that.  
-#
-# It might be simpler to handle cmd_pull first, which does a simpler fetch()
-# operation from one branch into another.  It already has some code for
-# pulling from a bundle, which it does by trying to see if the destination is
-# a bundle file.  So it seems the logic for pull ought to be:
-# 
-#  - if it's a smart server, get a bundle from there and install that
-#  - if it's a bundle, install that
-#  - if it's a branch, pull from there
-#
-# Getting a bundle from a smart server is a bit different from reading a
-# bundle from a URL:
-#
-#  - we can reasonably remember the URL we last read from 
-#  - you can specify a revision number to pull, and we need to pass it across
-#    to the server as a limit on what will be requested
-#
-# TODO: Given a URL, determine whether it is a smart server or not (or perhaps
-# otherwise whether it's a bundle?)  Should this be a property or method of
-# the transport?  For the ssh protocol, we always know it's a smart server.
-# For http, we potentially need to probe.  But if we're explicitly given
-# bzr+http:// then we can skip that for now. 

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the win32 walkdir extension."""
 
@@ -24,25 +24,12 @@ from bzrlib import (
     )
 
 
-class _Win32ReadDirFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._walkdirs_win32
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'bzrlib._Win32ReadDir'
-
-Win32ReadDirFeature = _Win32ReadDirFeature()
+win32_readdir_feature = tests.ModuleAvailableFeature('bzrlib._walkdirs_win32')
 
 
 class TestWin32Finder(tests.TestCaseInTempDir):
 
-    _test_needs_features = [Win32ReadDirFeature]
+    _test_needs_features = [win32_readdir_feature]
 
     def setUp(self):
         super(TestWin32Finder, self).setUp()

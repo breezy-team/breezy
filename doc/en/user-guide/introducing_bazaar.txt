@@ -18,7 +18,7 @@ documents, such as technical writers, web designers and translators.
 
 This guide takes you through installing Bazaar and how to use it,
 whether on your own or with a team of other people. If you're already
-familiar with distributed version control and want to dive straight in, 
+familiar with distributed version control and want to dive straight in,
 you may wish to skim this section and jump straight to
 `Learning more`_.
 
@@ -49,7 +49,7 @@ them a directory or *working tree* in which a person can make changes.
 To record or *commit* these changes, the user needs access to the central
 server and they need to ensure they have merged their work with the latest
 version stored before trying to commit. This approach is known as the
-centralized model. 
+centralized model.
 
 The centralized model has proven useful over time but it can have some notable
 drawbacks. Firstly, a centralized VCS requires that one is able to connect
@@ -87,7 +87,7 @@ Other advantages include:
      move them into the core
 
  * in companies, easier to work with distributed and outsourced teams.
-   
+
 For a detailed look at the advantages of distributed VCS tools over
 centralized VCS tools, see http://bazaar-vcs.org/BzrWhy.
 
@@ -123,7 +123,7 @@ additional information that helps you make the most of Bazaar once the core
 functionality is understood. This material can be read when required and in
 any order.
 
-If you are already familar with other version control tools,
+If you are already familiar with other version control tools,
 you may wish to get started quickly by reading the following documents:
 
  * `Bazaar in five minutes`_ - a mini-tutorial
@@ -135,7 +135,7 @@ details on the commands and options available.
 
 .. _Bazaar in five minutes: ../mini-tutorial/index.html
 .. _Bazaar Quick Start Card: ../quick-reference/quick-start-summary.svg
-.. _Bazaar User Reference: ../user-reference/bzr_man.html
+.. _Bazaar User Reference: ../user-reference/index.html
 
 We hope you find this manual useful. If you have suggestions on how it
 or the rest of Bazaar's documentation can be improved, please contact

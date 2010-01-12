@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import errno
 import re
 
 from bzrlib import (
+    bencode,
     errors,
     merge,
     merge3,
@@ -28,7 +29,6 @@ from bzrlib import (
     ui,
     workingtree,
 )
-from bzrlib.util import bencode
 
 
 class ShelfCreator(object):
@@ -37,19 +37,29 @@ class ShelfCreator(object):
     def __init__(self, work_tree, target_tree, file_list=None):
         """Constructor.
 
-        :param work_tree: The working tree to apply changes to
+        :param work_tree: The working tree to apply changes to. This is not
+            required to be locked - a tree_write lock will be taken out.
         :param target_tree: The tree to make the working tree more similar to.
+            This is not required to be locked - a read_lock will be taken out.
         :param file_list: The files to make more similar to the target.
         """
         self.work_tree = work_tree
         self.work_transform = transform.TreeTransform(work_tree)
-        self.target_tree = target_tree
-        self.shelf_transform = transform.TransformPreview(self.target_tree)
-        self.renames = {}
-        self.creation = {}
-        self.deletion = {}
-        self.iter_changes = work_tree.iter_changes(self.target_tree,
-                                                   specific_files=file_list)
+        try:
+            self.target_tree = target_tree
+            self.shelf_transform = transform.TransformPreview(self.target_tree)
+            try:
+                self.renames = {}
+                self.creation = {}
+                self.deletion = {}
+                self.iter_changes = work_tree.iter_changes(
+                    self.target_tree, specific_files=file_list)
+            except:
+                self.shelf_transform.finalize()
+                raise
+        except:
+            self.work_transform.finalize()
+            raise
 
     def iter_shelvable(self):
         """Iterable of tuples describing shelvable changes.
@@ -61,9 +71,16 @@ class ShelfCreator(object):
            ('rename', file_id, target_path, work_path)
            ('change kind', file_id, target_kind, work_kind, target_path)
            ('modify text', file_id)
+           ('modify target', file_id, target_target, work_target)
         """
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in self.iter_changes:
+            # don't shelve add of tree root.  Working tree should never
+            # lack roots, and bzr misbehaves when they do.
+            # FIXME ADHB (2009-08-09): should still shelve adds of tree roots
+            # when a tree root was deleted / renamed.
+            if kind[0] is None and names[1] == '':
+                continue
             if kind[0] is None or versioned[0] == False:
                 self.creation[file_id] = (kind[1], names[1], parents[1],
                                           versioned)
@@ -79,8 +96,33 @@ class ShelfCreator(object):
 
                 if kind[0] != kind [1]:
                     yield ('change kind', file_id, kind[0], kind[1], paths[0])
+                elif kind[0] == 'symlink':
+                    t_target = self.target_tree.get_symlink_target(file_id)
+                    w_target = self.work_tree.get_symlink_target(file_id)
+                    yield ('modify target', file_id, paths[0], t_target,
+                            w_target)
                 elif changed:
                     yield ('modify text', file_id)
+
+    def shelve_change(self, change):
+        """Shelve a change in the iter_shelvable format."""
+        if change[0] == 'rename':
+            self.shelve_rename(change[1])
+        elif change[0] == 'delete file':
+            self.shelve_deletion(change[1])
+        elif change[0] == 'add file':
+            self.shelve_creation(change[1])
+        elif change[0] in ('change kind', 'modify text'):
+            self.shelve_content_change(change[1])
+        elif change[0] == 'modify target':
+            self.shelve_modify_target(change[1])
+        else:
+            raise ValueError('Unknown change kind: "%s"' % change[0])
+
+    def shelve_all(self):
+        """Shelve all changes."""
+        for change in self.iter_shelvable():
+            self.shelve_change(change)
 
     def shelve_rename(self, file_id):
         """Shelve a file rename.
@@ -95,6 +137,23 @@ class ShelfCreator(object):
         s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
         shelf_parent = self.shelf_transform.trans_id_file_id(parents[1])
         self.shelf_transform.adjust_path(names[1], shelf_parent, s_trans_id)
+
+    def shelve_modify_target(self, file_id):
+        """Shelve a change of symlink target.
+
+        :param file_id: The file id of the symlink which changed target.
+        :param new_target: The target that the symlink should have due
+            to shelving.
+        """
+        new_target = self.target_tree.get_symlink_target(file_id)
+        w_trans_id = self.work_transform.trans_id_file_id(file_id)
+        self.work_transform.delete_contents(w_trans_id)
+        self.work_transform.create_symlink(new_target, w_trans_id)
+
+        old_target = self.work_tree.get_symlink_target(file_id)
+        s_trans_id = self.shelf_transform.trans_id_file_id(file_id)
+        self.shelf_transform.delete_contents(s_trans_id)
+        self.shelf_transform.create_symlink(old_target, s_trans_id)
 
     def shelve_lines(self, file_id, new_lines):
         """Shelve text changes to a file, using provided lines.
@@ -264,17 +323,13 @@ class Unshelver(object):
         tt.deserialize(records)
         return klass(tree, base_tree, tt, metadata.get('message'))
 
-    def make_merger(self):
+    def make_merger(self, task=None):
         """Return a merger that can unshelve the changes."""
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            target_tree = self.transform.get_preview_tree()
-            merger = merge.Merger.from_uncommitted(self.tree, target_tree, pb,
-                                                   self.base_tree)
-            merger.merge_type = merge.Merge3Merger
-            return merger
-        finally:
-            pb.finished()
+        target_tree = self.transform.get_preview_tree()
+        merger = merge.Merger.from_uncommitted(self.tree, target_tree,
+            task, self.base_tree)
+        merger.merge_type = merge.Merge3Merger
+        return merger
 
     def finalize(self):
         """Release all resources held by this Unshelver."""

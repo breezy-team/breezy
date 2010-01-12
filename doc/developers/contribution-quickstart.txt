@@ -1,0 +1,59 @@
+Bazaar Contribution in Five Minutes
+===================================
+
+Contributing to Bazaar requires attention to quality.  To ensure
+high-quality commits, the "Bazaar process" involves you in our
+code review and improvement activities.
+
+In brief, a contribution should include:
+
+1.  A brief rationale, including expected audience and use cases,
+    for inclusion in Bazaar.
+
+2.  A branch registered as a branch on Launchpad, and submitted as
+    a merge proposal.
+
+3.  The branch should include:
+
+    a.  implementation of the feature,
+
+    b.  user documentation (if the feature is visible in the user
+        interface) and/or developer documentation (if new or
+        changed APIs are provided), and
+
+    c.  tests to ensure the specification is correctly
+        implemented.
+
+For more information, see the `Bazaar Developer Guide <HACKING.html>`_.
+
+If you are not an experienced Bazaar contributor, why not ask for
+mentoring?  When you submit your merge proposal on Launchpad, simply say
+"I'd like to be mentored, please" in your submission.  Or ask for help
+with your contribution on the IRC channel, mailing list, or on Launchpad
+(https://answers.launchpad.net/bzr).
+
+
+Current Bazaar Mentors
+----------------------
+
+See the roster at http://bazaar-vcs.org/PatchPilot, although other
+developers may help too!
+
+
+Bazaar Mentors FAQ
+------------------
+
+1.  Why is this "Bazaar process" in HACKING.txt so complicated?
+
+    Answer: If we knew *that*, we'd simplify it!  We are working
+    on streamlining many aspects, but quality comes first.
+
+1.  What sort of things can a mentor help with?
+
+    Anything that's getting in your way, time permitting.  This includes
+    guiding you through the ``bzrlib`` API, explaining how to use our test
+    infrastructure, discussing possible designs for your bug fix or
+    feature, and so on.
+
+..
+   vim: ft=rst tw=74 ai

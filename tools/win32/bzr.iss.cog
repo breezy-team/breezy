@@ -16,10 +16,10 @@ AppName=Bazaar
 ; #/Python 2.5 compatibility code
 ;
 ; import bzrlib
-; try: 
+; try:
 ;     VERSION = bzrlib.__version__
 ;     AppVerName = 'Bazaar %s' % VERSION
-;     OutputBaseFilename = 'bzr-setup-%s' % VERSION
+;     OutputBaseFilename = 'bzr-%s-setup' % VERSION
 ; except:
 ;     VERSION = ''
 ;     AppVerName = 'Bazaar'
@@ -106,7 +106,7 @@ PrivilegesRequired=admin
 ;     cog.outl('Source: "tbzrshellext_x64.dll"; DestDir: "{app}"; Flags: ignoreversion restartreplace uninsrestartdelete; Components: tortoise; Check: IsWin64;')
 ;     cog.outl(r'Source: "plugins\qbzr\*"; DestDir: "{app}\plugins\qbzr"; Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete; Components: tortoise')
 ;
-;     cog.outl('Source: "%s\\doc\\index.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
+;     cog.outl('Source: "%s\\doc\\*.html"; DestDir: "{app}\\doc\\tbzr"; Flags: ignoreversion; Components: tortoise' % os.environ['TBZR'])
 ; ]]]
 ; [[[end]]]
 
@@ -134,6 +134,18 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 ;         else:
 ;             cog.msg('You have pycurl with SSL support, '
 ;                     'but CA Bundle (curl-ca-bundle.crt) not found!')
+; ]]]
+; [[[end]]]
+
+; imageformats plugins for PyQt4
+; [[[cog
+; plug_dir = os.path.join(os.path.dirname(cog.inFile), # $(bzr_src_root)/tools/win32
+;                         '..', '..', 'win32_bzr.exe', 'imageformats')
+; if os.path.isdir(plug_dir):
+;     cog.outl('Source: "imageformats\\*.*"; DestDir: "{app}\\imageformats"; '
+;              'Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;')
+; else:
+;     cog.msg('imageformats plugins for PyQt4 not found')
 ; ]]]
 ; [[[end]]]
 
@@ -211,7 +223,7 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Fl
 
 
 [UninstallRun]
-Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden;
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s /i: tbzrshellext_x86.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
@@ -316,7 +328,7 @@ begin
 end;
 
 
-function InitializeUninstall(): Boolean; 
+function InitializeUninstall(): Boolean;
 begin
     ShutdownTBZR;
     result := True;

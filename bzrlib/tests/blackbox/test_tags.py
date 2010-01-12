@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for commands related to tags"""
 
@@ -32,7 +32,7 @@ class TestTagging(TestCaseWithTransport):
 
     # as of 0.14, the default format doesn't do tags so we need to use a
     # specific format
-    
+
     def make_branch_and_tree(self, relpath):
         format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         return TestCaseWithTransport.make_branch_and_tree(self, relpath,

@@ -12,14 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Fake transport with some restrictions of Windows VFAT filesystems.
 
 VFAT on Windows has several restrictions that are not present on unix
-filesystems, which are imposed by this transport. 
+filesystems, which are imposed by this transport.
 
-VFAT is strictly 8-bit using codepages to represent non-ascii characters. 
+VFAT is strictly 8-bit using codepages to represent non-ascii characters.
 This implementation currently doesn't model the codepage but just insists
 on only ascii characters being written.
 
@@ -50,7 +50,7 @@ from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 
 # TODO: Perhaps don't inherit from TransportDecorator so that methods
 # which are not implemented here fail by default?
-    
+
 
 class FakeVFATTransportDecorator(TransportDecorator):
     """A decorator that can convert any transport to be readonly.

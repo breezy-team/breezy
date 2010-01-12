@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Wrapper for readdir which returns files ordered by inode."""
 
@@ -78,6 +78,7 @@ cdef extern from 'fcntl.h':
 
 
 cdef extern from 'Python.h':
+    int PyErr_CheckSignals() except -1
     char * PyString_AS_STRING(object)
     ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
@@ -155,7 +156,7 @@ cdef class _Stat:
         (mode, ino, dev, nlink, uid, gid, size, None(atime), mtime, ctime)
         """
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, None,
-                     self._mtime, self._ctime))
+                     self.st_mtime, self.st_ctime))
 
 
 from bzrlib import osutils
@@ -271,6 +272,12 @@ cdef class UTF8DirReader:
         return result
 
 
+cdef raise_os_error(int errnum, char *msg_prefix, path):
+    if errnum == EINTR:
+        PyErr_CheckSignals()
+    raise OSError(errnum, msg_prefix + strerror(errnum), path)
+
+
 cdef _read_dir(path):
     """Like os.listdir, this reads the contents of a directory.
 
@@ -298,16 +305,16 @@ cdef _read_dir(path):
         # passing full paths every time.
         orig_dir_fd = open(".", O_RDONLY, 0)
         if orig_dir_fd == -1:
-            raise OSError(errno, strerror(errno))
+            raise_os_error(errno, "open: ", ".")
         if -1 == chdir(path):
-            raise OSError(errno, strerror(errno))
+            raise_os_error(errno, "chdir: ", path)
     else:
         orig_dir_fd = -1
 
     try:
         the_dir = opendir(".")
         if NULL == the_dir:
-            raise OSError(errno, strerror(errno))
+            raise_os_error(errno, "opendir: ", path)
         try:
             result = []
             entry = &sentinel
@@ -319,6 +326,8 @@ cdef _read_dir(path):
                     errno = 0
                     entry = readdir(the_dir)
                     if entry == NULL and (errno == EAGAIN or errno == EINTR):
+                        if errno == EINTR:
+                            PyErr_CheckSignals()
                         # try again
                         continue
                     else:
@@ -330,7 +339,7 @@ cdef _read_dir(path):
                         # we consider ENOTDIR to be 'no error'.
                         continue
                     else:
-                        raise OSError(errno, strerror(errno))
+                        raise_os_error(errno, "readdir: ", path)
                 name = entry.d_name
                 if not (name[0] == c"." and (
                     (name[1] == 0) or 
@@ -340,10 +349,13 @@ cdef _read_dir(path):
                     stat_result = lstat(entry.d_name, &statvalue._st)
                     if stat_result != 0:
                         if errno != ENOENT:
-                            raise OSError(errno, strerror(errno))
+                            raise_os_error(errno, "lstat: ",
+                                path + "/" + entry.d_name)
                         else:
-                            kind = _missing
-                            statvalue = None
+                            # the file seems to have disappeared after being
+                            # seen by readdir - perhaps a transient temporary
+                            # file.  there's no point returning it.
+                            continue
                     # We append a 5-tuple that can be modified in-place by the C
                     # api:
                     # inode to sort on (to replace with top_path)
@@ -355,7 +367,7 @@ cdef _read_dir(path):
                         statvalue, None))
         finally:
             if -1 == closedir(the_dir):
-                raise OSError(errno, strerror(errno))
+                raise_os_error(errno, "closedir: ", path)
     finally:
         if -1 != orig_dir_fd:
             failed = False
@@ -363,7 +375,7 @@ cdef _read_dir(path):
                 # try to close the original directory anyhow
                 failed = True
             if -1 == close(orig_dir_fd) or failed:
-                raise OSError(errno, strerror(errno))
+                raise_os_error(errno, "return to orig_dir: ", "")
 
     return result
 

@@ -1,0 +1,121 @@
+###############################
+Руководство пользователя Bazaar
+###############################
+
+.. Пожалуйста отмечайте секции в подключаемых файлах следующим образом:
+..   уровень 1 ========
+..   уровень 2 --------
+..   уровень 3 ~~~~~~~~
+..   уровень 4 ^^^^^^^^ (лучше не использовать вложенность больше 3-х уровней)
+
+.. contents::
+   Содержание
+   :depth: 2
+.. sectnum::
+
+
+Введение
+########
+
+.. include:: introducing_bazaar.txt
+.. include:: core_concepts.txt
+.. include:: ../../en/user-guide/bazaar_workflows.txt
+
+
+Начинаем работать
+#################
+
+.. include:: ../../en/user-guide/installing_bazaar.txt
+.. include:: ../../en/user-guide/entering_commands.txt
+.. include:: ../../en/user-guide/getting_help.txt
+.. include:: ../../en/user-guide/configuring_bazaar.txt
+.. include:: ../../en/user-guide/using_aliases.txt
+.. include:: ../../en/user-guide/plugins.txt
+.. include:: zen.txt
+
+
+Личный контроль версий
+######################
+
+.. include:: ../../en/user-guide/solo_intro.txt
+.. include:: ../../en/user-guide/starting_a_project.txt
+.. include:: ../../en/user-guide/controlling_registration.txt
+.. include:: ../../en/user-guide/reviewing_changes.txt
+.. include:: ../../en/user-guide/recording_changes.txt
+.. include:: ../../en/user-guide/browsing_history.txt
+.. include:: ../../en/user-guide/releasing_a_project.txt
+.. include:: ../../en/user-guide/undoing_mistakes.txt
+
+
+Делимся с другими
+#################
+
+.. include:: ../../en/user-guide/partner_intro.txt
+.. include:: branching_a_project.txt
+.. include:: ../../en/user-guide/merging_changes.txt
+.. include:: ../../en/user-guide/resolving_conflicts.txt
+.. include:: ../../en/user-guide/annotating_changes.txt
+
+
+Сотрудничество в команде, централизованный стиль
+################################################
+
+.. include:: ../../en/user-guide/central_intro.txt
+.. include:: ../../en/user-guide/publishing_a_branch.txt
+.. include:: using_checkouts.txt
+.. include:: ../../en/user-guide/working_offline_central.txt
+.. include:: ../../en/user-guide/reusing_a_checkout.txt
+
+
+Сотрудничество в команде, распределенный стиль
+##############################################
+
+.. include:: ../../en/user-guide/distributed_intro.txt
+.. include:: ../../en/user-guide/organizing_branches.txt
+.. include:: ../../en/user-guide/using_gatekeepers.txt
+.. include:: ../../en/user-guide/sending_changes.txt
+
+
+Различные темы
+##############
+
+.. include:: ../../en/user-guide/part2_intro.txt
+.. include:: ../../en/user-guide/adv_merging.txt
+.. include:: ../../en/user-guide/shelving_changes.txt
+.. include:: ../../en/user-guide/filtered_views.txt
+.. include:: stacked.txt
+.. include:: ../../en/user-guide/server.txt
+.. include:: ../../en/user-guide/hooks.txt
+.. include:: ../../en/user-guide/version_info.txt
+
+
+Краткое описание некоторых популярных плагинов
+##############################################
+
+.. include:: ../../en/user-guide/bzrtools_plugin.txt
+.. include:: ../../en/user-guide/svn_plugin.txt
+.. include later looms_plugin.txt
+
+
+Интегрируем Bazaar в нашу среду
+###############################
+
+.. include:: ../../en/user-guide/web_browsing.txt
+.. include later - file_explorers.txt
+.. include later - desktop_integration.txt
+.. include later - editors_and_ides.txt
+.. include later - email.txt
+.. include:: ../../en/user-guide/bug_trackers.txt
+
+
+Приложения
+##########
+
+.. include:: specifying_revisions.txt
+.. include:: ../../en/user-guide/organizing_your_workspace.txt
+.. include:: ../../en/user-guide/shared_repository_layouts.txt
+.. include:: ../../en/user-guide/setting_up_email.txt
+.. include:: ../../en/user-guide/http_smart_server.txt
+.. include:: ../../en/user-guide/writing_a_plugin.txt
+
+.. |--| unicode:: U+2014

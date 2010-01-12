@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Directory lookup that uses Launchpad."""
@@ -63,15 +63,9 @@ class LaunchpadDirectory(object):
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
+        service = LaunchpadService.for_url(url)
         result = urlsplit(url)
-        # Perform an XMLRPC request to resolve the path
-        lp_instance = result[1]
-        if lp_instance == '':
-            lp_instance = None
-        elif lp_instance not in LaunchpadService.LAUNCHPAD_INSTANCE:
-            raise errors.InvalidURL(path=url)
         resolve = _request_factory(result[2].strip('/'))
-        service = LaunchpadService(lp_instance=lp_instance)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
@@ -79,7 +73,7 @@ class LaunchpadDirectory(object):
                 path=url, extra=fault.faultString)
 
         if 'launchpad' in debug.debug_flags:
-            trace.mutter("resolve_lp_path(%r) == %r", path, result)
+            trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
         if _lp_login is None:
             _lp_login = get_lp_login()

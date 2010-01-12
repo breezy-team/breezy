@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.tests import TestCase
 from bzrlib.deprecated_graph import node_distances, nodes_by_distance, Graph
@@ -45,7 +45,7 @@ class TestBase(TestCase):
                     descendants[ancestor] = set()
                 descendants[ancestor].add(node)
         return descendants
-    
+
     def test_distances(self):
         descendants = self.node_descendants()
         distances = node_distances(self.graph, descendants, 'A')
@@ -69,7 +69,7 @@ class TestBase(TestCase):
 class TestGraph(TestCase):
 
     def test_get_descendants(self):
-        # Graph objects let you get a descendants graph in 
+        # Graph objects let you get a descendants graph in
         # node: {direct-children:distance} which contains
         # known children, including ghost children
         graph = Graph()

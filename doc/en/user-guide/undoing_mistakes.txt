@@ -10,13 +10,13 @@ recover from mistakes as explained below.
 Dropping the revision history for a project
 -------------------------------------------
 
-If you accidently put the wrong tree under version control, simply
+If you accidentally put the wrong tree under version control, simply
 delete the ``.bzr`` directory.
 
 Deregistering a file or directory
 ---------------------------------
 
-If you accidently register a file using ``add`` that you
+If you accidentally register a file using ``add`` that you
 don't want version controlled, you can use the ``remove``
 command to tell Bazaar to forget about it.
 
@@ -97,8 +97,9 @@ Note: While the ``merge`` command is not introduced until the next
 chapter, it is worth noting now that ``uncommit`` restores any pending
 merges. (Running ``bzr status`` after ``uncommit`` will show these.)
 ``merge`` can also be used to effectively undo just a selected commit
-earlier in history. For more information on ``merge``, see `Merging changes`_
-in the next chapter and the Bazaar User Reference.
+earlier in history. For more information on ``merge``, see
+`Merging changes <merging_changes.html>`_ in the next chapter and the
+Bazaar User Reference.
 
 Undoing multiple commits
 ------------------------
@@ -132,7 +133,8 @@ For example::
 This will change your entire tree back to the state as of revision 19,
 which is probably only what you want if you haven't made any new commits
 since then. If you have, the ``revert`` would wipe them out as well. In that
-case, you probably want to use `Reverse cherrypicking`_ instead to
+case, you probably want to use `Reverse cherrypicking
+<adv_merging.html#reverse-cherrypicking>`_ instead to
 back out the bad fix.
 
 Note: As an alternative to using an absolute revision number (like 19), you can

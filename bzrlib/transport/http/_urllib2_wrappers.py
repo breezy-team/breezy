@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementaion of urllib2 tailored to bzr needs
 
@@ -46,7 +46,14 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
+import errno
 import httplib
+try:
+    import kerberos
+except ImportError:
+    have_kerberos = False
+else:
+    have_kerberos = True
 import socket
 import urllib
 import urllib2
@@ -64,6 +71,7 @@ from bzrlib import (
     trace,
     transport,
     ui,
+    urlutils,
     )
 
 
@@ -73,15 +81,23 @@ class _ReportingFileSocket(object):
         self.filesock = filesock
         self._report_activity = report_activity
 
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
 
     def read(self, size=1):
         s = self.filesock.read(size)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
-    def readline(self, size=-1):
-        s = self.filesock.readline(size)
-        self._report_activity(len(s), 'read')
+    def readline(self):
+        # This should be readline(self, size=-1), but httplib in python 2.4 and
+        #  2.5 defines a SSLFile wrapper whose readline method lacks the size
+        #  parameter.  So until we drop support for 2.4 and 2.5 and since we
+        #  don't *need* the size parameter we'll stay with readline(self)
+        #  --  vila 20090209
+        s = self.filesock.readline()
+        self.report_activity(len(s), 'read')
         return s
 
     def __getattr__(self, name):
@@ -94,17 +110,17 @@ class _ReportingSocket(object):
         self.sock = sock
         self._report_activity = report_activity
 
-    def send(self, s, *args):
-        self.sock.send(s, *args)
-        self._report_activity(len(s), 'write')
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
 
     def sendall(self, s, *args):
-        self.sock.send(s, *args)
-        self._report_activity(len(s), 'write')
+        self.sock.sendall(s, *args)
+        self.report_activity(len(s), 'write')
 
     def recv(self, *args):
         s = self.sock.recv(*args)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def makefile(self, mode='r', bufsize=-1):
@@ -211,8 +227,7 @@ class AbstractHTTPConnection:
     # we want to warn. But not below a given thresold.
     _range_warning_thresold = 1024 * 1024
 
-    def __init__(self,
-                 report_activity=None):
+    def __init__(self, report_activity=None):
         self._response = None
         self._report_activity = report_activity
         self._ranges_received_whole_file = None
@@ -246,7 +261,7 @@ class AbstractHTTPConnection:
         # Preserve our preciousss
         sock = self.sock
         self.sock = None
-        # Let httplib.HTTPConnection do its housekeeping 
+        # Let httplib.HTTPConnection do its housekeeping
         self.close()
         # Restore our preciousss
         self.sock = sock
@@ -352,7 +367,16 @@ class Request(urllib2.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        self.proxied_host = self.get_host()
+        host, port = urllib.splitport(self.get_host())
+        if port is None:
+            # We need to set the default port ourselves way before it gets set
+            # in the HTTP[S]Connection object at build time.
+            if self.type == 'https':
+                conn_class = HTTPSConnection
+            else:
+                conn_class = HTTPConnection
+            port = conn_class.default_port
+        self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
 
 
@@ -360,7 +384,7 @@ class _ConnectRequest(Request):
 
     def __init__(self, request):
         """Constructor
-        
+
         :param request: the first request sent to the proxied host, already
             processed by the opener (i.e. proxied_host is already set).
         """
@@ -534,6 +558,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         request.get_full_url(),
                         'Bad status line received',
                         orig_error=exc_val)
+                elif (isinstance(exc_val, socket.error) and len(exc_val.args)
+                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                    raise errors.ConnectionReset(
+                        "Connection lost while sending request.")
                 else:
                     # All other exception are considered connection related.
 
@@ -687,7 +715,7 @@ class HTTPSHandler(AbstractHTTPHandler):
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
-            # Establish the connection encryption 
+            # Establish the connection encryption
             connection.connect_to_origin()
             # Propagate the connection to the original request
             request.connection = connection
@@ -910,6 +938,8 @@ class ProxyHandler(urllib2.ProxyHandler):
 
         (scheme, user, password,
          host, port, path) = transport.ConnectedTransport._split_url(proxy)
+        if not host:
+            raise errors.InvalidURL(proxy, 'No host component')
 
         if request.proxy_auth == {}:
             # No proxy auth parameter are available, we are handling the first
@@ -938,7 +968,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     preventively set authentication headers after the first
     successful authentication.
 
-    This can be used for http and proxy, as well as for basic and
+    This can be used for http and proxy, as well as for basic, negotiate and
     digest authentications.
 
     This provides an unified interface for all authentication handlers
@@ -969,8 +999,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
       successful and the request authentication parameters have been updated.
     """
 
+    scheme = None
+    """The scheme as it appears in the server header (lower cased)"""
+
     _max_retry = 3
     """We don't want to retry authenticating endlessly"""
+
+    requires_username = True
+    """Whether the auth mechanism requires a username."""
 
     # The following attributes should be defined by daughter
     # classes:
@@ -982,6 +1018,22 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         # authentications so we initialize to None to indicate that we aren't
         # in such a cycle by default.
         self._retry_count = None
+
+    def _parse_auth_header(self, server_header):
+        """Parse the authentication header.
+
+        :param server_header: The value of the header sent by the server
+            describing the authenticaion request.
+
+        :return: A tuple (scheme, remainder) scheme being the first word in the
+            given header (lower cased), remainder may be None.
+        """
+        try:
+            scheme, remainder = server_header.split(None, 1)
+        except ValueError:
+            scheme = server_header
+            remainder = None
+        return (scheme.lower(), remainder)
 
     def update_auth(self, auth, key, value):
         """Update a value in auth marking the auth as modified if needed"""
@@ -1007,32 +1059,62 @@ class AbstractAuthHandler(urllib2.BaseHandler):
                 # Let's be ready for next round
                 self._retry_count = None
                 return None
-        server_header = headers.get(self.auth_required_header, None)
-        if server_header is None:
+        server_headers = headers.getheaders(self.auth_required_header)
+        if not server_headers:
             # The http error MUST have the associated
             # header. This must never happen in production code.
             raise KeyError('%s not found' % self.auth_required_header)
 
         auth = self.get_auth(request)
         auth['modified'] = False
-        if self.auth_match(server_header, auth):
-            # auth_match may have modified auth (by adding the
-            # password or changing the realm, for example)
-            if (request.get_header(self.auth_header, None) is not None
-                and not auth['modified']):
-                # We already tried that, give up
-                return None
+        # Put some common info in auth if the caller didn't
+        if auth.get('path', None) is None:
+            (protocol, _, _,
+             host, port, path) = urlutils.parse_url(request.get_full_url())
+            self.update_auth(auth, 'protocol', protocol)
+            self.update_auth(auth, 'host', host)
+            self.update_auth(auth, 'port', port)
+            self.update_auth(auth, 'path', path)
+        # FIXME: the auth handler should be selected at a single place instead
+        # of letting all handlers try to match all headers, but the current
+        # design doesn't allow a simple implementation.
+        for server_header in server_headers:
+            # Several schemes can be proposed by the server, try to match each
+            # one in turn
+            matching_handler = self.auth_match(server_header, auth)
+            if matching_handler:
+                # auth_match may have modified auth (by adding the
+                # password or changing the realm, for example)
+                if (request.get_header(self.auth_header, None) is not None
+                    and not auth['modified']):
+                    # We already tried that, give up
+                    return None
 
-            if auth.get('user', None) is None:
-                # Without a known user, we can't authenticate
-                return None
+                # Only the most secure scheme proposed by the server should be
+                # used, since the handlers use 'handler_order' to describe that
+                # property, the first handler tried takes precedence, the
+                # others should not attempt to authenticate if the best one
+                # failed.
+                best_scheme = auth.get('best_scheme', None)
+                if best_scheme is None:
+                    # At that point, if current handler should doesn't succeed
+                    # the credentials are wrong (or incomplete), but we know
+                    # that the associated scheme should be used.
+                    best_scheme = auth['best_scheme'] = self.scheme
+                if  best_scheme != self.scheme:
+                    continue
 
-            # Housekeeping
-            request.connection.cleanup_pipe()
-            response = self.parent.open(request)
-            if response:
-                self.auth_successful(request, response)
-            return response
+                if self.requires_username and auth.get('user', None) is None:
+                    # Without a known user, we can't authenticate
+                    return None
+
+                # Housekeeping
+                request.connection.cleanup_pipe()
+                # Retry the request with an authentication header added
+                response = self.parent.open(request)
+                if response:
+                    self.auth_successful(request, response)
+                return response
         # We are not qualified to handle the authentication.
         # Note: the authentication error handling will try all
         # available handlers. If one of them authenticates
@@ -1058,7 +1140,7 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         (digest's nonce is an example, digest's nonce_count is a
         *counter-example*). Such parameters must be updated by
         using the update_auth() method.
-        
+
         :param header: The authentication header sent by the server.
         :param auth: The auth parameters already known. They may be
              updated.
@@ -1094,14 +1176,15 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             and then during dialog with the server).
         """
         auth_conf = config.AuthenticationConfig()
-        user = auth['user']
-        password = auth['password']
+        user = auth.get('user', None)
+        password = auth.get('password', None)
         realm = auth['realm']
 
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
                                       port=auth['port'], path=auth['path'],
-                                      realm=realm)
+                                      realm=realm, ask=True,
+                                      prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
                 auth['protocol'], auth['host'], user, port=auth['port'],
@@ -1128,6 +1211,24 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         prompt += ' password'
         return prompt
 
+    def _build_username_prompt(self, auth):
+        """Build a prompt taking the protocol used into account.
+
+        The AuthHandler is used by http and https, we want that information in
+        the prompt, so we build the prompt from the authentication dict which
+        contains all the needed parts.
+
+        Also, http and proxy AuthHandlers present different prompts to the
+        user. The daughter classes should implements a public
+        build_username_prompt using this method.
+        """
+        prompt = '%s' % auth['protocol'].upper() + ' %(host)s'
+        realm = auth['realm']
+        if realm is not None:
+            prompt += ", Realm: '%s'" % realm
+        prompt += ' username'
+        return prompt
+
     def http_request(self, request):
         """Insert an authentication header if information is available"""
         auth = self.get_auth(request)
@@ -1138,11 +1239,60 @@ class AbstractAuthHandler(urllib2.BaseHandler):
     https_request = http_request # FIXME: Need test
 
 
+class NegotiateAuthHandler(AbstractAuthHandler):
+    """A authentication handler that handles WWW-Authenticate: Negotiate.
+
+    At the moment this handler supports just Kerberos. In the future,
+    NTLM support may also be added.
+    """
+
+    scheme = 'negotiate'
+    handler_order = 480
+    requires_username = False
+
+    def auth_match(self, header, auth):
+        scheme, raw_auth = self._parse_auth_header(header)
+        if scheme != self.scheme:
+            return False
+        self.update_auth(auth, 'scheme', scheme)
+        resp = self._auth_match_kerberos(auth)
+        if resp is None:
+            return False
+        # Optionally should try to authenticate using NTLM here
+        self.update_auth(auth, 'negotiate_response', resp)
+        return True
+
+    def _auth_match_kerberos(self, auth):
+        """Try to create a GSSAPI response for authenticating against a host."""
+        if not have_kerberos:
+            return None
+        ret, vc = kerberos.authGSSClientInit("HTTP@%(host)s" % auth)
+        if ret < 1:
+            trace.warning('Unable to create GSSAPI context for %s: %d',
+                auth['host'], ret)
+            return None
+        ret = kerberos.authGSSClientStep(vc, "")
+        if ret < 0:
+            trace.mutter('authGSSClientStep failed: %d', ret)
+            return None
+        return kerberos.authGSSClientResponse(vc)
+
+    def build_auth_header(self, auth, request):
+        return "Negotiate %s" % auth['negotiate_response']
+
+    def auth_params_reusable(self, auth):
+        # If the auth scheme is known, it means a previous
+        # authentication was successful, all information is
+        # available, no further checks are needed.
+        return (auth.get('scheme', None) == 'negotiate' and
+                auth.get('negotiate_response', None) is not None)
+
+
 class BasicAuthHandler(AbstractAuthHandler):
     """A custom basic authentication handler."""
 
+    scheme = 'basic'
     handler_order = 500
-
     auth_regexp = re.compile('realm="([^"]*)"', re.I)
 
     def build_auth_header(self, auth, request):
@@ -1150,22 +1300,25 @@ class BasicAuthHandler(AbstractAuthHandler):
         auth_header = 'Basic ' + raw.encode('base64').strip()
         return auth_header
 
+    def extract_realm(self, header_value):
+        match = self.auth_regexp.search(header_value)
+        realm = None
+        if match:
+            realm = match.group(1)
+        return match, realm
+
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
-        scheme = scheme.lower()
-        if scheme != 'basic':
+        scheme, raw_auth = self._parse_auth_header(header)
+        if scheme != self.scheme:
             return False
 
-        match = self.auth_regexp.search(raw_auth)
+        match, realm = self.extract_realm(raw_auth)
         if match:
-            realm = match.groups()
-            if scheme != 'basic':
-                return False
-
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth['user'] is None or auth['password'] is None:
+            if (auth.get('user', None) is None
+                or auth.get('password', None) is None):
                 user, password = self.get_user_password(auth)
                 self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
@@ -1199,7 +1352,8 @@ def get_new_cnonce(nonce, nonce_count):
 class DigestAuthHandler(AbstractAuthHandler):
     """A custom digest authentication handler."""
 
-    # Before basic as digest is a bit more secure
+    scheme = 'digest'
+    # Before basic as digest is a bit more secure and should be preferred
     handler_order = 490
 
     def auth_params_reusable(self, auth):
@@ -1209,9 +1363,8 @@ class DigestAuthHandler(AbstractAuthHandler):
         return auth.get('scheme', None) == 'digest'
 
     def auth_match(self, header, auth):
-        scheme, raw_auth = header.split(None, 1)
-        scheme = scheme.lower()
-        if scheme != 'digest':
+        scheme, raw_auth = self._parse_auth_header(header)
+        if scheme != self.scheme:
             return False
 
         # Put the requested authentication info into a dict
@@ -1230,7 +1383,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         self.update_auth(auth, 'scheme', scheme)
         self.update_auth(auth, 'realm', realm)
-        if auth['user'] is None or auth['password'] is None:
+        if auth.get('user', None) is None or auth.get('password', None) is None:
             user, password = self.get_user_password(auth)
             self.update_auth(auth, 'user', user)
             self.update_auth(auth, 'password', password)
@@ -1312,6 +1465,9 @@ class HTTPAuthHandler(AbstractAuthHandler):
     def build_password_prompt(self, auth):
         return self._build_password_prompt(auth)
 
+    def build_username_prompt(self, auth):
+        return self._build_username_prompt(auth)
+
     def http_error_401(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
@@ -1343,6 +1499,11 @@ class ProxyAuthHandler(AbstractAuthHandler):
         prompt = 'Proxy ' + prompt
         return prompt
 
+    def build_username_prompt(self, auth):
+        prompt = self._build_username_prompt(auth)
+        prompt = 'Proxy ' + prompt
+        return prompt
+
     def http_error_407(self, req, fp, code, msg, headers):
         return self.auth_required(req, headers)
 
@@ -1361,6 +1522,14 @@ class HTTPDigestAuthHandler(DigestAuthHandler, HTTPAuthHandler):
 
 class ProxyDigestAuthHandler(DigestAuthHandler, ProxyAuthHandler):
     """Custom proxy basic authentication handler"""
+
+
+class HTTPNegotiateAuthHandler(NegotiateAuthHandler, HTTPAuthHandler):
+    """Custom http negotiate authentication handler"""
+
+
+class ProxyNegotiateAuthHandler(NegotiateAuthHandler, ProxyAuthHandler):
+    """Custom proxy negotiate authentication handler"""
 
 
 class HTTPErrorProcessor(urllib2.HTTPErrorProcessor):
@@ -1427,8 +1596,10 @@ class Opener(object):
             ProxyHandler(),
             HTTPBasicAuthHandler(),
             HTTPDigestAuthHandler(),
+            HTTPNegotiateAuthHandler(),
             ProxyBasicAuthHandler(),
             ProxyDigestAuthHandler(),
+            ProxyNegotiateAuthHandler(),
             HTTPHandler,
             HTTPSHandler,
             HTTPDefaultErrorHandler,

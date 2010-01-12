@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for decorator functions"""
@@ -23,11 +23,15 @@ from bzrlib import decorators
 from bzrlib.tests import TestCase
 
 
-def create_decorator_sample(style, except_in_unlock=False):
+class SampleUnlockError(Exception):
+    pass
+
+
+def create_decorator_sample(style, unlock_error=None):
     """Create a DecoratorSample object, using specific lock operators.
 
     :param style: The type of lock decorators to use (fast/pretty/None)
-    :param except_in_unlock: If True, raise an exception during unlock
+    :param unlock_error: If specified, an error to raise from unlock.
     :return: An instantiated DecoratorSample object.
     """
 
@@ -58,10 +62,11 @@ def create_decorator_sample(style, except_in_unlock=False):
         def lock_write(self):
             self.actions.append('lock_write')
 
+        @decorators.only_raises(SampleUnlockError)
         def unlock(self):
-            if except_in_unlock:
+            if unlock_error:
                 self.actions.append('unlock_fail')
-                raise KeyError('during unlock')
+                raise unlock_error
             else:
                 self.actions.append('unlock')
 
@@ -119,28 +124,28 @@ class TestDecoratorActions(TestCase):
 
     def test_read_lock_raises_original_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
+                                      unlock_error=SampleUnlockError())
         self.assertRaises(TypeError, sam.fail_during_read)
         self.assertEqual(['lock_read', 'fail_during_read', 'unlock_fail'],
                          sam.actions)
 
     def test_write_lock_raises_original_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
+                                      unlock_error=SampleUnlockError())
         self.assertRaises(TypeError, sam.fail_during_write)
         self.assertEqual(['lock_write', 'fail_during_write', 'unlock_fail'],
                          sam.actions)
 
     def test_read_lock_raises_unlock_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
-        self.assertRaises(KeyError, sam.frob)
+                                      unlock_error=SampleUnlockError())
+        self.assertRaises(SampleUnlockError, sam.frob)
         self.assertEqual(['lock_read', 'frob', 'unlock_fail'], sam.actions)
 
     def test_write_lock_raises_unlock_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
-        self.assertRaises(KeyError, sam.bank, 'bar', biz='bing')
+                                      unlock_error=SampleUnlockError())
+        self.assertRaises(SampleUnlockError, sam.bank, 'bar', biz='bing')
         self.assertEqual(['lock_write', ('bank', 'bar', 'bing'),
                           'unlock_fail'], sam.actions)
 
@@ -276,3 +281,21 @@ class TestPrettyDecorators(TestCase):
         finally:
             decorators.needs_read_lock = cur_read
             decorators.needs_write_lock = cur_write
+
+
+class TestOnlyRaisesDecorator(TestCase):
+
+    def raise_ZeroDivisionError(self):
+        1/0
+        
+    def test_raises_approved_error(self):
+        decorator = decorators.only_raises(ZeroDivisionError)
+        decorated_meth = decorator(self.raise_ZeroDivisionError)
+        self.assertRaises(ZeroDivisionError, decorated_meth)
+
+    def test_quietly_logs_unapproved_errors(self):
+        decorator = decorators.only_raises(IOError)
+        decorated_meth = decorator(self.raise_ZeroDivisionError)
+        self.assertLogsError(ZeroDivisionError, decorated_meth)
+        
+

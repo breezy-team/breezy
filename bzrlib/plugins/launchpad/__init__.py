@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Launchpad.net integration plugin for Bazaar."""
 
@@ -21,10 +21,26 @@
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
-from bzrlib.branch import Branch
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    branch as _mod_branch,
+    trace,
+    )
+""")
+
 from bzrlib.commands import Command, Option, register_command
 from bzrlib.directory_service import directories
-from bzrlib.errors import BzrCommandError, NoPublicBranch, NotBranchError
+from bzrlib.errors import (
+    BzrCommandError,
+    DependencyNotPresent,
+    InvalidURL,
+    NoPublicBranch,
+    NotBranchError,
+    )
 from bzrlib.help_topics import topic_registry
 
 
@@ -34,8 +50,8 @@ class cmd_register_branch(Command):
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
     bugs or specifications.
-    
-    Before using this command you must register the product to which the
+
+    Before using this command you must register the project to which the
     branch belongs, and create an account for yourself on launchpad.net.
 
     arguments:
@@ -48,14 +64,18 @@ class cmd_register_branch(Command):
                     otherwise error.
 
     example:
-        bzr register-branch http://foo.com/bzr/fooproduct.mine \\
-                --product fooproduct
+        bzr register-branch http://foo.com/bzr/fooproject.mine \\
+                --project fooproject
     """
     takes_args = ['public_url?']
     takes_options = [
-         Option('product',
-                'Launchpad product short name to associate with the branch.',
+         Option('project',
+                'Launchpad project short name to associate with the branch.',
                 unicode),
+         Option('product',
+                'Launchpad product short name to associate with the branch.', 
+                unicode,
+                hidden=True),
          Option('branch-name',
                 'Short name for the branch; '
                 'by default taken from the last component of the url.',
@@ -79,7 +99,8 @@ class cmd_register_branch(Command):
 
     def run(self,
             public_url=None,
-            product='',
+            project='',
+            product=None,
             branch_name='',
             branch_title='',
             branch_description='',
@@ -87,23 +108,27 @@ class cmd_register_branch(Command):
             link_bug=None,
             dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import (
-            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
-            DryRunLaunchpadService)
+            BranchRegistrationRequest, BranchBugLinkRequest,
+            DryRunLaunchpadService, LaunchpadService)
         if public_url is None:
             try:
-                b = Branch.open_containing('.')[0]
+                b = _mod_branch.Branch.open_containing('.')[0]
             except NotBranchError:
                 raise BzrCommandError('register-branch requires a public '
                     'branch url - see bzr help register-branch.')
             public_url = b.get_public_branch()
             if public_url is None:
                 raise NoPublicBranch(b)
+        if product is not None:
+            project = product
+            trace.note('--product is deprecated; please use --project.')
+
 
         rego = BranchRegistrationRequest(branch_url=public_url,
                                          branch_name=branch_name,
                                          branch_title=branch_title,
                                          branch_description=branch_description,
-                                         product_name=product,
+                                         product_name=project,
                                          author_email=author,
                                          )
         linko = BranchBugLinkRequest(branch_url=public_url,
@@ -119,15 +144,14 @@ class cmd_register_branch(Command):
             # Run on service entirely in memory
             service = DryRunLaunchpadService()
         service.gather_user_credentials()
-        branch_object_url = rego.submit(service)
+        rego.submit(service)
         if link_bug:
-            link_bug_url = linko.submit(service)
+            linko.submit(service)
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
 
 
-# XXX: Make notes to test this.
 class cmd_launchpad_open(Command):
     """Open a Launchpad branch page in your web browser."""
 
@@ -139,20 +163,40 @@ class cmd_launchpad_open(Command):
         ]
     takes_args = ['location?']
 
+    def _possible_locations(self, location):
+        """Yield possible external locations for the branch at 'location'."""
+        yield location
+        try:
+            branch = _mod_branch.Branch.open_containing(location)[0]
+        except NotBranchError:
+            return
+        branch_url = branch.get_public_branch()
+        if branch_url is not None:
+            yield branch_url
+        branch_url = branch.get_push_location()
+        if branch_url is not None:
+            yield branch_url
+
+    def _get_web_url(self, service, location):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            NotLaunchpadBranch)
+        for branch_url in self._possible_locations(location):
+            try:
+                return service.get_web_url_from_branch_url(branch_url)
+            except (NotLaunchpadBranch, InvalidURL):
+                pass
+        raise NotLaunchpadBranch(branch_url)
+
     def run(self, location=None, dry_run=False):
-        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
-        from bzrlib.trace import note
-        import webbrowser
+        from bzrlib.plugins.launchpad.lp_registration import (
+            LaunchpadService)
         if location is None:
             location = u'.'
-        branch = Branch.open(location)
-        branch_url = branch.get_public_branch()
-        if branch_url is None:
-            raise NoPublicBranch(branch)
-        service = LaunchpadService()
-        web_url = service.get_web_url_from_branch_url(branch_url)
-        note('Opening %s in web browser' % web_url)
+        web_url = self._get_web_url(LaunchpadService(), location)
+        trace.note('Opening %s in web browser' % web_url)
         if not dry_run:
+            import webbrowser   # this import should not be lazy
+                                # otherwise bzr.exe lacks this module
             webbrowser.open(web_url)
 
 register_command(cmd_launchpad_open)
@@ -177,11 +221,13 @@ class cmd_launchpad_login(Command):
     aliases = ['lp-login']
     takes_args = ['name?']
     takes_options = [
+        'verbose',
         Option('no-check',
                "Don't check that the user name is valid."),
         ]
 
-    def run(self, name=None, no_check=False):
+    def run(self, name=None, no_check=False, verbose=False):
+        # This is totally separate from any launchpadlib login system.
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -190,16 +236,45 @@ class cmd_launchpad_login(Command):
             if username:
                 if check_account:
                     account.check_lp_login(username)
+                    if verbose:
+                        self.outf.write(
+                            "Launchpad user ID exists and has SSH keys.\n")
                 self.outf.write(username + '\n')
             else:
                 self.outf.write('No Launchpad user ID configured.\n')
                 return 1
         else:
+            name = name.lower()
             if check_account:
                 account.check_lp_login(name)
+                if verbose:
+                    self.outf.write(
+                        "Launchpad user ID exists and has SSH keys.\n")
             account.set_lp_login(name)
+            if verbose:
+                self.outf.write("Launchpad user ID set to '%s'.\n" % (name,))
 
 register_command(cmd_launchpad_login)
+
+
+# XXX: cmd_launchpad_mirror is untested
+class cmd_launchpad_mirror(Command):
+    """Ask Launchpad to mirror a branch now."""
+
+    aliases = ['lp-mirror']
+    takes_args = ['location?']
+
+    def run(self, location='.'):
+        from bzrlib.plugins.launchpad import lp_api
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        branch = _mod_branch.Branch.open(location)
+        service = LaunchpadService()
+        launchpad = lp_api.login(service)
+        lp_branch = lp_api.load_branch(launchpad, branch)
+        lp_branch.requestMirror()
+
+
+register_command(cmd_launchpad_mirror)
 
 
 def _register_directory():
@@ -209,28 +284,20 @@ def _register_directory():
 _register_directory()
 
 
-def test_suite():
-    """Called by bzrlib to fetch tests for this plugin"""
-    from unittest import TestSuite, TestLoader
-    from bzrlib.plugins.launchpad import (
-        test_account,
-        test_lp_directory,
-        test_lp_open,
-        test_lp_service,
-        test_register,
-        )
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_account',
+        'test_register',
+        'test_lp_api',
+        'test_lp_directory',
+        'test_lp_login',
+        'test_lp_open',
+        'test_lp_service',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 
-    loader = TestLoader()
-    suite = TestSuite()
-    for module in [
-        test_account,
-        test_register,
-        test_lp_directory,
-        test_lp_open,
-        test_lp_service,
-        ]:
-        suite.addTests(loader.loadTestsFromModule(module))
-    return suite
 
 _launchpad_help = """Integration with Launchpad.net
 
@@ -244,15 +311,21 @@ features to communicate with Launchpad:
       is then used by the 'lp:' transport to download your branches using
       bzr+ssh://.
 
+    * The 'lp:' transport uses Launchpad as a directory service: for example
+      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
+      projects and may be branched, logged, etc. You can also use the 'lp:'
+      transport to refer to specific branches, e.g. lp:~bzr/bzr/trunk.
+
+    * The 'lp:' bug tracker alias can expand launchpad bug numbers to their
+      URLs for use with 'bzr commit --fixes', e.g. 'bzr commit --fixes lp:12345'
+      will record a revision property that marks that revision as fixing
+      Launchpad bug 12345. When you push that branch to Launchpad it will
+      automatically be linked to the bug report.
+
     * The register-branch command tells Launchpad about the url of a
       public branch.  Launchpad will then mirror the branch, display
       its contents and allow it to be attached to bugs and other
       objects.
-
-    * The 'lp:' transport uses Launchpad as a directory service: for example
-      'lp:bzr' and 'lp:python' refer to the main branches of the relevant
-      projects and may be branched, logged, etc. You can also use the 'lp:'
-      transport to refer to specific branches, e.g. lp:///~bzr/bzr/trunk.
 
 For more information see http://help.launchpad.net/
 """

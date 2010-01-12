@@ -1,0 +1,87 @@
+*************************
+Bazaar Apport Integration
+*************************
+
+Bazaar can use Apport <http://launchpad.net/apport/> to capture data about
+unexpected errors (probably, bugs in Bazaar) and report them to the
+developers.
+
+This is only active for errors that are believed to be internal errors (ie
+bugs) not user or environmental errors.  (See the Developer Guide.)
+
+Consequences for users
+----------------------
+
+* They shouldn't normally need to see or copy&paste a traceback.
+
+* They will be able to inspect the files before sending them to be sure
+  there's no sensitive data included.
+
+* As at present, they'll need a Launchpad account to report bugs in the
+  normal way.
+
+
+Implementation notes
+--------------------
+
+The use of apport by Bazaar is independent of the configuration in the OS.
+For example in Ubuntu, apport is normally inactive in release builds, and
+normally excludes software not installed from a package.  We'll bypass
+both of them.
+
+Putting in this handler may mean that an OS-wide exception handler never
+sees the error, but that was true with our existing exception-printer.
+
+The user should have the option to: forget about the crash (and ignore the
+bug report), see the contents of the report, file a bug, or save the
+report to file later.  At the moment we just show them the filename and
+let them take it from there.
+
+The process is
+
+#. An exception reaches the top-level handler.
+
+#. We log it in apport-format to a file in ~/.bazaar/crash.
+
+#. We tell the user where that file is, and invite them to file a bug
+   report.
+
+This won't be active for bugs that cause the whole Python interpreter to
+crash.  This can be handled at the OS level.  The nice thing is that if
+apport is active system-wide, it will catch either exceptions in our
+in-process apport handler, or errors that crash the intrepreter.
+
+
+Future ideas
+------------
+
+* Capture apport data even for things not believed to be internal errors,
+  because sometimes they are in fact bugs.  Then the user can attach the
+  apport report later if they decide to file a bug.  There may be quite a
+  lot of them so we might need to limit the number that are stored, or do
+  this when a debug flag is set.  At the moment they go into .bzr.log and
+  that's probably ok to start with.
+
+* Raising an error from the breakin debugger should cause this to fire.
+
+* Developers looking at a crash on their own machine will probably in the
+  first instance just want to see the traceback. Apport files may be more
+  longwinded than our current output and might make the traceback scroll
+  off the screen.
+
+* Automatically trace messages (ie from .bzr.log) in the report.  We could
+  just include the whole file, but it may be long, and including the whole
+  thing has a greater risk of including sensitive data.
+
+* Ask the user what they want to do with the report: automatically file
+  it, look at it, see just the traceback, just be told where it is.  This
+  could be done through the UIFactory so that it can be done through a
+  graphical dialog.
+
+  However, if we've already had an unhandled error in this process there
+  may be problems in Bazaar that prevent us presenting a clean message...
+
+  Possibly these bugs are better reported in the next time bzr runs.
+
+..
+    vim: ft=rst

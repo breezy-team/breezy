@@ -1,6 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
-#   and others
+# Copyright (C) 2006, 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,28 +12,34 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Symbol versioning tests."""
 
 import warnings
 
 from bzrlib import symbol_versioning
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    deprecated_list,
+    deprecated_method,
+    )
 from bzrlib.tests import TestCase
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.zero_seven)
-def deprecated_function():
+@deprecated_function(deprecated_in((0, 7, 0)))
+def sample_deprecated_function():
     """Deprecated function docstring."""
     return 1
 
 
-a_deprecated_list = symbol_versioning.deprecated_list(symbol_versioning.zero_nine,
+a_deprecated_list = symbol_versioning.deprecated_list(deprecated_in((0, 9, 0)),
     'a_deprecated_list', ['one'], extra="Don't use me")
 
 
 a_deprecated_dict = symbol_versioning.DeprecatedDict(
-    symbol_versioning.zero_fourteen,
+    deprecated_in((0, 14, 0)),
     'a_deprecated_dict',
     dict(a=42),
     advice='Pull the other one!',
@@ -51,16 +55,16 @@ class TestDeprecationWarnings(TestCase):
         super(TestDeprecationWarnings, self).setUp()
         self._warnings = []
     
-    @symbol_versioning.deprecated_method(symbol_versioning.zero_seven)
+    @deprecated_method(deprecated_in((0, 7, 0)))
     def deprecated_method(self):
         """Deprecated method docstring.
-        
+
         This might explain stuff.
         """
         return 1
 
     @staticmethod
-    @symbol_versioning.deprecated_function(symbol_versioning.zero_seven)
+    @deprecated_function(deprecated_in((0, 7, 0)))
     def deprecated_static():
         """Deprecated static."""
         return 1
@@ -72,11 +76,11 @@ class TestDeprecationWarnings(TestCase):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning."
             "deprecated_static "
-            "was deprecated in version 0.7.", DeprecationWarning, 2)
+            "was deprecated in version 0.7.0.", DeprecationWarning, 2)
         expected_docstring = (
             'Deprecated static.\n'
             '\n'
-            'This function was deprecated in version 0.7.\n'
+            'This function was deprecated in version 0.7.0.\n'
             )
         self.check_deprecated_callable(
             expected_warning, expected_docstring,
@@ -88,13 +92,14 @@ class TestDeprecationWarnings(TestCase):
         expected_warning = (
             "bzrlib.tests.test_symbol_versioning."
             "TestDeprecationWarnings.deprecated_method "
-            "was deprecated in version 0.7.", DeprecationWarning, 2)
-        expected_docstring = ('Deprecated method docstring.\n'
-                              '        \n'
-                              '        This might explain stuff.\n'
-                              '        \n'
-                              '        This method was deprecated in version 0.7.\n'
-                              '        ')
+            "was deprecated in version 0.7.0.", DeprecationWarning, 2)
+        expected_docstring = (
+            'Deprecated method docstring.\n'
+            '\n'
+            '        This might explain stuff.\n'
+            '        \n'
+            '        This method was deprecated in version 0.7.0.\n'
+            '        ')
         self.check_deprecated_callable(expected_warning, expected_docstring,
                                        "deprecated_method",
                                        "bzrlib.tests.test_symbol_versioning",
@@ -102,20 +107,20 @@ class TestDeprecationWarnings(TestCase):
 
     def test_deprecated_function(self):
         expected_warning = (
-            "bzrlib.tests.test_symbol_versioning.deprecated_function "
-            "was deprecated in version 0.7.", DeprecationWarning, 2)
+            "bzrlib.tests.test_symbol_versioning.sample_deprecated_function "
+            "was deprecated in version 0.7.0.", DeprecationWarning, 2)
         expected_docstring = ('Deprecated function docstring.\n'
                               '\n'
-                              'This function was deprecated in version 0.7.\n'
+                              'This function was deprecated in version 0.7.0.\n'
                               )
         self.check_deprecated_callable(expected_warning, expected_docstring,
-                                       "deprecated_function",
+                                       "sample_deprecated_function",
                                        "bzrlib.tests.test_symbol_versioning",
-                                       deprecated_function)
+                                       sample_deprecated_function)
 
     def test_deprecated_list(self):
         expected_warning = (
-            "Modifying a_deprecated_list was deprecated in version 0.9."
+            "Modifying a_deprecated_list was deprecated in version 0.9.0."
             " Don't use me", DeprecationWarning, 3)
         old_warning_method = symbol_versioning.warn
         try:
@@ -153,7 +158,7 @@ class TestDeprecationWarnings(TestCase):
 
     def test_deprecated_dict(self):
         expected_warning = (
-            "access to a_deprecated_dict was deprecated in version 0.14."
+            "access to a_deprecated_dict was deprecated in version 0.14.0."
             " Pull the other one!", DeprecationWarning, 2)
         old_warning_method = symbol_versioning.warn
         try:
@@ -188,7 +193,7 @@ class TestDeprecationWarnings(TestCase):
             self.assertTrue(deprecated_callable.is_deprecated)
         finally:
             symbol_versioning.set_warning_method(old_warning_method)
-    
+
     def test_deprecated_passed(self):
         self.assertEqual(True, symbol_versioning.deprecated_passed(None))
         self.assertEqual(True, symbol_versioning.deprecated_passed(True))
@@ -201,19 +206,21 @@ class TestDeprecationWarnings(TestCase):
         """We can get a deprecation string for a method or function."""
         self.assertEqual('bzrlib.tests.test_symbol_versioning.'
             'TestDeprecationWarnings.test_deprecation_string was deprecated in '
-            'version 0.11.',
+            'version 0.11.0.',
             symbol_versioning.deprecation_string(
-            self.test_deprecation_string, symbol_versioning.zero_eleven))
+            self.test_deprecation_string,
+            deprecated_in((0, 11, 0))))
         self.assertEqual('bzrlib.symbol_versioning.deprecated_function was '
-            'deprecated in version 0.11.',
+            'deprecated in version 0.11.0.',
             symbol_versioning.deprecation_string(
                 symbol_versioning.deprecated_function,
-                symbol_versioning.zero_eleven))
+                deprecated_in((0, 11, 0))))
 
 
 class TestSuppressAndActivate(TestCase):
 
     def setUp(self):
+        TestCase.setUp(self)
         existing_filters = list(warnings.filters)
         def restore():
             warnings.filters[:] = existing_filters

@@ -13,7 +13,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+import re
+
+
+binary_files_re = 'Binary files (.*) and (.*) differ\n'
+
+
+class BinaryFiles(Exception):
+
+    def __init__(self, orig_name, mod_name):
+        self.orig_name = orig_name
+        self.mod_name = mod_name
+        Exception.__init__(self, 'Binary files section encountered.')
 
 
 class PatchSyntax(Exception):
@@ -57,6 +69,9 @@ class PatchConflict(Exception):
 def get_patch_names(iter_lines):
     try:
         line = iter_lines.next()
+        match = re.match(binary_files_re, line)
+        if match is not None:
+            raise BinaryFiles(match.group(1), match.group(2))
         if not line.startswith("--- "):
             raise MalformedPatchHeader("No orig name", line)
         else:
@@ -92,7 +107,7 @@ def parse_range(textrange):
     range = int(range)
     return (pos, range)
 
- 
+
 def hunk_from_header(line):
     import re
     matches = re.match(r'\@\@ ([^@]*) \@\@( (.*))?\n', line)
@@ -164,8 +179,6 @@ def parse_line(line):
         return InsertLine(line[1:])
     elif line.startswith("-"):
         return RemoveLine(line[1:])
-    elif line == NO_NL:
-        return NO_NL
     else:
         raise MalformedLine("Unknown line type", line)
 __pychecker__=""
@@ -261,14 +274,23 @@ def iter_hunks(iter_lines):
         yield hunk
 
 
-class Patch:
+class BinaryPatch(object):
     def __init__(self, oldname, newname):
         self.oldname = oldname
         self.newname = newname
+
+    def __str__(self):
+        return 'Binary files %s and %s differ\n' % (self.oldname, self.newname)
+
+
+class Patch(BinaryPatch):
+
+    def __init__(self, oldname, newname):
+        BinaryPatch.__init__(self, oldname, newname)
         self.hunks = []
 
     def __str__(self):
-        ret = self.get_header() 
+        ret = self.get_header()
         ret += "".join([str(h) for h in self.hunks])
         return ret
 
@@ -300,10 +322,10 @@ class Patch:
                 return None
             newpos += shift
         return newpos
-            
+
     def iter_inserted(self):
         """Iteraties through inserted lines
-        
+
         :return: Pair of line number, line
         :rtype: iterator of (int, InsertLine)
         """
@@ -318,14 +340,20 @@ class Patch:
 
 
 def parse_patch(iter_lines):
-    (orig_name, mod_name) = get_patch_names(iter_lines)
-    patch = Patch(orig_name, mod_name)
-    for hunk in iter_hunks(iter_lines):
-        patch.hunks.append(hunk)
-    return patch
+    iter_lines = iter_lines_handle_nl(iter_lines)
+    try:
+        (orig_name, mod_name) = get_patch_names(iter_lines)
+    except BinaryFiles, e:
+        return BinaryPatch(e.orig_name, e.mod_name)
+    else:
+        patch = Patch(orig_name, mod_name)
+        for hunk in iter_hunks(iter_lines):
+            patch.hunks.append(hunk)
+        return patch
 
 
 def iter_file_patch(iter_lines):
+    regex = re.compile(binary_files_re)
     saved_lines = []
     orig_range = 0
     for line in iter_lines:
@@ -336,7 +364,7 @@ def iter_file_patch(iter_lines):
         elif orig_range > 0:
             if line.startswith('-') or line.startswith(' '):
                 orig_range -= 1
-        elif line.startswith('--- '):
+        elif line.startswith('--- ') or regex.match(line):
             if len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []
@@ -370,7 +398,6 @@ def iter_lines_handle_nl(iter_lines):
 
 
 def parse_patches(iter_lines):
-    iter_lines = iter_lines_handle_nl(iter_lines)
     return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
 
 

@@ -50,7 +50,7 @@ Rules for aliases
    ``commit --no-strict``.
 
  * Aliases can override the standard behaviour of existing commands by giving
-   an alias name that is the same as the orignal command. For example, default
+   an alias name that is the same as the original command. For example, default
    commit is changed with ``commit=commit --strict``.
 
  * Aliases cannot refer to other aliases. In other words making a

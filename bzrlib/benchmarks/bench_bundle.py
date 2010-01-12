@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for bzr bundle performance."""
 
@@ -32,28 +32,28 @@ from bzrlib.workingtree import WorkingTree
 
 class BundleBenchmark(Benchmark):
     """Benchmarks for bzr bundle performance and bzr merge with a bundle."""
-   
+
     def test_create_bundle_known_kernel_like_tree(self):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
-        """ 
+        """
         self.make_kernel_like_committed_tree()
         self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
 
     def test_create_bundle_many_commit_tree (self):
-        """Create a bundle for a tree with many commits but no changes.""" 
+        """Create a bundle for a tree with many commits but no changes."""
         self.make_many_commit_tree()
         self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
 
     def test_create_bundle_heavily_merged_tree(self):
-        """Create a bundle for a heavily merged tree.""" 
+        """Create a bundle for a heavily merged tree."""
         self.make_heavily_merged_tree()
         self.time(self.run_bzr, ['bundle', '--revision', '..-1'])
-        
+
     def test_apply_bundle_known_kernel_like_tree(self):
         """Create a bundle for a kernel sized tree with no ignored, unknowns,
         or added and one commit.
-        """ 
+        """
         tree = self.make_kernel_like_committed_tree('tree')
 
         f = open('bundle', 'wb')
@@ -66,7 +66,7 @@ class BundleBenchmark(Benchmark):
         tree2 = self.make_branch_and_tree('branch_a')
         os.chdir('branch_a')
         self.time(self.run_bzr, ['merge', '../bundle'])
- 
+
 
 class BundleLibraryLevelWriteBenchmark(Benchmark):
     """ Benchmarks for the write_bundle library function. """
@@ -183,14 +183,14 @@ class BundleLibraryLevelInstallBenchmark(Benchmark):
 
 
 if __name__ == '__main__':
-    # USE the following if you want to regenerate the above test functions 
+    # USE the following if you want to regenerate the above test functions
     for treesize, treesize_h in [(5, "small"), (100, "moderate"),
                                  (1000, "big")]:
         for bundlefiles, bundlefiles_h in [(5, "few"), (100, "some")]:
             if bundlefiles > treesize:
                 continue
             for num_revisions in [1, 100]:
-                if (num_revisions >= 100 and 
+                if (num_revisions >= 100 and
                         (bundlefiles >= 100 or treesize >= 1000)):
                     # Skip the 100x100x? tests.
                     # And the 100x?x1000

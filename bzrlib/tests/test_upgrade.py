@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for upgrade of old trees.
 
-This file contains canned versions of some old trees, which are instantiated 
+This file contains canned versions of some old trees, which are instantiated
 and then upgraded to the new format."""
 
 # TODO queue for upgrade:
@@ -42,7 +42,7 @@ from bzrlib.upgrade import upgrade
 
 
 class TestUpgrade(TestCaseWithTransport):
-    
+
     def test_build_tree(self):
         """Test tree-building test helper"""
         self.build_tree_contents(_upgrade1_template)
@@ -105,11 +105,11 @@ class TestUpgrade(TestCaseWithTransport):
         """Upgrade v0.0.4 tree containing ghost references.
 
         That is, some of the parents of revisions mentioned in the branch
-        aren't present in the branch's storage. 
+        aren't present in the branch's storage.
 
-        This shouldn't normally happen in branches created entirely in 
+        This shouldn't normally happen in branches created entirely in
         bzr, but can happen in branches imported from baz and arch, or from
-        other systems, where the importer knows about a revision but not 
+        other systems, where the importer knows about a revision but not
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
@@ -125,13 +125,13 @@ class TestUpgrade(TestCaseWithTransport):
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
         upgrade('.')
-        # this is the path to the literal file. As format changes 
+        # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
         repo = bzrlib.repository.Repository.open('.')
         # it should have changed the format
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
-        # and we should be able to read the names for the file id 
+        # and we should be able to read the names for the file id
         # 'dir-20051005095101-da1441ea3fa6917a'
         repo.lock_read()
         self.addCleanup(repo.unlock)
@@ -172,6 +172,11 @@ class TestUpgrade(TestCaseWithTransport):
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
+    def test_upgrade_rich_root(self):
+        tree = self.make_branch_and_tree('tree', format='rich-root')
+        rev_id = tree.commit('first post')
+        upgrade('tree')
+
     def test_convert_branch5_branch6(self):
         branch = self.make_branch('branch', format='knit')
         branch.set_revision_history(['AB', 'CD'])
@@ -195,6 +200,16 @@ class TestUpgrade(TestCaseWithTransport):
         converter.convert(branch2.bzrdir, progress.DummyProgress())
         branch2 = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+
+    def test_convert_branch7_branch8(self):
+        branch = self.make_branch('branch', format='1.9')
+        target = bzrdir.format_registry.make_bzrdir('1.9')
+        target.set_branch_format(_mod_branch.BzrBranchFormat8())
+        converter = branch.bzrdir._format.get_converter(target)
+        converter.convert(branch.bzrdir, progress.DummyProgress())
+        branch = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
+        self.assertEqual({}, branch._get_all_reference_info())
 
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.

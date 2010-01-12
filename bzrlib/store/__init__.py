@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Could remember a bias towards whether a particular store is typically
 # compressed or not.
@@ -42,7 +42,7 @@ class StoreError(Exception):
 
 class Store(object):
     """This class represents the abstract storage layout for saving information.
-    
+
     Files can be added, but not modified once they are in.  Typically
     the hash is used as the name, or something else known to be unique,
     such as a UUID.
@@ -53,7 +53,7 @@ class Store(object):
 
     def get(self, fileid, suffix=None):
         """Returns a file reading from a particular entry.
-        
+
         If suffix is present, retrieve the named suffix for fileid.
         """
         raise NotImplementedError
@@ -71,8 +71,8 @@ class Store(object):
 
     def has_id(self, fileid, suffix=None):
         """Return True or false for the presence of fileid in the store.
-        
-        suffix, if present, is a per file suffix, i.e. for digital signature 
+
+        suffix, if present, is a per file suffix, i.e. for digital signature
         data."""
         raise NotImplementedError
 
@@ -102,7 +102,7 @@ class Store(object):
 
         :param other: Another Store object
         :param ids: A list of entry ids to be copied
-        :param pb: A ProgressBar object, if none is given, the default will be created.
+        :param pb: A ProgressTask object, if none is given, the default will be created.
         :param permit_failure: Allow missing entries to be ignored
         :return: (n_copied, [failed]) The number of entries copied successfully,
             followed by a list of entries which could not be copied (because they
@@ -136,10 +136,10 @@ class Store(object):
 
     def _copy_one(self, fileid, suffix, other, pb):
         """Most generic copy-one object routine.
-        
+
         Subclasses can override this to provide an optimised
         copy between their own instances. Such overriden routines
-        should call this if they have no optimised facility for a 
+        should call this if they have no optimised facility for a
         specific 'other'.
         """
         mutter('Store._copy_one: %r', fileid)
@@ -158,7 +158,7 @@ class TransportStore(Store):
         mutter("add store entry %r", fileid)
         names = self._id_to_names(fileid, suffix)
         if self._transport.has_any(names):
-            raise BzrError("store %r already contains id %r" 
+            raise BzrError("store %r already contains id %r"
                            % (self._transport.base, fileid))
 
         # Most of the time, just adding the file will work
@@ -199,7 +199,7 @@ class TransportStore(Store):
 
     def _get_name(self, fileid, suffix=None):
         """A special check, which returns the name of an existing file.
-        
+
         This is similar in spirit to 'has_id', but it is designed
         to return information about which file the store has.
         """
@@ -211,7 +211,7 @@ class TransportStore(Store):
     def _get(self, filename):
         """Return an vanilla file stream for clients to read from.
 
-        This is the body of a template method on 'get', and should be 
+        This is the body of a template method on 'get', and should be
         implemented by subclasses.
         """
         raise NotImplementedError
@@ -317,5 +317,5 @@ class TransportStore(Store):
         for relpath in self._transport.iter_files_recursive():
             count += 1
             total += self._transport.stat(relpath).st_size
-                
+
         return count, total

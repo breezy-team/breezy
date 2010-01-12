@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib.builtins import cmd_missing
@@ -33,6 +33,6 @@ class TestMissing(TestCaseWithConnectionHookedTransport):
         cmd = cmd_missing()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = self.make_utf8_encoded_stringio()
-        cmd.run(self.get_url('branch2'))
+        cmd.run_direct(self.get_url('branch2'))
         self.assertEquals(1, len(self.connections))
 

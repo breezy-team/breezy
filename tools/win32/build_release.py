@@ -4,10 +4,12 @@
 # When preparing a new release, make sure to set all of these to the latest
 # values.
 VERSIONS = {
-    'bzr': '1.11',
-    'qbzr': '0.9.6',
-    'bzrtools': '1.11.0',
-    'bzr-svn': '0.4.16',
+    'bzr': '1.17',
+    'qbzr': '0.12',
+    'bzrtools': '1.17.0',
+    'bzr-svn': '0.6.3',
+    'bzr-rewrite': '0.5.2',
+    'subvertpy': '0.6.8',
 }
 
 # This will be passed to 'make' to ensure we build with the right python
@@ -83,9 +85,10 @@ def update_bzr():
     bzr_dir = get_bzr_dir()
     if not os.path.isdir(bzr_dir):
         bzr_version = VERSIONS['bzr']
-        bzr_url = 'http://bazaar-vcs.org/bzr/bzr.' + bzr_version
+        # bzr_url = 'http://bazaar-vcs.org/bzr/bzr.' + bzr_version
+        bzr_url = 'lp:bzr/' + bzr_version
         print "Getting bzr release %s from %s" % (bzr_version, bzr_url)
-        call_or_fail([bzr(), 'co', bzr_url])
+        call_or_fail([bzr(), 'co', bzr_url, bzr_dir])
     else:
         print "Ensuring %s is up-to-date" % (bzr_dir,)
         call_or_fail([bzr(), 'update', bzr_dir])
@@ -123,8 +126,8 @@ def update_plugin_trunk(plugin_name):
 
 
 def _plugin_tag_name(plugin_name):
-    if plugin_name == 'bzr-svn':
-        return 'bzr-svn-' + VERSIONS['bzr-svn']
+    if plugin_name in ('bzr-svn', 'bzr-rewrite', 'subvertpy'):
+        return '%s-%s' % (plugin_name, VERSIONS[plugin_name])
     # bzrtools and qbzr use 'release-X.Y.Z'
     return 'release-' + VERSIONS[plugin_name]
 
@@ -132,7 +135,7 @@ def _plugin_tag_name(plugin_name):
 def update_plugin(plugin_name):
     release_dir = get_plugin_release_dir(plugin_name)
     if not os.path.isdir(plugin_name):
-        if plugin_name == 'bzr-svn':
+        if plugin_name in ('bzr-svn', 'bzr-rewrite'):
             # bzr-svn uses a different repo format
             call_or_fail([bzr(), 'init-repo', '--rich-root-pack', plugin_name])
         else:
@@ -189,9 +192,11 @@ def main(args):
     update_tbzr()
     clean_target()
     create_target()
+    install_plugin('subvertpy')
     install_plugin('bzrtools')
     install_plugin('qbzr')
     install_plugin('bzr-svn')
+    install_plugin('bzr-rewrite')
 
     build_installer()
 

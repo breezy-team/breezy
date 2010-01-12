@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -47,7 +47,7 @@ class TreeDelta(object):
 
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true. The text_modified
-    applies either to the the content of the file or the target of the
+    applies either to the content of the file or the target of the
     symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or
@@ -276,7 +276,7 @@ class _ChangeReporter(object):
     """Report changes between two trees"""
 
     def __init__(self, output=None, suppress_root_add=True,
-                 output_file=None, unversioned_filter=None):
+                 output_file=None, unversioned_filter=None, view_info=None):
         """Constructor
 
         :param output: a function with the signature of trace.note, i.e.
@@ -285,9 +285,12 @@ class _ChangeReporter(object):
             (i.e. when a tree has just been initted)
         :param output_file: If supplied, a file-like object to write to.
             Only one of output and output_file may be supplied.
-        :param unversioned_filter: A filter function to be called on 
+        :param unversioned_filter: A filter function to be called on
             unversioned files. This should return True to ignore a path.
             By default, no filtering takes place.
+        :param view_info: A tuple of view_name,view_files if only
+            items inside a view are to be reported on, or None for
+            no view filtering.
         """
         if output_file is not None:
             if output is not None:
@@ -310,6 +313,14 @@ class _ChangeReporter(object):
                               'unversioned': '?', # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
+        if view_info is None:
+            self.view_name = None
+            self.view_files = []
+        else:
+            self.view_name = view_info[0]
+            self.view_files = view_info[1]
+            self.output("Operating on whole tree but only reporting on "
+                        "'%s' view." % (self.view_name,))
 
     def report(self, file_id, paths, versioned, renamed, modified, exe_change,
                kind):
@@ -329,6 +340,9 @@ class _ChangeReporter(object):
         if is_quiet():
             return
         if paths[1] == '' and versioned == 'added' and self.suppress_root_add:
+            return
+        if self.view_files and not osutils.is_inside_any(self.view_files,
+            paths[1]):
             return
         if versioned == 'unversioned':
             # skip ignored unversioned files if needed.

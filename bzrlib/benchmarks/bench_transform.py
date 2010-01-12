@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for tree transform performance"""
 
@@ -28,7 +28,7 @@ class TransformBenchmark(Benchmark):
     """Benchmarks for `bzrlib.transform`"""
 
     def test_canonicalize_path(self):
-        """Canonicalizing paths should be fast.""" 
+        """Canonicalizing paths should be fast."""
         wt = self.make_kernel_like_tree(link_working=True)
         paths = []
         for dirpath, dirnames, filenames in os.walk('.'):

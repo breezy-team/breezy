@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for check on a repository with external references."""
 
@@ -33,10 +33,10 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         referring = self.make_branch_and_tree('referring')
         readonly_base = self.readonly_repository('base')
         referring.branch.repository.add_fallback_repository(readonly_base)
-        self.build_tree_contents([('referring/file', 'change')])
-        rev2_id = referring.commit('two')
+        local_tree = referring.branch.create_checkout('local')
+        self.build_tree_contents([('local/file', 'change')])
+        rev2_id = local_tree.commit('two')
         check_result = referring.branch.repository.check(
             referring.branch.repository.all_revision_ids())
         check_result.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertFalse("inconsistent parents" in log)
+        self.assertFalse("inconsistent parents" in self.get_log())

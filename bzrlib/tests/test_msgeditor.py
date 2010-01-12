@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test commit message editor.
 """
@@ -35,14 +35,15 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
-    iter_suite_tests,
-    probe_bad_non_ascii,
-    split_suite_by_re,
+    TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
+    multiply_tests,
+    probe_bad_non_ascii,
+    split_suite_by_re,
     )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
+from bzrlib.tests.EncodingAdapter import encoding_scenarios
 from bzrlib.trace import mutter
 
 
@@ -50,9 +51,7 @@ def load_tests(standard_tests, module, loader):
     """Parameterize the test for tempfile creation with different encodings."""
     to_adapt, result = split_suite_by_re(standard_tests,
         "test__create_temp_file_with_commit_template_in_unicode_dir")
-    for test in iter_suite_tests(to_adapt):
-        result.addTests(EncodingTestAdapter().adapt(test))
-    return result
+    return multiply_tests(to_adapt, encoding_scenarios, result)
 
 
 class MsgEditorTest(TestCaseWithTransport):
@@ -69,7 +68,7 @@ class MsgEditorTest(TestCaseWithTransport):
                 "filesystem encoding %s" % sys.getfilesystemencoding())
         working_tree.add(filename)
         return working_tree
-    
+
     def test_commit_template(self):
         """Test building a commit message template"""
         working_tree = self.make_uncommitted_tree()
@@ -79,6 +78,38 @@ class MsgEditorTest(TestCaseWithTransport):
 u"""\
 added:
   hell\u00d8
+""")
+
+    def make_multiple_pending_tree(self):
+        from bzrlib import config
+        config.GlobalConfig().set_user_option('email',
+                                              'Bilbo Baggins <bb@hobbit.net>')
+        tree = self.make_branch_and_tree('a')
+        tree.commit('Initial checkin.', timestamp=1230912900, timezone=0)
+        tree2 = tree.bzrdir.clone('b').open_workingtree()
+        tree.commit('Minor tweak.', timestamp=1231977840, timezone=0)
+        tree2.commit('Feature X work.', timestamp=1233186240, timezone=0)
+        tree3 = tree2.bzrdir.clone('c').open_workingtree()
+        tree2.commit('Feature X finished.', timestamp=1233187680, timezone=0)
+        tree3.commit('Feature Y, based on initial X work.',
+                     timestamp=1233285960, timezone=0)
+        tree.merge_from_branch(tree2.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
+        return tree
+
+    def test_commit_template_pending_merges(self):
+        """Test building a commit message template when there are pending
+        merges.  The commit message should show all pending merge revisions,
+        as does 'status -v', not only the merge tips.
+        """
+        working_tree = self.make_multiple_pending_tree()
+        template = msgeditor.make_commit_message_template(working_tree, None)
+        self.assertEqualDiff(template,
+u"""\
+pending merges:
+  Bilbo Baggins 2009-01-29 Feature X finished.
+    Bilbo Baggins 2009-01-28 Feature X work.
+  Bilbo Baggins 2009-01-30 Feature Y, based on initial X work.
 """)
 
     def test_commit_template_encoded(self):
@@ -260,7 +291,10 @@ if len(sys.argv) == 2:
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
         def warning(*args):
-            warnings.append(args[0] % args[1:])
+            if len(args) > 1:
+                warnings.append(args[0] % args[1:])
+            else:
+                warnings.append(args[0])
         _warning = trace.warning
         trace.warning = warning
         try:
@@ -322,7 +356,7 @@ if len(sys.argv) == 2:
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()
-        self.assertIs(None, 
+        self.assertIs(None,
             msgeditor.generate_commit_message_template(commit_obj))
 
     def test_generate_commit_message_template_hook(self):
@@ -332,5 +366,26 @@ if len(sys.argv) == 2:
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         commit_obj = commit.Commit()
-        self.assertEquals("save me some typing\n", 
+        self.assertEquals("save me some typing\n",
             msgeditor.generate_commit_message_template(commit_obj))
+
+
+# GZ 2009-11-17: This wants moving to osutils when the errno checking code is
+class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
+    """Ensuring workarounds enshrined in code actually serve a purpose"""
+
+    def test_subprocess_call_bad_file(self):
+        if sys.platform != "win32":
+            raise TestNotApplicable("Workarounds for windows only")
+        import subprocess, errno
+        ERROR_BAD_EXE_FORMAT = 193
+        file("textfile.txt", "w").close()
+        e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
+        # Python2.4 used the 'winerror' as the errno, which confuses a lot of
+        # our error trapping code. Make sure that we understand the mapping
+        # correctly.
+        if sys.version_info >= (2, 5):
+            self.assertEqual(e.errno, errno.ENOEXEC)
+            self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)
+        else:
+            self.assertEqual(e.errno, ERROR_BAD_EXE_FORMAT)

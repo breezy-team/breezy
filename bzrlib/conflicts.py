@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Move this into builtins
 
-# TODO: 'bzr resolve' should accept a directory name and work from that 
+# TODO: 'bzr resolve' should accept a directory name and work from that
 # point down
 
 import os
@@ -53,13 +53,12 @@ class cmd_conflicts(commands.Command):
     instead.  (This is useful for editing all files with text conflicts.)
 
     Use bzr resolve when you have fixed a problem.
-
-    See also bzr resolve.
     """
     takes_options = [
             Option('text',
                    help='List paths of files with text conflicts.'),
         ]
+    _see_also = ['resolve', 'conflict-types']
 
     def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
@@ -82,16 +81,15 @@ class cmd_resolve(commands.Command):
     before you should commit.
 
     Once you have fixed a problem, use "bzr resolve" to automatically mark
-    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    text conflicts as fixed, "bzr resolve FILE" to mark a specific conflict as
     resolved, or "bzr resolve --all" to mark all conflicts as resolved.
-
-    See also bzr conflicts.
     """
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
             Option('all', help='Resolve all conflicts in this tree.'),
             ]
+    _see_also = ['conflicts']
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
         if all:
@@ -150,9 +148,9 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False):
 
 
 def restore(filename):
-    """\
-    Restore a conflicted file to the state it was in before merging.
-    Only text restoration supported at present.
+    """Restore a conflicted file to the state it was in before merging.
+
+    Only text restoration is supported at present.
     """
     conflicted = False
     try:
@@ -228,7 +226,7 @@ class ConflictList(object):
         """Generator of stanzas"""
         for conflict in self:
             yield conflict.as_stanza()
-            
+
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
@@ -249,7 +247,7 @@ class ConflictList(object):
     def select_conflicts(self, tree, paths, ignore_misses=False,
                          recurse=False):
         """Select the conflicts associated with paths in a tree.
-        
+
         File-ids are also used for this.
         :return: a pair of ConflictLists: (not_selected, selected)
         """
@@ -299,7 +297,7 @@ class ConflictList(object):
                     print "%s is not conflicted" % path
         return new_conflicts, selected_conflicts
 
- 
+
 class Conflict(object):
     """Base class for all types of conflict"""
 
@@ -403,7 +401,7 @@ class HandledConflict(Conflict):
     """
 
     rformat = "%(class)s(%(action)r, %(path)r, %(file_id)r)"
-    
+
     def __init__(self, action, path, file_id=None):
         Conflict.__init__(self, path, file_id)
         self.action = action
@@ -428,14 +426,14 @@ class HandledPathConflict(HandledConflict):
     def __init__(self, action, path, conflict_path, file_id=None,
                  conflict_file_id=None):
         HandledConflict.__init__(self, action, path, file_id)
-        self.conflict_path = conflict_path 
+        self.conflict_path = conflict_path
         # warn turned off, because the factory blindly transfers the Stanza
         # values to __init__.
         self.conflict_file_id = osutils.safe_file_id(conflict_file_id,
                                                      warn=False)
-        
+
     def _cmp_list(self):
-        return HandledConflict._cmp_list(self) + [self.conflict_path, 
+        return HandledConflict._cmp_list(self) + [self.conflict_path,
                                                   self.conflict_file_id]
 
     def as_stanza(self):
@@ -443,7 +441,7 @@ class HandledPathConflict(HandledConflict):
         s.add('conflict_path', self.conflict_path)
         if self.conflict_file_id is not None:
             s.add('conflict_file_id', self.conflict_file_id.decode('utf8'))
-            
+
         return s
 
 
@@ -480,7 +478,7 @@ class ParentLoop(HandledPathConflict):
 
 
 class UnversionedParent(HandledConflict):
-    """An attempt to version an file whose parent directory is not versioned.
+    """An attempt to version a file whose parent directory is not versioned.
     Typically, the result of a merge where one tree unversioned the directory
     and the other added a versioned file to it.
     """

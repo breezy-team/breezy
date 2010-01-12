@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test the uncommit command."""
 
@@ -103,7 +103,7 @@ class TestUncommit(TestCaseWithTransport):
         uncommit.uncommit(b)
         self.assertEqual(len(b.revision_history()), 2)
         self.assertEqual(len(t_a.branch.revision_history()), 2)
-        # update A's tree to not have the uncomitted revision referenced.
+        # update A's tree to not have the uncommitted revision referenced.
         t_a.update()
         t_a.commit('commit 3b')
         self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)
@@ -233,14 +233,14 @@ class TestUncommit(TestCaseWithTransport):
         tree3.commit('unchanged', rev_id='c3')
 
         wt.merge_from_branch(tree2.branch)
-        wt.merge_from_branch(tree3.branch)
+        wt.merge_from_branch(tree3.branch, force=True)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
 
         wt.merge_from_branch(tree3.branch)
-        wt.merge_from_branch(tree2.branch)
+        wt.merge_from_branch(tree2.branch, force=True)
         wt.commit('merge b4, c4', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())

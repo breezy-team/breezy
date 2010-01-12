@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import collections
 from cStringIO import StringIO
@@ -36,7 +36,7 @@ class MessageHandler(object):
 
     def headers_received(self, headers):
         """Called when message headers are received.
-        
+
         This default implementation just stores them in self.headers.
         """
         self.headers = headers
@@ -67,11 +67,11 @@ class MessageHandler(object):
 
     def protocol_error(self, exception):
         """Called when there is a protocol decoding error.
-        
+
         The default implementation just re-raises the exception.
         """
         raise
-    
+
     def end_received(self):
         """Called when the end of the message is received."""
         # No-op by default.
@@ -134,7 +134,7 @@ class ConventionalRequestHandler(MessageHandler):
 
     def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(args[0], args[1:])
+        self.request_handler.args_received(args)
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
@@ -172,7 +172,7 @@ class ResponseHandler(object):
 
     def read_response_tuple(self, expect_body=False):
         """Reads and returns the response tuple for the current request.
-        
+
         :keyword expect_body: a boolean indicating if a body is expected in the
             response.  Some protocol versions needs this information to know
             when a response is finished.  If False, read_body_bytes should
@@ -283,8 +283,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
-                "please check connectivity and permissions",
-                "(and try -Dhpss if further diagnosis is required)")
+                "Unexpected end of message. "
+                "Please check connectivity and permissions, and report a bug "
+                "if problems persist.")
         self._protocol_decoder.accept_bytes(bytes)
 
     def protocol_error(self, exception):
@@ -292,7 +293,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         self.finished_reading = True
         self._medium_request.finished_reading()
         raise
-        
+
     def read_response_tuple(self, expect_body=False):
         """Read a response tuple from the wire."""
         self._wait_for_response_args()
@@ -307,8 +308,8 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
 
     def read_body_bytes(self, count=-1):
         """Read bytes from the body, decoding into a byte stream.
-        
-        We read all bytes at once to ensure we've checked the trailer for 
+
+        We read all bytes at once to ensure we've checked the trailer for
         errors, and then feed the buffer back as read_body_bytes is called.
 
         Like the builtin file.read in Python, a count of -1 (the default) means
@@ -329,7 +330,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpss' in debug.debug_flags:
+                if 'hpssdetail' in debug.debug_flags:
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()
@@ -352,5 +353,9 @@ def _translate_error(error_tuple):
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
         raise errors.LockFailed(*error_args[:2])
+    elif error_name == 'FileExists':
+        raise errors.FileExists(error_args[0])
+    elif error_name == 'NoSuchFile':
+        raise errors.NoSuchFile(error_args[0])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)

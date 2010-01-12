@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Routines for extracting all version information from a bzr branch."""
 
@@ -22,7 +22,6 @@ from bzrlib.osutils import local_time_offset, format_date
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
-    one_zero,
     )
 
 
@@ -100,7 +99,7 @@ class VersionInfoBuilder(object):
             if not self._check or self._working_tree is None:
                 return
 
-            delta = self._working_tree.changes_from(basis_tree, 
+            delta = self._working_tree.changes_from(basis_tree,
                                                     include_root=True)
 
             # Using a 2-pass algorithm for renames. This is because you might have

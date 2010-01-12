@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport for the local filesystem.
 
@@ -71,13 +71,13 @@ class LocalTransport(Transport):
             self._local_base = ''
             super(LocalTransport, self).__init__(base)
             return
-            
+
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -171,7 +171,7 @@ class LocalTransport(Transport):
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
+        :param mode: The mode for the newly created file,
                      None means just use the default
         """
 
@@ -204,7 +204,8 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
-            fp.write(bytes)
+            if bytes:
+                fp.write(bytes)
             fp.commit()
         finally:
             fp.close()
@@ -285,7 +286,8 @@ class LocalTransport(Transport):
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         def writer(fd):
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
@@ -370,7 +372,8 @@ class LocalTransport(Transport):
         file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
             result = self._check_mode_and_size(file_abspath, fd, mode=mode)
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         finally:
             os.close(fd)
         return result
@@ -397,7 +400,7 @@ class LocalTransport(Transport):
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
         try:
-            # *don't* call bzrlib.osutils.rename, because we want to 
+            # *don't* call bzrlib.osutils.rename, because we want to
             # detect errors on rename
             os.rename(path_from, self._abspath(rel_to))
         except (IOError, OSError),e:
@@ -536,7 +539,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -553,16 +556,13 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
 class LocalURLServer(Server):
     """A pretend server for local transports, using file:// urls.
-    
+
     Of course no actual server is required to access the local filesystem, so
     this just exists to tell the test code how to get to it.
     """
 
-    def setUp(self):
-        """Setup the server to service requests.
-        
-        :param decorated_transport: ignored by this implementation.
-        """
+    def start_server(self):
+        pass
 
     def get_url(self):
         """See Transport.Server.get_url."""

@@ -1,0 +1,1601 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="1052.3622"
+   height="744.09448"
+   id="svg2766"
+   sodipodi:version="0.32"
+   inkscape:version="0.46"
+   version="1.0"
+   sodipodi:docbase="/home/ian/bzr/repo.packs/bzr.quick-start-tweaks/doc/en/quick-reference"
+   sodipodi:docname="quick-start-summary.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   inkscape:export-filename="/home/ashtokalo/projects/bazaar/bzr/doc/ru/quick-reference/quick-start-summary.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300">
+  <defs
+     id="defs2768">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 372.04724 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="1052.3622 : 372.04724 : 1"
+       inkscape:persp3d-origin="526.18109 : 248.03149 : 1"
+       id="perspective299" />
+    <linearGradient
+       id="linearGradient3382">
+      <stop
+         style="stop-color:#2754b0;stop-opacity:1;"
+         offset="0"
+         id="stop3384" />
+      <stop
+         style="stop-color:#cecece;stop-opacity:1;"
+         offset="1"
+         id="stop3386" />
+    </linearGradient>
+    <linearGradient
+       gradientTransform="matrix(1.027169,0,0,1,118.6039,77.1455)"
+       gradientUnits="userSpaceOnUse"
+       y2="0"
+       x2="372.24512"
+       y1="69.037941"
+       x1="372.24512"
+       id="linearGradient2200"
+       xlink:href="#linearGradient5444"
+       inkscape:collect="always" />
+    <linearGradient
+       id="linearGradient5444">
+      <stop
+         style="stop-color:#729fcf;stop-opacity:1;"
+         offset="0"
+         id="stop5446" />
+      <stop
+         id="stop4547"
+         offset="0.5"
+         style="stop-color:#3465a4;stop-opacity:1;" />
+      <stop
+         style="stop-color:#204ab7;stop-opacity:1;"
+         offset="1"
+         id="stop5448" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5444"
+       id="linearGradient3338"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1.027169,0,0,1,417.31189,-41.4259)"
+       x1="372.24512"
+       y1="69.037941"
+       x2="372.24512"
+       y2="0" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient2733"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(0,26)"
+       x1="150.39197"
+       y1="104.09448"
+       x2="151.10625"
+       y2="155.92776" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3518"
+       x1="256.75"
+       y1="129.84448"
+       x2="256.75"
+       y2="194.09644"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3673"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(0,6.6792164e-6)"
+       spreadMethod="pad"
+       x1="15.75"
+       y1="133.84448"
+       x2="15.75"
+       y2="187.6799" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3727"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-3.238024e-5,1e-5)"
+       spreadMethod="pad"
+       x1="256.75"
+       y1="129.84448"
+       x2="256.75"
+       y2="183.6799" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3733"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-2.797738e-8,6.6341624e-6)"
+       spreadMethod="pad"
+       x1="256.75"
+       y1="129.84448"
+       x2="256.75"
+       y2="183.6799" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3745"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-3e-5,9.4726875e-6)"
+       spreadMethod="pad"
+       x1="256.75"
+       y1="129.84448"
+       x2="256.75"
+       y2="183.6799" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3841"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-3e-5,-18.00002)"
+       spreadMethod="pad"
+       x1="262.82553"
+       y1="400.06738"
+       x2="262.82553"
+       y2="453.20166" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3946"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(0,8.4764986e-6)"
+       spreadMethod="pad"
+       x1="255.99055"
+       y1="375.90359"
+       x2="255.99055"
+       y2="429.73904" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3980"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-3e-5,-18.00002)"
+       spreadMethod="pad"
+       x1="262.82553"
+       y1="400.06738"
+       x2="262.82553"
+       y2="453.20166" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3382"
+       id="linearGradient3984"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(-3e-5,1.0501135e-5)"
+       spreadMethod="pad"
+       x1="262.82553"
+       y1="400.06738"
+       x2="262.82553"
+       y2="453.20166" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="1"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1"
+     inkscape:cx="536.00788"
+     inkscape:cy="344.00003"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     width="1052.3622px"
+     height="744.09449px"
+     inkscape:showpageshadow="false"
+     showgrid="false"
+     inkscape:window-width="1280"
+     inkscape:window-height="969"
+     inkscape:window-x="0"
+     inkscape:window-y="24"
+     showguides="false"
+     inkscape:guide-bbox="true">
+    <sodipodi:guide
+       orientation="0,1"
+       position="736,32"
+       id="guide2724" />
+    <sodipodi:guide
+       orientation="1,0"
+       position="50,461"
+       id="guide3531" />
+    <sodipodi:guide
+       orientation="0,1"
+       position="285.55009,613.5"
+       id="guide3613" />
+    <sodipodi:guide
+       orientation="0,1"
+       position="514.90148,462.50001"
+       id="guide3659" />
+    <sodipodi:guide
+       orientation="0,1"
+       position="710.07801,344.0271"
+       id="guide3835" />
+    <sodipodi:guide
+       orientation="0,1"
+       position="283.27176,368.32923"
+       id="guide3940" />
+    <sodipodi:guide
+       orientation="1,0"
+       position="999,424"
+       id="guide3986" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata2771">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <cc:license
+           rdf:resource="http://creativecommons.org/licenses/GPL/2.0/" />
+        <dc:title>Bazaar-NG quick reference</dc:title>
+        <dc:date>2007-07-23</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Sabin Iacob</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:language>en</dc:language>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>bzr</rdf:li>
+            <rdf:li>bazaar</rdf:li>
+            <rdf:li>reference</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+      <cc:License
+         rdf:about="http://creativecommons.org/licenses/GPL/2.0/">
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Reproduction" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Distribution" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/Notice" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/DerivativeWorks" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/ShareAlike" />
+        <cc:requires
+           rdf:resource="http://web.resource.org/cc/SourceCode" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="opacity:1;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3988"
+       width="1052"
+       height="744"
+       x="0"
+       y="0.094482422"
+       sodipodi:insensitive="true" />
+    <rect
+       style="fill:url(#linearGradient3984);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3823"
+       width="229"
+       height="312"
+       x="770.50006"
+       y="400.59448"
+       ry="8.1168795"
+       rx="8.1168776" />
+    <rect
+       rx="8.1168776"
+       ry="8.1168776"
+       y="430.09451"
+       x="771"
+       height="282"
+       width="228"
+       id="rect3825"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <g
+       id="g3942">
+      <rect
+         style="fill:url(#linearGradient3946);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:0.99999988;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect3930"
+         width="229"
+         height="336"
+         x="50.5"
+         y="376.59448"
+         ry="8.1168776"
+         rx="8.1168776" />
+      <rect
+         rx="8.1168776"
+         ry="8.1168776"
+         y="406.09448"
+         x="51"
+         height="306"
+         width="228"
+         id="rect3932"
+         style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    </g>
+    <rect
+       style="opacity:1;fill:none;fill-opacity:0;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect2983"
+       width="1052.1749"
+       height="744"
+       x="0"
+       y="0.094482422"
+       ry="0" />
+    <g
+       id="g3675">
+      <rect
+         rx="8.1168776"
+         ry="8.1168776"
+         y="130.59448"
+         x="50.5"
+         height="230"
+         width="229"
+         id="rect3510"
+         style="fill:url(#linearGradient3673);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:0.99999994000000003;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      <rect
+         style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect3520"
+         width="228"
+         height="198.99998"
+         x="51"
+         y="161.0945"
+         ry="8.1168776"
+         rx="8.1168776" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="97.015038"
+       y="150.97269"
+       id="text3164"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3166"
+         x="97.015038"
+         y="150.97269">Инициализация</tspan></text>
+    <g
+       id="g3209"
+       transform="translate(1e-4,-2.2095387)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text2167"
+         y="193.07361"
+         x="63.794312"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan2171"
+           y="193.07361"
+           x="63.794312"
+           sodipodi:role="line">bzr init myproject</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3168"
+         y="179.83536"
+         x="58.209351"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="179.83536"
+           x="58.209351"
+           id="tspan3170"
+           sodipodi:role="line">Новый проект</tspan></text>
+    </g>
+    <g
+       id="g3215"
+       transform="translate(1e-4,-1.1449276)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text2175"
+         y="226.45848"
+         x="64.448624"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="226.45848"
+           x="64.448624"
+           id="tspan2177"
+           sodipodi:role="line">cd myproject</tspan><tspan
+           id="tspan2179"
+           y="237.53181"
+           x="64.448624"
+           sodipodi:role="line">bzr init</tspan><tspan
+           id="tspan2181"
+           y="248.60515"
+           x="64.448624"
+           sodipodi:role="line">bzr add .</tspan><tspan
+           id="tspan2183"
+           y="259.67847"
+           x="64.448624"
+           sodipodi:role="line" /></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3172"
+         y="213.22023"
+         x="58.174194"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="213.22023"
+           x="58.174194"
+           id="tspan3174"
+           sodipodi:role="line">Существующий проект</tspan></text>
+    </g>
+    <g
+       id="g3224"
+       transform="translate(1e-4,5.3457864e-2)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text2185"
+         y="277.48495"
+         x="64.448624"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="277.48495"
+           x="64.448624"
+           id="tspan2187"
+           sodipodi:role="line">bzr branch mp myproject</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3176"
+         y="266.6666"
+         x="58.209351"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="266.6666"
+           x="58.209351"
+           id="tspan3178"
+           sodipodi:role="line">Новая ветка</tspan></text>
+    </g>
+    <g
+       id="g3230"
+       transform="translate(1e-4,1.1181147)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3404"
+         y="308.44989"
+         x="64.448624"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="308.44989"
+           x="64.448624"
+           id="tspan3406"
+           sodipodi:role="line">bzr checkout mp myproject</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3408"
+         y="297.63153"
+         x="58.209351"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="297.63153"
+           x="58.209351"
+           id="tspan3410"
+           sodipodi:role="line">Новая рабочая копия</tspan></text>
+    </g>
+    <g
+       id="g3236"
+       transform="translate(1e-4,2.1828937)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3414"
+         y="341.88864"
+         x="64.448624"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           y="341.88864"
+           x="64.448624"
+           sodipodi:role="line"
+           id="tspan3424">bzr checkout --lightweight mp \</tspan><tspan
+           id="tspan2780"
+           y="352.96198"
+           x="64.448624"
+           sodipodi:role="line"> myproject</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3418"
+         y="328.59634"
+         x="58.209351"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="328.59634"
+           x="58.209351"
+           sodipodi:role="line"
+           id="tspan3422">Новая копия без истории</tspan></text>
+    </g>
+    <rect
+       rx="8.1168776"
+       ry="8.1168785"
+       y="130.59448"
+       x="302.5"
+       height="151"
+       width="236.99998"
+       id="rect3623"
+       style="fill:url(#linearGradient3733);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <rect
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3625"
+       width="236"
+       height="120"
+       x="303"
+       y="161.09448"
+       ry="8.1168776"
+       rx="8.1168776" />
+    <text
+       xml:space="preserve"
+       style="font-size:16.82818985px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="295.88339"
+       y="158.7634"
+       id="text3563"
+       sodipodi:linespacing="100%"
+       transform="scale(1.0517619,0.9507855)"><tspan
+         sodipodi:role="line"
+         id="tspan3565"
+         x="295.88339"
+         y="158.7634">Операции с файлами</tspan></text>
+    <g
+       id="g3243"
+       transform="matrix(1.0549376,0,0,1,-32.744004,-1.9729054)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3610"
+         y="203.36041"
+         x="332.47345"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan3612"
+           y="203.36041"
+           x="332.47345"
+           sodipodi:role="line">bzr add foo.py</tspan><tspan
+           y="214.43375"
+           x="332.47345"
+           sodipodi:role="line"
+           id="tspan3618">bzr add bar/</tspan></text>
+      <text
+         sodipodi:linespacing="110%"
+         id="text3614"
+         y="179.59872"
+         x="326.88849"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="179.59872"
+           x="326.88849"
+           id="tspan3616"
+           sodipodi:role="line">Добавить файл для</tspan><tspan
+           id="tspan3047"
+           y="192.79872"
+           x="326.88849"
+           sodipodi:role="line">контроля</tspan></text>
+    </g>
+    <g
+       id="g3250"
+       transform="matrix(1.0549376,0,0,1,-32.744004,7.0676505)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3622"
+         y="233.11641"
+         x="331.78732"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan3624"
+           y="233.11641"
+           x="331.78732"
+           sodipodi:role="line">bzr remove --keep foo.py</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3626"
+         y="221.35472"
+         x="326.20236"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="221.35472"
+           x="326.20236"
+           id="tspan3628"
+           sodipodi:role="line">Отменить контроль файла</tspan></text>
+    </g>
+    <g
+       id="g3256"
+       transform="matrix(1.0549376,0,0,1,-32.744004,4.1322158)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text3632"
+         y="266.08142"
+         x="331.81714"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan3634"
+           y="266.08142"
+           x="331.81714"
+           sodipodi:role="line">bzr remove --force foo.py</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text3636"
+         y="253.26308"
+         x="326.23218"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           id="tspan3049"
+           y="253.26308"
+           x="326.23218"
+           sodipodi:role="line">Отменить контроль и удалить</tspan></text>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="103.15869"
+       y="396.96985"
+       id="text3786"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3788"
+         x="103.15869"
+         y="396.96985">Информация</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.69986"
+       y="437.78763"
+       id="text3234"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         x="62.69986"
+         y="437.78763"
+         id="tspan3236">bzr status</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="57.114899"
+       y="424.54938"
+       id="text3238"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3240"
+         x="57.114899"
+         y="424.54938">Состояние рабочего дерева</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.72134"
+       y="470.33978"
+       id="text3244"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         x="62.72134"
+         y="470.33978"
+         id="tspan3250">bzr log</tspan><tspan
+         id="tspan3294"
+         sodipodi:role="line"
+         x="62.72134"
+         y="481.41312">bzr log foo.py</tspan><tspan
+         sodipodi:role="line"
+         x="62.72134"
+         y="492.48645"
+         id="tspan3252" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.446926"
+       y="457.04749"
+       id="text3254"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3256"
+         x="56.446926"
+         y="457.04749">Журнал ревизий</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="63.35416"
+       y="515.93146"
+       id="text3260"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3262"
+         x="63.35416"
+         y="515.93146">bzr diff</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="57.114902"
+       y="502.69315"
+       id="text3264"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3266"
+         x="57.114902"
+         y="502.69315">Изменения в рабочем дереве</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.744778"
+       y="626.90851"
+       id="text3298"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3300"
+         x="62.744778"
+         y="626.90851">bzr missing</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.50552"
+       y="613.67029"
+       id="text3302"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3304"
+         x="56.50552"
+         y="613.67029">Отсутствующие ревизии</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.7565"
+       y="703.50507"
+       id="text3308"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3310"
+         x="62.7565"
+         y="703.50507">bzr cat -r3 foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.517242"
+       y="678.26678"
+       id="text3312"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         x="56.517242"
+         y="678.26678"
+         id="tspan3043">Содержимое foo.py в</tspan><tspan
+         sodipodi:role="line"
+         x="56.517242"
+         y="690.26678"
+         id="tspan3046">ревизии 3</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.686188"
+       y="659.00696"
+       id="text3318"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3320"
+         x="62.686188"
+         y="659.00696">bzr info</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.44693"
+       y="648.1886"
+       id="text3322"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3324"
+         x="56.44693"
+         y="648.1886">Информация о ветке</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.879551"
+       y="548.42957"
+       id="text3330"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3332"
+         x="62.879551"
+         y="548.42957">bzr diff foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="56.640293"
+       y="535.19128"
+       id="text3334"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3336"
+         x="56.640293"
+         y="535.19128">Изменения в foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="62.000778"
+       y="592.45911"
+       id="text3699"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan3701"
+         x="62.000778"
+         y="592.45911">bzr diff -r1..3 foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="55.76152"
+       y="567.64081"
+       id="text3703"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         x="55.76152"
+         y="567.64081"
+         id="tspan2746">Изменения в foo.py между</tspan><tspan
+         sodipodi:role="line"
+         x="55.76152"
+         y="579.64081"
+         id="tspan3039">ревизиями 1 and 3</tspan></text>
+    <rect
+       style="fill:url(#linearGradient3727);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect3685"
+       width="188.99971"
+       height="151"
+       x="560.50012"
+       y="130.59448"
+       ry="8.1168785"
+       rx="8.1168776" />
+    <rect
+       rx="8.1168776"
+       ry="8.1168776"
+       y="161.09448"
+       x="561"
+       height="120"
+       width="188"
+       id="rect3687"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="577.6239"
+       y="150.94995"
+       id="text4134"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4136"
+         x="577.6239"
+         y="150.94995">Контроль версий</tspan></text>
+    <g
+       id="g3262"
+       transform="translate(16.728023,-2.4445851)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4140"
+         y="190.88873"
+         x="559.03162"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan4142"
+           y="190.88873"
+           x="559.03162"
+           sodipodi:role="line">bzr commit foo.py -m &quot;foo&quot;</tspan><tspan
+           y="201.96207"
+           x="559.03162"
+           sodipodi:role="line"
+           id="tspan4144">bzr commit -m &quot;the rest&quot;</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4146"
+         y="180.0704"
+         x="553.44666"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="180.0704"
+           x="553.44666"
+           id="tspan4148"
+           sodipodi:role="line">Фиксировать изменения</tspan></text>
+    </g>
+    <g
+       id="g3269"
+       transform="translate(16.728023,7.3032391)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4152"
+         y="234.2924"
+         x="558.37482"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan4154"
+           y="234.2924"
+           x="558.37482"
+           sodipodi:role="line">bzr uncommit</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4156"
+         y="209.47408"
+         x="552.78986"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="209.47408"
+           x="552.78986"
+           id="tspan4158"
+           sodipodi:role="line">Откатить последную</tspan><tspan
+           id="tspan3045"
+           y="221.47408"
+           x="552.78986"
+           sodipodi:role="line">фиксацию</tspan></text>
+    </g>
+    <g
+       id="g3275"
+       transform="translate(16.728023,6.3548354)">
+      <text
+         sodipodi:linespacing="110%"
+         id="text4162"
+         y="263.73889"
+         x="558.37488"
+         style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+         xml:space="preserve"><tspan
+           id="tspan4164"
+           y="263.73889"
+           x="558.37488"
+           sodipodi:role="line">bzr revert</tspan></text>
+      <text
+         sodipodi:linespacing="100%"
+         id="text4166"
+         y="250.50064"
+         x="552.78992"
+         style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="250.50064"
+           x="552.78992"
+           id="tspan4168"
+           sodipodi:role="line">Отменить изменения</tspan></text>
+    </g>
+    <g
+       id="g3741">
+      <rect
+         style="fill:url(#linearGradient3745);fill-opacity:1;fill-rule:nonzero;stroke:#cecece;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+         id="rect3735"
+         width="229"
+         height="254"
+         x="770.50006"
+         y="130.59448"
+         ry="8.1168795"
+         rx="8.1168776" />
+      <rect
+         rx="8.1168776"
+         ry="8.1168776"
+         y="161.09448"
+         x="771"
+         height="223"
+         width="228"
+         id="rect3737"
+         style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:0.99999994;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="825.24872"
+       y="150.97269"
+       id="text4236"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4238"
+         x="825.24872"
+         y="150.97269">Объединение</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="783.75763"
+       y="190.86407"
+       id="text4242"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         x="783.75763"
+         y="190.86407"
+         id="tspan4244">cd myproject</tspan><tspan
+         sodipodi:role="line"
+         x="783.75763"
+         y="201.93741"
+         id="tspan4296">bzr merge ../myproject-foo</tspan><tspan
+         sodipodi:role="line"
+         x="783.75763"
+         y="213.01074"
+         id="tspan4298">bzr commit</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="778.17267"
+       y="177.62582"
+       id="text4246"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4248"
+         x="778.17267"
+         y="177.62582">Объединение двух веток</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="784.44708"
+       y="255.5088"
+       id="text4252"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan4254"
+         x="784.44708"
+         y="255.5088">cd myproject-foo</tspan><tspan
+         sodipodi:role="line"
+         x="784.44708"
+         y="266.58215"
+         id="tspan4258">bzr pull ../myproject</tspan><tspan
+         sodipodi:role="line"
+         x="784.44708"
+         y="277.65549"
+         id="tspan4260" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="778.17267"
+       y="232.27057"
+       id="text4262"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4264"
+         x="778.17267"
+         y="232.27057">Получить изменения из </tspan><tspan
+         sodipodi:role="line"
+         x="778.17267"
+         y="244.27057"
+         id="tspan2726">myproject</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="784.41193"
+       y="300.93793"
+       id="text4268"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan4270"
+         x="784.41193"
+         y="300.93793">bzr update</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="778.17267"
+       y="287.7934"
+       id="text4272"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4274"
+         x="778.17267"
+         y="287.7934">Обновить рабочую копию</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="785.4549"
+       y="345.02151"
+       id="text4278"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan4280"
+         x="785.4549"
+         y="345.02151">bzr resolve</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="779.21564"
+       y="320.14914"
+       id="text4282"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         x="779.21564"
+         y="320.14914"
+         id="tspan3055">Автоопределение решенных</tspan><tspan
+         sodipodi:role="line"
+         x="779.21564"
+         y="332.14914"
+         id="tspan2692">конфликтов</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="784.65216"
+       y="375.57367"
+       id="text4288"
+       sodipodi:linespacing="110%"><tspan
+         id="tspan4290"
+         sodipodi:role="line"
+         x="784.65216"
+         y="375.57367">bzr resolve foo.py</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="778.4129"
+       y="364.28137"
+       id="text4292"
+       sodipodi:linespacing="100%"><tspan
+         id="tspan4294"
+         sodipodi:role="line"
+         x="778.4129"
+         y="364.28137">Снять пометку о конфликте</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:16px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="830.59387"
+       y="420.96985"
+       id="text4535"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4537"
+         x="830.59387"
+         y="420.96985">Публикация</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="781.75757"
+       y="507.81726"
+       id="text4616"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         x="781.75757"
+         y="507.81726"
+         id="tspan4618">bzr push sftp://host/myproject-fo1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.17261"
+       y="482.57898"
+       id="text4620"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4622"
+         x="776.17261"
+         y="482.57898">Опубликовать ревизии </tspan><tspan
+         sodipodi:role="line"
+         x="776.17261"
+         y="494.57898"
+         id="tspan2742">удаленно</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="782.38531"
+       y="461.36774"
+       id="text4457"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         x="782.38531"
+         y="461.36774"
+         id="tspan4459">bzr push ../myproject-fo1</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.80035"
+       y="448.54938"
+       id="text4461"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4463"
+         x="776.80035"
+         y="448.54938">Опубликовать ревизии</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="782.40686"
+       y="553.90088"
+       id="text4467"
+       sodipodi:linespacing="110%"><tspan
+         id="tspan8805"
+         sodipodi:role="line"
+         x="782.40686"
+         y="553.90088">bzr send</tspan><tspan
+         sodipodi:role="line"
+         x="782.40686"
+         y="564.97418"
+         id="tspan4473" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.13245"
+       y="529.0285"
+       id="text4475"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         x="776.13245"
+         y="529.0285"
+         id="tspan3063">Отправить почтой директиву</tspan><tspan
+         sodipodi:role="line"
+         x="776.13245"
+         y="541.0285"
+         id="tspan3042">объединения</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="783.03967"
+       y="647.42365"
+       id="text4481"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan4483"
+         x="783.03967"
+         y="647.42365">bzr export ../myproject-dist/</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.80042"
+       y="622.18542"
+       id="text4485"
+       sodipodi:linespacing="100%"><tspan
+         id="tspan4610"
+         sodipodi:role="line"
+         x="776.80042"
+         y="622.18542">Экспортировать текущую </tspan><tspan
+         sodipodi:role="line"
+         x="776.80042"
+         y="634.18542"
+         id="tspan2736">ревизию как каталог</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="782.56512"
+       y="695.45319"
+       id="text4521"
+       sodipodi:linespacing="110%"><tspan
+         sodipodi:role="line"
+         id="tspan4523"
+         x="782.56512"
+         y="695.45319">bzr export ../myproject-dist.zip</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.32587"
+       y="668.63489"
+       id="text4525"
+       sodipodi:linespacing="100%"><tspan
+         id="tspan4612"
+         sodipodi:role="line"
+         x="776.32587"
+         y="668.63489">Экспортировать текущую </tspan><tspan
+         sodipodi:role="line"
+         x="776.32587"
+         y="680.63489"
+         id="tspan2732">ревизию как архив</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:10.0666666px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:110.00000238%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+       x="780.99316"
+       y="600.0423"
+       id="text2448"
+       sodipodi:linespacing="110%"><tspan
+         id="tspan2450"
+         sodipodi:role="line"
+         x="780.99316"
+         y="600.0423">bzr send -o ../base.patch</tspan><tspan
+         sodipodi:role="line"
+         x="780.99316"
+         y="611.1156"
+         id="tspan2452" /></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="776.71875"
+       y="575.16986"
+       id="text2454"
+       sodipodi:linespacing="100%"><tspan
+         id="tspan2456"
+         sodipodi:role="line"
+         x="776.71875"
+         y="575.16986">Создать директиву</tspan><tspan
+         sodipodi:role="line"
+         x="776.71875"
+         y="587.16986"
+         id="tspan2738">объединения</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:40px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:30.5;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="144.32812"
+       y="64.254639"
+       id="text2774"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan2776"
+         x="144.32812"
+         y="64.254639">Bazaar </tspan></text>
+    <g
+       style="display:inline"
+       id="g3653"
+       transform="matrix(0.6461515,0,0,0.6526216,160.93614,144.01237)"
+       inkscape:export-filename="/home/matt/Projects/Ubuntu/Bazaar Website/bzr icon 64.png"
+       inkscape:export-xdpi="45.012665"
+       inkscape:export-ydpi="45.012665">
+      <path
+         id="path2749"
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566158,-142.97326 C -59.704508,-122.67403 -51.314608,-113.24681 -51.314608,-111.22876 C -51.314608,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z "
+         style="opacity:1;fill:#fce94f;fill-opacity:1;stroke:#fce94f;stroke-width:4;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline" />
+      <path
+         id="path2721"
+         d="M -118.75152,-74.850683 C -119.22012,-75.319283 -119.60352,-85.958443 -119.60352,-98.493313 L -119.60352,-121.28395 L -124.85215,-121.28395 C -131.2088,-121.28395 -131.22918,-121.19503 -121.27316,-136.90004 C -116.77235,-143.99978 -113.38241,-148.09169 -112.19584,-147.85705 C -110.34853,-147.49175 -95.321883,-124.90849 -95.321883,-122.4975 C -95.321883,-121.83004 -97.640303,-121.28395 -100.47393,-121.28395 C -103.84689,-121.28395 -105.87693,-120.6299 -106.35276,-119.38989 C -107.55959,-116.24495 -103.45251,-106.32746 -97.296233,-97.520823 C -90.988133,-88.497013 -90.461803,-86.665103 -93.461883,-84.175253 C -95.128693,-82.791933 -96.185063,-83.268713 -100.25177,-87.239733 C -102.90055,-89.826193 -105.46285,-91.547323 -105.94572,-91.064423 C -106.42862,-90.581523 -106.8237,-86.544203 -106.8237,-82.092573 L -106.8237,-73.998703 L -112.36162,-73.998703 C -115.40746,-73.998703 -118.28294,-74.382103 -118.75152,-74.850683 z "
+         style="opacity:1;fill:#c4a000;fill-opacity:1;stroke:#c4a000;display:inline" />
+      <path
+         id="path2727"
+         d="M -120.75152,-76.85072 C -121.22012,-77.31932 -121.60352,-87.95848 -121.60352,-100.49335 L -121.60352,-123.28399 L -126.85215,-123.28399 C -133.2088,-123.28399 -133.22918,-123.19507 -123.27316,-138.90007 C -118.77235,-145.99981 -115.38241,-150.09172 -114.19584,-149.85708 C -112.34853,-149.49178 -97.321888,-126.90852 -97.321888,-124.49754 C -97.321888,-123.83008 -99.640308,-123.28399 -102.47393,-123.28399 C -105.84689,-123.28399 -107.87693,-122.62994 -108.35276,-121.38993 C -109.55959,-118.24499 -105.45251,-108.3275 -99.296238,-99.52086 C -92.988138,-90.49705 -92.461808,-88.66514 -95.461888,-86.17529 C -97.128698,-84.79197 -98.185068,-85.26875 -102.25177,-89.23977 C -104.90055,-91.82623 -107.46285,-93.54736 -107.94572,-93.06446 C -108.42862,-92.58156 -108.8237,-88.54424 -108.8237,-84.09261 L -108.8237,-75.99874 L -114.36162,-75.99874 C -117.40746,-75.99874 -120.28294,-76.38214 -120.75152,-76.85072 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-opacity:1;display:inline" />
+      <path
+         d="M -143.51431,-75.4275 C -158.48768,-90.57687 -171.17625,-103.66019 -171.7111,-104.50153 C -174.63909,-109.10738 -172.34363,-112.16647 -143.7155,-141.81059 C -119.96256,-166.4065 -114.08422,-171.84722 -111.26302,-171.84722 C -108.45655,-171.84722 -102.57922,-166.49332 -79.566162,-142.97326 C -59.704512,-122.67403 -51.314612,-113.24681 -51.314612,-111.22876 C -51.314612,-107.03298 -109.21126,-47.88319 -113.31814,-47.88319 C -115.49463,-47.88319 -123.57621,-55.25503 -143.51431,-75.4275 z M -82.734602,-78.80831 C -63.284082,-98.78654 -53.870592,-109.3496 -53.870592,-111.19708 C -53.870592,-114.35673 -108.28764,-170.68595 -111.26979,-170.61328 C -113.31427,-170.56346 -167.39892,-115.6112 -169.81635,-111.12752 C -171.82156,-107.40842 -170.53236,-105.76188 -145.24612,-79.74648 C -117.66227,-51.36719 -115.36413,-49.16116 -113.38369,-49.16116 C -112.40192,-49.16116 -98.609822,-62.50237 -82.734602,-78.80831 z "
+         style="opacity:1;fill:#555753;fill-opacity:1;stroke:#2e3436;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;display:inline"
+         id="path2736" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="146.57143"
+       y="97.808769"
+       id="text3409"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan3411"
+         x="146.57143"
+         y="97.808769">Карточка быстрого старта</tspan></text>
+    <g
+       id="g12314"
+       transform="translate(3.6699829,1.7472534)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text8833"
+         y="527.43823"
+         x="297.99408"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans"
+           y="527.43823"
+           x="297.99408"
+           id="tspan8835"
+           sodipodi:role="line">Поддерживаемые префиксы URL</tspan></text>
+      <g
+         id="g12288"
+         style="fill:#333333;fill-opacity:1">
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="299.33002"
+           y="547.94214"
+           id="text8837"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan8841"
+             x="299.33002"
+             y="547.94214">aftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8843"
+             x="299.33002"
+             y="565.94214">bzr://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="583.94214"
+             id="tspan10799">bzr+ssh://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="601.94214"
+             id="tspan3050">file://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8849"
+             x="299.33002"
+             y="619.94214">ftp:// </tspan><tspan
+             sodipodi:role="line"
+             id="tspan8851"
+             x="299.33002"
+             y="637.94214">http://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8853"
+             x="299.33002"
+             y="655.94214">https://</tspan><tspan
+             sodipodi:role="line"
+             x="299.33002"
+             y="673.94214"
+             id="tspan10797" /><tspan
+             sodipodi:role="line"
+             id="tspan8855"
+             x="299.33002"
+             y="691.94214">sftp://</tspan><tspan
+             sodipodi:role="line"
+             id="tspan8857"
+             x="299.33002"
+             y="709.94214" /></text>
+        <text
+           xml:space="preserve"
+           style="font-size:12px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+           x="379.22845"
+           y="547.94214"
+           id="text12260"
+           sodipodi:linespacing="150%"><tspan
+             sodipodi:role="line"
+             id="tspan12262"
+             x="379.22845"
+             y="547.94214">Доступ, используя активный FTP</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="565.94214"
+             id="tspan12264">Быстрый доступ, используя сервер Bazaar</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="583.94214"
+             id="tspan12270">Быстрый доступ через SSH, используя сервер Bazaar</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="601.94214"
+             id="tspan3048">Доступ, используя файловую систему (по-умолчанию)</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="619.94214"
+             id="tspan12272">Доступ, используя пассивный FTP</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="637.94214"
+             id="tspan12274">Доступ для чтения веток размещенных в интернете</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="655.94214"
+             id="tspan3058">Доступ через SSL для чтения веток размещенных</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="673.94214"
+             id="tspan3068">в интернете</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="691.94214"
+             id="tspan12282">Доступ, используя SFTP (большинство SSH серверов</tspan><tspan
+             sodipodi:role="line"
+             x="379.22845"
+             y="709.94214"
+             id="tspan3072">предоставляют SFTP)</tspan></text>
+      </g>
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#333333;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="302.50391"
+       y="320.09448"
+       id="text4624"
+       sodipodi:linespacing="100%"><tspan
+         sodipodi:role="line"
+         id="tspan4626"
+         x="302.50391"
+         y="320.09448"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;font-family:Bitstream Vera Sans">Концепции</tspan></text>
+    <text
+       transform="scale(0.9968065,1.0032037)"
+       xml:space="preserve"
+       style="font-size:12.03844452px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="455.10013"
+       y="340.18164"
+       id="text12146"
+       sodipodi:linespacing="150%"><tspan
+         sodipodi:role="line"
+         id="tspan12148"
+         x="455.10013"
+         y="340.18164">направление разработки проекта</tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="358.23932"
+         id="tspan12150">каталог под контролем версий </tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="376.29697"
+         id="tspan12152">хранилище ревизий Bazaar</tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="394.35464"
+         id="tspan12156">версия исходного кода зафиксированная</tspan><tspan
+         id="tspan2710"
+         sodipodi:role="line"
+         x="455.10013"
+         y="412.41229">в хранилище</tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="430.46997"
+         id="tspan12158">именованная ревизия</tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="448.52765"
+         id="tspan12160">ветки имеющие общего предка</tspan><tspan
+         sodipodi:role="line"
+         x="455.10013"
+         y="466.5853"
+         id="tspan12164">операция применения к ветке всех </tspan><tspan
+         id="tspan3886"
+         sodipodi:role="line"
+         x="455.10013"
+         y="484.64297">изменений сделанных в другой ветке</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:150%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+       x="303"
+       y="341.21167"
+       id="text12400"
+       sodipodi:linespacing="150%"><tspan
+         sodipodi:role="line"
+         id="tspan12402"
+         x="303"
+         y="341.21167">Ветка:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="359.21167"
+         id="tspan12404">Рабочее дерево:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="377.21167"
+         id="tspan12406">Репозиторий:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="395.21167"
+         id="tspan12408">Ревизия:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="413.21167"
+         id="tspan12410" /><tspan
+         sodipodi:role="line"
+         x="303"
+         y="431.21167"
+         id="tspan12412">Метка:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="449.21167"
+         id="tspan12414">Родственные ветки:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="467.21167"
+         id="tspan12416">Объединение:</tspan><tspan
+         sodipodi:role="line"
+         x="303"
+         y="485.21167"
+         id="tspan12418" /></text>
+    <g
+       id="g6327"
+       transform="translate(6.5601196,0)"
+       style="fill:#333333;fill-opacity:1">
+      <text
+         sodipodi:linespacing="100%"
+         id="text6294"
+         y="50.289795"
+         x="645.77582"
+         style="font-size:20px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;opacity:1;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+         xml:space="preserve"><tspan
+           y="50.289795"
+           x="645.77582"
+           id="tspan6296"
+           sodipodi:role="line">Дополнительная информация</tspan></text>
+      <g
+         id="g6320"
+         style="fill:#333333;fill-opacity:1"
+         transform="translate(-142.82842,0)">
+        <text
+           xml:space="preserve"
+           style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans Mono"
+           x="787.72699"
+           y="76.095581"
+           id="text6298"
+           sodipodi:linespacing="100%"><tspan
+             sodipodi:role="line"
+             id="tspan6300"
+             x="787.72699"
+             y="76.095581">bzr help</tspan></text>
+        <a
+           id="a6316"
+           style="fill:#333333;fill-opacity:1"
+           xlink:href="http://bazaar-vcs.org">
+          <text
+             sodipodi:linespacing="100%"
+             id="text6302"
+             y="97.901367"
+             x="787.79535"
+             style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:100%;writing-mode:lr-tb;text-anchor:start;fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;font-family:Bitstream Vera Sans"
+             xml:space="preserve"><tspan
+               y="97.901367"
+               x="787.79535"
+               id="tspan6304"
+               sodipodi:role="line">http://bazaar-vcs.org</tspan></text>
+        </a>
+      </g>
+    </g>
+  </g>
+</svg>

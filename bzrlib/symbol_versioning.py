@@ -1,5 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com> and others
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Symbol versioning
 
@@ -28,29 +27,6 @@ __all__ = ['deprecated_function',
            'deprecated_passed',
            'set_warning_method',
            'warn',
-           'zero_seven',
-           'zero_eight',
-           'zero_nine',
-           'zero_ten',
-           'zero_eleven',
-           'zero_twelve',
-           'zero_thirteen',
-           'zero_fourteen',
-           'zero_fifteen',
-           'zero_sixteen',
-           'zero_seventeen',
-           'zero_eighteen',
-           'zero_ninety',
-           'zero_ninetyone',
-           'zero_ninetytwo',
-           'zero_ninetythree',
-           'one_zero',
-           'one_one',
-           'one_two',
-           'one_three',
-           'one_four',
-           'one_five',
-           'one_six',
            ]
 
 from warnings import warn
@@ -59,36 +35,13 @@ import bzrlib
 
 
 DEPRECATED_PARAMETER = "A deprecated parameter marker."
-zero_seven = "%s was deprecated in version 0.7."
-zero_eight = "%s was deprecated in version 0.8."
-zero_nine = "%s was deprecated in version 0.9."
-zero_ten = "%s was deprecated in version 0.10."
-zero_eleven = "%s was deprecated in version 0.11."
-zero_twelve = "%s was deprecated in version 0.12."
-zero_thirteen = "%s was deprecated in version 0.13."
-zero_fourteen = "%s was deprecated in version 0.14."
-zero_fifteen = "%s was deprecated in version 0.15."
-zero_sixteen = "%s was deprecated in version 0.16."
-zero_seventeen = "%s was deprecated in version 0.17."
-zero_eighteen = "%s was deprecated in version 0.18."
-zero_ninety = "%s was deprecated in version 0.90."
-zero_ninetyone = "%s was deprecated in version 0.91."
-zero_ninetytwo = "%s was deprecated in version 0.92."
-one_zero = "%s was deprecated in version 1.0."
-zero_ninetythree = one_zero # Maintained for backwards compatibility
-one_one = "%s was deprecated in version 1.1."
-one_two = "%s was deprecated in version 1.2."
-one_three = "%s was deprecated in version 1.3."
-one_four = "%s was deprecated in version 1.4."
-one_five = "%s was deprecated in version 1.5."
-one_six = "%s was deprecated in version 1.6."
 
 
 def deprecated_in(version_tuple):
     """Generate a message that something was deprecated in a release.
 
     >>> deprecated_in((1, 4, 0))
-    '%s was deprecated in version 1.4.'
+    '%s was deprecated in version 1.4.0.'
     """
     return ("%%s was deprecated in version %s."
             % bzrlib._format_version_tuple(version_tuple))
@@ -135,7 +88,7 @@ def deprecated_function(deprecation_version):
 
     def function_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_function(*args, **kwargs):
             """This is the decorated function."""
             from bzrlib import trace
@@ -152,18 +105,18 @@ def deprecated_function(deprecation_version):
 def deprecated_method(deprecation_version):
     """Decorate a method so that use of it will trigger a warning.
 
-    To deprecate a static or class method, use 
+    To deprecate a static or class method, use
 
         @staticmethod
         @deprecated_function
         def ...
-    
+
     To deprecate an entire class, decorate __init__.
     """
 
     def method_decorator(callable):
         """This is the function python calls to perform the decoration."""
-        
+
         def decorated_method(self, *args, **kwargs):
             """This is the decorated method."""
             from bzrlib import trace
@@ -187,7 +140,7 @@ def deprecated_method(deprecation_version):
 
 def deprecated_passed(parameter_value):
     """Return True if parameter_value was used."""
-    # FIXME: it might be nice to have a parameter deprecation decorator. 
+    # FIXME: it might be nice to have a parameter deprecation decorator.
     # it would need to handle positional and *args and **kwargs parameters,
     # which means some mechanism to describe how the parameter was being
     # passed before deprecation, and some way to deprecate parameters that
@@ -213,7 +166,7 @@ def _decorate_docstring(callable, deprecation_version, label,
     if len(docstring_lines) == 0:
         decorated_callable.__doc__ = deprecation_version % ("This " + label)
     elif len(docstring_lines) == 1:
-        decorated_callable.__doc__ = (callable.__doc__ 
+        decorated_callable.__doc__ = (callable.__doc__
                                     + "\n"
                                     + "\n"
                                     + deprecation_version % ("This " + label)
@@ -267,7 +220,7 @@ class DeprecatedDict(dict):
             typically from deprecated_in()
         :param initial_value: The contents of the dict
         :param variable_name: This allows better warnings to be printed
-        :param advice: String of advice on what callers should do instead 
+        :param advice: String of advice on what callers should do instead
             of using this variable.
         """
         self._deprecation_version = deprecation_version
@@ -309,7 +262,7 @@ def deprecated_list(deprecation_version, variable_name,
         def _warn_deprecated(self, func, *args, **kwargs):
             warn(msg, DeprecationWarning, stacklevel=3)
             return func(self, *args, **kwargs)
-            
+
         def append(self, obj):
             """appending to %s is deprecated""" % (variable_name,)
             return self._warn_deprecated(list.append, obj)
@@ -327,7 +280,7 @@ def deprecated_list(deprecation_version, variable_name,
             return self._warn_deprecated(list.remove, value)
 
         def pop(self, index=None):
-            """pop'ing from from %s is deprecated""" % (variable_name,)
+            """pop'ing from %s is deprecated""" % (variable_name,)
             if index:
                 return self._warn_deprecated(list.pop, index)
             else:
@@ -339,7 +292,7 @@ def deprecated_list(deprecation_version, variable_name,
 
 def _check_for_filter(error_only):
     """Check if there is already a filter for deprecation warnings.
-    
+
     :param error_only: Only match an 'error' filter
     :return: True if a filter is found, False otherwise
     """

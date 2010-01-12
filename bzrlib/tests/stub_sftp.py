@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """
 A stub SFTP server for loopback SFTP testing.
@@ -83,7 +83,7 @@ class StubSFTPServer (SFTPServerInterface):
     def _realpath(self, path):
         # paths returned from self.canonicalize() always start with
         # a path separator. So if 'root' is just '/', this would cause
-        # a double slash at the beginning '//home/dir'. 
+        # a double slash at the beginning '//home/dir'.
         if self.root == '/':
             return self.canonicalize(path)
         return self.root + self.canonicalize(path)
@@ -96,7 +96,7 @@ class StubSFTPServer (SFTPServerInterface):
             #     /h:/foo/bar
             # and relative paths stay the same:
             #     foo/bar
-            # win32 needs to use the Unicode APIs. so we require the 
+            # win32 needs to use the Unicode APIs. so we require the
             # paths to be utf8 (Linux just uses bytestreams)
             thispath = path.decode('utf8')
             if path.startswith('/'):
@@ -124,7 +124,7 @@ class StubSFTPServer (SFTPServerInterface):
             out = [ ]
             # TODO: win32 incorrectly lists paths with non-ascii if path is not
             # unicode. However on Linux the server should only deal with
-            # bytestreams and posix.listdir does the right thing 
+            # bytestreams and posix.listdir does the right thing
             if sys.platform == 'win32':
                 flist = [f.encode('utf8') for f in os.listdir(path)]
             else:

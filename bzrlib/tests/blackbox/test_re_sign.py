@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr re-sign.
@@ -73,7 +73,7 @@ class ReSign(TestCaseInTempDir):
 
         self.run_bzr('re-sign B')
         self.assertEqualSignature(repo, 'B')
-            
+
     def test_resign_range(self):
         wt = self.setup_tree()
         repo = wt.branch.repository

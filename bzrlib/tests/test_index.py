@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for indices."""
 
@@ -173,6 +173,11 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "key\x00\x00\t\x00data\n"
             "\n", contents)
 
+    def test_clear_cache(self):
+        builder = GraphIndexBuilder(reference_lists=2)
+        # This is a no-op, but the api should exist
+        builder.clear_cache()
+
     def test_node_references_are_byte_offsets(self):
         builder = GraphIndexBuilder(reference_lists=1)
         builder.add_node(('reference', ), 'data', ([], ))
@@ -230,7 +235,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node(('2-key', ), '', (references, ))
         stream = builder.finish()
         contents = stream.read()
-        self.assertEqual(
+        self.assertEqualDiff(
             "Bazaar Graph Index 1\nnode_ref_lists=1\nkey_elements=1\nlen=1\n"
             "0\x00a\x00\x00\n"
             "1\x00a\x00\x00\n"
@@ -382,6 +387,12 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans = get_transport('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
+
+    def test_clear_cache(self):
+        index = self.make_index()
+        # For now, we just want to make sure the api is available. As this is
+        # old code, we don't really worry if it *does* anything.
+        index.clear_cache()
 
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
@@ -558,7 +569,7 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         # not create a new transport request, and should return False (cannot
         # be in the index) - even when the byte location we ask for is outside
         # the parsed region
-        # 
+        #
         result = index._lookup_keys_via_location([(4000, self.make_key(40))])
         self.assertEqual(
             [((4000, self.make_key(40)),
@@ -922,6 +933,99 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         index = self.make_index(nodes=[(('key', ), 'value', ())])
         index.validate()
 
+    # XXX: external_references tests are duplicated in test_btree_index.  We
+    # probably should have per_graph_index tests...
+    def test_external_references_no_refs(self):
+        index = self.make_index(ref_lists=0, nodes=[])
+        self.assertRaises(ValueError, index.external_references, 0)
+
+    def test_external_references_no_results(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([],))])
+        self.assertEqual(set(), index.external_references(0))
+
+    def test_external_references_missing_ref(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key',), 'value', ([missing_key],))])
+        self.assertEqual(set([missing_key]), index.external_references(0))
+
+    def test_external_references_multiple_ref_lists(self):
+        missing_key = ('missing',)
+        index = self.make_index(ref_lists=2, nodes=[
+            (('key',), 'value', ([], [missing_key]))])
+        self.assertEqual(set([]), index.external_references(0))
+        self.assertEqual(set([missing_key]), index.external_references(1))
+
+    def test_external_references_two_records(self):
+        index = self.make_index(ref_lists=1, nodes=[
+            (('key-1',), 'value', ([('key-2',)],)),
+            (('key-2',), 'value', ([],)),
+            ])
+        self.assertEqual(set([]), index.external_references(0))
+
+    def test__find_ancestors(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index._find_ancestors([key1], 0, parent_map, missing_keys)
+        self.assertEqual({key1: (key2,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set([key2]), search_keys)
+        search_keys = index._find_ancestors(search_keys, 0, parent_map,
+                                            missing_keys)
+        self.assertEqual({key1: (key2,), key2: ()}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test__find_ancestors_w_missing(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([],)),
+            ])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index._find_ancestors([key2, key3], 0, parent_map,
+                                            missing_keys)
+        self.assertEqual({key2: ()}, parent_map)
+        self.assertEqual(set([key3]), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test__find_ancestors_dont_search_known(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        index = self.make_index(ref_lists=1, key_elements=1, nodes=[
+            (key1, 'value', ([key2],)),
+            (key2, 'value', ([key3],)),
+            (key3, 'value', ([],)),
+            ])
+        # We already know about key2, so we won't try to search for key3
+        parent_map = {key2: (key3,)}
+        missing_keys = set()
+        search_keys = index._find_ancestors([key1], 0, parent_map,
+                                            missing_keys)
+        self.assertEqual({key1: (key2,), key2: (key3,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        self.assertEqual(set(), search_keys)
+
+    def test_supports_unlimited_cache(self):
+        builder = GraphIndexBuilder(0, key_elements=1)
+        stream = builder.finish()
+        trans = get_transport(self.get_url())
+        size = trans.put_file('index', stream)
+        # It doesn't matter what unlimited_cache does here, just that it can be
+        # passed
+        index = GraphIndex(trans, 'index', size, unlimited_cache=True)
+
 
 class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
 
@@ -977,6 +1081,30 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         index.insert_index(0, index1)
         self.assertEqual([(index1, ('key', ), '')], list(index.iter_all_entries()))
+
+    def test_clear_cache(self):
+        log = []
+
+        class ClearCacheProxy(object):
+
+            def __init__(self, index):
+                self._index = index
+
+            def __getattr__(self, name):
+                return getattr(self._index)
+
+            def clear_cache(self):
+                log.append(self._index)
+                return self._index.clear_cache()
+
+        index = CombinedGraphIndex([])
+        index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(0, ClearCacheProxy(index1))
+        index2 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(1, ClearCacheProxy(index2))
+        # CombinedGraphIndex should call 'clear_cache()' on all children
+        index.clear_cache()
+        self.assertEqual(sorted([index1, index2]), sorted(log))
 
     def test_iter_all_entries_empty(self):
         index = CombinedGraphIndex([])
@@ -1047,7 +1175,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref', ), ), )),
             (index2, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_all_keys_dup_entry(self):
         index1 = self.make_index('1', 1, nodes=[
             (('name', ), 'data', ([('ref', )], )),
@@ -1058,7 +1186,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertEqual(set([(index1, ('name', ), 'data', ((('ref',),),)),
             (index1, ('ref', ), 'refdata', ((), ))]),
             set(index.iter_entries([('name', ), ('ref', )])))
- 
+
     def test_iter_missing_entry_empty(self):
         index = CombinedGraphIndex([])
         self.assertEqual([], list(index.iter_entries([('a', )])))
@@ -1073,7 +1201,7 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index2 = self.make_index('2')
         index = CombinedGraphIndex([index1, index2])
         self.assertEqual([], list(index.iter_entries([('a', )])))
- 
+
     def test_iter_entry_present_one_index_only(self):
         index1 = self.make_index('1', nodes=[(('key', ), '', ())])
         index2 = self.make_index('2', nodes=[])
@@ -1239,6 +1367,86 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index, reload_counter = self.make_combined_index_with_missing(
                                     ['1', '2', '3'])
         self.assertRaises(errors.NoSuchFile, index.validate)
+
+    def test_find_ancestors_across_indexes(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key3, 'value', ([key2],)),
+            (key4, 'value', ([key3],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        parent_map, missing_keys = c_index.find_ancestry([key1], 0)
+        self.assertEqual({key1: ()}, parent_map)
+        self.assertEqual(set(), missing_keys)
+        # Now look for a key from index2 which requires us to find the key in
+        # the second index, and then continue searching for parents in the
+        # first index
+        parent_map, missing_keys = c_index.find_ancestry([key3], 0)
+        self.assertEqual({key1: (), key2: (key1,), key3: (key2,)}, parent_map)
+        self.assertEqual(set(), missing_keys)
+
+    def test_find_ancestors_missing_keys(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key3, 'value', ([key2],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        # Searching for a key which is actually not present at all should
+        # eventually converge
+        parent_map, missing_keys = c_index.find_ancestry([key4], 0)
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([key4]), missing_keys)
+
+    def test_find_ancestors_no_indexes(self):
+        c_index = CombinedGraphIndex([])
+        key1 = ('key-1',)
+        parent_map, missing_keys = c_index.find_ancestry([key1], 0)
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([key1]), missing_keys)
+
+    def test_find_ancestors_ghost_parent(self):
+        key1 = ('key-1',)
+        key2 = ('key-2',)
+        key3 = ('key-3',)
+        key4 = ('key-4',)
+        index1 = self.make_index('12', ref_lists=1, nodes=[
+            (key1, 'value', ([],)),
+            (key2, 'value', ([key1],)),
+            ])
+        index2 = self.make_index('34', ref_lists=1, nodes=[
+            (key4, 'value', ([key2, key3],)),
+            ])
+        c_index = CombinedGraphIndex([index1, index2])
+        # Searching for a key which is actually not present at all should
+        # eventually converge
+        parent_map, missing_keys = c_index.find_ancestry([key4], 0)
+        self.assertEqual({key4: (key2, key3), key2: (key1,), key1: ()},
+                         parent_map)
+        self.assertEqual(set([key3]), missing_keys)
+
+    def test__find_ancestors_empty_index(self):
+        index = self.make_index('test', ref_lists=1, key_elements=1, nodes=[])
+        parent_map = {}
+        missing_keys = set()
+        search_keys = index._find_ancestors([('one',), ('two',)], 0, parent_map,
+                                            missing_keys)
+        self.assertEqual(set(), search_keys)
+        self.assertEqual({}, parent_map)
+        self.assertEqual(set([('one',), ('two',)]), missing_keys)
 
 
 class TestInMemoryGraphIndex(TestCaseWithMemoryTransport):

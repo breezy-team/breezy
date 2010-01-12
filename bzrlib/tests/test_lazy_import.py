@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test the lazy_import functionality."""
 
@@ -107,7 +107,7 @@ class TestScopeReplacer(TestCase):
 
     def test_object(self):
         """ScopeReplacer can create an instance in local scope.
-        
+
         An object should appear in globals() by constructing a ScopeReplacer,
         and it will be replaced with the real object upon the first request.
         """
@@ -351,7 +351,7 @@ class TestScopeReplacer(TestCase):
                          object.__getattribute__(test_obj2, '__class__'))
         self.assertEqual(InstrumentedReplacer,
                          object.__getattribute__(test_obj3, '__class__'))
-        
+
         # The first use of the alternate variable causes test_obj2 to
         # be replaced.
         self.assertEqual('foo', test_obj3.foo(1))
@@ -369,7 +369,7 @@ class TestScopeReplacer(TestCase):
         # because only now are we able to detect the problem.
         self.assertRaises(errors.IllegalUseOfScopeReplacer,
                           getattr, test_obj3, 'foo')
-        
+
         self.assertEqual([('__getattribute__', 'foo'),
                           '_replace',
                           'factory',

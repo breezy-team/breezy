@@ -5,7 +5,7 @@ A personal productivity tool
 ----------------------------
 
 Some tools are designed to make individuals productive (e.g. editors)
-while other tools (e.g. back-end services) are focussed on making teams
+while other tools (e.g. back-end services) are focused on making teams
 or whole companies more productive. Version control tools have
 traditionally been in the latter camp.
 

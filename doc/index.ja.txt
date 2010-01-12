@@ -1,0 +1,85 @@
+===========================
+Bazaarのメインドキュメント
+===========================
+
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar-vcs.org/ から入手可能で、
+詳しい情報は http://bazaar-vcs.org/Documentation のページからリンクされています。
+
+
+コアドキュメント
+================
+
+* `ユーザーガイド <ja/user-guide/index.html>`_
+
+* `ユーザーリファレンス <ja/user-reference/bzr_man.html>`_
+
+* `クィックスタートカード(PNG) <http://gigo-ice.org/scm/bazaar/wiki/bzr-quickref.ja.png>`_
+  `(PDF) <http://gigo-ice.org/scm/bazaar/wiki/bzr-quickref.ja.pdf>`_
+
+* `リリースノート(英語) <en/release-notes/NEWS.html>`_
+
+* `2.0 Upgrade Guide (英語) <en/upgrade-guide/index.html>`_
+
+チュートリアル
+===============
+
+* `5分でBazaar <ja/mini-tutorial/index.html>`_
+
+* `A longer tutorial (英語) <en/tutorials/tutorial.html>`_
+
+* `Using Bazaar with Launchpad (英語) <en/tutorials/using_bazaar_with_launchpad.html>`_
+
+* `Centralized workflow (英語) <en/tutorials/centralized_workflow.html>`_
+
+
+Developer Documentation
+=======================
+
+* `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
+  of Bazaar and plugins
+
+
+ウェブリンク
+=============
+
+* `切り替えガイド <http://bazaar-vcs.org/BzrSwitching>`_
+  |--| 別のVCSツールから移ってきたユーザー用
+
+* `移行ガイド <http://bazaar-vcs.org/BzrMigration>`_
+  |--| 別のVCSツールから履歴を移行するチーム用
+
+* `用語 <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `よく聞かれる質問 <http://bazaar-vcs.org/FAQ>`_
+
+
+TortoiseBzrをインストールするには？
+===================================
+
+https://launchpad.net/bzr/+download からbzr-setup-x.xxx.exeを入手し、
+ファイルをダブルクリックをしてインストールウィザードを起動させます。
+その後の作業はインストールウィザードに従います。
+インストールウィザードが終了した後で再起動します。
+
+最新バージョンでも正常に動作しないことがあるので、
+その場合は古いバージョンをインストールします。
+2009年1月時点で筆者はbzr-setup-1.9.exeの基本的な動作を確認しています。
+
+もしPythonインタープリタにbzrをインストールした場合、インストールしたディレクトリによって
+bzr.exe(デフォルトでは `C:\Program Files\Bazaar` )よりもbzr.bat(`C:\PythonXX\Scripts`)が
+優先されるので、コマンドプロンプトでbzrと入力したときにbzr.exeが実行されるようにするには、
+bzr.batをbzr.txtなどにリネームします。
+
+
+Other Languages
+===============
+
+* `Spanish Documentation <index.es.html>`_
+* `Russian Documentation <index.ru.html>`_ |--| документация на русском
+* `Japanese Documentation <index.ja.html>`_ |--| 日本語ドキュメント
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

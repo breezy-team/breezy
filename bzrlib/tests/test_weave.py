@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 # TODO: tests regarding version names
-# TODO: rbc 20050108 test that join does not leave an inconsistent weave 
+# TODO: rbc 20050108 test that join does not leave an inconsistent weave
 #       if it fails.
 
 """test suite for weave algorithm"""
@@ -121,7 +121,7 @@ class InvalidRepeatedAdd(TestBase):
                           'text0',
                           ['basis'],         # not the right parents
                           TEXT_0)
-        
+
 
 class InsertLines(TestBase):
     """Store a revision that adds one line to the original.
@@ -170,7 +170,7 @@ class InsertLines(TestBase):
               ['text0', 'text1', 'text3'],
               ['line 1', 'aaa', 'middle line', 'bbb', 'line 2', 'ccc'])
 
-        self.assertEqual(k.annotate('text4'), 
+        self.assertEqual(k.annotate('text4'),
                          [('text0', 'line 1'),
                           ('text4', 'aaa'),
                           ('text3', 'middle line'),
@@ -189,7 +189,7 @@ class DeleteLines(TestBase):
         base_text = ['one', 'two', 'three', 'four']
 
         k.add_lines('text0', [], base_text)
-        
+
         texts = [['one', 'two', 'three'],
                  ['two', 'three', 'four'],
                  ['one', 'four'],
@@ -226,11 +226,11 @@ class SuicideDelete(TestBase):
                 ]
         ################################### SKIPPED
         # Weave.get doesn't trap this anymore
-        return 
+        return
 
         self.assertRaises(WeaveFormatError,
                           k.get_lines,
-                          0)        
+                          0)
 
 
 class CannedDelete(TestBase):
@@ -278,7 +278,7 @@ class CannedReplacement(TestBase):
                 'line to be deleted',
                 (']', 1),
                 ('{', 1),
-                'replacement line',                
+                'replacement line',
                 ('}', 1),
                 'last line',
                 ('}', 0),
@@ -321,7 +321,7 @@ class BadWeave(TestBase):
 
         ################################### SKIPPED
         # Weave.get doesn't trap this anymore
-        return 
+        return
 
 
         self.assertRaises(WeaveFormatError,
@@ -399,7 +399,7 @@ class InsertNested(TestBase):
                           '  added in version 1',
                           '  also from v1',
                           '}'])
-                       
+
         self.assertEqual(k.get_lines(2),
                          ['foo {',
                           '  added in v2',
@@ -411,7 +411,7 @@ class InsertNested(TestBase):
                           '  added in v2',
                           '  also from v1',
                           '}'])
-                         
+
 
 class DeleteLines2(TestBase):
     """Test recording revisions that delete lines.
@@ -493,7 +493,7 @@ class DivergedIncludes(TestBase):
                 ('}', 1),
                 ('{', 2),
                 "alternative second line",
-                ('}', 2),                
+                ('}', 2),
                 ]
 
         k._sha1s = [sha_string('first line')
@@ -521,7 +521,7 @@ class ReplaceLine(TestBase):
 
         text0 = ['cheddar', 'stilton', 'gruyere']
         text1 = ['cheddar', 'blue vein', 'neufchatel', 'chevre']
-        
+
         k.add_lines('text0', [], text0)
         k.add_lines('text1', ['text0'], text1)
 
@@ -609,7 +609,7 @@ class Khayyam(TestBase):
             A Jug of Wine, a Loaf of Bread, -- and Thou
             Beside me singing in the Wilderness --
             Oh, Wilderness were Paradise enow!""",
-            
+
             """A Book of Verses underneath the Bough,
             A Jug of Wine, a Loaf of Bread, -- and Thou
             Beside me singing in the Wilderness --
@@ -724,7 +724,7 @@ class TestWeave(TestCase):
 
 class InstrumentedWeave(Weave):
     """Keep track of how many times functions are called."""
-    
+
     def __init__(self, weave_name=None):
         self._extract_count = 0
         Weave.__init__(self, weave_name=weave_name)
@@ -753,7 +753,7 @@ class TestNeedsReweave(TestCase):
 
 
 class TestWeaveFile(TestCaseInTempDir):
-    
+
     def test_empty_file(self):
         f = open('empty.weave', 'wb+')
         try:

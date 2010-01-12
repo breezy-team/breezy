@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for repository break-lock."""
 
@@ -23,6 +23,9 @@ import bzrlib.errors as errors
 from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
+from bzrlib.ui import (
+    CannedInputUIFactory,
+    )
 
 
 class TestBreakLock(TestCaseWithRepository):
@@ -36,8 +39,7 @@ class TestBreakLock(TestCaseWithRepository):
         # ours
         self.old_factory = bzrlib.ui.ui_factory
         self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
 
     def restoreFactory(self):
         bzrlib.ui.ui_factory = self.old_factory

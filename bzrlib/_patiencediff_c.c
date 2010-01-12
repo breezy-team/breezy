@@ -13,7 +13,7 @@
 
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
- Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
  Function equate_lines based on bdiff.c from Mercurial.
    Copyright (C) 2005, 2006 Matt Mackall <mpm@selenic.com>
@@ -298,7 +298,7 @@ unique_lcs(struct matching_line *answer,
         apos = SENTINEL;
         /* loop through all lines in the linked list */
         for (i = h[equiv].a_pos; i != SENTINEL; i = lines_a[i].next) {
-            /* the index is lower than alo, the the next line */
+            /* the index is lower than alo, continue to the next line */
             if (i < alo) {
                 h[equiv].a_pos = i;
                 continue;
@@ -319,7 +319,7 @@ unique_lcs(struct matching_line *answer,
         /* check for duplicates of this line in lines_b[blo:bhi] */
         /* loop through all lines in the linked list */
         for (i = h[equiv].b_pos; i != SENTINEL; i = lines_b[i].next) {
-            /* the index is lower than blo, the the next line */
+            /* the index is lower than blo, continue to the next line */
             if (i < blo) {
                 h[equiv].b_pos = i;
                 continue;
