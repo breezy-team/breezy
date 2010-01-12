@@ -1624,9 +1624,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 this_tree=self,
                                 pb=pb,
                                 change_reporter=change_reporter)
-                    if (basis_tree.inventory.root is None and
-                        new_basis_tree.inventory.root is not None):
-                        self.set_root_id(new_basis_tree.get_root_id())
+                    basis_root_id = basis_tree.get_root_id()
+                    new_root_id = new_basis_tree.get_root_id()
+                    if basis_root_id != new_root_id:
+                        self.set_root_id(new_root_id)
                 finally:
                     pb.finished()
                     basis_tree.unlock()
