@@ -1180,12 +1180,14 @@ class cmd_branch(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow branch to proceed.'),
+        Option('bind',
+            help="Bind new branch to from location."),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False, switch=False):
+            use_existing_dir=False, switch=False, bind=False):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
@@ -1244,6 +1246,11 @@ class cmd_branch(Command):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             note('Branched %d revision(s).' % branch.revno())
+        if bind:
+            # Bind to the parent
+            parent_branch = Branch.open(from_location)
+            branch.bind(parent_branch)
+            note('New branch bound to %s' % from_location)
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing('.')
