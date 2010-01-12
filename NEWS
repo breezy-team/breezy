@@ -57,9 +57,8 @@ Bug Fixes
 * ``TreeTransform`` can now handle when a delta says that the file id for
   the tree root changes. Rather than trying to rename your working
   directory, or failing early saying that you can't have multiple
-  tree roots. This also fixes ``bzr revert`` when the root id changes.
-  (Currently ``bzr update`` is still broken.)
-  (John Arbash Meinel, #494269)
+  tree roots. This also fixes revert, update, and pull when the root id
+  changes.  (John Arbash Meinel, #494269, #504390)
 
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
