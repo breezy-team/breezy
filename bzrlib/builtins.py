@@ -2820,6 +2820,8 @@ class cmd_cat(Command):
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
+        rev_tree.lock_read()
+        self.add_cleanup(rev_tree.unlock)
 
         old_file_id = rev_tree.path2id(relpath)
 
@@ -2860,8 +2862,10 @@ class cmd_cat(Command):
             chunks = content.splitlines(True)
             content = filtered_output_bytes(chunks, filters,
                 ContentFilterContext(relpath, rev_tree))
+            self.cleanup_now()
             self.outf.writelines(content)
         else:
+            self.cleanup_now()
             self.outf.write(content)
 
 

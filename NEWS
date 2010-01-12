@@ -71,6 +71,9 @@ Bug Fixes
   that caused some tests to fail when run in a non-default order.
   Probably no user impact.  (Martin Pool, #504102)
 
+* Fixed ``ObjectNotLocked`` error in ``bzr cat -rbranch:../foo FILE``.
+  (Andrew Bennetts, #506274)
+
 * FTP transports support Unicode paths by encoding/decoding them as utf8.
   (Vincent Ladeuil, #472161)
 
