@@ -506,6 +506,8 @@ class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))
         except errors.NotBranchError, e:
+            # Stringify the exception so that its .detail attribute will be
+            # filled out.
             str(e)
             resp = ('nobranch',)
             detail = e.detail

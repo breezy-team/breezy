@@ -623,6 +623,38 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             'Repository dummy repo cannot suspend a write group.', str(err))
 
+    def test_not_branch_no_args(self):
+        err = errors.NotBranchError('path')
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_repo(self):
+        bzrdir = self.make_repository('repo').bzrdir
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual(
+            'Not a branch: "path": location is a repository.', str(err))
+
+    def test_not_branch_bzrdir_without_repo(self):
+        bzrdir = self.make_bzrdir('bzrdir')
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_laziness(self):
+        real_bzrdir = self.make_bzrdir('path')
+        class FakeBzrDir(object):
+            def __init__(self):
+                self.calls = []
+            def open_repository(self):
+                self.calls.append('open_repository')
+                raise errors.NoRepositoryPresent(real_bzrdir)
+        fake_bzrdir = FakeBzrDir()
+        err = errors.NotBranchError('path', bzrdir=fake_bzrdir)
+        self.assertEqual([], fake_bzrdir.calls)
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+        # Stringifying twice doesn't try to open a repository twice.
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+
 
 class PassThroughError(errors.BzrError):
 
