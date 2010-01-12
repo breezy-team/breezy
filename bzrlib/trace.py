@@ -250,7 +250,12 @@ def _open_bzr_log():
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
         return bzr_log_file
     except IOError, e:
-        warning("failed to open trace file: %s" % (e))
+        # If we are failing to open the log, then most likely logging has not
+        # been set up yet. So we just write to stderr rather than using
+        # 'warning()'. If we using warning(), users get the unhelpful 'no
+        # handlers registered for "bzr"' when something goes wrong on the
+        # server. (bug #503886)
+        sys.stderr.write("failed to open trace file: %s\n" % (e,))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
