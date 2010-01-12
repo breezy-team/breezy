@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -879,15 +879,15 @@ class TestDirStateManipulations(TestCaseWithDirState):
             self.assertEqual(root_entry,
                              state._get_entry(0, fileid_utf8='TREE_ROOT'))
             self.assertEqual((None, None),
-                             state._get_entry(0, fileid_utf8='foobarbaz'))
-            state.set_path_id('', 'foobarbaz')
-            new_root_entry = (('', '', 'foobarbaz'),
+                             state._get_entry(0, fileid_utf8='second-root-id'))
+            state.set_path_id('', 'second-root-id')
+            new_root_entry = (('', '', 'second-root-id'),
                               [('d', '', 0, False, 'x'*32)])
             expected_rows = [new_root_entry]
             self.assertEqual(expected_rows, list(state._iter_entries()))
             self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
             self.assertEqual(new_root_entry, 
-                             state._get_entry(0, fileid_utf8='foobarbaz'))
+                             state._get_entry(0, fileid_utf8='second-root-id'))
             self.assertEqual((None, None),
                              state._get_entry(0, fileid_utf8='TREE_ROOT'))
             # should work across save too
@@ -913,21 +913,36 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state._validate()
         try:
             state.set_parent_trees([('parent-revid', rt)], ghosts=[])
-            state.set_path_id('', 'foobarbaz')
+            root_entry = (('', '', 'TREE_ROOT'),
+                          [('d', '', 0, False, 'x'*32),
+                           ('d', '', 0, False, 'parent-revid')])
+            self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(root_entry,
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
+            state.set_path_id('', 'Asecond-root-id')
             state._validate()
             # now see that it is what we expected
-            expected_rows = [
-                (('', '', 'TREE_ROOT'),
-                    [('a', '', 0, False, ''),
-                     ('d', '', 0, False, 'parent-revid'),
-                     ]),
-                (('', '', 'foobarbaz'),
-                    [('d', '', 0, False, ''),
-                     ('a', '', 0, False, ''),
-                     ]),
-                ]
+            old_root_entry = (('', '', 'TREE_ROOT'),
+                              [('a', '', 0, False, ''),
+                               ('d', '', 0, False, 'parent-revid')])
+            new_root_entry = (('', '', 'Asecond-root-id'),
+                              [('d', '', 0, False, ''),
+                               ('a', '', 0, False, '')])
+            expected_rows = [new_root_entry, old_root_entry]
             state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
+            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(old_root_entry, state._get_entry(1, path_utf8=''))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual(old_root_entry,
+                             state._get_entry(1, fileid_utf8='TREE_ROOT'))
+            self.assertEqual(new_root_entry,
+                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
+            self.assertEqual((None, None),
+                             state._get_entry(1, fileid_utf8='Asecond-root-id'))
             # should work across save too
             state.save()
         finally:

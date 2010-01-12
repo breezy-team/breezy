@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1997,6 +1997,8 @@ class DirState(object):
                 entry_index, present = self._find_entry_index(key, block)
                 if present:
                     entry = self._dirblocks[block_index][1][entry_index]
+                    # TODO: We might want to assert that entry[0][2] ==
+                    #       fileid_utf8.
                     if entry[1][tree_index][0] in 'fdlt':
                         # this is the result we are looking for: the
                         # real home of this file_id in this tree.
@@ -2354,8 +2356,6 @@ class DirState(object):
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        if self._id_index is not None:
-            self._id_index.setdefault(new_id, set()).add(entry[0])
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
