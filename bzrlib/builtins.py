@@ -5445,13 +5445,6 @@ class cmd_switch(Command):
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
-            # try:
-            #     from_branch = control_dir.open_branch()
-            # except errors.NotBranchError:
-            #     raise BzrCommandError('Cannot create a branch from this'
-            #         ' location when we cannot open this branch')
-            # from_branch.bzrdir.sprout(
-            pass
         else:
             try:
                 to_branch = Branch.open(to_location)
