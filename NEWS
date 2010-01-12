@@ -20,6 +20,9 @@ New Features
 * Add bug information to log output when available.
   (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
 
+* ``bzr branch`` now takes a ``--bind`` option. This lets you
+  branch and bind all in one command. (Ian Clatworthy)
+
 * ``bzr update`` now takes a ``--revision`` argument. This lets you
   change the revision of the working tree to any revision in the
   ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
@@ -34,7 +37,6 @@ New Features
   warning for repositories. It can be set to in either ``bazaar.conf``,
   ``locations.conf`` or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
-
 
 Bug Fixes
 *********
