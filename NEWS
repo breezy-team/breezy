@@ -23,6 +23,10 @@ New Features
 * ``bzr branch`` now takes a ``--bind`` option. This lets you
   branch and bind all in one command. (Ian Clatworthy)
 
+* ``bzr unshelve --preview`` can now be used to show how a patch on the
+  shelf would be applied to the working tree.
+  (Guilherme Salgado, #308122)
+
 * ``bzr update`` now takes a ``--revision`` argument. This lets you
   change the revision of the working tree to any revision in the
   ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,

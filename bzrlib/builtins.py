@@ -5751,6 +5751,8 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
+            preview="Instead of unshelving the changes, show the diff that "
+                    "would result from unshelving.",
             delete_only="Delete changes without applying them.",
             keep="Apply changes but don't delete them.",
         )
