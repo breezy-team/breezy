@@ -41,6 +41,12 @@ Bug Fixes
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
+* Give a warning when fetching between local repositories with
+  sufficiently different formats that the content will need to be
+  serialized (ie ``InterDifferingSerializer``) so the user has a clue that
+  upgrading could make it faster.
+  (Martin Pool, #456077)
+
 * If we fail to open ``~/.bzr.log`` write a clear message to stderr rather
   than using ``warning()``. The log file is opened before logging is set
   up, and it leads to very confusing: 'no handlers for "bzr"' messages for
