@@ -47,6 +47,9 @@ Bug Fixes
   users, rather than something nicer.
   (John Arbash Meinel, Barry Warsaw, #503886)
 
+* ``setup.py bdist_rpm`` now properly finds extra files needed for the
+  build. (Joe Julian)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
