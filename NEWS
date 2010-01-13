@@ -56,6 +56,10 @@ Bug Fixes
 * Refuse to build with any Pyrex 0.9.4 release, as they have known bugs.
   (Martin Pool, John Arbash Meinel, #449372)
 
+* ``setup.py bdist_rpm`` now properly finds extra files needed for the
+  build. (there is still the distutils bug
+  http://bugs.python.org/issue644744) (Joe Julian, #175839)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
