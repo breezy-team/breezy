@@ -106,6 +106,9 @@ Improvements
 Documentation
 *************
 
+* Improved help for ``bzr send``. 
+  (Martin Pool, Bojan Nikolic)
+
 * There is a System Administrator's Guide in ``doc/en/admin-guide``,
   including discussions of installation, relevant plugins, security and 
   backup. (Neil Martinsen-Burrell)

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2004-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -4998,18 +4998,32 @@ class cmd_send(Command):
       directly from the merge directive, without retrieving data from a
       branch.
 
-    If --no-bundle is specified, then public_branch is needed (and must be
-    up-to-date), so that the receiver can perform the merge using the
-    public_branch.  The public_branch is always included if known, so that
-    people can check it later.
+    `bzr send` creates a compact data set that, when applied using bzr
+    merge, has the same effect as merging from the source branch.  
+    
+    By default the merge directive is self-contained and can be applied to any
+    branch containing submit_branch in its ancestory without needing access to
+    the source branch.
+    
+    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    revisions, but only a structured request to merge from the
+    public_location.  In that case the public_branch is needed and it must be
+    up-to-date and accessible to the recipient.  The public_branch is always
+    included if known, so that people can check it later.
 
-    The submit branch defaults to the parent, but can be overridden.  Both
-    submit branch and public branch will be remembered if supplied.
+    The submit branch defaults to the parent of the source branch, but can be
+    overridden.  Both submit branch and public branch will be remembered in
+    branch.conf the first time they are used for a particular branch.  The
+    source branch defaults to that containing the working directory, but can
+    be changed using --from.
 
-    If a public_branch is known for the submit_branch, that public submit
-    branch is used in the merge instructions.  This means that a local mirror
-    can be used as your actual submit branch, once you have set public_branch
-    for that mirror.
+    In order to calculate those changes, bzr must analyse the submit branch.
+    Therefore it is most efficient for the submit branch to be a local mirror.
+    If a public location is known for the submit_branch, that location is used
+    in the merge directive.
+
+    The default behaviour is to send the merge directive by mail, unless -o is
+    given, in which case it is sent to a file.
 
     Mail is sent using your preferred mail program.  This should be transparent
     on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
@@ -5035,6 +5049,10 @@ class cmd_send(Command):
 
     The merge directives created by bzr send may be applied using bzr merge or
     bzr pull by specifying a file containing a merge directive as the location.
+
+    bzr send makes extensive use of public locations to map local locations into
+    URLs that can be used by other people.  See `bzr help configuration` to
+    set them, and use `bzr info` to display them.
     """
 
     encoding_type = 'exact'
