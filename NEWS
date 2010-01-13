@@ -57,7 +57,8 @@ Bug Fixes
   (Martin Pool, John Arbash Meinel, #449372)
 
 * ``setup.py bdist_rpm`` now properly finds extra files needed for the
-  build. (Joe Julian)
+  build. (there is still the distutils bug
+  http://bugs.python.org/issue644744) (Joe Julian, #175839)
 
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
