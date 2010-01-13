@@ -176,6 +176,10 @@ Testing
   tests that 'failed' - they're all just failures.
   (Martin Pool)
 
+* Shell-like tests no support the command "mv" for moving files.  The
+  syntax for ``mv file1 file2``, ``mv dir1 dir2`` and ``mv file dir`` is
+  supported.  (Neil Martinsen-Burrell)
+
 bzr 2.0.4 (not released yet)
 ############################
 

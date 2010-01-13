@@ -432,3 +432,14 @@ $ echo content >dir/file
         self.failIfExists('dir')
         self.failUnlessExists('new_name')
         self.failUnlessExists('new_name/file')
+        
+    def test_move_file_into_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content > file
+""")
+        self.run_script('$ mv file dir')
+        self.failUnlessExists('dir')
+        self.failIfExists('file')
+        self.failUnlessExists('dir/file')
+
