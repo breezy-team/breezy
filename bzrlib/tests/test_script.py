@@ -423,6 +423,10 @@ class TestMv(script.TestCaseWithTransportAndScript):
         self.failIfExists('file')
         self.failUnlessExists('new_name')
 
+    def test_move_unknown_file(self):
+        self.assertRaises(AssertionError,
+                          self.run_script, '$ mv unknown does-not-exist')
+
     def test_move_dir(self):
         self.run_script("""
 $ mkdir dir
@@ -432,7 +436,7 @@ $ echo content >dir/file
         self.failIfExists('dir')
         self.failUnlessExists('new_name')
         self.failUnlessExists('new_name/file')
-        
+
     def test_move_file_into_dir(self):
         self.run_script("""
 $ mkdir dir

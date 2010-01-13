@@ -172,13 +172,13 @@ Testing
   testtools less than 0.9.2 will cause bzr to error while loading the test
   suite. (Robert Collins)
 
+* Shell-like tests now support the command "mv" for moving files.  The
+  syntax for ``mv file1 file2``, ``mv dir1 dir2`` and ``mv file dir`` is
+  supported.  (Neil Martinsen-Burrell)
+
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.
   (Martin Pool)
-
-* Shell-like tests no support the command "mv" for moving files.  The
-  syntax for ``mv file1 file2``, ``mv dir1 dir2`` and ``mv file dir`` is
-  supported.  (Neil Martinsen-Burrell)
 
 bzr 2.0.4 (not released yet)
 ############################
