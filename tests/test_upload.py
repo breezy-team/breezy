@@ -229,27 +229,40 @@ class UploadUtilsMixin(object):
 class TestUploadMixin(UploadUtilsMixin):
     """Helper class to share tests between full and incremental uploads."""
 
+    def _test_create_file(self, file_name):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_file(file_name, 'foo')
+
+        self.do_upload()
+
+        self.assertUpFileEqual('foo', file_name)
+
     def test_create_file(self):
+        self._test_create_file('hello')
+
+    def test_unicode_create_file(self):
+        self._test_create_file(u'hell\u00d8')
+
+    def _test_create_file_in_dir(self, dir_name, file_name):
         self.make_branch_and_working_tree()
         self.do_full_upload()
-        self.add_file('hello', 'foo')
+        self.add_dir(dir_name)
+        fpath = '%s/%s' % (dir_name, file_name)
+        self.add_file(fpath, 'baz')
+
+        self.failIfUpFileExists(fpath)
 
         self.do_upload()
 
-        self.assertUpFileEqual('foo', 'hello')
+        self.assertUpFileEqual('baz', fpath)
+        self.assertUpPathModeEqual(dir_name, 0775)
 
-    def test_create_file_in_subdir(self):
-        self.make_branch_and_working_tree()
-        self.do_full_upload()
-        self.add_dir('dir')
-        self.add_file('dir/goodbye', 'baz')
+    def test_create_file_in_dir(self):
+        self._test_create_file_in_dir('dir', 'goodbye')
 
-        self.failIfUpFileExists('dir/goodbye')
-
-        self.do_upload()
-
-        self.assertUpFileEqual('baz', 'dir/goodbye')
-        self.assertUpPathModeEqual('dir', 0775)
+    def test_unicode_create_file_in_dir(self):
+        self._test_create_file_in_dir(u'dir\u00d8', u'goodbye\u00d8')
 
     def test_modify_file(self):
         self.make_branch_and_working_tree()
@@ -263,17 +276,23 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.assertUpFileEqual('bar', 'hello')
 
-    def test_rename_one_file(self):
+    def _test_rename_one_file(self, old_name, new_name):
         self.make_branch_and_working_tree()
-        self.add_file('hello', 'foo')
+        self.add_file(old_name, 'foo')
         self.do_full_upload()
-        self.rename_any('hello', 'goodbye')
+        self.rename_any(old_name, new_name)
 
-        self.assertUpFileEqual('foo', 'hello')
+        self.assertUpFileEqual('foo', old_name)
 
         self.do_upload()
 
-        self.assertUpFileEqual('foo', 'goodbye')
+        self.assertUpFileEqual('foo', new_name)
+
+    def test_rename_one_file(self):
+        self._test_rename_one_file('hello', 'goodbye')
+
+    def test_unicode_rename_one_file(self):
+        self._test_rename_one_file(u'hello\u00d8', u'goodbye\u00d8')
 
     def test_rename_and_change_file(self):
         self.make_branch_and_working_tree()
@@ -339,18 +358,25 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.assertRaises(errors.UncommittedChanges, self.do_upload)
 
-    def test_change_file_into_dir(self):
+    def _test_change_file_into_dir(self, file_name):
         self.make_branch_and_working_tree()
-        self.add_file('hello', 'foo')
+        self.add_file(file_name, 'foo')
         self.do_full_upload()
-        self.transform_file_into_dir('hello')
-        self.add_file('hello/file', 'bar')
+        self.transform_file_into_dir(file_name)
+        fpath = '%s/%s' % (file_name, 'file')
+        self.add_file(fpath, 'bar')
 
-        self.assertUpFileEqual('foo', 'hello')
+        self.assertUpFileEqual('foo', file_name)
 
         self.do_upload()
 
-        self.assertUpFileEqual('bar', 'hello/file')
+        self.assertUpFileEqual('bar', fpath)
+
+    def test_change_file_into_dir(self):
+        self._test_change_file_into_dir('hello')
+
+    def test_unicode_change_file_into_dir(self):
+        self._test_change_file_into_dir(u'hello\u00d8')
 
     def test_change_dir_into_file(self):
         self.make_branch_and_working_tree()
@@ -366,18 +392,24 @@ class TestUploadMixin(UploadUtilsMixin):
 
         self.assertUpFileEqual('bar', 'hello')
 
-    def test_make_file_executable(self):
+    def _test_make_file_executable(self, file_name):
         self.make_branch_and_working_tree()
-        self.add_file('hello', 'foo')
-        self.chmod_file('hello', 0664)
+        self.add_file(file_name, 'foo')
+        self.chmod_file(file_name, 0664)
         self.do_full_upload()
-        self.chmod_file('hello', 0755)
+        self.chmod_file(file_name, 0755)
 
-        self.assertUpPathModeEqual('hello', 0664)
+        self.assertUpPathModeEqual(file_name, 0664)
 
         self.do_upload()
 
-        self.assertUpPathModeEqual('hello', 0775)
+        self.assertUpPathModeEqual(file_name, 0775)
+
+    def test_make_file_executable(self):
+        self._test_make_file_executable('hello')
+
+    def test_unicode_make_file_executable(self):
+        self._test_make_file_executable(u'hello\u00d8')
 
     def get_upload_auto(self):
         return upload.get_upload_auto(self.tree.branch)

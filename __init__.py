@@ -265,17 +265,42 @@ class BzrUploader(object):
         self._uploaded_revid = None
         self._ignored = None
 
+    def _up_stat(self, relpath):
+        return self.to_transport.stat(urlutils.escape(relpath))
+
+    def _up_rename(self, old_path, new_path):
+        return self.to_transport.rename(urlutils.escape(old_path),
+                                        urlutils.escape(new_path))
+
+    def _up_delete(self, relpath):
+        return self.to_transport.delete(urlutils.escape(relpath))
+
+    def _up_delete_tree(self, relpath):
+        return self.to_transport.delete_tree(urlutils.escape(relpath))
+
+    def _up_mkdir(self, relpath, mode):
+        return self.to_transport.mkdir(urlutils.escape(relpath), mode)
+
+    def _up_rmdir(self, relpath):
+        return self.to_transport.rmdir(urlutils.escape(relpath))
+
+    def _up_put_bytes(self, relpath, bytes, mode):
+        self.to_transport.put_bytes(urlutils.escape(relpath), bytes, mode)
+
+    def _up_get_bytes(self, relpath):
+        return self.to_transport.get_bytes(urlutils.escape(relpath))
+
     def set_uploaded_revid(self, rev_id):
         # XXX: Add tests for concurrent updates, etc.
         revid_path = get_upload_revid_location(self.branch)
-        self.to_transport.put_bytes(revid_path, rev_id)
+        self.to_transport.put_bytes(urlutils.escape(revid_path), rev_id)
         self._uploaded_revid = rev_id
 
     def get_uploaded_revid(self):
         if self._uploaded_revid is None:
             revid_path = get_upload_revid_location(self.branch)
             try:
-                self._uploaded_revid = self.to_transport.get_bytes(revid_path)
+                self._uploaded_revid = self._up_get_bytes(revid_path)
             except errors.NoSuchFile:
                 # We have not upload to here.
                 self._uploaded_revid = revision.NULL_REVISION
@@ -312,8 +337,7 @@ class BzrUploader(object):
                 mode = 0664
         if not self.quiet:
             self.outf.write('Uploading %s\n' % relpath)
-        self.to_transport.put_bytes(relpath, self.tree.get_file_text(id),
-                                    mode)
+        self._up_put_bytes(relpath, self.tree.get_file_text(id), mode)
 
     def upload_file_robustly(self, relpath, id, mode=None):
         """Upload a file, clearing the way on the remote side.
@@ -322,13 +346,13 @@ class BzrUploader(object):
         we want to put our file.
         """
         try:
-            st = self.to_transport.stat(relpath)
+            st = self._up_stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 # A simple rmdir may not be enough
                 if not self.quiet:
                     self.outf.write('Clearing %s/%s\n' % (
                             self.to_transport.external_url(), relpath))
-                self.to_transport.delete_tree(relpath)
+                self._up_delete_tree(relpath)
         except errors.PathError:
             pass
         self.upload_file(relpath, id, mode)
@@ -336,7 +360,7 @@ class BzrUploader(object):
     def make_remote_dir(self, relpath, mode=None):
         if mode is None:
             mode = 0775
-        self.to_transport.mkdir(relpath, mode)
+        self._up_mkdir(relpath, mode)
 
     def make_remote_dir_robustly(self, relpath, mode=None):
         """Create a remote directory, clearing the way on the remote side.
@@ -345,12 +369,12 @@ class BzrUploader(object):
         want to create our directory.
         """
         try:
-            st = self.to_transport.stat(relpath)
+            st = self._up_stat(relpath)
             if not stat.S_ISDIR(st.st_mode):
                 if not self.quiet:
                     self.outf.write('Deleting %s/%s\n' % (
                             self.to_transport.external_url(), relpath))
-                self.to_transport.delete(relpath)
+                self._up_delete(relpath)
             else:
                 # Ok the remote dir already exists, nothing to do
                 return
@@ -361,19 +385,19 @@ class BzrUploader(object):
     def delete_remote_file(self, relpath):
         if not self.quiet:
             self.outf.write('Deleting %s\n' % relpath)
-        self.to_transport.delete(relpath)
+        self._up_delete(relpath)
 
     def delete_remote_dir(self, relpath):
         if not self.quiet:
             self.outf.write('Deleting %s\n' % relpath)
-        self.to_transport.rmdir(relpath)
+        self._up_rmdir(relpath)
         # XXX: Add a test where a subdir is ignored but we still want to
         # delete the dir -- vila 100106
 
     def delete_remote_dir_maybe(self, relpath):
         """Try to delete relpath, keeping failures to retry later."""
         try:
-            self.to_transport.rmdir(relpath)
+            self._up_rmdir(relpath)
         # any kind of PathError would be OK, though we normally expect
         # DirectoryNotEmpty
         except errors.PathError:
@@ -384,7 +408,7 @@ class BzrUploader(object):
             # Process the previously failed deletions in reverse order to
             # delete children before parents
             for relpath in reversed(self._pending_deletions):
-                self.to_transport.rmdir(relpath)
+                self._up_rmdir(relpath)
             # The following shouldn't be needed since we use it once per
             # upload, but better safe than sorry ;-)
             self._pending_deletions = []
@@ -408,12 +432,12 @@ class BzrUploader(object):
                                      random.randint(0,0x7FFFFFFF))
         if not self.quiet:
             self.outf.write('Renaming %s to %s\n' % (old_relpath, new_relpath))
-        self.to_transport.rename(old_relpath, stamp)
+        self._up_rename(old_relpath, stamp)
         self._pending_renames.append((stamp, new_relpath))
 
     def finish_renames(self):
         for (stamp, new_path) in self._pending_renames:
-            self.to_transport.rename(stamp, new_path)
+            self._up_rename(stamp, new_path)
         # The following shouldn't be needed since we use it once per upload,
         # but better safe than sorry ;-)
         self._pending_renames = []
@@ -663,7 +687,7 @@ class cmd_upload(commands.Command):
 
         # We uploaded successfully, remember it
         if get_upload_location(branch) is None or remember:
-            set_upload_location(branch, to_transport.base)
+            set_upload_location(branch, urlutils.unescape(to_transport.base))
         if auto is not None:
             set_upload_auto(branch, auto)
 
