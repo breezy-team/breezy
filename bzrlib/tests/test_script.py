@@ -407,3 +407,28 @@ $ mkdir dir
 $ rm -r dir
 """)
         self.failIfExists('dir')
+
+
+class TestMv(script.TestCaseWithTransportAndScript):
+
+    def test_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, '$ mv')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f1 f2 f3')
+
+    def test_move_file(self):
+        self.run_script('$ echo content >file')
+        self.failUnlessExists('file')
+        self.run_script('$ mv file new_name')
+        self.failIfExists('file')
+        self.failUnlessExists('new_name')
+
+    def test_move_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content >dir/file
+""")
+        self.run_script('$ mv dir new_name')
+        self.failIfExists('dir')
+        self.failUnlessExists('new_name')
+        self.failUnlessExists('new_name/file')

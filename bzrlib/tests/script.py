@@ -24,6 +24,7 @@ import errno
 import glob
 import os
 import shlex
+import shutil
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -401,6 +402,28 @@ class ScriptRunner(object):
         else:
             retcode = 0
         return retcode, None, err
+
+    def do_mv(self, test_case, input, args):
+        err = None
+        def error(msg, path1, path2):
+            return "mv: cannot move %s to %s: %s\n" % (path1, path2, msg)
+
+        if not args or len(args) != 2:
+            raise SyntaxError("Usage: mv path1 path2")
+        path1, path2 = args
+        try:
+            shutil.move(path1, path2)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                err = error('No such file or directory', path1)
+            else:
+                raise
+        if err:
+            retcode = 1
+        else:
+            retcode = 0
+        return retcode, None, err
+
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
