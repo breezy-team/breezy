@@ -58,6 +58,9 @@ Bug Fixes
   returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
   optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
 
+* Fix "Too many concurrent requests" in reconcile when network connection
+  fails.  (Andrew Bennetts, #503878)
+
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
