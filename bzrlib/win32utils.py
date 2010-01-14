@@ -680,7 +680,7 @@ def command_line_to_argv(command_line, wildcard_expansion=True,
 
 if has_ctypes and winver != 'Windows 98':
     def get_unicode_argv():
-        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p, use_last_error=True)
+        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
         GetCommandLineW = prototype(("GetCommandLineW",
                                      ctypes.windll.kernel32))
         command_line = GetCommandLineW()
