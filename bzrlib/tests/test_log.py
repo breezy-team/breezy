@@ -71,6 +71,29 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         wt.commit(**kwargs)
         return wt
 
+    def make_commits_with_trailing_newlines(self, wt):
+        """Helper method for LogFormatter tests"""
+        b = wt.branch
+        b.nick = 'test'
+        open('a', 'wb').write('hello moto\n')
+        wt.add('a')
+        wt.commit('simple log message', rev_id='a1',
+                  timestamp=1132586655.459960938, timezone=-6*3600,
+                  committer='Joe Foo <joe@foo.com>')
+        open('b', 'wb').write('goodbye\n')
+        wt.add('b')
+        wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
+                  timestamp=1132586842.411175966, timezone=-6*3600,
+                  committer='Joe Foo <joe@foo.com>',
+                  authors=['Joe Bar <joe@bar.com>'])
+
+        open('c', 'wb').write('just another manic monday\n')
+        wt.add('c')
+        wt.commit('single line with trailing newline\n', rev_id='a3',
+                  timestamp=1132587176.835228920, timezone=-6*3600,
+                  committer = 'Joe Foo <joe@foo.com>')
+        return b
+
     def _prepare_tree_with_merges(self, with_tags=False):
         wt = self.make_branch_and_memory_tree('.')
         wt.lock_write()
@@ -96,8 +119,6 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
             branch.tags.set_tag('v1.0rc1', 'rev-3')
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
-
-        
 
 
 class LogCatcher(log.LogFormatter):
@@ -260,29 +281,6 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
 
-def make_commits_with_trailing_newlines(wt):
-    """Helper method for LogFormatter tests"""
-    b = wt.branch
-    b.nick='test'
-    open('a', 'wb').write('hello moto\n')
-    wt.add('a')
-    wt.commit('simple log message', rev_id='a1',
-              timestamp=1132586655.459960938, timezone=-6*3600,
-              committer='Joe Foo <joe@foo.com>')
-    open('b', 'wb').write('goodbye\n')
-    wt.add('b')
-    wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
-              timestamp=1132586842.411175966, timezone=-6*3600,
-              committer='Joe Foo <joe@foo.com>',
-              authors=['Joe Bar <joe@bar.com>'])
-
-    open('c', 'wb').write('just another manic monday\n')
-    wt.add('c')
-    wt.commit('single line with trailing newline\n', rev_id='a3',
-              timestamp=1132587176.835228920, timezone=-6*3600,
-              committer = 'Joe Foo <joe@foo.com>')
-    return b
-
 
 def normalize_log(log):
     """Replaces the variable lines of logs with fixed lines"""
@@ -305,7 +303,7 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
-        b = make_commits_with_trailing_newlines(wt)
+        b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
     3 Joe Foo\t2005-11-21
       single line with trailing newline
@@ -619,7 +617,7 @@ added:
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
-        b = make_commits_with_trailing_newlines(wt)
+        b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 3
@@ -812,7 +810,7 @@ added:
 
     def test_long_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
-        b = make_commits_with_trailing_newlines(wt)
+        b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 3
@@ -903,7 +901,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
-        b = make_commits_with_trailing_newlines(wt)
+        b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
 3: Joe Foo 2005-11-21 single line with trailing newline
 2: Joe Bar 2005-11-21 multiline
