@@ -1294,12 +1294,7 @@ class TestDiffFromTool(TestCaseWithTransport):
             diff_obj.command_template)
 
     def test_from_string_u5(self):
-        # win32 doesn't support escaping spaces with backslashes
-        if sys.platform == 'win32':
-            tool = 'diff "-u 5"'
-        else:
-            tool = 'diff -u\\ 5'
-        diff_obj = DiffFromTool.from_string(tool, None, None, None)
+        diff_obj = DiffFromTool.from_string("diff '-u 5'", None, None, None)
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
                          diff_obj.command_template)
