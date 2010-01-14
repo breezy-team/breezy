@@ -545,9 +545,10 @@ class _Whitespace(object):
                 return None
             else:
                 return self
-        elif next_char == u'"':
+        elif (next_char == u'"'
+              or (context.single_quotes_allowed and next_char == u"'")):
             context.quoted = True
-            return _Quotes(self)
+            return _Quotes(next_char, self)
         elif next_char == u'\\':
             return _Backslash(self)
         else:
@@ -556,13 +557,14 @@ class _Whitespace(object):
 
 
 class _Quotes(object):
-    def __init__(self, exit_state):
+    def __init__(self, quote_char, exit_state):
+        self.quote_char = quote_char
         self.exit_state = exit_state
 
     def process(self, next_char, seq, context):
         if next_char == u'\\':
             return _Backslash(self)
-        elif next_char == u'"':
+        elif next_char == self.quote_char:
             return self.exit_state
         else:
             context.token.append(next_char)
@@ -607,8 +609,9 @@ class _Word(object):
     def process(self, next_char, seq, context):
         if _whitespace_match(next_char):
             return None
-        elif next_char == u'"':
-            return _Quotes(self)
+        elif (next_char == u'"'
+              or (context.single_quotes_allowed and next_char == u"'")):
+            return _Quotes(next_char, self)
         elif next_char == u'\\':
             return _Backslash(self)
         else:
@@ -617,8 +620,9 @@ class _Word(object):
 
 
 class UnicodeShlex(object):
-    def __init__(self, command_line):
+    def __init__(self, command_line, single_quotes_allowed=False):
         self._seq = _PushbackSequence(command_line)
+        self.single_quotes_allowed = single_quotes_allowed
     
     def __iter__(self):
         return self
@@ -645,7 +649,8 @@ class UnicodeShlex(object):
         return self.quoted, result
 
 
-def command_line_to_argv(command_line, wildcard_expansion=True):
+def command_line_to_argv(command_line, wildcard_expansion=True,
+                         single_quotes_allowed=False):
     """Convert a Unicode command line into a list of argv arguments.
 
     This optionally does wildcard expansion, etc. It is intended to make
@@ -655,9 +660,12 @@ def command_line_to_argv(command_line, wildcard_expansion=True):
     :param command_line: The unicode string to split into an arg list.
     :param wildcard_expansion: Whether wildcard expansion should be applied to
                                each argument. True by default.
+    :param single_quotes_allowed: Whether single quotes are accepted as quoting
+                                  characters like double quotes. False by
+                                  default.
     :return: A list of unicode strings.
     """
-    s = UnicodeShlex(command_line)
+    s = UnicodeShlex(command_line, single_quotes_allowed=single_quotes_allowed)
     # Now that we've split the content, expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs

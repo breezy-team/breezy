@@ -293,8 +293,9 @@ class TestSetHidden(TestCaseInTempDir):
 
 class TestUnicodeShlex(tests.TestCase):
 
-    def assertAsTokens(self, expected, line):
-        s = win32utils.UnicodeShlex(line)
+    def assertAsTokens(self, expected, line, single_quotes_allowed=False):
+        s = win32utils.UnicodeShlex(line,
+                                    single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, list(s))
 
     def test_simple(self):
@@ -313,6 +314,10 @@ class TestUnicodeShlex(tests.TestCase):
     def test_nested_quotations(self):
         self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
         self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
+        self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"",
+            single_quotes_allowed=True)
+        self.assertAsTokens([(True, u'foo"" bar')], u"'foo\"\" bar'",
+            single_quotes_allowed=True)
 
     def test_empty_result(self):
         self.assertAsTokens([], u'')
@@ -321,6 +326,7 @@ class TestUnicodeShlex(tests.TestCase):
     def test_quoted_empty(self):
         self.assertAsTokens([(True, '')], u'""')
         self.assertAsTokens([(False, u"''")], u"''")
+        self.assertAsTokens([(True, '')], u"''", single_quotes_allowed=True)
 
     def test_unicode_chars(self):
         self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
@@ -328,6 +334,8 @@ class TestUnicodeShlex(tests.TestCase):
 
     def test_newline_in_quoted_section(self):
         self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
+        self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u"'foo\nbar\nbaz\n'",
+            single_quotes_allowed=True)
 
     def test_escape_chars(self):
         self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
@@ -344,15 +352,18 @@ class TestUnicodeShlex(tests.TestCase):
     def test_multiple_quoted_args(self):
         self.assertAsTokens([(True, u'x x'), (True, u'y y')],
             u'"x x" "y y"')
+        self.assertAsTokens([(True, u'x x'), (True, u'y y')],
+            u'"x x" \'y y\'', single_quotes_allowed=True)
 
 
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
-    def assertCommandLine(self, expected, line):
+    def assertCommandLine(self, expected, line, single_quotes_allowed=False):
         # Strictly speaking we should respect parameter order versus glob
         # expansions, but it's not really worth the effort here
-        self.assertEqual(expected,
-                         sorted(win32utils.command_line_to_argv(line)))
+        argv = win32utils.command_line_to_argv(line,
+                single_quotes_allowed=single_quotes_allowed)
+        self.assertEqual(expected, sorted(argv))
 
     def test_glob_paths(self):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
@@ -368,19 +379,25 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/*.c'], '"a/*.c"')
         self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
+        self.assertCommandLine([u'a/*.c'], "'a/*.c'",
+            single_quotes_allowed=True)
 
     def test_slashes_changed(self):
         # Quoting doesn't change the supplied args
         self.assertCommandLine([u'a\\*.c'], '"a\\*.c"')
+        self.assertCommandLine([u'a\\*.c'], "'a\\*.c'",
+            single_quotes_allowed=True)
         # Expands the glob, but nothing matches, swaps slashes
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
         self.assertCommandLine([u'a/?.c'], 'a\\?.c')
         # No glob, doesn't touch slashes
         self.assertCommandLine([u'a\\foo.c'], 'a\\foo.c')
 
-    def test_no_single_quote_supported(self):
+    def test_single_quote_support(self):
         self.assertCommandLine(["add", "let's-do-it.txt"],
             "add let's-do-it.txt")
+        self.assertCommandLine(["add", "lets do it.txt"],
+            "add 'lets do it.txt'", single_quotes_allowed=True)
 
     def test_case_insensitive_globs(self):
         self.requireFeature(tests.CaseInsCasePresFilenameFeature)

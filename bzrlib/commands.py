@@ -871,7 +871,8 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
 def shlex_split_unicode(unsplit):
     if sys.platform == "win32":
         from bzrlib.win32utils import command_line_to_argv
-        return command_line_to_argv(unsplit, wildcard_expansion=False)
+        return command_line_to_argv(unsplit, wildcard_expansion=False,
+                                    single_quotes_allowed=True)
     else:
         import shlex
         return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
