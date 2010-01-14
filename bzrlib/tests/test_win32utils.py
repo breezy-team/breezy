@@ -311,6 +311,16 @@ class TestUnicodeShlex(tests.TestCase):
     def test_ignore_trailing_space(self):
         self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo bar  ')
 
+    def test_posix_quotations(self):
+        self.assertAsTokens([(True, u'foo bar')], u"'foo bar'",
+            single_quotes_allowed=True)
+        self.assertAsTokens([(True, u'foo bar')], u"'fo''o b''ar'",
+            single_quotes_allowed=True)
+        self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"',
+            single_quotes_allowed=True)
+        self.assertAsTokens([(True, u'foo bar')], u'"fo"\'o b\'"ar"',
+            single_quotes_allowed=True)
+
     def test_nested_quotations(self):
         self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
         self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
