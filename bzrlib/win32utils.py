@@ -517,6 +517,9 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
+_whitespace_match = re.compile(u'\s').match
+
+
 class _PushbackSequence(object):
     def __init__(self, orig):
         self._iter = iter(orig)
@@ -534,6 +537,7 @@ class _PushbackSequence(object):
     def __iter__(self):
         return self
 
+
 class _Whitespace(object):
     def process(self, next_char, seq, context):
         if _whitespace_match(next_char):
@@ -550,6 +554,7 @@ class _Whitespace(object):
             context.token.append(next_char)
             return _Word()
 
+
 class _Quotes(object):
     def __init__(self, exit_state):
         self.exit_state = exit_state
@@ -562,7 +567,8 @@ class _Quotes(object):
         else:
             context.token.append(next_char)
             return self
-    
+
+
 class _Backslash(object):
     # See http://msdn.microsoft.com/en-us/library/bb776391(VS.85).aspx
     def __init__(self, exit_state):
@@ -596,7 +602,7 @@ class _Backslash(object):
         if self.count > 0:
             context.token.append(u'\\' * self.count)
 
-    
+
 class _Word(object):
     def process(self, next_char, seq, context):
         if _whitespace_match(next_char):
@@ -609,8 +615,8 @@ class _Word(object):
             context.token.append(next_char)
             return self
 
-_whitespace_match = re.compile(u'\s').match
-class UnicodeCommandLineSplitter(object):
+
+class UnicodeShlex(object):
     def __init__(self, command_line):
         self._seq = _PushbackSequence(command_line)
     
@@ -651,7 +657,7 @@ def command_line_to_argv(command_line, wildcard_expansion=True):
                                each argument. True by default.
     :return: A list of unicode strings.
     """
-    s = UnicodeCommandLineSplitter(command_line)
+    s = UnicodeShlex(command_line)
     # Now that we've split the content, expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs

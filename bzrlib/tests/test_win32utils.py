@@ -291,10 +291,10 @@ class TestSetHidden(TestCaseInTempDir):
         win32utils.set_file_attr_hidden(path)
 
 
-class TestUnicodeCommandLineSplitter(tests.TestCase):
+class TestUnicodeShlex(tests.TestCase):
 
     def assertAsTokens(self, expected, line):
-        s = win32utils.UnicodeCommandLineSplitter(line)
+        s = win32utils.UnicodeShlex(line)
         self.assertEqual(expected, list(s))
 
     def test_simple(self):
