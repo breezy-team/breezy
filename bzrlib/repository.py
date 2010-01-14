@@ -4284,6 +4284,8 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
+                ui.ui_factory.warn_cross_format_fetch(src_format,
+                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4595,14 +4597,6 @@ class StreamSource(object):
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
-        # 
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # Note that for the smart server this runs on the server, so for ssh
-        # it will be sent back over stderr, and for tcp and http it will
-        # probably be lost.
-        ui.ui_factory.warn_cross_format_fetch(self.from_repository._format,
-            self.to_format)
         yield ('inventory-deltas',
            self._stream_invs_as_deltas(revision_ids,
                                        delta_versus_null=delta_versus_null))
