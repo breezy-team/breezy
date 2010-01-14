@@ -94,9 +94,6 @@ class TestGetAlias(tests.TestCase):
             commands.get_alias("diff", config=my_config))
 
     def test_single_quotes(self):
-        if sys.platform == 'win32':
-            raise TestSkipped("commandline parsing on win32 does not "
-                              "support single quotes")
         my_config = self._get_config("[ALIASES]\n"
             "diff=diff -r -2..-1 --diff-options "
             "'--strip-trailing-cr -wp'\n")
