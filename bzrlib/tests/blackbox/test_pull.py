@@ -405,7 +405,7 @@ class TestPull(ExternalBase):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Fetching between repositories with different formats.*")
+            "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_warning_no_IDS(self):
         """You get a warning for probably slow cross-format pulls.
@@ -421,7 +421,7 @@ class TestPull(ExternalBase):
         from_tree.commit(message='first commit')
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
-            "(?m)Using format-conversion stream*")
+            "(?m)Doing on-the-fly conversion")
 
     def test_pull_cross_format_from_network(self):
         self.setup_smart_server_with_call_log()
@@ -432,4 +432,4 @@ class TestPull(ExternalBase):
         out, err = self.run_bzr(['pull', '-d', 'to',
             from_tree.branch.bzrdir.root_transport.base])
         self.assertContainsRe(err,
-            "(?m)Using format-conversion stream*")
+            "(?m)Doing on-the-fly conversion")

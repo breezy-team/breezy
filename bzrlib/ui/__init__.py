@@ -208,6 +208,13 @@ class UIFactory(object):
         """
         pass
 
+    def warn_cross_format_fetch(self, from_format, to_format):
+        """Warn about a potentially slow cross-format transfer"""
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        trace.warning("Doing on-the-fly conversion from %s to %s.\n"
+            "This may take some time. Upgrade the branches to the "
+            "same format for better performance.\n" %
+            (from_format, to_format))
 
 
 class CLIUIFactory(UIFactory):

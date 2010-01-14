@@ -3984,11 +3984,8 @@ class InterDifferingSerializer(InterRepository):
         #
         # nb this is only active for local-local fetches; other things using
         # streaming.
-        trace.warning("Fetching between repositories with different formats\n"
-            "from %s to %s.\n"
-            "This may take some time. Upgrade the branches to the same format \n"
-            "for better results.\n"
-            % (self.source._format, self.target._format))
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4604,13 +4601,8 @@ class StreamSource(object):
         # Note that for the smart server this runs on the server, so for ssh
         # it will be sent back over stderr, and for tcp and http it will
         # probably be lost.
-        trace.warning("Using format-conversion stream\n"
-            "from %s to %s.\n"
-            "This may take some time. Upgrade the branches to the same format \n"
-            "for better results.\n"
-            % (self.from_repository._format,
-               self.to_format))
-
+        ui.ui_factory.warn_cross_format_fetch(self.from_repository._format,
+            self.to_format)
         yield ('inventory-deltas',
            self._stream_invs_as_deltas(revision_ids,
                                        delta_versus_null=delta_versus_null))
