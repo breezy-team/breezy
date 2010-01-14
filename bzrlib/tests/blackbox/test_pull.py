@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -390,4 +390,14 @@ class TestPull(ExternalBase):
         self.assertLength(18, self.hpss_calls)
         remote = Branch.open('stacked')
         self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
+    
+    def test_pull_cross_format_warning(self):
+        """You get a warning for probably slow cross-format pulls.
+        """
 
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='1.14-rich-root')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching between repositories with different formats.*")

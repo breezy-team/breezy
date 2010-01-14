@@ -223,6 +223,12 @@ Bug Fixes
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
+* Give a warning when fetching between local repositories with
+  sufficiently different formats that the content will need to be
+  serialized (ie ``InterDifferingSerializer``) so the user has a clue that
+  upgrading could make it faster.
+  (Martin Pool, #456077)
+
 * If we fail to open ``~/.bzr.log`` write a clear message to stderr rather
   than using ``warning()``. The log file is opened before logging is set
   up, and it leads to very confusing: 'no handlers for "bzr"' messages for
@@ -232,6 +238,10 @@ Bug Fixes
 * Refuse to build with any Pyrex 0.9.4 release, as they have known bugs.
   (Martin Pool, John Arbash Meinel, #449372)
 
+* ``setup.py bdist_rpm`` now properly finds extra files needed for the
+  build. (there is still the distutils bug
+  http://bugs.python.org/issue644744) (Joe Julian, #175839)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)
@@ -239,9 +249,8 @@ Bug Fixes
 * ``TreeTransform`` can now handle when a delta says that the file id for
   the tree root changes. Rather than trying to rename your working
   directory, or failing early saying that you can't have multiple
-  tree roots. This also fixes ``bzr revert`` when the root id changes.
-  (Currently ``bzr update`` is still broken.)
-  (John Arbash Meinel, #494269)
+  tree roots. This also fixes revert, update, and pull when the root id
+  changes.  (John Arbash Meinel, #494269, #504390)
 
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
