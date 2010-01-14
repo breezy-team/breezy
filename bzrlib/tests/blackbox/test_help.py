@@ -122,7 +122,6 @@ class TestHelp(ExternalBase):
             return cmds
         commands = extract_cmd_names(help_commands)
         hidden = extract_cmd_names(help_hidden)
-        import pdb; pdb.set_trace()
         self.assertTrue('commit' in commands)
         self.assertTrue('commit' not in hidden)
         self.assertTrue('rocks' in hidden)
