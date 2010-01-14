@@ -4591,11 +4591,26 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or it has a
-        # different serializer.  The StreamSink code expects to be able to
+        # The two formats are sufficiently different that there is no fast
+        # path, so we need to send just inventorydeltas, which any
+        # sufficiently modern client can insert into any repository.
+        # The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
+        # 
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        #
+        # Note that for the smart server this runs on the server, so for ssh
+        # it will be sent back over stderr, and for tcp and http it will
+        # probably be lost.
+        trace.warning("Using format-conversion stream\n"
+            "from %s to %s.\n"
+            "This may take some time. Upgrade the branches to the same format \n"
+            "for better results.\n"
+            % (self.from_repository._format,
+               self.to_format))
+
         yield ('inventory-deltas',
            self._stream_invs_as_deltas(revision_ids,
                                        delta_versus_null=delta_versus_null))
