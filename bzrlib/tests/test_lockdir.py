@@ -199,7 +199,7 @@ class TestLockDir(TestCaseWithTransport):
                          'Will continue to try until %s, unless '
                          'you press Ctrl-C\n'
                          'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'modified, use bzr break-lock',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -422,7 +422,7 @@ class TestLockDir(TestCaseWithTransport):
                          'Will continue to try until %s, unless '
                          'you press Ctrl-C\n'
                          'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'modified, use bzr break-lock',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -437,7 +437,7 @@ class TestLockDir(TestCaseWithTransport):
                          'Will continue to try until %s, unless '
                          'you press Ctrl-C\n'
                          'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'modified, use bzr break-lock',
                          self._logged_reports[1][0])
         args = self._logged_reports[1][1]
         self.assertEqual('Lock owner changed for', args[0])
