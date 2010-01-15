@@ -278,11 +278,13 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._walkdirs_win32')
     z_lib = 'zdll'
 else:
-    if have_pyrex and pyrex_version == '0.9.4.1':
+    if have_pyrex and pyrex_version.startswith('0.9.4'):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
+        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
         print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
         print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
