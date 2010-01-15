@@ -76,24 +76,22 @@ class MergeHookParams(object):
     :ivar merger: the Merger object
     :ivar file_id: the file ID of the file being merged
     :ivar trans_id: the transform ID for the merge of this file.
-
-    The lines of versions of the file being merged can be retrieved from the
-    merger, e.g.::
-
-        params.merger.get_lines(params.merger.this_tree, params.file_id)
+    :ivar this_kind: kind of file_id in 'this' tree
+    :ivar other_kind: kind of file_id in 'other' tree
     """
 
-    def __init__(self, merger, file_id, trans_id, this_pair, other_pair,
+    def __init__(self, merger, file_id, trans_id, this_kind, other_kind,
             winner):
         self.merger = merger
         self.file_id = file_id
         self.trans_id = trans_id
-        self.this_pair = this_pair
-        self.other_pair = other_pair
+        self.this_kind = this_kind
+        self.other_kind = other_kind
         self.winner = winner
         
     def is_file_merge(self):
-        return self.this_pair[0] == 'file' and self.other_pair[0] == 'file'
+        """True if this_kind and other_kind are both 'file'."""
+        return self.this_kind == 'file' and self.other_kind == 'file'
     
     @decorators.cachedproperty
     def base_lines(self):
@@ -1195,8 +1193,8 @@ class Merge3Merger(object):
         # We have a hypothetical conflict, but if we have files, then we
         # can try to merge the content
         trans_id = self.tt.trans_id_file_id(file_id)
-        params = MergeHookParams(self, file_id, trans_id, this_pair,
-            other_pair, winner)
+        params = MergeHookParams(self, file_id, trans_id, this_pair[0],
+            other_pair[0], winner)
         hooks = Merger.hooks['merge_file_content']
         hooks = list(hooks) + [self.default_text_merge]
         hook_status = 'not_applicable'
