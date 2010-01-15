@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Messages and logging for bazaar-ng.
+"""Messages and logging.
 
 Messages are supplied by callers as a string-formatting template, plus values
 to be inserted into it.  The actual %-formatting is deferred to the log
@@ -33,8 +33,7 @@ so that we can always rely on writing any message.
 
 Output to stderr depends on the mode chosen by the user.  By default, messages
 of info and above are sent out, which results in progress messages such as the
-list of files processed by add and commit.  In quiet mode, only warnings and
-above are shown.  In debug mode, stderr gets debug messages too.
+list of files processed by add and commit.  In debug mode, stderr gets debug messages too.
 
 Errors that terminate an operation are generally passed back as exceptions;
 others may be just emitted as messages.
@@ -376,7 +375,6 @@ def get_verbosity_level():
 
 
 def be_quiet(quiet=True):
-    # Perhaps this could be deprecated now ...
     if quiet:
         set_verbosity_level(-1)
     else:
