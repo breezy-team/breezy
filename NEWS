@@ -93,6 +93,9 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* Progress bars are now hidden when ``--quiet`` is given.
+  (Martin Pool, #320035)
+
 * ``SilentUIFactory`` now supports ``make_output_stream`` and discards
   whatever is written to it.  This un-breaks some plugin tests that
   depended on this behaviour.

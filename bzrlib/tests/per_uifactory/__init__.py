@@ -56,6 +56,12 @@ class UIFactoryTestMixin(object):
     the concrete subclasses should be.
     """
 
+    def test_be_quiet(self):
+        self.factory.be_quiet(True)
+        self.assertEquals(True, self.factory.is_quiet())
+        self.factory.be_quiet(False)
+        self.assertEquals(False, self.factory.is_quiet())
+
     def test_note(self):
         self.factory.note("a note to the user")
         self._check_note("a note to the user")

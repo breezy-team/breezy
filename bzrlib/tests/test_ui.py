@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -247,6 +247,17 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
+
+    def test_quietness(self):
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        ui_factory = _mod_ui_text.TextUIFactory(None,
+            test_progress._TTYStringIO(),
+            test_progress._TTYStringIO())
+        self.assertIsInstance(ui_factory._progress_view,
+            _mod_ui_text.TextProgressView)
+        ui_factory.be_quiet(True)
+        self.assertIsInstance(ui_factory._progress_view,
+            _mod_ui_text.NullProgressView)
 
 
 class TestTextUIOutputStream(tests.TestCase):
