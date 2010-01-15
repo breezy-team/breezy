@@ -909,43 +909,39 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.last_revision().
         """
         from bzrlib.merge import Merger, Merge3Merger
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            merger = Merger(self.branch, this_tree=self, pb=pb)
-            merger.pp = ProgressPhase("Merge phase", 5, pb)
-            merger.pp.next_phase()
-            # check that there are no local alterations
-            if not force and self.has_changes():
-                raise errors.UncommittedChanges(self)
-            if to_revision is None:
-                to_revision = _mod_revision.ensure_null(branch.last_revision())
-            merger.other_rev_id = to_revision
-            if _mod_revision.is_null(merger.other_rev_id):
-                raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
-            merger.other_basis = merger.other_rev_id
-            merger.other_tree = self.branch.repository.revision_tree(
-                merger.other_rev_id)
-            merger.other_branch = branch
-            merger.pp.next_phase()
-            if from_revision is None:
-                merger.find_base()
-            else:
-                merger.set_base_revision(from_revision, branch)
-            if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
-            merger.backup_files = False
-            if merge_type is None:
-                merger.merge_type = Merge3Merger
-            else:
-                merger.merge_type = merge_type
-            merger.set_interesting_files(None)
-            merger.show_base = False
-            merger.reprocess = False
-            conflicts = merger.do_merge()
-            merger.set_pending()
-        finally:
-            pb.finished()
+        merger = Merger(self.branch, this_tree=self)
+        merger.pp = ProgressPhase("Merge phase", 5, merger._pb)
+        merger.pp.next_phase()
+        # check that there are no local alterations
+        if not force and self.has_changes():
+            raise errors.UncommittedChanges(self)
+        if to_revision is None:
+            to_revision = _mod_revision.ensure_null(branch.last_revision())
+        merger.other_rev_id = to_revision
+        if _mod_revision.is_null(merger.other_rev_id):
+            raise errors.NoCommits(branch)
+        self.branch.fetch(branch, last_revision=merger.other_rev_id)
+        merger.other_basis = merger.other_rev_id
+        merger.other_tree = self.branch.repository.revision_tree(
+            merger.other_rev_id)
+        merger.other_branch = branch
+        merger.pp.next_phase()
+        if from_revision is None:
+            merger.find_base()
+        else:
+            merger.set_base_revision(from_revision, branch)
+        if merger.base_rev_id == merger.other_rev_id:
+            raise errors.PointlessMerge
+        merger.backup_files = False
+        if merge_type is None:
+            merger.merge_type = Merge3Merger
+        else:
+            merger.merge_type = merge_type
+        merger.set_interesting_files(None)
+        merger.show_base = False
+        merger.reprocess = False
+        conflicts = merger.do_merge()
+        merger.set_pending()
         return conflicts
 
     @needs_read_lock
