@@ -349,15 +349,15 @@ def gather_class_stats(repository, revs):
     return ret, total
 
 
-def display_credits(credits):
+def display_credits(credits, to_file):
     (coders, documenters, artists, translators) = credits
     def print_section(name, lst):
         if len(lst) == 0:
             return
-        print "%s:" % name
+        to_file.write("%s:\n" % name)
         for name in lst:
-            print "%s" % name
-        print ""
+            to_file.write("%s\n" % name)
+        to_file.write('\n')
     print_section("Code", coders)
     print_section("Documentation", documenters)
     print_section("Art", artists)
@@ -426,7 +426,7 @@ class cmd_credits(commands.Command):
         a_branch.lock_read()
         try:
             credits = find_credits(a_branch.repository, last_rev)
-            display_credits(credits)
+            display_credits(credits, self.outf)
         finally:
             a_branch.unlock()
 
