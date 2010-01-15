@@ -4728,10 +4728,12 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info' command.
+    You can get information on what locks are open via the 'bzr info
+    [location]' command.
 
     :Examples:
         bzr break-lock
+        bzr break-lock bzr+ssh://example.com/bzr/foo
     """
     takes_args = ['location?']
 
@@ -5435,18 +5437,26 @@ class cmd_switch(Command):
     that of the master.
     """
 
-    takes_args = ['to_location']
+    takes_args = ['to_location?']
     takes_options = [Option('force',
                         help='Switch even if local commits will be lost.'),
+                     'revision',
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
-                     ]
+                    ]
 
-    def run(self, to_location, force=False, create_branch=False):
+    def run(self, to_location=None, force=False, create_branch=False,
+            revision=None):
         from bzrlib import switch
         tree_location = '.'
+        revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        if to_location is None:
+            if revision is None:
+                raise errors.BzrCommandError('You must supply either a'
+                                             ' revision or a location')
+            to_location = '.'
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5466,13 +5476,6 @@ class cmd_switch(Command):
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
-            # try:
-            #     from_branch = control_dir.open_branch()
-            # except errors.NotBranchError:
-            #     raise BzrCommandError('Cannot create a branch from this'
-            #         ' location when we cannot open this branch')
-            # from_branch.bzrdir.sprout(
-            pass
         else:
             try:
                 to_branch = Branch.open(to_location)
@@ -5480,7 +5483,9 @@ class cmd_switch(Command):
                 this_url = self._get_branch_location(control_dir)
                 to_branch = Branch.open(
                     urlutils.join(this_url, '..', to_location))
-        switch.switch(control_dir, to_branch, force)
+        if revision is not None:
+            revision = revision.as_revision_id(to_branch)
+        switch.switch(control_dir, to_branch, force, revision_id=revision)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
