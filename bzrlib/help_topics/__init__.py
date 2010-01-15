@@ -306,7 +306,7 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --profile help").
+command.  (e.g. ``bzr --profile help``).
 
 --version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
@@ -325,9 +325,11 @@ command.  (e.g. "bzr --profile help").
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
-See doc/developers/profiling.txt for more information on profiling.
+See http://doc.bazaar.canonical.com/developers/profiling.html for more
+information on profiling.
+
 A number of debug flags are also available to assist troubleshooting and
-development.  See `bzr help debug-flags`.
+development.  See :doc:`debug-flags-help`.
 """
 
 _standard_options = \
@@ -405,7 +407,9 @@ You can change the master of a checkout by using the "bind" command (see "help
 bind"). This will change the location that the commits are sent to. The bind
 command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+commit is local, you can use the "unbind" command. To see whether or not a
+branch is bound or not you can use the "info" command. If the branch is bound
+it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -419,6 +423,8 @@ Related commands::
               be sent to
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \
@@ -643,7 +649,7 @@ line-origin detection instead of a basis revision to determine the cause of
 differences.
 """
 
-_branches_out_of_sync = """Branches out of sync
+_branches_out_of_sync = """Branches Out of Sync
 
 When reconfiguring a checkout, tree or branch into a lightweight checkout,
 a local branch must be destroyed.  (For checkouts, this is the local branch
@@ -678,18 +684,20 @@ project is not using 2a, then you should suggest to the
 project owner to upgrade.
 
 
-Note: Some of the older formats have two variants:
-a plain one and a rich-root one. The latter include an additional
-field about the root of the tree. There is no performance cost
-for using a rich-root format but you cannot easily merge changes
-from a rich-root format into a plain format. As a consequence,
-moving a project to a rich-root format takes some co-ordination
-in that all contributors need to upgrade their repositories
-around the same time. 2a and all future formats will be
-implicitly rich-root.
+.. note::
 
-See ``bzr help current-formats`` for the complete list of
-currently supported formats. See ``bzr help other-formats`` for
+   Some of the older formats have two variants:
+   a plain one and a rich-root one. The latter include an additional
+   field about the root of the tree. There is no performance cost
+   for using a rich-root format but you cannot easily merge changes
+   from a rich-root format into a plain format. As a consequence,
+   moving a project to a rich-root format takes some co-ordination
+   in that all contributors need to upgrade their repositories
+   around the same time. 2a and all future formats will be
+   implicitly rich-root.
+
+See :doc:`current-formats-help` for the complete list of
+currently supported formats. See :doc:`other-formats-help` for
 descriptions of any available experimental and deprecated formats.
 """
 
@@ -738,14 +746,12 @@ topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
-topic_registry.register('conflicts', _load_from_file,
+topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
-topic_registry.register('diverged-branches', _load_from_file,
-                        'How to fix diverged branches')
 
 
 # Register concept topics.
@@ -758,6 +764,9 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('content-filters', _load_from_file,
                         'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches',
                         SECT_CONCEPT)
 topic_registry.register('eol', _load_from_file,
                         'Information on end-of-line handling',
@@ -852,6 +861,7 @@ class RegisteredTopic(object):
 
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
+    import re
     lines = text.splitlines()
     result = []
     for line in lines:
@@ -859,5 +869,7 @@ def help_as_plain_text(text):
             line = line[1:]
         elif line.endswith('::'):
             line = line[:-1]
+        # Map :doc:`xxx-help` to ``bzr help xxx``
+        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"

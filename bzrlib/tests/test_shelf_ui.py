@@ -18,6 +18,7 @@
 from cStringIO import StringIO
 import os
 import sys
+from textwrap import dedent
 
 from bzrlib import (
     errors,
@@ -25,6 +26,7 @@ from bzrlib import (
     revision,
     tests,
 )
+from bzrlib.tests import script
 
 
 class ExpectShelver(shelf_ui.Shelver):
@@ -503,6 +505,38 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual(LINES_AJ, 'tree/foo')
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
 
+    def test_unshelve_args_preview(self):
+        tree = self.create_tree_with_shelf()
+        write_diff_to = StringIO()
+        unshelver = shelf_ui.Unshelver.from_args(
+            directory='tree', action='preview', write_diff_to=write_diff_to)
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
+        # The changes were not unshelved.
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+        self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+
+        # But the diff was written to write_diff_to.
+        diff = write_diff_to.getvalue()
+        expected = dedent("""\
+            @@ -1,4 +1,4 @@
+            -a
+            +z
+             b
+             c
+             d
+            @@ -7,4 +7,4 @@
+             g
+             h
+             i
+            -j
+            +y
+
+            """)
+        self.assertEqualDiff(expected, diff[-len(expected):])
+
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')
         manager = tree.get_shelf_manager()
@@ -530,3 +564,45 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertRaises(errors.InvalidShelfId,
             shelf_ui.Unshelver.from_args, directory='tree',
             action='delete-only', shelf_id='foo')
+
+
+class TestUnshelveScripts(TestUnshelver, 
+                          script.TestCaseWithTransportAndScript): 
+
+    def test_unshelve_messages_keep(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --keep
+2>Using changes with id "1".
+2> M  foo
+2>All changes applied successfully.
+""")
+
+    def test_unshelve_messages_delete(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --delete-only
+2>Deleted changes with id "1".
+""")
+
+    def test_unshelve_messages_apply(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --apply
+2>Using changes with id "1".
+2> M  foo
+2>All changes applied successfully.
+2>Deleted changes with id "1".
+""")
+
+    def test_unshelve_messages_dry_run(self):
+        self.create_tree_with_shelf()
+        self.run_script("""
+$ cd tree
+$ bzr unshelve --dry-run
+2>Using changes with id "1".
+2> M  foo
+""")

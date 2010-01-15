@@ -268,7 +268,7 @@ cdef class Encoder:
         self.maxsize = maxsize
         self.tail = p
 
-    def __del__(self):
+    def __dealloc__(self):
         free(self.buffer)
         self.buffer = NULL
         self.maxsize = 0

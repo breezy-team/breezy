@@ -39,6 +39,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import signal
 import subprocess
 import tempfile
 from tempfile import (
@@ -70,6 +71,15 @@ else:
 import bzrlib
 from bzrlib import symbol_versioning
 
+
+# Cross platform wall-clock time functionality with decent resolution.
+# On Linux ``time.clock`` returns only CPU time. On Windows, ``time.time()``
+# only has a resolution of ~15ms. Note that ``time.clock()`` is not
+# synchronized with ``time.time()``, this is only meant to be used to find
+# delta times by subtracting from another call to this function.
+timer_func = time.time
+if sys.platform == 'win32':
+    timer_func = time.clock
 
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
@@ -192,13 +202,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
-    :param unlink_func: A way to delete the target file if the full rename succeeds
+    :param unlink_func: A way to delete the target file if the full rename
+        succeeds
     """
-
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
+    # callers use different encodings for the paths so the following MUST
+    # respect that. We rely on python upcasting to unicode if new is unicode
+    # and keeping a str if not.
+    tmp_name = 'tmp.%s.%.9f.%d.%s' % (base, time.time(),
+                                      os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -1342,6 +1356,23 @@ def terminal_width():
     """Return terminal width.
 
     None is returned if the width can't established precisely.
+
+    The rules are:
+    - if BZR_COLUMNS is set, returns its value
+    - if there is no controlling terminal, returns None
+    - if COLUMNS is set, returns its value,
+
+    From there, we need to query the OS to get the size of the controlling
+    terminal.
+
+    Unices:
+    - get termios.TIOCGWINSZ
+    - if an error occurs or a negative value is obtained, returns None
+
+    Windows:
+    
+    - win32utils.get_console_size() decides,
+    - returns None on error (provided default value)
     """
 
     # If BZR_COLUMNS is set, take it, user is always right
@@ -1355,26 +1386,64 @@ def terminal_width():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
-    if sys.platform == 'win32':
-        return win32utils.get_console_size(defaultx=None)[0]
-
+    # If COLUMNS is set, take it, the terminal knows better (even inside a
+    # given terminal, the application can decide to set COLUMNS to a lower
+    # value (splitted screen) or a bigger value (scroll bars))
     try:
-        import struct, fcntl, termios
-        s = struct.pack('HHHH', 0, 0, 0, 0)
-        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        width = struct.unpack('HHHH', x)[1]
-    except (IOError, AttributeError):
-        # If COLUMNS is set, take it
-        try:
-            return int(os.environ['COLUMNS'])
-        except (KeyError, ValueError):
-            return None
+        return int(os.environ['COLUMNS'])
+    except (KeyError, ValueError):
+        pass
 
+    width, height = _terminal_size(None, None)
     if width <= 0:
         # Consider invalid values as meaning no width
         return None
 
     return width
+
+
+def _win32_terminal_size(width, height):
+    width, height = win32utils.get_console_size(defaultx=width, defaulty=height)
+    return width, height
+
+
+def _ioctl_terminal_size(width, height):
+    try:
+        import struct, fcntl, termios
+        s = struct.pack('HHHH', 0, 0, 0, 0)
+        x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
+        height, width = struct.unpack('HHHH', x)[0:2]
+    except (IOError, AttributeError):
+        pass
+    return width, height
+
+_terminal_size = None
+"""Returns the terminal size as (width, height).
+
+:param width: Default value for width.
+:param height: Default value for height.
+
+This is defined specifically for each OS and query the size of the controlling
+terminal. If any error occurs, the provided default values should be returned.
+"""
+if sys.platform == 'win32':
+    _terminal_size = _win32_terminal_size
+else:
+    _terminal_size = _ioctl_terminal_size
+
+
+def _terminal_size_changed(signum, frame):
+    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
+    width, height = _terminal_size(None, None)
+    if width is not None:
+        os.environ['COLUMNS'] = str(width)
+
+if sys.platform == 'win32':
+    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
+    # I've no idea how to plug that in the current design -- vila 20091216
+    pass
+else:
+    signal.signal(signal.SIGWINCH, _terminal_size_changed)
 
 
 def supports_executable():
@@ -2022,3 +2091,18 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
+
+
+class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
+    """A stream writer that doesn't decode str arguments."""
+
+    def __init__(self, encode, stream, errors='strict'):
+        codecs.StreamWriter.__init__(self, stream, errors)
+        self.encode = encode
+
+    def write(self, object):
+        if type(object) is str:
+            self.stream.write(object)
+        else:
+            data, _ = self.encode(object, self.errors)
+            self.stream.write(data)

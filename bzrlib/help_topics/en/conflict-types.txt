@@ -1,5 +1,5 @@
-Conflicts Types
-===============
+Conflict Types
+==============
 
 Some operations, like merge, revert and pull, modify the contents of your
 working tree.  These modifications are programmatically generated, and so they
@@ -204,7 +204,7 @@ Typical message::
   Conflict: FILE.new is not a directory, but has files in it.
   Created directory.
 
-This happens when one side has added files to a directory, and the othe side
+This happens when one side has added files to a directory, and the other side
 has changed the directory into a file or symlink.  For example::
 
   $ bzr init

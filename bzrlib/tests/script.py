@@ -107,9 +107,11 @@ def _script_to_commands(text, file_name=None):
                 error = []
             error.append(line[2:] + '\n')
         else:
+            # can happen if the first line is not recognized as a command, eg
+            # if the prompt has leading whitespace
             if output is None:
                 if cmd_cur is None:
-                    raise SyntaxError('No command for that output',
+                    raise SyntaxError('No command for line %r' % (line,),
                                       (file_name, lineno, 1, orig))
                 output = []
             output.append(line + '\n')
@@ -399,6 +401,31 @@ class ScriptRunner(object):
         else:
             retcode = 0
         return retcode, None, err
+
+    def do_mv(self, test_case, input, args):
+        err = None
+        def error(msg, src, dst):
+            return "mv: cannot move %s to %s: %s\n" % (src, dst, msg)
+
+        if not args or len(args) != 2:
+            raise SyntaxError("Usage: mv path1 path2")
+        src, dst = args
+        try:
+            real_dst = dst
+            if os.path.isdir(dst):
+                real_dst = os.path.join(dst, os.path.basename(src))
+            os.rename(src, real_dst)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                err = error('No such file or directory', src, dst)
+            else:
+                raise
+        if err:
+            retcode = 1
+        else:
+            retcode = 0
+        return retcode, None, err
+
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):

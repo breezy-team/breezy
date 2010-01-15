@@ -1,0 +1,116 @@
+Security
+========
+
+Authentication
+--------------
+
+Bazaar's philosophy on authentication is that it is best to reuse existing
+authentication technologies, rather than trying to reinvent potentially
+complicated methods for securely identifying users.  As such, we describe two
+such uses of existing software for authentication purposes.
+
+Using SSH
+~~~~~~~~~
+
+SSH is a very well tested and featureful technology for authenticating users.
+For situations where all of the developers have local accounts on the server,
+it is trivial to provide secure, authenticated ``bzr+ssh://`` access.  One
+concern with this method is that it may not be desirable to grant shell access
+to developers on the server machine.  In this case, Bazaar provides
+``bzr_ssh_path_limiter``, a script that runs the Bazaar smart server on the
+server machine at a specified path, and allows no other access.
+
+To set it up, specify::
+
+   command="/path/to/bzr_ssh_path_limiter <path>" <typical key line>
+
+in each user's ``~/.ssh/authorized_keys`` file on the server, where `<path>` is
+the path to limit access to (and its subdirectories).  For more documentation
+on the syntax of the ``authorized_keys`` file see the documentation of the SSH
+server.  This will only permit Bazaar access to the specified path and no other
+SSH access for that user.
+
+If it isn't desired to give each user an account on the server, multiple
+private/public key pairs can be included under one single SSH account (say
+sshuser) in the ``~sshuser/.ssh/authorized_keys`` file and then each developer
+can be given their own private key.  They can then use
+``bzr+ssh://sshuser@server.example.com/`` URLs to access the server.
+
+Using HTTP authentication methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Access Control
+--------------
+
+Many projects need fine-grained access control on who may read and write to
+which branches.  Incorporating these controls into OS-level user accounts
+using groups and filesystem permissions can be difficult or even not permitted
+in some instances.  Bazaar provides a script called ``bzr_access`` that can be
+used to provide access control based on usernames, with authentication
+performed by SSH.  To do so, we need to set up private-key authentication in
+SSH.  This can be done using a single SSH user on the server, or one account
+per user.  The idea is to use the SSH's ``authorized_keys`` file to specify
+the ``bzr_access`` script as the only command that can be run by a user
+identified by a particular key pair.
+
+First, you will need to generate a private/public key pair for each user who
+will be accessing the repository.  The private key should be distributed to
+the user and the public key will be needed on the server to identify the user.
+On the server, in the SSH user's ``~/.ssh/authorized_keys`` file, use the
+following line for each repository user and the corresponding public key::
+
+  command="/path/to/bzr_access /path/to/bzr /path/to/repository <username>",no- port-forwarding,no-X11-forwarding,no-agent-forwarding ssh-<type> <key>
+
+where `<key>` is the (possibly very long) public key, `<type>` is the type of
+SSH key and `<username>` is the username to associate with that public key.
+
+The ``bzr_access`` script obtains its configuration information from the file
+``/path/to/repository/bzr_access.conf``.  This file should not be placed under
+version control in a branch located at ``/path/to/repository`` since that
+would allow anyone with access to the repository to change the access control
+rules.  The ``bzr_access.conf`` file is in a simple INI-style format with
+sections defined by ``[groups]`` and ``[/]``.  The options in the ``[groups]``
+section are the names of groups and the values of those options should be the
+usernames in that group.  Inside the ``[/]`` section, the options are
+usernames or group names (prefixed with ``@``) and the values are either
+``rw``, ``r`` or nothing, representing read-write access, read-only access or
+no access at all.  A sample of ``bzr_access.conf`` could be::
+
+   [groups]
+   admins = alpha
+   devels = beta, gamma, delta
+   
+   [/]
+   @admins = rw
+   @devels = r
+   upsilon = 
+
+where the user whose key is associated with `alpha` would have read-write
+access, the users `beta`, `gamma` and `delta` would have read-only access and
+user `upsilon` would not be able to access any branches under
+``/path/to/repository``.
+
+Additional Considerations with ``bzr_access``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As currently written, ``bzr_access`` only allows each public key to be
+associated with a single repository location.  This means that if developers
+need to access two or more different repositories, then each developer will
+need to have two or more private keys for SSH and be able to select between
+them (see ``man ssh`` for more information on configuring multiple private
+keys).
+
+Also, each repository can only have a single configuration file, with access
+configured for all branches in the repository.  This means that if different
+access rules are needed for different projects, then those projects must be in
+different repositories.  This then necessitates the use of multiple private
+keys as just described.
+
+Finally, as noted above under `Using SSH`_ all of the public keys may be
+included in the ``authorized_keys`` file of a single user on the server.  It
+is also possible to use a single private/public key pair for all of the
+developers, but this only allows a single username for access control to the
+repository (since the username is associated with the public key in
+``authorized_keys``.  While this is certainly possible it seems to defeat the
+purpose of fine-grained access control, although it does provide the same
+limited SSH access as that described above.

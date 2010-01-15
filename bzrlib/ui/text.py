@@ -18,6 +18,7 @@
 """Text UI, write output to the console.
 """
 
+import codecs
 import getpass
 import os
 import sys
@@ -31,6 +32,7 @@ from bzrlib import (
     progress,
     osutils,
     symbol_versioning,
+    trace,
     )
 
 """)
@@ -81,6 +83,15 @@ class TextUIFactory(UIFactory):
             elif line in ('', None):
                 # end-of-file; possibly should raise an error here instead
                 return None
+
+    def get_integer(self, prompt):
+        while True:
+            self.prompt(prompt)
+            line = self.stdin.readline()
+            try:
+                return int(line)
+            except ValueError:
+                pass
 
     def get_non_echoed_password(self):
         isatty = getattr(self.stdin, 'isatty', None)
@@ -146,6 +157,26 @@ class TextUIFactory(UIFactory):
         else:
             return NullProgressView()
 
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        if encoding_type == 'exact':
+            # force sys.stdout to be binary stream on win32; 
+            # NB: this leaves the file set in that mode; may cause problems if
+            # one process tries to do binary and then text output
+            if sys.platform == 'win32':
+                fileno = getattr(self.stdout, 'fileno', None)
+                if fileno:
+                    import msvcrt
+                    msvcrt.setmode(fileno(), os.O_BINARY)
+            return TextUIOutputStream(self, self.stdout)
+        else:
+            encoded_stdout = codecs.getwriter(encoding)(self.stdout,
+                errors=encoding_type)
+            # For whatever reason codecs.getwriter() does not advertise its encoding
+            # it just returns the encoding of the wrapped file, which is completely
+            # bogus. So set the attribute, so we can find the correct encoding later.
+            encoded_stdout.encoding = encoding
+            return TextUIOutputStream(self, encoded_stdout)
+
     def note(self, msg):
         """Write an already-formatted message, clearing the progress bar if necessary."""
         self.clear_term()
@@ -172,6 +203,12 @@ class TextUIFactory(UIFactory):
         """
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
+
+    def log_transport_activity(self, display=False):
+        """See UIFactory.log_transport_activity()"""
+        log = getattr(self._progress_view, 'log_transport_activity', None)
+        if log is not None:
+            log(display=display)
 
     def show_error(self, msg):
         self.clear_term()
@@ -218,9 +255,6 @@ class TextProgressView(object):
         self._term_file = term_file
         # true when there's output on the screen we may need to clear
         self._have_output = False
-        # XXX: We could listen for SIGWINCH and update the terminal width...
-        # https://launchpad.net/bugs/316357
-        self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
         # time we last repainted the screen
@@ -230,13 +264,20 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
+        self._first_byte_time = None
         self._fraction = 0
+        # force the progress bar to be off, as at the moment it doesn't 
+        # correspond reliably to overall command progress
+        self.enable_bar = False
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        if self._width is not None:
-            n = self._width - 1
-            s = '%-*.*s' % (n, n, s)
+        width = osutils.terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+            s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):
@@ -246,7 +287,8 @@ class TextProgressView(object):
 
     def _render_bar(self):
         # return a string for the progress bar itself
-        if (self._last_task is None) or self._last_task.show_bar:
+        if self.enable_bar and (
+            (self._last_task is None) or self._last_task.show_bar):
             # If there's no task object, we show space for the bar anyhow.
             # That's because most invocations of bzr will end showing progress
             # at some point, though perhaps only after doing some initial IO.
@@ -268,7 +310,7 @@ class TextProgressView(object):
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif self._last_task.show_spinner:
+        elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
@@ -336,19 +378,25 @@ class TextProgressView(object):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        # XXX: Probably there should be a transport activity model, and that
-        # too should be seen by the progress view, rather than being poked in
-        # here.
-        if not self._have_output:
-            # As a workaround for <https://launchpad.net/bugs/321935> we only
-            # show transport activity when there's already a progress bar
-            # shown, which time the application code is expected to know to
-            # clear off the progress bar when it's going to send some other
-            # output.  Eventually it would be nice to have that automatically
-            # synchronized.
-            return
+        # XXX: there should be a transport activity model, and that too should
+        #      be seen by the progress view, rather than being poked in here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
+        if self._first_byte_time is None:
+            # Note that this isn't great, as technically it should be the time
+            # when the bytes started transferring, not when they completed.
+            # However, we usually start with a small request anyway.
+            self._first_byte_time = time.time()
+        if direction in self._bytes_by_direction:
+            self._bytes_by_direction[direction] += byte_count
+        else:
+            self._bytes_by_direction['unknown'] += byte_count
+        if 'no_activity' in debug.debug_flags:
+            # Can be used as a workaround if
+            # <https://launchpad.net/bugs/321935> reappears and transport
+            # activity is cluttering other output.  However, thanks to
+            # TextUIOutputStream this shouldn't be a problem any more.
+            return
         now = time.time()
         if self._total_byte_count < 2000:
             # a little resistance at first, so it doesn't stay stuck at 0
@@ -367,3 +415,68 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+    def _format_bytes_by_direction(self):
+        if self._first_byte_time is None:
+            bps = 0.0
+        else:
+            transfer_time = time.time() - self._first_byte_time
+            if transfer_time < 0.001:
+                transfer_time = 0.001
+            bps = self._total_byte_count / transfer_time
+
+        msg = ('Transferred: %.0fKiB'
+               ' (%.1fK/s r:%.0fK w:%.0fK'
+               % (self._total_byte_count / 1024.,
+                  bps / 1024.,
+                  self._bytes_by_direction['read'] / 1024.,
+                  self._bytes_by_direction['write'] / 1024.,
+                 ))
+        if self._bytes_by_direction['unknown'] > 0:
+            msg += ' u:%.0fK)' % (
+                self._bytes_by_direction['unknown'] / 1024.
+                )
+        else:
+            msg += ')'
+        return msg
+
+    def log_transport_activity(self, display=False):
+        msg = self._format_bytes_by_direction()
+        trace.mutter(msg)
+        if display and self._total_byte_count > 0:
+            self.clear()
+            self._term_file.write(msg + '\n')
+
+
+class TextUIOutputStream(object):
+    """Decorates an output stream so that the terminal is cleared before writing.
+
+    This is supposed to ensure that the progress bar does not conflict with bulk
+    text output.
+    """
+    # XXX: this does not handle the case of writing part of a line, then doing
+    # progress bar output: the progress bar will probably write over it.
+    # one option is just to buffer that text until we have a full line;
+    # another is to save and restore it
+
+    # XXX: might need to wrap more methods
+
+    def __init__(self, ui_factory, wrapped_stream):
+        self.ui_factory = ui_factory
+        self.wrapped_stream = wrapped_stream
+        # this does no transcoding, but it must expose the underlying encoding
+        # because some callers need to know what can be written - see for
+        # example unescape_for_display.
+        self.encoding = getattr(wrapped_stream, 'encoding', None)
+
+    def flush(self):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.flush()
+
+    def write(self, to_write):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.write(to_write)
+
+    def writelines(self, lines):
+        self.ui_factory.clear_term()
+        self.wrapped_stream.writelines(lines)

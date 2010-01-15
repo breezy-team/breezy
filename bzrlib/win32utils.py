@@ -22,9 +22,7 @@ Only one dependency: ctypes should be installed.
 import glob
 import os
 import re
-import shlex
 import struct
-import StringIO
 import sys
 
 
@@ -392,7 +390,6 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
-    from bzrlib import osutils
     if s and type(s) != unicode:
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
@@ -648,7 +645,7 @@ if has_ctypes and winver != 'Windows 98':
         prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
         command_line = GetCommandLine()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(GetCommandLine())[1:]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]

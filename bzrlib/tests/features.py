@@ -15,21 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests import Feature
+from bzrlib import tests
+from bzrlib.symbol_versioning import deprecated_in
 
 
-class _ApportFeature(Feature):
-    
-    def _probe(self):
-        try:
-            import apport
-        except ImportError, e:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'apport'
-
-
-ApportFeature = _ApportFeature()
+apport = tests.ModuleAvailableFeature('apport')
+ApportFeature = tests._CompatabilityThunkFeature('bzrlib.tests.features',
+    'ApportFeature', 'bzrlib.tests.features.apport', deprecated_in((2,1,0)))
+paramiko = tests.ModuleAvailableFeature('paramiko')
+pycurl = tests.ModuleAvailableFeature('pycurl')
+subunit = tests.ModuleAvailableFeature('subunit')

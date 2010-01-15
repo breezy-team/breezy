@@ -23,7 +23,6 @@ import re
 import socket
 import stat
 import sys
-import termios
 import time
 
 from bzrlib import (
@@ -54,6 +53,8 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
+term_ios_feature = tests.ModuleAvailableFeature('termios')
+
 
 def _already_unicode(s):
     return s
@@ -81,7 +82,7 @@ def dir_reader_scenarios():
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
-    if test__walkdirs_win32.Win32ReadDirFeature.available():
+    if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from bzrlib import _walkdirs_win32
             scenarios.append(
@@ -988,7 +989,7 @@ class TestChunksToLines(tests.TestCase):
 
     def test_osutils_binding(self):
         from bzrlib.tests import test__chunks_to_lines
-        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
@@ -1180,14 +1181,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
@@ -1344,7 +1345,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_win32readdir(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
@@ -1401,7 +1402,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
@@ -1425,7 +1426,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
@@ -1927,54 +1928,79 @@ class TestFailedToLoadExtension(tests.TestCase):
 
 class TestTerminalWidth(tests.TestCase):
 
-    def test_default_values(self):
-        self.assertEquals(80, osutils.default_terminal_width)
-
-    def test_defaults_to_BZR_COLUMNS(self):
-        # BZR_COLUMNS is set by the test framework
-        self.assertEquals('80', os.environ['BZR_COLUMNS'])
-        os.environ['BZR_COLUMNS'] = '12'
-        self.assertEquals(12, osutils.terminal_width())
-
-    def test_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+    def replace_stdout(self, new):
         orig_stdout = sys.stdout
         def restore():
             sys.stdout = orig_stdout
         self.addCleanup(restore)
+        sys.stdout = new
+
+    def replace__terminal_size(self, new):
+        orig__terminal_size = osutils._terminal_size
+        def restore():
+            osutils._terminal_size = orig__terminal_size
+        self.addCleanup(restore)
+        osutils._terminal_size = new
+
+    def set_fake_tty(self):
 
         class I_am_a_tty(object):
             def isatty(self):
                 return True
 
-        sys.stdout = I_am_a_tty()
-        self.assertEquals(None, osutils.terminal_width())
+        self.replace_stdout(I_am_a_tty())
+
+    def test_default_values(self):
+        self.assertEqual(80, osutils.default_terminal_width)
+
+    def test_defaults_to_BZR_COLUMNS(self):
+        # BZR_COLUMNS is set by the test framework
+        self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
+        os.environ['BZR_COLUMNS'] = '12'
+        self.assertEqual(12, osutils.terminal_width())
+
+    def test_falls_back_to_COLUMNS(self):
+        del os.environ['BZR_COLUMNS']
+        self.assertNotEqual('42', os.environ['COLUMNS'])
+        self.set_fake_tty()
+        os.environ['COLUMNS'] = '42'
+        self.assertEqual(42, osutils.terminal_width())
+
+    def test_tty_default_without_columns(self):
+        del os.environ['BZR_COLUMNS']
+        del os.environ['COLUMNS']
+
+        def terminal_size(w, h):
+            return 42, 42
+
+        self.set_fake_tty()
+        # We need to override the osutils definition as it depends on the
+        # running environment that we can't control (PQM running without a
+        # controlling terminal is one example).
+        self.replace__terminal_size(terminal_size)
+        self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = None
-        self.assertEquals(None, osutils.terminal_width())
+        self.replace_stdout(None)
+        self.assertEqual(None, osutils.terminal_width())
 
-    def test_TIOCGWINSZ(self):
+    def test_no_TIOCGWINSZ(self):
+        self.requireFeature(term_ios_feature)
+        termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
-        exist = True
         try:
             orig = termios.TIOCGWINSZ
         except AttributeError:
-            exist = False
-
-        def restore():
-            if exist:
+            # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
+            pass
+        else:
+            def restore():
                 termios.TIOCGWINSZ = orig
-        self.addCleanup(restore)
-
-        del termios.TIOCGWINSZ
+            self.addCleanup(restore)
+            del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
-        self.assertEquals(None, osutils.terminal_width())
+        # Whatever the result is, if we don't raise an exception, it's ok.
+        osutils.terminal_width()

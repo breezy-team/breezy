@@ -36,6 +36,7 @@ from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
 from bzrlib.workingtree import WorkingTree
 
+
 class TestMerge(TestCaseWithTransport):
     """Test appending more than one revision"""
 
@@ -149,13 +150,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' not in log)
+        self.failUnless('All changes applied successfully.\n' not in
+            self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' in log)
+        self.failUnless('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -522,6 +522,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_uncommitted_version(('root', 'C:'), [('root', 'A')], 'fabg')
         return _PlanMerge('B:', 'C:', self.plan_merge_vf, ('root',))
 
+    def test_base_from_plan(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqual(['a\n', 'b\n', 'c\n'], pwm.base_from_plan())
+
     def test_unique_lines(self):
         plan = self.setup_plan_merge()
         self.assertEqual(plan._unique_lines(
@@ -825,6 +831,111 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'f\n'),
                           ('unchanged', 'g\n')],
                          list(plan))
+        plan = self.plan_merge_vf.plan_lca_merge('F', 'G')
+        # This is one of the main differences between plan_merge and
+        # plan_lca_merge. plan_lca_merge generates a conflict for 'x => z',
+        # because 'x' was not present in one of the bases. However, in this
+        # case it is spurious because 'x' does not exist in the global base A.
+        self.assertEqual([
+                          ('unchanged', 'h\n'),
+                          ('unchanged', 'a\n'),
+                          ('conflicted-a', 'x\n'),
+                          ('new-b', 'z\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('unchanged', 'y\n'),
+                          ('unchanged', 'f\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_criss_cross_flip_flop(self):
+        # This is specificly trying to trigger problems when using limited
+        # ancestry and weaves. The ancestry graph looks like:
+        #       XX      unused ancestor, should not show up in the weave
+        #       |
+        #       A       Unique LCA
+        #      / \  
+        #     B   C     B & C both introduce a new line
+        #     |\ /|  
+        #     | X |  
+        #     |/ \| 
+        #     D   E     B & C are both merged, so both are common ancestors
+        #               In the process of merging, both sides order the new
+        #               lines differently
+        #
+        self.add_rev('root', 'XX', [], 'qrs')
+        self.add_rev('root', 'A', ['XX'], 'abcdef')
+        self.add_rev('root', 'B', ['A'], 'abcdgef')
+        self.add_rev('root', 'C', ['A'], 'abcdhef')
+        self.add_rev('root', 'D', ['B', 'C'], 'abcdghef')
+        self.add_rev('root', 'E', ['C', 'B'], 'abcdhgef')
+        plan = list(self.plan_merge_vf.plan_merge('D', 'E'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('new-b', 'h\n'),
+                          ('unchanged', 'g\n'),
+                          ('killed-b', 'h\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdghef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # Reversing the order reverses the merge plan, and final order of 'hg'
+        # => 'gh'
+        plan = list(self.plan_merge_vf.plan_merge('E', 'D'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('new-b', 'g\n'),
+                          ('unchanged', 'h\n'),
+                          ('killed-b', 'g\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdhgef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # This is where lca differs, in that it (fairly correctly) determines
+        # that there is a conflict because both sides resolved the merge
+        # differently
+        plan = list(self.plan_merge_vf.plan_lca_merge('D', 'E'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('conflicted-b', 'h\n'),
+                          ('unchanged', 'g\n'),
+                          ('conflicted-a', 'h\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdgef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # Reversing it changes what line is doubled, but still gives a
+        # double-conflict
+        plan = list(self.plan_merge_vf.plan_lca_merge('E', 'D'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('conflicted-b', 'g\n'),
+                          ('unchanged', 'h\n'),
+                          ('conflicted-a', 'g\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdhef') + '\n',
+                             ''.join(pwm.base_from_plan()))
 
     def assertRemoveExternalReferences(self, filtered_parent_map,
                                        child_map, tails, parent_map):

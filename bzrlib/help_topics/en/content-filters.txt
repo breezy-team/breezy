@@ -65,8 +65,8 @@ respectively.
 Note: ``bzr commit`` does not implicitly apply write converters after
 comitting files. If this makes sense for a given plugin providing
 a content filter, the plugin can usually achieve this effect by using a
-``start_commit`` or ``post_commit`` hook say. See ``bzr help hooks`` and
-`Using hooks`_ in the Bazaar User Guide for more information on hooks.
+``start_commit`` or ``post_commit`` hook say. See :doc:`hooks-help`
+for more information on hooks.
 
 
 Refreshing your working tree

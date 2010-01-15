@@ -199,7 +199,6 @@ rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=s
 
 # translate txt docs to html
 derived_txt_files = \
-	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
 txt_all = \
 	doc/en/tutorials/tutorial.txt \
@@ -212,6 +211,7 @@ txt_all = \
 	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
+	doc/en/admin-guide/index-plain.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	$(derived_txt_files) \
 	doc/en/upgrade-guide/index.txt \
@@ -221,7 +221,8 @@ txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
 	doc/ja/user-guide/index.txt \
-	doc/ru/user-guide/index.txt
+	doc/ru/user-guide/index.txt \
+	doc/en/admin-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -279,6 +280,9 @@ doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-g
 #doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 #
+doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -290,9 +294,6 @@ doc/index.%.html: doc/index.%.txt
 
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
-
-doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
