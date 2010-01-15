@@ -763,9 +763,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._scheme = 'bzr+ssh'
 
     def __repr__(self):
-        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+        return "%s(%s://%s@%s:%s)" % (
             self.__class__.__name__,
-            self._connected,
+            self._scheme,
             self._username,
             self._host,
             self._port)
