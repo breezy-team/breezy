@@ -4038,11 +4038,9 @@ class cmd_remerge(Command):
         # list, we imply that the working tree text has seen and rejected
         # all the changes from the other tree, when in fact those changes
         # have not yet been seen.
-        pb = ui.ui_factory.nested_progress_bar()
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(pb,
-                                                         tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -4050,7 +4048,6 @@ class cmd_remerge(Command):
             conflicts = merger.do_merge()
         finally:
             tree.set_parent_ids(parents)
-            pb.finished()
         if conflicts > 0:
             return 1
         else:

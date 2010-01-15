@@ -73,6 +73,7 @@ from bzrlib import (
     trace,
     tsort,
     tuned_gzip,
+    ui,
     )
 """)
 from bzrlib import (
