@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -212,7 +212,7 @@ class UIFactory(object):
         """Warn about a potentially slow cross-format transfer"""
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         trace.warning("Doing on-the-fly conversion from %s to %s.\n"
-            "This may take some time. Upgrade the branches to the "
+            "This may take some time. Upgrade the repositories to the "
             "same format for better performance.\n" %
             (from_format, to_format))
 
