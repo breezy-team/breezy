@@ -64,9 +64,8 @@ class TextUIFactory(UIFactory):
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()
-        # make a new one, possibly a silent one
-        self._progress_view = self.make_progress_view()
         UIFactory.be_quiet(self, state)
+        self._progress_view = self.make_progress_view()
 
     def clear_term(self):
         """Prepare the terminal for output.

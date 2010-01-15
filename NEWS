@@ -90,6 +90,9 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* Progress bars are now hidden when ``--quiet`` is given.
+  (Martin Pool, #320035)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)

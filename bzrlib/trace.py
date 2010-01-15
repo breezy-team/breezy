@@ -82,6 +82,7 @@ from bzrlib import (
     osutils,
     plugin,
     symbol_versioning,
+    ui,
     )
 """)
 
@@ -364,6 +365,7 @@ def set_verbosity_level(level):
     global _verbosity_level
     _verbosity_level = level
     _update_logging_level(level < 0)
+    ui.ui_factory.be_quiet(level < 0)
 
 
 def get_verbosity_level():
