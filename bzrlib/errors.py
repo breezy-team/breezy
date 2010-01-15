@@ -702,11 +702,32 @@ class InvalidNormalization(PathError):
 # TODO: Probably this behavior of should be a common superclass
 class NotBranchError(PathError):
 
-    _fmt = 'Not a branch: "%(path)s".'
+    _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
-    def __init__(self, path):
+    def __init__(self, path, detail=None, bzrdir=None):
        import bzrlib.urlutils as urlutils
-       self.path = urlutils.unescape_for_display(path, 'ascii')
+       path = urlutils.unescape_for_display(path, 'ascii')
+       if detail is not None:
+           detail = ': ' + detail
+       self.detail = detail
+       self.bzrdir = bzrdir
+       PathError.__init__(self, path=path)
+
+    def _format(self):
+        # XXX: Ideally self.detail would be a property, but Exceptions in
+        # Python 2.4 have to be old-style classes so properties don't work.
+        # Instead we override _format.
+        if self.detail is None:
+            if self.bzrdir is not None:
+                try:
+                    self.bzrdir.open_repository()
+                except NoRepositoryPresent:
+                    self.detail = ''
+                else:
+                    self.detail = ': location is a repository'
+            else:
+                self.detail = ''
+        return PathError._format(self)
 
 
 class NoSubmitBranch(PathError):

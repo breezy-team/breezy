@@ -440,7 +440,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
             'BzrDir.cloning_metadir', ('quack/', 'False'),
             'error', ('BranchReference',)),
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('quack/',),
+            'BzrDir.open_branchV3', ('quack/',),
             'success', ('ref', self.get_url('referenced'))),
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
@@ -531,7 +531,7 @@ class TestBzrDirOpenBranch(TestRemote):
         self.make_branch('.')
         a_dir = BzrDir.open(self.get_url('.'))
         self.reset_smart_call_log()
-        verb = 'BzrDir.open_branchV2'
+        verb = 'BzrDir.open_branchV3'
         self.disable_verb(verb)
         format = a_dir.open_branch()
         call_count = len([call for call in self.hpss_calls if
@@ -547,7 +547,7 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('quack/',),
+            'BzrDir.open_branchV3', ('quack/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('quack/',),
@@ -572,7 +572,7 @@ class TestBzrDirOpenBranch(TestRemote):
             _client=client)
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         self.assertEqual(
-            [('call', 'BzrDir.open_branchV2', ('quack/',))],
+            [('call', 'BzrDir.open_branchV3', ('quack/',))],
             client._calls)
 
     def test__get_tree_branch(self):
@@ -602,7 +602,7 @@ class TestBzrDirOpenBranch(TestRemote):
         network_name = reference_format.network_name()
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('~hello/',),
+            'BzrDir.open_branchV3', ('~hello/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('~hello/',),
@@ -1190,7 +1190,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('stacked/',),
+            'BzrDir.open_branchV3', ('stacked/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
@@ -1226,7 +1226,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('stacked/',),
+            'BzrDir.open_branchV3', ('stacked/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
@@ -2773,6 +2773,15 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         bzrdir = self.make_bzrdir('')
         translated_error = self.translateTuple(('nobranch',), bzrdir=bzrdir)
         expected_error = errors.NotBranchError(path=bzrdir.root_transport.base)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_nobranch_one_arg(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateTuple(
+            ('nobranch', 'extra detail'), bzrdir=bzrdir)
+        expected_error = errors.NotBranchError(
+            path=bzrdir.root_transport.base,
+            detail='extra detail')
         self.assertEqual(expected_error, translated_error)
 
     def test_LockContention(self):
