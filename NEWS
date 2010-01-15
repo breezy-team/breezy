@@ -23,6 +23,9 @@ New Features
 * ``bzr branch`` now takes a ``--bind`` option. This lets you
   branch and bind all in one command. (Ian Clatworthy)
 
+* ``bzr switch`` now takes a ``--revision`` option, to allow switching to
+  a specific revision of a branch. (Daniel Watkins, #183559)
+
 * ``bzr unshelve --preview`` can now be used to show how a patch on the
   shelf would be applied to the working tree.
   (Guilherme Salgado, #308122)
