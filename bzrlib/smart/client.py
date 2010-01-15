@@ -36,6 +36,9 @@ class _SmartClient(object):
         else:
             self._headers = dict(headers)
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._medium)
+
     def _send_request(self, protocol_version, method, args, body=None,
                       readv_body=None, body_stream=None):
         encoder, response_handler = self._construct_protocol(
