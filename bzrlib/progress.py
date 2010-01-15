@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -231,10 +231,6 @@ class _BaseProgressBar(object):
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
-    @deprecated_function(deprecated_in((1, 16, 0)))
-    def child_progress(self, **kwargs):
-        return ChildProgress(**kwargs)
-
 
 class DummyProgress(_BaseProgressBar):
     """Progress-bar standin that does nothing.
@@ -259,52 +255,6 @@ class DummyProgress(_BaseProgressBar):
 
     def child_progress(self, **kwargs):
         return DummyProgress(**kwargs)
-
-
-# DEPRECATED
-class ChildProgress(_BaseProgressBar):
-    """A progress indicator that pushes its data to the parent"""
-
-    @deprecated_function(deprecated_in((1, 16, 0)))
-    def __init__(self, _stack, **kwargs):
-        _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
-        self.parent = _stack.top()
-        self.current = None
-        self.total = None
-        self.child_fraction = 0
-        self.message = None
-
-    def update(self, msg, current_cnt=None, total_cnt=None):
-        self.current = current_cnt
-        if total_cnt is not None:
-            self.total = total_cnt
-        self.message = msg
-        self.child_fraction = 0
-        self.tick()
-
-    def child_update(self, message, current, total):
-        if current is None or total == 0:
-            self.child_fraction = 0
-        else:
-            self.child_fraction = float(current) / total
-        self.tick()
-
-    def tick(self):
-        if self.current is None:
-            count = None
-        else:
-            count = self.current+self.child_fraction
-            if count > self.total:
-                if __debug__:
-                    mutter('clamping count of %d to %d' % (count, self.total))
-                count = self.total
-        self.parent.child_update(self.message, count, self.total)
-
-    def clear(self):
-        pass
-
-    def note(self, *args, **kwargs):
-        self.parent.note(*args, **kwargs)
 
 
 def str_tdelta(delt):
