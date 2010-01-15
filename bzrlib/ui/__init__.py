@@ -171,11 +171,11 @@ class UIFactory(object):
         if not self._task_stack:
             warnings.warn("%r finished but nothing is active"
                 % (task,))
-        elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the active task %r"
-                % (task, self._task_stack[-1]))
+        if task in self._task_stack:
+            self._task_stack.remove(task)
         else:
-            del self._task_stack[-1]
+            warnings.warn("%r is not in active stack %r"
+                % (task, self._task_stack))
         if not self._task_stack:
             self._progress_all_finished()
 
