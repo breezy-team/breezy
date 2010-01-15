@@ -21,6 +21,7 @@ import os
 import re
 
 from bzrlib import (
+    log,
     osutils,
     tests,
     )
@@ -91,33 +92,117 @@ class TestLog(tests.TestCaseWithTransport):
         self.assertEqualDiff(expected, test_log.normalize_log(out))
 
 
-class TestLogRevSpecs(TestLog):
+class TestLogWithLogCatcher(TestLog):
+
+    def setUp(self):
+        super(TestLogWithLogCatcher, self).setUp()
+        # Install a default log formatter that captures the revisions but
+        # produces no output
+        self.log_catcher = test_log.LogCatcher()
+        class MyLogFormatter(test_log.LogCatcher):
+
+            def __new__(klass, *args, **kwargs):
+                # Always return our own log formatter acting as a singleton
+                return self.log_catcher
+
+        orig = log.log_formatter_registry.get_default
+        def restore():
+            log.log_formatter_registry.get_default = orig
+        self.addCleanup(restore)
+
+        def getme(branch):
+                # Always return our own log formatter class hijacking the
+                # default behavior (which requires setting up a config
+                # variable)
+            return MyLogFormatter
+        log.log_formatter_registry.get_default = getme
+
+    def get_captured_revnos(self):
+        return [r.revno for r in self.log_catcher.revisions]
+
+    def assertLogRevnos(self, args, expected_revnos):
+        self.run_bzr(['log'] + args)
+        self.assertEqual(expected_revnos, self.get_captured_revnos())
+
+
+class TestLogRevSpecs(TestLogWithLogCatcher):
+
+    def test_log_no_revspec(self):
+        self.make_linear_branch()
+        self.assertLogRevnos([], ['3', '2', '1'])
 
     def test_log_null_end_revspec(self):
         self.make_linear_branch()
-        log = self.run_bzr(['log'])[0]
-        self.assertTrue('revno: 1\n' in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
-        self.assertTrue('message:\n  message1\n' in log)
-        self.assertTrue('message:\n  message2\n' in log)
-        self.assertTrue('message:\n  message3\n' in log)
-
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r 1..")[0]
-        self.assertEqualDiff(log, full_log)
+        self.assertLogRevnos(['-r1..'], ['3', '2', '1'])
 
     def test_log_null_begin_revspec(self):
         self.make_linear_branch()
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r ..3")[0]
-        self.assertEqualDiff(full_log, log)
+        self.assertLogRevnos(['-r..3'], ['3', '2', '1'])
 
     def test_log_null_both_revspecs(self):
         self.make_linear_branch()
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r ..")[0]
-        self.assertEqualDiff(full_log, log)
+        self.assertLogRevnos(['-r..'], ['3', '2', '1'])
+
+    def test_log_negative_begin_revspec_full_log(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..'], ['3', '2', '1'])
+
+    def test_log_negative_both_revspec_full_log(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..-1'], ['3', '2', '1'])
+
+    def test_log_negative_both_revspec_partial(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..-2'], ['2', '1'])
+
+    def test_log_negative_begin_revspec(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-2..'], ['3', '2'])
+
+    def test_log_positive_revspecs(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r1..3'], ['3', '2', '1'])
+
+    def test_log_dotted_revspecs(self):
+        self.make_merged_branch()
+        self.assertLogRevnos(['-n0', '-r1..1.1.1'], ['1.1.1', '1'])
+
+    def test_log_limit(self):
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
+        self.assertLogRevnos(['--limit', '2'], ['10', '9'])
+
+    def test_log_limit_short(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-l', '2'], ['3', '2'])
+
+
+class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
+
+    def test_log_revno_n_path_wrong_namespace(self):
+        self.make_linear_branch('branch1')
+        self.make_linear_branch('branch2')
+        # There is no guarantee that a path exist between two arbitrary
+        # revisions.
+        self.run_bzr("log -r revno:2:branch1..revno:3:branch2", retcode=3)
+        # But may be it's worth trying though ? -- vila 100115
+
+    def test_log_revno_n_path_correct_order(self):
+        self.make_linear_branch('branch2')
+        self.assertLogRevnos(['-rrevno:1:branch2..revno:3:branch2'],
+                             ['3', '2','1'])
+
+    def test_log_revno_n_path(self):
+        self.make_linear_branch('branch2')
+        self.assertLogRevnos(['-rrevno:1:branch2'],
+                             ['1'])
+        rev_props = self.log_catcher.revisions[0].rev.properties
+        self.assertEqual('branch2', rev_props['branch-nick'])
+
+
+class TestLogErrors(TestLog):
 
     def test_log_zero_revspec(self):
         self.make_minimal_branch()
@@ -133,97 +218,6 @@ class TestLogRevSpecs(TestLog):
         self.make_linear_branch()
         self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r-2..0'])
-
-    def test_log_negative_begin_revspec_full_log(self):
-        self.make_linear_branch()
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r -3..")[0]
-        self.assertEqualDiff(full_log, log)
-
-    def test_log_negative_both_revspec_full_log(self):
-        self.make_linear_branch()
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r -3..-1")[0]
-        self.assertEqualDiff(full_log, log)
-
-    def test_log_negative_both_revspec_partial(self):
-        self.make_linear_branch()
-        log = self.run_bzr("log -r -3..-2")[0]
-        self.assertTrue('revno: 1\n' in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' not in log)
-
-    def test_log_negative_begin_revspec(self):
-        self.make_linear_branch()
-        log = self.run_bzr("log -r -2..")[0]
-        self.assertTrue('revno: 1\n' not in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
-
-    def test_log_positive_revspecs(self):
-        self.make_linear_branch()
-        full_log = self.run_bzr(['log'])[0]
-        log = self.run_bzr("log -r 1..3")[0]
-        self.assertEqualDiff(full_log, log)
-
-    def test_log_dotted_revspecs(self):
-        self.make_merged_branch()
-        log = self.run_bzr("log -n0 -r 1..1.1.1")[0]
-        self.assertRevnos(log, (1, '1.1.1'), (2, 3, '1.1.2', 4))
-
-    def test_log_reversed_revspecs(self):
-        self.make_linear_branch()
-        self.run_bzr_error(('bzr: ERROR: Start revision must be older than '
-                            'the end revision.\n',),
-                           ['log', '-r3..1'])
-
-    def test_log_reversed_dotted_revspecs(self):
-        self.make_merged_branch()
-        self.run_bzr_error(('bzr: ERROR: Start revision not found in '
-                            'left-hand history of end revision.\n',),
-                           "log -r 1.1.1..1")
-
-    def test_log_revno_n_path(self):
-        self.make_linear_branch('branch1')
-        self.make_linear_branch('branch2')
-        # Swapped revisions
-        self.run_bzr("log -r revno:2:branch1..revno:3:branch2", retcode=3)[0]
-        # Correct order
-        log = self.run_bzr("log -r revno:1:branch2..revno:3:branch2")[0]
-        full_log = self.run_bzr(['log'], working_dir='branch2')[0]
-        self.assertEqualDiff(full_log, log)
-        log = self.run_bzr("log -r revno:1:branch2")[0]
-        self.assertTrue('revno: 1\n' in log)
-        self.assertTrue('revno: 2\n' not in log)
-        self.assertTrue('branch nick: branch2\n' in log)
-        self.assertTrue('branch nick: branch1\n' not in log)
-
-    def test_log_limit(self):
-        tree = self.make_branch_and_tree('.')
-        # We want more commits than our batch size starts at
-        for pos in range(10):
-            tree.commit("%s" % pos)
-        log = self.run_bzr("log --limit 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertNotContainsRe(log, r'revno: 2\n')
-        self.assertNotContainsRe(log, r'revno: 3\n')
-        self.assertNotContainsRe(log, r'revno: 4\n')
-        self.assertNotContainsRe(log, r'revno: 5\n')
-        self.assertNotContainsRe(log, r'revno: 6\n')
-        self.assertNotContainsRe(log, r'revno: 7\n')
-        self.assertNotContainsRe(log, r'revno: 8\n')
-        self.assertContainsRe(log, r'revno: 9\n')
-        self.assertContainsRe(log, r'revno: 10\n')
-
-    def test_log_limit_short(self):
-        self.make_linear_branch()
-        log = self.run_bzr("log -l 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
-
-
-class TestLogErrors(TestLog):
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
@@ -278,6 +272,18 @@ class TestLogErrors(TestLog):
         self.assertContainsRe(err,
                               'Path unknown at end or start of revision range: '
                               'does-not-exist')
+
+    def test_log_reversed_revspecs(self):
+        self.make_linear_branch()
+        self.run_bzr_error(('bzr: ERROR: Start revision must be older than '
+                            'the end revision.\n',),
+                           ['log', '-r3..1'])
+
+    def test_log_reversed_dotted_revspecs(self):
+        self.make_merged_branch()
+        self.run_bzr_error(('bzr: ERROR: Start revision not found in '
+                            'left-hand history of end revision.\n',),
+                           "log -r 1.1.1..1")
 
     def test_log_bad_message_re(self):
         """Bad --message argument gives a sensible message
