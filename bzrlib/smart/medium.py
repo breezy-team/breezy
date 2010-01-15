@@ -763,12 +763,16 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._scheme = 'bzr+ssh'
 
     def __repr__(self):
-        return "%s(%s://%s@%s:%s)" % (
+        if self._port is None:
+            maybe_port = ''
+        else:
+            maybe_port = ':%s' % self._port
+        return "%s(%s://%s@%s%s/)" % (
             self.__class__.__name__,
             self._scheme,
             self._username,
             self._host,
-            self._port)
+            maybe_port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
