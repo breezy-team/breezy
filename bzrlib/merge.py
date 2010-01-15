@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import warnings
 
 from bzrlib import (
     branch as _mod_branch,
@@ -71,9 +72,8 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
-        if pb is None:
-            pb = ui.ui_factory.nested_progress_bar()
-        self._pb = pb
+        if pb is not None:
+            warnings.warn("pb parameter to Merger() is deprecated and ignored")
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
@@ -456,7 +456,7 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        return self.merge_type(pb=self._pb,
+        return self.merge_type(pb=None,
                                change_reporter=self.change_reporter,
                                **kwargs)
 

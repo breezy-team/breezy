@@ -3750,18 +3750,18 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, pb)
+                   mergeable, None)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
                     ' --revision at the same time.')
-            merger = self.get_merger_from_uncommitted(tree, location, pb)
+            merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
         if merger is None:
             merger, allow_pending = self._get_merger_from_branch(tree,
-                location, revision, remember, possible_transports, pb)
+                location, revision, remember, possible_transports, None)
 
         merger.merge_type = merge_type
         merger.reprocess = reprocess
@@ -4124,12 +4124,8 @@ class cmd_revert(Command):
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tree.revert(file_list, rev_tree, not no_backup, pb,
-                report_changes=True)
-        finally:
-            pb.finished()
+        tree.revert(file_list, rev_tree, not no_backup, None,
+            report_changes=True)
 
 
 class cmd_assert_fail(Command):
