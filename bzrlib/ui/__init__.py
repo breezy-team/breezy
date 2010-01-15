@@ -263,7 +263,7 @@ class UIFactory(object):
         """Show an error message (not an exception) to the user.
         
         The message should not have an error prefix or trailing newline.  That
-        will be added by the factory if appropriate. 
+        will be added by the factory if appropriate.
         """
         raise NotImplementedError(self.show_error)
 
@@ -275,6 +275,13 @@ class UIFactory(object):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
 
+    def warn_cross_format_fetch(self, from_format, to_format):
+        """Warn about a potentially slow cross-format transfer"""
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        trace.warning("Doing on-the-fly conversion from %s to %s.\n"
+            "This may take some time. Upgrade the repositories to the "
+            "same format for better performance.\n" %
+            (from_format, to_format))
 
 
 class SilentUIFactory(UIFactory):

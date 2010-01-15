@@ -4013,11 +4013,8 @@ class InterDifferingSerializer(InterRepository):
         #
         # nb this is only active for local-local fetches; other things using
         # streaming.
-        trace.warning("Fetching between repositories with different formats\n"
-            "from %s to %s.\n"
-            "This may take some time. Upgrade the branches to the same format \n"
-            "for better results.\n"
-            % (self.source._format, self.target._format))
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4316,6 +4313,8 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
+                ui.ui_factory.warn_cross_format_fetch(src_format,
+                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4626,8 +4625,10 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or it has a
-        # different serializer.  The StreamSink code expects to be able to
+        # The two formats are sufficiently different that there is no fast
+        # path, so we need to send just inventorydeltas, which any
+        # sufficiently modern client can insert into any repository.
+        # The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).
