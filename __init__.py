@@ -241,7 +241,7 @@ class cmd_committer_statistics(commands.Command):
     aliases = ['stats', 'committer-stats']
     takes_args = ['location?']
     takes_options = ['revision', 
-            option.Option('show-class', help="Show the class of contributions")]
+            option.Option('show-class', help="Show the class of contributions.")]
 
     encoding_type = 'replace'
 
