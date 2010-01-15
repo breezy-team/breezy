@@ -90,6 +90,11 @@ Bug Fixes
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* ``SilentUIFactory`` now supports ``make_output_stream`` and discards
+  whatever is written to it.  This un-breaks some plugin tests that
+  depended on this behaviour.
+  (Martin Pool, #499757)
+
 * The 2a format wasn't properly restarting autopacks when something
   changed underneath it (like another autopack). Now concurrent
   autopackers will properly succeed. (John Arbash Meinel, #495000)

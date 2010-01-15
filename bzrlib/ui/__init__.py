@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -296,6 +296,9 @@ class SilentUIFactory(UIFactory):
     def get_username(self, prompt, **kwargs):
         return None
 
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        return NullOutputStream(encoding)
+
     def show_error(self, msg):
         pass
 
@@ -360,4 +363,20 @@ class NullProgressView(object):
         pass
 
     def log_transport_activity(self, display=False):
+        pass
+
+
+class NullOutputStream(object):
+    """Acts like a file, but discard all output."""
+
+    def __init__(self, encoding):
+        self.encoding = encoding
+
+    def write(self, data):
+        pass
+
+    def writelines(self, data):
+        pass
+
+    def close(self):
         pass
