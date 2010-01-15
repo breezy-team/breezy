@@ -134,6 +134,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertStartsWith(str(b), 'RemoteBranch(')
 
+    def test_remote_bzrdir_repr(self):
+        b = BzrDir.open_from_transport(self.transport)
+        self.assertStartsWith(str(b), 'RemoteBzrDir(')
+
     def test_remote_branch_format_supports_stacking(self):
         t = self.transport
         self.make_branch('unstackable', format='pack-0.92')
