@@ -87,17 +87,34 @@ def collapse_email_and_users(email_users, combo_count):
                 email_to_id[old_email] = cur_id
     for email, usernames in email_users.iteritems():
         assert email not in email_to_id
+        if not email:
+            # We use a different algorithm for usernames that have no email
+            # address, we just try to match by username, and not at all by
+            # email
+            for user in usernames:
+                if not user:
+                    continue # The mysterious ('', '') user
+                user_id = username_to_id.get(user)
+                if user_id is None:
+                    id_counter += 1
+                    user_id = id_counter
+                    username_to_id[user] = user_id
+                    id_to_combos[user_id] = id_combos = set()
+                else:
+                    id_combos = id_combos[user_id]
+                id_combos.add((user, email))
+            continue
+
         id_counter += 1
         cur_id = id_counter
         id_to_combos[cur_id] = id_combos = set()
-        if email:
-            email_to_id[email] = cur_id
+        email_to_id[email] = cur_id
 
         for user in usernames:
             combo = (user, email)
             id_combos.add(combo)
-            if not user or not email:
-                # We don't match on empty usernames and empty emails
+            if not user:
+                # We don't match on empty usernames
                 continue
             user_id = username_to_id.get(user)
             if user_id is not None:
@@ -186,7 +203,7 @@ def display_info(info, to_file, gather_class_stats=None):
         sorted_fullnames = sorted(((count, fullname)
                                   for fullname,count in fullnames.iteritems()),
                                   reverse=True)
-        if sorted_fullnames[0][1] == '':
+        if sorted_fullnames[0][1] == '' and sorted_emails[0][1] == '':
             to_file.write('%4d %s\n'
                           % (count, 'Unknown'))
         else:
