@@ -954,7 +954,7 @@ class Merge3Merger(object):
             self.tt.final_kind(other_root)
         except errors.NoSuchFile:
             return
-        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+        if self.this_tree.has_id(self.other_tree.inventory.root.file_id):
             # the other tree's root is a non-root in the current tree
             return
         self.reparent_children(self.other_tree.inventory.root, self.tt.root)
@@ -1002,7 +1002,7 @@ class Merge3Merger(object):
     @staticmethod
     def executable(tree, file_id):
         """Determine the executability of a file-id (used as a key method)."""
-        if file_id not in tree:
+        if not tree.has_id(file_id):
             return None
         if tree.kind(file_id) != "file":
             return False
@@ -1011,7 +1011,7 @@ class Merge3Merger(object):
     @staticmethod
     def kind(tree, file_id):
         """Determine the kind of a file-id (used as a key method)."""
-        if file_id not in tree:
+        if not tree.has_id(file_id):
             return None
         return tree.kind(file_id)
 
@@ -1100,7 +1100,7 @@ class Merge3Merger(object):
 
     def merge_names(self, file_id):
         def get_entry(tree):
-            if file_id in tree.inventory:
+            if tree.has_id(file_id):
                 return tree.inventory[file_id]
             else:
                 return None
@@ -1210,7 +1210,7 @@ class Merge3Merger(object):
             result = None
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            if file_id in self.this_tree.inventory:
+            if self.this_tree.has_id(file_id):
                 self.tt.unversion_file(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id,
                                               set_version=True)
@@ -1235,7 +1235,7 @@ class Merge3Merger(object):
             pass
         else:
             raise AssertionError('unknown hook_status: %r' % (hook_status,))
-        if file_id not in self.this_tree and result == "modified":
+        if not self.this_tree.has_id(file_id) and result == "modified":
             self.tt.version_file(file_id, trans_id)
         try:
             self.tt.tree_kind(trans_id)
@@ -1248,8 +1248,8 @@ class Merge3Merger(object):
         """Replace this contents with other."""
         file_id = merge_hook_params.file_id
         trans_id = merge_hook_params.trans_id
-        file_in_this = file_id in self.this_tree
-        if file_id in self.other_tree:
+        file_in_this = self.this_tree.has_id(file_id)
+        if self.other_tree.has_id(file_id):
             # OTHER changed the file
             wt = self.this_tree
             if wt.supports_content_filtering():
@@ -1295,7 +1295,7 @@ class Merge3Merger(object):
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
-        if file_id in tree:
+        if tree.has_id(file_id):
             return tree.get_file(file_id).readlines()
         else:
             return []
@@ -1304,7 +1304,7 @@ class Merge3Merger(object):
         """Perform a three-way text merge on a file_id"""
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
-        if file_id in self.base_tree and \
+        if self.base_tree.has_id(file_id) and \
             self.base_tree.kind(file_id) == "file":
             base_lines = self.get_lines(self.base_tree, file_id)
         else:
@@ -1373,7 +1373,7 @@ class Merge3Merger(object):
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
-            if file_id in tree:
+            if tree.has_id(file_id):
                 trans_id = self._conflict_file(name, parent_id, tree, file_id,
                                                suffix, lines, filter_tree_path)
                 file_group.append(trans_id)
@@ -1423,11 +1423,11 @@ class Merge3Merger(object):
         if winner == "this":
             executability = this_executable
         else:
-            if file_id in self.other_tree:
+            if self.other_tree.has_id(file_id):
                 executability = other_executable
-            elif file_id in self.this_tree:
+            elif self.this_tree.has_id(file_id):
                 executability = this_executable
-            elif file_id in self.base_tree:
+            elif self.base_tree_has_id(file_id):
                 executability = base_executable
         if executability is not None:
             trans_id = self.tt.trans_id_file_id(file_id)
