@@ -1062,14 +1062,14 @@ class TreeTransformBase(object):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=DummyProgress(),
+    def __init__(self, tree, limbodir, pb=None,
                  case_sensitive=True):
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
         :param limbodir: A directory where new files can be stored until
             they are installed in their proper places
-        :param pb: A ProgressBar indicating how much progress is being made
+        :param pb: ignored
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """

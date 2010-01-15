@@ -184,33 +184,6 @@ class ProgressTask(object):
             self.ui_factory.clear_term()
 
 
-@deprecated_function(deprecated_in((1, 16, 0)))
-def ProgressBar(to_file=None, **kwargs):
-    """Construct a progress bar.
-
-    Deprecated; ask the ui_factory for a progress task instead.
-    """
-    if to_file is None:
-        to_file = sys.stderr
-    requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')
-    # An value of '' or not set reverts to standard processing
-    if requested_bar_type in (None, ''):
-        if _supports_progress(to_file):
-            return TTYProgressBar(to_file=to_file, **kwargs)
-        else:
-            return DummyProgress(to_file=to_file, **kwargs)
-    else:
-        # Minor sanitation to prevent spurious errors
-        requested_bar_type = requested_bar_type.lower().strip()
-        # TODO: jam 20060710 Arguably we shouldn't raise an exception
-        #       but should instead just disable progress bars if we
-        #       don't recognize the type
-        if requested_bar_type not in _progress_bar_types:
-            raise errors.InvalidProgressBarType(requested_bar_type,
-                                                _progress_bar_types.keys())
-        return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
-
-
 # NOTE: This is also deprecated; you should provide a ProgressView instead.
 class _BaseProgressBar(object):
 
