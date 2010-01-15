@@ -587,25 +587,23 @@ class Merge3Merger(object):
         # making sure we haven't missed any corner cases.
         # if lca_trees is None:
         #     self._lca_trees = [self.base_tree]
-        self.pb = ui.ui_factory.nested_progress_bar()
-        self.pp = pp
         self.change_reporter = change_reporter
         self.cherrypick = cherrypick
-        if self.pp is None:
-            self.pp = progress.ProgressPhase("Merge phase", 3, self.pb)
         if do_merge:
             self.do_merge()
+        if pp is not None:
+            warnings.warn("pp argument to Merge3Merger is deprecated")
+        if pb is not None:
+            warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
         self.this_tree.lock_tree_write()
         self.base_tree.lock_read()
         self.other_tree.lock_read()
         try:
-            self.tt = transform.TreeTransform(self.this_tree, self.pb)
+            self.tt = transform.TreeTransform(self.this_tree, None)
             try:
-                self.pp.next_phase()
                 self._compute_transform()
-                self.pp.next_phase()
                 results = self.tt.apply(no_conflicts=True)
                 self.write_modified(results)
                 try:
@@ -618,20 +616,16 @@ class Merge3Merger(object):
             self.other_tree.unlock()
             self.base_tree.unlock()
             self.this_tree.unlock()
-            self.pb.clear()
 
     def make_preview_transform(self):
         self.base_tree.lock_read()
         self.other_tree.lock_read()
         self.tt = transform.TransformPreview(self.this_tree)
         try:
-            self.pp.next_phase()
             self._compute_transform()
-            self.pp.next_phase()
         finally:
             self.other_tree.unlock()
             self.base_tree.unlock()
-            self.pb.clear()
         return self.tt
 
     def _compute_transform(self):
@@ -656,7 +650,6 @@ class Merge3Merger(object):
         finally:
             child_pb.finished()
         self.fix_root()
-        self.pp.next_phase()
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
