@@ -232,11 +232,14 @@ class _BaseProgressBar(object):
         self.to_messages_file.write('\n')
 
 
-class DummyProgress(_BaseProgressBar):
+class DummyProgress(object):
     """Progress-bar standin that does nothing.
 
-    This can be used as the default argument for methods that
-    take an optional progress indicator."""
+    This was previously often constructed by application code if no progress
+    bar was explicitly passed in.  That's no longer recommended: instead, just
+    create a progress task from the ui_factory.  This class can be used in
+    test code that needs to fake a progress task for some reason.
+    """
 
     def tick(self):
         pass

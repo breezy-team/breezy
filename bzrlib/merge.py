@@ -540,7 +540,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=progress.DummyProgress(), pp=None, change_reporter=None,
+                 pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
                  cherrypick=False, lca_trees=None):
         """Initialize the merger object and perform the merge.
@@ -555,7 +555,7 @@ class Merge3Merger(object):
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
-        :param pb: A Progress bar
+        :param pb: ignored
         :param pp: A ProgressPhase object
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
@@ -587,7 +587,7 @@ class Merge3Merger(object):
         # making sure we haven't missed any corner cases.
         # if lca_trees is None:
         #     self._lca_trees = [self.base_tree]
-        self.pb = pb
+        self.pb = ui.ui_factory.nested_progress_bar()
         self.pp = pp
         self.change_reporter = change_reporter
         self.cherrypick = cherrypick
@@ -1515,7 +1515,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=progress.DummyProgress(),
+                pb=None,
                 change_reporter=None):
     """Primary interface for merging.
 

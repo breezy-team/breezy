@@ -101,7 +101,7 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
@@ -2064,7 +2064,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
-               pb=DummyProgress(), report_changes=False):
+               pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
         if filenames == []:
             filenames = None
