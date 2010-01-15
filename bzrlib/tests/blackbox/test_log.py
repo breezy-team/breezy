@@ -198,6 +198,33 @@ class TestLogRevSpecs(TestLog):
         self.assertTrue('branch nick: branch2\n' in log)
         self.assertTrue('branch nick: branch1\n' not in log)
 
+    def test_log_limit(self):
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
+        log = self.run_bzr("log --limit 2")[0]
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertNotContainsRe(log, r'revno: 2\n')
+        self.assertNotContainsRe(log, r'revno: 3\n')
+        self.assertNotContainsRe(log, r'revno: 4\n')
+        self.assertNotContainsRe(log, r'revno: 5\n')
+        self.assertNotContainsRe(log, r'revno: 6\n')
+        self.assertNotContainsRe(log, r'revno: 7\n')
+        self.assertNotContainsRe(log, r'revno: 8\n')
+        self.assertContainsRe(log, r'revno: 9\n')
+        self.assertContainsRe(log, r'revno: 10\n')
+
+    def test_log_limit_short(self):
+        self.make_linear_branch()
+        log = self.run_bzr("log -l 2")[0]
+        self.assertNotContainsRe(log, r'revno: 1\n')
+        self.assertContainsRe(log, r'revno: 2\n')
+        self.assertContainsRe(log, r'revno: 3\n')
+
+
+class TestLogErrors(TestLog):
+
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
         (out, err) = self.run_bzr_error(
@@ -252,6 +279,23 @@ class TestLogRevSpecs(TestLog):
                               'Path unknown at end or start of revision range: '
                               'does-not-exist')
 
+    def test_log_bad_message_re(self):
+        """Bad --message argument gives a sensible message
+        
+        See https://bugs.launchpad.net/bzr/+bug/251352
+        """
+        self.make_minimal_branch()
+        out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
+        self.assertEqual("bzr: ERROR: Invalid regular expression"
+            " in log message filter"
+            ": '*'"
+            ": nothing to repeat\n", err)
+        self.assertEqual('', out)
+
+
+
+class TestLogTags(TestLog):
+
     def test_log_with_tags(self):
         tree = self.make_linear_branch(format='dirstate-tags')
         branch = tree.branch
@@ -281,43 +325,6 @@ class TestLogRevSpecs(TestLog):
         self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -n0 -r3.1.1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'tags: tag1')
-
-    def test_log_limit(self):
-        tree = self.make_branch_and_tree('.')
-        # We want more commits than our batch size starts at
-        for pos in range(10):
-            tree.commit("%s" % pos)
-        log = self.run_bzr("log --limit 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertNotContainsRe(log, r'revno: 2\n')
-        self.assertNotContainsRe(log, r'revno: 3\n')
-        self.assertNotContainsRe(log, r'revno: 4\n')
-        self.assertNotContainsRe(log, r'revno: 5\n')
-        self.assertNotContainsRe(log, r'revno: 6\n')
-        self.assertNotContainsRe(log, r'revno: 7\n')
-        self.assertNotContainsRe(log, r'revno: 8\n')
-        self.assertContainsRe(log, r'revno: 9\n')
-        self.assertContainsRe(log, r'revno: 10\n')
-
-    def test_log_limit_short(self):
-        self.make_linear_branch()
-        log = self.run_bzr("log -l 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
-
-    def test_log_bad_message_re(self):
-        """Bad --message argument gives a sensible message
-        
-        See https://bugs.launchpad.net/bzr/+bug/251352
-        """
-        self.make_minimal_branch()
-        out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
-        self.assertEqual("bzr: ERROR: Invalid regular expression"
-            " in log message filter"
-            ": '*'"
-            ": nothing to repeat\n", err)
-        self.assertEqual('', out)
 
 
 class TestLogTimeZone(TestLog):
