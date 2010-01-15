@@ -78,9 +78,10 @@ def collapse_email_and_users(email_users, combo_count):
         new_combos.update(old_combos)
         for old_user, old_email in old_combos:
             if (old_user and old_user != user):
-                old_user_id = username_to_id[old_user]
+                low_old_user = old_user.lower()
+                old_user_id = username_to_id[low_old_user]
                 assert old_user_id in (old_id, new_id)
-                username_to_id[old_user] = new_id
+                username_to_id[low_old_user] = new_id
             if (old_email and old_email != email):
                 old_email_id = email_to_id[old_email]
                 assert old_email_id in (old_id, new_id)
@@ -94,14 +95,16 @@ def collapse_email_and_users(email_users, combo_count):
             for user in usernames:
                 if not user:
                     continue # The mysterious ('', '') user
-                user_id = username_to_id.get(user)
+                # When mapping, use case-insensitive names
+                low_user = user.lower()
+                user_id = username_to_id.get(low_user)
                 if user_id is None:
                     id_counter += 1
                     user_id = id_counter
-                    username_to_id[user] = user_id
+                    username_to_id[low_user] = user_id
                     id_to_combos[user_id] = id_combos = set()
                 else:
-                    id_combos = id_combos[user_id]
+                    id_combos = id_to_combos[user_id]
                 id_combos.add((user, email))
             continue
 
@@ -116,13 +119,14 @@ def collapse_email_and_users(email_users, combo_count):
             if not user:
                 # We don't match on empty usernames
                 continue
-            user_id = username_to_id.get(user)
+            low_user = user.lower()
+            user_id = username_to_id.get(low_user)
             if user_id is not None:
                 # This UserName was matched to an cur_id
                 if user_id != cur_id:
                     # And it is a different identity than the current email
                     collapse_ids(user_id, cur_id, id_combos)
-            username_to_id[user] = cur_id
+            username_to_id[low_user] = cur_id
     combo_to_best_combo = {}
     for cur_id, combos in id_to_combos.iteritems():
         best_combo = sorted(combos,
@@ -184,7 +188,7 @@ def get_diff_info(a_repo, start_rev, end_rev):
         pb.note('getting ancestry 2')
         ancestry = a_repo.get_ancestry(end_rev)[1:]
         ancestry = [rev for rev in ancestry if rev not in start_ancestry]
-        revs, canonical_committer = sort_by_committer(a_repo, ancestry)
+        revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
         pb.finished()
@@ -429,7 +433,7 @@ def test_suite():
     from bzrlib.tests import TestLoader
     suite = TestSuite()
     loader = TestLoader()
-    testmod_names = [ 'test_classify']
+    testmod_names = ['test_classify', 'test_stats']
     suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
     return suite
 
