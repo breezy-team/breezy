@@ -3421,15 +3421,14 @@ class InterRepository(InterObject):
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :param pb: optional progress bar to use for progress reports. If not
-                   provided a default one will be created.
+        :param pb: ignored.
         :return: None.
         """
         f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
-                               pb=pb, find_ghosts=find_ghosts)
+                               find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
