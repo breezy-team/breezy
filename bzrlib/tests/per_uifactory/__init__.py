@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,6 +55,12 @@ class UIFactoryTestMixin(object):
     Note that this is *not* a TestCase, because it can't be directly run, but
     the concrete subclasses should be.
     """
+
+    def test_be_quiet(self):
+        self.factory.be_quiet(True)
+        self.assertEquals(True, self.factory.is_quiet())
+        self.factory.be_quiet(False)
+        self.assertEquals(False, self.factory.is_quiet())
 
     def test_note(self):
         self.factory.note("a note to the user")

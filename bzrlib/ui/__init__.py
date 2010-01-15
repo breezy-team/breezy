@@ -109,6 +109,15 @@ class UIFactory(object):
 
     def __init__(self):
         self._task_stack = []
+        self._quiet = False
+
+    def be_quiet(self, state):
+        """Tell the UI to be more quiet, or not.
+
+        Typically this suppresses progress bars; the application may also look
+        at ui_factory.is_quiet().
+        """
+        self._quiet = state
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -124,6 +133,9 @@ class UIFactory(object):
                  transported as is.
         """
         raise NotImplementedError(self.get_password)
+
+    def is_quiet(self):
+        return self._quiet
 
     def make_output_stream(self, encoding=None, encoding_type=None):
         """Get a stream for sending out bulk text data.
