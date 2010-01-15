@@ -1164,10 +1164,12 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
 
         rev_3a = rev_from_rev_id('3a', b)
         rev_4b = rev_from_rev_id('4b', b)
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1), ('3a', '2.1.1', 2)],
+        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
+                          ('3a', '2.1.1', 2)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'reverse'))
         # Note: 3c still appears before 3a here because of depth-based sorting
-        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1), ('3a', '2.1.1', 2)],
+        self.assertEqual([('3c', '3', 0), ('3b', '2.2.1', 1),
+                          ('3a', '2.1.1', 2)],
                           view_revs(rev_3a, rev_4b, 'f-id', 'forward'))
 
 

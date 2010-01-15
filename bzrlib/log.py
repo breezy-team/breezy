@@ -304,7 +304,7 @@ class LogGenerator(object):
 
 
 class Logger(object):
-    """An object the generates, formats and displays a log."""
+    """An object that generates, formats and displays a log."""
 
     def __init__(self, branch, rqst):
         """Create a Logger.
@@ -597,6 +597,8 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
         else:
             # not obvious
             return False
+    # if either start or end is not specified then we use either the first or
+    # the last revision and *they* are obvious ancestors.
     return True
 
 
@@ -664,6 +666,10 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
+                    # From now on we reduce the depth adjustement, this can be
+                    # surprising for users. The alternative requires two passes
+                    # which breaks the fast display of the first revision
+                    # though.
                     depth_adjustment = merge_depth
                 merge_depth -= depth_adjustment
             yield rev_id, '.'.join(map(str, revno)), merge_depth
