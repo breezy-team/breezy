@@ -129,10 +129,13 @@ class LogCatcher(log.LogFormatter):
     being dependent on the formatting.
     """
 
+    supports_merge_revisions = True
     supports_delta = True
+    preferred_levels = 0
 
-    def __init__(self):
-        super(LogCatcher, self).__init__(to_file=None)
+    def __init__(self, *args, **kwargs):
+        kwargs.update(dict(to_file=None))
+        super(LogCatcher, self).__init__(*args, **kwargs)
         self.revisions = []
 
     def log_revision(self, revision):

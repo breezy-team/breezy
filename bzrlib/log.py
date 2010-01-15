@@ -88,6 +88,10 @@ from bzrlib.osutils import (
     re_compile_checked,
     terminal_width,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -675,6 +679,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
+@deprecated_function(deprecated_in((2, 1, 0)))
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
@@ -682,9 +687,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090116
     start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
         end_revision)
     view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
@@ -696,6 +698,7 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return _rebase_merge_depth(view_revisions)
 
 
+@deprecated_function(deprecated_in((2, 1, 0)))
 def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
@@ -1299,8 +1302,8 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-            delta_format=None, levels=None, show_advice=False,
-            to_exact_file=None):
+                 delta_format=None, levels=None, show_advice=False,
+                 to_exact_file=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to

@@ -25,7 +25,10 @@ from bzrlib import (
     osutils,
     tests,
     )
-from bzrlib.tests import test_log
+from bzrlib.tests import (
+    script,
+    test_log,
+    )
 
 
 class TestLog(tests.TestCaseWithTransport):
@@ -96,13 +99,12 @@ class TestLogWithLogCatcher(TestLog):
 
     def setUp(self):
         super(TestLogWithLogCatcher, self).setUp()
-        # Install a default log formatter that captures the revisions but
-        # produces no output
-        self.log_catcher = test_log.LogCatcher()
+        # Capture log formatter creations
         class MyLogFormatter(test_log.LogCatcher):
 
             def __new__(klass, *args, **kwargs):
-                # Always return our own log formatter acting as a singleton
+                self.log_catcher = test_log.LogCatcher(*args, **kwargs)
+                # Always return our own log formatter
                 return self.log_catcher
 
         orig = log.log_formatter_registry.get_default
@@ -177,6 +179,59 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
     def test_log_limit_short(self):
         self.make_linear_branch()
         self.assertLogRevnos(['-l', '2'], ['3', '2'])
+
+class TestBug474807(TestLogWithLogCatcher):
+
+    def setUp(self):
+        super(TestBug474807, self).setUp()
+        self.script_runner = script.ScriptRunner()
+        self.script_runner.run_script(self, '''$ bzr init m # mainline
+$ cd m
+$ echo A > foo
+$ bzr add .
+$ bzr commit -mA
+$ bzr branch . ../r # right, to be merged
+$ echo B > foo
+$ bzr commit -mB
+$ cd ../r
+$ echo C > bar
+$ bzr add .
+$ bzr commit -mC
+$ cd ../m
+$ bzr merge ../r
+$ bzr commit -mD
+$ cd ../r
+$ echo E > bar
+$ bzr commit -mE
+$ echo F > bar
+$ bzr commit -mF
+$ cd ../m
+$ bzr merge ../r
+$ bzr commit -mG
+$ cd ../r
+$ bzr merge ../m
+$ bzr commit -mH --unchanged
+$ cd ../m
+$ bzr merge ../r
+$ bzr commit -mI --unchanged
+# We end up in m (mainline)
+''')
+
+    def test_n0(self):
+        self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
+                             ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
+
+    def test_n0_forward(self):
+        self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
+                             ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
+
+    def test_n1(self):
+        self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4'],
+                             ['1.1.4', '1.1.3', '1.1.2', '1.1.1'])
+
+    def test_n1_forward(self):
+        self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4', '--forward'],
+                             ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
 
 class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
