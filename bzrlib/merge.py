@@ -75,9 +75,10 @@ class MergeHookParams(object):
 
     :ivar merger: the Merger object
     :ivar file_id: the file ID of the file being merged
-    :ivar trans_id: the transform ID for the merge of this file.
+    :ivar trans_id: the transform ID for the merge of this file
     :ivar this_kind: kind of file_id in 'this' tree
     :ivar other_kind: kind of file_id in 'other' tree
+    :ivar winner: one of 'this', 'other', 'conflict'
     """
 
     def __init__(self, merger, file_id, trans_id, this_kind, other_kind,
