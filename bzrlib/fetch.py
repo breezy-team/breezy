@@ -52,20 +52,13 @@ class RepoFetcher(object):
     """
 
     def __init__(self, to_repository, from_repository, last_revision=None,
-        pb=None, find_ghosts=True, fetch_spec=None):
+        find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param last_revision: If set, try to limit to the data this revision
             references.
         :param find_ghosts: If True search the entire history for ghosts.
-        :param pb: ProgressBar object to use; deprecated and ignored.
-            This method will just create one on top of the stack.
         """
-        if pb is not None:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to RepoFetcher.__init__")
-            # and for simplicity it is in fact ignored
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
         self.to_repository = to_repository
