@@ -2867,7 +2867,7 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             ui.ui_factory.note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()

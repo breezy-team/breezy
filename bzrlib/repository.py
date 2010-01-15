@@ -2165,14 +2165,10 @@ class Repository(_RelockDebugMixin):
         """
         selected_keys = set((revid,) for revid in revision_ids)
         w = _inv_weave or self.inventories
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            return self._find_file_ids_from_xml_inventory_lines(
-                w.iter_lines_added_or_present_in_keys(
-                    selected_keys, pb=pb),
-                selected_keys)
-        finally:
-            pb.finished()
+        return self._find_file_ids_from_xml_inventory_lines(
+            w.iter_lines_added_or_present_in_keys(
+                selected_keys, pb=None),
+            selected_keys)
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
