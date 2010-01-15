@@ -1755,7 +1755,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: An iterator over (line, key).
         """
         if pb is None:
-            pb = progress.DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
         keys = set(keys)
         total = len(keys)
         done = False

@@ -72,7 +72,7 @@ class Merger(object):
         self.show_base = False
         self.reprocess = False
         if pb is None:
-            pb = progress.DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
         self._pb = pb
         self.pp = None
         self.recurse = recurse
