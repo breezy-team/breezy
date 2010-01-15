@@ -21,10 +21,13 @@ Install this as a plugin, e.g:
     cp contrib/news-file-merge-hook.py ~/.bazaar/plugins/news_merge.py
 """
 
-from .parser import simple_parse
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib.plugins.news_merge import parser
+from bzrlib import merge3
+""")
 
 from bzrlib.merge import Merger
-from bzrlib.merge3 import Merge3
 
 
 def news_merge_hook(params):
@@ -56,11 +59,11 @@ def sort_key(s):
     
 def news_merger(params):
     def munge(lines):
-        return list(blocks_to_fakelines(simple_parse(''.join(lines))))
+        return list(blocks_to_fakelines(parser.simple_parse(''.join(lines))))
     this_lines = munge(params.this_lines)
     other_lines = munge(params.other_lines)
     base_lines = munge(params.base_lines)
-    m3 = Merge3(base_lines, this_lines, other_lines)
+    m3 = merge3.Merge3(base_lines, this_lines, other_lines)
     result_lines = []
     for group in m3.merge_groups():
         if group[0] == 'conflict':
