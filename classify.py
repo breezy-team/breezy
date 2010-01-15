@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2008, 2010 Jelmer Vernooij <jelmer@samba.org>
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,14 +23,17 @@ from bzrlib.trace import mutter
 
 def classify_filename(name):
     """Classify a file based on its name.
-    
+
     :param name: File path.
-    :return: One of code, documentation, translation or art. 
+    :return: One of code, documentation, translation or art.
         None if determining the file type failed.
     """
-    # FIXME: Use mime types? Ohcount? 
+    # FIXME: Use mime types? Ohcount?
+    # TODO: It will be better move those filters to properties file
+	# and have possibility to determining own types !?
     extension = os.path.splitext(name)[1]
-    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac"):
+    if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac",
+                        ".java"):
         return "code"
     if extension in (".html", ".xml", ".txt", ".rst", ".TODO"):
         return "documentation"
@@ -40,7 +43,7 @@ def classify_filename(name):
         return "art"
     if not extension:
         basename = urlutils.basename(name)
-        if basename in ("README", "NEWS", "TODO", 
+        if basename in ("README", "NEWS", "TODO",
                         "AUTHORS", "COPYING"):
             return "documentation"
         if basename in ("Makefile",):
@@ -56,7 +59,7 @@ def classify_delta(delta):
     :param delta: A TreeDelta to inspect
     :return: List with classes found (see classify_filename)
     """
-    # TODO: This is inaccurate, since it doesn't look at the 
+    # TODO: This is inaccurate, since it doesn't look at the
     # number of lines changed in a file.
     types = []
     for d in delta.added + delta.modified:
