@@ -539,18 +539,17 @@ class LockDir(lock.Lock):
                 # user, perhaps being wrapped in a lp-%d or chroot decorator,
                 # especially if this error is issued from the server.
                 self._report_function('%s %s\n'
-                                      '%s\n' # held by
-                                      '%s\n' # locked ... ago
-                                      'Will continue to try until %s, unless '
-                                      'you press Ctrl-C\n'
-                                      'If you\'re sure that it\'s not being '
-                                      'modified, use bzr break-lock',
-                                      start,
-                                      formatted_info[0],
-                                      formatted_info[1],
-                                      formatted_info[2],
-                                      deadline_str,
-                                      )
+                    '%s\n' # held by
+                    '%s\n' # locked ... ago
+                    'Will continue to try until %s, unless '
+                    'you press Ctrl-C.\n'
+                    'See "bzr help break-lock" for more.',
+                    start,
+                    formatted_info[0],
+                    formatted_info[1],
+                    formatted_info[2],
+                    deadline_str,
+                    )
 
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
