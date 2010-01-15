@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ from bzrlib import (
     config,
     errors,
     option,
+    trace,
     tsort,
     ui,
     workingtree,
@@ -32,19 +33,7 @@ from itertools import izip
 """)
 
 
-def find_fullnames(lst):
-    """Find the fullnames for a list committer names."""
-
-    counts = {}
-    for committer in lst:
-        fullname = config.parse_username(committer)[0]
-        counts.setdefault(fullname, 0)
-        counts[fullname] += 1
-    return sorted(((count, name) for name,count in counts.iteritems()),
-        reverse=True)
-
-
-def collapse_by_person(committers):
+def collapse_by_person(revisions, canonical_committer):
     """The committers list is sorted by email, fix it up by person.
 
     Some people commit with a similar username, but different email
@@ -55,65 +44,99 @@ def collapse_by_person(committers):
     So take the most common username for each email address, and
     combine them into one new list.
     """
-    # Just an indirection so that multiple names can reference
-    # the same record information
-    name_to_counter = {}
-    # indirection back to real information
-    # [[full_rev_list], {email:count}, {fname:count}]
-    counter_to_info = {}
-    counter = 0
-    for email, revs in committers.iteritems():
-        authors = []
-        for rev in revs:
-            authors += rev.get_apparent_authors()
-        fullnames = find_fullnames(authors)
-        match = None
-        for count, fullname in fullnames:
-            if fullname and fullname in name_to_counter:
-                # We found a match
-                match = name_to_counter[fullname]
-                break
-
-        if match:
-            # One of the names matched, we need to collapse to records
-            record = counter_to_info[match]
-            record[0].extend(revs)
-            record[1][email] = len(revs)
-            for count, fullname in fullnames:
-                name_to_counter[fullname] = match
-                record[2].setdefault(fullname, 0)
-                record[2][fullname] += count
-        else:
-            # just add this one to the list
-            counter += 1
-            for count, fullname in fullnames:
-                if fullname:
-                    name_to_counter[fullname] = counter
-            fname_map = dict((fullname, count) for count, fullname in fullnames)
-            counter_to_info[counter] = [revs, {email:len(revs)}, fname_map]
-    return sorted(((len(revs), revs, email, fname)
-            for revs, email, fname in counter_to_info.values()), reverse=True)
+    # Map from canonical committer to
+    # {committer: ([rev_list], {email: count}, {fname:count})}
+    committer_to_info = {}
+    for rev in revisions:
+        authors = rev.get_apparent_authors()
+        for author in authors:
+            username, email = config.parse_username(author)
+            canon_author = canonical_committer[(username, email)]
+            info = committer_to_info.setdefault(canon_author, ([], {}, {}))
+            info[0].append(rev)
+            info[1][email] = info[1].setdefault(email, 0) + 1
+            info[2][username] = info[2].setdefault(username, 0) + 1
+    res = [(len(revs), revs, emails, fnames)
+           for revs, emails, fnames in committer_to_info.itervalues()]
+    res.sort(reverse=True)
+    return res
 
 
-def sort_by_committer(a_repo, revids):
-    committers = {}
+def collapse_email_and_users(email_users, combo_count):
+    """Combine the mapping of User Name to email and email to User Name.
+
+    If a given User Name is used for multiple emails, try to map it all to one
+    entry.
+    """
+    id_to_combos = {}
+    username_to_id = {}
+    email_to_id = {}
+    id_counter = 0
+
+    def collapse_ids(old_id, new_id, new_combos):
+        old_combos = id_to_combos.pop(old_id)
+        new_combos.update(old_combos)
+        for old_user, old_email in old_combos:
+            if (old_user and old_user != user):
+                old_user_id = username_to_id[old_user]
+                assert old_user_id in (old_id, new_id)
+                username_to_id[old_user] = new_id
+            if (old_email and old_email != email):
+                old_email_id = email_to_id[old_email]
+                assert old_email_id in (old_id, new_id)
+                email_to_id[old_email] = cur_id
+    for email, usernames in email_users.iteritems():
+        assert email not in email_to_id
+        id_counter += 1
+        cur_id = id_counter
+        id_to_combos[cur_id] = id_combos = set()
+        if email:
+            email_to_id[email] = cur_id
+
+        for user in usernames:
+            combo = (user, email)
+            id_combos.add(combo)
+            if not user or not email:
+                # We don't match on empty usernames and empty emails
+                continue
+            user_id = username_to_id.get(user)
+            if user_id is not None:
+                # This UserName was matched to an cur_id
+                if user_id != cur_id:
+                    # And it is a different identity than the current email
+                    collapse_ids(user_id, cur_id, id_combos)
+            username_to_id[user] = cur_id
+    combo_to_best_combo = {}
+    for cur_id, combos in id_to_combos.iteritems():
+        best_combo = sorted(combos,
+                            key=lambda x:combo_count[x],
+                            reverse=True)[0]
+        for combo in combos:
+            combo_to_best_combo[combo] = best_combo
+    return combo_to_best_combo
+
+
+def get_revisions_and_committers(a_repo, revids):
+    """Get the Revision information, and the best-match for committer."""
+
+    email_users = {} # user@email.com => User Name
+    combo_count = {}
     pb = ui.ui_factory.nested_progress_bar()
     try:
-        pb.note('getting revisions')
+        trace.note('getting revisions')
         revisions = a_repo.get_revisions(revids)
         for count, rev in enumerate(revisions):
             pb.update('checking', count, len(revids))
             for author in rev.get_apparent_authors():
-                username = config.parse_username(author)
-                if username[1] == '':
-                    email = username[0]
-                else:
-                    email = username[1]
-                committers.setdefault(email, []).append(rev)
+                # XXX: There is a chance sometimes with svn imports that the
+                #      full name and email can BOTH be blank.
+                username, email = config.parse_username(author)
+                email_users.setdefault(email, set()).add(username)
+                combo = (username, email)
+                combo_count[combo] = combo_count.setdefault(combo, 0) + 1
     finally:
         pb.finished()
-
-    return committers
+    return revisions, collapse_email_and_users(email_users, combo_count)
 
 
 def get_info(a_repo, revision):
@@ -121,15 +144,14 @@ def get_info(a_repo, revision):
     pb = ui.ui_factory.nested_progress_bar()
     a_repo.lock_read()
     try:
-        pb.note('getting ancestry')
+        trace.note('getting ancestry')
         ancestry = a_repo.get_ancestry(revision)[1:]
-
-        committers = sort_by_committer(a_repo, ancestry)
+        revs, canonical_committer = get_revisions_and_committers(a_repo, ancestry)
     finally:
         a_repo.unlock()
         pb.finished()
 
-    return collapse_by_person(committers)
+    return collapse_by_person(revs, canonical_committer)
 
 
 def get_diff_info(a_repo, start_rev, end_rev):
@@ -138,7 +160,6 @@ def get_diff_info(a_repo, start_rev, end_rev):
     This lets us figure out what has actually changed between 2 revisions.
     """
     pb = ui.ui_factory.nested_progress_bar()
-    committers = {}
     a_repo.lock_read()
     try:
         pb.note('getting ancestry 1')
@@ -146,23 +167,12 @@ def get_diff_info(a_repo, start_rev, end_rev):
         pb.note('getting ancestry 2')
         ancestry = a_repo.get_ancestry(end_rev)[1:]
         ancestry = [rev for rev in ancestry if rev not in start_ancestry]
-        pb.note('getting revisions')
-        revisions = a_repo.get_revisions(ancestry)
-
-        for count, rev in enumerate(revisions):
-            pb.update('checking', count, len(ancestry))
-            for author in rev.get_apparent_authors():
-                try:
-                    email = config.extract_email_address(author)
-                except errors.BzrError:
-                    email = author
-                committers.setdefault(email, []).append(rev)
+        revs, canonical_committer = sort_by_committer(a_repo, ancestry)
     finally:
         a_repo.unlock()
         pb.finished()
 
-    info = collapse_by_person(committers)
-    return info
+    return collapse_by_person(revs, canonical_committer)
 
 
 def display_info(info, to_file, gather_class_stats=None):
@@ -176,8 +186,6 @@ def display_info(info, to_file, gather_class_stats=None):
         sorted_fullnames = sorted(((count, fullname)
                                   for fullname,count in fullnames.iteritems()),
                                   reverse=True)
-        # There is a chance sometimes with svn imports that the full name and
-        # email can BOTH be blank.
         if sorted_fullnames[0][1] == '':
             to_file.write('%4d %s\n'
                           % (count, 'Unknown'))
@@ -186,15 +194,15 @@ def display_info(info, to_file, gather_class_stats=None):
                           % (count, sorted_fullnames[0][1],
                              sorted_emails[0][1]))
         if len(sorted_fullnames) > 1:
-            print '     Other names:'
-            for count, fname in sorted_fullnames[1:]:
+            to_file.write('     Other names:\n')
+            for count, fname in sorted_fullnames:
                 to_file.write('     %4d ' % (count,))
                 if fname == '':
                     to_file.write("''\n")
                 else:
                     to_file.write("%s\n" % (fname,))
         if len(sorted_emails) > 1:
-            print '     Other email addresses:'
+            to_file.write('     Other email addresses:\n')
             for count, email in sorted_emails:
                 to_file.write('     %4d ' % (count,))
                 if email == '':
