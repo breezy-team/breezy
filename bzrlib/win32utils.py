@@ -517,7 +517,7 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-_whitespace_match = re.compile(u'\s').match
+_whitespace_match = re.compile(u'\s', re.UNICODE).match
 
 
 class _PushbackSequence(object):
