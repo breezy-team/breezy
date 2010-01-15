@@ -205,12 +205,14 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param unlink_func: A way to delete the target file if the full rename
         succeeds
     """
-    new = safe_unicode(new)
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(),
-                                       os.getpid(), rand_chars(10))
+    # callers use different encodings for the paths so the following MUST
+    # respect that. We rely on python upcasting to unicode if new is unicode
+    # and keeping a str if not.
+    tmp_name = 'tmp.%s.%.9f.%d.%s' % (base, time.time(),
+                                      os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist

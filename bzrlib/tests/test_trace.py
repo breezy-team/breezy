@@ -27,6 +27,7 @@ import tempfile
 
 from bzrlib import (
     errors,
+    trace,
     )
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import (
@@ -248,6 +249,20 @@ class TestTrace(TestCase):
             tmp1.close()
             tmp2.close()
 
+    def test__open_bzr_log_uses_stderr_for_failures(self):
+        # If _open_bzr_log cannot open the file, then we should write the
+        # warning to stderr. Since this is normally happening before logging is
+        # set up.
+        self.addCleanup(setattr, sys, 'stderr', sys.stderr)
+        self.addCleanup(setattr, trace, '_bzr_log_filename',
+                        trace._bzr_log_filename)
+        sys.stderr = StringIO()
+        # Set the log file to something that cannot exist
+        os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        logf = trace._open_bzr_log()
+        self.assertIs(None, logf)
+        self.assertContainsRe(sys.stderr.getvalue(),
+                              'failed to open trace file: .*/no-dir/bzr.log')
 
 class TestVerbosityLevel(TestCase):
 
