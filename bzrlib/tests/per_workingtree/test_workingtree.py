@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -477,6 +477,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.failUnlessExists('checkout/file')
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
         self.assertNotEqual(None, wt.get_root_id())
+
+    def test_update_sets_updated_root_id(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.set_root_id('first_root_id')
+        self.assertEqual('first_root_id', wt.get_root_id())
+        self.build_tree(['tree/file'])
+        wt.add(['file'])
+        wt.commit('first')
+        co = wt.branch.create_checkout('checkout')
+        wt.set_root_id('second_root_id')
+        wt.commit('second')
+        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(0, co.update())
+        self.assertEqual('second_root_id', co.get_root_id())
 
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     symbol_versioning,
+    trace,
     tsort,
     ui,
     versionedfile,
@@ -4008,6 +4009,15 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        #
+        # nb this is only active for local-local fetches; other things using
+        # streaming.
+        trace.warning("Fetching between repositories with different formats\n"
+            "from %s to %s.\n"
+            "This may take some time. Upgrade the branches to the same format \n"
+            "for better results.\n"
+            % (self.source._format, self.target._format))
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True

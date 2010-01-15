@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,12 +76,9 @@ class UIFactoryTestMixin(object):
         self._check_show_warning(msg)
 
     def test_make_output_stream(self):
-        # at the moment this is only implemented on text uis; i'm not sure
-        # what it should do elsewhere
-        try:
-            output_stream = self.factory.make_output_stream()
-        except NotImplementedError, e:
-            raise tests.TestSkipped(str(e))
+        # All UIs must now be able to at least accept output, even if they
+        # just discard it.
+        output_stream = self.factory.make_output_stream()
         output_stream.write('hello!')
 
     def test_transport_activity(self):

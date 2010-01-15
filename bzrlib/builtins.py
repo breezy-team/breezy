@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2004-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1180,12 +1180,14 @@ class cmd_branch(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow branch to proceed.'),
+        Option('bind',
+            help="Bind new branch to from location."),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False, switch=False):
+            use_existing_dir=False, switch=False, bind=False):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
@@ -1244,6 +1246,11 @@ class cmd_branch(Command):
         except (errors.NotStacked, errors.UnstackableBranchFormat,
             errors.UnstackableRepositoryFormat), e:
             note('Branched %d revision(s).' % branch.revno())
+        if bind:
+            # Bind to the parent
+            parent_branch = Branch.open(from_location)
+            branch.bind(parent_branch)
+            note('New branch bound to %s' % from_location)
         if switch:
             # Switch to the new branch
             wt, _ = WorkingTree.open_containing('.')
@@ -2813,6 +2820,8 @@ class cmd_cat(Command):
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
+        rev_tree.lock_read()
+        self.add_cleanup(rev_tree.unlock)
 
         old_file_id = rev_tree.path2id(relpath)
 
@@ -2853,8 +2862,10 @@ class cmd_cat(Command):
             chunks = content.splitlines(True)
             content = filtered_output_bytes(chunks, filters,
                 ContentFilterContext(relpath, rev_tree))
+            self.cleanup_now()
             self.outf.writelines(content)
         else:
+            self.cleanup_now()
             self.outf.write(content)
 
 
@@ -4717,10 +4728,12 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info' command.
+    You can get information on what locks are open via the 'bzr info
+    [location]' command.
 
     :Examples:
         bzr break-lock
+        bzr break-lock bzr+ssh://example.com/bzr/foo
     """
     takes_args = ['location?']
 
@@ -4998,18 +5011,32 @@ class cmd_send(Command):
       directly from the merge directive, without retrieving data from a
       branch.
 
-    If --no-bundle is specified, then public_branch is needed (and must be
-    up-to-date), so that the receiver can perform the merge using the
-    public_branch.  The public_branch is always included if known, so that
-    people can check it later.
+    `bzr send` creates a compact data set that, when applied using bzr
+    merge, has the same effect as merging from the source branch.  
+    
+    By default the merge directive is self-contained and can be applied to any
+    branch containing submit_branch in its ancestory without needing access to
+    the source branch.
+    
+    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    revisions, but only a structured request to merge from the
+    public_location.  In that case the public_branch is needed and it must be
+    up-to-date and accessible to the recipient.  The public_branch is always
+    included if known, so that people can check it later.
 
-    The submit branch defaults to the parent, but can be overridden.  Both
-    submit branch and public branch will be remembered if supplied.
+    The submit branch defaults to the parent of the source branch, but can be
+    overridden.  Both submit branch and public branch will be remembered in
+    branch.conf the first time they are used for a particular branch.  The
+    source branch defaults to that containing the working directory, but can
+    be changed using --from.
 
-    If a public_branch is known for the submit_branch, that public submit
-    branch is used in the merge instructions.  This means that a local mirror
-    can be used as your actual submit branch, once you have set public_branch
-    for that mirror.
+    In order to calculate those changes, bzr must analyse the submit branch.
+    Therefore it is most efficient for the submit branch to be a local mirror.
+    If a public location is known for the submit_branch, that location is used
+    in the merge directive.
+
+    The default behaviour is to send the merge directive by mail, unless -o is
+    given, in which case it is sent to a file.
 
     Mail is sent using your preferred mail program.  This should be transparent
     on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
@@ -5035,6 +5062,10 @@ class cmd_send(Command):
 
     The merge directives created by bzr send may be applied using bzr merge or
     bzr pull by specifying a file containing a merge directive as the location.
+
+    bzr send makes extensive use of public locations to map local locations into
+    URLs that can be used by other people.  See `bzr help configuration` to
+    set them, and use `bzr info` to display them.
     """
 
     encoding_type = 'exact'
@@ -5406,18 +5437,26 @@ class cmd_switch(Command):
     that of the master.
     """
 
-    takes_args = ['to_location']
+    takes_args = ['to_location?']
     takes_options = [Option('force',
                         help='Switch even if local commits will be lost.'),
+                     'revision',
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
-                     ]
+                    ]
 
-    def run(self, to_location, force=False, create_branch=False):
+    def run(self, to_location=None, force=False, create_branch=False,
+            revision=None):
         from bzrlib import switch
         tree_location = '.'
+        revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        if to_location is None:
+            if revision is None:
+                raise errors.BzrCommandError('You must supply either a'
+                                             ' revision or a location')
+            to_location = '.'
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5437,13 +5476,6 @@ class cmd_switch(Command):
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
-            # try:
-            #     from_branch = control_dir.open_branch()
-            # except errors.NotBranchError:
-            #     raise BzrCommandError('Cannot create a branch from this'
-            #         ' location when we cannot open this branch')
-            # from_branch.bzrdir.sprout(
-            pass
         else:
             try:
                 to_branch = Branch.open(to_location)
@@ -5451,7 +5483,9 @@ class cmd_switch(Command):
                 this_url = self._get_branch_location(control_dir)
                 to_branch = Branch.open(
                     urlutils.join(this_url, '..', to_location))
-        switch.switch(control_dir, to_branch, force)
+        if revision is not None:
+            revision = revision.as_revision_id(to_branch)
+        switch.switch(control_dir, to_branch, force, revision_id=revision)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
@@ -5740,6 +5774,8 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
+            preview="Instead of unshelving the changes, show the diff that "
+                    "would result from unshelving.",
             delete_only="Delete changes without applying them.",
             keep="Apply changes but don't delete them.",
         )
