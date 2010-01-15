@@ -29,8 +29,13 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.plugins.stats.classify import classify_delta
-from itertools import izip
 """)
+
+from bzrlib import _format_version_tuple
+from itertools import izip
+
+version_info = (0, 1, 0, 'dev', 0)
+__version__ = _format_version_tuple(version_info)
 
 
 def collapse_by_person(revisions, canonical_committer):
@@ -376,7 +381,8 @@ def find_credits(repository, revid):
         revs = repository.get_revisions(ancestry)
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, (rev,delta) in enumerate(izip(revs, repository.get_deltas_for_revisions(revs))):
+            iterator = izip(revs, repository.get_deltas_for_revisions(revs))
+            for i, (rev,delta) in enumerate(iterator):
                 pb.update("analysing revisions", i, len(revs))
                 # Don't count merges
                 if len(rev.parent_ids) > 1:
@@ -428,12 +434,12 @@ class cmd_credits(commands.Command):
 commands.register_command(cmd_credits)
 
 
-def test_suite():
-    from unittest import TestSuite
-    from bzrlib.tests import TestLoader
-    suite = TestSuite()
-    loader = TestLoader()
-    testmod_names = ['test_classify', 'test_stats']
-    suite.addTest(loader.loadTestsFromModuleNames(['%s.%s' % (__name__, i) for i in testmod_names]))
+def load_tests(basic_tests, module, loader):
+    testmod_names = [__name__ + '.' + x for x in [
+        'test_classify',
+        'test_stats',
+        ]]
+    suite = loader.suiteClass()
+    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
     return suite
 
