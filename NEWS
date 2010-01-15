@@ -234,10 +234,10 @@ Bug Fixes
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
-* Give a warning when fetching between local repositories with
+* Give a warning when fetching between repositories (local or remote) with
   sufficiently different formats that the content will need to be
-  serialized (ie ``InterDifferingSerializer``) so the user has a clue that
-  upgrading could make it faster.
+  serialized (ie ``InterDifferingSerializer`` or ``inventory-deltas``), so
+  the user has a clue that upgrading could make it faster.
   (Martin Pool, #456077)
 
 * If we fail to open ``~/.bzr.log`` write a clear message to stderr rather
