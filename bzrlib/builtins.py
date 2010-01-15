@@ -4728,10 +4728,12 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info' command.
+    You can get information on what locks are open via the 'bzr info
+    [location]' command.
 
     :Examples:
         bzr break-lock
+        bzr break-lock bzr+ssh://example.com/bzr/foo
     """
     takes_args = ['location?']
 
