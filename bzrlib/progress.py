@@ -261,35 +261,6 @@ class DummyProgress(_BaseProgressBar):
         return DummyProgress(**kwargs)
 
 
-class DotsProgressBar(_BaseProgressBar):
-
-    @deprecated_function(deprecated_in((1, 16, 0)))
-    def __init__(self, **kwargs):
-        _BaseProgressBar.__init__(self, **kwargs)
-        self.last_msg = None
-        self.need_nl = False
-
-    def tick(self):
-        self.update()
-
-    def update(self, msg=None, current_cnt=None, total_cnt=None):
-        if msg and msg != self.last_msg:
-            if self.need_nl:
-                self.to_file.write('\n')
-            self.to_file.write(msg + ': ')
-            self.last_msg = msg
-        self.need_nl = True
-        self.to_file.write('.')
-
-    def clear(self):
-        if self.need_nl:
-            self.to_file.write('\n')
-        self.need_nl = False
-
-    def child_update(self, message, current, total):
-        self.tick()
-
-
 class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
 
@@ -581,4 +552,3 @@ _progress_bar_types = {}
 _progress_bar_types['dummy'] = DummyProgress
 _progress_bar_types['none'] = DummyProgress
 _progress_bar_types['tty'] = TTYProgressBar
-_progress_bar_types['dots'] = DotsProgressBar
