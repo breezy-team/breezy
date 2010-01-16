@@ -287,7 +287,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         return path
 
     def make_test_server(self, base_path='/'):
-        """Make and setUp a BzrServerFactory, backed by a memory transport, and
+        """Make and start a BzrServerFactory, backed by a memory transport, and
         creat '/home/user' in that transport.
         """
         bzr_server = BzrServerFactory(

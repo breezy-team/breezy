@@ -1527,3 +1527,90 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         log.show_branch_change(tree.branch, s, 3, '3b')
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
+
+
+
+class TestLogWithBugs(TestCaseForLogFormatter):
+
+    def setUp(self):
+        TestCaseForLogFormatter.setUp(self)
+        log.properties_handler_registry.register(
+            'bugs_properties_handler',
+            log._bugs_properties_handler)
+
+    def make_commits_with_bugs(self):
+        """Helper method for LogFormatter tests"""
+        tree = self.make_branch_and_tree(u'.')
+        self.build_tree(['a', 'b'])
+        tree.add('a')
+        tree.commit('simple log message', rev_id='a1',
+                    timestamp=1132586655.459960938, timezone=-6*3600,
+                    committer='Joe Foo <joe@foo.com>',
+                    revprops={'bugs': 'test://bug/id fixed'})
+        tree.add('b')
+        tree.commit('multiline\nlog\nmessage\n', rev_id='a2',
+                    timestamp=1132586842.411175966, timezone=-6*3600,
+                    committer='Joe Foo <joe@foo.com>',
+                    authors=['Joe Bar <joe@bar.com>'],
+                    revprops={'bugs': 'test://bug/id fixed\n'
+                                      'test://bug/2 fixed'})
+        return tree
+
+
+    def test_long_bugs(self):
+        tree = self.make_commits_with_bugs()
+        self.assertFormatterResult("""\
+------------------------------------------------------------
+revno: 2
+fixes bug(s): test://bug/id test://bug/2
+author: Joe Bar <joe@bar.com>
+committer: Joe Foo <joe@foo.com>
+branch nick: work
+timestamp: Mon 2005-11-21 09:27:22 -0600
+message:
+  multiline
+  log
+  message
+------------------------------------------------------------
+revno: 1
+fixes bug(s): test://bug/id
+committer: Joe Foo <joe@foo.com>
+branch nick: work
+timestamp: Mon 2005-11-21 09:24:15 -0600
+message:
+  simple log message
+""",
+            tree.branch, log.LongLogFormatter)
+
+    def test_short_bugs(self):
+        tree = self.make_commits_with_bugs()
+        self.assertFormatterResult("""\
+    2 Joe Bar\t2005-11-21
+      fixes bug(s): test://bug/id test://bug/2
+      multiline
+      log
+      message
+
+    1 Joe Foo\t2005-11-21
+      fixes bug(s): test://bug/id
+      simple log message
+
+""",
+            tree.branch, log.ShortLogFormatter)
+
+    def test_wrong_bugs_property(self):
+        tree = self.make_branch_and_tree(u'.')
+        self.build_tree(['foo'])
+        tree.commit('simple log message', rev_id='a1',
+              timestamp=1132586655.459960938, timezone=-6*3600,
+              committer='Joe Foo <joe@foo.com>',
+              revprops={'bugs': 'test://bug/id invalid_value'})
+        self.assertFormatterResult("""\
+    1 Joe Foo\t2005-11-21
+      simple log message
+
+""",
+            tree.branch, log.ShortLogFormatter)
+
+    def test_bugs_handler_present(self):
+        self.properties_handler_registry.get('bugs_properties_handler')
