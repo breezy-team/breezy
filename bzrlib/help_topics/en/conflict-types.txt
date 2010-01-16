@@ -1,5 +1,5 @@
-Conflicts Types
-===============
+Conflict Types
+==============
 
 Some operations, like merge, revert and pull, modify the contents of your
 working tree.  These modifications are programmatically generated, and so they
@@ -234,7 +234,7 @@ children or the directory or a combination of both.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: Arguably any state is valid after the merge so we bzr can just
+.. TODO: Arguably any state is valid after the merge so bzr can just
 consider the conflict as resolved.
 
 Deleting parent

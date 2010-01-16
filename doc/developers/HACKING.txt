@@ -62,7 +62,7 @@ on the IRC channel and/or on the mailing list. There are many advantages
 to involving the community before you spend much time on a change.
 These include:
 
-* you get to build on the wisdom on others, saving time
+* you get to build on the wisdom of others, saving time
 
 * if others can direct you to similar code, it minimises the work to be done
 
@@ -680,7 +680,7 @@ generally uninteresting compared to the original exception.  So use the
 ``only_raises`` decorator (from ``bzrlib.decorators``) for methods that
 are typically called in ``finally`` blocks, such as ``unlock`` methods.
 For example, ``@only_raises(LockNotHeld, LockBroken)``.  All errors that
-are unlikely to be a knock-on failure from an previous failure should be
+are unlikely to be a knock-on failure from a previous failure should be
 allowed.
 
 
