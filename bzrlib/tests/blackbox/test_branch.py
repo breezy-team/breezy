@@ -209,6 +209,13 @@ class TestBranch(ExternalBase):
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
 
+    def test_branch_bind(self):
+        self.example_branch('a')
+        out, err = self.run_bzr('branch a b --bind')
+        self.assertEndsWith(err, "New branch bound to a\n")
+        b = branch.Branch.open('b')
+        self.assertEndsWith(b.get_bound_location(), '/a/')
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""

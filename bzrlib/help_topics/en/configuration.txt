@@ -272,7 +272,7 @@ The syntax of the file obeys the same rules as the others except for the
 variable policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
-file see `Authentication Settings`_.
+file see :doc:`authentication-help`.
 
 
 Common variable options

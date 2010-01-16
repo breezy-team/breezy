@@ -218,7 +218,7 @@ class RecordingServer(object):
     def get_url(self):
         return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
-    def setUp(self):
+    def start_server(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
@@ -247,7 +247,7 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             self._sock.close()
         except socket.error:
@@ -306,26 +306,26 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(BogusRequestHandler)
         try:
-            self.assertRaises(httplib.UnknownProtocol, server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
         try:
-            self.assertRaises(httplib.UnknownProtocol, server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
-        server.setUp()
+        server.start_server()
         try:
             self.assertTrue(server._http_running)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -428,12 +428,12 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
         server = self._server()
-        server.setUp()
+        server.start_server()
         try:
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
@@ -763,14 +763,14 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
-    def test_setUp_and_tearDown(self):
+    def test_setUp_and_stop(self):
         server = RecordingServer(expect_body_tail=None)
-        server.setUp()
+        server.start_server()
         try:
             self.assertNotEqual(None, server.host)
             self.assertNotEqual(None, server.port)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
@@ -1964,7 +1964,7 @@ class TestActivityMixin(object):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
-        self.server.setUp()
+        self.server.start_server()
         self.activities = {}
         def report_activity(t, bytes, direction):
             count = self.activities.get(direction, 0)
@@ -1979,7 +1979,7 @@ class TestActivityMixin(object):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def get_transport(self):
@@ -2105,7 +2105,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
-        self.server.setUp()
+        self.server.start_server()
         self.activities = {}
         def report_activity(t, bytes, direction):
             count = self.activities.get(direction, 0)
@@ -2120,7 +2120,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
 
@@ -2136,7 +2136,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
         self.server = ActivityHTTPServer('HTTP/1.1')
         self._transport=_urllib.HttpTransport_urllib
 
-        self.server.setUp()
+        self.server.start_server()
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
@@ -2146,7 +2146,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def assertActivitiesMatch(self):

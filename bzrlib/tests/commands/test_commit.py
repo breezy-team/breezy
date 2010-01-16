@@ -42,7 +42,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        commit.run(message=u'empty commit', unchanged=True)
+        commit.run_direct(message=u'empty commit', unchanged=True)
         self.assertEquals(1, len(self.connections))
 
     def test_commit_both_modified(self):

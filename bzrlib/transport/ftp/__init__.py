@@ -205,17 +205,6 @@ class FtpTransport(ConnectedTransport):
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
 
-    def _remote_path(self, relpath):
-        # XXX: It seems that ftplib does not handle Unicode paths
-        # at the same time, medusa won't handle utf8 paths So if
-        # we .encode(utf8) here (see ConnectedTransport
-        # implementation), then we get a Server failure.  while
-        # if we use str(), we get a UnicodeError, and the test
-        # suite just skips testing UnicodePaths.
-        relative = str(urlutils.unescape(relpath))
-        remote_path = self._combine_paths(self._path, relative)
-        return remote_path
-
     def has(self, relpath):
         """Does the target location exist?"""
         # FIXME jam 20060516 We *do* ask about directories in the test suite

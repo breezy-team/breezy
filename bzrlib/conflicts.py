@@ -62,7 +62,7 @@ class cmd_conflicts(commands.Command):
             option.Option('text',
                           help='List paths of files with text conflicts.'),
         ]
-    _see_also = ['resolve']
+    _see_also = ['resolve', 'conflict-types']
 
     def run(self, text=False):
         wt = workingtree.WorkingTree.open_containing(u'.')[0]
