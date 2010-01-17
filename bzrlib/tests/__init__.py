@@ -228,6 +228,9 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%d non-main threads were left active in the end.\n'
                 % (TestCase._active_threads - 1))
 
+    def getDescription(self, test):
+        return test.id()
+
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
         return getattr(testCase, "_benchtime", None)
