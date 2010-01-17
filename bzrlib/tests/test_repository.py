@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,6 +63,7 @@ from bzrlib import (
     revision as _mod_revision,
     symbol_versioning,
     upgrade,
+    versionedfile,
     workingtree,
     )
 from bzrlib.repofmt import (
@@ -1345,6 +1346,45 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(new_names, packs.names())
         self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
+
+    def test_reload_pack_names_preserves_pending(self):
+        # TODO: Update this to also test for pending-deleted names
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        # We will add one pack (via start_write_group + insert_record_stream),
+        # and remove another pack (via _remove_pack_from_memory)
+        orig_names = packs.names()
+        orig_at_load = packs._packs_at_load
+        to_remove_name = iter(orig_names).next()
+        r.start_write_group()
+        self.addCleanup(r.abort_write_group)
+        r.texts.insert_record_stream([versionedfile.FulltextContentFactory(
+            ('text', 'rev'), (), None, 'content\n')])
+        new_pack = packs._new_pack
+        self.assertTrue(new_pack.data_inserted())
+        new_pack.finish()
+        packs.allocate(new_pack)
+        packs._new_pack = None
+        removed_pack = packs.get_pack_by_name(to_remove_name)
+        packs._remove_pack_from_memory(removed_pack)
+        names = packs.names()
+        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        new_names = set([x[0][0] for x in new_nodes])
+        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        self.assertEqual(set(names) - set(orig_names), new_names)
+        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual([to_remove_name],
+                         sorted([x[0][0] for x in deleted_nodes]))
+        packs.reload_pack_names()
+        reloaded_names = packs.names()
+        self.assertEqual(orig_at_load, packs._packs_at_load)
+        self.assertEqual(names, reloaded_names)
+        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        new_names = set([x[0][0] for x in new_nodes])
+        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        self.assertEqual(set(names) - set(orig_names), new_names)
+        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual([to_remove_name],
+                         sorted([x[0][0] for x in deleted_nodes]))
 
     def test_autopack_reloads_and_stops(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)

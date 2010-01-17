@@ -242,6 +242,11 @@ Bug Fixes
   returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
   optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
 
+* Concurrent autopacks will no longer lose a newly created pack file.
+  There was a race condition, where if the reload happened at the right
+  time, the second packer would forget the name of the newly added pack
+  file. (John Arbash Meinel, Gareth White, #507566)
+
 * Give a clearer message if the lockdir disappears after being apparently
   successfully taken.  (Martin Pool, #498378)
 
