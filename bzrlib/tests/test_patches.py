@@ -156,6 +156,15 @@ class PatchesTester(TestCase):
         self.assertContainsRe(str(patches[0]),
                                   'Binary files bar\t.* and qux\t.* differ\n')
 
+    def test_parse_binary_after_normal(self):
+        patches = parse_patches(self.data_lines("binary-after-normal.patch"))
+        self.assertIs(BinaryPatch, patches[1].__class__)
+        self.assertIs(Patch, patches[0].__class__)
+        self.assertContainsRe(patches[1].oldname, '^bar\t')
+        self.assertContainsRe(patches[1].newname, '^qux\t')
+        self.assertContainsRe(str(patches[1]),
+                                  'Binary files bar\t.* and qux\t.* differ\n')
+
     def test_roundtrip_binary(self):
         patchtext = ''.join(self.data_lines("binary.patch"))
         patches = parse_patches(patchtext.splitlines(True))

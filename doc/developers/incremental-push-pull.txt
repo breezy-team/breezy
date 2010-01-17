@@ -94,8 +94,8 @@ Expected file IO and access pattern:
       found to be a subset of the other, or a complete list of revisions to be
       transmitted is created.
 
- * Uncommon cases: 
-   
+ * Uncommon cases:
+
    1. Repositories with many projects or branches which are very old may
       require reading a lot of unrelated graph data.
 
@@ -109,7 +109,7 @@ API scaling
  2. Determine one sided graph difference. To avoid obtaining a full graph over
     the wire this needs to be done without reference to the full graph, and
     with some logarthmic scaling algorithm. There are several already available
-    for this. 
+    for this.
 
 With ghost and new-signature detection:
 
@@ -219,7 +219,7 @@ Grouping data by fileid, content and metadata, gives the figures above.
 Data grouping:
 
 * File per full identifier (fileid:revisionid:meta|content): 104000
-* Delta-chain per object: object id count * constant overhead per object id 
+* Delta-chain per object: object id count * constant overhead per object id
   (26 -> 80006)
 * Collation/pack file: 1
 
@@ -251,7 +251,7 @@ Notes from London
 
  #. setup
 
-   look at graph of revisions for ~N comits to deretmine eligibility for 
+   look at graph of revisions for ~N comits to deretmine eligibility for
    if preserve mainline is on, check LH only
 
     identify objects to send that are not on the client repo

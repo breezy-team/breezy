@@ -124,6 +124,8 @@ class ForeignVcs(object):
 
     branch_format = None
 
+    repository_format = None
+
     def __init__(self, mapping_registry, abbreviation=None):
         """Create a new foreign vcs instance.
 

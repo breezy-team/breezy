@@ -13,7 +13,7 @@ you have to trust the people involved in your project.  Additionally,
 the email address in a revision gives others a way to contact the
 author of a revision for credit and/or blame.  :)
 
-How to set up your email address 
+How to set up your email address
 --------------------------------
 
 Bazaar will try to guess an email address based on your username and the
@@ -44,7 +44,7 @@ To check on what Bazaar thinks your current email is, use the ``whoami``
 
     % bzr whoami
     Joe Cool <joe@example.com>
-    
+
 Setting email via the 'whoami' command
 --------------------------------------
 

@@ -69,6 +69,7 @@ from bzrlib import (
     lru_cache,
     pack,
     progress,
+    static_tuple,
     trace,
     tsort,
     tuned_gzip,
@@ -2944,10 +2945,15 @@ class _KnitGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
+                parents = node_refs[:1]
+                # Sometimes these are passed as a list rather than a tuple
+                passed = static_tuple.as_tuples(keys[key])
+                passed_parents = passed[1][:1]
                 if (value[0] != keys[key][0][0] or
-                    node_refs[:1] != keys[key][1][:1]):
+                    parents != passed_parents):
+                    node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                        ": %s %s" % ((value, node_refs), passed))
                 del keys[key]
         result = []
         if self._parents:

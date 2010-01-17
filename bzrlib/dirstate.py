@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1339,14 +1339,14 @@ class DirState(object):
                     minikind = child[1][0][0]
                     fingerprint = child[1][0][4]
                     executable = child[1][0][3]
-                    old_child_path = osutils.pathjoin(child[0][0],
-                                                      child[0][1])
+                    old_child_path = osutils.pathjoin(child_dirname,
+                                                      child_basename)
                     removals[child[0][2]] = old_child_path
                     child_suffix = child_dirname[len(old_path):]
                     new_child_dirname = (new_path + child_suffix)
                     key = (new_child_dirname, child_basename, child[0][2])
-                    new_child_path = os.path.join(new_child_dirname,
-                                                  child_basename)
+                    new_child_path = osutils.pathjoin(new_child_dirname,
+                                                      child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
         self._check_delta_ids_absent(new_ids, delta, 0)
@@ -1997,6 +1997,8 @@ class DirState(object):
                 entry_index, present = self._find_entry_index(key, block)
                 if present:
                     entry = self._dirblocks[block_index][1][entry_index]
+                    # TODO: We might want to assert that entry[0][2] ==
+                    #       fileid_utf8.
                     if entry[1][tree_index][0] in 'fdlt':
                         # this is the result we are looking for: the
                         # real home of this file_id in this tree.
@@ -2354,8 +2356,6 @@ class DirState(object):
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        if self._id_index is not None:
-            self._id_index.setdefault(new_id, set()).add(entry[0])
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
@@ -3013,6 +3013,13 @@ class DirState(object):
             if absent_positions == tree_count:
                 raise AssertionError(
                     "entry %r has no data for any tree." % (entry,))
+        if self._id_index is not None:
+            for file_id, entry_keys in self._id_index.iteritems():
+                for entry_key in entry_keys:
+                    if entry_key[2] != file_id:
+                        raise AssertionError(
+                            'file_id %r did not match entry key %s'
+                            % (file_id, entry_key))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""

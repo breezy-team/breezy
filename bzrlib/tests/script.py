@@ -107,9 +107,11 @@ def _script_to_commands(text, file_name=None):
                 error = []
             error.append(line[2:] + '\n')
         else:
+            # can happen if the first line is not recognized as a command, eg
+            # if the prompt has leading whitespace
             if output is None:
                 if cmd_cur is None:
-                    raise SyntaxError('No command for that output',
+                    raise SyntaxError('No command for line %r' % (line,),
                                       (file_name, lineno, 1, orig))
                 output = []
             output.append(line + '\n')
@@ -217,7 +219,8 @@ class ScriptRunner(object):
             # Specifying None means: any output is accepted
             return
         if actual is None:
-            test_case.fail('Unexpected: %s' % actual)
+            test_case.fail('We expected output: %r, but found None'
+                           % (expected,))
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
         if not matching:
@@ -289,30 +292,31 @@ class ScriptRunner(object):
             try:
                 inputs.append(self._read_input(None, in_name))
             except IOError, e:
-                if e.errno == errno.ENOENT:
+                # Some filenames are illegal on Windows and generate EINVAL
+                # rather than just saying the filename doesn't exist
+                if e.errno in (errno.ENOENT, errno.EINVAL):
                     return (1, None,
                             '%s: No such file or directory\n' % (in_name,))
+                raise
         # Basically cat copy input to output
         output = ''.join(inputs)
         # Handle output redirections
         try:
             output = self._write_output(output, out_name, out_mode)
         except IOError, e:
-            if e.errno == errno.ENOENT:
+            # If out_name cannot be created, we may get 'ENOENT', however if
+            # out_name is something like '', we can get EINVAL
+            if e.errno in (errno.ENOENT, errno.EINVAL):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
+            raise
         return 0, output, None
 
     def do_echo(self, test_case, input, args):
         (in_name, out_name, out_mode, args) = _scan_redirection_options(args)
-        if input and args:
-                raise SyntaxError('Specify parameters OR use redirection')
+        if input or in_name:
+            raise SyntaxError('echo doesn\'t read from stdin')
         if args:
             input = ' '.join(args)
-        try:
-            input = self._read_input(input, in_name)
-        except IOError, e:
-            if e.errno == errno.ENOENT:
-                return 1, None, '%s: No such file or directory\n' % (in_name,)
         # Always append a \n'
         input += '\n'
         # Process output
@@ -321,8 +325,9 @@ class ScriptRunner(object):
         try:
             output = self._write_output(output, out_name, out_mode)
         except IOError, e:
-            if e.errno == errno.ENOENT:
+            if e.errno in (errno.ENOENT, errno.EINVAL):
                 return 1, None, '%s: No such file or directory\n' % (out_name,)
+            raise
         return 0, output, None
 
     def _get_jail_root(self, test_case):
@@ -396,6 +401,31 @@ class ScriptRunner(object):
         else:
             retcode = 0
         return retcode, None, err
+
+    def do_mv(self, test_case, input, args):
+        err = None
+        def error(msg, src, dst):
+            return "mv: cannot move %s to %s: %s\n" % (src, dst, msg)
+
+        if not args or len(args) != 2:
+            raise SyntaxError("Usage: mv path1 path2")
+        src, dst = args
+        try:
+            real_dst = dst
+            if os.path.isdir(dst):
+                real_dst = os.path.join(dst, os.path.basename(src))
+            os.rename(src, real_dst)
+        except OSError, e:
+            if e.errno == errno.ENOENT:
+                err = error('No such file or directory', src, dst)
+            else:
+                raise
+        if err:
+            retcode = 1
+        else:
+            retcode = 0
+        return retcode, None, err
+
 
 
 class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ also see this file.
 
 from stat import S_ISDIR
 from StringIO import StringIO
+import sys
 
 import bzrlib
 from bzrlib.errors import (NotBranchError,
@@ -62,6 +63,7 @@ from bzrlib import (
     revision as _mod_revision,
     symbol_versioning,
     upgrade,
+    versionedfile,
     workingtree,
     )
 from bzrlib.repofmt import (
@@ -252,7 +254,14 @@ class TestFormat7(TestCaseWithTransport):
         tree = control.create_workingtree()
         tree.add(['foo'], ['Foo:Bar'], ['file'])
         tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
-        tree.commit('first post', rev_id='first')
+        try:
+            tree.commit('first post', rev_id='first')
+        except errors.IllegalPath:
+            if sys.platform != 'win32':
+                raise
+            self.knownFailure('Foo:Bar cannot be used as a file-id on windows'
+                              ' in repo format 7')
+            return
         self.assertEqualDiff(
             '# bzr weave file v5\n'
             'i\n'
@@ -1160,6 +1169,11 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         # check some arbitrary big numbers
         self.assertEqual(25, packs._max_pack_count(112894))
 
+    def test_repr(self):
+        packs = self.get_packs()
+        self.assertContainsRe(repr(packs),
+            'RepositoryPackCollection(.*Repository(.*))')
+
     def test_pack_distribution_zero(self):
         packs = self.get_packs()
         self.assertEqual([0], packs.pack_distribution(0))
@@ -1333,6 +1347,45 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual({revs[-1]:(revs[-2],)}, r.get_parent_map([revs[-1]]))
         self.assertFalse(packs.reload_pack_names())
 
+    def test_reload_pack_names_preserves_pending(self):
+        # TODO: Update this to also test for pending-deleted names
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        # We will add one pack (via start_write_group + insert_record_stream),
+        # and remove another pack (via _remove_pack_from_memory)
+        orig_names = packs.names()
+        orig_at_load = packs._packs_at_load
+        to_remove_name = iter(orig_names).next()
+        r.start_write_group()
+        self.addCleanup(r.abort_write_group)
+        r.texts.insert_record_stream([versionedfile.FulltextContentFactory(
+            ('text', 'rev'), (), None, 'content\n')])
+        new_pack = packs._new_pack
+        self.assertTrue(new_pack.data_inserted())
+        new_pack.finish()
+        packs.allocate(new_pack)
+        packs._new_pack = None
+        removed_pack = packs.get_pack_by_name(to_remove_name)
+        packs._remove_pack_from_memory(removed_pack)
+        names = packs.names()
+        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        new_names = set([x[0][0] for x in new_nodes])
+        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        self.assertEqual(set(names) - set(orig_names), new_names)
+        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual([to_remove_name],
+                         sorted([x[0][0] for x in deleted_nodes]))
+        packs.reload_pack_names()
+        reloaded_names = packs.names()
+        self.assertEqual(orig_at_load, packs._packs_at_load)
+        self.assertEqual(names, reloaded_names)
+        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        new_names = set([x[0][0] for x in new_nodes])
+        self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
+        self.assertEqual(set(names) - set(orig_names), new_names)
+        self.assertEqual(set([new_pack.name]), new_names)
+        self.assertEqual([to_remove_name],
+                         sorted([x[0][0] for x in deleted_nodes]))
+
     def test_autopack_reloads_and_stops(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
         # After we have determined what needs to be autopacked, trigger a
@@ -1419,6 +1472,7 @@ class TestNewPack(TestCaseWithTransport):
             index_class=BTreeGraphIndex,
             use_chk_index=False)
         pack = pack_repo.NewPack(collection)
+        self.addCleanup(pack.abort) # Make sure the write stream gets closed
         self.assertIsInstance(pack.revision_index, BTreeBuilder)
         self.assertIsInstance(pack.inventory_index, BTreeBuilder)
         self.assertIsInstance(pack._hash, type(osutils.md5()))
@@ -1477,6 +1531,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
+        self.addCleanup(new_pack.abort) # ensure cleanup
         self.assertIsInstance(new_pack, pack_repo.NewPack)
         self.assertTrue(new_pack.revision_index._optimize_for_size)
         self.assertTrue(new_pack.inventory_index._optimize_for_size)

@@ -414,7 +414,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.empty_branch.push(target)
         self.assertEqual(
             ['BzrDir.open_2.1',
-             'BzrDir.open_branchV2',
+             'BzrDir.open_branchV3',
              'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',

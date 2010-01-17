@@ -22,9 +22,19 @@ import os
 
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.directory_service import directories
 
 
 class TestSwitch(ExternalBase):
+
+    def _create_sample_tree(self):
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        tree.commit('rev1')
+        tree.add('file-2')
+        tree.commit('rev2')
+        return tree
 
     def test_switch_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -134,6 +144,26 @@ class TestSwitch(ExternalBase):
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
 
+    def test_switch_revision(self):
+        tree = self._create_sample_tree()
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+
+    def test_switch_only_revision(self):
+        tree = self._create_sample_tree()
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.failUnlessExists('checkout/file-1')
+        self.failUnlessExists('checkout/file-2')
+        self.run_bzr(['switch', '-r1'], working_dir='checkout')
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+        # Check that we don't accept a range
+        self.run_bzr_error(
+            ['bzr switch --revision takes exactly one revision identifier'],
+            ['switch', '-r0..2'], working_dir='checkout')
+
     def prepare_lightweight_switch(self):
         branch = self.make_branch('branch')
         branch.create_checkout('tree', lightweight=True)
@@ -183,3 +213,15 @@ class TestSwitch(ExternalBase):
         # The new branch should have been created at the same level as
         # 'branch', because we did not have a '/' segment
         self.assertEqual(branch.base[:-1] + '2/', tree.branch.base)
+
+    def test_create_branch_directory_services(self):
+        branch = self.make_branch('branch')
+        tree = branch.create_checkout('tree', lightweight=True)
+        class FooLookup(object):
+            def look_up(self, name, url):
+                return 'foo-'+name
+        directories.register('foo:', FooLookup, 'Create branches named foo-')
+        self.addCleanup(directories.remove, 'foo:')
+        self.run_bzr('switch -b foo:branch2', working_dir='tree')
+        tree = WorkingTree.open('tree')
+        self.assertEndsWith(tree.branch.base, 'foo-branch2/')

@@ -38,7 +38,7 @@ Your user identity is stored with each commit. While this doesn't have to
 be accurate or unique, it will be used in log messages and
 annotations, so it is better to have something real.
 
-::  
+::
 
    % bzr whoami "John Doe <jdoe@organization.com>"
 
@@ -102,7 +102,7 @@ document. See `Tracking Upstream`_ for some possibilities (section
 
 .. _Tracking Upstream: http://bazaar-vcs.org/TrackingUpstream
 
-.. 
+..
    XXX: We really need a different document for discussing conversion of a
    project. Right now TrackingUpstream is the best we have, though.
 
@@ -282,7 +282,7 @@ easily create a new feature branch for themselves with just [#cbranch]_
 ::
 
   % bzr branch sftp://centralhost/srv/bzr/sigil/user-a \
-               sftp://centralhost/srv/bzr/sigil/user-a/feature 
+               sftp://centralhost/srv/bzr/sigil/user-a/feature
   % cd ~/work/sigil
   % bzr checkout sftp://centralhost/srv/bzr/sigil/user-a/feature myfeature
 
@@ -294,7 +294,7 @@ Shared Repository
 -----------------
 
 Bazaar_ has the concept of a "Shared Repository". This is similar to
-the traditional concept of a repository in other RCSs like CVS and
+the traditional concept of a repository in other VCSs like CVS and
 Subversion. For example, in Subversion you have a remote repository,
 which is where all of the history is stored, and locally you don't
 have any history information, only a checkout of the working tree
@@ -310,5 +310,5 @@ inefficient, since related branches share history, and they might as
 well share the storage as well.
 
 
-.. 
+..
    vim: tw=74 ft=rst spell spelllang=en_us

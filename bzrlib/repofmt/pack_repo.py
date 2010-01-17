@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1423,6 +1423,9 @@ class RepositoryPackCollection(object):
         # resumed packs
         self._resumed_packs = []
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.repo)
+
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
 
@@ -1988,8 +1991,13 @@ class RepositoryPackCollection(object):
         if first_read:
             return True
         # out the new value.
-        disk_nodes, _, _ = self._diff_pack_names()
-        self._packs_at_load = disk_nodes
+        disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+        # _packs_at_load is meant to be the explicit list of names in
+        # 'pack-names' at then start. As such, it should not contain any
+        # pending names that haven't been written out yet.
+        pack_names_nodes = disk_nodes.difference(new_nodes)
+        pack_names_nodes.update(deleted_nodes)
+        self._packs_at_load = pack_names_nodes
         (removed, added,
          modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
         if removed or added or modified:
@@ -2234,16 +2242,10 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         # This class isn't deprecated, but one sub-format is
         if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            from bzrlib import repository
-            if repository._deprecation_warning_done:
-                return
-            repository._deprecation_warning_done = True
-            warning("Format %s for %s is deprecated - please use"
-                    " 'bzr upgrade --1.6.1-rich-root'"
-                    % (self._format, self.bzrdir.transport.base))
+            super(KnitPackRepository, self)._warn_if_deprecated(branch)
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()

@@ -25,6 +25,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
@@ -105,6 +106,14 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_warn_about_forgotten_commit_message(self):
+        """Test that the lack of -m parameter is caught"""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['one', 'two'])
+        wt.add(['two'])
+        out, err = self.run_bzr('commit -m one two')
+        self.assertContainsRe(err, "The commit message is a file name")
 
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
@@ -263,6 +272,9 @@ class TestCommit(ExternalBase):
         self.run_bzr('commit -m ""', retcode=3)
 
     def test_unsupported_encoding_commit_message(self):
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable('Win32 parses arguments directly'
+                ' as Unicode, so we can\'t pass invalid non-ascii')
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
@@ -273,10 +285,6 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
-        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
-        #       guess is that the change to use Unicode command lines means
-        #       that we no longer pay any attention to LANG=C when decoding the
-        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -607,6 +615,26 @@ class TestCommit(ExternalBase):
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         properties = last_rev.properties
         self.assertEqual('John Doe\nJane Rey', properties['authors'])
+
+    def test_commit_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Sat 2009-10-10 08:00:00 +0100',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+        
+    def test_commit_time_bad_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='NOT A TIME' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
 
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419

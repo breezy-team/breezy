@@ -22,9 +22,7 @@ Only one dependency: ctypes should be installed.
 import glob
 import os
 import re
-import shlex
 import struct
-import StringIO
 import sys
 
 
@@ -182,7 +180,7 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
     # To avoid problem with redirecting output via pipe
-    # need to use stderr instead of stdout
+    # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
     csbi = ctypes.create_string_buffer(22)
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
@@ -392,7 +390,6 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
-    from bzrlib import osutils
     if s and type(s) != unicode:
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
@@ -535,7 +532,7 @@ class UnicodeShlex(object):
         self._input_iter = iter(self._input)
         self._whitespace_match = re.compile(u'\s').match
         self._word_match = re.compile(u'\S').match
-        self._quote_chars = u'\'"'
+        self._quote_chars = u'"'
         # self._quote_match = re.compile(u'[\'"]').match
         self._escape_match = lambda x: None # Never matches
         self._escape = '\\'
@@ -543,7 +540,6 @@ class UnicodeShlex(object):
         #   ' ' - after whitespace, starting a new token
         #   'a' - after text, currently working on a token
         #   '"' - after ", currently in a "-delimited quoted section
-        #   "'" - after ', currently in a '-delimited quotod section
         #   "\" - after '\', checking the next char
         self._state = ' '
         self._token = [] # Current token being parsed
@@ -632,7 +628,7 @@ def _command_line_to_argv(command_line):
     args = []
     for is_quoted, arg in s:
         if is_quoted or not glob.has_magic(arg):
-            args.append(arg.replace(u'\\', u'/'))
+            args.append(arg)
         else:
             args.extend(glob_one(arg))
     return args
@@ -649,7 +645,7 @@ if has_ctypes and winver != 'Windows 98':
         prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
         command_line = GetCommandLine()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(GetCommandLine())[1:]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]

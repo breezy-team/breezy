@@ -25,7 +25,6 @@ from bzrlib import (
     osutils,
     patiencediff,
     progress,
-    registry,
     revision as _mod_revision,
     textfile,
     trace,
@@ -240,7 +239,7 @@ class Merger(object):
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
             if other_basis_tree.has_changes(self.other_tree):
-                raise WorkingTreeNotRevision(self.this_tree)
+                raise errors.WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
@@ -1150,8 +1149,22 @@ class Merge3Merger(object):
                 self.tt.delete_contents(trans_id)
             if file_id in self.other_tree:
                 # OTHER changed the file
+                wt = self.this_tree
+                if wt.supports_content_filtering():
+                    # We get the path from the working tree if it exists.
+                    # That fails though when OTHER is adding a file, so
+                    # we fall back to the other tree to find the path if
+                    # it doesn't exist locally.
+                    try:
+                        filter_tree_path = wt.id2path(file_id)
+                    except errors.NoSuchId:
+                        filter_tree_path = self.other_tree.id2path(file_id)
+                else:
+                    # Skip the id2path lookup for older formats
+                    filter_tree_path = None
                 transform.create_from_tree(self.tt, trans_id,
-                                           self.other_tree, file_id)
+                                 self.other_tree, file_id,
+                                 filter_tree_path=filter_tree_path)
                 if not file_in_this:
                     self.tt.version_file(file_id, trans_id)
                 return "modified"
@@ -1244,12 +1257,26 @@ class Merge3Merger(object):
                 ('THIS', self.this_tree, this_lines)]
         if not no_base:
             data.append(('BASE', self.base_tree, base_lines))
+
+        # We need to use the actual path in the working tree of the file here,
+        # ignoring the conflict suffixes
+        wt = self.this_tree
+        if wt.supports_content_filtering():
+            try:
+                filter_tree_path = wt.id2path(file_id)
+            except errors.NoSuchId:
+                # file has been deleted
+                filter_tree_path = None
+        else:
+            # Skip the id2path lookup for older formats
+            filter_tree_path = None
+
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
             if file_id in tree:
                 trans_id = self._conflict_file(name, parent_id, tree, file_id,
-                                               suffix, lines)
+                                               suffix, lines, filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
                     self.tt.version_file(file_id, trans_id)
@@ -1257,11 +1284,12 @@ class Merge3Merger(object):
         return file_group
 
     def _conflict_file(self, name, parent_id, tree, file_id, suffix,
-                       lines=None):
+                       lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        transform.create_from_tree(self.tt, trans_id, tree, file_id, lines)
+        transform.create_from_tree(self.tt, trans_id, tree, file_id, lines,
+            filter_tree_path)
         return trans_id
 
     def merge_executable(self, file_id, file_status):
@@ -1378,6 +1406,10 @@ class WeaveMerger(Merge3Merger):
     supports_reverse_cherrypick = False
     history_based = True
 
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_merge(file_id, self.other_tree,
+                                              base=base)
+
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
@@ -1387,61 +1419,49 @@ class WeaveMerger(Merge3Merger):
             base = self.base_tree
         else:
             base = None
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
-                                              base=base)
+        plan = self._generate_merge_plan(file_id, base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
+            contents = ('%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
         textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
                                                  '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
+        lines, conflicts = textmerge.merge_lines(self.reprocess)
+        if conflicts:
+            base_lines = textmerge.base_from_plan()
+        else:
+            base_lines = None
+        return lines, base_lines
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        lines, conflicts = self._merged_lines(file_id)
+        lines, base_lines = self._merged_lines(file_id)
         lines = list(lines)
         # Note we're checking whether the OUTPUT is binary in this case,
         # because we don't want to get into weave merge guts.
         textfile.check_text_lines(lines)
         self.tt.create_file(lines, trans_id)
-        if conflicts:
+        if base_lines is not None:
+            # Conflict
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
             file_group = self._dump_conflicts(name, parent_id, file_id,
-                                              no_base=True)
+                                              no_base=False,
+                                              base_lines=base_lines)
             file_group.append(trans_id)
 
 
 class LCAMerger(WeaveMerger):
 
-    def _merged_lines(self, file_id):
-        """Generate the merged lines.
-        There is no distinction between lines that are meant to contain <<<<<<<
-        and conflicts.
-        """
-        if self.cherrypick:
-            base = self.base_tree
-        else:
-            base = None
-        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
                                                   base=base)
-        if 'merge' in debug.debug_flags:
-            plan = list(plan)
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
-            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-                                                 '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
-
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""

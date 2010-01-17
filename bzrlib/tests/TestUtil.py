@@ -72,6 +72,18 @@ class TestSuite(unittest.TestSuite):
         visitor.visitSuite(self)
         visitTests(self, visitor)
 
+    def run(self, result):
+        """Run the tests in the suite, discarding references after running."""
+        tests = list(self)
+        tests.reverse()
+        self._tests = []
+        while tests:
+            if result.shouldStop:
+                self._tests = reversed(tests)
+                break
+            tests.pop().run(result)
+        return result
+
 
 class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""

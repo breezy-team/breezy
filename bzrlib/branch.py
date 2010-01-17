@@ -503,12 +503,25 @@ class Branch(object):
                 left_parent = stop_rev.parent_ids[0]
             else:
                 left_parent = _mod_revision.NULL_REVISION
+            # left_parent is the actual revision we want to stop logging at,
+            # since we want to show the merged revisions after the stop_rev too
+            reached_stop_revision_id = False
+            revision_id_whitelist = []
             for node in rev_iter:
                 rev_id = node.key[-1]
                 if rev_id == left_parent:
+                    # reached the left parent after the stop_revision
                     return
-                yield (rev_id, node.merge_depth, node.revno,
+                if (not reached_stop_revision_id or
+                        rev_id in revision_id_whitelist):
+                    yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
+                    if reached_stop_revision_id or rev_id == stop_revision_id:
+                        # only do the merged revs of rev_id from now on
+                        rev = self.repository.get_revision(rev_id)
+                        if rev.parent_ids:
+                            reached_stop_revision_id = True
+                            revision_id_whitelist.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
@@ -1090,15 +1103,7 @@ class Branch(object):
         params = ChangeBranchTipParams(
             self, old_revno, new_revno, old_revid, new_revid)
         for hook in hooks:
-            try:
-                hook(params)
-            except errors.TipChangeRejected:
-                raise
-            except Exception:
-                exc_info = sys.exc_info()
-                hook_name = Branch.hooks.get_hook_name(hook)
-                raise errors.HookFailed(
-                    'pre_change_branch_tip', hook_name, exc_info)
+            hook(params)
 
     @needs_write_lock
     def update(self):
@@ -1285,16 +1290,9 @@ class Branch(object):
         # clone call. Or something. 20090224 RBC/spiv.
         if revision_id is None:
             revision_id = self.last_revision()
-        try:
-            dir_to = self.bzrdir.clone_on_transport(to_transport,
-                revision_id=revision_id, stacked_on=stacked_on,
-                create_prefix=create_prefix, use_existing_dir=use_existing_dir)
-        except errors.FileExists:
-            if not use_existing_dir:
-                raise
-        except errors.NoSuchFile:
-            if not create_prefix:
-                raise
+        dir_to = self.bzrdir.clone_on_transport(to_transport,
+            revision_id=revision_id, stacked_on=stacked_on,
+            create_prefix=create_prefix, use_existing_dir=use_existing_dir)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
@@ -1440,10 +1438,10 @@ class BranchFormat(object):
         """Return the format for the branch object in a_bzrdir."""
         try:
             transport = a_bzrdir.get_branch_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
@@ -1798,7 +1796,7 @@ class BranchFormatMetadir(BranchFormat):
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
@@ -1979,7 +1977,7 @@ class BranchReferenceFormat(BranchFormat):
     def get_reference(self, a_bzrdir):
         """See BranchFormat.get_reference()."""
         transport = a_bzrdir.get_branch_transport(None)
-        return transport.get('location').read()
+        return transport.get_bytes('location')
 
     def set_reference(self, a_bzrdir, to_branch):
         """See BranchFormat.set_reference()."""
@@ -2137,6 +2135,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
         else:
@@ -2154,6 +2153,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
         else:
