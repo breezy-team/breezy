@@ -612,6 +612,9 @@ Testing
 * ``--parallel=fork`` is now compatible with --subunit.
   (Robert Collins, Vincent Ladeuil, #419776)
 
+* Reporting of failures shows test ids not descriptions and thus shows
+  parameterised tests correctly. (Robert Collins)
+
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
   provides better handling with other ``TestResult`` objects, degrading to
