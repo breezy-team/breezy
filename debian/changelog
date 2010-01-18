@@ -1,8 +1,9 @@
-bzr-builddeb (2.2~ubuntu4) UNRELEASED; urgency=low
+bzr-builddeb (2.2) unstable; urgency=low
 
-  * 
+  * Upload to unstable.
+  * Bump standards version to 3.8.3.
 
- -- James Westby <james.westby@ubuntu.com>  Tue, 22 Sep 2009 19:44:46 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 18 Jan 2010 19:15:26 +1300
 
 bzr-builddeb (2.2~ubuntu3) karmic; urgency=low
 
