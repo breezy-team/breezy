@@ -309,18 +309,18 @@ class cmd_ancestor_growth(commands.Command):
 
         a_branch.lock_read()
         try:
-            graph = a_branch.repository.get_revision_graph(last_rev)
+            graph = a_branch.repository.get_graph()
+            revno = 0
+            cur_parents = 0
+            sorted_graph = tsort.merge_sort(graph.iter_ancestry([last_rev]),
+                                            last_rev)
+            for num, node_name, depth, isend in reversed(sorted_graph):
+                cur_parents += 1
+                if depth == 0:
+                    revno += 1
+                    self.outf.write('%4d, %4d\n' % (revno, cur_parents))
         finally:
             a_branch.unlock()
-
-        revno = 0
-        cur_parents = 0
-        sorted_graph = tsort.merge_sort(graph.iteritems(), last_rev)
-        for num, node_name, depth, isend in reversed(sorted_graph):
-            cur_parents += 1
-            if depth == 0:
-                revno += 1
-                self.outf.write('%4d, %4d\n' % (revno, cur_parents))
 
 
 commands.register_command(cmd_ancestor_growth)
