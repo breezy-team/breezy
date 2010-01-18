@@ -236,7 +236,7 @@ def display_info(info, to_file, gather_class_stats=None):
                 else:
                     to_file.write("%s\n" % (email,))
         if gather_class_stats is not None:
-            print '     Contributions:'
+            to_file.write('     Contributions:\n')
             classes, total = gather_class_stats(revs)
             for name,count in sorted(classes.items(), lambda x,y: cmp((x[1], x[0]), (y[1], y[0]))):
                 if name is None:
