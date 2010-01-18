@@ -4083,22 +4083,23 @@ class cmd_revert(Command):
     created as above.  Directories containing unknown files will not be
     deleted.
 
-    The working tree contains a list of pending merged revisions, which will
-    be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files are specified, revert
-    leaves the pending merge list alone and reverts only the files.  Use "bzr
-    revert ." in the tree root to revert all files but keep the merge record,
-    and "bzr revert --forget-merges" to clear the pending merge list without
+    The working tree contains a list of revisions that have been merged but
+    not yet committed. These revisions will be included as additional parents
+    of the next commit.  Normally, using revert clears that list as well as
+    reverting the files.  If any files are specified, revert leaves the list
+    of uncommitted merges alone and reverts only the files.  Use ``bzr revert
+    .`` in the tree root to revert all files but keep the recorded merges,
+    and ``bzr revert --forget-merges`` to clear the pending merge list without
     reverting any files.
 
-    Using "bzr revert --forget-merges", it is possible to apply the changes
-    from an arbitrary merge as a single revision.  To do this, perform the
-    merge as desired.  Then doing revert with the "--forget-merges" option will
-    keep the content of the tree as it was, but it will clear the list of
-    pending merges.  The next commit will then contain all of the changes that
-    would have been in the merge, but without any mention of the other parent
-    revisions.  Because this technique forgets where these changes originated,
-    it may cause additional conflicts on later merges involving the source and
+    Using "bzr revert --forget-merges", it is possible to apply all of the
+    changes from a branch in a single revision.  To do this, perform the merge
+    as desired.  Then doing revert with the "--forget-merges" option will keep
+    the content of the tree as it was, but it will clear the list of pending
+    merges.  The next commit will then contain all of the changes that are
+    present in the other branch, but without any other parent revisions.
+    Because this technique forgets where these changes originated, it may
+    cause additional conflicts on later merges involving the same source and
     target branches.
     """
 
