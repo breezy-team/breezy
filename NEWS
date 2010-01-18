@@ -20,6 +20,15 @@ New Features
 * Add bug information to log output when available.
   (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
 
+* Added ``merge_file_content`` hook point to ``Merger``, allowing plugins
+  to register custom merge logic, e.g. to provide smarter merging for
+  particular files.
+
+* Bazaar now includes the ``news_merge`` plugin.  It is disabled by
+  default, to enable it add a ``news_merge_files`` option to your
+  configuration.  Consult ``bzr help news_merge`` for more information.
+  (Andrew Bennetts)
+  
 * ``bzr branch`` now takes a ``--bind`` option. This lets you
   branch and bind all in one command. (Ian Clatworthy)
 
@@ -149,6 +158,10 @@ API Changes
   CamelCase. For the features that were more likely to be used, we added a
   deprecation thunk, but not all. (John Arbash Meinel)
 
+* Merger classes (such as ``Merge3Merger``) now expect a ``this_branch``
+  parameter in their constructora, and provide ``this_branch`` as an
+  attribute. (Andrew Bennetts)
+  
 * The Branch hooks pre_change_branch_tip no longer masks exceptions raised
   by plugins - the original exceptions are now preserved. (Robert Collins)
 
