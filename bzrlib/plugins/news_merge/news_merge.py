@@ -44,7 +44,7 @@ def news_merger(params):
     for group in m3.merge_groups():
         if group[0] == 'conflict':
             _, base, a, b = group
-            # are all the conflicting lines bullets?  If so, we can merge this.
+            # Are all the conflicting lines bullets?  If so, we can merge this.
             for line_set in [base, a, b]:
                 for line in line_set:
                     if not line.startswith('bullet'):
@@ -64,8 +64,8 @@ def news_merger(params):
             result_lines.extend(final)
         else:
             result_lines.extend(group[1])
-    # Transform the merged elements back into real lines.
-    return 'success', list(fakelines_to_lines(result_lines))
+    # Transform the merged elements back into real blocks of lines.
+    return 'success', list(fakelines_to_blocks(result_lines))
 
 
 def blocks_to_fakelines(blocks):
@@ -73,12 +73,14 @@ def blocks_to_fakelines(blocks):
         yield '%s%s%s' % (kind, magic_marker, text)
 
 
-def _fakelines_to_lines(fakelines):
-    for fakeline in fakelines:
+def fakelines_to_blocks(fakelines):
+    fakelines = list(fakelines)
+    # Strip out the magic_marker, and reinstate the \n\n between blocks
+    for fakeline in fakelines[:-1]:
+        yield fakeline.split(magic_marker, 1)[1] + '\n\n'
+    # The final block doesn't have a trailing \n\n.
+    for fakeline in fakelines[-1:]:
         yield fakeline.split(magic_marker, 1)[1]
-
-def fakelines_to_lines(fakelines):
-    return '\n\n'.join(_fakelines_to_lines(fakelines))
 
 
 def sort_key(s):
