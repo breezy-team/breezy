@@ -60,7 +60,7 @@ def news_merge_hook(params):
 
 def filename_matches_config(params):
     config = params.merger.this_branch.get_config()
-    affected_files = config.get_user_option('news_merge_files')
+    affected_files = config.get_user_option_as_list('news_merge_files')
     if affected_files:
         filename = params.merger.this_tree.id2path(params.file_id)
         if filename in affected_files:
