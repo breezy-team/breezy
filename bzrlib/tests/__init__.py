@@ -3749,6 +3749,7 @@ def _test_suite_modules_to_doctest():
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
+        'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
