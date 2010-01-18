@@ -64,7 +64,7 @@ class MergeHooks(hooks.Hooks):
             "of (status, lines), where status is one of 'not_applicable', "
             "'success', 'conflicted', or 'delete'.  If status is success or "
             "conflicted, then lines should be an iterable of strings of the "
-            "new file contents."
+            "new file contents.",
             (2, 1), None))
 
 
@@ -1239,8 +1239,9 @@ class Merge3Merger(object):
             raise AssertionError('unknown hook_status: %r' % (hook_status,))
         if not self.this_tree.has_id(file_id) and result == "modified":
             self.tt.version_file(file_id, trans_id)
+        # The merge has been performed, so the old contents should not be
+        # retained.
         try:
-            self.tt.tree_kind(trans_id)
             self.tt.delete_contents(trans_id)
         except errors.NoSuchFile:
             pass
