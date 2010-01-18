@@ -114,6 +114,9 @@ Bug Fixes
 * Improve discussion of pending merges in the documentation for
   ``revert``.  (Neil Martinsen-Burrell, #505093)
 
+* Add documentation on creating merges with more than one parent.
+  (Neil Martinsen-Burrell, #481526)
+
 Improvements
 ************
 
