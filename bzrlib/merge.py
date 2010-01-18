@@ -63,8 +63,8 @@ class MergeHooks(hooks.Hooks):
             "bzrlib.merge.MergeHookParams. The function should return a tuple "
             "of (status, lines), where status is one of 'not_applicable', "
             "'success', 'conflicted', or 'delete'.  If status is success or "
-            "conflicted, then lines should be an iterable of the new lines "
-            "for the file.",
+            "conflicted, then lines should be an iterable of strings of the "
+            "new file contents."
             (2, 1), None))
 
 
