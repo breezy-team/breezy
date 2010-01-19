@@ -864,7 +864,7 @@ class TestLogFile(TestLogWithLogCatcher):
         self.assertLogRevnos(['-r..4', 'file3'], ['3'])
 
 
-class TestLogMultiple(tests.TestCaseWithTransport):
+class TestLogMultiple(TestLogWithLogCatcher):
 
     def prepare_tree(self):
         tree = self.make_branch_and_tree('parent')
@@ -893,42 +893,35 @@ class TestLogMultiple(tests.TestCaseWithTransport):
         tree.commit(message='merge child branch')
         os.chdir('parent')
 
-    def assertRevnos(self, paths_str, expected_revnos):
-        # confirm the revision numbers in log --line output are those expected
-        out, err = self.run_bzr('log --line -n0 %s' % (paths_str,))
-        self.assertEqual('', err)
-        revnos = [s.split(':', 1)[0].lstrip() for s in out.splitlines()]
-        self.assertEqual(expected_revnos, revnos)
-
     def test_log_files(self):
         """The log for multiple file should only list revs for those files"""
         self.prepare_tree()
-        self.assertRevnos('file1 file2 dir1/dir2/file3',
-            ['6', '5.1.1', '3', '2', '1'])
+        self.assertLogRevnos(['file1', 'file2', 'dir1/dir2/file3'],
+                             ['6', '5.1.1', '3', '2', '1'])
 
     def test_log_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
-        self.assertRevnos('dir1', ['5', '3'])
+        self.assertLogRevnos(['dir1'], ['5', '3'])
 
     def test_log_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
-        self.assertRevnos('dir1/dir2', ['3'])
+        self.assertLogRevnos(['dir1/dir2'], ['3'])
 
     def test_log_in_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
         os.chdir("dir1")
-        self.assertRevnos('.', ['5', '3'])
+        self.assertLogRevnos(['.'], ['5', '3'])
 
     def test_log_files_and_directories(self):
         """Logging files and directories together should be fine."""
         self.prepare_tree()
-        self.assertRevnos('file4 dir1/dir2', ['4', '3'])
+        self.assertLogRevnos(['file4', 'dir1/dir2'], ['4', '3'])
 
     def test_log_files_and_dirs_in_nested_directory(self):
         """The log for a directory should show all nested files."""
         self.prepare_tree()
         os.chdir("dir1")
-        self.assertRevnos('dir2 file5', ['5', '3'])
+        self.assertLogRevnos(['dir2', 'file5'], ['5', '3'])
