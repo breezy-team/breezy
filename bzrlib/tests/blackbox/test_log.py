@@ -21,6 +21,7 @@ import os
 import re
 
 from bzrlib import (
+    branchbuilder,
     log,
     osutils,
     tests,
@@ -180,52 +181,43 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.make_linear_branch()
         self.assertLogRevnos(['-l', '2'], ['3', '2'])
 
+
 class TestBug474807(TestLogWithLogCatcher):
 
     def setUp(self):
         super(TestBug474807, self).setUp()
-        self.script_runner = script.ScriptRunner()
-        self.script_runner.run_script(self, '''$ bzr init m # mainline
-$ cd m
-$ echo A > foo
-$ bzr add .
-$ bzr commit -mA
-$ bzr branch . ../r # right, to be merged
-$ echo B > foo
-$ bzr commit -mB
-$ cd ../r
-$ echo C > bar
-$ bzr add .
-$ bzr commit -mC
-$ cd ../m
-$ bzr merge ../r
-$ bzr commit -mD
-$ cd ../r
-$ echo E > bar
-$ bzr commit -mE
-$ echo F > bar
-$ bzr commit -mF
-$ cd ../m
-$ bzr merge ../r
-$ bzr commit -mG
-$ cd ../r
-$ bzr merge ../m
-$ bzr commit -mH --unchanged
-$ cd ../m
-$ bzr merge ../r
-$ bzr commit -mI --unchanged
-# We end up in m (mainline)
-''')
+        # FIXME: Using a MemoryTree would be even better here (but until we
+        # stop calling run_bzr, there is no point) --vila 100118.
+        builder = branchbuilder.BranchBuilder(self.get_transport())
+        builder.start_series()
+        # mainline
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [])
+        # branch
+        builder.build_snapshot('1.1.1', ['1'], [])
+        # merge branch into mainline
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        # new commits in branch
+        builder.build_snapshot('1.1.2', ['1.1.1'], [])
+        builder.build_snapshot('1.1.3', ['1.1.2'], [])
+        # merge branch into mainline
+        builder.build_snapshot('4', ['3', '1.1.3'], [])
+        # merge mainline into branch
+        builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
+        # merge branch into mainline
+        builder.build_snapshot('5', ['4', '1.1.4'], [])
+        builder.finish_series()
 
     def test_n0(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
                              ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
-
     def test_n0_forward(self):
         self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
                              ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
 
     def test_n1(self):
+        # starting from 1.1.4 we follow the left-hand ancestry
         self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4'],
                              ['1.1.4', '1.1.3', '1.1.2', '1.1.1'])
 
