@@ -120,12 +120,20 @@ class TestLogWithLogCatcher(TestLog):
             return MyLogFormatter
         log.log_formatter_registry.get_default = getme
 
-    def get_captured_revnos(self):
-        return [r.revno for r in self.log_catcher.revisions]
+    def get_captured_revisions(self):
+        return self.log_catcher.revisions
 
-    def assertLogRevnos(self, args, expected_revnos):
-        self.run_bzr(['log'] + args)
-        self.assertEqual(expected_revnos, self.get_captured_revnos())
+    def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
+        self.run_bzr(['log'] + args, working_dir=working_dir)
+        self.assertEqual(expected_revnos,
+                         [r.revno for r in self.get_captured_revisions()])
+
+    def assertLogRevnosAndDepths(self, args, expected_revnos_and_depths,
+                                working_dir='.'):
+        self.run_bzr(['log'] + args, working_dir=working_dir)
+        self.assertEqual(expected_revnos_and_depths,
+                         [(r.revno, r.merge_depth)
+                           for r in self.get_captured_revisions()])
 
 
 class TestLogRevSpecs(TestLogWithLogCatcher):
@@ -414,7 +422,7 @@ class TestLogVerbose(TestLog):
         self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
-class TestLogMerges(TestLog):
+class TestLogMerges(TestLogWithLogCatcher):
 
     def setUp(self):
         super(TestLogMerges, self).setUp()
@@ -437,86 +445,29 @@ class TestLogMerges(TestLog):
         level0.commit(message='merge branch level1', **self.commit_options())
 
     def test_merges_are_indented_by_level(self):
-        expected = """\
-------------------------------------------------------------
-revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  merge branch level1
-    ------------------------------------------------------------
-    revno: 1.1.2 [merge]
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: level1
-    timestamp: Just now
-    message:
-      merge branch level2
-        ------------------------------------------------------------
-        revno: 1.2.1
-        committer: Lorem Ipsum <test@example.com>
-        branch nick: level2
-        timestamp: Just now
-        message:
-          in branch level2
-    ------------------------------------------------------------
-    revno: 1.1.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: level1
-    timestamp: Just now
-    message:
-      in branch level1
-------------------------------------------------------------
-revno: 1
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  in branch level0
-"""
-        self.check_log(expected, ['-n0'])
+        self.run_bzr(['log', '-n0'], working_dir='level0')
+        revnos_and_depth = [(r.revno, r.merge_depth)
+                            for r in self.get_captured_revisions()]
+        self.assertEqual([('2', 0), ('1.1.2', 1), ('1.2.1', 2), ('1.1.1', 1),
+                          ('1', 0)],
+                         [(r.revno, r.merge_depth)
+                            for r in self.get_captured_revisions()])
 
     def test_force_merge_revisions_off(self):
-        expected = """\
-------------------------------------------------------------
-revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  merge branch level1
-------------------------------------------------------------
-revno: 1
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  in branch level0
-"""
-        self.check_log(expected, ['--long', '-n1'])
+        self.assertLogRevnos(['-n1'], ['2', '1'], working_dir='level0')
 
     def test_force_merge_revisions_on(self):
-        expected = """\
-    2 Lorem Ipsum\t2005-11-22 [merge]
-      merge branch level1
-
-          1.1.2 Lorem Ipsum\t2005-11-22 [merge]
-                merge branch level2
-
-              1.2.1 Lorem Ipsum\t2005-11-22
-                    in branch level2
-
-          1.1.1 Lorem Ipsum\t2005-11-22
-                in branch level1
-
-    1 Lorem Ipsum\t2005-11-22
-      in branch level0
-
-"""
-        self.check_log(expected, ['--short', '-n0'])
+        self.assertLogRevnos(['-n0'], ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
 
     def test_include_merges(self):
         # Confirm --include-merges gives the same output as -n0
+        self.assertLogRevnos(['--include-merges'],
+                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+        self.assertLogRevnos(['--include-merges'],
+                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
         out_im, err_im = self.run_bzr('log --include-merges',
                                       working_dir='level0')
         out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
@@ -525,81 +476,27 @@ message:
         self.assertEqual(out_im, out_n0)
 
     def test_force_merge_revisions_N(self):
-        expected = """\
-    2 Lorem Ipsum\t2005-11-22 [merge]
-      merge branch level1
-
-          1.1.2 Lorem Ipsum\t2005-11-22 [merge]
-                merge branch level2
-
-          1.1.1 Lorem Ipsum\t2005-11-22
-                in branch level1
-
-    1 Lorem Ipsum\t2005-11-22
-      in branch level0
-
-"""
-        self.check_log(expected, ['--short', '-n2'])
+        self.assertLogRevnos(['-n2'],
+                             ['2', '1.1.2', '1.1.1', '1'],
+                             working_dir='level0')
 
     def test_merges_single_merge_rev(self):
-        expected = """\
-------------------------------------------------------------
-revno: 1.1.2 [merge]
-committer: Lorem Ipsum <test@example.com>
-branch nick: level1
-timestamp: Just now
-message:
-  merge branch level2
-    ------------------------------------------------------------
-    revno: 1.2.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: level2
-    timestamp: Just now
-    message:
-      in branch level2
-"""
-        self.check_log(expected, ['-n0', '-r1.1.2'])
+        self.assertLogRevnosAndDepths(['-n0', '-r1.1.2'],
+                                      [('1.1.2', 0), ('1.2.1', 1)],
+                                      working_dir='level0')
 
     def test_merges_partial_range(self):
-        expected = """\
-------------------------------------------------------------
-revno: 1.1.2 [merge]
-committer: Lorem Ipsum <test@example.com>
-branch nick: level1
-timestamp: Just now
-message:
-  merge branch level2
-    ------------------------------------------------------------
-    revno: 1.2.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: level2
-    timestamp: Just now
-    message:
-      in branch level2
-------------------------------------------------------------
-revno: 1.1.1
-committer: Lorem Ipsum <test@example.com>
-branch nick: level1
-timestamp: Just now
-message:
-  in branch level1
-"""
-        self.check_log(expected, ['-n0', '-r1.1.1..1.1.2'])
+        self.assertLogRevnosAndDepths(
+                ['-n0', '-r1.1.1..1.1.2'],
+                [('1.1.2', 0), ('1.2.1', 1), ('1.1.1', 0)],
+                working_dir='level0')
 
     def test_merges_partial_range_ignore_before_lower_bound(self):
         """Dont show revisions before the lower bound's merged revs"""
-        expected = """\
-    2 Lorem Ipsum\t2005-11-22 [merge]
-      merge branch level1
-
-          1.1.2 Lorem Ipsum\t2005-11-22 [merge]
-                merge branch level2
-
-              1.2.1 Lorem Ipsum\t2005-11-22
-                    in branch level2
-
-"""
-        self.check_log(expected, ['--short', '-n0', '-r1.1.2..2'])
+        self.assertLogRevnosAndDepths(
+                ['-n0', '-r1.1.2..2'],
+                [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
+                working_dir='level0')
 
 
 class TestLogDiff(TestLog):
