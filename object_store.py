@@ -62,10 +62,7 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        try:
-            self._idmap = TdbGitShaMap.from_repository(repository)
-        except ImportError:
-            self._idmap = SqliteGitShaMap.from_repository(repository)
+        self._idmap = SqliteGitShaMap.from_repository(repository)
 
     def _update_sha_map(self, stop_revision=None):
         graph = self.repository.get_graph()
