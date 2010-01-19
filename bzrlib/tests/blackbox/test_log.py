@@ -181,6 +181,10 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.make_linear_branch()
         self.assertLogRevnos(['-l', '2'], ['3', '2'])
 
+    def test_log_change_revno(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-c1'], ['1'])
+
 
 class TestBug474807(TestLogWithLogCatcher):
 
@@ -268,37 +272,27 @@ class TestLogErrors(TestLog):
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(
-            ["bzr: ERROR: Requested revision: '1234' "
-             "does not exist in branch:"],
-            ['log', '-r1234'])
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
+                           ['log', '-r1234'])
 
     def test_log_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(
-            ["bzr: ERROR: Requested revision: '123.123' "
-             "does not exist in branch:"],
-            ['log',  '-r123.123'])
-
-    def test_log_change_revno(self):
-        self.make_linear_branch()
-        expected_log = self.run_bzr("log -r 1")[0]
-        log = self.run_bzr("log -c 1")[0]
-        self.assertEqualDiff(expected_log, log)
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
+                           ['log',  '-r123.123'])
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(
-            ["bzr: ERROR: Requested revision: '1234' "
-             "does not exist in branch:"],
-            ['log',  '-c1234'])
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
+                           ['log',  '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        (out, err) = self.run_bzr_error(
-            ["bzr: ERROR: Requested revision: '123.123' "
-             "does not exist in branch:"],
-            ['log', '-c123.123'])
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
+                           ['log', '-c123.123'])
 
     def test_log_change_single_revno_only(self):
         self.make_minimal_branch()
@@ -345,6 +339,11 @@ class TestLogErrors(TestLog):
             ": nothing to repeat\n", err)
         self.assertEqual('', out)
 
+    def test_log_unsupported_timezone(self):
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: Unsupported timezone format "foo", '
+                            'options are "utc", "original", "local".'],
+                           ['log', '--timezone', 'foo'])
 
 
 class TestLogTags(TestLog):
@@ -378,15 +377,6 @@ class TestLogTags(TestLog):
         self.assertContainsRe(log, r'    tags: tag1')
         log = self.run_bzr("log -n0 -r3.1.1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'tags: tag1')
-
-
-class TestLogTimeZone(TestLog):
-
-    def test_log_unsupported_timezone(self):
-        self.make_linear_branch()
-        self.run_bzr_error(['bzr: ERROR: Unsupported timezone format "foo", '
-                            'options are "utc", "original", "local".'],
-                           ['log', '--timezone', 'foo'])
 
 
 class TestLogVerbose(TestLog):
