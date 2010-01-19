@@ -17,6 +17,7 @@
 
 """Black-box tests for bzr log."""
 
+from itertools import izip
 import os
 import re
 
@@ -499,7 +500,11 @@ class TestLogMerges(TestLogWithLogCatcher):
                 working_dir='level0')
 
 
-class TestLogDiff(TestLog):
+class TestLogDiff(TestLogWithLogCatcher):
+
+    # FIXME: We need specific tests for each LogFormatter about how the diffs
+    # are displayed: --long indent them by depth, --short use a fixed
+    # indent and --line does't display them. -- vila 10019
 
     def setUp(self):
         super(TestLogDiff, self).setUp()
@@ -518,135 +523,81 @@ class TestLogDiff(TestLog):
         level0.merge_from_branch(level1.branch)
         level0.commit(message='merge branch level1', **self.commit_options())
 
-    def test_log_show_diff_long_with_merges(self):
-        out,err = self.run_bzr('log -p -n0')
-        self.assertEqual('', err)
-        log = test_log.normalize_log(out)
-        expected = """\
-------------------------------------------------------------
-revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  merge branch level1
-diff:
-=== modified file 'file2'
---- file2\t2005-11-22 00:00:01 +0000
-+++ file2\t2005-11-22 00:00:02 +0000
-@@ -1,1 +1,1 @@
--contents of level0/file2
-+hello
-    ------------------------------------------------------------
-    revno: 1.1.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: level1
-    timestamp: Just now
-    message:
-      in branch level1
-    diff:
-    === modified file 'file2'
-    --- file2\t2005-11-22 00:00:01 +0000
-    +++ file2\t2005-11-22 00:00:02 +0000
-    @@ -1,1 +1,1 @@
-    -contents of level0/file2
-    +hello
-------------------------------------------------------------
-revno: 1
-committer: Lorem Ipsum <test@example.com>
-branch nick: level0
-timestamp: Just now
-message:
-  in branch level0
-diff:
-=== added file 'file1'
+    def _diff_file1_revno1(self):
+        return """=== added file 'file1'
 --- file1\t1970-01-01 00:00:00 +0000
 +++ file1\t2005-11-22 00:00:01 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file1
 
-=== added file 'file2'
+"""
+
+    def _diff_file2_revno2(self):
+        return """=== modified file 'file2'
+--- file2\t2005-11-22 00:00:01 +0000
++++ file2\t2005-11-22 00:00:02 +0000
+@@ -1,1 +1,1 @@
+-contents of level0/file2
++hello
+
+"""
+
+    def _diff_file2_revno1_1_1(self):
+        return """=== modified file 'file2'
+--- file2\t2005-11-22 00:00:01 +0000
++++ file2\t2005-11-22 00:00:02 +0000
+@@ -1,1 +1,1 @@
+-contents of level0/file2
++hello
+
+"""
+
+    def _diff_file2_revno1(self):
+        return """=== added file 'file2'
 --- file2\t1970-01-01 00:00:00 +0000
 +++ file2\t2005-11-22 00:00:01 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file2
-"""
-        self.check_log(expected, ['-p', '-n0'])
-
-    def test_log_show_diff_short(self):
-        expected = """\
-    2 Lorem Ipsum\t2005-11-22 [merge]
-      merge branch level1
-      === modified file 'file2'
-      --- file2\t2005-11-22 00:00:01 +0000
-      +++ file2\t2005-11-22 00:00:02 +0000
-      @@ -1,1 +1,1 @@
-      -contents of level0/file2
-      +hello
-
-    1 Lorem Ipsum\t2005-11-22
-      in branch level0
-      === added file 'file1'
-      --- file1\t1970-01-01 00:00:00 +0000
-      +++ file1\t2005-11-22 00:00:01 +0000
-      @@ -0,0 +1,1 @@
-      +contents of level0/file1
-\x20\x20\x20\x20\x20\x20
-      === added file 'file2'
-      --- file2\t1970-01-01 00:00:00 +0000
-      +++ file2\t2005-11-22 00:00:01 +0000
-      @@ -0,0 +1,1 @@
-      +contents of level0/file2
-
-Use --include-merges or -n0 to see merged revisions.
-"""
-        self.check_log(expected, ['-p', '--short'])
-
-    def test_log_show_diff_line(self):
-        # Not supported by this formatter so expect plain output
-        expected = """\
-2: Lorem Ipsum 2005-11-22 [merge] merge branch level1
-1: Lorem Ipsum 2005-11-22 in branch level0
-"""
-        self.check_log(expected, ['-p', '--line'])
-
-    def test_log_show_diff_file1(self):
-        """Only the diffs for the given file are to be shown"""
-        expected = """\
-    1 Lorem Ipsum\t2005-11-22
-      in branch level0
-      === added file 'file1'
-      --- file1\t1970-01-01 00:00:00 +0000
-      +++ file1\t2005-11-22 00:00:01 +0000
-      @@ -0,0 +1,1 @@
-      +contents of level0/file1
 
 """
-        self.check_log(expected, ['-p', '--short', 'file1'])
 
-    def test_log_show_diff_file2(self):
-        """Only the diffs for the given file are to be shown"""
-        expected = """\
-    2 Lorem Ipsum\t2005-11-22 [merge]
-      merge branch level1
-      === modified file 'file2'
-      --- file2\t2005-11-22 00:00:01 +0000
-      +++ file2\t2005-11-22 00:00:02 +0000
-      @@ -1,1 +1,1 @@
-      -contents of level0/file2
-      +hello
+    def assertRevnosAndDiff(self, args, expected,
+                            working_dir='.'):
+        self.run_bzr(['log', '-p'] + args, working_dir=working_dir)
+        expected_revnos_and_depths = [
+            (revno, depth) for revno, depth, diff in expected]
+        # Check the revnos and depths first to make debugging easier
+        self.assertEqual(expected_revnos_and_depths,
+                         [(r.revno, r.merge_depth)
+                           for r in self.get_captured_revisions()])
+        # Now check the diffs, adding the revno  in case of failure
+        fmt = 'In revno %s\n%s'
+        for expected_rev, actual_rev in izip(expected,
+                                             self.get_captured_revisions()):
+            revno, depth, expected_diff = expected_rev
+            actual_diff = actual_rev.diff
+            self.assertEqualDiff(fmt % (revno, expected_diff),
+                                 fmt % (revno, actual_diff))
 
-    1 Lorem Ipsum\t2005-11-22
-      in branch level0
-      === added file 'file2'
-      --- file2\t1970-01-01 00:00:00 +0000
-      +++ file2\t2005-11-22 00:00:01 +0000
-      @@ -0,0 +1,1 @@
-      +contents of level0/file2
+    def test_log_diff_with_merges(self):
+        self.assertRevnosAndDiff(['-n0'],
+                                 [('2', 0, self._diff_file2_revno2()),
+                                  ('1.1.1', 1, self._diff_file2_revno1_1_1()),
+                                  ('1', 0, self._diff_file1_revno1()
+                                   + self._diff_file2_revno1())],
+                                 working_dir='level0')
 
-Use --include-merges or -n0 to see merged revisions.
-"""
-        self.check_log(expected, ['-p', '--short', 'file2'])
+
+    def test_log_diff_file1(self):
+        self.assertRevnosAndDiff(['-n0', 'file1'],
+                                 [('1', 0, self._diff_file1_revno1())],
+                                 working_dir='level0')
+
+    def test_log_diff_file2(self):
+        self.assertRevnosAndDiff(['-n1', 'file2'],
+                                 [('2', 0, self._diff_file2_revno2()),
+                                  ('1', 0, self._diff_file2_revno1())],
+                                 working_dir='level0')
 
 
 class TestLogUnicodeDiff(TestLog):

@@ -131,6 +131,7 @@ class LogCatcher(log.LogFormatter):
 
     supports_merge_revisions = True
     supports_delta = True
+    supports_diff = True
     preferred_levels = 0
 
     def __init__(self, *args, **kwargs):
