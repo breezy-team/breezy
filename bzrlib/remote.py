@@ -114,6 +114,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
 
         self._probe_bzrdir()
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._client)
+
     def _probe_bzrdir(self):
         medium = self._client._medium
         path = self._path_for_remote_call(self._client)
