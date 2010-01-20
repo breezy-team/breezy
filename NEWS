@@ -41,6 +41,8 @@ Bug Fixes
 * Concurrent autopacking is more resilient to already-renamed pack files.
   If we find that a file we are about to obsolete is already obsoleted, we
   do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
   (John Arbash Meinel, Gareth White, #507557)
 
 * Concurrent autopacks will no longer lose a newly created pack file.
