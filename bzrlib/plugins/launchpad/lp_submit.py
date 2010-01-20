@@ -27,27 +27,17 @@ except ImportError:
 from lazr.restfulclient import errors as restful_errors
 
 
-_lp = None
-def lp(staging=False):
-    if staging:
-        service_root = launchpad.STAGING_SERVICE_ROOT
-    else:
-        service_root = launchpad.EDGE_SERVICE_ROOT
-    global _lp
-    if _lp is not None:
-        return _lp
-    _lp = lp_api.login(service_root)
-    return _lp
-
-
 class Submitter(object):
 
     def __init__(self, tree, manager, target_branch, message, reviews,
                  staging=False):
         self.tree = tree
         self.manager = manager
-        self.staging = staging
-        self.launchpad = lp(self.staging)
+        if staging:
+            service_root = launchpad.STAGING_SERVICE_ROOT
+        else:
+            service_root = launchpad.EDGE_SERVICE_ROOT
+        self.launchpad = lp_api.login(service_root)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.manager.storage.branch, self.launchpad)
         if target_branch is None:
@@ -64,7 +54,7 @@ class Submitter(object):
                 raise errors.BzrCommandError('No reviewer specified')
             self.reviews = [(target_reviewer, '')]
         else:
-            self.reviews = [(lp(self.staging).people[reviewer], review_type)
+            self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
                             reviews]
 
