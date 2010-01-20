@@ -39,10 +39,10 @@ New Features
   transferred for the current command. This information is always logged
   to ``.bzr.log`` for later inspection. (John Arbash Meinel)
 
-* The ``suppress_warnings`` configuration option has been introduced and
-  accept the ``format_deprecation`` value to disable the corresponding
-  warning for repositories. It can be set to in either ``bazaar.conf``,
-  ``locations.conf`` or ``branch.conf``.
+* The ``supress_warnings`` configuration option has been introduced to disable
+  various warnings (it currently only supports the ``format_deprecation``
+  warning). The new option can be set in any of the following locations:
+  ``bazaar.conf``, ``locations.conf`` and/or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
 Bug Fixes
