@@ -1347,7 +1347,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         removed_pack = packs.get_pack_by_name(to_remove_name)
         packs._remove_pack_from_memory(removed_pack)
         names = packs.names()
-        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
         new_names = set([x[0][0] for x in new_nodes])
         self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
@@ -1358,7 +1358,7 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         reloaded_names = packs.names()
         self.assertEqual(orig_at_load, packs._packs_at_load)
         self.assertEqual(names, reloaded_names)
-        all_nodes, deleted_nodes, new_nodes = packs._diff_pack_names()
+        all_nodes, deleted_nodes, new_nodes, _ = packs._diff_pack_names()
         new_names = set([x[0][0] for x in new_nodes])
         self.assertEqual(names, sorted([x[0][0] for x in all_nodes]))
         self.assertEqual(set(names) - set(orig_names), new_names)
@@ -1413,6 +1413,27 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         obsolete_packs = packs.transport.list_dir('obsolete_packs')
         obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
         self.assertEqual([pack.name], sorted(obsolete_names))
+
+    def test__save_pack_names_obsolete_already_marked(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        names = packs.names()
+        # Queue up an entry to be deleted
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        packs._remove_pack_from_memory(pack)
+        # Simulate a concurrent operation by removing 'pack.name' from the
+        # pack-names file.
+        builder = packs._index_builder_class()
+        for key, value in packs._diff_pack_names()[0]:
+            builder.add_node(key, value)
+        packs.transport.put_file('pack-names', builder.finish())
+        packs._save_pack_names(obsolete_packs=[pack])
+        # We should not try to obsolete the given pack file in this process,
+        # because another process already removed it from the pack-names file.
+        cur_packs = packs._pack_transport.list_dir('.')
+        self.assertEqual([n + '.pack' for n in names], sorted(cur_packs))
+        self.assertEqual([], packs.transport.list_dir('obsolete_packs'))
+
 
 
 class TestPack(TestCaseWithTransport):

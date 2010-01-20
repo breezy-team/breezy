@@ -1882,6 +1882,7 @@ class RepositoryPackCollection(object):
         disk_nodes = set()
         for index, key, value in self._iter_disk_pack_index():
             disk_nodes.add((key, value))
+        orig_disk_nodes = set(disk_nodes)
 
         # do a two-way diff against our original content
         current_nodes = set()
@@ -1900,7 +1901,7 @@ class RepositoryPackCollection(object):
         disk_nodes.difference_update(deleted_nodes)
         disk_nodes.update(new_nodes)
 
-        return disk_nodes, deleted_nodes, new_nodes
+        return disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes
 
     def _syncronize_pack_names_from_disk_nodes(self, disk_nodes):
         """Given the correct set of pack files, update our saved info.
@@ -1960,11 +1961,12 @@ class RepositoryPackCollection(object):
             file has been written.
         :return: A list of the names saved that were not previously on disk.
         """
-        deleted = []
+        already_obsolete = []
         self.lock_names()
         try:
             builder = self._index_builder_class()
-            disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+            (disk_nodes, deleted_nodes, new_nodes,
+             orig_disk_nodes) = self._diff_pack_names()
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
@@ -1972,20 +1974,21 @@ class RepositoryPackCollection(object):
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
                 mode=self.repo.bzrdir._get_file_mode())
-            # move the baseline forward
             self._packs_at_load = disk_nodes
             if clear_obsolete_packs:
                 to_preserve = None
                 if obsolete_packs:
                     to_preserve = set([o.name for o in obsolete_packs])
-                deleted = self._clear_obsolete_packs(to_preserve)
+                already_obsolete = self._clear_obsolete_packs(to_preserve)
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
         if obsolete_packs:
+            orig_disk_names = set([x[0][0] for x in orig_disk_nodes])
             obsolete_packs = [o for o in obsolete_packs
-                              if o.name not in deleted]
+                              if o.name not in already_obsolete
+                                  and o.name in orig_disk_names]
             self._obsolete_packs(obsolete_packs)
         return [new_node[0][0] for new_node in new_nodes]
 
@@ -2007,13 +2010,16 @@ class RepositoryPackCollection(object):
         if first_read:
             return True
         # out the new value.
-        disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+        (disk_nodes, deleted_nodes, new_nodes,
+         orig_disk_nodes) = self._diff_pack_names()
         # _packs_at_load is meant to be the explicit list of names in
         # 'pack-names' at then start. As such, it should not contain any
         # pending names that haven't been written out yet.
         pack_names_nodes = disk_nodes.difference(new_nodes)
         pack_names_nodes.update(deleted_nodes)
-        self._packs_at_load = pack_names_nodes
+        if pack_names_nodes != orig_disk_nodes:
+            import pdb; pdb.set_trace()
+        self._packs_at_load = orig_disk_nodes
         (removed, added,
          modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
         if removed or added or modified:
@@ -2034,14 +2040,14 @@ class RepositoryPackCollection(object):
         :return: A list of pack identifiers (the filename without '.pack') that
             were found in obsolete_packs.
         """
-        destroyed_packs = []
+        found = []
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
         if preserve is None:
             preserve = set()
         for filename in obsolete_pack_transport.list_dir('.'):
             name, ext = osutils.splitext(filename)
             if ext == '.pack':
-                destroyed_packs.append(name)
+                found.append(name)
             if name in preserve:
                 continue
             try:
@@ -2049,7 +2055,7 @@ class RepositoryPackCollection(object):
             except (errors.PathError, errors.TransportError), e:
                 warning("couldn't delete obsolete pack, skipping it:\n%s"
                         % (e,))
-        return destroyed_packs
+        return found
 
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
