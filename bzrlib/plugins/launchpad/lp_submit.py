@@ -41,9 +41,7 @@ class Submitter(object):
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.manager.storage.branch, self.launchpad)
         if target_branch is None:
-            # XXX: Change this to get_dev_Focus on the source branch.
-            self.target_branch = lp_api.LaunchpadBranch.from_dev_focus(
-                self.source_branch.lp)
+            self.target_branch = self.source_branch.get_dev_focus()
         else:
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 target_branch, self.launchpad)

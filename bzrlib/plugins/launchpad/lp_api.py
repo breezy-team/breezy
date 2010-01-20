@@ -190,8 +190,9 @@ class LaunchpadBranch(object):
             raise errors.BzrError('%s is not registered on Launchpad' % url)
         return lp_branch
 
-    @classmethod
-    def from_dev_focus(cls, lp_branch):
+    def get_dev_focus(self):
+        """Return the 'LaunchpadBranch' for the dev focus of this one."""
+        lp_branch = self.lp
         if lp_branch.project is None:
             raise errors.BzrError('%s has no product.' %
                                   lp_branch.bzr_identity)
@@ -199,7 +200,7 @@ class LaunchpadBranch(object):
         if dev_focus is None:
             raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
-        return cls(dev_focus, dev_focus.bzr_identity)
+        return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
 
     def update_lp(self):
         if not self._check_update:
