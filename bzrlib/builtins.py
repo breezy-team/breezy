@@ -3647,9 +3647,11 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.  If one would like to merge changes from the working
-    tree of the other branch without merging any committed revisions, the
-    --uncommitted option can be given.
+    --force is given.  
+
+    If one would like to merge changes from the working tree of the other
+    branch without merging any committed revisions, the --uncommitted option
+    can be given.
 
     To select only some changes to merge, use "merge -i", which will prompt
     you to apply each diff hunk and file change, similar to "shelve".
