@@ -18,9 +18,11 @@
 """Tests for the RevisionTree class."""
 
 from bzrlib import (
+    errors,
     revision,
     )
 import bzrlib
+from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -59,3 +61,9 @@ class TestTreeWithCommits(TestCaseWithTransport):
         null_tree = self.t.branch.repository.revision_tree(
             revision.NULL_REVISION)
         self.assertIs(None, null_tree.inventory.root)
+
+    def test_get_file_mtime_ghost(self):
+        file_id = iter(self.rev_tree).next()
+        self.rev_tree.inventory[file_id].revision = 'ghostrev'
+        self.assertRaises(errors.FileTimestampUnavailable, 
+            self.rev_tree.get_file_mtime, file_id)
