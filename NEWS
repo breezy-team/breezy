@@ -134,6 +134,9 @@ Improvements
   ``try``/``finally`` blocks where applicable as it is simpler and more
   robust.  (Andrew Bennetts)
 
+* All except a small number of storage formats are now hidden, making
+  the help for numerous commands far more digestible. (Ian Clatworthy)
+
 * Attempts to open a shared repository as a branch (e.g. ``bzr branch
   path/to/repo``) will now include "location is a repository" as a hint in
   the error message.  (Brian de Alwis, Andrew Bennetts, #440952)
