@@ -1541,10 +1541,11 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        result = self._save_pack_names(clear_obsolete_packs=True)
-        # Move the old packs out of the way now they are no longer referenced.
-        for revision_count, packs in pack_operations:
-            self._obsolete_packs(packs)
+        to_be_obsoleted = []
+        for _, packs in pack_operations:
+            to_be_obsoleted.extend(packs)
+        result = self._save_pack_names(clear_obsolete_packs=True,
+                                       obsolete_packs=to_be_obsoleted)
         return result
 
     def _flush_new_pack(self):
@@ -1936,7 +1937,7 @@ class RepositoryPackCollection(object):
                 added.append(name)
         return removed, added, modified
 
-    def _save_pack_names(self, clear_obsolete_packs=False):
+    def _save_pack_names(self, clear_obsolete_packs=False, obsolete_packs=None):
         """Save the list of packs.
 
         This will take out the mutex around the pack names list for the
@@ -1946,8 +1947,11 @@ class RepositoryPackCollection(object):
 
         :param clear_obsolete_packs: If True, clear out the contents of the
             obsolete_packs directory.
+        :param obsolete_packs: Packs that are obsolete once the new pack-names
+            file has been written.
         :return: A list of the names saved that were not previously on disk.
         """
+        deleted = []
         self.lock_names()
         try:
             builder = self._index_builder_class()
@@ -1962,11 +1966,18 @@ class RepositoryPackCollection(object):
             # move the baseline forward
             self._packs_at_load = disk_nodes
             if clear_obsolete_packs:
-                self._clear_obsolete_packs()
+                to_preserve = None
+                if obsolete_packs:
+                    to_preserve = set([o.name for o in obsolete_packs])
+                deleted = self._clear_obsolete_packs(to_preserve)
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        if obsolete_packs:
+            obsolete_packs = [o for o in obsolete_packs
+                              if o.name not in deleted]
+            self._obsolete_packs(obsolete_packs)
         return [new_node[0][0] for new_node in new_nodes]
 
     def reload_pack_names(self):
@@ -2008,15 +2019,28 @@ class RepositoryPackCollection(object):
             raise
         raise errors.RetryAutopack(self.repo, False, sys.exc_info())
 
-    def _clear_obsolete_packs(self):
+    def _clear_obsolete_packs(self, preserve=None):
         """Delete everything from the obsolete-packs directory.
+
+        :return: A list of pack identifiers (the filename without '.pack') that
+            were found in obsolete_packs.
         """
+        destroyed_packs = []
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        if preserve is None:
+            preserve = set()
         for filename in obsolete_pack_transport.list_dir('.'):
+            name, ext = osutils.splitext(filename)
+            if ext == '.pack':
+                destroyed_packs.append(name)
+            if name in preserve:
+                continue
             try:
                 obsolete_pack_transport.delete(filename)
             except (errors.PathError, errors.TransportError), e:
-                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+                warning("couldn't delete obsolete pack, skipping it:\n%s"
+                        % (e,))
+        return destroyed_packs
 
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.

@@ -1082,6 +1082,31 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         packs.ensure_loaded()
         return tree, r, packs, [rev1, rev2, rev3]
 
+    def test__clear_obsolete_packs(self):
+        packs = self.get_packs()
+        obsolete_pack_trans = packs.transport.clone('obsolete_packs')
+        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        res = packs._clear_obsolete_packs()
+        self.assertEqual(['a-pack', 'another-pack'], sorted(res))
+        self.assertEqual([], obsolete_pack_trans.list_dir('.'))
+
+    def test__clear_obsolete_packs_preserve(self):
+        packs = self.get_packs()
+        obsolete_pack_trans = packs.transport.clone('obsolete_packs')
+        obsolete_pack_trans.put_bytes('a-pack.pack', 'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.rix', 'content\n')
+        obsolete_pack_trans.put_bytes('a-pack.iix', 'content\n')
+        obsolete_pack_trans.put_bytes('another-pack.pack', 'foo\n')
+        obsolete_pack_trans.put_bytes('not-a-pack.rix', 'foo\n')
+        res = packs._clear_obsolete_packs(preserve=set(['a-pack']))
+        self.assertEqual(['a-pack', 'another-pack'], sorted(res))
+        self.assertEqual(['a-pack.iix', 'a-pack.pack', 'a-pack.rix'],
+                         sorted(obsolete_pack_trans.list_dir('.')))
+
     def test__max_pack_count(self):
         """The maximum pack count is a function of the number of revisions."""
         # no revisions - one pack, so that we can have a revision free repo
@@ -1335,6 +1360,37 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual(1, len(packs.names()))
         self.assertEqual(tree.branch.repository._pack_collection.names(),
                          packs.names())
+
+    def test__save_pack_names(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        packs._remove_pack_from_memory(pack)
+        packs._save_pack_names(obsolete_packs=[pack])
+        cur_packs = packs._pack_transport.list_dir('.')
+        self.assertEqual([n + '.pack' for n in names[1:]], sorted(cur_packs))
+        # obsolete_packs will also have stuff like .rix and .iix present.
+        obsolete_packs = packs.transport.list_dir('obsolete_packs')
+        obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
+        self.assertEqual([pack.name], sorted(obsolete_names))
+
+    def test__save_pack_names_already_obsoleted(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        names = packs.names()
+        pack = packs.get_pack_by_name(names[0])
+        packs._remove_pack_from_memory(pack)
+        # We are going to simulate a concurrent autopack by manually obsoleting
+        # the pack directly.
+        packs._obsolete_packs([pack])
+        packs._save_pack_names(clear_obsolete_packs=True,
+                               obsolete_packs=[pack])
+        cur_packs = packs._pack_transport.list_dir('.')
+        self.assertEqual([n + '.pack' for n in names[1:]], sorted(cur_packs))
+        # Note that while we set clear_obsolete_packs=True, it should not
+        # delete a pack file that we have also scheduled for obsoletion.
+        obsolete_packs = packs.transport.list_dir('obsolete_packs')
+        obsolete_names = set([osutils.splitext(n)[0] for n in obsolete_packs])
+        self.assertEqual([pack.name], sorted(obsolete_names))
 
 
 class TestPack(TestCaseWithTransport):

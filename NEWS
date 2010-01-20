@@ -38,6 +38,11 @@ Bug Fixes
   returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
   optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
 
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  (John Arbash Meinel, Gareth White, #507557)
+
 * Concurrent autopacks will no longer lose a newly created pack file.
   There was a race condition, where if the reload happened at the right
   time, the second packer would forget the name of the newly added pack
