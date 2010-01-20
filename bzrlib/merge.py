@@ -89,11 +89,11 @@ class MergeHookParams(object):
         self.this_kind = this_kind
         self.other_kind = other_kind
         self.winner = winner
-        
+
     def is_file_merge(self):
         """True if this_kind and other_kind are both 'file'."""
         return self.this_kind == 'file' and self.other_kind == 'file'
-    
+
     @decorators.cachedproperty
     def base_lines(self):
         """The lines of the 'base' version of the file."""

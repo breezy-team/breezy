@@ -32,6 +32,9 @@ Limitations:
   how to resolve that, so bzr will fallback to the default line-based merge.
 """
 
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
+
 # Put most of the code in a separate module that we lazy-import to keep the
 # overhead of this plugin as minimal as possible.
 from bzrlib.lazy_import import lazy_import
@@ -59,15 +62,35 @@ def news_merge_hook(params):
 
 
 def filename_matches_config(params):
-    config = params.merger.this_branch.get_config()
-    affected_files = config.get_user_option_as_list('news_merge_files')
+    affected_files = getattr(params, '_news_merge_affected_files', None)
+    if affected_files is None:
+        config = params.merger.this_tree.branch.get_config()
+        # Until bzr provides a better policy for caching the config, we just
+        # add the part we're interested in to the params to avoid reading the
+        # config files repeatedly (bazaar.conf, location.conf, branch.conf).
+        affected_files = config.get_user_option_as_list('news_merge_files')
+        if affected_files is None:
+            # If nothing was specified in the config, we have nothing to do,
+            # but we use None in the params to start the caching.
+            affected_files = []
+        params._news_merge_affected_files = affected_files
     if affected_files:
         filename = params.merger.this_tree.id2path(params.file_id)
         if filename in affected_files:
             return True
     return False
 
+def install_hook():
+    Merger.hooks.install_named_hook(
+        'merge_file_content', news_merge_hook, 'NEWS file merge')
+install_hook()
 
-Merger.hooks.install_named_hook(
-    'merge_file_content', news_merge_hook, 'NEWS file merge')
+
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 

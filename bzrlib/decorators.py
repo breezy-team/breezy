@@ -256,7 +256,8 @@ def use_pretty_decorators():
 
 
 # This implementation of cachedproperty is copied from Launchpad's
-# canonical.launchpad.cachedproperty module.
+# canonical.launchpad.cachedproperty module (with permission from flacoste)
+# -- spiv & vila 100120
 def cachedproperty(attrname_or_fn):
     """A decorator for methods that makes them properties with their return
     value cached.

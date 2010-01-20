@@ -85,4 +85,3 @@ def fakelines_to_blocks(fakelines):
 
 def sort_key(s):
     return s.replace('`', '').lower()
-    
