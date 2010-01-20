@@ -40,7 +40,7 @@ def lp(staging=False):
     return _lp
 
 
-class MegaBranch(object):
+class LaunchpadBranch(object):
 
     def __init__(self, lp_branch, bzr_url, bzr_branch=None, check_update=True):
         self.bzr_url = bzr_url
@@ -63,6 +63,8 @@ class MegaBranch(object):
 
     @staticmethod
     def plausible_launchpad_url(url):
+        # XXX: Move this out of the lp_submit plugin and into one
+        # specific to Launchpad's dev process.
         if url is None:
             return False
         if url.startswith('lp:'):
@@ -161,13 +163,13 @@ class Submitter(object):
         self.tree = tree
         self.manager = manager
         self.staging = staging
-        self.source_branch = MegaBranch.from_bzr(self.manager.storage.branch,
+        self.source_branch = LaunchpadBranch.from_bzr(self.manager.storage.branch,
                                                  self.staging)
         if target_branch is None:
-            self.target_branch = MegaBranch.from_dev_focus(
+            self.target_branch = LaunchpadBranch.from_dev_focus(
                 self.source_branch.lp)
         else:
-            self.target_branch = MegaBranch.from_bzr(target_branch,
+            self.target_branch = LaunchpadBranch.from_bzr(target_branch,
                                                      self.staging)
         self.commit_message = message
         if reviews == []:
@@ -234,7 +236,7 @@ class Submitter(object):
     def submit(self):
         prev_pipe = self.manager.get_prev_pipe()
         if prev_pipe is not None:
-            prerequisite_branch = MegaBranch.from_bzr(prev_pipe)
+            prerequisite_branch = LaunchpadBranch.from_bzr(prev_pipe)
         else:
             prerequisite_branch = None
         self.source_branch.update_lp()
