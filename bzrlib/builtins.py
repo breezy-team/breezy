@@ -3647,16 +3647,8 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.  The --force option can be used to create a merge
-    revision which has more than two parents.  For example, to create a
-    revision which merges two other branches, say ``../feature1a`` and 
-    ``../feature1b``::
-
-        $ bzr merge ../feature1a
-        # working tree has changes so need --force
-        $ bzr merge ../feature1b --force
-        # resolve conflicts, test, etc.
-        $ bzr commit -m 'revision with three parents'
+    --force is given.  The --force option can also be used to create a
+    merge revision which has more than two parents.
 
     To select only some changes to merge, use "merge -i", which will prompt
     you to apply each diff hunk and file change, similar to "shelve".
@@ -3677,6 +3669,13 @@ class cmd_merge(Command):
         To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
+
+        To create a merge revision with three parents from two branches
+        ../feature1a and ../feature1b::
+
+            bzr merge ../feature1a
+            bzr merge ../feature1b --force
+            bzr commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
