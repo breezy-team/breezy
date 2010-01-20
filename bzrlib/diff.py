@@ -453,7 +453,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    mtime = tree.get_file_mtime(file_id, path)
+    try:
+        mtime = tree.get_file_mtime(file_id, path)
+    except errors.FileTimestampUnavailable:
+        mtime = 0
     return timestamp.format_patch_date(mtime)
 
 
@@ -747,7 +750,10 @@ class DiffFromTool(DiffPath):
             source.close()
         if not allow_write:
             osutils.make_readonly(full_path)
-        mtime = tree.get_file_mtime(file_id)
+        try:
+            mtime = tree.get_file_mtime(file_id)
+        except errors.FileTimestampUnavailable:
+            mtime = 0
         os.utime(full_path, (mtime, mtime))
         return full_path
 
