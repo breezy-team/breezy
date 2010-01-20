@@ -112,6 +112,121 @@ def login(service, timeout=None, proxy_info=None):
     return launchpad
 
 
+class LaunchpadBranch(object):
+
+    def __init__(self, lp_branch, bzr_url, bzr_branch=None, check_update=True):
+        self.bzr_url = bzr_url
+        self._bzr = bzr_branch
+        self._push_bzr = None
+        self._check_update = False
+        self.lp = lp_branch
+
+    @property
+    def bzr(self):
+        if self._bzr is None:
+            self._bzr = branch.Branch.open(self.bzr_url)
+        return self._bzr
+
+    @property
+    def push_bzr(self):
+        if self._push_bzr is None:
+            self._push_bzr = branch.Branch.open(self.lp.bzr_identity)
+        return self._push_bzr
+
+    @staticmethod
+    def plausible_launchpad_url(url):
+        """Is 'url' something that could conceivably be pushed to LP?"""
+        if url is None:
+            return False
+        if url.startswith('lp:'):
+            return True
+        regex = re.compile('([a-z]*\+)*(bzr\+ssh|http)'
+                           '://bazaar.*.launchpad.net')
+        return bool(regex.match(url))
+
+    @staticmethod
+    def candidate_urls(bzr_branch):
+        url = bzr_branch.get_public_branch()
+        if url is not None:
+            yield url
+        url = bzr_branch.get_push_location()
+        if url is not None:
+            yield url
+        yield bzr_branch.base
+
+    @staticmethod
+    def tweak_url(url, launchpad):
+        if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
+            return url
+        if url is None:
+            return None
+        return url.replace('bazaar.launchpad.net',
+                           'bazaar.staging.launchpad.net')
+
+    @classmethod
+    def from_bzr(cls, launchpad, bzr_branch):
+        check_update = True
+        for url in cls.candidate_urls(bzr_branch):
+            url = cls.tweak_url(url, launchpad)
+            if not cls.plausible_launchpad_url(url):
+                continue
+            lp_branch = launchpad.branches.getByUrl(url=url)
+            if lp_branch is not None:
+                break
+        else:
+            lp_branch = cls.create_now(launchpad, bzr_branch)
+            check_update = False
+        return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
+
+    @classmethod
+    def create_now(cls, launchpad, bzr_branch):
+        url = cls.tweak_url(bzr_branch.get_push_location(), launchpad)
+        if not cls.plausible_launchpad_url(url):
+            raise errors.BzrError('%s is not registered on Launchpad' %
+                                  bzr_branch.base)
+        bzr_branch.create_clone_on_transport(transport.get_transport(url))
+        lp_branch = launchpad.branches.getByUrl(url=url)
+        if lp_branch is None:
+            raise errors.BzrError('%s is not registered on Launchpad' % url)
+        return lp_branch
+
+    @classmethod
+    def from_dev_focus(cls, lp_branch):
+        if lp_branch.project is None:
+            raise errors.BzrError('%s has no product.' %
+                                  lp_branch.bzr_identity)
+        dev_focus = lp_branch.project.development_focus.branch
+        if dev_focus is None:
+            raise errors.BzrError('%s has no development focus.' %
+                                  lp_branch.bzr_identity)
+        return cls(dev_focus, dev_focus.bzr_identity)
+
+    def update_lp(self):
+        if not self._check_update:
+            return
+        self.bzr.lock_read()
+        try:
+            if self.lp.last_scanned_id is not None:
+                if self.bzr.last_revision() == self.lp.last_scanned_id:
+                    trace.note('%s is already up-to-date.' %
+                               self.lp.bzr_identity)
+                    return
+                graph = self.bzr.repository.get_graph()
+                if not graph.is_ancestor(self.bzr.last_revision(),
+                                         self.lp.last_scanned_id):
+                    raise errors.DivergedBranches(self.bzr, self.push_bzr)
+                trace.note('Pushing to %s' % self.lp.bzr_identity)
+            self.bzr.push(self.push_bzr)
+        finally:
+            self.bzr.unlock()
+
+    def find_lca_tree(self, other):
+        graph = self.bzr.repository.get_graph(other.bzr.repository)
+        lca = graph.find_unique_lca(self.bzr.last_revision(),
+                                    other.bzr.last_revision())
+        return self.bzr.repository.revision_tree(lca)
+
+
 def load_branch(launchpad, branch):
     """Return the launchpadlib Branch object corresponding to 'branch'.
 

@@ -40,122 +40,6 @@ def lp(staging=False):
     return _lp
 
 
-class LaunchpadBranch(object):
-
-    def __init__(self, lp_branch, bzr_url, bzr_branch=None, check_update=True):
-        self.bzr_url = bzr_url
-        self._bzr = bzr_branch
-        self._push_bzr = None
-        self._check_update = False
-        self.lp = lp_branch
-
-    @property
-    def bzr(self):
-        if self._bzr is None:
-            self._bzr = branch.Branch.open(self.bzr_url)
-        return self._bzr
-
-    @property
-    def push_bzr(self):
-        if self._push_bzr is None:
-            self._push_bzr = branch.Branch.open(self.lp.bzr_identity)
-        return self._push_bzr
-
-    @staticmethod
-    def plausible_launchpad_url(url):
-        # XXX: Move this out of the lp_submit plugin and into one
-        # specific to Launchpad's dev process.
-        if url is None:
-            return False
-        if url.startswith('lp:'):
-            return True
-        regex = re.compile('([a-z]*\+)*(bzr\+ssh|http)'
-                           '://bazaar.*.launchpad.net')
-        return bool(regex.match(url))
-
-    @staticmethod
-    def candidate_urls(bzr_branch):
-        url = bzr_branch.get_public_branch()
-        if url is not None:
-            yield url
-        url = bzr_branch.get_push_location()
-        if url is not None:
-            yield url
-        yield bzr_branch.base
-
-    @staticmethod
-    def tweak_url(url, staging):
-        if not staging:
-            return url
-        if url is None:
-            return None
-        return url.replace('bazaar.launchpad.net',
-                           'bazaar.staging.launchpad.net')
-
-    @classmethod
-    def from_bzr(cls, bzr_branch, staging=False):
-        check_update = True
-        for url in cls.candidate_urls(bzr_branch):
-            url = cls.tweak_url(url, staging)
-            if not cls.plausible_launchpad_url(url):
-                continue
-            lp_branch = lp(staging).branches.getByUrl(url=url)
-            if lp_branch is not None:
-                break
-        else:
-            lp_branch = cls.create_now(bzr_branch, staging)
-            check_update = False
-        return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
-
-    @classmethod
-    def create_now(cls, bzr_branch, staging):
-        url = cls.tweak_url(bzr_branch.get_push_location(), staging)
-        if not cls.plausible_launchpad_url(url):
-            raise errors.BzrError('%s is not registered on Launchpad' %
-                                  bzr_branch.base)
-        bzr_branch.create_clone_on_transport(transport.get_transport(url))
-        lp_branch = lp(staging).branches.getByUrl(url=url)
-        if lp_branch is None:
-            raise errors.BzrError('%s is not registered on Launchpad' % url)
-        return lp_branch
-
-    @classmethod
-    def from_dev_focus(cls, lp_branch):
-        if lp_branch.project is None:
-            raise errors.BzrError('%s has no product.' %
-                                  lp_branch.bzr_identity)
-        dev_focus = lp_branch.project.development_focus.branch
-        if dev_focus is None:
-            raise errors.BzrError('%s has no development focus.' %
-                                  lp_branch.bzr_identity)
-        return cls(dev_focus, dev_focus.bzr_identity)
-
-    def update_lp(self):
-        if not self._check_update:
-            return
-        self.bzr.lock_read()
-        try:
-            if self.lp.last_scanned_id is not None:
-                if self.bzr.last_revision() == self.lp.last_scanned_id:
-                    trace.note('%s is already up-to-date.' %
-                               self.lp.bzr_identity)
-                    return
-                graph = self.bzr.repository.get_graph()
-                if not graph.is_ancestor(self.bzr.last_revision(),
-                                         self.lp.last_scanned_id):
-                    raise errors.DivergedBranches(self.bzr, self.push_bzr)
-                trace.note('Pushing to %s' % self.lp.bzr_identity)
-            self.bzr.push(self.push_bzr)
-        finally:
-            self.bzr.unlock()
-
-    def find_lca_tree(self, other):
-        graph = self.bzr.repository.get_graph(other.bzr.repository)
-        lca = graph.find_unique_lca(self.bzr.last_revision(),
-                                    other.bzr.last_revision())
-        return self.bzr.repository.revision_tree(lca)
-
-
 class Submitter(object):
 
     def __init__(self, tree, manager, target_branch, message, reviews,
@@ -163,14 +47,16 @@ class Submitter(object):
         self.tree = tree
         self.manager = manager
         self.staging = staging
-        self.source_branch = LaunchpadBranch.from_bzr(self.manager.storage.branch,
-                                                 self.staging)
+        self.launchpad = lp(self.staging)
+        self.source_branch = lp_api.LaunchpadBranch.from_bzr(
+            self.manager.storage.branch, self.launchpad)
         if target_branch is None:
-            self.target_branch = LaunchpadBranch.from_dev_focus(
+            # XXX: Change this to get_dev_Focus on the source branch.
+            self.target_branch = lp_api.LaunchpadBranch.from_dev_focus(
                 self.source_branch.lp)
         else:
-            self.target_branch = LaunchpadBranch.from_bzr(target_branch,
-                                                     self.staging)
+            self.target_branch = lp_api.LaunchpadBranch.from_bzr(
+                target_branch, self.launchpad)
         self.commit_message = message
         if reviews == []:
             target_reviewer = self.target_branch.lp.reviewer
@@ -236,7 +122,7 @@ class Submitter(object):
     def submit(self):
         prev_pipe = self.manager.get_prev_pipe()
         if prev_pipe is not None:
-            prerequisite_branch = LaunchpadBranch.from_bzr(prev_pipe)
+            prerequisite_branch = lp_api.LaunchpadBranch.from_bzr(self.launchpad, prev_pipe)
         else:
             prerequisite_branch = None
         self.source_branch.update_lp()
