@@ -1147,7 +1147,7 @@ user-visible changes first.  So the order should be approximately:
  * new features - should be brought to their attention
  * bug fixes - may be of interest if the bug was affecting them, and
    should include the bug number if any
- * major documentation changes
+ * major documentation changes, including fixed documentation bugs
  * changes to internal interfaces
 
 People who made significant contributions to each change are listed in
