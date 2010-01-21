@@ -3647,7 +3647,8 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.  
+    --force is given. The --force option can also be used to create a
+    merge revision which has more than two parents.
 
     If one would like to merge changes from the working tree of the other
     branch without merging any committed revisions, the --uncommitted option
@@ -3672,6 +3673,13 @@ class cmd_merge(Command):
         To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
+
+        To create a merge revision with three parents from two branches
+        feature1a and feature1b:
+
+            bzr merge ../feature1a
+            bzr merge ../feature1b --force
+            bzr commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
