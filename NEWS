@@ -11,18 +11,19 @@ bzr 2.1.0rc1
 :Codename: the 'new' stable
 :2.1.0rc1: 2009-01-21
 
-Compatibility Breaks
-********************
+This is the first stable release candidate for Bazaar's 2.1 series. From
+this point onwards, the 2.1 series will be considered stable (as the 2.0
+series) and only bugfixes are expected to be incorporated. The dozen or so
+bugfixes in the 2.0.4 release are also included in this release (along
+with more than 15 more bugfixes). Some of the interesting features are
+support for per-file merge hooks, ``bzr unshelve --preview``, support
+for using ! in ignore files to exclude files from being ignored, a small
+memory leak was squashed, and many ``ObjectNotLocked`` errors were fixed.
+This looks to be a very good start for a new stable series.
+
 
 New Features
 ************
-
-* New ignore patterns.  Patterns prefixed with '!' are exceptions to 
-  ignore patterns and take precedence over regular ignores.  Such 
-  exceptions are used to specify files that should be versioned which 
-  would otherwise be ignored.  Patterns prefixed with '!!' act as regular 
-  ignore patterns, but have highest precedence, even over the '!' 
-  exception patterns. (John Whitley, #428031)
 
 * Add bug information to log output when available.
   (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
@@ -54,6 +55,13 @@ New Features
 * ``-Dbytes`` can now be used to display the total number of bytes
   transferred for the current command. This information is always logged
   to ``.bzr.log`` for later inspection. (John Arbash Meinel)
+
+* New ignore patterns.  Patterns prefixed with '!' are exceptions to 
+  ignore patterns and take precedence over regular ignores.  Such 
+  exceptions are used to specify files that should be versioned which 
+  would otherwise be ignored.  Patterns prefixed with '!!' act as regular 
+  ignore patterns, but have highest precedence, even over the '!' 
+  exception patterns. (John Whitley, #428031)
 
 * The ``supress_warnings`` configuration option has been introduced to disable
   various warnings (it currently only supports the ``format_deprecation``
@@ -90,10 +98,6 @@ Bug Fixes
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
 
-* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
-  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
-  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
-
 * Fix "Too many concurrent requests" in reconcile when network connection
   fails.  (Andrew Bennetts, #503878)
 
@@ -120,10 +124,6 @@ Bug Fixes
   whatever is written to it.  This un-breaks some plugin tests that
   depended on this behaviour.
   (Martin Pool, #499757)
-
-* The 2a format wasn't properly restarting autopacks when something
-  changed underneath it (like another autopack). Now concurrent
-  autopackers will properly succeed. (John Arbash Meinel, #495000)
 
 * When operations update the working tree, all affected files should end
   up with the same mtime. (eg. when versioning a generated file, if you
@@ -195,7 +195,7 @@ API Changes
   deprecation thunk, but not all. (John Arbash Meinel)
 
 * Merger classes (such as ``Merge3Merger``) now expect a ``this_branch``
-  parameter in their constructora, and provide ``this_branch`` as an
+  parameter in their constructors, and provide ``this_branch`` as an
   attribute. (Andrew Bennetts)
   
 * The Branch hooks pre_change_branch_tip no longer masks exceptions raised
@@ -247,6 +247,7 @@ Testing
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.
   (Martin Pool)
+
 
 bzr 2.0.4
 #########
