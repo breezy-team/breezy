@@ -5,11 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0rc1 (not released yet)
-###############################
+bzr 2.1.0rc1
+############
 
 :Codename: the 'new' stable
-:2.1.0rc1: 2009-01-06 (expected)
+:2.1.0rc1: 2009-01-21
 
 Compatibility Breaks
 ********************
