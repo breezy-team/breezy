@@ -1366,6 +1366,22 @@ class TestRepositoryPackCollection(TestCaseWithTransport):
         self.assertEqual([to_remove_name],
                          sorted([x[0][0] for x in deleted_nodes]))
 
+    def test_autopack_obsoletes_new_pack(self):
+        tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
+        packs._max_pack_count = lambda x: 1
+        packs.pack_distribution = lambda x: [10]
+        r.start_write_group()
+        r.revisions.insert_record_stream([versionedfile.FulltextContentFactory(
+            ('bogus-rev',), (), None, 'bogus-content\n')])
+        # This should trigger an autopack, which will combine everything into a
+        # single pack file.
+        import pdb; pdb.set_trace()
+        new_names = r.commit_write_group()
+        names = packs.names()
+        self.assertEqual(1, len(names))
+        self.assertEqual([names[0] + '.pack'],
+                         packs._pack_transport.list_dir('.'))
+
     def test_autopack_reloads_and_stops(self):
         tree, r, packs, revs = self.make_packs_and_alt_repo(write_lock=True)
         # After we have determined what needs to be autopacked, trigger a

@@ -1987,8 +1987,8 @@ class RepositoryPackCollection(object):
         if obsolete_packs:
             orig_disk_names = set([x[0][0] for x in orig_disk_nodes])
             obsolete_packs = [o for o in obsolete_packs
-                              if o.name not in already_obsolete
-                                  and o.name in orig_disk_names]
+                if o.name not in already_obsolete
+                    and (o.name in orig_disk_names or isinstance(o, NewPack))]
             self._obsolete_packs(obsolete_packs)
         return [new_node[0][0] for new_node in new_nodes]
 
