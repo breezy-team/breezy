@@ -679,7 +679,6 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
-@deprecated_function(deprecated_in((2, 1, 0)))
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
@@ -698,7 +697,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return _rebase_merge_depth(view_revisions)
 
 
-@deprecated_function(deprecated_in((2, 1, 0)))
 def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
