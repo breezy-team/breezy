@@ -64,6 +64,10 @@ Bug Fixes
 * Better explain the --uncommitted option of merge.
   (Neil Martinsen-Burrell, #505088)
 
+* ``bzr diff`` will now use the epoch when it is unable to determine 
+  the timestamp of a file, if the revision it was introduced in is a
+  ghost. (Jelmer Vernooij, #295611)
+
 * ``bzr export dir`` now requests all file content as a record stream,
   rather than requsting the file content one file-at-a-time. This can make
   exporting over the network significantly faster (54min => 9min in one
