@@ -5,17 +5,17 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0.4 (not released yet)
-############################
+bzr 2.0.4
+#########
 
-:Codename:
-:2.0.4: smooth sailing
+:Codename: smooth sailing
+:2.0.4: 2010-01-21
 
-Compatibility Breaks
-********************
+The fourth bugfix-only release in the 2.0 series contains more than a
+dozen bugfixes relative to 2.0.3. The primary focus is on handling
+interruptions and concurrent operations more cleanly, there is also a fair
+improvement to ``bzr export`` when exporting a remote branch.
 
-New Features
-************
 
 Bug Fixes
 *********
@@ -78,18 +78,6 @@ Bug Fixes
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
   the block pointer. (John Arbash Meinel, Gareth White, #495023)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
 
 Testing
 *******
