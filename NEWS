@@ -5,11 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0rc1 (not released yet)
-###############################
+bzr 2.2.0b1 (not released yet)
+##############################
 
-:Codename: the 'new' stable
-:2.1.0rc1: 2009-01-06 (expected)
+:Codename: ???
+:2.2.0b1: ???
 
 Compatibility Breaks
 ********************
@@ -17,12 +17,44 @@ Compatibility Breaks
 New Features
 ************
 
-* New ignore patterns.  Patterns prefixed with '!' are exceptions to 
-  ignore patterns and take precedence over regular ignores.  Such 
-  exceptions are used to specify files that should be versioned which 
-  would otherwise be ignored.  Patterns prefixed with '!!' act as regular 
-  ignore patterns, but have highest precedence, even over the '!' 
-  exception patterns. (John Whitley, #428031)
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.0rc1
+############
+
+:Codename: the 'new' stable
+:2.1.0rc1: 2009-01-21
+
+This is the first stable release candidate for Bazaar's 2.1 series. From
+this point onwards, the 2.1 series will be considered stable (as the 2.0
+series) and only bugfixes are expected to be incorporated. The dozen or so
+bugfixes in the 2.0.4 release are also included in this release (along
+with more than 15 more bugfixes). Some of the interesting features are
+support for per-file merge hooks, ``bzr unshelve --preview``, support
+for using ! in ignore files to exclude files from being ignored, a small
+memory leak was squashed, and many ``ObjectNotLocked`` errors were fixed.
+This looks to be a very good start for a new stable series.
+
+
+New Features
+************
 
 * Add bug information to log output when available.
   (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
@@ -55,6 +87,13 @@ New Features
   transferred for the current command. This information is always logged
   to ``.bzr.log`` for later inspection. (John Arbash Meinel)
 
+* New ignore patterns.  Patterns prefixed with '!' are exceptions to 
+  ignore patterns and take precedence over regular ignores.  Such 
+  exceptions are used to specify files that should be versioned which 
+  would otherwise be ignored.  Patterns prefixed with '!!' act as regular 
+  ignore patterns, but have highest precedence, even over the '!' 
+  exception patterns. (John Whitley, #428031)
+
 * The ``supress_warnings`` configuration option has been introduced to disable
   various warnings (it currently only supports the ``format_deprecation``
   warning). The new option can be set in any of the following locations:
@@ -72,17 +111,6 @@ Bug Fixes
   the timestamp of a file, if the revision it was introduced in is a
   ghost. (Jelmer Vernooij, #295611)
 
-* ``bzr export dir`` now requests all file content as a record stream,
-  rather than requsting the file content one file-at-a-time. This can make
-  exporting over the network significantly faster (54min => 9min in one
-  case). (John Arbash Meinel, #343218)
-
-* ``bzr serve`` no longer slowly leaks memory. The compiled
-  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
-  free resources, and it should have been using ``__dealloc__``.
-  This will likely have an impact on any other process that is serving for
-  an extended period of time.  (John Arbash Meinel, #494406)
-
 * ``bzr switch -b`` can now create branches that are located using directory
   services such as ``lp:``, even when the branch name doesn't contain a
   '/'.  (Neil Martinsen-Burrell, #495263)
@@ -90,9 +118,12 @@ Bug Fixes
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
 
-* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
-  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
-  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
 
 * Fix "Too many concurrent requests" in reconcile when network connection
   fails.  (Andrew Bennetts, #503878)
@@ -107,9 +138,6 @@ Bug Fixes
 * FTP transports support Unicode paths by encoding/decoding them as utf8.
   (Vincent Ladeuil, #472161)
 
-* Give a clearer message if the lockdir disappears after being apparently
-  successfully taken.  (Martin Pool, #498378)
-
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
@@ -120,10 +148,6 @@ Bug Fixes
   whatever is written to it.  This un-breaks some plugin tests that
   depended on this behaviour.
   (Martin Pool, #499757)
-
-* The 2a format wasn't properly restarting autopacks when something
-  changed underneath it (like another autopack). Now concurrent
-  autopackers will properly succeed. (John Arbash Meinel, #495000)
 
 * When operations update the working tree, all affected files should end
   up with the same mtime. (eg. when versioning a generated file, if you
@@ -195,7 +219,7 @@ API Changes
   deprecation thunk, but not all. (John Arbash Meinel)
 
 * Merger classes (such as ``Merge3Merger``) now expect a ``this_branch``
-  parameter in their constructora, and provide ``this_branch`` as an
+  parameter in their constructors, and provide ``this_branch`` as an
   attribute. (Andrew Bennetts)
   
 * The Branch hooks pre_change_branch_tip no longer masks exceptions raised
@@ -248,17 +272,18 @@ Testing
   tests that 'failed' - they're all just failures.
   (Martin Pool)
 
-bzr 2.0.4 (not released yet)
-############################
 
-:Codename:
-:2.0.4: smooth sailing
+bzr 2.0.4
+#########
 
-Compatibility Breaks
-********************
+:Codename: smooth sailing
+:2.0.4: 2010-01-21
 
-New Features
-************
+The fourth bugfix-only release in the 2.0 series contains more than a
+dozen bugfixes relative to 2.0.3. The primary focus is on handling
+interruptions and concurrent operations more cleanly, there is also a fair
+improvement to ``bzr export`` when exporting a remote branch.
+
 
 Bug Fixes
 *********
@@ -321,18 +346,6 @@ Bug Fixes
 * ``_update_current_block`` no longer suppresses exceptions, so ^C at just
   the right time will get propagated, rather than silently failing to move
   the block pointer. (John Arbash Meinel, Gareth White, #495023)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
 
 Testing
 *******
