@@ -242,8 +242,16 @@ class LockDir(lock.Lock):
         # incorrect.  It's possible some other servers or filesystems will
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
+        #
+        # See <https://bugs.edge.launchpad.net/bzr/+bug/498378> for one case.
+        #
+        # Strictly the check is unnecessary and a waste of time for most
+        # people, but probably worth trapping if something is wrong.
         info = self.peek()
         self._trace("after locking, info=%r", info)
+        if info is None:
+            raise LockFailed(self, "lock was renamed into place, but "
+                "now is missing!")
         if info['nonce'] != self.nonce:
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")
@@ -526,19 +534,22 @@ class LockDir(lock.Lock):
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
                 lock_url = self.transport.abspath(self.path)
+                # See <https://bugs.edge.launchpad.net/bzr/+bug/250451>
+                # the URL here is sometimes not one that is useful to the
+                # user, perhaps being wrapped in a lp-%d or chroot decorator,
+                # especially if this error is issued from the server.
                 self._report_function('%s %s\n'
-                                      '%s\n' # held by
-                                      '%s\n' # locked ... ago
-                                      'Will continue to try until %s, unless '
-                                      'you press Ctrl-C\n'
-                                      'If you\'re sure that it\'s not being '
-                                      'modified, use bzr break-lock %s',
-                                      start,
-                                      formatted_info[0],
-                                      formatted_info[1],
-                                      formatted_info[2],
-                                      deadline_str,
-                                      lock_url)
+                    '%s\n' # held by
+                    '%s\n' # locked ... ago
+                    'Will continue to try until %s, unless '
+                    'you press Ctrl-C.\n'
+                    'See "bzr help break-lock" for more.',
+                    start,
+                    formatted_info[0],
+                    formatted_info[1],
+                    formatted_info[2],
+                    deadline_str,
+                    )
 
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")

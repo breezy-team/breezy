@@ -28,7 +28,7 @@ from bzrlib.tests import features
 
 class TestApportReporting(tests.TestCase):
 
-    _test_needs_features = [features.ApportFeature]
+    _test_needs_features = [features.apport]
 
     def test_apport_report_contents(self):
         try:

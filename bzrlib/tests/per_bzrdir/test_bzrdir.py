@@ -1176,6 +1176,13 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
+        # for remote formats, there must be no prior assumption about the
+        # network name to use - it's possible that this may somehow have got
+        # in through an unisolated test though - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        self.assertEquals(getattr(self.bzrdir_format,
+            '_network_name', None),
+            None)
         # supported formats must be able to init and open
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())

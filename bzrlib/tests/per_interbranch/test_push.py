@@ -255,7 +255,6 @@ class TestPush(TestCaseWithInterBranch):
         builder.build_snapshot('third', ['second'], [])
         builder.build_snapshot('fourth', ['third'], [])
         builder.finish_series()
-        local = builder.get_branch()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.bzrdir.sprout(

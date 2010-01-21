@@ -39,6 +39,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import signal
 import subprocess
 import tempfile
 from tempfile import (
@@ -201,13 +202,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
-    :param unlink_func: A way to delete the target file if the full rename succeeds
+    :param unlink_func: A way to delete the target file if the full rename
+        succeeds
     """
-
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
+    # callers use different encodings for the paths so the following MUST
+    # respect that. We rely on python upcasting to unicode if new is unicode
+    # and keeping a str if not.
+    tmp_name = 'tmp.%s.%.9f.%d.%s' % (base, time.time(),
+                                      os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -1427,6 +1432,20 @@ else:
     _terminal_size = _ioctl_terminal_size
 
 
+def _terminal_size_changed(signum, frame):
+    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
+    width, height = _terminal_size(None, None)
+    if width is not None:
+        os.environ['COLUMNS'] = str(width)
+
+if sys.platform == 'win32':
+    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
+    # I've no idea how to plug that in the current design -- vila 20091216
+    pass
+else:
+    signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+
 def supports_executable():
     return sys.platform != "win32"
 
@@ -2072,3 +2091,18 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
+
+
+class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
+    """A stream writer that doesn't decode str arguments."""
+
+    def __init__(self, encode, stream, errors='strict'):
+        codecs.StreamWriter.__init__(self, stream, errors)
+        self.encode = encode
+
+    def write(self, object):
+        if type(object) is str:
+            self.stream.write(object)
+        else:
+            data, _ = self.encode(object, self.errors)
+            self.stream.write(data)

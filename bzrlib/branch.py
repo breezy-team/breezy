@@ -1103,15 +1103,7 @@ class Branch(object):
         params = ChangeBranchTipParams(
             self, old_revno, new_revno, old_revid, new_revid)
         for hook in hooks:
-            try:
-                hook(params)
-            except errors.TipChangeRejected:
-                raise
-            except Exception:
-                exc_info = sys.exc_info()
-                hook_name = Branch.hooks.get_hook_name(hook)
-                raise errors.HookFailed(
-                    'pre_change_branch_tip', hook_name, exc_info)
+            hook(params)
 
     @needs_write_lock
     def update(self):
@@ -1449,7 +1441,7 @@ class BranchFormat(object):
             format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
@@ -1804,7 +1796,7 @@ class BranchFormatMetadir(BranchFormat):
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
@@ -2143,6 +2135,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
             self.repository.lock_write()
             took_lock = True
         else:
@@ -2160,6 +2153,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         # All-in-one needs to always unlock/lock.
         repo_control = getattr(self.repository, 'control_files', None)
         if self.control_files == repo_control or not self.is_locked():
+            self.repository._warn_if_deprecated(self)
             self.repository.lock_read()
             took_lock = True
         else:

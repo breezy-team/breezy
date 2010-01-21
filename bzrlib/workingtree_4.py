@@ -1755,7 +1755,11 @@ class DirStateRevisionTree(Tree):
             return None
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
-        return self._repository.get_revision(last_changed_revision).timestamp
+        try:
+            rev = self._repository.get_revision(last_changed_revision)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+        return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         entry = self._get_entry(file_id=file_id, path=path)
@@ -1974,12 +1978,11 @@ class InterDirStateTree(InterTree):
         return result
 
     @classmethod
-    def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
+    def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
+                                                  target):
         from bzrlib.tests.test__dirstate_helpers import \
-            CompiledDirstateHelpersFeature
-        if not CompiledDirstateHelpersFeature.available():
-            from bzrlib.tests import UnavailableFeature
-            raise UnavailableFeature(CompiledDirstateHelpersFeature)
+            compiled_dirstate_helpers_feature
+        test_case.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import ProcessEntryC
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = ProcessEntryC

@@ -96,8 +96,7 @@ garbage""")
         # Override the thresold to force the warning emission
         conn._range_warning_thresold = 6 # There are 7 bytes pending
         conn.cleanup_pipe()
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'Got a 200 response when asking')
+        self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
 
 
 class TestRangeFileMixin(object):

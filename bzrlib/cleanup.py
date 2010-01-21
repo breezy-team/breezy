@@ -91,13 +91,14 @@ class OperationWithCleanups(object):
 
     where `some_func` is::
 
-        def some_func(operation, args, ...)
+        def some_func(operation, args, ...):
             do_something()
             operation.add_cleanup(something)
             # etc
 
     Note that the first argument passed to `some_func` will be the
-    OperationWithCleanups object.
+    OperationWithCleanups object.  To invoke `some_func` without that, use
+    `run_simple` instead of `run`.
     """
 
     def __init__(self, func):
@@ -115,6 +116,14 @@ class OperationWithCleanups(object):
     def run(self, *args, **kwargs):
         return _do_with_cleanups(
             self.cleanups, self.func, self, *args, **kwargs)
+
+    def run_simple(self, *args, **kwargs):
+        return _do_with_cleanups(
+            self.cleanups, self.func, *args, **kwargs)
+
+    def cleanup_now(self):
+        _run_cleanups(self.cleanups)
+        self.cleanups.clear()
 
 
 def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):

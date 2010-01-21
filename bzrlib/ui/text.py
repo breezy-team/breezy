@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from bzrlib import (
     progress,
     osutils,
     symbol_versioning,
+    trace,
     )
 
 """)
@@ -60,6 +61,12 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
         
+    def be_quiet(self, state):
+        if state and not self._quiet:
+            self.clear_term()
+        UIFactory.be_quiet(self, state)
+        self._progress_view = self.make_progress_view()
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -145,9 +152,13 @@ class TextUIFactory(UIFactory):
     def make_progress_view(self):
         """Construct and return a new ProgressView subclass for this UI.
         """
-        # if the user specifically requests either text or no progress bars,
-        # always do that.  otherwise, guess based on $TERM and tty presence.
-        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+        # with --quiet, never any progress view
+        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # user specifically requests either text or no progress bars, always
+        # do that.  otherwise, guess based on $TERM and tty presence.
+        if self.is_quiet():
+            return NullProgressView()
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'text':
             return TextProgressView(self.stderr)
         elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
             return NullProgressView()
@@ -203,6 +214,12 @@ class TextUIFactory(UIFactory):
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
 
+    def log_transport_activity(self, display=False):
+        """See UIFactory.log_transport_activity()"""
+        log = getattr(self._progress_view, 'log_transport_activity', None)
+        if log is not None:
+            log(display=display)
+
     def show_error(self, msg):
         self.clear_term()
         self.stderr.write("bzr: error: %s\n" % msg)
@@ -248,9 +265,6 @@ class TextProgressView(object):
         self._term_file = term_file
         # true when there's output on the screen we may need to clear
         self._have_output = False
-        # XXX: We could listen for SIGWINCH and update the terminal width...
-        # https://launchpad.net/bugs/316357
-        self._width = osutils.terminal_width()
         self._last_transport_msg = ''
         self._spin_pos = 0
         # time we last repainted the screen
@@ -260,6 +274,8 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
+        self._first_byte_time = None
         self._fraction = 0
         # force the progress bar to be off, as at the moment it doesn't 
         # correspond reliably to overall command progress
@@ -267,9 +283,11 @@ class TextProgressView(object):
 
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        if self._width is not None:
-            n = self._width - 1
-            s = '%-*.*s' % (n, n, s)
+        width = osutils.terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+            s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):
@@ -302,7 +320,7 @@ class TextProgressView(object):
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif self._last_task.show_spinner:
+        elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
@@ -370,19 +388,25 @@ class TextProgressView(object):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        # XXX: Probably there should be a transport activity model, and that
-        # too should be seen by the progress view, rather than being poked in
-        # here.
-        if not self._have_output:
-            # As a workaround for <https://launchpad.net/bugs/321935> we only
-            # show transport activity when there's already a progress bar
-            # shown, which time the application code is expected to know to
-            # clear off the progress bar when it's going to send some other
-            # output.  Eventually it would be nice to have that automatically
-            # synchronized.
-            return
+        # XXX: there should be a transport activity model, and that too should
+        #      be seen by the progress view, rather than being poked in here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
+        if self._first_byte_time is None:
+            # Note that this isn't great, as technically it should be the time
+            # when the bytes started transferring, not when they completed.
+            # However, we usually start with a small request anyway.
+            self._first_byte_time = time.time()
+        if direction in self._bytes_by_direction:
+            self._bytes_by_direction[direction] += byte_count
+        else:
+            self._bytes_by_direction['unknown'] += byte_count
+        if 'no_activity' in debug.debug_flags:
+            # Can be used as a workaround if
+            # <https://launchpad.net/bugs/321935> reappears and transport
+            # activity is cluttering other output.  However, thanks to
+            # TextUIOutputStream this shouldn't be a problem any more.
+            return
         now = time.time()
         if self._total_byte_count < 2000:
             # a little resistance at first, so it doesn't stay stuck at 0
@@ -401,6 +425,37 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+    def _format_bytes_by_direction(self):
+        if self._first_byte_time is None:
+            bps = 0.0
+        else:
+            transfer_time = time.time() - self._first_byte_time
+            if transfer_time < 0.001:
+                transfer_time = 0.001
+            bps = self._total_byte_count / transfer_time
+
+        msg = ('Transferred: %.0fKiB'
+               ' (%.1fK/s r:%.0fK w:%.0fK'
+               % (self._total_byte_count / 1024.,
+                  bps / 1024.,
+                  self._bytes_by_direction['read'] / 1024.,
+                  self._bytes_by_direction['write'] / 1024.,
+                 ))
+        if self._bytes_by_direction['unknown'] > 0:
+            msg += ' u:%.0fK)' % (
+                self._bytes_by_direction['unknown'] / 1024.
+                )
+        else:
+            msg += ')'
+        return msg
+
+    def log_transport_activity(self, display=False):
+        msg = self._format_bytes_by_direction()
+        trace.mutter(msg)
+        if display and self._total_byte_count > 0:
+            self.clear()
+            self._term_file.write(msg + '\n')
 
 
 class TextUIOutputStream(object):
