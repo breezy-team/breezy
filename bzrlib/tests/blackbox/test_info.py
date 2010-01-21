@@ -37,7 +37,7 @@ class TestInfo(ExternalBase):
 
     def setUp(self):
         ExternalBase.setUp(self)
-        self._repo_strings = "2a or development-subtree"
+        self._repo_strings = "2a"
 
     def test_info_non_existing(self):
         self.vfs_transport_factory = MemoryServer
