@@ -2015,10 +2015,6 @@ class RepositoryPackCollection(object):
         # _packs_at_load is meant to be the explicit list of names in
         # 'pack-names' at then start. As such, it should not contain any
         # pending names that haven't been written out yet.
-        pack_names_nodes = disk_nodes.difference(new_nodes)
-        pack_names_nodes.update(deleted_nodes)
-        if pack_names_nodes != orig_disk_nodes:
-            import pdb; pdb.set_trace()
         self._packs_at_load = orig_disk_nodes
         (removed, added,
          modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
