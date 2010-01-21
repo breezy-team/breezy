@@ -1154,6 +1154,9 @@ People who made significant contributions to each change are listed in
 parenthesis.  This can include reporting bugs (particularly with good
 details or reproduction recipes), submitting patches, etc.
 
+To help with merging, NEWS entries should be sorted lexicographically
+within each section.
+
 Commands
 --------
 
