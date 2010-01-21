@@ -80,17 +80,6 @@ Bug Fixes
   the timestamp of a file, if the revision it was introduced in is a
   ghost. (Jelmer Vernooij, #295611)
 
-* ``bzr export dir`` now requests all file content as a record stream,
-  rather than requsting the file content one file-at-a-time. This can make
-  exporting over the network significantly faster (54min => 9min in one
-  case). (John Arbash Meinel, #343218)
-
-* ``bzr serve`` no longer slowly leaks memory. The compiled
-  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
-  free resources, and it should have been using ``__dealloc__``.
-  This will likely have an impact on any other process that is serving for
-  an extended period of time.  (John Arbash Meinel, #494406)
-
 * ``bzr switch -b`` can now create branches that are located using directory
   services such as ``lp:``, even when the branch name doesn't contain a
   '/'.  (Neil Martinsen-Burrell, #495263)
