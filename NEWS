@@ -61,9 +61,6 @@ Bug Fixes
   user-specified commit message editor.
   (Martin Pool, #504842)
 
-* Better explain the --uncommitted option of merge.
-  (Neil Martinsen-Burrell, #505088)
-
 * ``bzr diff`` will now use the epoch when it is unable to determine 
   the timestamp of a file, if the revision it was introduced in is a
   ghost. (Jelmer Vernooij, #295611)
@@ -158,6 +155,9 @@ Documentation
 
 * Add documentation on creating merges with more than one parent.
   (Neil Martinsen-Burrell, #481526)
+
+* Better explain the --uncommitted option of merge.
+  (Neil Martinsen-Burrell, #505088)
 
 * Improve discussion of pending merges in the documentation for
   ``revert``.  (Neil Martinsen-Burrell, #505093)
