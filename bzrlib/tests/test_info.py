@@ -146,7 +146,7 @@ class TestInfo(tests.TestCaseWithTransport):
             if bzrdir.format_registry.get_info(key).hidden:
                 continue
             expected = None
-            if key in ('pack-0.92'):
+            if key in ('pack-0.92',):
                 expected = 'pack-0.92'
             elif key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
@@ -163,9 +163,9 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit'):
                 expected = 'dirstate or knit'
-            elif key in ('1.14'):
+            elif key in ('1.14',):
                 expected = '1.14'
-            elif key in ('1.14-rich-root'):
+            elif key in ('1.14-rich-root',):
                 expected = '1.14-rich-root'
             self.assertBranchDescription(key, expected)
 
@@ -178,9 +178,9 @@ class TestInfo(tests.TestCaseWithTransport):
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
                 expected = 'dirstate or dirstate-tags or knit'
-            elif key in ('1.14'):
+            elif key in ('1.14',):
                 expected = '1.14'
-            elif key in ('1.14-rich-root'):
+            elif key in ('1.14-rich-root',):
                 expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
