@@ -3671,7 +3671,7 @@ class cmd_merge(Command):
             bzr merge /tmp/merge
 
         To create a merge revision with three parents from two branches
-        ../feature1a and ../feature1b::
+        feature1a and feature1b:
 
             bzr merge ../feature1a
             bzr merge ../feature1b --force
