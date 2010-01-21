@@ -23,6 +23,7 @@ from bzrlib import (
     registry,
     revision,
     revisionspec,
+    symbol_versioning,
     tests,
     )
 
@@ -1145,7 +1146,6 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
                           ('4b', '4', 0)],
                          revisions)
 
-
     def test_file_id_for_range(self):
         mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
         b.lock_read()
@@ -1156,7 +1156,9 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
             return revspec.in_history(branch)
 
         def view_revs(start_rev, end_rev, file_id, direction):
-            revs = log.calculate_view_revisions(
+            revs = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 2, 0)),
+                log.calculate_view_revisions,
                 b,
                 start_rev, # start_revision
                 end_rev, # end_revision
