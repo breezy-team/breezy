@@ -1985,10 +1985,13 @@ class RepositoryPackCollection(object):
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
         if obsolete_packs:
-            orig_disk_names = set([x[0][0] for x in orig_disk_nodes])
+            # TODO: We could add one more condition here. "if o.name not in
+            #       orig_disk_nodes and o != the new_pack we haven't written to
+            #       disk yet. However, the new pack object is not easily
+            #       accessible here (it would have to be passed through the
+            #       autopacking code, etc.)
             obsolete_packs = [o for o in obsolete_packs
-                if o.name not in already_obsolete
-                    and (o.name in orig_disk_names or isinstance(o, NewPack))]
+                              if o.name not in already_obsolete]
             self._obsolete_packs(obsolete_packs)
         return [new_node[0][0] for new_node in new_nodes]
 
