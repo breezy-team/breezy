@@ -1790,8 +1790,8 @@ class RepositoryPackCollection(object):
                     '../obsolete_packs/' + pack.file_name())
             except (errors.PathError, errors.TransportError), e:
                 # TODO: Should these be warnings or mutters?
-                warning("couldn't rename obsolete pack, skipping it:\n%s"
-                        % (e,))
+                mutter("couldn't rename obsolete pack, skipping it:\n%s"
+                       % (e,))
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
@@ -1803,8 +1803,8 @@ class RepositoryPackCollection(object):
                     self._index_transport.rename(pack.name + suffix,
                         '../obsolete_packs/' + pack.name + suffix)
                 except (errors.PathError, errors.TransportError), e:
-                    warning("couldn't rename obsolete index, skipping it:\n%s"
-                            % (e,))
+                    mutter("couldn't rename obsolete index, skipping it:\n%s"
+                           % (e,))
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
