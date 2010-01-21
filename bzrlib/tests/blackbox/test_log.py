@@ -69,15 +69,6 @@ class TestLog(tests.TestCaseWithTransport):
         tree.commit(message='merge')
         return tree
 
-    def assertRevnos(self, log, must_have=(), must_not_have=()):
-        """Check if revnos are in or not in the log output"""
-        for revno in must_have:
-            self.assertTrue(('revno: %s\n' % revno) in log,
-                'Does not contain expected revno %s' % revno)
-        for revno in must_not_have:
-            self.assertFalse(('revno: %s\n' % revno) in log,
-                'Contains unexpected revno %s' % revno)
-
     def commit_options(self):
         """Use some mostly fixed values for commits to simplify tests.
 
@@ -561,7 +552,7 @@ class TestLogDiff(TestLogWithLogCatcher):
 
 """
 
-    def assertRevnosAndDiff(self, args, expected,
+    def assertLogRevnosAndDiff(self, args, expected,
                             working_dir='.'):
         self.run_bzr(['log', '-p'] + args, working_dir=working_dir)
         expected_revnos_and_depths = [
@@ -580,24 +571,25 @@ class TestLogDiff(TestLogWithLogCatcher):
                                  fmt % (revno, actual_diff))
 
     def test_log_diff_with_merges(self):
-        self.assertRevnosAndDiff(['-n0'],
-                                 [('2', 0, self._diff_file2_revno2()),
-                                  ('1.1.1', 1, self._diff_file2_revno1_1_1()),
-                                  ('1', 0, self._diff_file1_revno1()
-                                   + self._diff_file2_revno1())],
-                                 working_dir='level0')
+        self.assertLogRevnosAndDiff(
+            ['-n0'],
+            [('2', 0, self._diff_file2_revno2()),
+             ('1.1.1', 1, self._diff_file2_revno1_1_1()),
+             ('1', 0, self._diff_file1_revno1()
+              + self._diff_file2_revno1())],
+            working_dir='level0')
 
 
     def test_log_diff_file1(self):
-        self.assertRevnosAndDiff(['-n0', 'file1'],
-                                 [('1', 0, self._diff_file1_revno1())],
-                                 working_dir='level0')
+        self.assertLogRevnosAndDiff(['-n0', 'file1'],
+                                    [('1', 0, self._diff_file1_revno1())],
+                                    working_dir='level0')
 
     def test_log_diff_file2(self):
-        self.assertRevnosAndDiff(['-n1', 'file2'],
-                                 [('2', 0, self._diff_file2_revno2()),
-                                  ('1', 0, self._diff_file2_revno1())],
-                                 working_dir='level0')
+        self.assertLogRevnosAndDiff(['-n1', 'file2'],
+                                    [('2', 0, self._diff_file2_revno2()),
+                                     ('1', 0, self._diff_file2_revno1())],
+                                    working_dir='level0')
 
 
 class TestLogUnicodeDiff(TestLog):
