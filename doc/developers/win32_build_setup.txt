@@ -37,6 +37,7 @@ Install Packages
    g) zip
    h) unzip
    i) patch
+   j) gettext-devel # brings 'msgfmt'
 
 
 2) Download the supported versions of python from http://www.python.org
