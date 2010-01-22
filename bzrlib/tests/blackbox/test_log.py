@@ -33,12 +33,7 @@ from bzrlib.tests import (
     )
 
 
-class TestLog(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        super(TestLog, self).setUp()
-        self.timezone = 0 # UTC
-        self.timestamp = 1132617600 # Mon 2005-11-22 00:00:00 +0000
+class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
 
     def make_minimal_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
@@ -68,18 +63,6 @@ class TestLog(tests.TestCaseWithTransport):
         tree.merge_from_branch(tree2.branch)
         tree.commit(message='merge')
         return tree
-
-    def commit_options(self):
-        """Use some mostly fixed values for commits to simplify tests.
-
-        Tests can use this function to get some commit attributes. The time
-        stamp is incremented at each commit.
-        """
-        self.timestamp += 1 # 1 second between each commit
-        return dict(committer='Lorem Ipsum <joe@foo.com>',
-                 timezone=self.timezone,
-                 timestamp=self.timestamp,
-                 )
 
     def check_log(self, expected, args, working_dir='level0'):
         out, err = self.run_bzr(['log', '--timezone', 'utc'] + args,
@@ -422,19 +405,15 @@ class TestLogMerges(TestLogWithLogCatcher):
 
     def make_branches_with_merges(self):
         level0 = self.make_branch_and_tree('level0')
-        level0.commit(message='in branch level0', **self.commit_options())
-
+        self.wt_commit(level0, 'in branch level0')
         level1 = level0.bzrdir.sprout('level1').open_workingtree()
-        level1.commit(message='in branch level1', **self.commit_options())
-
+        self.wt_commit(level1, 'in branch level1')
         level2 = level1.bzrdir.sprout('level2').open_workingtree()
-        level2.commit(message='in branch level2', **self.commit_options())
-
+        self.wt_commit(level2, 'in branch level2')
         level1.merge_from_branch(level2.branch)
-        level1.commit(message='merge branch level2', **self.commit_options())
-
+        self.wt_commit(level1, 'merge branch level2')
         level0.merge_from_branch(level1.branch)
-        level0.commit(message='merge branch level1', **self.commit_options())
+        self.wt_commit(level0, 'merge branch level1')
 
     def test_merges_are_indented_by_level(self):
         self.run_bzr(['log', '-n0'], working_dir='level0')
@@ -506,18 +485,18 @@ class TestLogDiff(TestLogWithLogCatcher):
         self.build_tree(['level0/file1', 'level0/file2'])
         level0.add('file1')
         level0.add('file2')
-        level0.commit(message='in branch level0', **self.commit_options())
+        self.wt_commit(level0, 'in branch level0')
 
         level1 = level0.bzrdir.sprout('level1').open_workingtree()
         self.build_tree_contents([('level1/file2', 'hello\n')])
-        level1.commit(message='in branch level1', **self.commit_options())
+        self.wt_commit(level1, 'in branch level1')
         level0.merge_from_branch(level1.branch)
-        level0.commit(message='merge branch level1', **self.commit_options())
+        self.wt_commit(level0, 'merge branch level1')
 
     def _diff_file1_revno1(self):
         return """=== added file 'file1'
 --- file1\t1970-01-01 00:00:00 +0000
-+++ file1\t2005-11-22 00:00:01 +0000
++++ file1\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file1
 
@@ -525,8 +504,8 @@ class TestLogDiff(TestLogWithLogCatcher):
 
     def _diff_file2_revno2(self):
         return """=== modified file 'file2'
---- file2\t2005-11-22 00:00:01 +0000
-+++ file2\t2005-11-22 00:00:02 +0000
+--- file2\t2005-11-22 00:00:00 +0000
++++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
 -contents of level0/file2
 +hello
@@ -535,8 +514,8 @@ class TestLogDiff(TestLogWithLogCatcher):
 
     def _diff_file2_revno1_1_1(self):
         return """=== modified file 'file2'
---- file2\t2005-11-22 00:00:01 +0000
-+++ file2\t2005-11-22 00:00:02 +0000
+--- file2\t2005-11-22 00:00:00 +0000
++++ file2\t2005-11-22 00:00:01 +0000
 @@ -1,1 +1,1 @@
 -contents of level0/file2
 +hello
@@ -546,7 +525,7 @@ class TestLogDiff(TestLogWithLogCatcher):
     def _diff_file2_revno1(self):
         return """=== added file 'file2'
 --- file2\t1970-01-01 00:00:00 +0000
-+++ file2\t2005-11-22 00:00:01 +0000
++++ file2\t2005-11-22 00:00:00 +0000
 @@ -0,0 +1,1 @@
 +contents of level0/file2
 

@@ -28,7 +28,26 @@ from bzrlib import (
     )
 
 
-class TestCaseForLogFormatter(tests.TestCaseWithTransport):
+class TestLogMixin(object):
+
+    def wt_commit(self, wt, message, **kwargs):
+        """Use some mostly fixed values for commits to simplify tests.
+
+        Tests can use this function to get some commit attributes. The time
+        stamp is incremented at each commit.
+        """
+        if getattr(self, 'timestamp', None) is None:
+            self.timestamp = 1132617600 # Mon 2005-11-22 00:00:00 +0000
+        else:
+            self.timestamp += 1 # 1 second between each commit
+        kwargs.setdefault('timestamp', self.timestamp)
+        kwargs.setdefault('timezone', 0) # UTC
+        kwargs.setdefault('committer', 'Joe Foo <joe@foo.com>')
+
+        return wt.commit(message, **kwargs)
+
+
+class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
 
     def setUp(self):
         super(TestCaseForLogFormatter, self).setUp()
@@ -42,8 +61,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         self.addCleanup(restore)
 
     def assertFormatterResult(self, result, branch, formatter_class,
-                              formatter_kwargs=None, show_log_kwargs=None,
-                              normalize=False):
+                              formatter_kwargs=None, show_log_kwargs=None):
         logfile = self.make_utf8_encoded_stringio()
         if formatter_kwargs is None:
             formatter_kwargs = {}
@@ -51,10 +69,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         if show_log_kwargs is None:
             show_log_kwargs = {}
         log.show_log(branch, formatter, **show_log_kwargs)
-        log_content = logfile.getvalue()
-        if normalize:
-            log_content = normalize_log(log_content)
-        self.assertEqualDiff(result, log_content)
+        self.assertEqualDiff(result, logfile.getvalue())
 
     def make_standard_commit(self, branch_nick, **kwargs):
         wt = self.make_branch_and_tree('.')
@@ -63,13 +78,9 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         self.build_tree(['a'])
         wt.add(['a'])
         wt.branch.nick = branch_nick
-        kwargs = dict(kwargs)
-        kwargs.setdefault('message', 'add a')
-        kwargs.setdefault('timestamp', 1132711707)
-        kwargs.setdefault('timezone', 36000)
         kwargs.setdefault('committer', 'Lorem Ipsum <test@example.com>')
         kwargs.setdefault('authors', ['John Doe <jdoe@example.com>'])
-        wt.commit(**kwargs)
+        self.wt_commit(wt, 'add a', **kwargs)
         return wt
 
     def make_commits_with_trailing_newlines(self, wt):
@@ -77,21 +88,14 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         b = wt.branch
         b.nick = 'test'
         self.build_tree_contents([('a', 'hello moto\n')])
-        wt.commit('simple log message', rev_id='a1',
-                  timestamp=1132586655.459960938, timezone=-6*3600,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'simple log message', rev_id='a1')
         self.build_tree_contents([('b', 'goodbye\n')])
         wt.add('b')
-        wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
-                  timestamp=1132586842.411175966, timezone=-6*3600,
-                  committer='Joe Foo <joe@foo.com>',
-                  authors=['Joe Bar <joe@bar.com>'])
+        self.wt_commit(wt, 'multiline\nlog\nmessage\n', rev_id='a2')
 
         self.build_tree_contents([('c', 'just another manic monday\n')])
         wt.add('c')
-        wt.commit('single line with trailing newline\n', rev_id='a3',
-                  timestamp=1132587176.835228920, timezone=-6*3600,
-                  committer = 'Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'single line with trailing newline\n', rev_id='a3')
         return b
 
     def _prepare_tree_with_merges(self, with_tags=False):
@@ -99,23 +103,15 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         if with_tags:
             branch = wt.branch
             branch.tags.set_tag('v0.2', 'rev-2b')
-            wt.commit('rev-3', rev_id='rev-3',
-                      timestamp=1132586900, timezone=36000,
-                      committer='Jane Foo <jane@foo.com>')
+            self.wt_commit(wt, 'rev-3', rev_id='rev-3')
             branch.tags.set_tag('v1.0rc1', 'rev-3')
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
@@ -309,15 +305,15 @@ class TestShortLogFormatter(TestCaseForLogFormatter):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
-    3 Joe Foo\t2005-11-21
+    3 Joe Foo\t2005-11-22
       single line with trailing newline
 
-    2 Joe Bar\t2005-11-21
+    2 Joe Foo\t2005-11-22
       multiline
       log
       message
 
-    1 Joe Foo\t2005-11-21
+    1 Joe Foo\t2005-11-22
       simple log message
 
 """,
@@ -354,25 +350,15 @@ Use --include-merges or -n0 to see merged revisions.
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.branch.set_last_revision_info(1, 'rev-1')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.commit('rev-2b', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-3a', rev_id='rev-3a',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2b', rev_id='rev-2b')
+        self.wt_commit(wt, 'rev-3a', rev_id='rev-3a')
         wt.branch.set_last_revision_info(2, 'rev-2b')
         wt.set_parent_ids(['rev-2b', 'rev-3a'])
-        wt.commit('rev-3b', rev_id='rev-3b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-3b', rev_id='rev-3b')
         self.assertFormatterResult("""\
     3 Joe Foo\t2005-11-22 [merge]
       rev-3b
@@ -387,7 +373,7 @@ Use --include-merges or -n0 to see merged revisions.
     def test_short_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
         self.assertFormatterResult("""\
-    3 Jane Foo\t2005-11-22 {v1.0, v1.0rc1}
+    3 Joe Foo\t2005-11-22 {v1.0, v1.0rc1}
       rev-3
 
     2 Joe Foo\t2005-11-22 {v0.2} [merge]
@@ -404,17 +390,11 @@ Use --include-merges or -n0 to see merged revisions.
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -433,17 +413,11 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         # Note that the 1.1.1 indenting is in fact correct given that
         # the revision numbers are right justified within 5 characters
         # for mainline revnos and 9 characters for dotted revnos.
@@ -466,17 +440,11 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -502,7 +470,7 @@ class TestLongLogFormatter(TestCaseForLogFormatter):
 revno: 1
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_verbose_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 added:
@@ -513,79 +481,73 @@ added:
 
     def test_merges_are_indented_by_level(self):
         wt = self.make_branch_and_tree('parent')
-        wt.commit('first post')
-        self.run_bzr('branch parent child')
-        self.run_bzr(['commit', '-m', 'branch 1', '--unchanged', 'child'])
-        self.run_bzr('branch child smallerchild')
-        self.run_bzr(['commit', '-m', 'branch 2', '--unchanged',
-            'smallerchild'])
-        os.chdir('child')
-        self.run_bzr('merge ../smallerchild')
-        self.run_bzr(['commit', '-m', 'merge branch 2'])
-        os.chdir('../parent')
-        self.run_bzr('merge ../child')
-        wt.commit('merge branch 1')
+        self.wt_commit(wt, 'first post')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
+        self.wt_commit(child_wt, 'branch 1')
+        smallerchild_wt = wt.bzrdir.sprout('smallerchild').open_workingtree()
+        self.wt_commit(smallerchild_wt, 'branch 2')
+        child_wt.merge_from_branch(smallerchild_wt.branch)
+        self.wt_commit(child_wt, 'merge branch 2')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:04 +0000
 message:
   merge branch 1
     ------------------------------------------------------------
     revno: 1.1.2 [merge]
-    committer: Lorem Ipsum <test@example.com>
+    committer: Joe Foo <joe@foo.com>
     branch nick: child
-    timestamp: Just now
+    timestamp: Tue 2005-11-22 00:00:03 +0000
     message:
       merge branch 2
         ------------------------------------------------------------
         revno: 1.2.1
-        committer: Lorem Ipsum <test@example.com>
+        committer: Joe Foo <joe@foo.com>
         branch nick: smallerchild
-        timestamp: Just now
+        timestamp: Tue 2005-11-22 00:00:02 +0000
         message:
           branch 2
     ------------------------------------------------------------
     revno: 1.1.1
-    committer: Lorem Ipsum <test@example.com>
+    committer: Joe Foo <joe@foo.com>
     branch nick: child
-    timestamp: Just now
+    timestamp: Tue 2005-11-22 00:00:01 +0000
     message:
       branch 1
 ------------------------------------------------------------
 revno: 1
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   first post
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=0),
-            show_log_kwargs=dict(verbose=True),
-            normalize=True)
+            show_log_kwargs=dict(verbose=True))
 
     def test_verbose_merge_revisions_contain_deltas(self):
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
         wt.add(['f1','f2'])
-        wt.commit('first post')
-        self.run_bzr('branch parent child')
+        self.wt_commit(wt, 'first post')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
         os.unlink('child/f1')
-        file('child/f2', 'wb').write('hello\n')
-        self.run_bzr(['commit', '-m', 'removed f1 and modified f2',
-            'child'])
-        os.chdir('parent')
-        self.run_bzr('merge ../child')
-        wt.commit('merge branch 1')
+        self.build_tree_contents([('child/f2', 'hello\n')])
+        self.wt_commit(child_wt, 'removed f1 and modified f2')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:02 +0000
 message:
   merge branch 1
 removed:
@@ -594,9 +556,9 @@ modified:
   f2
     ------------------------------------------------------------
     revno: 1.1.1
-    committer: Lorem Ipsum <test@example.com>
+    committer: Joe Foo <joe@foo.com>
     branch nick: child
-    timestamp: Just now
+    timestamp: Tue 2005-11-22 00:00:01 +0000
     message:
       removed f1 and modified f2
     removed:
@@ -605,9 +567,9 @@ modified:
       f2
 ------------------------------------------------------------
 revno: 1
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   first post
 added:
@@ -616,8 +578,7 @@ added:
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=0),
-            show_log_kwargs=dict(verbose=True),
-            normalize=True)
+            show_log_kwargs=dict(verbose=True))
 
     def test_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -627,15 +588,14 @@ added:
 revno: 3
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:32:56 -0600
+timestamp: Tue 2005-11-22 00:00:02 +0000
 message:
   single line with trailing newline
 ------------------------------------------------------------
 revno: 2
-author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:27:22 -0600
+timestamp: Tue 2005-11-22 00:00:01 +0000
 message:
   multiline
   log
@@ -644,7 +604,7 @@ message:
 revno: 1
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:24:15 -0600
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   simple log message
 """,
@@ -663,7 +623,7 @@ revno: 1
 author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_author_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 """,
@@ -688,7 +648,7 @@ test_prop: test_value
 author: John Doe <jdoe@example.com>
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_properties_in_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 """,
@@ -706,7 +666,7 @@ message:
             'trivial_custom_prop_handler',
             trivial_custom_prop_handler)
         self.assertFormatterResult("""\
-    1 John Doe\t2005-11-23
+    1 John Doe\t2005-11-22
       test_prop: test_value
       add a
 
@@ -763,7 +723,7 @@ class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
 revno: 1
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_long_verbose_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 added:
@@ -777,19 +737,19 @@ added:
         wt = self.make_branch_and_tree('parent')
         self.build_tree(['parent/f1', 'parent/f2'])
         wt.add(['f1','f2'])
-        wt.commit('first post')
+        self.wt_commit(wt, 'first post')
         child_wt = wt.bzrdir.sprout('child').open_workingtree()
         os.unlink('child/f1')
         self.build_tree_contents([('child/f2', 'hello\n')])
-        child_wt.commit('removed f1 and modified f2')
+        self.wt_commit(child_wt, 'removed f1 and modified f2')
         wt.merge_from_branch(child_wt.branch)
-        wt.commit('merge branch 1')
+        self.wt_commit(wt, 'merge branch 1')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
 revno: 2 [merge]
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:02 +0000
 message:
   merge branch 1
 removed:
@@ -798,9 +758,9 @@ modified:
   f2
 ------------------------------------------------------------
 revno: 1
-committer: Lorem Ipsum <test@example.com>
+committer: Joe Foo <joe@foo.com>
 branch nick: parent
-timestamp: Just now
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   first post
 added:
@@ -809,8 +769,7 @@ added:
 """,
             wt.branch, log.LongLogFormatter,
             formatter_kwargs=dict(levels=1),
-            show_log_kwargs=dict(verbose=True),
-            normalize=True)
+            show_log_kwargs=dict(verbose=True))
 
     def test_long_trailing_newlines(self):
         wt = self.make_branch_and_tree('.')
@@ -820,15 +779,14 @@ added:
 revno: 3
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:32:56 -0600
+timestamp: Tue 2005-11-22 00:00:02 +0000
 message:
   single line with trailing newline
 ------------------------------------------------------------
 revno: 2
-author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:27:22 -0600
+timestamp: Tue 2005-11-22 00:00:01 +0000
 message:
   multiline
   log
@@ -837,7 +795,7 @@ message:
 revno: 1
 committer: Joe Foo <joe@foo.com>
 branch nick: test
-timestamp: Mon 2005-11-21 09:24:15 -0600
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   simple log message
 """,
@@ -855,7 +813,7 @@ revno: 1
 author: John Doe <jdoe@example.com>
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_author_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 """,
@@ -880,7 +838,7 @@ test_prop: test_value
 author: John Doe <jdoe@example.com>
 committer: Lorem Ipsum <test@example.com>
 branch nick: test_properties_in_log
-timestamp: Wed 2005-11-23 12:08:27 +1000
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   add a
 """,
@@ -899,7 +857,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
         self.assertFormatterResult("""\
-1: Line-Log-Formatte... 2005-11-23 add a
+1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
 
@@ -907,9 +865,9 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
         wt = self.make_branch_and_tree('.')
         b = self.make_commits_with_trailing_newlines(wt)
         self.assertFormatterResult("""\
-3: Joe Foo 2005-11-21 single line with trailing newline
-2: Joe Bar 2005-11-21 multiline
-1: Joe Foo 2005-11-21 simple log message
+3: Joe Foo 2005-11-22 single line with trailing newline
+2: Joe Foo 2005-11-22 multiline
+1: Joe Foo 2005-11-22 simple log message
 """,
             b, log.LineLogFormatter)
 
@@ -926,7 +884,7 @@ class TestLineLogFormatter(TestCaseForLogFormatter):
     def test_line_log_with_tags(self):
         wt = self._prepare_tree_with_merges(with_tags=True)
         self.assertFormatterResult("""\
-3: Jane Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
+3: Joe Foo 2005-11-22 {v1.0, v1.0rc1} rev-3
 2: Joe Foo 2005-11-22 [merge] {v0.2} rev-2
 1: Joe Foo 2005-11-22 rev-1
 """,
@@ -944,7 +902,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
                 committer='Line-Log-Formatter Tester <test@line.log>',
                 authors=[])
         self.assertFormatterResult("""\
-1: Line-Log-Formatte... 2005-11-23 add a
+1: Line-Log-Formatte... 2005-11-22 add a
 """,
             wt.branch, log.LineLogFormatter)
 
@@ -953,17 +911,11 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -978,17 +930,11 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
         wt.lock_write()
         self.addCleanup(wt.unlock)
         wt.add('')
-        wt.commit('rev-1', rev_id='rev-1',
-                  timestamp=1132586655, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
-        wt.commit('rev-merged', rev_id='rev-2a',
-                  timestamp=1132586700, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
+        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
         wt.set_parent_ids(['rev-1', 'rev-2a'])
         wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.commit('rev-2', rev_id='rev-2b',
-                  timestamp=1132586800, timezone=36000,
-                  committer='Joe Foo <joe@foo.com>')
+        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
         self.assertFormatterResult("""\
 2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
@@ -998,14 +944,14 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             formatter_kwargs=dict(levels=0))
 
 
-class TestGetViewRevisions(tests.TestCaseWithTransport):
+class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
     def make_tree_with_commits(self):
         """Create a tree with well-known revision ids"""
         wt = self.make_branch_and_tree('tree1')
-        wt.commit('commit one', rev_id='1')
-        wt.commit('commit two', rev_id='2')
-        wt.commit('commit three', rev_id='3')
+        self.wt_commit(wt, 'commit one', rev_id='1')
+        self.wt_commit(wt, 'commit two', rev_id='2')
+        self.wt_commit(wt, 'commit three', rev_id='3')
         mainline_revs = [None, '1', '2', '3']
         rev_nos = {'1': 1, '2': 2, '3': 3}
         return mainline_revs, rev_nos, wt
@@ -1014,9 +960,9 @@ class TestGetViewRevisions(tests.TestCaseWithTransport):
         """Create a tree with well-known revision ids and a merge"""
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         tree2 = wt.bzrdir.sprout('tree2').open_workingtree()
-        tree2.commit('four-a', rev_id='4a')
+        self.wt_commit(tree2, 'four-a', rev_id='4a')
         wt.merge_from_branch(tree2.branch)
-        wt.commit('four-b', rev_id='4b')
+        self.wt_commit(wt, 'four-b', rev_id='4b')
         mainline_revs.append('4b')
         rev_nos['4b'] = 4
         # 4a: 3.1.1
@@ -1536,7 +1482,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
 
 
 
-class TestLogWithBugs(TestCaseForLogFormatter):
+class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
     def setUp(self):
         TestCaseForLogFormatter.setUp(self)
@@ -1549,17 +1495,13 @@ class TestLogWithBugs(TestCaseForLogFormatter):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['a', 'b'])
         tree.add('a')
-        tree.commit('simple log message', rev_id='a1',
-                    timestamp=1132586655.459960938, timezone=-6*3600,
-                    committer='Joe Foo <joe@foo.com>',
-                    revprops={'bugs': 'test://bug/id fixed'})
+        self.wt_commit(tree, 'simple log message', rev_id='a1',
+                       revprops={'bugs': 'test://bug/id fixed'})
         tree.add('b')
-        tree.commit('multiline\nlog\nmessage\n', rev_id='a2',
-                    timestamp=1132586842.411175966, timezone=-6*3600,
-                    committer='Joe Foo <joe@foo.com>',
-                    authors=['Joe Bar <joe@bar.com>'],
-                    revprops={'bugs': 'test://bug/id fixed\n'
-                                      'test://bug/2 fixed'})
+        self.wt_commit(tree, 'multiline\nlog\nmessage\n', rev_id='a2',
+                       authors=['Joe Bar <joe@bar.com>'],
+                       revprops={'bugs': 'test://bug/id fixed\n'
+                                 'test://bug/2 fixed'})
         return tree
 
 
@@ -1572,7 +1514,7 @@ fixes bug(s): test://bug/id test://bug/2
 author: Joe Bar <joe@bar.com>
 committer: Joe Foo <joe@foo.com>
 branch nick: work
-timestamp: Mon 2005-11-21 09:27:22 -0600
+timestamp: Tue 2005-11-22 00:00:01 +0000
 message:
   multiline
   log
@@ -1582,7 +1524,7 @@ revno: 1
 fixes bug(s): test://bug/id
 committer: Joe Foo <joe@foo.com>
 branch nick: work
-timestamp: Mon 2005-11-21 09:24:15 -0600
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   simple log message
 """,
@@ -1591,13 +1533,13 @@ message:
     def test_short_bugs(self):
         tree = self.make_commits_with_bugs()
         self.assertFormatterResult("""\
-    2 Joe Bar\t2005-11-21
+    2 Joe Bar\t2005-11-22
       fixes bug(s): test://bug/id test://bug/2
       multiline
       log
       message
 
-    1 Joe Foo\t2005-11-21
+    1 Joe Foo\t2005-11-22
       fixes bug(s): test://bug/id
       simple log message
 
@@ -1607,12 +1549,10 @@ message:
     def test_wrong_bugs_property(self):
         tree = self.make_branch_and_tree(u'.')
         self.build_tree(['foo'])
-        tree.commit('simple log message', rev_id='a1',
-              timestamp=1132586655.459960938, timezone=-6*3600,
-              committer='Joe Foo <joe@foo.com>',
-              revprops={'bugs': 'test://bug/id invalid_value'})
+        self.wt_commit(tree, 'simple log message', rev_id='a1',
+                       revprops={'bugs': 'test://bug/id invalid_value'})
         self.assertFormatterResult("""\
-    1 Joe Foo\t2005-11-21
+    1 Joe Foo\t2005-11-22
       simple log message
 
 """,
