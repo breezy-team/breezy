@@ -1057,7 +1057,7 @@ class TestRunner(tests.TestCase):
             '(?sm)^bzr selftest.*$'
             '.*'
             '^======================================================================\n'
-            '^FAIL: unittest.FunctionTestCase \\(failing_test\\)\n'
+            '^FAIL: failing_test\n'
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc

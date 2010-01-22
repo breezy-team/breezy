@@ -1441,7 +1441,7 @@ class BranchFormat(object):
             format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
@@ -1796,7 +1796,7 @@ class BranchFormatMetadir(BranchFormat):
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()

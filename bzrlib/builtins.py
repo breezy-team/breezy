@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2004-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2609,6 +2609,13 @@ class cmd_ignore(Command):
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
     it.
+    
+    Patterns prefixed with '!' are exceptions to ignore patterns and take
+    precedence over regular ignores.  Such exceptions are used to specify
+    files that should be versioned which would otherwise be ignored.
+    
+    Patterns prefixed with '!!' act as regular ignore patterns, but have
+    precedence over the '!' exception patterns.
 
     Note: ignore patterns containing shell wildcards must be quoted from
     the shell on Unix.
@@ -2618,9 +2625,13 @@ class cmd_ignore(Command):
 
             bzr ignore ./Makefile
 
-        Ignore class files in all directories::
+        Ignore .class files in all directories...::
 
             bzr ignore "*.class"
+
+        ...but do not ignore "special.class"::
+
+            bzr ignore "!special.class"
 
         Ignore .o files under the lib directory::
 
@@ -2633,6 +2644,13 @@ class cmd_ignore(Command):
         Ignore everything but the "debian" toplevel directory::
 
             bzr ignore "RE:(?!debian/).*"
+        
+        Ignore everything except the "local" toplevel directory,
+        but always ignore "*~" autosave files, even under local/::
+        
+            bzr ignore "*"
+            bzr ignore "!./local"
+            bzr ignore "!!*~"
     """
 
     _see_also = ['status', 'ignored', 'patterns']
@@ -3647,7 +3665,12 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.
+    --force is given. The --force option can also be used to create a
+    merge revision which has more than two parents.
+
+    If one would like to merge changes from the working tree of the other
+    branch without merging any committed revisions, the --uncommitted option
+    can be given.
 
     To select only some changes to merge, use "merge -i", which will prompt
     you to apply each diff hunk and file change, similar to "shelve".
@@ -3668,6 +3691,13 @@ class cmd_merge(Command):
         To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
+
+        To create a merge revision with three parents from two branches
+        feature1a and feature1b:
+
+            bzr merge ../feature1a
+            bzr merge ../feature1b --force
+            bzr commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
@@ -4083,22 +4113,23 @@ class cmd_revert(Command):
     created as above.  Directories containing unknown files will not be
     deleted.
 
-    The working tree contains a list of pending merged revisions, which will
-    be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files are specified, revert
-    leaves the pending merge list alone and reverts only the files.  Use "bzr
-    revert ." in the tree root to revert all files but keep the merge record,
-    and "bzr revert --forget-merges" to clear the pending merge list without
+    The working tree contains a list of revisions that have been merged but
+    not yet committed. These revisions will be included as additional parents
+    of the next commit.  Normally, using revert clears that list as well as
+    reverting the files.  If any files are specified, revert leaves the list
+    of uncommitted merges alone and reverts only the files.  Use ``bzr revert
+    .`` in the tree root to revert all files but keep the recorded merges,
+    and ``bzr revert --forget-merges`` to clear the pending merge list without
     reverting any files.
 
-    Using "bzr revert --forget-merges", it is possible to apply the changes
-    from an arbitrary merge as a single revision.  To do this, perform the
-    merge as desired.  Then doing revert with the "--forget-merges" option will
-    keep the content of the tree as it was, but it will clear the list of
-    pending merges.  The next commit will then contain all of the changes that
-    would have been in the merge, but without any mention of the other parent
-    revisions.  Because this technique forgets where these changes originated,
-    it may cause additional conflicts on later merges involving the source and
+    Using "bzr revert --forget-merges", it is possible to apply all of the
+    changes from a branch in a single revision.  To do this, perform the merge
+    as desired.  Then doing revert with the "--forget-merges" option will keep
+    the content of the tree as it was, but it will clear the list of pending
+    merges.  The next commit will then contain all of the changes that are
+    present in the other branch, but without any other parent revisions.
+    Because this technique forgets where these changes originated, it may
+    cause additional conflicts on later merges involving the same source and
     target branches.
     """
 
@@ -4728,10 +4759,12 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info' command.
+    You can get information on what locks are open via the 'bzr info
+    [location]' command.
 
     :Examples:
         bzr break-lock
+        bzr break-lock bzr+ssh://example.com/bzr/foo
     """
     takes_args = ['location?']
 
@@ -5009,18 +5042,32 @@ class cmd_send(Command):
       directly from the merge directive, without retrieving data from a
       branch.
 
-    If --no-bundle is specified, then public_branch is needed (and must be
-    up-to-date), so that the receiver can perform the merge using the
-    public_branch.  The public_branch is always included if known, so that
-    people can check it later.
+    `bzr send` creates a compact data set that, when applied using bzr
+    merge, has the same effect as merging from the source branch.  
+    
+    By default the merge directive is self-contained and can be applied to any
+    branch containing submit_branch in its ancestory without needing access to
+    the source branch.
+    
+    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    revisions, but only a structured request to merge from the
+    public_location.  In that case the public_branch is needed and it must be
+    up-to-date and accessible to the recipient.  The public_branch is always
+    included if known, so that people can check it later.
 
-    The submit branch defaults to the parent, but can be overridden.  Both
-    submit branch and public branch will be remembered if supplied.
+    The submit branch defaults to the parent of the source branch, but can be
+    overridden.  Both submit branch and public branch will be remembered in
+    branch.conf the first time they are used for a particular branch.  The
+    source branch defaults to that containing the working directory, but can
+    be changed using --from.
 
-    If a public_branch is known for the submit_branch, that public submit
-    branch is used in the merge instructions.  This means that a local mirror
-    can be used as your actual submit branch, once you have set public_branch
-    for that mirror.
+    In order to calculate those changes, bzr must analyse the submit branch.
+    Therefore it is most efficient for the submit branch to be a local mirror.
+    If a public location is known for the submit_branch, that location is used
+    in the merge directive.
+
+    The default behaviour is to send the merge directive by mail, unless -o is
+    given, in which case it is sent to a file.
 
     Mail is sent using your preferred mail program.  This should be transparent
     on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
@@ -5046,6 +5093,10 @@ class cmd_send(Command):
 
     The merge directives created by bzr send may be applied using bzr merge or
     bzr pull by specifying a file containing a merge directive as the location.
+
+    bzr send makes extensive use of public locations to map local locations into
+    URLs that can be used by other people.  See `bzr help configuration` to
+    set them, and use `bzr info` to display them.
     """
 
     encoding_type = 'exact'
@@ -5417,18 +5468,26 @@ class cmd_switch(Command):
     that of the master.
     """
 
-    takes_args = ['to_location']
+    takes_args = ['to_location?']
     takes_options = [Option('force',
                         help='Switch even if local commits will be lost.'),
+                     'revision',
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
-                     ]
+                    ]
 
-    def run(self, to_location, force=False, create_branch=False):
+    def run(self, to_location=None, force=False, create_branch=False,
+            revision=None):
         from bzrlib import switch
         tree_location = '.'
+        revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        if to_location is None:
+            if revision is None:
+                raise errors.BzrCommandError('You must supply either a'
+                                             ' revision or a location')
+            to_location = '.'
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5448,13 +5507,6 @@ class cmd_switch(Command):
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
-            # try:
-            #     from_branch = control_dir.open_branch()
-            # except errors.NotBranchError:
-            #     raise BzrCommandError('Cannot create a branch from this'
-            #         ' location when we cannot open this branch')
-            # from_branch.bzrdir.sprout(
-            pass
         else:
             try:
                 to_branch = Branch.open(to_location)
@@ -5462,7 +5514,9 @@ class cmd_switch(Command):
                 this_url = self._get_branch_location(control_dir)
                 to_branch = Branch.open(
                     urlutils.join(this_url, '..', to_location))
-        switch.switch(control_dir, to_branch, force)
+        if revision is not None:
+            revision = revision.as_revision_id(to_branch)
+        switch.switch(control_dir, to_branch, force, revision_id=revision)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick

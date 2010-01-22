@@ -561,6 +561,9 @@ request_handlers.register_lazy(
     'BzrDir.open_branchV2', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranchV2')
 request_handlers.register_lazy(
+    'BzrDir.open_branchV3', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranchV3')
+request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(
     'get', 'bzrlib.smart.vfs', 'GetRequest')
