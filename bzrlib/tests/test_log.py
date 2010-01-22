@@ -1090,6 +1090,11 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         #       use it. Since 'log' only uses the tree in a readonly
         #       fashion, it seems a shame to regenerate an identical
         #       tree for each test.
+        # TODO: vila 20100122 One way to address the shame above will be to
+        #       create a memory tree during test parametrization and give a
+        #       *copy* of this tree to each test. Copying a memory tree ought
+        #       to be cheap, at least cheaper than creating them with such
+        #       complex setups.
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
