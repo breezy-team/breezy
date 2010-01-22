@@ -646,7 +646,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
     def create_branch(self):
         bzr = self.run_bzr
         bzr('init')
-        open('a', 'wb').write('some stuff\n')
+        self.build_tree_contents([('a', 'some stuff\n')])
         bzr('add a')
         bzr(['commit', '-m', self._message])
 

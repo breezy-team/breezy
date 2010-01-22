@@ -76,19 +76,18 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport):
         """Helper method for LogFormatter tests"""
         b = wt.branch
         b.nick = 'test'
-        open('a', 'wb').write('hello moto\n')
-        wt.add('a')
+        self.build_tree_contents([('a', 'hello moto\n')])
         wt.commit('simple log message', rev_id='a1',
                   timestamp=1132586655.459960938, timezone=-6*3600,
                   committer='Joe Foo <joe@foo.com>')
-        open('b', 'wb').write('goodbye\n')
+        self.build_tree_contents([('b', 'goodbye\n')])
         wt.add('b')
         wt.commit('multiline\nlog\nmessage\n', rev_id='a2',
                   timestamp=1132586842.411175966, timezone=-6*3600,
                   committer='Joe Foo <joe@foo.com>',
                   authors=['Joe Bar <joe@bar.com>'])
 
-        open('c', 'wb').write('just another manic monday\n')
+        self.build_tree_contents([('c', 'just another manic monday\n')])
         wt.add('c')
         wt.commit('single line with trailing newline\n', rev_id='a3',
                   timestamp=1132587176.835228920, timezone=-6*3600,
