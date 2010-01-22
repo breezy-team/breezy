@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,6 +61,12 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
         
+    def be_quiet(self, state):
+        if state and not self._quiet:
+            self.clear_term()
+        UIFactory.be_quiet(self, state)
+        self._progress_view = self.make_progress_view()
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -146,9 +152,13 @@ class TextUIFactory(UIFactory):
     def make_progress_view(self):
         """Construct and return a new ProgressView subclass for this UI.
         """
-        # if the user specifically requests either text or no progress bars,
-        # always do that.  otherwise, guess based on $TERM and tty presence.
-        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+        # with --quiet, never any progress view
+        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # user specifically requests either text or no progress bars, always
+        # do that.  otherwise, guess based on $TERM and tty presence.
+        if self.is_quiet():
+            return NullProgressView()
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'text':
             return TextProgressView(self.stderr)
         elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
             return NullProgressView()

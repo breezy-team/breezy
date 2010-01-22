@@ -237,6 +237,9 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%d non-main threads were left active in the end.\n'
                 % (TestCase._active_threads - 1))
 
+    def getDescription(self, test):
+        return test.id()
+
     def _extractBenchmarkTime(self, testCase, details=None):
         """Add a benchmark time for the current test case."""
         if details and 'benchtime' in details:
@@ -3749,6 +3752,7 @@ def _test_suite_modules_to_doctest():
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
+        'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',

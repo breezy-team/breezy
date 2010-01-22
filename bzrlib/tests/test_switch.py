@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,6 +99,35 @@ class TestSwitch(tests.TestCaseWithTransport):
             switch.switch, checkout.bzrdir, tree2.branch)
         self.assertContainsRe(str(err),
             "Pending merges must be committed or reverted before using switch")
+
+    def test_switch_with_revision(self):
+        """Test switch when a revision is given."""
+        # Create a tree with 2 revisions
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1'])
+        tree.add('file-1')
+        tree.commit(rev_id='rev1', message='rev1')
+        self.build_tree(['branch-1/file-2'])
+        tree.add('file-2')
+        tree.commit(rev_id='rev2', message='rev2')
+        # Check it out and switch to revision 1
+        checkout = tree.branch.create_checkout('checkout',
+            lightweight=self.lightweight)
+        switch.switch(checkout.bzrdir, tree.branch, revision_id="rev1")
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+
+    def test_switch_changing_root_id(self):
+        tree = self._setup_tree()
+        tree2 = self.make_branch_and_tree('tree-2')
+        tree2.set_root_id('custom-root-id')
+        self.build_tree(['tree-2/file-2'])
+        tree2.add(['file-2'])
+        tree2.commit('rev1b')
+        checkout = tree.branch.create_checkout('checkout',
+            lightweight=self.lightweight)
+        switch.switch(checkout.bzrdir, tree2.branch)
+        self.assertEqual('custom-root-id', tree2.get_root_id())
 
 
 class TestSwitchHeavyweight(TestSwitch):
