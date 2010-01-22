@@ -64,12 +64,6 @@ class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
         tree.commit(message='merge')
         return tree
 
-    def check_log(self, expected, args, working_dir='level0'):
-        out, err = self.run_bzr(['log', '--timezone', 'utc'] + args,
-                                working_dir=working_dir)
-        self.assertEqual('', err)
-        self.assertEqualDiff(expected, test_log.normalize_log(out))
-
 
 class TestLogWithLogCatcher(TestLog):
 

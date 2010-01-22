@@ -281,24 +281,6 @@ class TestShowLog(tests.TestCaseWithTransport):
         self.checkDelta(logentry.delta, added=['file1', 'file2'])
 
 
-
-def normalize_log(log):
-    """Replaces the variable lines of logs with fixed lines"""
-    author = 'author: Dolor Sit <test@example.com>'
-    committer = 'committer: Lorem Ipsum <test@example.com>'
-    lines = log.splitlines(True)
-    for idx,line in enumerate(lines):
-        stripped_line = line.lstrip()
-        indent = ' ' * (len(line) - len(stripped_line))
-        if stripped_line.startswith('author:'):
-            lines[idx] = indent + author + '\n'
-        elif stripped_line.startswith('committer:'):
-            lines[idx] = indent + committer + '\n'
-        elif stripped_line.startswith('timestamp:'):
-            lines[idx] = indent + 'timestamp: Just now\n'
-    return ''.join(lines)
-
-
 class TestShortLogFormatter(TestCaseForLogFormatter):
 
     def test_trailing_newlines(self):
