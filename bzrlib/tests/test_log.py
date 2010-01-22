@@ -116,7 +116,6 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
 
-
 class LogCatcher(log.LogFormatter):
     """Pull log messages into a list rather than displaying them.
 
@@ -328,15 +327,7 @@ Use --include-merges or -n0 to see merged revisions.
             formatter_kwargs=dict(show_advice=True))
 
     def test_short_log_with_merges_and_range(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        self.wt_commit(wt, 'rev-2b', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         self.wt_commit(wt, 'rev-3a', rev_id='rev-3a')
         wt.branch.set_last_revision_info(2, 'rev-2b')
         wt.set_parent_ids(['rev-2b', 'rev-3a'])
@@ -346,7 +337,7 @@ Use --include-merges or -n0 to see merged revisions.
       rev-3b
 
     2 Joe Foo\t2005-11-22 [merge]
-      rev-2b
+      rev-2
 
 """,
             wt.branch, log.ShortLogFormatter,
@@ -368,15 +359,7 @@ Use --include-merges or -n0 to see merged revisions.
             wt.branch, log.ShortLogFormatter)
 
     def test_short_log_single_merge_revision(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -391,15 +374,7 @@ Use --include-merges or -n0 to see merged revisions.
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
     def test_short_merge_revs_log_with_merges(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         # Note that the 1.1.1 indenting is in fact correct given that
         # the revision numbers are right justified within 5 characters
         # for mainline revnos and 9 characters for dotted revnos.
@@ -418,15 +393,7 @@ class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             formatter_kwargs=dict(levels=0))
 
     def test_short_merge_revs_log_single_merge_revision(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -889,15 +856,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             wt.branch, log.LineLogFormatter)
 
     def test_line_merge_revs_log_single_merge_revision(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         revspec = revisionspec.RevisionSpec.from_string('1.1.1')
         rev = revspec.in_history(wt.branch)
         self.assertFormatterResult("""\
@@ -908,15 +867,7 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             show_log_kwargs=dict(start_revision=rev, end_revision=rev))
 
     def test_line_merge_revs_log_with_merges(self):
-        wt = self.make_branch_and_memory_tree('.')
-        wt.lock_write()
-        self.addCleanup(wt.unlock)
-        wt.add('')
-        self.wt_commit(wt, 'rev-1', rev_id='rev-1')
-        self.wt_commit(wt, 'rev-merged', rev_id='rev-2a')
-        wt.set_parent_ids(['rev-1', 'rev-2a'])
-        wt.branch.set_last_revision_info(1, 'rev-1')
-        self.wt_commit(wt, 'rev-2', rev_id='rev-2b')
+        wt = self._prepare_tree_with_merges()
         self.assertFormatterResult("""\
 2: Joe Foo 2005-11-22 [merge] rev-2
   1.1.1: Joe Foo 2005-11-22 rev-merged
