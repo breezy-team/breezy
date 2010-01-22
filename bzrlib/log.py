@@ -1043,6 +1043,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
@@ -1057,8 +1058,6 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    # This method is no longer called by the main code path.
-    # It may be removed soon. IGC 20090127
     if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
@@ -1170,15 +1169,13 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     return result
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
                        include_merges=True):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090127
     if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':

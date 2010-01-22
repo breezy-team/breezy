@@ -879,6 +879,10 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
 
 class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
+    def _get_view_revisions(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+                                    log.get_view_revisions, *args, **kwargs)
+
     def make_tree_with_commits(self):
         """Create a tree with well-known revision ids"""
         wt = self.make_branch_and_tree('tree1')
@@ -949,11 +953,11 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0)],
                          revisions)
-        revisions2 = list(log.get_view_revisions(
+        revisions2 = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward',
                 include_merges=False))
         self.assertEqual(revisions, revisions2)
@@ -963,11 +967,11 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
         mainline_revs, rev_nos, wt = self.make_tree_with_commits()
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse'))
         self.assertEqual([('3', '3', 0), ('2', '2', 0), ('1', '1', 0), ],
                          revisions)
-        revisions2 = list(log.get_view_revisions(
+        revisions2 = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse',
                 include_merges=False))
         self.assertEqual(revisions, revisions2)
@@ -977,12 +981,12 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward'))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
                           ('4b', '4', 0), ('4a', '3.1.1', 1)],
                          revisions)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'forward',
                 include_merges=False))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3', '3', 0),
@@ -994,12 +998,12 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
         mainline_revs, rev_nos, wt = self.make_tree_with_merges()
         wt.lock_read()
         self.addCleanup(wt.unlock)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse'))
         self.assertEqual([('4b', '4', 0), ('4a', '3.1.1', 1),
                           ('3', '3', 0), ('2', '2', 0), ('1', '1', 0)],
                          revisions)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, wt.branch, 'reverse',
                 include_merges=False))
         self.assertEqual([('4b', '4', 0), ('3', '3', 0), ('2', '2', 0),
@@ -1011,13 +1015,13 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
         mainline_revs, rev_nos, b = self.make_branch_with_many_merges()
         b.lock_read()
         self.addCleanup(b.unlock)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, b, 'forward'))
         expected = [('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
                     ('3b', '2.2.1', 1), ('3a', '2.1.1', 2), ('4b', '4', 0),
                     ('4a', '2.2.2', 1)]
         self.assertEqual(expected, revisions)
-        revisions = list(log.get_view_revisions(
+        revisions = list(self._get_view_revisions(
                 mainline_revs, rev_nos, b, 'forward',
                 include_merges=False))
         self.assertEqual([('1', '1', 0), ('2', '2', 0), ('3c', '3', 0),
@@ -1058,6 +1062,10 @@ class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
 
 class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
+
+    def get_view_revisions(self, *args):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+                                    log.get_view_revisions, *args)
 
     def create_tree_with_single_merge(self):
         """Create a branch with a moderate layout.
@@ -1162,12 +1170,10 @@ class TestGetRevisionsTouchingFileID(tests.TestCaseWithTransport):
         mainline = tree.branch.revision_history()
         mainline.insert(0, None)
         revnos = dict((rev, idx+1) for idx, rev in enumerate(mainline))
-        view_revs_iter = log.get_view_revisions(mainline, revnos, tree.branch,
-                                                'reverse', True)
+        view_revs_iter = self.get_view_revisions(
+            mainline, revnos, tree.branch, 'reverse', True)
         actual_revs = log._filter_revisions_touching_file_id(
-                            tree.branch,
-                            file_id,
-                            list(view_revs_iter))
+            tree.branch, file_id, list(view_revs_iter))
         self.assertEqual(revisions, [r for r, revno, depth in actual_revs])
 
     def test_file_id_f1(self):
