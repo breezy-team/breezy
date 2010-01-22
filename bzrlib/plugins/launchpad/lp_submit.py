@@ -11,6 +11,7 @@ from bzrlib import (
 )
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.plugins.launchpad import lp_api
+from bzrlib.plugins.launchpad import lp_registration
 
 class NoLaunchpadLib(errors.BzrCommandError):
 
@@ -48,17 +49,18 @@ class Submitter(object):
                  staging=False):
         self.tree = tree
         if staging:
-            service_root = launchpad.STAGING_SERVICE_ROOT
+            lp_instance = 'staging'
         else:
-            service_root = launchpad.EDGE_SERVICE_ROOT
-        self.launchpad = lp_api.login(service_root)
+            lp_instance = 'edge'
+        service = lp_registration.LaunchpadService(lp_instance=lp_instance)
+        self.launchpad = lp_api.login(service)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
-            source_branch, self.launchpad)
+            self.launchpad, source_branch)
         if target_branch is None:
             self.target_branch = self.source_branch.get_dev_focus()
         else:
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
-                target_branch, self.launchpad)
+                self.launchpad, target_branch)
         self.commit_message = message
         if reviews == []:
             target_reviewer = self.target_branch.lp.reviewer
@@ -122,12 +124,13 @@ class Submitter(object):
                     canonical_url(mp))
 
     def _get_prerequisite_branch(self):
-        hooks = self.hooks['prerequisite_branch']
+        hooks = self.hooks['get_prerequisite']
         prerequisite_branch = None
         for hook in hooks:
             prerequisite_branch = hook(
                 {'launchpad': self.launchpad,
-                 'source_branch': self.source_branch, 
+                 'source_branch': self.source_branch,
+                 'target_branch': self.target_branch,
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
@@ -159,31 +162,8 @@ class Submitter(object):
             webbrowser.open(canonical_url(mp))
 
 
-def get_prerequisite_from_pipe(hook_params):
-    # XXX: Move this to pipeline
-    source_branch = hook_params['source_branch']
-    launchpad = hook_params['launchpad']
-    manager = PipeManager(source_branch)
-    prev_pipe = manager.get_prev_pipe()
-    if prev_pipe is not None:
-        prerequisite_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, prev_pipe)
-    else:
-        prerequisite_branch = None
-    source_branch.update_lp()
-    if prerequisite_branch is not None:
-        prerequisite_branch.update_lp()
-    return prerequisite_branch
-
-
-# XXX: When we move the pipeline command, we should make sure it
-# constructs Submitter correctly.
-
-Submitter.hooks.install_named_hook(
-    'get_prerequisite', get_prerequisite_from_pipe, 
-    'Get the prerequisite from the pipeline')
 
 
 def canonical_url(object):
     url = object.self_link.replace('https://api.', 'https://code.')
     return url.replace('/beta/', '/')
-

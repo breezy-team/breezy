@@ -22,8 +22,10 @@
 
 
 import os
+import re
 
 from bzrlib import (
+    branch,
     config,
     errors,
     osutils,

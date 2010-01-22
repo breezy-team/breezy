@@ -32,7 +32,12 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.commands import Command, Option, register_command
+from bzrlib import bzrdir
+from bzrlib.commands import (
+        Command,
+        Option,
+        register_command,
+)
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
@@ -42,6 +47,9 @@ from bzrlib.errors import (
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
+from bzrlib.option import (
+        ListOption,
+)
 
 
 class cmd_register_branch(Command):
@@ -275,6 +283,47 @@ class cmd_launchpad_mirror(Command):
 
 
 register_command(cmd_launchpad_mirror)
+
+
+class cmd_lp_submit(Command):
+    """Submit the specified branch to Launchpad for merging."""
+
+    takes_options = [Option('staging',
+                            help='Propose the merge on staging.'),
+                     Option('message', short_name='m', type=unicode,
+                            help='Commit message.'),
+                     ListOption('review', short_name='R', type=unicode,
+                            help='Requested reviewer and optional type.')]
+
+    takes_args = ['submit_branch?']
+
+    def run(self, submit_branch=None, review=None, staging=False,
+            message=None):
+        from bzrlib.plugins.launchpad import lp_submit
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            '.')
+        if review is None:
+            reviews = None
+        else:
+            reviews = []
+            for review in review:
+                if '=' in review:
+                    reviews.append(review.split('=', 2))
+                else:
+                    reviews.append((review, ''))
+            if submit_branch is None:
+                submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            target = None
+        else:
+            target = _mod_branch.Branch.open(submit_branch)
+        submitter = lp_submit.Submitter(tree, branch, target, message,
+                                        reviews, staging)
+        submitter.check_submission()
+        submitter.submit()
+
+
+register_command(cmd_lp_submit)
 
 
 def _register_directory():
