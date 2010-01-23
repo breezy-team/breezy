@@ -88,6 +88,10 @@ from bzrlib.osutils import (
     re_compile_checked,
     terminal_width,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -304,7 +308,7 @@ class LogGenerator(object):
 
 
 class Logger(object):
-    """An object the generates, formats and displays a log."""
+    """An object that generates, formats and displays a log."""
 
     def __init__(self, branch, rqst):
         """Create a Logger.
@@ -597,6 +601,8 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
         else:
             # not obvious
             return False
+    # if either start or end is not specified then we use either the first or
+    # the last revision and *they* are obvious ancestors.
     return True
 
 
@@ -664,11 +670,16 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
+                    # From now on we reduce the depth adjustement, this can be
+                    # surprising for users. The alternative requires two passes
+                    # which breaks the fast display of the first revision
+                    # though.
                     depth_adjustment = merge_depth
                 merge_depth -= depth_adjustment
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
@@ -676,9 +687,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090116
     start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
         end_revision)
     view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
@@ -1034,6 +1042,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
@@ -1048,8 +1057,6 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    # This method is no longer called by the main code path.
-    # It may be removed soon. IGC 20090127
     if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
@@ -1161,15 +1168,13 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     return result
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
                        include_merges=True):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090127
     if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
@@ -1293,8 +1298,8 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-            delta_format=None, levels=None, show_advice=False,
-            to_exact_file=None):
+                 delta_format=None, levels=None, show_advice=False,
+                 to_exact_file=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
