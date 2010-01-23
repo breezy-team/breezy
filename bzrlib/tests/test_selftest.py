@@ -1252,26 +1252,6 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, test)
         self.assertLength(1, calls)
 
-    def test_addAttrCleanup(self):
-        self.test_attr = 'original' # Define a test attribute
-        obj = self # Make 'obj' visible to the embedded test
-        class Test(tests.TestCase):
-
-            def setUp(self):
-                tests.TestCase.setUp(self)
-                self.orig = self.addAttrCleanup(obj, 'test_attr')
-                obj.test_attr = 'modified'
-
-            def test_value(self):
-                self.assertEqual('original', self.orig)
-                self.assertEqual('modified', obj.test_attr)
-
-        runner = tests.TextTestRunner(stream=self._log_file)
-        test = Test('test_value')
-        result = self.run_test_runner(runner, test)
-        self.assertTrue(result.wasSuccessful())
-        self.assertEqual('original', obj.test_attr)
-
 
 class SampleTestCase(tests.TestCase):
 
@@ -1653,6 +1633,24 @@ class TestTestCase(tests.TestCase):
 
         self.assertRaises(AssertionError,
             self.assertListRaises, _TestException, success_generator)
+
+    def test_addAttrCleanup(self):
+        self.test_attr = 'original' # Define a test attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.addAttrCleanup(obj, 'test_attr')
+                obj.test_attr = 'modified'
+
+            def test_value(self):
+                self.assertEqual('original', self.orig)
+                self.assertEqual('modified', obj.test_attr)
+
+        test = Test('test_value')
+        test.run(unittest.TestResult())
+        self.assertEqual('original', obj.test_attr)
 
 
 # NB: Don't delete this; it's not actually from 0.11!
