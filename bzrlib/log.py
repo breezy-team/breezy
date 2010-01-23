@@ -698,7 +698,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     return _rebase_merge_depth(view_revisions)
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
 def _rebase_merge_depth(view_revisions):
     """Adjust depths upwards so the top level is 0."""
     # If either the first or last revision have a merge_depth of 0, we're done
