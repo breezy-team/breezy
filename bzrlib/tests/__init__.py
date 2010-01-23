@@ -1479,6 +1479,16 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
+    def addAttrCleanup(self, obj, attr_name):
+        """Add a cleanup which restores the attribute to its original value.
+
+        :returns: The actual attr value.
+        """
+        value = getattr(obj, attr_name)
+        # The actual value is captured by the call below
+        self.addCleanup(setattr, obj, attr_name, value)
+        return value
+
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
