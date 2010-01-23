@@ -2191,7 +2191,7 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools. You may prefer qlog or glog from the QBzr and Bzr-Gtk packages
+      line tools. You may prefer qlog or viz from the QBzr and Bzr-Gtk packages
       respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
       http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
 
