@@ -171,9 +171,9 @@ Updated to revision 2 of branch %s
         # get all three files and a pending merge.
         out, err = self.run_bzr('update checkout')
         self.assertEqual('', out)
-        self.assertEqualDiff("""+N  file
+        self.assertEqualDiff("""+N  file_b
 All changes applied successfully.
-+N  file_b
++N  file
 All changes applied successfully.
 Updated to revision 1 of branch %s
 Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
@@ -315,3 +315,54 @@ $ bzr update -r revid:m2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
 ''')
+
+    def _prepare_checkout(self):
+        """Helper function to create a checkout with both local commits
+        and uncommitted changes."""
+        master = self.make_branch_and_tree('master')
+        self.build_tree_contents([('master/file', 'initial contents')])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        checkout = master.branch.create_checkout('checkout')
+        lightweight = checkout.branch.create_checkout('lightweight',lightweight=True)
+        
+        # time to create a mess
+        # add a commit to the master
+        self.build_tree_contents([('master/file', 'master')])
+        master.commit('two', rev_id='m2')
+        self.build_tree_contents([('master/file', 'master local changes')])
+
+        # local commit on the checkout
+        self.build_tree_contents([('checkout/file', 'checkout')])
+        checkout.commit('tree', rev_id='c2', local=True)
+        self.build_tree_contents([('checkout/file', 'checkout local changes')])
+
+        # lightweight 
+        self.build_tree_contents([('lightweight/file', 'lightweight local changes')])
+
+    def test_update_checkout_prevent_merge(self):
+        """"Launchpad bug 113809 in bzr "update performs two merges"
+        https://launchpad.net/bugs/113809"""
+
+        self._prepare_checkout()
+
+        out, err = self.run_bzr('update lightweight', retcode=1)
+        self.assertEqual('', out)
+        #self.failIfExists('file.THIS')
+        a_file = file('lightweight/file', 'rt')
+        text = a_file.read()
+        a_file.close()
+        self.assertEqual(text, '<<<<<<< TREE\nlightweight local changes=======\ncheckout>>>>>>> MERGE-SOURCE\n')
+        
+        # resolve it
+        self.build_tree_contents([('lightweight/file', 'lightweight+checkout')])
+        self.run_bzr('resolved lightweight/file')
+
+        out, err = self.run_bzr('update lightweight', retcode=1)
+        self.assertEqual('', out)
+        #self.failIfExists('file.THIS')
+        a_file = file('lightweight/file', 'rt')
+        text = a_file.read()
+        a_file.close()
+        self.assertEqual(text, '<<<<<<< TREE\nlightweight+checkout=======\nmaster>>>>>>> MERGE-SOURCE\n')

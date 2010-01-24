@@ -2271,6 +2271,26 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
+        
+        already_merged = None
+        if (old_tip is not None and not _mod_revision.is_null(old_tip)
+            and old_tip != revision) and last_rev != _mod_revision.ensure_null(revision):
+            #trace.note("Branch out of date, rerun update")
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(revision, old_tip)
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+            other_tree = self.branch.repository.revision_tree(old_tip)
+            result += merge.merge_inner(
+                                  self.branch,
+                                  other_tree,
+                                  base_tree,
+                                  this_tree=self,
+                                  change_reporter=change_reporter)
+            #self.set_pending_merges([old_tip])
+            already_merged = True
+            if result > 0:
+                return result
+
         if last_rev != _mod_revision.ensure_null(revision):
             # merge tree state up to specified revision.
             basis = self.basis_tree()
@@ -2303,17 +2323,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
-                parent_trees.append(
-                    (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
-        else:
-            # the working tree had the same last-revision as the master
-            # branch did. We may still have pivot local work from the local
-            # branch into old_tip:
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
-                self.add_parent_tree_id(old_tip)
+        if already_merged:
+            self.add_parent_tree_id(old_tip)
+            return result
         if (old_tip is not None and not _mod_revision.is_null(old_tip)
             and old_tip != last_rev):
             # our last revision was not the prior branch last revision
@@ -2338,6 +2352,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   base_tree,
                                   this_tree=self,
                                   change_reporter=change_reporter)
+            self.add_parent_tree_id(old_tip)
         return result
 
     def _write_hashcache_if_dirty(self):
