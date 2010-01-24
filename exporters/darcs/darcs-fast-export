@@ -34,6 +34,7 @@ import subprocess
 import optparse
 import re
 import urllib
+import urllib2
 import StringIO
 
 sys = reload(sys)
@@ -154,7 +155,11 @@ class Handler:
 		if os.path.exists(path):
 			return True
 		else:
-			return urllib.urlopen(path).getcode() == 200
+			try:
+				urllib2.urlopen(urllib2.Request(path))
+				return True
+			except urllib2.HTTPError, e:
+				return False
 
 	# this is like open, but supports urls as well
 	def open(self, path):
