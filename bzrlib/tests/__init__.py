@@ -126,6 +126,11 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
+
+_unitialized_attr = object()
+"""A sentinel needed to act as a default value in a method signature."""
+
+
 # Subunit result codes, defined here to prevent a hard dependency on subunit.
 SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
@@ -1479,7 +1484,7 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
-    def addAttrCleanup(self, obj, attr_name):
+    def overrideAttr(test, obj, attr_name, new=_unitialized_attr):
         """Add a cleanup which restores the attribute to its original value.
 
         :returns: The actual attr value.
@@ -1487,6 +1492,8 @@ class TestCase(testtools.TestCase):
         value = getattr(obj, attr_name)
         # The actual value is captured by the call below
         self.addCleanup(setattr, obj, attr_name, value)
+        if new is not _unitialized_attr:
+            setattr(obj, attr_name, new)
         return value
 
     def _cleanEnvironment(self):

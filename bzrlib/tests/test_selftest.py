@@ -1634,15 +1634,33 @@ class TestTestCase(tests.TestCase):
         self.assertRaises(AssertionError,
             self.assertListRaises, _TestException, success_generator)
 
-    def test_addAttrCleanup(self):
+    def test_overrideAttr_without_value(self):
         self.test_attr = 'original' # Define a test attribute
         obj = self # Make 'obj' visible to the embedded test
         class Test(tests.TestCase):
 
             def setUp(self):
                 tests.TestCase.setUp(self)
-                self.orig = self.addAttrCleanup(obj, 'test_attr')
+                self.orig = self.overrideAttr(obj, 'test_attr')
+
+            def test_value(self):
+                self.assertEqual('original', self.orig)
+                self.assertEqual('original', obj.test_attr)
                 obj.test_attr = 'modified'
+                self.assertEqual('modified', obj.test_attr)
+
+        test = Test('test_value')
+        test.run(unittest.TestResult())
+        self.assertEqual('original', obj.test_attr)
+
+    def test_overrideAttr_with_value(self):
+        self.test_attr = 'original' # Define a test attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.overrideAttr(obj, 'test_attr', new='modified')
 
             def test_value(self):
                 self.assertEqual('original', self.orig)
