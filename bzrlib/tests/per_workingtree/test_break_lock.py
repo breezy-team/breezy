@@ -28,13 +28,9 @@ class TestBreakLock(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestBreakLock, self).setUp()
+        self.addAttrCleanup(bzrlib.ui, 'ui_factory')
         self.unused_workingtree = self.make_branch_and_tree('.')
         self.workingtree = self.unused_workingtree.bzrdir.open_workingtree()
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return

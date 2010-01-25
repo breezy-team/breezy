@@ -588,12 +588,9 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertFalse(repo.get_physical_lock_status())
 
     def prepare_for_break_lock(self):
+        self.addAttrCleanup(ui, 'ui_factory')
         # Setup the global ui factory state so that a break-lock method call
         # will find usable input in the input stream.
-        old_factory = ui.ui_factory
-        def restoreFactory():
-            ui.ui_factory = old_factory
-        self.addCleanup(restoreFactory)
         ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_break_lock_breaks_physical_lock(self):

@@ -43,6 +43,7 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
             repo.unlock()
             return
         self.old_factory = bzrlib.ui.ui_factory
+        # XXX: Huh ? Where is self.restoreFactory coming from ? -- vila 100123
         self.addCleanup(self.restoreFactory)
         bzrlib.ui.ui_factory = CannedInputUIFactory([True])
         unused_repo.break_lock()

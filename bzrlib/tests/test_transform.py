@@ -1923,6 +1923,10 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def install_rot13_content_filter(self, pattern):
+        # We could use
+        # self.addCleanup(filters._reset_registry, filters._reset_registry())
+        # below, but that looks a bit... hard to read even if it's exactly
+        # the same thing.
         original_registry = filters._reset_registry()
         def restore_registry():
             filters._reset_registry(original_registry)

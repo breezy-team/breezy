@@ -39,14 +39,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
-        self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
+        self.addCleanup(bzrdir.BzrDirFormat._set_default_format,
+                        bzrdir.BzrDirFormat.get_default_format())
+        self.addAttrCleanup(ui, 'ui_factory')
         ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
-        bzrdir.BzrDirFormat._set_default_format(self.old_format)
 
     def make_current_format_branch_and_checkout(self):
         current_tree = self.make_branch_and_tree('current_format_branch',
@@ -160,13 +156,8 @@ class SFTPTests(TestCaseWithSFTPServer):
 
     def setUp(self):
         super(SFTPTests, self).setUp()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
-
+        self.addAttrCleanup(ui, 'ui_factory')
         ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
 
     def test_upgrade_url(self):
         self.run_bzr('init --format=weave')

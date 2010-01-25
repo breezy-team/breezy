@@ -253,12 +253,11 @@ class TestTrace(TestCase):
         # If _open_bzr_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.addCleanup(setattr, sys, 'stderr', sys.stderr)
-        self.addCleanup(setattr, trace, '_bzr_log_filename',
-                        trace._bzr_log_filename)
+        self.addAttrCleanup(sys, 'stderr')
         sys.stderr = StringIO()
         # Set the log file to something that cannot exist
         os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        self.addAttrCleanup(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)
         self.assertContainsRe(sys.stderr.getvalue(),

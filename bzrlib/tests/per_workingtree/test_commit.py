@@ -505,8 +505,10 @@ class TestCommit(TestCaseWithWorkingTree):
 
 class TestCommitProgress(TestCaseWithWorkingTree):
 
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
+    def setUp(self):
+        super(TestCommitProgress, self).setUp()
+        self.addAttrCleanup(ui, 'ui_factory')
+        ui.ui_factory = CapturingUIFactory()
 
     def test_commit_progress_steps(self):
         # during commit we one progress update for every entry in the
@@ -525,8 +527,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f.close()
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         # TODO RBC 20060421 it would be nice to merge the reporter output
@@ -548,8 +548,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
@@ -573,8 +571,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
@@ -622,6 +618,8 @@ class TestCommitProgress(TestCaseWithWorkingTree):
             open(tree.abspath("newfile"), 'w').write("data")
             params.mutable_tree.add(["newfile"])
         def restoreDefaults():
+            # We can't use addAttrCleanup here since we want to restore only
+            # part of the dict -- vila 100123
             mutabletree.MutableTree.hooks['post_commit'] = []
         self.addCleanup(restoreDefaults)
         tree = self.make_branch_and_tree('.')

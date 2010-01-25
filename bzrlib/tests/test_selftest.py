@@ -756,11 +756,8 @@ class TestTestResult(tests.TestCase):
         # want to assume that thats *all* that would happen.
         def _get_bzr_source_tree():
             return None
-        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
+        self.addAttrCleanup(bzrlib.version, '_get_bzr_source_tree')
         bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
-        def restore():
-            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
-        self.addCleanup(restore)
 
     def test_assigned_benchmark_file_stores_date(self):
         self._patch_get_bzr_source_tree()
@@ -1204,11 +1201,8 @@ class TestRunner(tests.TestCase):
         def _get_bzr_source_tree():
             self._get_source_tree_calls.append("called")
             return None
-        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
+        self.addAttrCleanup(bzrlib.version, '_get_bzr_source_tree')
         bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
-        def restore():
-            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
-        self.addCleanup(restore)
 
     def test_bench_history(self):
         # tests that the running the benchmark passes bench_history into
@@ -1322,12 +1316,8 @@ class TestTestCase(tests.TestCase):
         self.assertEqual(flags, bzrlib.debug.debug_flags)
 
     def change_selftest_debug_flags(self, new_flags):
-        orig_selftest_flags = tests.selftest_debug_flags
-        self.addCleanup(self._restore_selftest_debug_flags, orig_selftest_flags)
+        self.addAttrCleanup(tests, 'selftest_debug_flags')
         tests.selftest_debug_flags = set(new_flags)
-
-    def _restore_selftest_debug_flags(self, flags):
-        tests.selftest_debug_flags = flags
 
     def test_allow_debug_flag(self):
         """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
@@ -2806,15 +2796,11 @@ class TestTestSuite(tests.TestCase):
                 'bzrlib.tests.per_transport',
                 'bzrlib.tests.test_selftest',
                 ]
-        original_testmod_names = tests._test_suite_testmod_names
+        self.addAttrCleanup(tests, '_test_suite_testmod_names')
+        self.addAttrCleanup(tests, '_test_suite_modules_to_doctest')
         def _test_suite_modules_to_doctest():
             calls.append("modules_to_doctest")
             return ['bzrlib.timestamp']
-        orig_modules_to_doctest = tests._test_suite_modules_to_doctest
-        def restore_names():
-            tests._test_suite_testmod_names = original_testmod_names
-            tests._test_suite_modules_to_doctest = orig_modules_to_doctest
-        self.addCleanup(restore_names)
         tests._test_suite_testmod_names = _test_suite_testmod_names
         tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
         expected_test_list = [

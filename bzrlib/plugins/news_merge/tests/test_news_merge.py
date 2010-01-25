@@ -31,15 +31,14 @@ class TestFilenameMatchesConfig(tests.TestCaseWithTransport):
         """Ensures that the config variable is cached"""
         news_merge.install_hook()
         self.affected_files = None
-        orig = news_merge.filename_matches_config
+        # XXX: Brittle code below (restore_attribute may not return the right
+        # value) -- vila 100123
+        orig = self.addAttrCleanup(news_merge, 'filename_matches_config')
         def wrapper(params):
             ret = orig(params)
             # Capture the value set by the hook
             self.affected_files = params._news_merge_affected_files
             return ret
-        def restore():
-            news_merge.filename_matches_config = orig
-        self.addCleanup(restore)
         news_merge.filename_matches_config = wrapper
 
         builder = test_merge_core.MergeBuilder(self.test_base_dir)

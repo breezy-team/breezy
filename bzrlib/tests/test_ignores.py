@@ -132,10 +132,7 @@ class TestRuntimeIgnores(TestCase):
     def setUp(self):
         TestCase.setUp(self)
 
-        orig = ignores._runtime_ignores
-        def restore():
-            ignores._runtime_ignores = orig
-        self.addCleanup(restore)
+        self.addAttrCleanup(ignores, '_runtime_ignores')
         # For the purposes of these tests, we must have no
         # runtime ignores
         ignores._runtime_ignores = set()

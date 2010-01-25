@@ -452,11 +452,7 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         # Import the module locally now that we now it's available.
         pycurl = features.pycurl.module
 
-        version_info_orig = pycurl.version_info
-        def restore():
-            pycurl.version_info = version_info_orig
-        self.addCleanup(restore)
-
+        self.addAttrCleanup(pycurl, 'version_info')
         # Fake the pycurl version_info This was taken from a windows pycurl
         # without SSL (thanks to bialix)
         pycurl.version_info = lambda : (2,
@@ -1364,11 +1360,8 @@ class RedirectedRequest(_urllib2_wrappers.Request):
 
 
 def install_redirected_request(test):
-    test.original_class = _urllib2_wrappers.Request
-    def restore():
-        _urllib2_wrappers.Request = test.original_class
+    test.addAttrCleanup(_urllib2_wrappers, 'Request')
     _urllib2_wrappers.Request = RedirectedRequest
-    test.addCleanup(restore)
 
 
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):

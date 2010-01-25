@@ -831,10 +831,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestUpdateEntry, self).setUp()
-        orig = dirstate.update_entry
-        def cleanup():
-            dirstate.update_entry = orig
-        self.addCleanup(cleanup)
+        self.addAttrCleanup(dirstate, 'update_entry')
         dirstate.update_entry = self.update_entry
 
     def get_state_with_a(self):
@@ -1278,10 +1275,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestProcessEntry, self).setUp()
-        orig = dirstate._process_entry
-        def cleanup():
-            dirstate._process_entry = orig
-        self.addCleanup(cleanup)
+        self.addAttrCleanup(dirstate, '_process_entry')
         dirstate._process_entry = self._process_entry
 
     def assertChangedFileIds(self, expected, tree):
@@ -1307,8 +1301,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         basis_tree = tree.basis_tree()
-        orig = osutils.is_inside
-        self.addCleanup(setattr, osutils, 'is_inside', orig)
+        self.addAttrCleanup(osutils, 'is_inside')
         osutils.is_inside = is_inside_raises
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 

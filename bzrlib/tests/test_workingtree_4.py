@@ -555,10 +555,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.commit('one', rev_id='rev-1')
         # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
         returned = []
-        orig_walkdirs = osutils._walkdirs_utf8
-        def reset():
-            osutils._walkdirs_utf8 = orig_walkdirs
-        self.addCleanup(reset)
+        # XXX: Brittle code below (restore_attribute may not return the right
+        # value) -- vila 100123
+        orig_walkdirs = self.addAttrCleanup(osutils, '_walkdirs_utf8')
         def walkdirs_spy(*args, **kwargs):
             for val in orig_walkdirs(*args, **kwargs):
                 returned.append(val[0][0])

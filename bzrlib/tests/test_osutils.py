@@ -320,8 +320,7 @@ class TestUmask(tests.TestCaseInTempDir):
             self.assertEqual(0, osutils.get_umask())
             return
 
-        orig_umask = osutils.get_umask()
-        self.addCleanup(os.umask, orig_umask)
+        self.addAttrCleanup(os, 'umask')
         os.umask(0222)
         self.assertEqual(0222, osutils.get_umask())
         os.umask(0022)
@@ -1135,14 +1134,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        cur_winver = win32utils.winver
-        cur_fs_enc = osutils._fs_enc
-        cur_dir_reader = osutils._selected_dir_reader
-        def restore():
-            win32utils.winver = cur_winver
-            osutils._fs_enc = cur_fs_enc
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
+        self.addAttrCleanup(win32utils, 'winver')
+        self.addAttrCleanup(osutils, '_fs_enc')
+        self.addAttrCleanup(osutils, '_selected_dir_reader')
 
     def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
@@ -1581,7 +1575,6 @@ class TestSetUnsetEnv(tests.TestCase):
         def cleanup():
             if 'BZR_TEST_ENV_VAR' in os.environ:
                 del os.environ['BZR_TEST_ENV_VAR']
-
         self.addCleanup(cleanup)
 
     def test_set(self):
@@ -1698,14 +1691,7 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
+        self.addAttrCleanup(osutils, '_selected_dir_reader')
         osutils._selected_dir_reader = self._dir_reader_class()
 
     def _get_ascii_tree(self):
@@ -1859,10 +1845,7 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        orig = osutils._cached_local_concurrency
-        def restore():
-            osutils._cached_local_concurrency = orig
-        self.addCleanup(restore)
+        self.addAttrCleanup(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
@@ -1895,12 +1878,8 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def setUp(self):
         super(TestFailedToLoadExtension, self).setUp()
-        self.saved_failures = osutils._extension_load_failures[:]
-        del osutils._extension_load_failures[:]
-        self.addCleanup(self.restore_failures)
-
-    def restore_failures(self):
-        osutils._extension_load_failures = self.saved_failures
+        self.addAttrCleanup(osutils, '_extension_load_failures')
+        osutils._extension_load_failures = []
 
     def test_failure_to_load(self):
         self._try_loading()
@@ -1929,17 +1908,11 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def replace_stdout(self, new):
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
+        self.addAttrCleanup(sys, 'stdout')
         sys.stdout = new
 
     def replace__terminal_size(self, new):
-        orig__terminal_size = osutils._terminal_size
-        def restore():
-            osutils._terminal_size = orig__terminal_size
-        self.addCleanup(restore)
+        self.addAttrCleanup(osutils, '_terminal_size')
         osutils._terminal_size = new
 
     def set_fake_tty(self):
@@ -1996,9 +1969,7 @@ class TestTerminalWidth(tests.TestCase):
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
         else:
-            def restore():
-                termios.TIOCGWINSZ = orig
-            self.addCleanup(restore)
+            self.addAttrCleanup(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']

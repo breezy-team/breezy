@@ -31,13 +31,10 @@ class TrivialTest(TestCaseWithTransport):
 
     def setUp(self):
         super(TrivialTest, self).setUp()
+        # XXX: Dead code below -- vila 100123
         self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
+        self.addAttrCleanup(ui, 'ui_factory')
         ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
