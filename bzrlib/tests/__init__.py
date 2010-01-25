@@ -855,6 +855,7 @@ class TestCase(testtools.TestCase):
             debug.debug_flags.clear()
         if 'disable_lock_checks' not in selftest_debug_flags:
             debug.debug_flags.add('strict_locks')
+        # XXX: needs more thinking
         self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
@@ -881,12 +882,9 @@ class TestCase(testtools.TestCase):
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
+        self.addAttrCleanup(ui, 'ui_factory')
         # by default the UI is off; tests can turn it on if they want it.
-        saved = ui.ui_factory
-        def _restore():
-            ui.ui_factory = saved
         ui.ui_factory = ui.SilentUIFactory()
-        self.addCleanup(_restore)
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -921,7 +919,7 @@ class TestCase(testtools.TestCase):
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
-            
+
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -2047,10 +2045,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
+        self.addAttrCleanup(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS')
         bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
@@ -2071,9 +2066,7 @@ class TestCase(testtools.TestCase):
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
+        self.addCleanup(request_handlers.register, verb, orig_method)
 
 
 class CapturedCall(object):
@@ -2386,10 +2379,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
-        _currentdir = os.getcwdu()
-        def _leaveDirectory():
-            os.chdir(_currentdir)
-        self.addCleanup(_leaveDirectory)
+        self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None

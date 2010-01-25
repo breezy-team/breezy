@@ -59,10 +59,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self._original_header = btree_index._RESERVED_HEADER_BYTES
-        def restore():
-            btree_index._RESERVED_HEADER_BYTES = self._original_header
-        self.addCleanup(restore)
+        self.addAttrCleanup(btree_index, '_RESERVED_HEADER_BYTES')
         btree_index._RESERVED_HEADER_BYTES = 100
 
     def make_nodes(self, count, key_elements, reference_lists):
@@ -103,10 +100,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def shrink_page_size(self):
         """Shrink the default page size so that less fits in a page."""
-        old_page_size = btree_index._PAGE_SIZE
-        def cleanup():
-            btree_index._PAGE_SIZE = old_page_size
-        self.addCleanup(cleanup)
+        self.addAttrCleanup(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
 
@@ -1157,13 +1151,9 @@ class TestBTreeIndex(BTreeTestCase):
 
 class TestBTreeNodes(BTreeTestCase):
 
-    def restore_parser(self):
-        btree_index._btree_serializer = self.saved_parser
-
     def setUp(self):
         BTreeTestCase.setUp(self)
-        self.saved_parser = btree_index._btree_serializer
-        self.addCleanup(self.restore_parser)
+        self.addAttrCleanup(btree_index, '_btree_serializer')
         btree_index._btree_serializer = self.parse_btree
 
     def test_LeafNode_1_0(self):

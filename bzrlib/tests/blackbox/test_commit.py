@@ -682,6 +682,7 @@ class TestCommit(ExternalBase):
             f.close()
             os.chmod('fed.sh', 0755)
             default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+        # XXX: And why do we restore a hook ? -- vila 100123
         self.addCleanup(restoreDefaults)
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)

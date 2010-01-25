@@ -2008,11 +2008,9 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertLength(1, self.hpss_calls)
 
     def disableExtraResults(self):
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
+        self.addAttrCleanup(SmartServerRepositoryGetParentMap,
+                            'no_extra_results')
         SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-        self.addCleanup(reset_values)
 
     def test_null_cached_missing_and_stop_key(self):
         self.setup_smart_server_with_call_log()

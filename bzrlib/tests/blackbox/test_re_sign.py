@@ -35,15 +35,9 @@ class ReSign(TestCaseInTempDir):
         This also registers the cleanup, so that we will revert to
         the original gpg strategy when done.
         """
-        self._oldstrategy = bzrlib.gpg.GPGStrategy
-
+        self.addAttrCleanup(bzrlib.gpg, 'GPGStrategy')
         # monkey patch gpg signing mechanism
         bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-
-        self.addCleanup(self._fix_gpg_strategy)
-
-    def _fix_gpg_strategy(self):
-        bzrlib.gpg.GPGStrategy = self._oldstrategy
 
     def setup_tree(self):
         wt = BzrDir.create_standalone_workingtree('.')

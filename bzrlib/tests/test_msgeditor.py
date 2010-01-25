@@ -361,6 +361,8 @@ if len(sys.argv) == 2:
 
     def test_generate_commit_message_template_hook(self):
         def restoreDefaults():
+            # We can't use addAttrCleanup here since we want to restore only
+            # part of the dict -- vila 100123
             msgeditor.hooks['commit_message_template'] = []
         self.addCleanup(restoreDefaults)
         msgeditor.hooks.install_named_hook("commit_message_template",

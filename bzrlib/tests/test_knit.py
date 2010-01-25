@@ -862,10 +862,7 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
+        self.addAttrCleanup(knit, '_load_data')
         from bzrlib._knit_load_data_py import _load_data_py
         knit._load_data = _load_data_py
         allow_writes = lambda: 'w' in mode
@@ -1302,14 +1299,12 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
+        self.addAttrCleanup(knit, '_load_data')
         from bzrlib._knit_load_data_pyx import _load_data_c
         knit._load_data = _load_data_c
         allow_writes = lambda: mode == 'w'
-        return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+        return _KndxIndex(transport, mapper, lambda:None,
+                          allow_writes, lambda:True)
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):

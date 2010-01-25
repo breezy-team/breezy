@@ -224,6 +224,7 @@ class TestSuppressAndActivate(TestCase):
         existing_filters = list(warnings.filters)
         def restore():
             warnings.filters[:] = existing_filters
+        # XXX: Can we address that ? -- vila 100124
         self.addCleanup(restore)
         # Clean out the filters so we have a clean slate.
         warnings.resetwarnings()

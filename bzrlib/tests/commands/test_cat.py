@@ -25,15 +25,10 @@ class TestCat(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestCat, self).setUp()
-
-        def restore_stdout():
-            sys.stdout = self._stdout_orig
-
         # Redirect sys.stdout as this is what cat uses
         self.outf = StringIOWrapper()
-        self._stdout_orig = sys.stdout
+        self.addAttrCleanup(sys, 'stdout')
         sys.stdout = self.outf
-        self.addCleanup(restore_stdout)
 
     def test_cat(self):
         # FIXME: sftp raises ReadError instead of NoSuchFile when probing for

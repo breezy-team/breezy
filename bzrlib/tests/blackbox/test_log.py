@@ -77,11 +77,7 @@ class TestLogWithLogCatcher(TestLog):
                 # Always return our own log formatter
                 return self.log_catcher
 
-        orig = log.log_formatter_registry.get_default
-        def restore():
-            log.log_formatter_registry.get_default = orig
-        self.addCleanup(restore)
-
+        self.addAttrCleanup(log.log_formatter_registry, 'get_default')
         def getme(branch):
                 # Always return our own log formatter class hijacking the
                 # default behavior (which requires setting up a config
@@ -611,10 +607,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestLogEncodings, self).setUp()
-        self.user_encoding = osutils._cached_user_encoding
-        def restore():
-            osutils._cached_user_encoding = self.user_encoding
-        self.addCleanup(restore)
+        self.addAttrCleanup(osutils, '_cached_user_encoding')
 
     def create_branch(self):
         bzr = self.run_bzr
