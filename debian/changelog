@@ -1,9 +1,13 @@
-bzr (2.0.3-2) UNRELEASED; urgency=low
+bzr (2.0.4-1) unstable; urgency=low
 
+  [ Andrew Starr-Bochicchio ]
   * debian/control: Fix obsolete-relation-form-in-source
     lintian warning. 
 
- -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Sun, 24 Jan 2010 19:36:25 -0500
+  [ John Francesco Ferlito ]
+  * New upstream release.
+
+ -- John Francesco Ferlito <johnf@inodes.org>  Mon, 25 Jan 2010 19:53:02 +1100
 
 bzr (2.0.3-1) unstable; urgency=low
 
