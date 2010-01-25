@@ -892,6 +892,8 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
+        # XXX: This is a timing dependent test. I've had it fail because it
+        #      took 6ms to evaluate... :(
         self.assertEqual(lines, ['NODEP        0ms',
                                  "    The feature 'Feature' is not available."])
 

@@ -5,6 +5,89 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.0.4
+#########
+
+:Codename: smooth sailing
+:2.0.4: 2010-01-21
+
+The fourth bugfix-only release in the 2.0 series contains more than a
+dozen bugfixes relative to 2.0.3. The primary focus is on handling
+interruptions and concurrent operations more cleanly, there is also a fair
+improvement to ``bzr export`` when exporting a remote branch.
+
+
+Bug Fixes
+*********
+
+* ``bzr annotate`` on another branch with ``-r branch:...`` no longer
+  fails with an ``ObjectNotLocked`` error.  (Andrew Bennetts, #496590)
+
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
+
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Concurrent autopacks will no longer lose a newly created pack file.
+  There was a race condition, where if the reload happened at the right
+  time, the second packer would forget the name of the newly added pack
+  file. (John Arbash Meinel, Gareth White, #507566)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* Give a warning when fetching between repositories (local or remote) with
+  sufficiently different formats that the content will need to be
+  serialized (ie ``InterDifferingSerializer`` or ``inventory-deltas``), so
+  the user has a clue that upgrading could make it faster.
+  (Martin Pool, #456077)
+
+* If we fail to open ``~/.bzr.log`` write a clear message to stderr rather
+  than using ``warning()``. The log file is opened before logging is set
+  up, and it leads to very confusing: 'no handlers for "bzr"' messages for
+  users, rather than something nicer.
+  (John Arbash Meinel, Barry Warsaw, #503886)
+
+* Refuse to build with any Pyrex 0.9.4 release, as they have known bugs.
+  (Martin Pool, John Arbash Meinel, #449372)
+
+* ``setup.py bdist_rpm`` now properly finds extra files needed for the
+  build. (there is still the distutils bug
+  http://bugs.python.org/issue644744) (Joe Julian, #175839)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
+
+* ``TreeTransform`` can now handle when a delta says that the file id for
+  the tree root changes. Rather than trying to rename your working
+  directory, or failing early saying that you can't have multiple
+  tree roots. This also fixes revert, update, and pull when the root id
+  changes.  (John Arbash Meinel, #494269, #504390)
+
+* ``_update_current_block`` no longer suppresses exceptions, so ^C at just
+  the right time will get propagated, rather than silently failing to move
+  the block pointer. (John Arbash Meinel, Gareth White, #495023)
+
+Testing
+*******
+
+* We have a new ``test_source`` that ensures all pyrex ``cdef`` functions
+  handle exceptions somehow. (Possibly by setting ``# cannot_raise``
+  rather than an ``except ?:`` clause.) This should help prevent bugs like
+  bug #495023. (John Arbash Meinel)
+
+
 bzr 2.0.3
 #########
 

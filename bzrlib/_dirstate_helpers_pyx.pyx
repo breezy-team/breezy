@@ -119,7 +119,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 
-cdef void* _my_memrchr(void *s, int c, size_t n):
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start
@@ -165,7 +165,7 @@ cdef object safe_string_from_size(char *s, Py_ssize_t size):
     return PyString_FromStringAndSize(s, size)
 
 
-cdef int _is_aligned(void *ptr):
+cdef int _is_aligned(void *ptr): # cannot_raise
     """Is this pointer aligned to an integer size offset?
 
     :return: 1 if this pointer is aligned, 0 otherwise.
@@ -173,7 +173,7 @@ cdef int _is_aligned(void *ptr):
     return ((<intptr_t>ptr) & ((sizeof(int))-1)) == 0
 
 
-cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
+cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_raise
     cdef unsigned char *cur1
     cdef unsigned char *cur2
     cdef unsigned char *end1
@@ -295,7 +295,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
-                                      char *path2, int path2_len):
+                                      char *path2, int path2_len): # cannot_raise
     """Compare two paths by what directory they are in.
 
     see ``_cmp_path_by_dirblock`` for details.
@@ -768,7 +768,7 @@ def _read_dirblocks(state):
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
 
-cdef int minikind_from_mode(int mode):
+cdef int minikind_from_mode(int mode): # cannot_raise
     # in order of frequency:
     if S_ISREG(mode):
         return c"f"
@@ -915,7 +915,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
     return link_or_sha1
 
 
-cdef char _minikind_from_string(object string):
+# TODO: Do we want to worry about exceptions here?
+cdef char _minikind_from_string(object string) except? -1:
     """Convert a python string to a char."""
     return PyString_AsString(string)[0]
 
@@ -953,7 +954,7 @@ cdef object _minikind_to_kind(char minikind):
     raise KeyError(PyString_FromStringAndSize(_minikind, 1))
 
 
-cdef int _versioned_minikind(char minikind):
+cdef int _versioned_minikind(char minikind): # cannot_raise
     """Return non-zero if minikind is in fltd"""
     return (minikind == c'f' or
             minikind == c'd' or
@@ -1373,7 +1374,7 @@ cdef class ProcessEntryC:
     def iter_changes(self):
         return self
 
-    cdef void _gather_result_for_consistency(self, result):
+    cdef int _gather_result_for_consistency(self, result) except -1:
         """Check a result we will yield to make sure we are consistent later.
         
         This gathers result's parents into a set to output later.
@@ -1381,7 +1382,7 @@ cdef class ProcessEntryC:
         :param result: A result tuple.
         """
         if not self.partial or not result[0]:
-            return
+            return 0
         self.seen_ids.add(result[0])
         new_path = result[1][1]
         if new_path:
@@ -1391,8 +1392,9 @@ cdef class ProcessEntryC:
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add('')
+        return 0
 
-    cdef void _update_current_block(self):
+    cdef int _update_current_block(self) except -1:
         if (self.block_index < len(self.state._dirblocks) and
             osutils.is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
             self.current_block = self.state._dirblocks[self.block_index]
@@ -1401,6 +1403,7 @@ cdef class ProcessEntryC:
         else:
             self.current_block = None
             self.current_block_list = None
+        return 0
 
     def __next__(self):
         # Simple thunk to allow tail recursion without pyrex confusion
