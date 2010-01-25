@@ -655,7 +655,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         saved_user_encoding = osutils._cached_user_encoding
         saved_stdout = sys.stdout
         def restore_stuff():
-            osutils._cached_user_encoding = self.user_encoding
+            osutils._cached_user_encoding = saved_user_encoding
             sys.stdout = saved_stdout
         self.addCleanup(restore_stuff)
 
