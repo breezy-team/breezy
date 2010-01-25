@@ -452,22 +452,22 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         # Import the module locally now that we now it's available.
         pycurl = features.pycurl.module
 
-        self.addAttrCleanup(pycurl, 'version_info')
-        # Fake the pycurl version_info This was taken from a windows pycurl
-        # without SSL (thanks to bialix)
-        pycurl.version_info = lambda : (2,
-                                        '7.13.2',
-                                        462082,
-                                        'i386-pc-win32',
-                                        2576,
-                                        None,
-                                        0,
-                                        None,
-                                        ('ftp', 'gopher', 'telnet',
-                                         'dict', 'ldap', 'http', 'file'),
-                                        None,
-                                        0,
-                                        None)
+        self.overrideAttr(pycurl, 'version_info',
+                          # Fake the pycurl version_info This was taken from
+                          # a windows pycurl without SSL (thanks to bialix)
+                          lambda : (2,
+                                    '7.13.2',
+                                    462082,
+                                    'i386-pc-win32',
+                                    2576,
+                                    None,
+                                    0,
+                                    None,
+                                    ('ftp', 'gopher', 'telnet',
+                                     'dict', 'ldap', 'http', 'file'),
+                                    None,
+                                    0,
+                                    None))
         self.assertRaises(errors.DependencyNotPresent, self._transport,
                           'https://launchpad.net')
 
@@ -1360,8 +1360,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
 
 
 def install_redirected_request(test):
-    test.addAttrCleanup(_urllib2_wrappers, 'Request')
-    _urllib2_wrappers.Request = RedirectedRequest
+    test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
 
 
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):

@@ -132,10 +132,9 @@ class TestRuntimeIgnores(TestCase):
     def setUp(self):
         TestCase.setUp(self)
 
-        self.addAttrCleanup(ignores, '_runtime_ignores')
         # For the purposes of these tests, we must have no
         # runtime ignores
-        ignores._runtime_ignores = set()
+        self.overrideAttr(ignores, '_runtime_ignores', set())
 
     def test_add(self):
         """Test that we can add an entry to the list."""

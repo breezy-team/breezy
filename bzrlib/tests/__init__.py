@@ -855,13 +855,12 @@ class TestCase(testtools.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
+        # Start with a copy of the current debug flags we can safely modify.
+        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
         if 'disable_lock_checks' not in selftest_debug_flags:
             debug.debug_flags.add('strict_locks')
-        # XXX: needs more thinking
-        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -887,9 +886,8 @@ class TestCase(testtools.TestCase):
 
     def _silenceUI(self):
         """Turn off UI for duration of test"""
-        self.addAttrCleanup(ui, 'ui_factory')
         # by default the UI is off; tests can turn it on if they want it.
-        ui.ui_factory = ui.SilentUIFactory()
+        self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -1482,8 +1480,15 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
-    def overrideAttr(test, obj, attr_name, new=_unitialized_attr):
-        """Add a cleanup which restores the attribute to its original value.
+    def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
+        """Overrides an object attribute restoring it after the test.
+
+        :param obj: The object that will be mutated.
+
+        :param attr_name: The attribute name we want to preserve/override in
+            the object.
+
+        :param new: The optional value we want to set the attribute to.
 
         :returns: The actual attr value.
         """
@@ -1544,10 +1549,6 @@ class TestCase(testtools.TestCase):
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restore_debug_flags(self):
-        debug.debug_flags.clear()
-        debug.debug_flags.update(self._preserved_debug_flags)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
@@ -2052,8 +2053,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        self.addAttrCleanup(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS')
-        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.overrideAttr(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a StringIOWrapper instance, that will encode Unicode

@@ -320,7 +320,8 @@ class TestUmask(tests.TestCaseInTempDir):
             self.assertEqual(0, osutils.get_umask())
             return
 
-        self.addAttrCleanup(os, 'umask')
+        orig_umask = osutils.get_umask()
+        self.addCleanup(os.umask, orig_umask)
         os.umask(0222)
         self.assertEqual(0222, osutils.get_umask())
         os.umask(0022)
@@ -1134,9 +1135,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        self.addAttrCleanup(win32utils, 'winver')
-        self.addAttrCleanup(osutils, '_fs_enc')
-        self.addAttrCleanup(osutils, '_selected_dir_reader')
+        self.overrideAttr(win32utils, 'winver')
+        self.overrideAttr(osutils, '_fs_enc')
+        self.overrideAttr(osutils, '_selected_dir_reader')
 
     def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
@@ -1691,8 +1692,8 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-        self.addAttrCleanup(osutils, '_selected_dir_reader')
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def _get_ascii_tree(self):
         tree = [
@@ -1845,7 +1846,7 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        self.addAttrCleanup(osutils, '_cached_local_concurrency')
+        self.overrideAttr(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
@@ -1878,8 +1879,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def setUp(self):
         super(TestFailedToLoadExtension, self).setUp()
-        self.addAttrCleanup(osutils, '_extension_load_failures')
-        osutils._extension_load_failures = []
+        self.overrideAttr(osutils, '_extension_load_failures', [])
 
     def test_failure_to_load(self):
         self._try_loading()
@@ -1908,12 +1908,10 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def replace_stdout(self, new):
-        self.addAttrCleanup(sys, 'stdout')
-        sys.stdout = new
+        self.overrideAttr(sys, 'stdout', new)
 
     def replace__terminal_size(self, new):
-        self.addAttrCleanup(osutils, '_terminal_size')
-        osutils._terminal_size = new
+        self.overrideAttr(osutils, '_terminal_size', new)
 
     def set_fake_tty(self):
 
@@ -1969,7 +1967,7 @@ class TestTerminalWidth(tests.TestCase):
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
         else:
-            self.addAttrCleanup(termios, 'TIOCGWINSZ')
+            self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']

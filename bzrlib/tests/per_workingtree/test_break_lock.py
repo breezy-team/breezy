@@ -18,8 +18,10 @@
 from cStringIO import StringIO
 import os
 
-import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -28,7 +30,6 @@ class TestBreakLock(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestBreakLock, self).setUp()
-        self.addAttrCleanup(bzrlib.ui, 'ui_factory')
         self.unused_workingtree = self.make_branch_and_tree('.')
         self.workingtree = self.unused_workingtree.bzrdir.open_workingtree()
 
@@ -44,14 +45,14 @@ class TestBreakLock(TestCaseWithWorkingTree):
         # if the workingtree isn't locked - and the easiest way
         # to see if that happened is to lock the repo.
         self.workingtree.branch.repository.lock_write()
-        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
+        ui.ui_factory = ui.CannedInputUIFactory([True])
         try:
             self.unused_workingtree.break_lock()
         except NotImplementedError:
             # workingtree does not support break_lock
             self.workingtree.branch.repository.unlock()
             return
-        if bzrlib.ui.ui_factory.responses == [True]:
+        if ui.ui_factory.responses == [True]:
             raise TestNotApplicable("repository does not physically lock.")
         self.assertRaises(errors.LockBroken,
             self.workingtree.branch.repository.unlock)
@@ -59,7 +60,7 @@ class TestBreakLock(TestCaseWithWorkingTree):
     def test_locked(self):
         # break_lock when locked should
         self.workingtree.lock_write()
-        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True, True, True])
+        ui.ui_factory = ui.CannedInputUIFactory([True, True, True])
         try:
             self.unused_workingtree.break_lock()
         except (NotImplementedError, errors.LockActive):

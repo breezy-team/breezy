@@ -507,7 +507,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestCommitProgress, self).setUp()
-        self.addAttrCleanup(ui, 'ui_factory')
         ui.ui_factory = CapturingUIFactory()
 
     def test_commit_progress_steps(self):
@@ -617,11 +616,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
                 mutabletree.MutableTree))
             open(tree.abspath("newfile"), 'w').write("data")
             params.mutable_tree.add(["newfile"])
-        def restoreDefaults():
-            # We can't use addAttrCleanup here since we want to restore only
-            # part of the dict -- vila 100123
-            mutabletree.MutableTree.hooks['post_commit'] = []
-        self.addCleanup(restoreDefaults)
         tree = self.make_branch_and_tree('.')
         mutabletree.MutableTree.hooks.install_named_hook(
             'post_commit',

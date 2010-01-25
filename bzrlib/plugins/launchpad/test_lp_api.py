@@ -39,8 +39,7 @@ class TestDependencyManagement(TestCase):
 
     def patch(self, obj, name, value):
         """Temporarily set the 'name' attribute of 'obj' to 'value'."""
-        self.addAttrCleanup(obj, name)
-        setattr(obj, name, value)
+        self.overrideAttr(obj, name, value)
 
     def test_get_launchpadlib_version(self):
         # parse_launchpadlib_version returns a tuple of a version number of

@@ -576,16 +576,11 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestLoadFromPath, self).setUp()
         # Change bzrlib.plugin to think no plugins have been loaded yet.
-        self.addAttrCleanup(bzrlib.plugins, '__path__')
-        bzrlib.plugins.__path__ = []
-        self.addAttrCleanup(plugin, '_loaded')
-        plugin._loaded = False
+        self.overrideAttr(bzrlib.plugins, '__path__', [])
+        self.overrideAttr(plugin, '_loaded', False)
 
-        self.addAttrCleanup(plugin, 'load_from_path')
         # Monkey-patch load_from_path to stop it from actually loading anything.
-        def load_from_path(dirs):
-            pass
-        plugin.load_from_path = load_from_path
+        self.overrideAttr(plugin, 'load_from_path', lambda dirs: None)
 
     def test_set_plugins_path_with_args(self):
         plugin.set_plugins_path(['a', 'b'])
@@ -636,8 +631,7 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestEnvPluginPath, self).setUp()
-        self.addAttrCleanup(plugin, 'DEFAULT_PLUGIN_PATH')
-        plugin.DEFAULT_PLUGIN_PATH = None
+        self.overrideAttr(plugin, 'DEFAULT_PLUGIN_PATH', None)
 
         self.user = plugin.get_user_plugin_path()
         self.site = plugin.get_site_plugin_path()

@@ -19,13 +19,15 @@
 
 import os
 
-import bzrlib.gpg
+from bzrlib import (
+    gpg,
+    tests,
+    )
 from bzrlib.testament import Testament
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class SignMyCommits(TestCaseWithTransport):
+class SignMyCommits(tests.TestCaseWithTransport):
 
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
@@ -33,9 +35,8 @@ class SignMyCommits(TestCaseWithTransport):
         This also registers the cleanup, so that we will revert to
         the original gpg strategy when done.
         """
-        self.addAttrCleanup(bzrlib.gpg, 'GPGStrategy')
         # monkey patch gpg signing mechanism
-        bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
+        self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
 
     def setup_tree(self, location='.'):
         wt = self.make_branch_and_tree(location)

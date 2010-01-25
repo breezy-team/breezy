@@ -17,24 +17,15 @@
 """Black box tests for the reconcile command."""
 
 
-import bzrlib
-import bzrlib.bzrdir as bzrdir
-from bzrlib.inventory import Inventory
-import bzrlib.repository as repository
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests import TestUIFactory
-from bzrlib.transport import get_transport
-import bzrlib.ui as ui
+from bzrlib import (
+    bzrdir,
+    inventory,
+    repository,
+    tests,
+    )
 
 
-class TrivialTest(TestCaseWithTransport):
-
-    def setUp(self):
-        super(TrivialTest, self).setUp()
-        # XXX: Dead code below -- vila 100123
-        self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.addAttrCleanup(ui, 'ui_factory')
-        ui.ui_factory = TestUIFactory()
+class TrivialTest(tests.TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
@@ -57,7 +48,7 @@ class TrivialTest(TestCaseWithTransport):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = Inventory(revision_id='missing')
+        inv = inventory.Inventory(revision_id='missing')
         inv.root.revision='missing'
         repo.lock_write()
         repo.start_write_group()

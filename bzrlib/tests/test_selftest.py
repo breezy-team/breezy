@@ -754,10 +754,7 @@ class TestTestResult(tests.TestCase):
     def _patch_get_bzr_source_tree(self):
         # Reading from the actual source tree breaks isolation, but we don't
         # want to assume that thats *all* that would happen.
-        def _get_bzr_source_tree():
-            return None
-        self.addAttrCleanup(bzrlib.version, '_get_bzr_source_tree')
-        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
+        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
 
     def test_assigned_benchmark_file_stores_date(self):
         self._patch_get_bzr_source_tree()
@@ -1198,11 +1195,10 @@ class TestRunner(tests.TestCase):
         # Reading from the actual source tree breaks isolation, but we don't
         # want to assume that thats *all* that would happen.
         self._get_source_tree_calls = []
-        def _get_bzr_source_tree():
+        def new_get():
             self._get_source_tree_calls.append("called")
             return None
-        self.addAttrCleanup(bzrlib.version, '_get_bzr_source_tree')
-        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
+        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
 
     def test_bench_history(self):
         # tests that the running the benchmark passes bench_history into
@@ -1316,8 +1312,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual(flags, bzrlib.debug.debug_flags)
 
     def change_selftest_debug_flags(self, new_flags):
-        self.addAttrCleanup(tests, 'selftest_debug_flags')
-        tests.selftest_debug_flags = set(new_flags)
+        self.overrideAttr(tests, 'selftest_debug_flags', set(new_flags))
 
     def test_allow_debug_flag(self):
         """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
@@ -2789,20 +2784,18 @@ class TestTestSuite(tests.TestCase):
         # test doubles that supply a few sample tests to load, and check they
         # are loaded.
         calls = []
-        def _test_suite_testmod_names():
+        def testmod_names():
             calls.append("testmod_names")
             return [
                 'bzrlib.tests.blackbox.test_branch',
                 'bzrlib.tests.per_transport',
                 'bzrlib.tests.test_selftest',
                 ]
-        self.addAttrCleanup(tests, '_test_suite_testmod_names')
-        self.addAttrCleanup(tests, '_test_suite_modules_to_doctest')
-        def _test_suite_modules_to_doctest():
+        self.overrideAttr(tests, '_test_suite_testmod_names', testmod_names)
+        def doctests():
             calls.append("modules_to_doctest")
             return ['bzrlib.timestamp']
-        tests._test_suite_testmod_names = _test_suite_testmod_names
-        tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
+        self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',

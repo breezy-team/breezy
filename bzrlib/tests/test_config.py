@@ -1670,8 +1670,8 @@ user=jim
             'password ignored in section \[ssh with password\]')
 
     def test_uses_fallback_stores(self):
-        self.addAttrCleanup(config, 'credential_store_registry')
-        config.credential_store_registry = config.CredentialStoreRegistry()
+        self.overrideAttr(config, 'credential_store_registry',
+                          config.CredentialStoreRegistry())
         store = StubCredentialStore()
         store.add_credentials("http", "example.com", "joe", "secret")
         config.credential_store_registry.register("stub", store, fallback=True)

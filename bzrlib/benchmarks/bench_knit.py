@@ -61,14 +61,12 @@ class BenchKnitIndex(Benchmark):
 
     def setup_load_data_c(self):
         self.requireFeature(CompiledKnitFeature)
-        self.addAttrCleanup(knit, '_load_data')
         from bzrlib._knit_load_data_pyx import _load_data_c
-        knit._load_data = _load_data_c
+        self.overrideAttr(knit, '_load_data', _load_data_c)
 
     def setup_load_data_py(self):
-        self.addAttrCleanup(knit, '_load_data')
         from bzrlib._knit_load_data_py import _load_data_py
-        knit._load_data = _load_data_py
+        self.overrideAttr(knit, '_load_data', _load_data_py)
 
     def test_read_50k_index_c(self):
         self.setup_load_data_c()

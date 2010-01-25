@@ -75,10 +75,10 @@ class TestTerminalEncoding(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.addAttrCleanup(sys, 'stdin')
-        self.addAttrCleanup(sys, 'stdout')
-        self.addAttrCleanup(sys, 'stderr')
-        self.addAttrCleanup(osutils, '_cached_user_encoding')
+        self.overrideAttr(sys, 'stdin')
+        self.overrideAttr(sys, 'stdout')
+        self.overrideAttr(sys, 'stderr')
+        self.overrideAttr(osutils, '_cached_user_encoding')
 
     def make_wrapped_streams(self,
                              stdout_encoding,
@@ -150,11 +150,10 @@ class TestUserEncoding(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.addAttrCleanup(locale, 'getpreferredencoding')
+        self.overrideAttr(locale, 'getpreferredencoding')
         self.addCleanup(osutils.set_or_unset_env,
                         'LANG', os.environ.get('LANG'))
-        self.addAttrCleanup(sys, 'stderr')
-        sys.stderr = StringIOWrapper()
+        self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
     def test_get_user_encoding(self):
         def f():

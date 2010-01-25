@@ -59,8 +59,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self.addAttrCleanup(btree_index, '_RESERVED_HEADER_BYTES')
-        btree_index._RESERVED_HEADER_BYTES = 100
+        self.overrideAttr(btree_index, '_RESERVED_HEADER_BYTES', 100)
 
     def make_nodes(self, count, key_elements, reference_lists):
         """Generate count*key_elements sample nodes."""
@@ -100,7 +99,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def shrink_page_size(self):
         """Shrink the default page size so that less fits in a page."""
-        self.addAttrCleanup(btree_index, '_PAGE_SIZE')
+        self.overrideAttr(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
 
@@ -1153,8 +1152,7 @@ class TestBTreeNodes(BTreeTestCase):
 
     def setUp(self):
         BTreeTestCase.setUp(self)
-        self.addAttrCleanup(btree_index, '_btree_serializer')
-        btree_index._btree_serializer = self.parse_btree
+        self.overrideAttr(btree_index, '_btree_serializer', self.parse_btree)
 
     def test_LeafNode_1_0(self):
         node_bytes = ("type=leaf\n"

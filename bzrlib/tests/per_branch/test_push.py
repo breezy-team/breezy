@@ -275,12 +275,10 @@ class TestPush(TestCaseWithBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        inter_class = repository.InterRepository
-        self.addAttrCleanup(inter_class, '_walk_to_common_revisions_batch_size')
-        inter_class._walk_to_common_revisions_batch_size = 1
-        self.addAttrCleanup(SmartServerRepositoryGetParentMap,
-                            'no_extra_results')
-        SmartServerRepositoryGetParentMap.no_extra_results = True
+        self.overrideAttr(repository.InterRepository,
+                          '_walk_to_common_revisions_batch_size', 1)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                          'no_extra_results', True)
 
 
 class TestPushHook(TestCaseWithBranch):

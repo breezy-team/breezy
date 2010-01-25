@@ -312,8 +312,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
 
     def set_vendor(self, vendor):
         from bzrlib.transport import ssh
-        self.addAttrCleanup(ssh._ssh_vendor_manager, '_cached_ssh_vendor')
-        ssh._ssh_vendor_manager._cached_ssh_vendor = vendor
+        self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""

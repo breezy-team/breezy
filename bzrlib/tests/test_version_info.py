@@ -23,6 +23,7 @@ import sys
 
 from bzrlib import (
     errors,
+    registry,
     symbol_versioning,
     tests,
     version_info_formats,
@@ -325,15 +326,8 @@ class TestVersionInfoFormatRegistry(tests.TestCase):
 
     def setUp(self):
         super(TestVersionInfoFormatRegistry, self).setUp()
-        registry = version_info_formats.format_registry
-        self.addAttrCleanup(registry, '_default_key')
-        self._default_key = registry._default_key
-        self.addAttrCleanup(registry, '_dict')
-        self._dict = registry._dict.copy()
-        self.addAttrCleanup(registry, '_help_dict')
-        self._help_dict = registry._help_dict.copy()
-        self.addAttrCleanup(registry, '_info_dict')
-        self._info_dict = registry._info_dict.copy()
+        self.overrideAttr(version_info_formats,
+                          'format_registry', registry.Registry())
 
     def test_register_remove(self):
         registry = version_info_formats.format_registry

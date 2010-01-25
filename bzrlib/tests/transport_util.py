@@ -125,7 +125,8 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
-        self.addAttrCleanup(InstrumentedTransport, 'hooks')
+        self.overrideAttr(InstrumentedTransport, 'hooks', TransportHooks())
+        # We preserved the hooks class attribute. Now we install our hook.
         ConnectionHookedTransport.hooks.install_named_hook(
             '_set_connection', self._collect_connection, None)
 
