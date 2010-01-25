@@ -1,6 +1,12 @@
 #!/usr/bin/python
 
-from bzrlib import plugin, commands, option
+from bzrlib import (
+    commands,
+    config,
+    help_topics,
+    option,
+    plugin,
+)
 
 head="""\
 # Programmable completion for the Bazaar-NG bzr command under bash. Source
@@ -78,17 +84,34 @@ def wrap_parser(list, parser):
     return wrap_container(list, parser)
 
 def bash_completion_function(out, function_name="_bzr", function_only=False):
-    aliases = []
+    cmds = []
     cases = ""
     reqarg = {}
-    for name in sorted(commands.all_command_names()):
-        cmd = commands.get_cmd_object(name)
-        cases += "\t" + name
-        aliases.append(name)
-        for alias in cmd.aliases:
-            cases += "|" + alias
-            aliases.append(alias)
-        cases += ")\n"
+
+    user_aliases = {} # dict from cmd name to set of user-defined alias names
+    for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
+        for token in commands.shlex_split_unicode(expansion):
+            if not token.startswith("-"):
+                user_aliases.setdefault(token, set()).add(alias)
+                break
+
+    all_cmds = sorted(commands.all_command_names())
+    for cmdname in all_cmds:
+        cmd = commands.get_cmd_object(cmdname)
+
+        # Find all aliases to the command; both cmd-defined and user-defined.
+        # We assume a user won't override one command with a different one,
+        # but will choose completely new names or add options to existing
+        # ones while maintaining the actual command name unchanged.
+        aliases = [cmdname]
+        aliases.extend(cmd.aliases)
+        aliases.extend(sorted([alias
+                               for name in aliases
+                               if name in user_aliases
+                               for alias in user_aliases[name]
+                               if alias not in aliases]))
+        cases += "\t%s)\n" % "|".join(aliases)
+        cmds.extend(aliases)
         plugin = cmd.plugin_name()
         if plugin is not None:
             cases += "\t\t# plugin \"%s\"\n" % plugin
@@ -102,13 +125,16 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             optswitches[:] = []
             opt.add_option(parser, opt.short_name())
             switches.extend(optswitches)
+        if 'help' == cmdname or 'help' in cmd.aliases:
+            switches.extend(sorted(help_topics.topic_registry.keys()))
+            switches.extend(all_cmds)
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
         cases += "\t\t;;\n"
     if function_only:
         template = fun
     else:
         template = head + fun + tail
-    out.write(template % {"cmds": " ".join(aliases),
+    out.write(template % {"cmds": " ".join(cmds),
                           "cases": cases,
                           "function_name": function_name,
                           })
