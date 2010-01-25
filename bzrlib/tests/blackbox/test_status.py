@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -652,13 +652,12 @@ class TestStatusEncodings(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self.user_encoding = osutils._cached_user_encoding
-        self.stdout = sys.stdout
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self.user_encoding
-        sys.stdout = self.stdout
-        TestCaseWithTransport.tearDown(self)
+        saved_user_encoding = osutils._cached_user_encoding
+        saved_stdout = sys.stdout
+        def restore_stuff():
+            osutils._cached_user_encoding = self.user_encoding
+            sys.stdout = saved_stdout
+        self.addCleanup(restore_stuff)
 
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""

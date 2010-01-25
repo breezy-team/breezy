@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -185,9 +185,10 @@ class TestRequestJail(TestCaseWithMemoryTransport):
 
 class TestJailHook(TestCaseWithMemoryTransport):
 
-    def tearDown(self):
-        request.jail_info.transports = None
-        TestCaseWithMemoryTransport.tearDown(self)
+    def setUp(self):
+        def clear_jail_info():
+            request.jail_info.transports = None
+        self.addCleanup(clear_jail_info)
 
     def test_jail_hook(self):
         request.jail_info.transports = None

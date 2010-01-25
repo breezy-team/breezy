@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1121,10 +1121,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def setUp(self):
         tests.TestCase.setUp(self)
         self._old_env = {}
-
-    def tearDown(self):
-        self._restore_env()
-        tests.TestCase.tearDown(self)
+        self.addCleanup(self._restore_env)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1977,10 +1974,10 @@ class TestActivityMixin(object):
         self.orig_report_activity = self._transport._report_activity
         self._transport._report_activity = report_activity
 
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        def teardown():
+            self._transport._report_activity = self.orig_report_activity
+            self.server.stop_server()
+        self.addCleanup(teardown)
 
     def get_transport(self):
         return self._transport(self.server.get_url())
@@ -2118,10 +2115,11 @@ class TestActivity(tests.TestCase, TestActivityMixin):
         self.orig_report_activity = self._transport._report_activity
         self._transport._report_activity = report_activity
 
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        def teardown():
+            self._transport._report_activity = self.orig_report_activity
+            self.server.stop_server()
+
+        self.addCleanup(teardown)
 
 
 class TestNoReportActivity(tests.TestCase, TestActivityMixin):
@@ -2144,10 +2142,10 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
         self.orig_report_activity = self._transport._report_activity
         self._transport._report_activity = None
 
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        def tearDown():
+            self._transport._report_activity = self.orig_report_activity
+            self.server.stop_server()
+        self.addCleanup(teardown)
 
     def assertActivitiesMatch(self):
         # Nothing to check here
