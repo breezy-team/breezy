@@ -668,6 +668,17 @@ method of ``TestCaseWithTransport``).
 Please see bzrlib.treebuilder for more details.
 
 
+Cleaning Up
+~~~~~~~~~~~
+
+Our base ``TestCase`` class provides an ``addCleanup`` method, which
+should be used instead of ``tearDown``.  All the cleanups are run when the
+test finishes, regardless of whether it passes or fails.  If one cleanup
+fails, later cleanups are still run.
+
+(The same facility is available outside of tests through
+``bzrlib.cleanup``.)
+
 .. |--| unicode:: U+2014
 
 ..
