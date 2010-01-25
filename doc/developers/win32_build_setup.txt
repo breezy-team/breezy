@@ -112,6 +112,7 @@ Install Packages
       http://launchpadlibrarian.net/16133025/win32_clock.patch
       This may not end up necessary w/ pycrypto 2.1, especially if paramiko can
       be taught to use the new functionality (avoiding the warning).
+   l) easy_install testtools
 
 5) Get Pageant, not strictly necessary, but it is a pretty good ssh-agent for
    Windows, and paramiko knows how to use keys from Pageant.
