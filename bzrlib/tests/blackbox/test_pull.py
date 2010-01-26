@@ -343,7 +343,7 @@ class TestPull(ExternalBase):
             def look_up(self, name, url):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())
 
