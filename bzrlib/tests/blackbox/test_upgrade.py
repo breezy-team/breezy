@@ -16,17 +16,13 @@
 
 """Black box tests for the upgrade ui."""
 
-import os
-
 from bzrlib import (
     bzrdir,
     repository,
-    ui,
     )
 from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithTransport,
-    TestUIFactory,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -39,14 +35,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
-        self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
-        ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
-        bzrdir.BzrDirFormat._set_default_format(self.old_format)
+        self.addCleanup(bzrdir.BzrDirFormat._set_default_format,
+                        bzrdir.BzrDirFormat.get_default_format())
 
     def make_current_format_branch_and_checkout(self):
         current_tree = self.make_branch_and_tree('current_format_branch',
@@ -157,16 +147,6 @@ finished
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
-
-    def setUp(self):
-        super(SFTPTests, self).setUp()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
-
-        ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
 
     def test_upgrade_url(self):
         self.run_bzr('init --format=weave')
