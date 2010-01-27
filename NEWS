@@ -415,7 +415,7 @@ Bug Fixes
   and issues a warning.
   (Gioele Barabucci, #73073)
 
-* ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
+* ``bzr ignore /`` no longer causes an IndexError. (Gorden Tyler, #456036)
 
 * ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
   (#325618, #484109, Marius Kruger)

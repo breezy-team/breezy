@@ -1797,17 +1797,6 @@ class TestBzrDir(TestCaseWithBzrDir):
 
 class TestBreakLock(TestCaseWithBzrDir):
 
-    def setUp(self):
-        super(TestBreakLock, self).setUp()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
-
     def test_break_lock_empty(self):
         # break lock on an empty bzrdir should work silently.
         dir = self.make_bzrdir('.')
