@@ -133,7 +133,9 @@ class BazaarObjectStore(BaseObjectStore):
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
-        elif entry.kind in ("file", "symlink"):
+        elif entry.kind == "symlink":
+            return self._get_blob_for_symlink(entry.symlink_target)
+        elif entry.kind == "file":
             return self._get_blob(entry.file_id, entry.revision)
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
@@ -163,16 +165,37 @@ class BazaarObjectStore(BaseObjectStore):
     def _get_ie_sha1(self, entry, inv, unusual_modes):
         return self._get_ie_object_or_sha1(entry, inv, unusual_modes)[0]
 
+    def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
+        """Return a Git Blob object for symlink.
+
+        :param symlink_target: target of symlink.
+        """
+        if isinstance(symlink_target, unicode):
+            symlink_target = symlink_target.encode('utf-8')
+        blob = Blob()
+        blob._text = symlink_target
+        self._check_expected_sha(expected_sha, blob)
+        return blob
+
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob = Blob()
-        blob._text = "".join(chunks)
-        self._check_expected_sha(expected_sha, blob)
+        try:
+            inv = self.repository.get_inventory(revision)
+            entry = inv[fileid]
+        except errors.NoSuchRevision, errors.NoSuchId:
+            raise AssertionError("entry not found: revision=%s, file=%s" % (revision, fileid))
+
+        if entry.kind == 'file':
+            blob = Blob()
+            chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
+            blob._text = "".join(chunks)
+            self._check_expected_sha(expected_sha, blob)
+        elif entry.kind == 'symlink':
+            return self._get_blob_for_symlink(entry.symlink_target, expected_sha=expected_sha)
         return blob
 
     def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):

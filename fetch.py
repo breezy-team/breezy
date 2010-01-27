@@ -150,7 +150,8 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         ie.revision = revision_id
         assert file_id is not None
         assert ie.revision is not None
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, blob.data)])
+        data = '' if ie.kind == 'symlink' else blob.data
+        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
         shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
     else:
         shamap = []
