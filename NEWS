@@ -1,5 +1,10 @@
 0.4.4	UNRELEASED
 
+ BUG FIXES
+ 
+  * Avoid storing texts of symlinks, which causes checksum errors in 
+    `bzr check`. (#512323, INADA Naoki)
+
 0.4.3	2010-01-19
 
  BUG FIXES
