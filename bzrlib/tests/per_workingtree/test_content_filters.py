@@ -123,16 +123,12 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         # the easiest way currently given we don't have easy access to the
         # WorkingTree after it is created but before the filter stack is used
         # to populate content.
-        self.real_content_filter_stack = WorkingTree._content_filter_stack
-        def restore_real_content_filter_stack():
-            WorkingTree._content_filter_stack = self.real_content_filter_stack
-        self.addCleanup(restore_real_content_filter_stack)
-        def _content_filter_stack(tree, path=None, file_id=None):
+        def new_stack(tree, path=None, file_id=None):
             if path.endswith('.txt'):
                 return [ContentFilter(_swapcase, _swapcase)]
             else:
                 return []
-        WorkingTree._content_filter_stack = _content_filter_stack
+        self.overrideAttr(WorkingTree, '_content_filter_stack', new_stack)
 
     def assert_basis_content(self, expected_content, branch, file_id):
         # Note: We need to use try/finally here instead of addCleanup()
