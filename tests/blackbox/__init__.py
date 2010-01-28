@@ -21,7 +21,7 @@
 from bzrlib.tests import TestUtil
 
 
-def test_suite():
+def load_tests(standard_tests, module, loader):
   testmod_names = [
           'test_builddeb',
           'test_do',
@@ -30,7 +30,6 @@ def test_suite():
           'test_merge_package',
           'test_merge_upstream',
           ]
-  loader = TestUtil.TestLoader()
   suite = loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
                                        for i in testmod_names])
   return suite

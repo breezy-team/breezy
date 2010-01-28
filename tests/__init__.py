@@ -28,11 +28,12 @@ import doctest
 import os
 from unittest import TestSuite
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from debian_bundle.changelog import Version, Changelog
+""")
 
 from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
-
-from bzrlib.plugins.builddeb.tests import blackbox
 
 
 def make_new_upstream_dir(source, dest):
@@ -109,10 +110,10 @@ class RepackTarballAdaptor(object):
         return result
 
 
-def test_suite():
-    loader = TestUtil.TestLoader()
-    suite = TestSuite()
+def load_tests(standard_tests, module, loader):
+    suite = loader.suiteClass()
     testmod_names = [
+            'blackbox',
             'test_builder',
             'test_commit_message',
             'test_config',
@@ -149,14 +150,8 @@ def test_suite():
                               old_tarball='../package-0.2.tar')),
                  ]
     suite = multiply_tests(repack_tarball_tests, scenarios, suite)
-    packages_to_test = [
-             blackbox,
-             ]
-
-    for package in packages_to_test:
-        suite.addTest(package.test_suite())
-
     return suite
+
 
 class BuilddebTestCase(TestCaseWithTransport):
 
