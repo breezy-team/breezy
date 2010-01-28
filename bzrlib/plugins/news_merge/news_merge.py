@@ -27,8 +27,7 @@ magic_marker = '|NEWS-MERGE-MAGIC-MARKER|'
 class NewsMerger(merge.ConfigurableFileMerger):
     """Merge bzr NEWS files."""
 
-    def __init__(self, merger):
-        super(NewsMerger, self).__init__(merger, 'news')
+    name_prefix = "news"
 
     def merge_text(self, params):
         """Perform a simple 3-way merge of a bzr NEWS file.

@@ -100,17 +100,22 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
     classes should implement ``merge_text``.
 
     :ivar affected_files: The configured file paths to merge.
-    :ivar name_prefix: The prefix to use when looking up configuration
+    :cvar name_prefix: The prefix to use when looking up configuration
         details.
-    :ivar default_files: The default file paths to merge when no configuration
+    :cvar default_files: The default file paths to merge when no configuration
         is present.
     """
 
-    def __init__(self, merger, name_prefix, default_files=None):
+    name_prefix = None
+    default_files = None
+
+    def __init__(self, merger):
         super(ConfigurableFileMerger, self).__init__(merger)
         self.affected_files = None
-        self.default_files = default_files or []
-        self.name_prefix = name_prefix
+        self.default_files = self.__class__.default_files or []
+        self.name_prefix = self.__class__.name_prefix
+        if self.name_prefix is None:
+            raise ValueError("name_prefix must be set.")
 
     def filename_matches_config(self, params):
         affected_files = self.affected_files

@@ -2844,10 +2844,12 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""
         class SimplePlan(_mod_merge.ConfigurableFileMerger):
+            name_prefix = "foo"
+            default_files = ["my default"]
             def merge_text(self, params):
                 return ('not applicable', None)
         def factory(merger):
-            result = SimplePlan(merger, "foo", ["my default"])
+            result = SimplePlan(merger)
             self.assertEqual(None, result.affected_files)
             self.merger = result
             return result
