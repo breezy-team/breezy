@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Give a better error message when doing ``bzr bind`` in an already bound
+  branch.  (Neil Martinsen-Burrell, #513063)
+
 Improvements
 ************
 

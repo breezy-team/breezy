@@ -420,3 +420,25 @@ class TestBoundBranches(TestCaseWithTransport):
         # both the local and master should have been updated.
         self.check_revno(4)
         self.check_revno(4, '../base')
+
+
+from bzrlib.tests import script
+class TestBind(script.TestCaseWithTransportAndScript):
+
+    def test_bind_when_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ bzr init copy
+$ cd copy
+$ bzr bind ../trunk
+$ bzr bind
+2>bzr: ERROR: Branch is already bound
+""")
+
+    def test_bind_before_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ cd trunk
+$ bzr bind
+2>bzr: ERROR: No location supplied and no previous location known
+""")
