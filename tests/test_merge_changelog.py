@@ -44,6 +44,10 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
     
 class TestMergeChangelog(tests.TestCase):
 
+    def assertMergeChangelog(self, expected_lines, this_lines, other_lines):
+        merged_lines = merge_changelog.merge_changelog(this_lines, other_lines)
+        self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
+
     def test_merge_by_version(self):
         v_111_2 = """\
 psuedo-prog (1.1.1-2) unstable; urgency=low
@@ -78,5 +82,5 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
         this_lines = v_111_2 + v_001_1
         other_lines = v_112_1 + v_001_1
         expected_lines = v_112_1 + v_111_2 + v_001_1
-        merged_lines = merge_changelog.merge_changelog(this_lines, other_lines)
-        self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
+        self.assertMergeChangelog(expected_lines, this_lines, other_lines)
+        self.assertMergeChangelog(expected_lines, other_lines, this_lines)
