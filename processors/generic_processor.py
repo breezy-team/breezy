@@ -526,8 +526,10 @@ class GenericProcessor(processor.ImportProcessor):
 
     def progress_handler(self, cmd):
         """Process a ProgressCommand."""
-        # We could use a progress bar here instead
-        self.note("progress %s" % (cmd.message,))
+        # Most progress messages embedded in streams are annoying.
+        # Ignore them unless in verbose mode.
+        if self.verbose:
+            self.note("progress %s" % (cmd.message,))
 
     def reset_handler(self, cmd):
         """Process a ResetCommand."""
