@@ -28,15 +28,16 @@ from bzrlib.plugins.builddeb import merge_changelog
 class TestReadChangelog(tests.TestCase):
 
     def test_read_changelog(self):
-        lines = ['psuedo-prog (1.1.1-2) unstable; urgency=low\n',
-                 '\n',
-                 '  * New upstream release.\n',
-                 '  * Awesome bug fixes.\n',
-                 '\n',
-                 ' -- Joe Foo <joe@example.com>  '
-                    'Thu, 28 Jan 2010 10:45:44 +0000\n',
-                 '\n',
-                ]
+        lines = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+  * Awesome bug fixes.
+
+ -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+""".splitlines(True)
+
+                
         entries = merge_changelog.read_changelog(lines)
         self.assertEqual(1, len(entries))
 
