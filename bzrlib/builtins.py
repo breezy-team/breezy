@@ -4719,11 +4719,12 @@ class cmd_uncommit(Command):
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):
-            self.outf.write('No revisions to uncommit.\n')
+            ui.ui_factory.note('No revisions to uncommit.')
             return 1
 
+        log_collector = ui_factory.make_output_stream()
         lf = log_formatter('short',
-                           to_file=self.outf,
+                           to_file=log_collector,
                            show_timezone='original')
 
         show_log(b,
@@ -4734,22 +4735,20 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            print 'Dry-run, pretending to remove the above revisions.'
-            if not force:
-                val = raw_input('Press <enter> to continue')
+            ui.ui_factory.note('Dry-run, pretending to remove the above revisions.')
         else:
-            print 'The above revision(s) will be removed.'
-            if not force:
-                val = raw_input('Are you sure [y/N]? ')
-                if val.lower() not in ('y', 'yes'):
-                    print 'Canceled'
-                    return 0
+            ui.ui_factory.note('The above revision(s) will be removed.')
+
+        if not force:
+            if not ui.ui_factory.get_boolean('Are you sure [y/N]? '):
+                ui.ui_factory.note('Canceled')
+                return 0
 
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
-        note('You can restore the old tip by running:\n'
+        ui.ui_factory.note('You can restore the old tip by running:\n'
              '  bzr pull . -r revid:%s', last_rev_id)
 
 
