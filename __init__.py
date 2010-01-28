@@ -115,22 +115,28 @@ msgeditor.hooks.install_named_hook("commit_message_template",
 
 def _use_special_merger(params):
     """Check if the file being merged is applicable."""
-    changelog_enabled = getattr(params, '_changelog_hook_enabled', None)
-    if changelog_enabled is None:
+    changelog_files = getattr(params, '_builddeb_changelog_merge_files', None)
+    if changelog_files is None:
         config = params.merger.this_tree.branch.get_config()
-        changelog_enabled = config.get_user_option_as_bool(
-            'changelog_hook_enabled')
-        if changelog_enabled is None:
-            changelog_enabled = False
-        params._changelog_hook_enabled = changelog_enabled
-    if not changelog_enabled:
+        changelog_files = config.get_user_option_as_list(
+            'deb_changelog_merge_files')
+        if changelog_files is None:
+            # By default, if the builddeb plugin is installed, we enable this
+            # merge hook for 'debian/changelog' files
+            changelog_files = ['debian/changelog']
+        if changelog_files == [u'']:
+            # Unfortunately, the way to disable is to use an empty value, but
+            # that returns an empty string which casts into a list with one
+            # string
+            changelog_files = []
+        changelog_files = set(changelog_files)
+        params._builddeb_changelog_merge_files = changelog_files
+    if not changelog_files:
         return False
     # It would be reasonable to check .name first, which would avoid deep-tree
     # lookups for files we know
     filename = params.merger.this_tree.id2path(params.file_id)
-    if filename not in ('changelog', 'debian/changelog'):
-        return False
-    return True
+    return filename in changelog_files
 
 
 def changelog_merge_hook(params):
