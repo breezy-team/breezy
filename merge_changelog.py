@@ -46,6 +46,14 @@ def merge_changelog(left_changelog_lines, right_changelog_lines):
     right_cl = read_changelog(right_changelog_lines)
 
     content = []
+    # TODO: This is not a 3-way merge, but a 2-way merge
+    #       The resolution is currently 'if left and right have texts that have
+    #       the same "version" string, use left', aka "prefer-mine".
+    #       We could introduce BASE, and cause conflicts, or appropriately
+    #       resolve, etc.
+    #       Note also that this code is only invoked when there is a
+    #       left-and-right change, so merging a pure-right change will take all
+    #       changes.
     for right_ver, right_text in right_cl:
         while len(left_cl) and left_cl[0][0] > right_ver:
             (left_ver, left_text) = left_cl.pop(0)
