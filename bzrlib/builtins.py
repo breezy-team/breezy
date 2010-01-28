@@ -4722,7 +4722,7 @@ class cmd_uncommit(Command):
             ui.ui_factory.note('No revisions to uncommit.')
             return 1
 
-        log_collector = ui_factory.make_output_stream()
+        log_collector = ui.ui_factory.make_output_stream()
         lf = log_formatter('short',
                            to_file=log_collector,
                            show_timezone='original')
@@ -4749,7 +4749,7 @@ class cmd_uncommit(Command):
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
         ui.ui_factory.note('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s', last_rev_id)
+             '  bzr pull . -r revid:%s' % last_rev_id)
 
 
 class cmd_break_lock(Command):
