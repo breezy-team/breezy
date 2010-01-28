@@ -5,6 +5,18 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.1.0rc2
+############
+
+API Changes
+***********
+
+* The new ``merge_file_content`` hook point has been altered to provide a
+  better API where state for extensions can be stored rather than the
+  too-simple function based approach. This fixes a performance regression
+  where branch configuration would be parsed per-file during merge.
+  (Robert Collins, John Arbash Meinel, #513822)
+
 bzr 2.1.0rc1
 ############
 
