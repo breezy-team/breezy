@@ -158,6 +158,7 @@ def load_tests(standard_tests, module, loader):
 class BuilddebTestCase(TestCaseWithTransport):
 
     package_name = 'test'
+    # XXX: Restore these
     package_version = None #Version('0.1-1')
     upstream_version = property(lambda self: \
                                 self.package_version.upstream_version)
