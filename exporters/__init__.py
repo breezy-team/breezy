@@ -244,11 +244,11 @@ class GitExporter(_Exporter):
 class MonotoneExporter(_Exporter):
 
     def __init__(self):
-        self.check_install('Monotone', '0.43', ['mnt'])
+        self.check_install('Monotone', '0.43', ['mtn'])
 
     def generate(self, source, destination, verbose=False, custom=None):
         """Generate a fast import stream. See _Exporter.generate() for details."""
-        args = ["mnt", "git_export"]
+        args = ["mtn", "git_export"]
         outf, base, marks = self.get_output_info(destination)
         if marks:
             marks = os.path.abspath(marks)
@@ -311,7 +311,7 @@ def fast_export_from(source, destination, tool, verbose=False, custom=None):
         factory = MercurialExporter
     elif tool == 'git':
         factory = GitExporter
-    elif tool == 'mnt':
+    elif tool == 'mtn':
         factory = MonotoneExporter
     elif tool == 'p4':
         factory = PerforceExporter

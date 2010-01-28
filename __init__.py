@@ -55,7 +55,7 @@ online help for the individual commands for details::
   bzr help fast-export-from-darcs
   bzr help fast-export-from-hg
   bzr help fast-export-from-git
-  bzr help fast-export-from-mnt
+  bzr help fast-export-from-mtn
   bzr help fast-export-from-p4
   bzr help fast-export-from-svn
 
@@ -144,7 +144,7 @@ class cmd_fast_import(Command):
 
     Numerous commands are provided for generating a fast-import file
     to use as input. These are named fast-export-from-xxx where xxx
-    is one of cvs, darcs, git, hg, mnt, p4 or svn.
+    is one of cvs, darcs, git, hg, mtn, p4 or svn.
     To specify standard input as the input stream, use a
     source name of '-' (instead of project.fi). If the source name
     ends in '.gz', it is assumed to be compressed in gzip format.
@@ -850,13 +850,13 @@ class cmd_fast_export_from_git(Command):
         fast_export_from(source, destination, 'git', verbose)
 
 
-class cmd_fast_export_from_mnt(Command):
+class cmd_fast_export_from_mtn(Command):
     """Generate a fast-import file from a Monotone repository.
 
     Destination is a dump file, typically named xxx.fi where xxx is
     the name of the project. If '-' is given, standard output is used.
 
-    Monotone 0.43 or later must be installed as the mnt git_export
+    Monotone 0.43 or later must be installed as the mtn git_export
     subcommand is used under the covers to generate the stream.
     The source must be a local directory.
     """
@@ -868,7 +868,7 @@ class cmd_fast_export_from_mnt(Command):
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False):
         from bzrlib.plugins.fastimport.exporters import fast_export_from
-        fast_export_from(source, destination, 'mnt', verbose)
+        fast_export_from(source, destination, 'mtn', verbose)
 
 
 class cmd_fast_export_from_p4(Command):
@@ -956,6 +956,6 @@ register_command(cmd_fast_export_from_cvs)
 register_command(cmd_fast_export_from_darcs)
 register_command(cmd_fast_export_from_hg)
 register_command(cmd_fast_export_from_git)
-register_command(cmd_fast_export_from_mnt)
+register_command(cmd_fast_export_from_mtn)
 register_command(cmd_fast_export_from_p4)
 register_command(cmd_fast_export_from_svn)
