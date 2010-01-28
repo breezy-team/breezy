@@ -33,7 +33,11 @@ from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
-from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
+from bzrlib.tests import (
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    test_merge_core,
+    )
 from bzrlib.workingtree import WorkingTree
 
 
@@ -2833,3 +2837,26 @@ class TestLCAMultiWay(tests.TestCase):
             'bval', ['lca1val', 'lca2val', 'lca2val'], 'oval', 'tval')
         self.assertLCAMultiWay('conflict',
             'bval', ['lca1val', 'lca2val', 'lca3val'], 'oval', 'tval')
+
+
+class TestConfigurableFileMerger(tests.TestCaseWithTransport):
+
+    def test_affected_files_cached(self):
+        """Ensures that the config variable is cached"""
+        class SimplePlan(_mod_merge.ConfigurableFileMerger):
+            def merge_text(self, params):
+                return ('not applicable', None)
+        def factory(merger):
+            result = SimplePlan(merger, "foo", ["my default"])
+            self.assertEqual(None, result.affected_files)
+            self.merger = result
+            return result
+        _mod_merge.Merger.hooks.install_named_hook('merge_file_content',
+            factory, 'test factory')
+        builder = test_merge_core.MergeBuilder(self.test_base_dir)
+        self.addCleanup(builder.cleanup)
+        builder.add_file('NEWS', builder.tree_root, 'name1', 'text1', True)
+        builder.change_contents('NEWS', other='text4', this='text3')
+        conflicts = builder.merge()
+        # The hook should set the variable
+        self.assertEqual(["my default"], self.merger.affected_files)

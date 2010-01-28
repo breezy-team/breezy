@@ -93,6 +93,70 @@ class AbstractPerFileMerger(object):
         return ('not applicable', None)
 
 
+class ConfigurableFileMerger(AbstractPerFileMerger):
+    """Merge individual files when configured via a .conf file.
+
+    This is a base class for concrete custom file merging logic. Concrete
+    classes should implement ``merge_text``.
+
+    :ivar affected_files: The configured file paths to merge.
+    :ivar name_prefix: The prefix to use when looking up configuration
+        details.
+    :ivar default_files: The default file paths to merge when no configuration
+        is present.
+    """
+
+    def __init__(self, merger, name_prefix, default_files=None):
+        super(ConfigurableFileMerger, self).__init__(merger)
+        self.affected_files = None
+        self.default_files = default_files or []
+        self.name_prefix = name_prefix
+
+    def filename_matches_config(self, params):
+        affected_files = self.affected_files
+        if affected_files is None:
+            config = self.merger.this_tree.branch.get_config()
+            # Until bzr provides a better policy for caching the config, we
+            # just add the part we're interested in to the params to avoid
+            # reading the config files repeatedly (bazaar.conf, location.conf,
+            # branch.conf).
+            config_key = self.name_prefix + '_merge_files'
+            affected_files = config.get_user_option_as_list(config_key)
+            if affected_files is None:
+                # If nothing was specified in the config, use the default.
+                affected_files = self.default_files
+            self.affected_files = affected_files
+        if affected_files:
+            filename = self.merger.this_tree.id2path(params.file_id)
+            if filename in affected_files:
+                return True
+        return False
+
+    def merge_contents(self, params):
+        """Merge the contents of a single file."""
+        # First, check whether this custom merge logic should be used.  We
+        # expect most files should not be merged by this handler.
+        if (
+            # OTHER is a straight winner, rely on default merge.
+            params.winner == 'other' or
+            # THIS and OTHER aren't both files.
+            not params.is_file_merge() or
+            # The filename isn't listed in the 'NAME_merge_files' config
+            # option.
+            not self.filename_matches_config(params)):
+            return 'not_applicable', None
+        return self.merge_text(self, params)
+
+    def merge_text(self, params):
+        """Merge the byte contents of a single file.
+
+        This is called after checking that the merge should be performed in
+        merge_contents, and it should behave as per
+        ``bzrlib.merge.AbstractPerFileMerger.merge_contents``.
+        """
+        raise NotImplementedError(self.merge_text)
+
+
 class MergeHookParams(object):
     """Object holding parameters passed to merge_file_content hooks.
 

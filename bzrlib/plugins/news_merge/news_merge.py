@@ -24,35 +24,19 @@ from bzrlib import merge, merge3
 magic_marker = '|NEWS-MERGE-MAGIC-MARKER|'
 
 
-class NewsMerger(merge.AbstractPerFileMerger):
-    """Merge bzr NEWS files.
-
-    :ivar: affected_files.
-    """
+class NewsMerger(merge.ConfigurableFileMerger):
+    """Merge bzr NEWS files."""
 
     def __init__(self, merger):
-        super(NewsMerger, self).__init__(merger)
-        self.affected_files = None
+        super(NewsMerger, self).__init__(merger, 'news')
 
-    def merge_contents(self, params):
+    def merge_text(self, params):
         """Perform a simple 3-way merge of a bzr NEWS file.
         
         Each section of a bzr NEWS file is essentially an ordered set of bullet
         points, so we can simply take a set of bullet points, determine which
         bullets to add and which to remove, sort, and reserialize.
         """
-        # First, check whether this custom merge logic should be used.  We
-        # expect most files should not be merged by this file.
-        if params.winner == 'other':
-            # OTHER is a straight winner, rely on default merge.
-            return 'not_applicable', None
-        elif not params.is_file_merge():
-            # THIS and OTHER aren't both files.
-            return 'not_applicable', None
-        elif not self.filename_matches_config(params):
-            # The filename isn't listed in the 'news_merge_files' config
-            # option.
-            return 'not_applicable', None
         # Transform the different versions of the NEWS file into a bunch of
         # text lines where each line matches one part of the overall
         # structure, e.g. a heading or bullet.
@@ -90,26 +74,6 @@ class NewsMerger(merge.AbstractPerFileMerger):
                 result_lines.extend(group[1])
         # Transform the merged elements back into real blocks of lines.
         return 'success', list(fakelines_to_blocks(result_lines))
-
-    def filename_matches_config(self, params):
-        affected_files = self.affected_files
-        if affected_files is None:
-            config = self.merger.this_tree.branch.get_config()
-            # Until bzr provides a better policy for caching the config, we
-            # just add the part we're interested in to the params to avoid
-            # reading the config files repeatedly (bazaar.conf, location.conf,
-            # branch.conf).
-            affected_files = config.get_user_option_as_list('news_merge_files')
-            if affected_files is None:
-                # If nothing was specified in the config, we have nothing to do,
-                # but we use None in the params to start the caching.
-                affected_files = []
-            self.affected_files = affected_files
-        if affected_files:
-            filename = params.merger.this_tree.id2path(params.file_id)
-            if filename in affected_files:
-                return True
-        return False
 
 
 def blocks_to_fakelines(blocks):
