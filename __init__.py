@@ -142,8 +142,9 @@ def changelog_merge_hook(params):
     from bzrlib.plugins.builddeb import merge_changelog
     new_lines = merge_changelog.merge_changelog(params.this_lines,
                                                 params.other_lines)
-    if new_lines is None:
-        return 'not_applicable', None
+    # Under what condition should merge_changelog decide it can't do the work?
+    #if new_lines is None:
+    #    return 'not_applicable', None
     return 'success', new_lines
 
 

@@ -20,9 +20,15 @@
 """Tests for the merge_changelog code."""
 
 from bzrlib import (
+    memorytree,
+    merge,
     tests,
     )
-from bzrlib.plugins.builddeb import merge_changelog
+from bzrlib.plugins.builddeb import (
+    _use_special_merger,
+    changelog_merge_hook,
+    merge_changelog,
+    )
 
 
 class TestReadChangelog(tests.TestCase):
@@ -84,3 +90,76 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
         expected_lines = v_112_1 + v_111_2 + v_001_1
         self.assertMergeChangelog(expected_lines, this_lines, other_lines)
         self.assertMergeChangelog(expected_lines, other_lines, this_lines)
+
+
+class TestChangelogHook(tests.TestCaseWithMemoryTransport):
+
+    def make_params(self, enable_hook=True):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None)),
+            ('add', ('debian', 'deb-id', 'directory', None)),
+            ('add', ('debian/changelog', 'c-id', 'file', '')),
+            ('add', ('other', 'o-id', 'file', '')),
+            ])
+        builder.finish_series()
+        the_branch = builder.get_branch()
+
+        tree = memorytree.MemoryTree.create_on_branch(the_branch)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+
+        class FakeMerger(object):
+            def __init__(self, this_tree):
+                self.this_tree = this_tree
+            def get_lines(self, tree, file_id):
+                return tree.get_file_lines(file_id)
+
+        merger = FakeMerger(tree)
+        params = merge.MergeHookParams(merger, 'c-id', None, 'file', 'file',
+                                       'this')
+        if enable_hook:
+            the_branch.get_config().set_user_option(
+                'changelog_hook_enabled', 'True')
+        return params
+
+    def test__use_special_merger_creates_attribute(self):
+        params = self.make_params(enable_hook=False)
+        self.assertFalse(_use_special_merger(params))
+        self.assertIs(False, params._changelog_hook_enabled)
+
+    def test__use_special_merger_enabled(self):
+        params = self.make_params()
+        self.assertTrue(_use_special_merger(params))
+        self.assertTrue(params._changelog_hook_enabled)
+
+    def test__use_special_merger_not_changelog(self):
+        params = self.make_params()
+        params.file_id = 'o-id'
+        self.assertFalse(_use_special_merger(params))
+        self.assertTrue(params._changelog_hook_enabled)
+
+    def test_changelog_merge_hook_ignores_other(self):
+        params = self.make_params()
+        params.winner = 'other'
+        self.assertEqual(('not_applicable', None),
+                         changelog_merge_hook(params))
+
+    def test_changelog_merge_hook_ignores_kind_change(self):
+        params = self.make_params()
+        params.other_kind = 'directory' # No longer a pure file merge
+        self.assertEqual(('not_applicable', None),
+                         changelog_merge_hook(params))
+
+    def test_changelog_merge_hook_not_enabled(self):
+        params = self.make_params(enable_hook=False)
+        self.assertEqual(('not_applicable', None),
+                         changelog_merge_hook(params))
+
+    def test_changelog_merge_hook_successful(self):
+        params = self.make_params()
+        params.other_lines = ['']
+        result, new_content = changelog_merge_hook(params)
+        self.assertEqual('success', result)
+        # We ignore the new_content, as we test that elsewhere
