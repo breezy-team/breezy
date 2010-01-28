@@ -135,9 +135,8 @@ def load_tests(standard_tests, module, loader):
              'changes',
              'config'
              ]
-    # XXX: Restore these
-    # for mod in doctest_mod_names:
-    #     suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
+    for mod in doctest_mod_names:
+        suite.addTest(doctest.DocTestSuite("bzrlib.plugins.builddeb." + mod))
     repack_tarball_tests = loader.loadTestsFromModuleNames(
             ['%s.test_repack_tarball' % __name__])
     scenarios = [('dir', dict(build_tarball=make_new_upstream_dir,
@@ -158,14 +157,11 @@ def load_tests(standard_tests, module, loader):
 class BuilddebTestCase(TestCaseWithTransport):
 
     package_name = 'test'
-    # XXX: Restore these
-    package_version = None #Version('0.1-1')
+    package_version = Version('0.1-1')
     upstream_version = property(lambda self: \
                                 self.package_version.upstream_version)
 
     def make_changelog(self, version=None):
-        if self.package_version is None:
-            self.package_version = Version('0.1-1')
         if version is None:
             version = self.package_version
         c = Changelog()
