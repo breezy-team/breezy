@@ -44,5 +44,39 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
     
 class TestMergeChangelog(tests.TestCase):
 
-    def test_nothing(self):
-        pass
+    def test_merge_by_version(self):
+        v_111_2 = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+  * Awesome bug fixes.
+
+ -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+
+""".splitlines(True)
+
+        v_112_1 = """\
+psuedo-prog (1.1.2-1) unstable; urgency=low
+
+  * New upstream release.
+  * No bug fixes :(
+
+ -- Barry Foo <barry@example.com> Thu, 27 Jan 2010 10:45:44 +0000
+
+""".splitlines(True)
+
+        v_001_1 = """\
+psuedo-prog (0.0.1-1) unstable; urgency=low
+
+  * New project released!!!!
+  * No bugs evar
+
+ -- Barry Foo <barry@example.com> Thu, 27 Jan 2010 10:00:44 +0000
+
+""".splitlines(True)
+
+        this_lines = v_111_2 + v_001_1
+        other_lines = v_112_1 + v_001_1
+        expected_lines = v_112_1 + v_111_2 + v_001_1
+        merged_lines = merge_changelog.merge_changelog(this_lines, other_lines)
+        self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
