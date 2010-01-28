@@ -25,7 +25,10 @@
 
 import os
 
-from bzrlib import msgeditor
+from bzrlib import (
+    merge,
+    msgeditor,
+    )
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
@@ -110,9 +113,51 @@ msgeditor.hooks.install_named_hook("commit_message_template",
         "the commit message")
 
 
+def _use_special_merger(params):
+    """Check if the file being merged is applicable."""
+    changelog_enabled = getattr(params, '_changelog_hook_enabled', None)
+    if changelog_enabled is None:
+        config = params.merger.this_tree.branch.get_config()
+        changelog_enabled = config.get_user_option_as_bool(
+            'changelog_hook_enabled')
+        if changelog_enabled is None:
+            changelog_enabled = False
+        params._changelog_hook_enabled = changelog_enabled
+    if not changelog_enabled:
+        return False
+    # It would be reasonable to check .name first, which would avoid deep-tree
+    # lookups for files we know
+    filename = params.merger.this_tree.id2path(params.file_id)
+    if filename not in ('changelog', 'debian/changelog'):
+        return False
+    return True
+
+
+def changelog_merge_hook(params):
+    """A special merge hook for 'changelog' files."""
+    if (params.winner == 'other' # Do we always want to do a special merge?
+        or not params.is_file_merge()
+        or not _use_special_merger(params)):
+        return 'not_applicable', None
+    from bzrlib.plugins.builddeb import merge_changelog
+    new_lines = merge_changelog.merge_changelog(params.this_lines,
+                                                params.other_lines)
+    if new_lines is None:
+        return 'not_applicable', None
+    return 'success', new_lines
+
+
+# TODO: at some point, we can depend on bzr >2.1 and we won't need the
+#       compatibility cruft
+_merge_hooks = getattr(merge.Merger, 'hooks', None)
+if _merge_hooks is not None:
+    _merge_hooks.install_named_hook('merge_file_content',
+        changelog_merge_hook, 'Changelog file merge')
+
 try:
     from bzrlib.revisionspec import revspec_registry
-    revspec_registry.register_lazy("package:", "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+    revspec_registry.register_lazy("package:",
+        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
 except ImportError:
     from bzrlib.revisionspec import SPEC_TYPES
     from bzrlib.plugins.builddeb.revspec import RevisionSpec_package

@@ -39,54 +39,55 @@ Debian release of the package.
 CL_RE = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)((\s+[-0-9a-z]+)+)\;',
                    re.IGNORECASE)
 
-def merge_changelog(left_changelog, right_changelog):
+def merge_changelog(left_changelog_lines, right_changelog_lines):
     """Merge a changelog file."""
 
-    left_cl = read_changelog(left_changelog)
-    right_cl = read_changelog(right_changelog)
+    left_cl = read_changelog(left_changelog_lines)
+    right_cl = read_changelog(right_changelog_lines)
 
+    content = []
     for right_ver, right_text in right_cl:
         while len(left_cl) and left_cl[0][0] > right_ver:
             (left_ver, left_text) = left_cl.pop(0)
-            print left_text
+            content.append(left_text)
+            content.append('\n')
 
         while len(left_cl) and left_cl[0][0] == right_ver:
             (left_ver, left_text) = left_cl.pop(0)
 
-        print right_text
+        content.append(right_text)
+        content.append('\n')
 
     for left_ver, left_text in left_cl:
-        print left_text
+        content.append(left_text)
+        content.append('\n')
 	    
-    return False
+    return content
 
-def read_changelog(filename):
+
+def read_changelog(lines):
     """Return a parsed changelog file."""
     entries = []
 
-    cl = open(filename)
-    try:
-        (ver, text) = (None, "")
-        for line in cl:
-            match = CL_RE.search(line)
-            if match:
-                try:
-                    ver = Version(match.group(2))
-                except ValueError:
-                    ver = None
+    (ver, text) = (None, "")
+    for line in lines:
+        match = CL_RE.search(line)
+        if match:
+            try:
+                ver = Version(match.group(2))
+            except ValueError:
+                ver = None
 
-                text += line
-            elif line.startswith(" -- "):
-                if ver is None:
-                    ver = Version("0")
+            text += line
+        elif line.startswith(" -- "):
+            if ver is None:
+                ver = Version("0")
 
-                text += line
-                entries.append((ver, text))
-                (ver, text) = (None, "")
-            elif len(line.strip()) or ver is not None:
-                text += line
-    finally:
-        cl.close()
+            text += line
+            entries.append((ver, text))
+            (ver, text) = (None, "")
+        elif len(line.strip()) or ver is not None:
+            text += line
 
     if len(text):
         entries.append((ver, text))
