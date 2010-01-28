@@ -16,20 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os, sys, re, time, logging
-
-from stat import *
-from textwrap import fill
-
-def usage():
-    print '''Usage: merge_changelog <left changelog> <right changelog>
-
-merge_changelog takes two changelogs that once shared a common source, 
-merges them back together, and prints the merged result to stdout.  This
-is useful if you need to manually merge a ubuntu package with a new
-Debian release of the package.
-'''
-    sys.exit(1)
+import re
 
 ########################################################################
 # Changelog Management
@@ -260,14 +247,3 @@ def deb_cmp(x, y):
         if result != 0: return result
 
     return 0
-
-
-if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        usage()
-    
-    left_changelog = sys.argv[1]
-    right_changelog = sys.argv[2]
-
-    merge_changelog(left_changelog, right_changelog)
-    sys.exit(0)
