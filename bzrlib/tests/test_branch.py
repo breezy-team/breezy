@@ -491,6 +491,26 @@ class TestHooks(TestCase):
             BranchHooks)
 
 
+class TestBranchOptions(TestCaseWithTransport):
+
+    def test_append_revisions_only(self):
+        """Ensure that BzrOptionValue raised on invalid settings"""
+        branch = self.make_branch('a')
+        config = branch.get_config()
+        self.assertEquals(None, config.get_user_option('append_revisions_only'))
+        config.set_user_option('append_revisions_only', 'False')
+        self.assertFalse(branch._get_append_revisions_only())
+        config.set_user_option('append_revisions_only', 'false')
+        self.assertFalse(branch._get_append_revisions_only())
+        config.set_user_option('append_revisions_only', 'True')
+        self.assertTrue(branch._get_append_revisions_only())
+        config.set_user_option('append_revisions_only', 'true')
+        self.assertTrue(branch._get_append_revisions_only())
+
+        config.set_user_option('append_revisions_only', 'invalid')
+        self.assertRaises(errors.BadOptionValue,
+                          branch._get_append_revisions_only)
+
 class TestPullResult(TestCase):
 
     def test_pull_result_to_int(self):
