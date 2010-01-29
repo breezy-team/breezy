@@ -34,7 +34,6 @@ from info import (
     )
 
 commands = {
-        "test_builddeb": [],
         "builddeb": ["bd"],
         "merge_upstream": ["mu"],
         "import_dsc": [],
@@ -120,17 +119,5 @@ except ImportError:
     SPEC_TYPES.append(RevisionSpec_package)
 
 
-def test_suite():
-    from unittest import TestSuite
-    from bzrlib.plugins.builddeb import tests
-    result = TestSuite()
-    result.addTest(tests.test_suite())
-    return result
-
-
-if __name__ == '__main__':
-    print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
-            "to use it.\n")
-    import unittest
-    runner = unittest.TextTestRunner()
-    runner.run(test_suite())
+def load_tests(standard_tests, module, loader):
+    return loader.loadTestsFromModuleNames(['bzrlib.plugins.builddeb.tests'])
