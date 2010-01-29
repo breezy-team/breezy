@@ -2695,9 +2695,9 @@ class BzrBranch8(BzrBranch5):
         value = self.get_config().get_user_option(name)
         if value is None:
             return False
-        value = self.get_config().get_user_option_as_bool(name)
-        if value is not None:
-            return value
+        append = self.get_config().get_user_option_as_bool(name)
+        if append is not None:
+            return append
         raise errors.BadOptionValue(name, value)
 
     @needs_write_lock
