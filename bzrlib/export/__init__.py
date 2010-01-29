@@ -19,6 +19,7 @@
 Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
+from bzrlib.inventory import InventoryFile
 from bzrlib.trace import mutter
 import os
 import bzrlib.errors as errors
@@ -140,12 +141,22 @@ def _export_iter_entries(tree, subdir):
     :param tree: A tree object.
     :param subdir: None or the path of a directory to start exporting from.
     """
+
     inv = tree.inventory
     if subdir is None:
-        subdir_id = None
+        subdir_object = None
+    elif tree.has_filename(subdir):
+        subdir_object = inv[inv.path2id(subdir)]
+    # XXX: subdir is path not an id, so NoSuchId isn't proper error
     else:
-        subdir_id = inv.path2id(subdir)
-    entries = inv.iter_entries(subdir_id)
+        raise errors.NoSuchId(tree, subdir)
+
+    if not isinstance(subdir_object, InventoryFile):
+        entries = inv.iter_entries(subdir_object)
+    else:
+        yield subdir_object.name, subdir_object
+        return
+
     if subdir is None:
         entries.next() # skip root
     for entry in entries:
