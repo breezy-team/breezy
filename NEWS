@@ -5,6 +5,24 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.1.0 (not released yet)
+############################
+
+:Codename: 
+:2.1.0: 
+
+Bug Fixes
+*********
+
+* Using the ``bzrlib.chk_map`` module from within multiple threads at the
+  same time was broken due to race conditions with a module level page
+  cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
+  ``bzrlib.chk_map`` in the backtrace, and can be triggered without using
+  the same high level objects such as ``bzrlib.repository.Repository``
+  from different threads. chk_map now uses a thread local cache which may
+  increase memory pressure on processes using threads.
+  (Robert Collins, John Arbash Meinel, #514090)
+
 bzr 2.1.0rc2
 ############
 
