@@ -18,6 +18,19 @@
 
 import re
 
+from bzrlib import (
+    merge,
+    )
+
+class ChangeLogFileMerge(merge.ConfigurableFileMerger):
+
+    name_prefix = 'deb_changelog'
+    default_files = ['debian/changelog']
+
+    def merge_text(self, params):
+        return 'success', merge_changelog(params.this_lines, params.other_lines)
+
+
 ########################################################################
 # Changelog Management
 ########################################################################

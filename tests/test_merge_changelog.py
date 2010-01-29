@@ -24,11 +24,8 @@ from bzrlib import (
     merge,
     tests,
     )
-from bzrlib.plugins.builddeb import (
-    _use_special_merger,
-    changelog_merge_hook,
-    merge_changelog,
-    )
+from bzrlib.plugins import builddeb
+from bzrlib.plugins.builddeb import merge_changelog
 
 
 class TestReadChangelog(tests.TestCase):
@@ -94,7 +91,7 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
 
-    def make_params(self, enable_hook=True):
+    def make_params(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot('A', None, [
@@ -119,58 +116,13 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
         merger = FakeMerger(tree)
         params = merge.MergeHookParams(merger, 'c-id', None, 'file', 'file',
                                        'this')
-        if not enable_hook:
-            the_branch.get_config().set_user_option(
-                'deb_changelog_merge_files', '')
-        return params
+        return params, merger
 
-    def test__use_special_merger_creates_attribute(self):
-        params = self.make_params(enable_hook=False)
-        self.assertFalse(_use_special_merger(params))
-        self.assertEqual(set(), params._builddeb_changelog_merge_files)
-
-    def test__use_special_merger_enabled(self):
-        params = self.make_params()
-        self.assertTrue(_use_special_merger(params))
-        self.assertEqual(set(['debian/changelog']),
-                         params._builddeb_changelog_merge_files)
-
-    def test__use_special_merger_not_debian_changelog(self):
-        params = self.make_params()
-        params.file_id = 'o-id'
-        self.assertFalse(_use_special_merger(params))
-        self.assertEqual(set(['debian/changelog']),
-                         params._builddeb_changelog_merge_files)
-
-    def test__use_special_merger_changelog(self):
-        params = self.make_params()
-        params.file_id = 'o-id'
-        params.merger.this_tree.branch.get_config().set_user_option(
-                'deb_changelog_merge_files', ['changelog', 'debian/changelog'])
-        self.assertTrue(_use_special_merger(params))
-        self.assertEqual(set(['changelog', 'debian/changelog']),
-                         params._builddeb_changelog_merge_files)
-
-    def test_changelog_merge_hook_ignores_other(self):
-        params = self.make_params()
-        params.winner = 'other'
-        self.assertEqual(('not_applicable', None),
-                         changelog_merge_hook(params))
-
-    def test_changelog_merge_hook_ignores_kind_change(self):
-        params = self.make_params()
-        params.other_kind = 'directory' # No longer a pure file merge
-        self.assertEqual(('not_applicable', None),
-                         changelog_merge_hook(params))
-
-    def test_changelog_merge_hook_not_enabled(self):
-        params = self.make_params(enable_hook=False)
-        self.assertEqual(('not_applicable', None),
-                         changelog_merge_hook(params))
 
     def test_changelog_merge_hook_successful(self):
-        params = self.make_params()
+        params, merger = self.make_params()
         params.other_lines = ['']
-        result, new_content = changelog_merge_hook(params)
+        file_merger = builddeb.changelog_merge_hook_factory(merger)
+        result, new_content = file_merger.merge_text(params)
         self.assertEqual('success', result)
         # We ignore the new_content, as we test that elsewhere

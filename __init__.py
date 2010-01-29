@@ -139,19 +139,9 @@ def _use_special_merger(params):
     return filename in changelog_files
 
 
-def changelog_merge_hook(params):
-    """A special merge hook for 'changelog' files."""
-    if (params.winner == 'other' # Do we always want to do a special merge?
-        or not params.is_file_merge()
-        or not _use_special_merger(params)):
-        return 'not_applicable', None
+def changelog_merge_hook_factory(merger):
     from bzrlib.plugins.builddeb import merge_changelog
-    new_lines = merge_changelog.merge_changelog(params.this_lines,
-                                                params.other_lines)
-    # Under what condition should merge_changelog decide it can't do the work?
-    #if new_lines is None:
-    #    return 'not_applicable', None
-    return 'success', new_lines
+    return merge_changelog.ChangeLogFileMerge(merger)
 
 
 # TODO: at some point, we can depend on bzr >2.1 and we won't need the
@@ -159,7 +149,8 @@ def changelog_merge_hook(params):
 _merge_hooks = getattr(merge.Merger, 'hooks', None)
 if _merge_hooks is not None:
     _merge_hooks.install_named_hook('merge_file_content',
-        changelog_merge_hook, 'Changelog file merge')
+        changelog_merge_hook_factory, 'Changelog file merge')
+
 
 try:
     from bzrlib.revisionspec import revspec_registry
