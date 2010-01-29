@@ -137,7 +137,7 @@ class TransportLogDecorator(TransportDecorator):
             elapsed = time.time() - before
             if result_len and elapsed > 0:
                 # this is the rate of higher-level data, not the raw network speed
-                mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
+                mutter("      %9.03fs %8dkB/s" % (elapsed, result_len/elapsed/1000))
             else:
                 mutter("      %9.03fs" % (elapsed))
         return return_result
