@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Fix "AttributeError in Inter1and2Helper" during fetch.
+  (Martin Pool, #513432)
+
 Improvements
 ************
 

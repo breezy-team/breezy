@@ -254,7 +254,7 @@ class Inter1and2Helper(object):
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
         if len(revs) > 100:
-            graph = _get_rich_root_heads_graph(self.source_repo, revs)
+            raph = _get_rich_root_heads_graph(self.source, revs)
         new_roots_stream = _new_root_data_stream(
             root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]
