@@ -40,6 +40,9 @@ from bzrlib.foreign import (
     VcsMappingRegistry,
     ForeignRevision,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.plugins.git.hg import (
     format_hg_metadata,
     extract_hg_metadata,
@@ -289,6 +292,8 @@ class GitMappingRegistry(VcsMappingRegistry):
     """Registry with available git mappings."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
+        if bzr_revid == NULL_REVISION:
+            return "0" * 20, None
         if not bzr_revid.startswith("git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
         (mapping_version, git_sha) = bzr_revid.split(":", 1)

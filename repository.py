@@ -22,7 +22,6 @@ from bzrlib import (
     errors,
     graph,
     inventory,
-    osutils,
     repository,
     revision,
     revisiontree,
@@ -41,7 +40,6 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.tree import (
     GitRevisionTree,
-    InterGitRevisionTrees,
     )
 from bzrlib.plugins.git.versionedfiles import (
     GitRevisions,
@@ -111,7 +109,7 @@ class LocalGitRepository(GitRepository):
         self.texts = GitTexts(self)
 
     def all_revision_ids(self):
-        ret = set([revision.NULL_REVISION])
+        ret = set([])
         heads = self._git.refs.as_dict('refs/heads')
         if heads == {}:
             return ret
@@ -225,6 +223,19 @@ class LocalGitRepository(GitRepository):
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
         progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
+
+    def _get_versioned_file_checker(self, text_key_references=None,
+                        ancestors=None):
+        return GitVersionedFileChecker(self,
+            text_key_references=text_key_references, ancestors=ancestors)
+    
+
+class GitVersionedFileChecker(repository._VersionedFileChecker):
+
+    file_ids = []
+
+    def _check_file_version_parents(self, texts, progress_bar):
+        return {}, []
 
 
 class GitRepositoryFormat(repository.RepositoryFormat):
