@@ -129,4 +129,6 @@ class GitCommitBuilder(CommitBuilder):
         c.author_timezone = self._timezone
         c.message = message.encode("utf-8")
         self.store.add_object(c)
-        return self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        self.repository.commit_write_group()
+        return self._new_revision_id
