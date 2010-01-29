@@ -498,6 +498,7 @@ class TestBranchOptions(TestCaseWithTransport):
         branch = self.make_branch('a')
         config = branch.get_config()
         self.assertEquals(None, config.get_user_option('append_revisions_only'))
+        self.assertFalse(branch._get_append_revisions_only())
         config.set_user_option('append_revisions_only', 'False')
         self.assertFalse(branch._get_append_revisions_only())
         config.set_user_option('append_revisions_only', 'false')
