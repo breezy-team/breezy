@@ -28,8 +28,6 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    graph as _mod_graph,
-    static_tuple,
     tsort,
     versionedfile,
     )
@@ -254,7 +252,7 @@ class Inter1and2Helper(object):
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
         if len(revs) > 100:
-            graph = _get_rich_root_heads_graph(self.source_repo, revs)
+            graph = self.source_repo.get_known_graph_ancestry(revs)
         new_roots_stream = _new_root_data_stream(
             root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]
@@ -262,11 +260,7 @@ class Inter1and2Helper(object):
 
 def _get_rich_root_heads_graph(source_repo, revision_ids):
     """Get a Graph object suitable for asking heads() for new rich roots."""
-    st = static_tuple.StaticTuple
-    revision_keys = [st(r_id).intern() for r_id in revision_ids]
-    known_graph = source_repo.revisions.get_known_graph_ancestry(
-                    revision_keys)
-    return _mod_graph.GraphThunkIdsToKeys(known_graph)
+    return 
 
 
 def _new_root_data_stream(

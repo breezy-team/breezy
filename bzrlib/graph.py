@@ -1691,6 +1691,9 @@ class GraphThunkIdsToKeys(object):
         head_keys = self._graph.heads(as_keys)
         return set([h[0] for h in head_keys])
 
+    def merge_sort(self, tip_revision):
+        return self._graph.merge_sort((tip_revision,))
+
 
 _counters = [0,0,0,0,0,0,0]
 try:
