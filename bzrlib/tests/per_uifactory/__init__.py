@@ -137,7 +137,7 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_noarg(self):
         self.assertEqual('', self.stdout.getvalue())
-        self.assertContainsRe(self.stderr.getvalue(), r'\d+KB\s+\dKB/s |')
+        self.assertContainsRe(self.stderr.getvalue(), r'\d+kB\s+\dkB/s |')
         self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
 
     def _check_log_transport_activity_display(self):
@@ -183,8 +183,8 @@ class TestTTYTextUIFactory(TestTextUIFactory):
         self.assertEqual('', self.stdout.getvalue())
         # Displaying the result should write to the progress stream
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 7KiB'
-            r' \(\d+\.\dK/s r:2K w:1K u:4K\)')
+            r'Transferred: 7kB'
+            r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
 
     def _check_log_transport_activity_display_no_bytes(self):
         self.assertEqual('', self.stdout.getvalue())
