@@ -3772,9 +3772,7 @@ format_registry.register_metadir('pack-0.92',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'Previously called knitpack-experimental.  '
-        'For more information, see '
-        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
+        ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
@@ -3783,9 +3781,7 @@ format_registry.register_metadir('pack-0.92-subtree',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
-        'Previously called knitpack-experimental.  '
-        'For more information, see '
-        'http://doc.bazaar-vcs.org/latest/developers/packrepo.html.',
+        ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
@@ -3853,7 +3849,7 @@ format_registry.register_metadir('development-rich-root',
         'to and from rich-root-pack (and anything compatible with '
         'rich-root-pack) format repositories. Repositories and branches in '
         'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
@@ -3867,7 +3863,7 @@ format_registry.register_metadir('development-subtree',
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '
         'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
@@ -3883,7 +3879,7 @@ format_registry.register_metadir('development6-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
     help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
@@ -3895,7 +3891,7 @@ format_registry.register_metadir('development7-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
     help='pack-1.9 with 255-way hashed CHK inv, bencode revision, group compress, '
         'rich roots. Please read '
-        'http://doc.bazaar-vcs.org/latest/developers/development-repo.html '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',

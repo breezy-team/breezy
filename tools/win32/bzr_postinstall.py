@@ -341,7 +341,7 @@ def main():
                          "this library manually and put it to directory\n"
                          "where Bzr installed.\n"
                          "For detailed instructions see:\n"
-                         "http://bazaar-vcs.org/BzrOnPureWindows"
+                         "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
                         ),
                         "Warning",
                         MB_OK | MB_ICONEXCLAMATION)
