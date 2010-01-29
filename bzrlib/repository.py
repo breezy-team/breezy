@@ -3427,6 +3427,7 @@ class InterRepository(InterObject):
                    provided a default one will be created.
         :return: None.
         """
+        self._warn_experimental_formats(self.source, self.target)
         f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -3522,6 +3523,11 @@ class InterRepository(InterObject):
             return True
         except errors.IncompatibleRepositories, e:
             return False
+
+    @staticmethod
+    def _warn_experimental_formats(source, target):
+        if target._format.experimental:
+            ui.ui_factory.warn_experimental_format_fetch(target._format)
 
     @staticmethod
     def _assert_same_model(source, target):
@@ -4017,6 +4023,7 @@ class InterDifferingSerializer(InterRepository):
         # streaming.
         ui.ui_factory.warn_cross_format_fetch(self.source._format,
             self.target._format)
+        self._warn_experimental_formats(self.source, self.target)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True

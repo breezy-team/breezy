@@ -23,6 +23,9 @@ Bug Fixes
 Improvements
 ************
 
+* Fetching into experimental formats will now print a warning. (Jelmer
+  Vernooij)
+
 Documentation
 *************
 
