@@ -25,6 +25,7 @@
 
 import os
 
+import bzrlib
 from bzrlib import (
     merge,
     msgeditor,
@@ -113,43 +114,17 @@ msgeditor.hooks.install_named_hook("commit_message_template",
         "the commit message")
 
 
-def _use_special_merger(params):
-    """Check if the file being merged is applicable."""
-    changelog_files = getattr(params, '_builddeb_changelog_merge_files', None)
-    if changelog_files is None:
-        config = params.merger.this_tree.branch.get_config()
-        changelog_files = config.get_user_option_as_list(
-            'deb_changelog_merge_files')
-        if changelog_files is None:
-            # By default, if the builddeb plugin is installed, we enable this
-            # merge hook for 'debian/changelog' files
-            changelog_files = ['debian/changelog']
-        if changelog_files == [u'']:
-            # Unfortunately, the way to disable is to use an empty value, but
-            # that returns an empty string which casts into a list with one
-            # string
-            changelog_files = []
-        changelog_files = set(changelog_files)
-        params._builddeb_changelog_merge_files = changelog_files
-    if not changelog_files:
-        return False
-    # It would be reasonable to check .name first, which would avoid deep-tree
-    # lookups for files we know
-    filename = params.merger.this_tree.id2path(params.file_id)
-    return filename in changelog_files
+if getattr(merge, 'ConfigurableFileMerger', None) is None:
+    raise ImportError(
+        'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
+else:
+    def changelog_merge_hook_factory(merger):
+        from bzrlib.plugins.builddeb import merge_changelog
+        return merge_changelog.ChangeLogFileMerge(merger)
 
-
-def changelog_merge_hook_factory(merger):
-    from bzrlib.plugins.builddeb import merge_changelog
-    return merge_changelog.ChangeLogFileMerge(merger)
-
-
-# TODO: at some point, we can depend on bzr >2.1 and we won't need the
-#       compatibility cruft
-_merge_hooks = getattr(merge.Merger, 'hooks', None)
-if _merge_hooks is not None:
-    _merge_hooks.install_named_hook('merge_file_content',
-        changelog_merge_hook_factory, 'Changelog file merge')
+    merge.Merger.hooks.install_named_hook(
+        'merge_file_content', changelog_merge_hook_factory,
+        'Changelog file merge')
 
 
 try:
