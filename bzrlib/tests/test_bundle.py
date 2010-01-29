@@ -1065,7 +1065,7 @@ class BundleTester(object):
 
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
-        recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
+        recorded_inv_sha1 = repo.get_revision('rev2').inventory_sha1
         xml = repo.get_inventory_xml('rev2')
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 

@@ -515,7 +515,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.commit('foo', rev_id='foo-id')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
-        recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
+        recorded_inv_sha1 = self.get_revision('foo-id').inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
         stream = to_repo.inventories.get_record_stream([('foo-id',)],
