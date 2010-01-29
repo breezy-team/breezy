@@ -3085,6 +3085,8 @@ class RepositoryFormat(object):
     pack_compresses = False
     # Does the repository inventory storage understand references to trees?
     supports_tree_reference = None
+    # Is the format experimental ?
+    experimental = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
