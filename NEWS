@@ -3,10 +3,12 @@
  BUG FIXES
  
   * Avoid storing texts of symlinks, which causes checksum errors in 
-    `bzr check`. (#512323, INADA Naoki)
+    `bzr check`. (#512323, INADA Naoki, Jelmer Vernooij)
 
   * Support committing to a git branch from a bzr working tree. (#506174,
 	Jelmer Vernooij)
+
+  * Support executable symlinks. (#512871, INADA Naoki, Jelmer Vernooij)
 
 0.4.3	2010-01-19
 

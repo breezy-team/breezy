@@ -386,7 +386,10 @@ def object_mode(kind, executable):
     if kind == 'directory':
         return stat.S_IFDIR
     elif kind == 'symlink':
-        return stat.S_IFLNK
+        mode = stat.S_IFLNK
+        if executable:
+            mode |= 0111
+        return mode
     elif kind == 'file':
         mode = stat.S_IFREG | 0644
         if executable:

@@ -126,6 +126,7 @@ class GitInventoryLink(GitInventoryEntry):
 
     def copy(self):
         other = inventory.InventoryLink(self.file_id, self.name, self.parent_id)
+        other.executable = self.executable
         other.symlink_target = self.symlink_target
         other.revision = self.revision
         return other
