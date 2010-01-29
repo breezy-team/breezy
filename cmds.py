@@ -52,7 +52,6 @@ from bzrlib.plugins.builddeb import (
     default_conf,
     local_conf,
     global_conf,
-    test_suite,
     )
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
@@ -917,15 +916,3 @@ class cmd_merge_package(Command):
         else:
             note('The merge resulted in no conflicts. You may commit the '
             'changes by running "bzr commit".')
-
-
-class cmd_test_builddeb(Command):
-    """Run the builddeb test suite"""
-
-    hidden = True
-
-    def run(self):
-        from bzrlib.tests import selftest
-        passed = selftest(test_suite_factory=test_suite)
-        # invert for shell exit code rules
-        return not passed
