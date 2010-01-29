@@ -36,11 +36,14 @@ Testing
 *******
 
 
-bzr 2.1.0rc2 (not released yet)
-###############################
+bzr 2.1.0rc2
+############
 
-:Codename: 
-:2.1.0rc2: ???
+:Codename: after the bubbles
+:2.1.0rc2: 2010-01-29
+
+This is a quick-turn-around to update a small issue with our new per-file
+merge hook. We expect no major changes from this to the final 2.1.0.
 
 API Changes
 ***********
@@ -52,6 +55,7 @@ API Changes
   part of this the included news_merger has been refactored into a base
   helper class ``bzrlib.merge.ConfigurableFileMerger``.
   (Robert Collins, John Arbash Meinel, #513822)
+
 
 bzr 2.1.0rc1
 ############
