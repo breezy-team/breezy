@@ -28,10 +28,7 @@ import doctest
 import os
 from unittest import TestSuite
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
 from debian_bundle.changelog import Version, Changelog
-""")
 
 from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
 
