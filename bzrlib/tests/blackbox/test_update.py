@@ -349,7 +349,6 @@ $ bzr update -r revid:m2
 
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        #self.failIfExists('file.THIS')
         a_file = file('lightweight/file', 'rt')
         text = a_file.read()
         a_file.close()
@@ -361,8 +360,37 @@ $ bzr update -r revid:m2
 
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        #self.failIfExists('file.THIS')
         a_file = file('lightweight/file', 'rt')
         text = a_file.read()
         a_file.close()
         self.assertEqual(text, '<<<<<<< TREE\nlightweight+checkout=======\nmaster>>>>>>> MERGE-SOURCE\n')
+
+    def test_update_no_changes_to_master(self):
+        """update should NEVER auto-push or anything like that"""
+        
+        master = self.make_branch_and_tree('master')
+        self.build_tree_contents([('master/file', 'master')])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        checkout = master.branch.create_checkout('checkout')
+        self.build_tree_contents([('checkout/file', 'checkout')])
+
+        checkout.commit('two', rev_id='c2', local=True)
+        
+        self.build_tree_contents([('master/file', 'master2')])
+        master.commit('three', rev_id='m2')
+        
+        out, err = self.run_bzr('update checkout', retcode=1)
+        a_file = file('checkout/file', 'rt')
+        text = a_file.read()
+        a_file.close()
+        self.assertEqual(text, '<<<<<<< TREE\ncheckout=======\nmaster2>>>>>>> MERGE-SOURCE\n')
+        checkout.revert()
+        
+        # in no case the file2 should end up at the master
+        a_file = file('master/file', 'rt')
+        text = a_file.read()
+        a_file.close()
+        self.assertEqual(text, 'master2')
+

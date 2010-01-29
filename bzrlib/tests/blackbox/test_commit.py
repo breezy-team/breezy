@@ -362,7 +362,7 @@ class TestCommit(ExternalBase):
         a_file = file('u1/hosts', 'rt')
         text = a_file.read()
         a_file.close()
-        self.assertEqual(text, '<<<<<<< TREE\naltered in u2=======\nfirst offline change in u1>>>>>>> MERGE-SOURCE\n')
+        self.assertEqual(text, '<<<<<<< TREE\nfirst offline change in u1=======\naltered in u2>>>>>>> MERGE-SOURCE\n')
 
         self.run_bzr('resolved u1/hosts')
         # add a text change here to represent resolving the merge conflicts in

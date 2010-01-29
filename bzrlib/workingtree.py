@@ -2280,6 +2280,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             base_rev_id = graph.find_unique_lca(revision, old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
+            
             result += merge.merge_inner(
                                   self.branch,
                                   other_tree,
@@ -2302,10 +2303,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
+                if already_merged:
+                    graph = self.branch.repository.get_graph()
+                    base_rev_id = graph.find_unique_lca(revision, last_rev)
+                    base_tree = self.branch.repository.revision_tree(base_rev_id)
+                else:
+                    base_tree = basis
+
                 result += merge.merge_inner(
                                       self.branch,
                                       to_tree,
-                                      basis,
+                                      base_tree,
                                       this_tree=self,
                                       change_reporter=change_reporter)
                 self.set_last_revision(revision)
@@ -2326,32 +2334,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
         if already_merged:
-            self.add_parent_tree_id(old_tip)
-            return result
-        if (old_tip is not None and not _mod_revision.is_null(old_tip)
-            and old_tip != last_rev):
-            # our last revision was not the prior branch last revision
-            # and we have converted that last revision to a pending merge.
-            # base is somewhere between the branch tip now
-            # and the now pending merge
-
-            # Since we just modified the working tree and inventory, flush out
-            # the current state, before we modify it again.
-            # TODO: jam 20070214 WorkingTree3 doesn't require this, dirstate
-            #       requires it only because TreeTransform directly munges the
-            #       inventory and calls tree._write_inventory(). Ultimately we
-            #       should be able to remove this extra flush.
-            self.flush()
-            graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(revision, old_tip)
-            base_tree = self.branch.repository.revision_tree(base_rev_id)
-            other_tree = self.branch.repository.revision_tree(old_tip)
-            result += merge.merge_inner(
-                                  self.branch,
-                                  other_tree,
-                                  base_tree,
-                                  this_tree=self,
-                                  change_reporter=change_reporter)
             self.add_parent_tree_id(old_tip)
         return result
 
