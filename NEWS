@@ -14,6 +14,9 @@ bzr 2.1.0 (not released yet)
 Bug Fixes
 *********
 
+* Fix "AttributeError in Inter1and2Helper" during fetch.
+  (Martin Pool, #513432)
+
 * Using the ``bzrlib.chk_map`` module from within multiple threads at the
   same time was broken due to race conditions with a module level page
   cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
@@ -22,6 +25,7 @@ Bug Fixes
   from different threads. chk_map now uses a thread local cache which may
   increase memory pressure on processes using threads.
   (Robert Collins, John Arbash Meinel, #514090)
+
 
 bzr 2.1.0rc2
 ############
