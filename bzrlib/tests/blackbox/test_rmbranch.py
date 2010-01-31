@@ -18,7 +18,6 @@
 """Black-box tests for bzr rmbranch."""
 
 from bzrlib import (
-    branch,
     bzrdir,
     errors,
     )
@@ -37,7 +36,7 @@ class TestRemoveBranch(ExternalBase):
         tree.commit(message='setup')
 
     def test_remove_local(self):
-        """Remove a local branch."""
+        # Remove a local branch.
         self.example_branch('a')
         self.run_bzr('rmbranch a')
         dir = bzrdir.BzrDir.open('a')
