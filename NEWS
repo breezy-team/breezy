@@ -31,6 +31,10 @@ Documentation
 API Changes
 ***********
 
+* ``Repository.serialise_inventory`` has been renamed to 
+  ``Repository._serialise_inventory`` to indicate it is private.
+  (Jelmer Vernooij)
+
 Internals
 *********
 

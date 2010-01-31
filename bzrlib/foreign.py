@@ -227,7 +227,7 @@ class ForeignRepository(Repository):
 
     def get_inventory_xml(self, revision_id):
         """See Repository.get_inventory_xml()."""
-        return self.serialise_inventory(self.get_inventory(revision_id))
+        return self._serialise_inventory(self.get_inventory(revision_id))
 
     def get_revision_xml(self, revision_id):
         """Return the XML representation of a revision.

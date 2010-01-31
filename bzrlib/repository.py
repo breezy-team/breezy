@@ -2440,7 +2440,7 @@ class Repository(_RelockDebugMixin):
                 result.revision_id, revision_id))
         return result
 
-    def serialise_inventory(self, inv):
+    def _serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
 
     def _serialise_inventory_to_lines(self, inv):
