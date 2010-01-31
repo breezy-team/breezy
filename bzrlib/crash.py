@@ -121,6 +121,13 @@ def _write_apport_report_to_file(exc_info, crash_file):
     # plus some less useful stuff like the memory map
     pr.add_proc_info()
     pr.add_user_info()
+
+    # Package and SourcePackage are needed so that apport will report about even
+    # non-packaged versions of bzr; also this reports on their packaged
+    # dependencies which is useful.
+    pr['SourcePackage'] = 'bzr'
+    pr['Package'] = 'bzr'
+
     pr['CommandLine'] = pprint.pformat(sys.argv)
     pr['BzrVersion'] = bzrlib.__version__
     pr['PythonVersion'] = bzrlib._format_version_tuple(sys.version_info)
