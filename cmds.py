@@ -434,7 +434,9 @@ class cmd_builddeb(Command):
                 else:
                     if is_local:
                         target_dir = result_dir or default_result_dir
-                        target_dir = os.path.join(branch.base, target_dir)
+                        target_dir = os.path.join(
+                                urlutils.local_path_from_url(branch.base),
+                                target_dir)
                     else:
                         target_dir = "."
                     if not os.path.exists(target_dir):
