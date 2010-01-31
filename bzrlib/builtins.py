@@ -1431,13 +1431,10 @@ class cmd_update(Command):
                                   "bzr update --revision only works"
                                   " for a revision in the branch history"
                                   % (e.revision))
-        try:
-            revno = tree.branch.revision_id_to_revno(
-                _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d of branch %s' %
-                 (revno, branch_location))
-        except errors.NoSuchRevision, e:
-            note('Your tree is not up to date yet, rerun update after you commit')
+        revno = tree.branch.revision_id_to_revno(
+            _mod_revision.ensure_null(tree.last_revision()))
+        note('Updated to revision %d of branch %s' %
+             (revno, branch_location))
         if tree.get_parent_ids()[1:] != existing_pending_merges:
             note('Your local commits will now show as pending merges with '
                  "'bzr status', and can be committed with 'bzr commit'.")

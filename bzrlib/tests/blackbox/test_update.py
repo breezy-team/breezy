@@ -250,16 +250,14 @@ Updated to revision 2 of branch %s
         self.build_tree(['./file2'])
         master.add(['file2'])
         master.commit('two', rev_id='m2')
-        
-        self.run_bzr('update -r 1')
 
-#        sr = ScriptRunner()
-#        sr.run_script(self, '''
-#$ bzr update -r 1
-#2>-D  file2
-#2>All changes applied successfully.
-#2>Updated to revision 1 of .../master
-#''')
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update -r 1
+2>-D  file2
+2>All changes applied successfully.
+2>Updated to revision 1 of .../master
+''')
         self.failUnlessExists('./file1')
         self.failIfExists('./file2')
         self.assertEquals(['m1'], master.get_parent_ids())
