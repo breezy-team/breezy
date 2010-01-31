@@ -95,19 +95,12 @@ def report_bug_to_apport(exc_info, stderr):
     finally:
         crash_file.close()
 
-    stderr.write("bzr: ERROR: %s.%s: %s\n" 
-        "\n"
-        "*** Bazaar has encountered an internal error.  This probably indicates a\n"
-        "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
-        "        https://bugs.launchpad.net/bzr/+filebug\n"
-        "    attaching the crash file\n"
-        "        %s\n"
-        "    and including a description of the problem.\n"
-        "\n"
-        "    The crash file is plain text and you can inspect or edit it to remove\n"
-        "    private information.\n"
-        % (exc_info[0].__module__, exc_info[0].__name__, exc_info[1],
-           crash_file.name))
+    trace.print_exception(exc_info, stderr)
+    stderr.write("\n"
+        "You can report this problem to Bazaar's developers by running\n"
+        "    apport-bug %s\n"
+        "if a bug-reporting window does not automatically appear.\n"
+        % (crash_file.name))
 
 
 def _write_apport_report_to_file(exc_info, crash_file):
