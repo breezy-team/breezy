@@ -2267,15 +2267,20 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
+            update_dash_r = False
             revision = self.branch.last_revision()
         else:
+            update_dash_r = True
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
         
         already_merged = None
         if (old_tip is not None and not _mod_revision.is_null(old_tip)
-            and old_tip != revision) and last_rev != _mod_revision.ensure_null(revision):
-            #trace.note("Branch out of date, rerun update")
+            and old_tip != revision):
+            # the branch we are bound to is out of date
+            # (and it may be in need of a merge)
+            # we first merge with the old tip of the branch
+            # in the next step we will merge in the commits that will cause it to be not out of date anymore
             graph = self.branch.repository.get_graph()
             base_rev_id = graph.find_unique_lca(revision, old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
@@ -2287,13 +2292,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   base_tree,
                                   this_tree=self,
                                   change_reporter=change_reporter)
-            #self.set_pending_merges([old_tip])
             already_merged = True
             if result > 0:
+                self.add_parent_tree_id(old_tip)
                 return result
 
         if last_rev != _mod_revision.ensure_null(revision):
-            # merge tree state up to specified revision.
+            # when we get here we have already merged with the new commits
+            # on the branch we are bound to (or there weren't any)
+            # we can merge up to the specified revision
             basis = self.basis_tree()
             basis.lock_read()
             try:
@@ -2303,12 +2310,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                if already_merged:
+                if update_dash_r:
+                    # update -r doesn't play by the rules, and may get rid of local commits
+                    base_tree = basis
+                else:
                     graph = self.branch.repository.get_graph()
                     base_rev_id = graph.find_unique_lca(revision, last_rev)
                     base_tree = self.branch.repository.revision_tree(base_rev_id)
-                else:
-                    base_tree = basis
 
                 result += merge.merge_inner(
                                       self.branch,
