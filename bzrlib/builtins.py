@@ -5715,6 +5715,20 @@ class cmd_hooks(Command):
                     self.outf.write("    <no hooks installed>\n")
 
 
+class cmd_rmbranch(Command):
+    """Remove a branch.
+
+    """
+
+    takes_args = ["location?"]
+
+    def run(self, location=None):
+        if location is None:
+            location = "."
+        branch = Branch.open_containing(location)[0]
+        branch.bzrdir.destroy_branch()
+        
+
 class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
 
