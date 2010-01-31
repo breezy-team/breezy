@@ -1,8 +1,8 @@
-'''apport package hook for Bazaar
+'''apport package hook for Bazaar'''
 
-(c) 2009 Canonical Ltd.
-Author: Matt Zimmerman <mdz@canonical.com>
-'''
+# Copyright (c) 2009, 2010 Canonical Ltd.
+# Author: Matt Zimmerman <mdz@canonical.com>
+#         and others
 
 from apport.hookutils import *
 import os
@@ -51,4 +51,4 @@ def add_info(report):
     #	os.path.join(dot_bzr, 'locations.conf', 'BzrLocations')
 
         
-# vim: expandtabs shiftwidth=4
+# vim: expandtab shiftwidth=4
