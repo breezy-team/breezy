@@ -904,7 +904,7 @@ class CHKInventoryRepository(KnitPackRepository):
     def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
-        # it allowing get_inventory_xml to work. Bundles currently use the
+        # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.

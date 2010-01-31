@@ -31,6 +31,10 @@ Documentation
 API Changes
 ***********
 
+* ``Repository.get_inventory_xml`` has been renamed to 
+  ``Repository._get_inventory_xml`` to indicate it is private. 
+  (Jelmer Vernooij)
+
 Internals
 *********
 
