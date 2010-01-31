@@ -82,28 +82,29 @@ def report_bug_legacy(exc_info, err_file):
 def report_bug_to_apport(exc_info, stderr):
     """Report a bug to apport for optional automatic filing.
     """
-    # this is based on apport_package_hook.py, but omitting some of the
+    # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
 
-    # if this fails its caught at a higher level; we don't want to open the
-    # crash file unless apport can be loaded.
+    # if the import fails, the exception will be caught at a higher level and
+    # we'll report the error by other means
     import apport
 
-    crash_file = _open_crash_file()
-    try:
-        _write_apport_report_to_file(exc_info, crash_file)
-    finally:
-        crash_file.close()
+    crash_filename = _write_apport_report_to_file(exc_info)
 
     trace.print_exception(exc_info, stderr)
-    stderr.write("\n"
-        "You can report this problem to Bazaar's developers by running\n"
-        "    apport-bug %s\n"
-        "if a bug-reporting window does not automatically appear.\n"
-        % (crash_file.name))
+    if crash_filename is None:
+        stderr.write("\n"
+            "apport is set to ignore crashes in this version of bzr.\n"
+            )
+    else:
+        stderr.write("\n"
+            "You can report this problem to Bazaar's developers by running\n"
+            "    apport-bug %s\n"
+            "if a bug-reporting window does not automatically appear.\n"
+            % (crash_filename))
 
 
-def _write_apport_report_to_file(exc_info, crash_file):
+def _write_apport_report_to_file(exc_info):
     import traceback
     from apport.report import Report
 
@@ -136,7 +137,14 @@ def _write_apport_report_to_file(exc_info, crash_file):
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
     pr['Traceback'] = tb_file.getvalue()
 
-    pr.write(crash_file)
+    if pr.check_ignored():
+        # eg configured off in ~/.apport-ignore.xml
+        return None
+    else:
+        crash_file = _open_crash_file()
+        pr.write(crash_file)
+        crash_file.close()
+        return crash_file.name
 
 
 def _open_crash_file():
