@@ -140,6 +140,9 @@ def _write_apport_report_to_file(exc_info):
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
     pr['Traceback'] = tb_file.getvalue()
 
+    # strip username, hostname, etc
+    pr.anonymize()
+
     if pr.check_ignored():
         # eg configured off in ~/.apport-ignore.xml
         return None
