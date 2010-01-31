@@ -140,6 +140,8 @@ def _write_apport_report_to_file(exc_info):
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
     pr['Traceback'] = tb_file.getvalue()
 
+    _attach_log_tail(pr)
+
     # We want to use the 'bzr' crashdb so that it gets sent directly upstream,
     # which is a reasonable default for most internal errors.  However, if we
     # set it here then apport will crash later if it doesn't know about that
@@ -147,6 +149,14 @@ def _write_apport_report_to_file(exc_info):
     # source hook telling crashes to go to this crashdb, and a crashdb
     # configuration describing it.
 
+    # these may contain some sensitive info (smtp_passwords)
+    # TODO: strip that out and attach the rest
+    #
+    #attach_file_if_exists(report,
+    #	os.path.join(dot_bzr, 'bazaar.conf', 'BzrConfig')
+    #attach_file_if_exists(report,
+    #	os.path.join(dot_bzr, 'locations.conf', 'BzrLocations')
+    
     # strip username, hostname, etc
     pr.anonymize()
 
@@ -158,6 +168,15 @@ def _write_apport_report_to_file(exc_info):
         pr.write(crash_file)
         crash_file.close()
         return crash_file.name
+
+
+def _attach_log_tail(pr):
+    try:
+        bzr_log = open(trace._get_bzr_log_filename(), 'rt')
+        lines = bzr_log.readlines()
+        pr['BzrLogTail'] = ''.join(lines[-40:])
+    finally:
+        bzr_log.close()
 
 
 def _open_crash_file():
