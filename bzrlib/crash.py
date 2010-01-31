@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -142,12 +142,15 @@ def _write_apport_report_to_file(exc_info, crash_file):
 
 def _open_crash_file():
     crash_dir = config.crash_dir()
-    # user-readable only, just in case the contents are sensitive.
     if not osutils.isdir(crash_dir):
-        os.makedirs(crash_dir, mode=0700)
-    filename = 'bzr-%s-%s.crash' % (
-        osutils.compact_date(time.time()),
-        os.getpid(),)
+        # on unix this should be /var/crash and should already exist; on
+        # Windows or if it's manually configured it might need to be created,
+        # and then it should be private
+        os.makedirs(crash_dir, mode=0600)
+    date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
+    filename = 'bzr.%d.%s.crash' % (
+        os.getuid(),
+        date_string)
     return open(osutils.pathjoin(crash_dir, filename), 'wt')
 
 
