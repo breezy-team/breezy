@@ -20,6 +20,9 @@
 
 # for interactive testing, try the 'bzr assert-fail' command 
 # or see http://code.launchpad.net/~mbp/bzr/bzr-fail
+#
+# to test with apport it's useful to set
+# export APPORT_IGNORE_OBSOLETE_PACKAGES=1
 
 import os
 import platform
