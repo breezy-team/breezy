@@ -2459,12 +2459,6 @@ class Repository(_RelockDebugMixin):
             raise errors.HistoryMissing(self, 'inventory', revision_id)
         return text
 
-    @needs_read_lock
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry
-        """
-        return self.get_revision(revision_id).inventory_sha1
-
     def get_rev_id_for_revno(self, revno, known_pair):
         """Return the revision id of a revno, given a later (revno, revid)
         pair in the same history.

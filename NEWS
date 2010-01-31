@@ -14,6 +14,8 @@ bzr 2.2.0b1 (not released yet)
 Compatibility Breaks
 ********************
 
+* ``Repository.get_inventory_sha1()`` has been removed. (Jelmer Vernooij)
+
 New Features
 ************
 
