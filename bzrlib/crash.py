@@ -117,10 +117,9 @@ def _write_apport_report_to_file(exc_info, crash_file):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gives you the memory map of the process: this seems rarely
-    # useful for Bazaar and it does make the report harder to scan, though it
-    # does tell you what binary modules are loaded.
-    # pr.add_proc_info()
+    # add_proc_info gets the executable and interpreter path, which is needed,
+    # plus some less useful stuff like the memory map
+    pr.add_proc_info()
     pr.add_user_info()
     pr['CommandLine'] = pprint.pformat(sys.argv)
     pr['BzrVersion'] = bzrlib.__version__
