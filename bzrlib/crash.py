@@ -140,6 +140,13 @@ def _write_apport_report_to_file(exc_info):
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
     pr['Traceback'] = tb_file.getvalue()
 
+    # We want to use the 'bzr' crashdb so that it gets sent directly upstream,
+    # which is a reasonable default for most internal errors.  However, if we
+    # set it here then apport will crash later if it doesn't know about that
+    # crashdb.  Instead, we rely on the bzr package installing both a
+    # source hook telling crashes to go to this crashdb, and a crashdb
+    # configuration describing it.
+
     # strip username, hostname, etc
     pr.anonymize()
 
