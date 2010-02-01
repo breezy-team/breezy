@@ -34,13 +34,16 @@ Documentation
 API Changes
 ***********
 
+* ``Repository.deserialise_inventory`` has been renamed to 
+  ``Repository._deserialise_inventory`` to indicate it is private.
+  (Jelmer Vernooij)
+
 * ``Repository.get_inventory_xml`` has been renamed to 
   ``Repository._get_inventory_xml`` to indicate it is private. 
   (Jelmer Vernooij)
 
-* ``Repository.deserialise_inventory`` has been renamed to 
-  ``Repository._deserialise_inventory`` to indicate it is private.
-  (Jelmer Vernooij)
+* ``Repository.serialise_inventory`` has been renamed to 
+  ``Repository._serialise_inventory`` to indicate it is private.
 
 Internals
 *********
