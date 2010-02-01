@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
+
 Improvements
 ************
 

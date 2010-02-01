@@ -23,6 +23,7 @@ import re
 
 from bzrlib import (
     branchbuilder,
+    errors,
     log,
     osutils,
     tests,
@@ -202,6 +203,50 @@ class TestBug474807(TestLogWithLogCatcher):
                              ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
 
+class TestBug476293(TestLogWithLogCatcher):
+
+    def make_tagged_branch(self, path='.', format=None):
+        builder = branchbuilder.BranchBuilder(self.get_transport())
+        builder.start_series()
+        # The graph below may look a bit complicated (and it may be but I've
+        # banged my head enough on it) but the bug requires at least dotted
+        # revnos *and* merged revisions below that.
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('4', ['3', '2.1.3'], [])
+        builder.build_snapshot('5', ['4', '2.1.2'], [])
+        builder.finish_series()
+        tags = builder.get_branch().tags
+        return builder
+
+    def test_not_an_ancestor(self):
+        builder = self.make_tagged_branch()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          b, '1.1.1', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+    def test_wrong_order(self):
+        builder = self.make_tagged_branch()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          b, '5', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+
 class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
 
     def test_log_revno_n_path_wrong_namespace(self):
@@ -210,7 +255,6 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
         # There is no guarantee that a path exist between two arbitrary
         # revisions.
         self.run_bzr("log -r revno:2:branch1..revno:3:branch2", retcode=3)
-        # But may be it's worth trying though ? -- vila 100115
 
     def test_log_revno_n_path_correct_order(self):
         self.make_linear_branch('branch2')
