@@ -32,25 +32,11 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    scenarios = [
-        ('python', {'module': _static_tuple_py}),
-    ]
-    suite = loader.suiteClass()
-    if compiled_static_tuple_feature.available():
-        scenarios.append(('C', {'module':
-                                compiled_static_tuple_feature.module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(compiled_static_tuple_feature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
-
-
-compiled_static_tuple_feature = tests.ModuleAvailableFeature(
-                                    'bzrlib._static_tuple_c')
+    global compiled_static_tuple_feature
+    suite, compiled_static_tuple_feature = tests.permute_tests_for_extension(
+        standard_tests, loader, 'bzrlib._static_tuple_py',
+        'bzrlib._static_tuple_c')
+    return suite
 
 
 class _Meliae(tests.Feature):

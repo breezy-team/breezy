@@ -45,6 +45,8 @@ known_hooks.register_lazy(('bzrlib.info', 'hooks'),
     'bzrlib.info', 'InfoHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
     'LockHooks')
+known_hooks.register_lazy(('bzrlib.merge', 'Merger.hooks'), 'bzrlib.merge',
+    'MergeHooks')
 known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
     'MessageEditorHooks')
 known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
@@ -277,7 +279,7 @@ A hook of type *xxx* of class *yyy* needs to be registered using::
 
 See `Using hooks`_ in the User Guide for examples.
 
-.. _Using hooks: ../user-guide/index.html#using-hooks
+.. _Using hooks: ../user-guide/hooks.html
 
 The class that contains each hook is given before the hooks it supplies. For
 instance, BranchHooks as the class is the hooks class for

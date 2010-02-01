@@ -145,7 +145,7 @@ class TestFormatRegistry(TestCase):
         new = topics.get_detail('current-formats')
         rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'bzr help formats')
+        self.assertContainsRe(new, 'formats-help')
         self.assertContainsRe(new,
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental,

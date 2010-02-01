@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1627,9 +1627,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 this_tree=self,
                                 pb=pb,
                                 change_reporter=change_reporter)
-                    if (basis_tree.inventory.root is None and
-                        new_basis_tree.inventory.root is not None):
-                        self.set_root_id(new_basis_tree.get_root_id())
+                    basis_root_id = basis_tree.get_root_id()
+                    new_root_id = new_basis_tree.get_root_id()
+                    if basis_root_id != new_root_id:
+                        self.set_root_id(new_root_id)
                 finally:
                     pb.finished()
                     basis_tree.unlock()
@@ -1741,13 +1742,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         r"""Check whether the filename matches an ignore pattern.
 
         Patterns containing '/' or '\' need to match the whole path;
-        others match against only the last component.
+        others match against only the last component.  Patterns starting
+        with '!' are ignore exceptions.  Exceptions take precedence
+        over regular patterns and cause the filename to not be ignored.
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
+            self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
         return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
@@ -2191,7 +2194,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         """
         raise NotImplementedError(self.unlock)
 
-    def update(self, change_reporter=None, possible_transports=None):
+    _marker = object()
+
+    def update(self, change_reporter=None, possible_transports=None,
+               revision=None, old_tip=_marker):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2215,10 +2221,16 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         - Merge current state -> basis tree of the master w.r.t. the old tree
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
+
+        :param revision: The target revision to update to. Must be in the
+            revision history.
+        :param old_tip: If branch.update() has already been run, the value it
+            returned (old tip of the branch or None). _marker is used
+            otherwise.
         """
         if self.branch.get_bound_location() is not None:
             self.lock_write()
-            update_branch = True
+            update_branch = (old_tip is self._marker)
         else:
             self.lock_tree_write()
             update_branch = False
@@ -2226,13 +2238,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             if update_branch:
                 old_tip = self.branch.update(possible_transports)
             else:
-                old_tip = None
-            return self._update_tree(old_tip, change_reporter)
+                if old_tip is self._marker:
+                    old_tip = None
+            return self._update_tree(old_tip, change_reporter, revision)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None, change_reporter=None):
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2253,14 +2266,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = self.get_parent_ids()[0]
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
-        if last_rev != _mod_revision.ensure_null(self.branch.last_revision()):
-            # merge tree state up to new branch tip.
+        if revision is None:
+            revision = self.branch.last_revision()
+        else:
+            if revision not in self.branch.revision_history():
+                raise errors.NoSuchRevision(self.branch, revision)
+        if last_rev != _mod_revision.ensure_null(revision):
+            # merge tree state up to specified revision.
             basis = self.basis_tree()
             basis.lock_read()
             try:
-                to_tree = self.branch.basis_tree()
-                if basis.inventory.root is None:
-                    self.set_root_id(to_tree.get_root_id())
+                to_tree = self.branch.repository.revision_tree(revision)
+                to_root_id = to_tree.get_root_id()
+                if (basis.inventory.root is None
+                    or basis.inventory.root.file_id != to_root_id):
+                    self.set_root_id(to_root_id)
                     self.flush()
                 result += merge.merge_inner(
                                       self.branch,
@@ -2268,11 +2288,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                       basis,
                                       this_tree=self,
                                       change_reporter=change_reporter)
+                self.set_last_revision(revision)
             finally:
                 basis.unlock()
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
-            parent_trees = [(self.branch.last_revision(), to_tree)]
+            parent_trees = [(revision, to_tree)]
             merges = self.get_parent_ids()[1:]
             # Ideally we ask the tree for the trees here, that way the working
             # tree can decide whether to give us the entire tree or give us a
@@ -2308,8 +2329,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             #       should be able to remove this extra flush.
             self.flush()
             graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
-                                                old_tip)
+            base_rev_id = graph.find_unique_lca(revision, old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             result += merge.merge_inner(

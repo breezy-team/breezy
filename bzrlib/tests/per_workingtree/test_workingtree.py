@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -478,6 +478,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
         self.assertNotEqual(None, wt.get_root_id())
 
+    def test_update_sets_updated_root_id(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.set_root_id('first_root_id')
+        self.assertEqual('first_root_id', wt.get_root_id())
+        self.build_tree(['tree/file'])
+        wt.add(['file'])
+        wt.commit('first')
+        co = wt.branch.create_checkout('checkout')
+        wt.set_root_id('second_root_id')
+        wt.commit('second')
+        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(0, co.update())
+        self.assertEqual('second_root_id', co.get_root_id())
+
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the
@@ -589,6 +603,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and the local branch history should match the masters now.
         self.assertEqual(master_tree.branch.revision_history(),
             tree.branch.revision_history())
+
+    def test_update_takes_revision_parameter(self):
+        wt = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/a', 'old content')])
+        wt.add(['a'])
+        rev1 = wt.commit('first master commit')
+        self.build_tree_contents([('wt/a', 'new content')])
+        rev2 = wt.commit('second master commit')
+        # https://bugs.edge.launchpad.net/bzr/+bug/45719/comments/20
+        # when adding 'update -r' we should make sure all wt formats support
+        # it
+        conflicts = wt.update(revision=rev1)
+        self.assertFileEqual('old content', 'wt/a')
+        self.assertEqual([rev1], wt.get_parent_ids())
 
     def test_merge_modified_detects_corruption(self):
         # FIXME: This doesn't really test that it works; also this is not

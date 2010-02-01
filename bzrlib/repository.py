@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,6 +41,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     symbol_versioning,
+    trace,
     tsort,
     ui,
     versionedfile,
@@ -2458,12 +2459,6 @@ class Repository(_RelockDebugMixin):
             raise errors.HistoryMissing(self, 'inventory', revision_id)
         return text
 
-    @needs_read_lock
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry
-        """
-        return self.get_revision(revision_id).inventory_sha1
-
     def get_rev_id_for_revno(self, revno, known_pair):
         """Return the revision id of a revno, given a later (revno, revid)
         pair in the same history.
@@ -4008,6 +4003,12 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        #
+        # nb this is only active for local-local fetches; other things using
+        # streaming.
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4306,6 +4307,8 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
+                ui.ui_factory.warn_cross_format_fetch(src_format,
+                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4616,8 +4619,10 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or it has a
-        # different serializer.  The StreamSink code expects to be able to
+        # The two formats are sufficiently different that there is no fast
+        # path, so we need to send just inventorydeltas, which any
+        # sufficiently modern client can insert into any repository.
+        # The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).

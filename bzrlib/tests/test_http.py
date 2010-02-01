@@ -218,7 +218,7 @@ class RecordingServer(object):
     def get_url(self):
         return '%s://%s:%s/' % (self.scheme, self.host, self.port)
 
-    def setUp(self):
+    def start_server(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
@@ -247,7 +247,7 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             self._sock.close()
         except socket.error:
@@ -306,26 +306,26 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(BogusRequestHandler)
         try:
-            self.assertRaises(httplib.UnknownProtocol, server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
         try:
-            self.assertRaises(httplib.UnknownProtocol, server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
-        server.setUp()
+        server.start_server()
         try:
             self.assertTrue(server._http_running)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -391,10 +391,10 @@ class TestHttpUrls(tests.TestCase):
         self.assertEqual('http://example.com', url)
         self.assertEqual(0, len(f.credentials))
         url = http.extract_auth(
-            'http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
-        self.assertEqual('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
+            'http://user:pass@example.com/bzr/bzr.dev', f)
+        self.assertEqual('http://example.com/bzr/bzr.dev', url)
         self.assertEqual(1, len(f.credentials))
-        self.assertEqual([None, 'www.bazaar-vcs.org', 'user', 'pass'],
+        self.assertEqual([None, 'example.com', 'user', 'pass'],
                          f.credentials[0])
 
 
@@ -428,12 +428,12 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
         server = self._server()
-        server.setUp()
+        server.start_server()
         try:
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
@@ -449,30 +449,27 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         support it.
         """
         self.requireFeature(features.pycurl)
+        # Import the module locally now that we now it's available.
+        pycurl = features.pycurl.module
 
-        version_info_orig = pycurl.version_info
-        try:
-            # Now that we have pycurl imported, we can fake its version_info
-            # This was taken from a windows pycurl without SSL
-            # (thanks to bialix)
-            pycurl.version_info = lambda : (2,
-                                            '7.13.2',
-                                            462082,
-                                            'i386-pc-win32',
-                                            2576,
-                                            None,
-                                            0,
-                                            None,
-                                            ('ftp', 'gopher', 'telnet',
-                                             'dict', 'ldap', 'http', 'file'),
-                                            None,
-                                            0,
-                                            None)
-            self.assertRaises(errors.DependencyNotPresent, self._transport,
-                              'https://launchpad.net')
-        finally:
-            # Restore the right function
-            pycurl.version_info = version_info_orig
+        self.overrideAttr(pycurl, 'version_info',
+                          # Fake the pycurl version_info This was taken from
+                          # a windows pycurl without SSL (thanks to bialix)
+                          lambda : (2,
+                                    '7.13.2',
+                                    462082,
+                                    'i386-pc-win32',
+                                    2576,
+                                    None,
+                                    0,
+                                    None,
+                                    ('ftp', 'gopher', 'telnet',
+                                     'dict', 'ldap', 'http', 'file'),
+                                    None,
+                                    0,
+                                    None))
+        self.assertRaises(errors.DependencyNotPresent, self._transport,
+                          'https://launchpad.net')
 
 
 class TestHTTPConnections(http_utils.TestCaseWithWebserver):
@@ -762,14 +759,14 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
-    def test_setUp_and_tearDown(self):
+    def test_setUp_and_stop(self):
         server = RecordingServer(expect_body_tail=None)
-        server.setUp()
+        server.start_server()
         try:
             self.assertNotEqual(None, server.host)
             self.assertNotEqual(None, server.port)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
@@ -1363,11 +1360,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
 
 
 def install_redirected_request(test):
-    test.original_class = _urllib2_wrappers.Request
-    def restore():
-        _urllib2_wrappers.Request = test.original_class
-    _urllib2_wrappers.Request = RedirectedRequest
-    test.addCleanup(restore)
+    test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
 
 
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1963,7 +1956,7 @@ class TestActivityMixin(object):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
-        self.server.setUp()
+        self.server.start_server()
         self.activities = {}
         def report_activity(t, bytes, direction):
             count = self.activities.get(direction, 0)
@@ -1978,7 +1971,7 @@ class TestActivityMixin(object):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def get_transport(self):
@@ -2104,7 +2097,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
-        self.server.setUp()
+        self.server.start_server()
         self.activities = {}
         def report_activity(t, bytes, direction):
             count = self.activities.get(direction, 0)
@@ -2119,7 +2112,7 @@ class TestActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
 
@@ -2135,7 +2128,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
         self.server = ActivityHTTPServer('HTTP/1.1')
         self._transport=_urllib.HttpTransport_urllib
 
-        self.server.setUp()
+        self.server.start_server()
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
@@ -2145,7 +2138,7 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def assertActivitiesMatch(self):

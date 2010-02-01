@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,11 @@ from bzrlib.conflicts import ConflictList, TextConflict
 from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
-from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
+from bzrlib.tests import (
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    test_merge_core,
+    )
 from bzrlib.workingtree import WorkingTree
 
 
@@ -150,13 +154,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' not in log)
+        self.failUnless('All changes applied successfully.\n' not in
+            self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' in log)
+        self.failUnless('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -2834,3 +2837,28 @@ class TestLCAMultiWay(tests.TestCase):
             'bval', ['lca1val', 'lca2val', 'lca2val'], 'oval', 'tval')
         self.assertLCAMultiWay('conflict',
             'bval', ['lca1val', 'lca2val', 'lca3val'], 'oval', 'tval')
+
+
+class TestConfigurableFileMerger(tests.TestCaseWithTransport):
+
+    def test_affected_files_cached(self):
+        """Ensures that the config variable is cached"""
+        class SimplePlan(_mod_merge.ConfigurableFileMerger):
+            name_prefix = "foo"
+            default_files = ["my default"]
+            def merge_text(self, params):
+                return ('not applicable', None)
+        def factory(merger):
+            result = SimplePlan(merger)
+            self.assertEqual(None, result.affected_files)
+            self.merger = result
+            return result
+        _mod_merge.Merger.hooks.install_named_hook('merge_file_content',
+            factory, 'test factory')
+        builder = test_merge_core.MergeBuilder(self.test_base_dir)
+        self.addCleanup(builder.cleanup)
+        builder.add_file('NEWS', builder.tree_root, 'name1', 'text1', True)
+        builder.change_contents('NEWS', other='text4', this='text3')
+        conflicts = builder.merge()
+        # The hook should set the variable
+        self.assertEqual(["my default"], self.merger.affected_files)

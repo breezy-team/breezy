@@ -173,14 +173,20 @@ Per-implementation tests
 
 Per-implementation tests are tests that are defined once and then run
 against multiple implementations of an interface.  For example,
-``test_transport_implementations.py`` defines tests that all Transport
-implementations (local filesystem, HTTP, and so on) must pass.
-
-They are found in ``bzrlib/tests/*_implementations/test_*.py``,
-``bzrlib/tests/per_*/*.py``, and
-``bzrlib/tests/test_*_implementations.py``.
+``per_transport.py`` defines tests that all Transport implementations
+(local filesystem, HTTP, and so on) must pass. They are found in
+``bzrlib/tests/per_*/*.py``, and ``bzrlib/tests/per_*.py``.
 
 These are really a sub-category of unit tests, but an important one.
+
+Along the same lines are tests for extension modules. We generally have
+both a pure-python and a compiled implementation for each module. As such,
+we want to run the same tests against both implementations. These can
+generally be found in ``bzrlib/tests/*__*.py`` since extension modules are
+usually prefixed with an underscore. Since there are only two
+implementations, we have a helper function
+``bzrlib.tests.permute_for_extension``, which can simplify the
+``load_tests`` implementation.
 
 
 Doctests
@@ -198,7 +204,7 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
 
 Shell-like tests
-~~~~~~~~~~~~~~~~
+----------------
 
 ``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
 using a restricted and limited set of commands that should be enough to mimic
@@ -286,6 +292,24 @@ You can also check the existence of a file with cat, the following will fail if
 the file doesn't exist::
 
   $ cat file
+
+The actual use of ScriptRunner within a TestCase looks something like
+this::
+
+        def test_unshelve_keep(self):
+                # some setup here
+                sr = ScriptRunner()
+                sr.run_script(self, '''
+        $ bzr add file
+        $ bzr shelve --all -m Foo
+        $ bzr shelve --list
+        1: Foo
+        $ bzr unshelve --keep
+        $ bzr shelve --list
+        1: Foo
+        $ cat file
+        contents of file
+        ''')
 
 
 

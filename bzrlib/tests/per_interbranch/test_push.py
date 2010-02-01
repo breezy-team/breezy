@@ -255,7 +255,6 @@ class TestPush(TestCaseWithInterBranch):
         builder.build_snapshot('third', ['second'], [])
         builder.build_snapshot('fourth', ['third'], [])
         builder.finish_series()
-        local = builder.get_branch()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.bzrdir.sprout(
@@ -281,15 +280,10 @@ class TestPush(TestCaseWithInterBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        inter_class = repository.InterRepository
-        old_batch_size = inter_class._walk_to_common_revisions_batch_size
-        inter_class._walk_to_common_revisions_batch_size = 1
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-            inter_class._walk_to_common_revisions_batch_size = old_batch_size
-        self.addCleanup(reset_values)
+        self.overrideAttr(repository.InterRepository,
+                          '_walk_to_common_revisions_batch_size', 1)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                            'no_extra_results', True)
 
 
 class TestPushHook(TestCaseWithInterBranch):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ from bzrlib import (
     urlutils,
     workingtree,
     )
+from bzrlib.tests.script import ScriptRunner
 
 
 class TestUpdate(tests.TestCaseWithTransport):
@@ -67,11 +68,11 @@ class TestUpdate(tests.TestCaseWithTransport):
     def test_update_up_to_date_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('checkout branch checkout')
-        out, err = self.run_bzr('update checkout')
-        self.assertEqual('Tree is up to date at revision 0 of branch %s\n'
-                         % osutils.pathjoin(self.test_dir, 'branch'),
-                         err)
-        self.assertEqual('', out)
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update checkout
+2>Tree is up to date at revision 0 of branch .../branch
+''')
 
     def test_update_out_of_date_standalone_tree(self):
         # FIXME the default format has to change for this to pass
@@ -239,3 +240,78 @@ Updated to revision 2 of branch %s
                                                    lightweight=True)
         tree.commit('empty commit')
         self.run_bzr('update checkout')
+
+    def test_update_dash_r(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a lightweight checkout
+        # which has merged another branch
+        master = self.make_branch_and_tree('master')
+        os.chdir('master')
+        self.build_tree(['./file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+        self.build_tree(['./file2'])
+        master.add(['file2'])
+        master.commit('two', rev_id='m2')
+
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update -r 1
+2>-D  file2
+2>All changes applied successfully.
+2>Updated to revision 1 of .../master
+''')
+        self.failUnlessExists('./file1')
+        self.failIfExists('./file2')
+        self.assertEquals(['m1'], master.get_parent_ids())
+
+    def test_update_dash_r_outside_history(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a lightweight checkout
+        # which has merged another branch
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+
+        # Create a second branch, with an extra commit
+        other = master.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file2'])
+        other.add(['file2'])
+        other.commit('other2', rev_id='o2')
+
+        os.chdir('master')
+        self.run_bzr('merge ../other')
+        master.commit('merge', rev_id='merge')
+
+        out, err = self.run_bzr('update -r revid:o2',
+                                retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('bzr: ERROR: branch has no revision o2\n'
+                         'bzr update --revision only works'
+                         ' for a revision in the branch history\n',
+                         err)
+
+    def test_update_dash_r_in_master(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree,
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file1'])
+        master.add(['file1'])
+        master.commit('one', rev_id='m1')
+
+        self.run_bzr('checkout master checkout')
+
+        # add a revision in the master.
+        self.build_tree(['master/file2'])
+        master.add(['file2'])
+        master.commit('two', rev_id='m2')
+
+        os.chdir('checkout')
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr update -r revid:m2
+2>+N  file2
+2>All changes applied successfully.
+2>Updated to revision 2 of branch .../master
+''')

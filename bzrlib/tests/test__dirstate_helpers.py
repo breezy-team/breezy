@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -831,11 +831,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestUpdateEntry, self).setUp()
-        orig = dirstate.update_entry
-        def cleanup():
-            dirstate.update_entry = orig
-        self.addCleanup(cleanup)
-        dirstate.update_entry = self.update_entry
+        self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
         """Create a DirState tracking a single object named 'a'"""
@@ -1278,11 +1274,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestProcessEntry, self).setUp()
-        orig = dirstate._process_entry
-        def cleanup():
-            dirstate._process_entry = orig
-        self.addCleanup(cleanup)
-        dirstate._process_entry = self._process_entry
+        self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):
         tree.lock_read()
@@ -1292,6 +1284,23 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         finally:
             tree.unlock()
         self.assertEqual(sorted(expected), sorted(file_ids))
+
+    def test_exceptions_raised(self):
+        # This is a direct test of bug #495023, it relies on osutils.is_inside
+        # getting called in an inner function. Which makes it a bit brittle,
+        # but at least it does reproduce the bug.
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/dir/', 'tree/dir/sub',
+                         'tree/dir2/', 'tree/dir2/sub2'])
+        tree.add(['file', 'dir', 'dir/sub', 'dir2', 'dir2/sub2'])
+        tree.commit('first commit')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        def is_inside_raises(*args, **kwargs):
+            raise RuntimeError('stop this')
+        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
+        self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):
         tree = self.make_branch_and_tree('tree')
