@@ -1590,7 +1590,7 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            proc = Popen(["/usr/bin/tar", "xzf", tarball_filename, "-C",
+            proc = Popen(["tar", "xzf", tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
                     preexec_fn=subprocess_setup)
             proc.communicate()
