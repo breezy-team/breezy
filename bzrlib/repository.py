@@ -2450,8 +2450,8 @@ class Repository(_RelockDebugMixin):
         return self._serializer.format_num
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
+    def _get_inventory_xml(self, revision_id):
+        """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
         try:
             text, revision_id = texts.next()

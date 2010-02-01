@@ -1497,9 +1497,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
+    def _get_inventory_xml(self, revision_id):
         self._ensure_real()
-        return self._real_repository.get_inventory_xml(revision_id)
+        return self._real_repository._get_inventory_xml(revision_id)
 
     def _deserialise_inventory(self, revision_id, xml):
         self._ensure_real()
