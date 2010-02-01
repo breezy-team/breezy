@@ -1240,7 +1240,7 @@ class Repository(_RelockDebugMixin):
         """Check a single text from this repository."""
         if kind == 'inventories':
             rev_id = record.key[0]
-            inv = self.deserialise_inventory(rev_id,
+            inv = self._deserialise_inventory(rev_id,
                 record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
@@ -2388,7 +2388,7 @@ class Repository(_RelockDebugMixin):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self.deserialise_inventory(revision_id, text)
+            yield self._deserialise_inventory(revision_id, text)
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -2426,7 +2426,7 @@ class Repository(_RelockDebugMixin):
                         next_key = None
                         break
 
-    def deserialise_inventory(self, revision_id, xml):
+    def _deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object.
 
         :param revision_id: The expected revision id of the inventory.
@@ -2450,8 +2450,8 @@ class Repository(_RelockDebugMixin):
         return self._serializer.format_num
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
+    def _get_inventory_xml(self, revision_id):
+        """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
         try:
             text, revision_id = texts.next()

@@ -225,8 +225,8 @@ class ForeignRepository(Repository):
         """Get the default mapping for this repository."""
         raise NotImplementedError(self.get_default_mapping)
 
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
+    def _get_inventory_xml(self, revision_id):
+        """See Repository._get_inventory_xml()."""
         return self._serialise_inventory(self.get_inventory(revision_id))
 
     def get_revision_xml(self, revision_id):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,23 +57,116 @@ class MergeHooks(hooks.Hooks):
     def __init__(self):
         hooks.Hooks.__init__(self)
         self.create_hook(hooks.HookPoint('merge_file_content',
-            "Called when file content needs to be merged (including when one "
-            "side has deleted the file and the other has changed it)."
-            "merge_file_content is called with a "
-            "bzrlib.merge.MergeHookParams. The function should return a tuple "
-            "of (status, lines), where status is one of 'not_applicable', "
-            "'success', 'conflicted', or 'delete'.  If status is success or "
-            "conflicted, then lines should be an iterable of strings of the "
-            "new file contents.",
+            "Called with a bzrlib.merge.Merger object to create a per file "
+            "merge object when starting a merge. "
+            "Should return either None or a subclass of "
+            "``bzrlib.merge.AbstractPerFileMerger``. "
+            "Such objects will then be called per file "
+            "that needs to be merged (including when one "
+            "side has deleted the file and the other has changed it). "
+            "See the AbstractPerFileMerger API docs for details on how it is "
+            "used by merge.",
             (2, 1), None))
+
+
+class AbstractPerFileMerger(object):
+    """PerFileMerger objects are used by plugins extending merge for bzrlib.
+
+    See ``bzrlib.plugins.news_merge.news_merge`` for an example concrete class.
+    
+    :ivar merger: The Merge3Merger performing the merge.
+    """
+
+    def __init__(self, merger):
+        """Create a PerFileMerger for use with merger."""
+        self.merger = merger
+
+    def merge_contents(self, merge_params):
+        """Attempt to merge the contents of a single file.
+        
+        :param merge_params: A bzrlib.merge.MergeHookParams
+        :return : A tuple of (status, chunks), where status is one of
+            'not_applicable', 'success', 'conflicted', or 'delete'.  If status
+            is 'success' or 'conflicted', then chunks should be an iterable of
+            strings for the new file contents.
+        """
+        return ('not applicable', None)
+
+
+class ConfigurableFileMerger(AbstractPerFileMerger):
+    """Merge individual files when configured via a .conf file.
+
+    This is a base class for concrete custom file merging logic. Concrete
+    classes should implement ``merge_text``.
+
+    :ivar affected_files: The configured file paths to merge.
+    :cvar name_prefix: The prefix to use when looking up configuration
+        details.
+    :cvar default_files: The default file paths to merge when no configuration
+        is present.
+    """
+
+    name_prefix = None
+    default_files = None
+
+    def __init__(self, merger):
+        super(ConfigurableFileMerger, self).__init__(merger)
+        self.affected_files = None
+        self.default_files = self.__class__.default_files or []
+        self.name_prefix = self.__class__.name_prefix
+        if self.name_prefix is None:
+            raise ValueError("name_prefix must be set.")
+
+    def filename_matches_config(self, params):
+        affected_files = self.affected_files
+        if affected_files is None:
+            config = self.merger.this_tree.branch.get_config()
+            # Until bzr provides a better policy for caching the config, we
+            # just add the part we're interested in to the params to avoid
+            # reading the config files repeatedly (bazaar.conf, location.conf,
+            # branch.conf).
+            config_key = self.name_prefix + '_merge_files'
+            affected_files = config.get_user_option_as_list(config_key)
+            if affected_files is None:
+                # If nothing was specified in the config, use the default.
+                affected_files = self.default_files
+            self.affected_files = affected_files
+        if affected_files:
+            filename = self.merger.this_tree.id2path(params.file_id)
+            if filename in affected_files:
+                return True
+        return False
+
+    def merge_contents(self, params):
+        """Merge the contents of a single file."""
+        # First, check whether this custom merge logic should be used.  We
+        # expect most files should not be merged by this handler.
+        if (
+            # OTHER is a straight winner, rely on default merge.
+            params.winner == 'other' or
+            # THIS and OTHER aren't both files.
+            not params.is_file_merge() or
+            # The filename isn't listed in the 'NAME_merge_files' config
+            # option.
+            not self.filename_matches_config(params)):
+            return 'not_applicable', None
+        return self.merge_text(self, params)
+
+    def merge_text(self, params):
+        """Merge the byte contents of a single file.
+
+        This is called after checking that the merge should be performed in
+        merge_contents, and it should behave as per
+        ``bzrlib.merge.AbstractPerFileMerger.merge_contents``.
+        """
+        raise NotImplementedError(self.merge_text)
 
 
 class MergeHookParams(object):
     """Object holding parameters passed to merge_file_content hooks.
 
-    There are 3 fields hooks can access:
+    There are some fields hooks can access:
 
-    :ivar merger: the Merger object
     :ivar file_id: the file ID of the file being merged
     :ivar trans_id: the transform ID for the merge of this file
     :ivar this_kind: kind of file_id in 'this' tree
@@ -83,7 +176,7 @@ class MergeHookParams(object):
 
     def __init__(self, merger, file_id, trans_id, this_kind, other_kind,
             winner):
-        self.merger = merger
+        self._merger = merger
         self.file_id = file_id
         self.trans_id = trans_id
         self.this_kind = this_kind
@@ -97,17 +190,17 @@ class MergeHookParams(object):
     @decorators.cachedproperty
     def base_lines(self):
         """The lines of the 'base' version of the file."""
-        return self.merger.get_lines(self.merger.base_tree, self.file_id)
+        return self._merger.get_lines(self._merger.base_tree, self.file_id)
 
     @decorators.cachedproperty
     def this_lines(self):
         """The lines of the 'this' version of the file."""
-        return self.merger.get_lines(self.merger.this_tree, self.file_id)
+        return self._merger.get_lines(self._merger.this_tree, self.file_id)
 
     @decorators.cachedproperty
     def other_lines(self):
         """The lines of the 'other' version of the file."""
-        return self.merger.get_lines(self.merger.other_tree, self.file_id)
+        return self._merger.get_lines(self._merger.other_tree, self.file_id)
 
 
 class Merger(object):
@@ -708,12 +801,15 @@ class Merge3Merger(object):
             resolver = self._lca_multi_way
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
+            factories = Merger.hooks['merge_file_content']
+            hooks = [factory(self) for factory in factories] + [self]
+            self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
                 child_pb.update('Preparing file merge', num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
-                    file_status = self.merge_contents(file_id)
+                    file_status = self._do_merge_contents(file_id)
                 else:
                     file_status = 'unmodified'
                 self._merge_executable(file_id,
@@ -1158,7 +1254,7 @@ class Merge3Merger(object):
             self.tt.adjust_path(names[self.winner_idx[name_winner]],
                                 parent_trans_id, trans_id)
 
-    def merge_contents(self, file_id):
+    def _do_merge_contents(self, file_id):
         """Performs a merge on file_id contents."""
         def contents_pair(tree):
             if file_id not in tree:
@@ -1198,11 +1294,10 @@ class Merge3Merger(object):
         trans_id = self.tt.trans_id_file_id(file_id)
         params = MergeHookParams(self, file_id, trans_id, this_pair[0],
             other_pair[0], winner)
-        hooks = Merger.hooks['merge_file_content']
-        hooks = list(hooks) + [self.default_text_merge]
+        hooks = self.active_hooks
         hook_status = 'not_applicable'
         for hook in hooks:
-            hook_status, lines = hook(params)
+            hook_status, lines = hook.merge_contents(params)
             if hook_status != 'not_applicable':
                 # Don't try any more hooks, this one applies.
                 break
@@ -1279,7 +1374,11 @@ class Merge3Merger(object):
                 'winner is OTHER, but file_id %r not in THIS or OTHER tree'
                 % (file_id,))
 
-    def default_text_merge(self, merge_hook_params):
+    def merge_contents(self, merge_hook_params):
+        """Fallback merge logic after user installed hooks."""
+        # This function is used in merge hooks as the fallback instance.
+        # Perhaps making this function and the functions it calls be a 
+        # a separate class would be better.
         if merge_hook_params.winner == 'other':
             # OTHER is a straight winner, so replace this contents with other
             return self._default_other_winner_merge(merge_hook_params)
