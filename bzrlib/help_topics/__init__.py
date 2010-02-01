@@ -276,7 +276,7 @@ would refer to ``/home/remote/myproject/trunk``.
 
 _basic_help = \
 """Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch

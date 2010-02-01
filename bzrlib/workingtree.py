@@ -1904,7 +1904,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # revision_id is set. We must check for this full string, because a
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
-            xml = self.branch.repository.get_inventory_xml(new_revision)
+            xml = self.branch.repository._get_inventory_xml(new_revision)
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
