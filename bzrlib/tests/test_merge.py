@@ -2845,20 +2845,20 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         """Ensures that the config variable is cached"""
         class SimplePlan(_mod_merge.ConfigurableFileMerger):
             name_prefix = "foo"
-            default_files = ["my default"]
+            default_files = ['bar']
             def merge_text(self, params):
-                return ('not applicable', None)
+                return ('not_applicable', None)
         def factory(merger):
             result = SimplePlan(merger)
             self.assertEqual(None, result.affected_files)
             self.merger = result
             return result
         _mod_merge.Merger.hooks.install_named_hook('merge_file_content',
-            factory, 'test factory')
+                                                   factory, 'test factory')
         builder = test_merge_core.MergeBuilder(self.test_base_dir)
         self.addCleanup(builder.cleanup)
-        builder.add_file('NEWS', builder.tree_root, 'name1', 'text1', True)
-        builder.change_contents('NEWS', other='text4', this='text3')
+        builder.add_file('bar-id', builder.tree_root, 'bar', 'text1', True)
+        builder.change_contents('bar-id', other='text4', this='text3')
         conflicts = builder.merge()
         # The hook should set the variable
-        self.assertEqual(["my default"], self.merger.affected_files)
+        self.assertEqual(['bar'], self.merger.affected_files)
