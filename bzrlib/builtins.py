@@ -2191,13 +2191,10 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools. You may prefer qlog or viz from the QBzr and Bzr-Gtk packages
-      respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
-      http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
-
-      Web interfaces are often better at exploring history than command line
-      tools, particularly for branches on servers. You may prefer Loggerhead
-      or one of its alternatives. See http://bazaar-vcs.org/WebInterface.
+      line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
+      bzr-explorer shell, or the Loggerhead web interface.  See the Plugin
+      Guide <http://doc.bazaar.canonical.com/plugins/en/> and
+      <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
       You may find it useful to add the aliases below to ``bazaar.conf``::
 
@@ -4408,10 +4405,10 @@ class cmd_plugins(Command):
     adding new commands, providing additional network transports and
     customizing log output.
 
-    See the Bazaar web site, http://bazaar-vcs.org, for further
-    information on plugins including where to find them and how to
-    install them. Instructions are also provided there on how to
-    write new plugins using the Python programming language.
+    See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>
+    for further information on plugins including where to find them and how to
+    install them. Instructions are also provided there on how to write new
+    plugins using the Python programming language.
     """
     takes_options = ['verbose']
 
