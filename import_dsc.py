@@ -54,6 +54,7 @@ from bzrlib.errors import (
         BzrCommandError,
         NotBranchError,
         NoWorkingTree,
+        UnrelatedBranches,
         )
 from bzrlib.export import export
 from bzrlib.osutils import file_iterator, isdir, basename, splitpath
@@ -1680,8 +1681,20 @@ class DistributionBranch(object):
                 finally:
                     shutil.rmtree(tarball_dir)
                 if self.branch.last_revision() != NULL_REVISION:
-                    conflicts = self.tree.merge_from_branch(
-                            self.upstream_branch, merge_type=merge_type)
+                    try:
+                        conflicts = self.tree.merge_from_branch(
+                                self.upstream_branch, merge_type=merge_type)
+                    except UnrelatedBranches:
+                        # Bug lp:515367 where the first upstream tarball is
+                        # missing a proper history link and a criss-cross merge
+                        # then recurses and finds no deeper ancestor.
+                        if len(parents) != 2:
+                            # Very first import... shouldn't be possible.
+                            raise
+                        # Use the previous upstream import as the from revision
+                        conflicts = self.tree.merge_from_branch(
+                                self.upstream_branch, merge_type=merge_type,
+                                from_revision=parents[0])
                 else:
                     # Pull so that merge-upstream allows you to start a branch
                     # from upstream tarball.
