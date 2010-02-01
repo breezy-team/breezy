@@ -213,8 +213,6 @@ class cmd_builddeb(Command):
         if location is None:
             location = "."
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
-        if is_local:
-            os.chdir(location)
         tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
         return tree, branch, is_local
 
@@ -269,26 +267,26 @@ class cmd_builddeb(Command):
             builder += " " + " ".join(build_options)
         return builder
 
-    def _get_dirs(self, config, is_local, result_dir, result, build_dir, orig_dir):
-        if result_dir is None:
-            result_dir = result
-        if result_dir is None:
-            if is_local:
-                result_dir = config.result_dir
-            else:
-                result_dir = config.user_result_dir
-        if result_dir is not None:
-            result_dir = os.path.realpath(result_dir)
-        if build_dir is None:
-            if is_local:
-                build_dir = config.build_dir or default_build_dir
-            else:
-                build_dir = config.user_build_dir or 'build-area'
-        if orig_dir is None:
-            if is_local:
-                orig_dir = config.orig_dir or default_orig_dir
-            else:
-                orig_dir = config.user_orig_dir or 'build-area'
+    def _get_dirs(self, config, branch, is_local, result_dir, build_dir, orig_dir):
+        def _get_dir(supplied, if_local, if_not):
+            if supplied is None:
+                if is_local:
+                    supplied = if_local
+                else:
+                    supplied = if_not
+            if supplied is not None:
+                if is_local:
+                    supplied = os.path.join(
+                            urlutils.local_path_from_url(branch.base),
+                            supplied)
+                    supplied = os.path.realpath(supplied)
+            return supplied
+
+        result_dir = _get_dir(result_dir, config.result_dir, config.user_result_dir)
+        build_dir = _get_dir(build_dir, config.build_dir or default_build_dir,
+                config.user_build_dir or 'build-area')
+        orig_dir = _get_dir(orig_dir, config.orig_dir or default_orig_dir,
+                config.user_orig_dir or 'build-area')
         return result_dir, build_dir, orig_dir
 
     def _branch_and_build_options(self, branch_or_build_options_list,
@@ -375,8 +373,8 @@ class cmd_builddeb(Command):
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
-            result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
-                    result_dir, result, build_dir, orig_dir)
+            result_dir, build_dir, orig_dir = self._get_dirs(config, branch,
+                    is_local, result_dir or result, build_dir, orig_dir)
 
             upstream_branch, upstream_revision = \
                     self._get_upstream_branch(merge, export_upstream,
@@ -433,7 +431,13 @@ class cmd_builddeb(Command):
                         raise BzrCommandError("Could not find the .changes "
                                 "file from the build: %s" % changes_path)
                 else:
-                    target_dir = result_dir or default_result_dir
+                    if is_local:
+                        target_dir = result_dir or default_result_dir
+                        target_dir = os.path.join(
+                                urlutils.local_path_from_url(branch.base),
+                                target_dir)
+                    else:
+                        target_dir = "."
                     if not os.path.exists(target_dir):
                         os.makedirs(target_dir)
                     dget_changes(changes_path, target_dir)
@@ -486,7 +490,7 @@ class cmd_merge_upstream(Command):
             entry_description = "New upstream snapshot."
         else:
             entry_description = "New upstream release."
-        proc = subprocess.Popen(["/usr/bin/dch", "-v",
+        proc = subprocess.Popen(["dch", "-v",
                 str(package_version(version, distribution_name)),
                 "-D", "UNRELEASED", "--release-heuristic", "changelog",
                 entry_description], cwd=tree.basedir)
