@@ -491,7 +491,7 @@ class cmd_merge_upstream(Command):
             entry_description = "New upstream snapshot."
         else:
             entry_description = "New upstream release."
-        proc = subprocess.Popen(["/usr/bin/dch", "-v",
+        proc = subprocess.Popen(["dch", "-v",
                 str(package_version(version, distribution_name)),
                 "-D", "UNRELEASED", "--release-heuristic", "changelog",
                 entry_description], cwd=tree.basedir)

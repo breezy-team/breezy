@@ -29,6 +29,7 @@ from base64 import (
         standard_b64decode,
         standard_b64encode,
         )
+import errno
 try:
     import hashlib as md5
 except ImportError:
@@ -1533,7 +1534,7 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            proc = Popen(["/bin/tar", "xzf", tarball_filename, "-C",
+            proc = Popen(["tar", "xzf", tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
                     preexec_fn=subprocess_setup)
             proc.communicate()
@@ -1651,18 +1652,22 @@ class DistributionBranch(object):
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
         """Reconstruct a pristine-tar tarball from a bzr revision."""
-        if not os.path.exists("/usr/bin/pristine-tar"):
-            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tree = self.branch.repository.revision_tree(revid)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
             export(tree, dest, format='dir')
             delta = self.pristine_tar_delta(revid)
-            command = ["/usr/bin/pristine-tar", "gentar", "-",
+            command = ["pristine-tar", "gentar", "-",
                        os.path.abspath(dest_filename)]
-            proc = Popen(command, stdin=PIPE, cwd=dest,
-                    preexec_fn=subprocess_setup)
+            try:
+                proc = Popen(command, stdin=PIPE, cwd=dest,
+                        preexec_fn=subprocess_setup)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise PristineTarError("pristine-tar is not installed")
+                else:
+                    raise
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
                 raise PristineTarError("Generating tar from delta failed: %s" % stderr)
@@ -1670,8 +1675,6 @@ class DistributionBranch(object):
             shutil.rmtree(tmpdir)
 
     def make_pristine_tar_delta(self, tree, tarball_path):
-        if not os.path.exists("/usr/bin/pristine-tar"):
-            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
@@ -1682,10 +1685,16 @@ class DistributionBranch(object):
                 export(tree, dest, format='dir')
             finally:
                 tree.unlock()
-            command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
+            command = ["pristine-tar", "gendelta", tarball_path, "-"]
             note(" ".join(command))
-            proc = Popen(command, stdout=PIPE, cwd=dest,
-                    preexec_fn=subprocess_setup)
+            try:
+                proc = Popen(command, stdout=PIPE, cwd=dest,
+                        preexec_fn=subprocess_setup)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise PristineTarError("pristine-tar is not installed")
+                else:
+                    raise
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
                 raise PristineTarError("Generating delta from tar failed: %s" % stderr)
