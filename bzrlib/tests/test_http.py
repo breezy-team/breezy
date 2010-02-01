@@ -391,10 +391,10 @@ class TestHttpUrls(tests.TestCase):
         self.assertEqual('http://example.com', url)
         self.assertEqual(0, len(f.credentials))
         url = http.extract_auth(
-            'http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
-        self.assertEqual('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
+            'http://user:pass@example.com/bzr/bzr.dev', f)
+        self.assertEqual('http://example.com/bzr/bzr.dev', url)
         self.assertEqual(1, len(f.credentials))
-        self.assertEqual([None, 'www.bazaar-vcs.org', 'user', 'pass'],
+        self.assertEqual([None, 'example.com', 'user', 'pass'],
                          f.credentials[0])
 
 
