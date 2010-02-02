@@ -41,7 +41,7 @@ class _PushbackSequence(object):
 
 
 class _Whitespace(object):
-    def process(self, next_char, seq, context):
+    def process(self, next_char, context):
         if _whitespace_match(next_char):
             if len(context.token) > 0:
                 return None
@@ -63,7 +63,7 @@ class _Quotes(object):
         self.quote_char = quote_char
         self.exit_state = exit_state
 
-    def process(self, next_char, seq, context):
+    def process(self, next_char, context):
         if next_char == u'\\':
             return _Backslash(self)
         elif next_char == self.quote_char:
@@ -79,7 +79,7 @@ class _Backslash(object):
         self.exit_state = exit_state
         self.count = 1
         
-    def process(self, next_char, seq, context):
+    def process(self, next_char, context):
         if next_char == u'\\':
             self.count += 1
             return self
@@ -91,7 +91,7 @@ class _Backslash(object):
             if self.count % 2 == 1:
                 context.token.append(next_char) # odd number of '\' escapes the '"'
             else:
-                seq.pushback(next_char) # let exit_state handle next_char
+                context.seq.pushback(next_char) # let exit_state handle next_char
             self.count = 0
             return self.exit_state
         else:
@@ -99,7 +99,7 @@ class _Backslash(object):
             if self.count > 0:
                 context.token.append(u'\\' * self.count)
                 self.count = 0
-            seq.pushback(next_char) # let exit_state handle next_char
+            context.seq.pushback(next_char) # let exit_state handle next_char
             return self.exit_state
     
     def finish(self, context):
@@ -108,7 +108,7 @@ class _Backslash(object):
 
 
 class _Word(object):
-    def process(self, next_char, seq, context):
+    def process(self, next_char, context):
         if _whitespace_match(next_char):
             return None
         elif (next_char == u'"'
@@ -123,7 +123,7 @@ class _Word(object):
 
 class Parser(object):
     def __init__(self, command_line, single_quotes_allowed=False):
-        self._seq = _PushbackSequence(command_line)
+        self.seq = _PushbackSequence(command_line)
         self.single_quotes_allowed = single_quotes_allowed
     
     def __iter__(self):
@@ -139,8 +139,8 @@ class Parser(object):
         self.quoted = False
         self.token = []
         state = _Whitespace()
-        for next_char in self._seq:
-            state = state.process(next_char, self._seq, self)
+        for next_char in self.seq:
+            state = state.process(next_char, self)
             if state is None:
                 break
         if not state is None and not getattr(state, 'finish', None) is None:
