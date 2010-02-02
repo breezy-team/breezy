@@ -81,10 +81,10 @@ resolve_action_registry = registry.Registry()
 resolve_action_registry.register(
     'done', 'done', 'Marks the conflict as resolved' )
 resolve_action_registry.register(
-    'keep-mine', 'keep_mine',
+    'take-this', 'take_this',
     'Resolve the conflict preserving the version in the working tree' )
 resolve_action_registry.register(
-    'take-theirs', 'take_theirs',
+    'take-other', 'take_other',
     'Resolve the conflict taking the merged version into account' )
 resolve_action_registry.default_key = 'done'
 
@@ -420,11 +420,11 @@ class Conflict(object):
         # This method does nothing but simplifies the design of upper levels.
         pass
 
-    def keep_mine(self, tree):
-        raise NotImplementedError(self.keep_mine)
+    def take_this(self, tree):
+        raise NotImplementedError(self.take_this)
 
-    def take_theirs(self, tree):
-        raise NotImplementedError(self.take_theirs)
+    def take_other(self, tree):
+        raise NotImplementedError(self.take_other)
 
 
 class PathConflict(Conflict):
@@ -450,10 +450,10 @@ class PathConflict(Conflict):
         # No additional files have been generated here
         pass
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         tree.rename_one(self.conflict_path, self.path)
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         # just acccept bzr proposal
         pass
 
@@ -477,11 +477,11 @@ class ContentsConflict(PathConflict):
 
     # FIXME: I smell something weird here and it seems we should be able to be
     # more coherent with some other conflict ? bzr *did* a choice there but
-    # neither keep_mine nor take_theirs reflect that... -- vila 091224
-    def keep_mine(self, tree):
+    # neither take_this nor take_other reflect that... -- vila 091224
+    def take_this(self, tree):
         tree.remove([self.path + '.OTHER'], force=True, keep_files=False)
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
 
@@ -578,11 +578,11 @@ class DuplicateEntry(HandledPathConflict):
 
     format = 'Conflict adding file %(conflict_path)s.  %(action)s %(path)s.'
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         tree.remove([self.conflict_path], force=True, keep_files=False)
         tree.rename_one(self.path, self.conflict_path)
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
 
@@ -601,11 +601,11 @@ class ParentLoop(HandledPathConflict):
 
     format = 'Conflict moving %(conflict_path)s into %(path)s.  %(action)s.'
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         # just acccept bzr proposal
         pass
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         # FIXME: We shouldn't have to manipulate so many paths here (and there
         # is probably a bug or two...)
         base_path = osutils.basename(self.path)
@@ -637,10 +637,10 @@ class UnversionedParent(HandledConflict):
     # FIXME: We silently do nothing to make tests pass, but most probably the
     # conflict shouldn't exist (the long story is that the conflict is
     # generated with another one that can be resolved properly) -- vila 091224
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         pass
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         pass
 
 
@@ -655,10 +655,10 @@ class MissingParent(HandledConflict):
 
     format = 'Conflict adding files to %(path)s.  %(action)s.'
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         # just acccept bzr proposal
         pass
 
@@ -677,11 +677,11 @@ class DeletingParent(HandledConflict):
     # FIXME: It's a bit strange that the default action is not coherent with
     # MissingParent from the *user* pov.
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         # just acccept bzr proposal
         pass
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         tree.remove([self.path], force=True, keep_files=False)
 
 
@@ -695,23 +695,23 @@ class NonDirectoryParent(HandledConflict):
     format = "Conflict: %(path)s is not a directory, but has files in it."\
              "  %(action)s."
 
-    def keep_mine(self, tree):
+    def take_this(self, tree):
         # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith('.new'):
             conflict_path = self.path[:-(len('.new'))]
             tree.remove([self.path], force=True, keep_files=False)
             tree.add(conflict_path)
         else:
-            raise NotImplementedError(self.keep_mine)
+            raise NotImplementedError(self.take_this)
 
-    def take_theirs(self, tree):
+    def take_other(self, tree):
         # FIXME: we should preserve that path when the conflict is generated !
         if self.path.endswith('.new'):
             conflict_path = self.path[:-(len('.new'))]
             tree.remove([conflict_path], force=True, keep_files=False)
             tree.rename_one(self.path, conflict_path)
         else:
-            raise NotImplementedError(self.take_theirs)
+            raise NotImplementedError(self.take_other)
 
 
 ctype = {}

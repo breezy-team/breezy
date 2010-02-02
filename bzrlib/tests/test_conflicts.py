@@ -217,29 +217,29 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_keep_mine(self):
+    def test_take_this(self):
         self.run_script("""
 $ bzr rm file.OTHER --force # a simple rm file.OTHER is valid too
 $ bzr resolve file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_theirs(self):
+    def test_take_other(self):
         self.run_script("""
 $ bzr mv file.OTHER file
 $ bzr resolve file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine file
+$ bzr resolve --take-this file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs file
+$ bzr resolve --take-other file
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -286,15 +286,15 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
         self.failIfExists('branch/file2.moved')
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine file2
+$ bzr resolve --take-this file2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs file2
+$ bzr resolve --take-other file2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -328,14 +328,14 @@ $ bzr merge ../trunk
 2>2 conflicts encountered.
 """
 
-    def test_keep_mine(self):
+    def test_take_this(self):
         self.run_script("""
 $ bzr rm dir  --force
 $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_theirs(self):
+    def test_take_other(self):
         self.run_script("""
 $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
@@ -390,15 +390,15 @@ $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine dir
+$ bzr resolve --take-this dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs dir
+$ bzr resolve --take-other dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -450,15 +450,15 @@ $ bzr resolve dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine dir
+$ bzr resolve --take-this dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs dir
+$ bzr resolve --take-other dir
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -498,15 +498,15 @@ $ bzr resolve file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine file-in-branch
+$ bzr resolve --take-this file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs file-in-branch
+$ bzr resolve --take-other file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -532,13 +532,13 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_keep_mine(self):
+    def test_take_this(self):
         self.run_script("""
 $ bzr resolve dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_theirs(self):
+    def test_take_other(self):
         self.run_script("""
 $ bzr mv dir2/dir1 dir1
 $ bzr mv dir2 dir1
@@ -546,16 +546,16 @@ $ bzr resolve dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine dir2
+$ bzr resolve --take-this dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
         self.failUnlessExists('dir2')
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs dir2
+$ bzr resolve --take-other dir2
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
         self.failUnlessExists('dir1')
@@ -587,7 +587,7 @@ $ bzr merge ../trunk
 2>1 conflicts encountered.
 """
 
-    def test_keep_mine(self):
+    def test_take_this(self):
         self.run_script("""
 $ bzr rm foo.new --force
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
@@ -597,7 +597,7 @@ $ bzr resolve foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_take_theirs(self):
+    def test_take_other(self):
         self.run_script("""
 $ bzr rm foo --force
 $ bzr mv foo.new foo
@@ -605,15 +605,15 @@ $ bzr resolve foo
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_keeping_mine(self):
+    def test_resolve_taking_this(self):
         self.run_script("""
-$ bzr resolve --keep-mine foo.new
+$ bzr resolve --take-this foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
-    def test_resolve_taking_theirs(self):
+    def test_resolve_taking_other(self):
         self.run_script("""
-$ bzr resolve --take-theirs foo.new
+$ bzr resolve --take-other foo.new
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -663,14 +663,14 @@ class TestResolveActionOption(tests.TestCase):
         opts, args = self.parse(['--action', 'done'])
         self.assertEqual({'action':'done'}, opts)
 
-    def test_keep_mine(self):
-        opts, args = self.parse(['--action', 'keep-mine'])
-        self.assertEqual({'action': 'keep_mine'}, opts)
-        opts, args = self.parse(['--keep-mine'])
-        self.assertEqual({'action': 'keep_mine'}, opts)
+    def test_take_this(self):
+        opts, args = self.parse(['--action', 'take-this'])
+        self.assertEqual({'action': 'take_this'}, opts)
+        opts, args = self.parse(['--take-this'])
+        self.assertEqual({'action': 'take_this'}, opts)
 
-    def test_take_theirs(self):
-        opts, args = self.parse(['--action', 'take-theirs'])
-        self.assertEqual({'action': 'take_theirs'}, opts)
-        opts, args = self.parse(['--take-theirs'])
-        self.assertEqual({'action': 'take_theirs'}, opts)
+    def test_take_other(self):
+        opts, args = self.parse(['--action', 'take-other'])
+        self.assertEqual({'action': 'take_other'}, opts)
+        opts, args = self.parse(['--take-other'])
+        self.assertEqual({'action': 'take_other'}, opts)

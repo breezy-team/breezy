@@ -45,8 +45,8 @@ New Features
   ``locations.conf`` or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
-* Tree-shape conflicts can be resolved by providing ``--keep-mine`` and
-  ``--take-theirs`` to the ``bzr resolve`` command. Just marking the conflict
+* Tree-shape conflicts can be resolved by providing ``--take-this`` and
+  ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
   as resolved is still accessible via the ``--done`` default action.
   (Vincent Ladeuil)
 

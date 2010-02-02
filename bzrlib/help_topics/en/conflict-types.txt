@@ -106,11 +106,11 @@ working tree.
 
 .. TODO: There are 6 ways to resolve text conflicts:
    1. Manually
-   1. prefer-mine choose THIS in conflicted regions
-   1. prefer-theirs choose OTHER in conflicted regions
-   1. keep-both take THIS and OTHER in conflicted regions
-   1. keep-mine take THIS overriding all cleanly merged modifications
-   1. take-theirs take OTHER overriding all cleanly merged modifications
+   1. prefer-this choose THIS in conflicted regions
+   1. prefer-other choose OTHER in conflicted regions
+   1. take-both take THIS and OTHER in conflicted regions
+   1. take-this take THIS overriding all cleanly merged modifications
+   1. take-other take OTHER overriding all cleanly merged modifications
 
 Content conflicts
 -----------------
@@ -134,8 +134,8 @@ or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will issue ``bzr mv FILE.THIS FILE``,
-- ``--action=take-theirs`` will issue ``bzr mv FILE.OTHER FILE``,
+- ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,
+- ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,
 - ``--action=done`` will just mark the conflict as resolved.
 
 Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
@@ -184,8 +184,8 @@ or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will issue ``bzr mv FILE.moved FILE``,
-- ``--action=take-theirs`` will issue ``bzr rm FILE.moved``,
+- ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved FILE``,
+- ``--action=take-other`` will issue ``bzr rm FILE.moved``,
 - ``--action=done`` will just mark the conflict as resolved.
 
 Note that you must get rid of FILE.moved before using ``--action=done``.
@@ -228,8 +228,8 @@ children or the directory or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will issue ``bzr rm directory`` including the children,
-- ``--action=take-theirs`` will acknowledge Bazaar choice to keep the children
+- ``--action=take-this`` will issue ``bzr rm directory`` including the children,
+- ``--action=take-other`` will acknowledge Bazaar choice to keep the children
   and restoring the directory,
 - ``--action=done`` will just mark the conflict as resolved.
 
@@ -253,8 +253,8 @@ children or the directory or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will acknowledge Bazaar choice to keep the directory,
-- ``--action=take-theirs`` will issue ``bzr rm directory`` including the 
+- ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
+- ``--action=take-other`` will issue ``bzr rm directory`` including the 
   children,
 - ``--action=done`` will just mark the conflict as resolved.
 
@@ -278,9 +278,9 @@ retained for the file involved.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will revert Bazaar choice and keep ``PATH1`` by
+- ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
   issuing ``bzr mv PATH2 PATH1``,
-- ``--action=take-theirs`` will acknowledge Bazaar choice of keeping ``PATH2``,
+- ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
@@ -315,9 +315,9 @@ name should be retained for the directories involved.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will acknowledge Bazaar choice of leaving ``white`` 
+- ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
   in ``black``,
-- ``--action=take-theirs`` will revert Bazaar choice and move ``black`` in
+- ``--action=take-other`` will revert Bazaar choice and move ``black`` in
   ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
 - ``--action=done`` will just mark the conflict as resolved.
 
@@ -352,9 +352,9 @@ retained for the file, directory or symlink involved.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=keep-mine`` will issue ``bzr rm --force foo.new`` and 
+- ``--action=take-this`` will issue ``bzr rm --force foo.new`` and 
   ``bzr add foo``,
-- ``--action=take-theirs`` will issue ``bzr rm --force foo`` and 
+- ``--action=take-other`` will issue ``bzr rm --force foo`` and 
   ``bzr mv foo.new foo``,
 - ``--action=done`` will just mark the conflict as resolved.
 
