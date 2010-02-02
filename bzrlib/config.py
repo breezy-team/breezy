@@ -827,14 +827,15 @@ def crash_dir():
     This doesn't implicitly create it.
 
     On Windows it's in the config directory; elsewhere it's /var/crash
-    which may be monitored by apport.
+    which may be monitored by apport.  It can be overridden by
+    $APPORT_CRASH_DIR.
     """
     if sys.platform == 'win32':
         return osutils.pathjoin(config_dir(), 'Crash')
     else:
         # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
         # 2010-01-31
-        return '/var/crash'
+        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
 
 
 def xdg_cache_dir():

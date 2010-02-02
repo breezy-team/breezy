@@ -125,6 +125,8 @@ def report_bug_to_apport(exc_info, stderr):
         # apport libraries but not have an apport always running, we could
         # synchronously file now
 
+    return crash_filename
+
 
 def _write_apport_report_to_file(exc_info):
     import traceback
@@ -183,15 +185,19 @@ def _write_apport_report_to_file(exc_info):
         # eg configured off in ~/.apport-ignore.xml
         return None
     else:
-        crash_file = _open_crash_file()
+        crash_file_name, crash_file = _open_crash_file()
         pr.write(crash_file)
         crash_file.close()
-        return crash_file.name
+        return crash_file_name
 
 
 def _attach_log_tail(pr):
     try:
         bzr_log = open(trace._get_bzr_log_filename(), 'rt')
+    except (IOError, OSError), e:
+        pr['BzrLogTail'] = repr(e)
+        return
+    try:
         lines = bzr_log.readlines()
         pr['BzrLogTail'] = ''.join(lines[-40:])
     finally:
@@ -218,7 +224,7 @@ def _open_crash_file():
             date_string))
     # be careful here that people can't play tmp-type symlink mischief in the
     # world-writable directory
-    return os.fdopen(
+    return filename, os.fdopen(
         os.open(filename, 
             os.O_WRONLY|os.O_CREAT|os.O_EXCL,
             0600),
