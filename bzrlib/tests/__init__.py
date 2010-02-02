@@ -921,7 +921,7 @@ class TestCase(testtools.TestCase):
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
-            
+
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
