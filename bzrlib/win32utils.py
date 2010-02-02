@@ -518,17 +518,14 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-def command_line_to_argv(command_line, wildcard_expansion=True,
-                         single_quotes_allowed=False):
+def _command_line_to_argv(command_line, single_quotes_allowed=False):
     """Convert a Unicode command line into a list of argv arguments.
 
-    This optionally does wildcard expansion, etc. It is intended to make
-    wildcards act closer to how they work in posix shells, versus how they
-    work by default on Windows. Quoted arguments are left untouched.
+    It performs wildcard expansion to make wildcards act closer to how they
+    work in posix shells, versus how they work by default on Windows. Quoted
+    arguments are left untouched.
 
     :param command_line: The unicode string to split into an arg list.
-    :param wildcard_expansion: Whether wildcard expansion should be applied to
-                               each argument. True by default.
     :param single_quotes_allowed: Whether single quotes are accepted as quoting
                                   characters like double quotes. False by
                                   default.
@@ -540,7 +537,7 @@ def command_line_to_argv(command_line, wildcard_expansion=True,
     #       '**/' style globs
     args = []
     for is_quoted, arg in s:
-        if is_quoted or not glob.has_magic(arg) or not wildcard_expansion:
+        if is_quoted or not glob.has_magic(arg):
             args.append(arg)
         else:
             args.extend(glob_one(arg))
@@ -556,7 +553,7 @@ if has_ctypes and winver != 'Windows 98':
         if command_line is None:
             raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = command_line_to_argv(command_line)[1:]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]

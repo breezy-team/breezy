@@ -294,7 +294,7 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
     def assertCommandLine(self, expected, line, single_quotes_allowed=False):
         # Strictly speaking we should respect parameter order versus glob
         # expansions, but it's not really worth the effort here
-        argv = win32utils.command_line_to_argv(line,
+        argv = win32utils._command_line_to_argv(line,
                 single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, sorted(argv))
 
