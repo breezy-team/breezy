@@ -2311,8 +2311,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                if update_dash_r:
-                    # update -r doesn't play by the rules, and may get rid of local commits
+                if not already_merged:
                     base_tree = basis
                 else:
                     graph = self.branch.repository.get_graph()
