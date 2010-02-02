@@ -58,20 +58,22 @@ from bzrlib import (
 
 
 def report_bug(exc_info, stderr):
-    if 'no_apport' not in debug.debug_flags:
-        try:
-            report_bug_to_apport(exc_info, stderr)
-            return
-        except ImportError, e:
-            trace.mutter("couldn't find apport bug-reporting library: %s" % e)
-            pass
-        except Exception, e:
-            # this should only happen if apport is installed but it didn't
-            # work, eg because of an io error writing the crash file
-            sys.stderr.write("bzr: failed to report crash using apport:\n "
-                "    %r\n" % e)
-            pass
-    report_bug_legacy(exc_info, stderr)
+    if ('no_apport' in debug.debug_flags) or (
+        'APPORT_DISABLE' in os.environ):
+        return report_bug_legacy(exc_info, stderr)
+    try:
+        report_bug_to_apport(exc_info, stderr)
+        return
+    except ImportError, e:
+        trace.mutter("couldn't find apport bug-reporting library: %s" % e)
+        pass
+    except Exception, e:
+        # this should only happen if apport is installed but it didn't
+        # work, eg because of an io error writing the crash file
+        stderr.write("bzr: failed to report crash using apport:\n "
+            "    %r\n" % e)
+        pass
+    return report_bug_legacy(exc_info, stderr)
 
 
 def report_bug_legacy(exc_info, err_file):
