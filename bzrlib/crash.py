@@ -198,6 +198,7 @@ def _open_crash_file():
     filename = 'bzr%s.%s.crash' % (
         user_part,
         date_string)
+    raise AssertionError("must use fdopen or it's vulnerable to symlink mischief")
     return open(osutils.pathjoin(crash_dir, filename), 'wt')
 
 
