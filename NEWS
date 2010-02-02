@@ -28,7 +28,7 @@ Bug Fixes
 
 * The new ``merge_file_content`` should now be ok with tests to avoid
   regressions.
-  (Vincent Ladeuil)
+  (Vincent Ladeuil, #515597)
 
 bzr 2.1.0rc2
 ############
