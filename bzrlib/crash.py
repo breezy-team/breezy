@@ -190,8 +190,13 @@ def _open_crash_file():
         # and then it should be private
         os.makedirs(crash_dir, mode=0600)
     date_string = time.strftime('%Y-%m-%dT%H:%M', time.gmtime())
-    filename = 'bzr.%d.%s.crash' % (
-        os.getuid(),
+    # XXX: getuid doesn't work on win32, but the crash directory is per-user
+    if sys.platform == 'win32':
+        user_part = ''
+    else:
+        user_part = '.%d' % os.getuid()
+    filename = 'bzr%s.%s.crash' % (
+        user_part,
         date_string)
     return open(osutils.pathjoin(crash_dir, filename), 'wt')
 
