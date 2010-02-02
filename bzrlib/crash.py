@@ -195,11 +195,18 @@ def _open_crash_file():
         user_part = ''
     else:
         user_part = '.%d' % os.getuid()
-    filename = 'bzr%s.%s.crash' % (
-        user_part,
-        date_string)
-    raise AssertionError("must use fdopen or it's vulnerable to symlink mischief")
-    return open(osutils.pathjoin(crash_dir, filename), 'wt')
+    filename = osutils.pathjoin(
+        crash_dir,
+        'bzr%s.%s.crash' % (
+            user_part,
+            date_string))
+    # be careful here that people can't play tmp-type symlink mischief in the
+    # world-writable directory
+    return os.fdopen(
+        os.open(filename, 
+            os.O_WRONLY|os.O_CREAT|os.O_EXCL,
+            0600),
+        'w')
 
 
 def _format_plugin_list():
