@@ -41,6 +41,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     cleanup,
+    cmdline,
     debug,
     errors,
     option,
@@ -895,16 +896,6 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
-def shlex_split_unicode(unsplit):
-    if sys.platform == "win32":
-        from bzrlib.win32utils import command_line_to_argv
-        return command_line_to_argv(unsplit, wildcard_expansion=False,
-                                    single_quotes_allowed=True)
-    else:
-        import shlex
-        return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
-
-
 def get_alias(cmd, config=None):
     """Return an expanded alias, or None if no alias exists.
 
@@ -920,7 +911,7 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        return shlex_split_unicode(alias)
+        return cmdline.split(alias)
     return None
 
 

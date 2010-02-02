@@ -124,7 +124,7 @@ class _Word(object):
 
 
 class Splitter(object):
-    def __init__(self, command_line, single_quotes_allowed=False):
+    def __init__(self, command_line, single_quotes_allowed):
         self.seq = _PushbackSequence(command_line)
         self.allowed_quote_chars = u'"'
         if single_quotes_allowed:
@@ -153,3 +153,7 @@ class Splitter(object):
         if not self.quoted and result == '':
             result = None
         return self.quoted, result
+
+def split(unsplit, single_quotes_allowed=True):
+    splitter = Splitter(unsplit, single_quotes_allowed=single_quotes_allowed)
+    return [arg for quoted, arg in splitter]
