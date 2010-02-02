@@ -46,12 +46,12 @@ resolve the conflict is outlined.
 
 Various actions are available depending on the kind of conflict, for some of
 these actions, Bazaar can provide some help. In the end you should at least
-inform Bazaar that you're done with the conflict with::
+inform Bazaar that you're done with the conflict with:
 
   ``bzr resolve FILE --action=done'
 
 Note that this is the default action when a single file is involved so you can
-simply use::
+simply use:
 
    ``bzr resolve FILE``
 
@@ -60,7 +60,7 @@ See ``bzr help resolve`` for more details.
 Text conflicts
 --------------
 
-Typical message::
+Typical message:
 
   Text conflict in FILE
 
@@ -77,7 +77,7 @@ could reconcile, and any un-reconciled conflicts are surrounded by
 
 Say the initial text is "The project leader released it.", and THIS modifies it
 to "Martin Pool released it.", while OTHER modifies it to "The project leader
-released Bazaar."  A conflict would look like this::
+released Bazaar."  A conflict would look like this:
 
   <<<<<<< TREE
   Martin Pool released it.
@@ -104,18 +104,10 @@ When the conflict is resolved, Bazaar deletes the previously generated
 ``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the
 working tree.
 
-.. TODO: There are 6 ways to resolve text conflicts:
-   1. Manually
-   1. prefer-this choose THIS in conflicted regions
-   1. prefer-other choose OTHER in conflicted regions
-   1. take-both take THIS and OTHER in conflicted regions
-   1. take-this take THIS overriding all cleanly merged modifications
-   1. take-other take OTHER overriding all cleanly merged modifications
-
 Content conflicts
 -----------------
 
-Typical message::
+Typical message:
 
   Contents conflict in FILE
 
@@ -142,13 +134,11 @@ Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
 ``.OTHER`` files if they are still present in the working tree.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: if either .THIS or .OTHER doesn't exist anymore and FILE exists
-again, --auto could consider the conflict as resolved.
 
 Tag conflicts
 -------------
 
-Typical message::
+Typical message:
 
   Conflicting tags:
       version-0.1
@@ -172,7 +162,7 @@ all tags as well.)
 Duplicate paths
 ---------------
 
-Typical message::
+Typical message:
 
   Conflict adding file FILE.  Moved existing file to FILE.moved.
 
@@ -189,16 +179,13 @@ or a combination of both.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Note that you must get rid of FILE.moved before using ``--action=done``.
-..TODO: This check must be enforced both when ``--action=done`` is used and at
-``bzr commit`` time or FILE.moved should be automatically removed and
-unversioned.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Unversioned parent
 ------------------
 
-Typical message::
+Typical message:
 
     Conflict because FILE is not versioned, but has versioned children.
 
@@ -213,7 +200,7 @@ FILE" to mark the conflict as resolved.
 Missing parent
 --------------
 
-Typical message::
+Typical message:
 
   Conflict adding files to FILE.  Created directory.
 
@@ -234,13 +221,11 @@ children or the directory or a combination of both.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: Arguably any state is valid after the merge so bzr can just
-consider the conflict as resolved.
 
 Deleting parent
 ---------------
 
-Typical message::
+Typical message:
 
   Conflict: can't delete DIR because it is not empty.  Not deleting.
 
@@ -259,14 +244,11 @@ children or the directory or a combination of both.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: The most annoying case here is when the directory contains junk
-files. If we knew how to identify them, then the default resolving action can
-be to get rid of them.
 
 Path conflict
 -------------
 
-Typical message::
+Typical message:
 
   Path conflict: PATH1 / PATH2
 
@@ -284,19 +266,17 @@ retained for the file involved.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: Arguably acknowledging Bazaar choice should be an acceptable
-resolution, and *any* name is valid as a conflict resolution at that point.
 
 Parent loop
 -----------
 
-Typical message::
+Typical message:
 
   Conflict moving FILE into DIRECTORY.  Cancelled move.
 
 This happens when the source and the target have each moved directories, so
 that, if the change could be applied, a directory would be contained by itself.
-For example::
+For example:
 
   $ bzr init
   $ bzr mkdir white
@@ -322,19 +302,17 @@ name should be retained for the directories involved.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. TODO: Any layout is valid and should be considered as an acceptable
-resolution.
 
 Non-directory parent
 --------------------
 
-Typical message::
+Typical message:
 
   Conflict: foo.new is not a directory, but has files in it.
   Created directory.
 
 This happens when one side has added files to a directory, and the other side
-has changed the directory into a file or symlink.  For example::
+has changed the directory into a file or symlink.  For example:
 
   $ bzr init
   $ bzr mkdir foo
@@ -359,9 +337,6 @@ retained for the file, directory or symlink involved.
 - ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
-.. FIXME: Arguably .OTHER should be used instead of .new.
-.. FIXME: If .new doesn't exist anymore, --auto may consider
-marking the conflict resolved.
 
 MalformedTransform
 ------------------

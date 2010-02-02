@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -694,6 +694,8 @@ class NonDirectoryParent(HandledConflict):
 
     format = "Conflict: %(path)s is not a directory, but has files in it."\
              "  %(action)s."
+
+    # FIXME: .OTHER should be used instead of .new when the conflict is created
 
     def take_this(self, tree):
         # FIXME: we should preserve that path when the conflict is generated !
