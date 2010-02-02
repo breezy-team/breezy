@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Command-line parser for all platforms."""
+"""Unicode-compatible command-line splitter for all platforms."""
 
 import re
 
@@ -123,7 +123,7 @@ class _Word(object):
             return self
 
 
-class Parser(object):
+class Splitter(object):
     def __init__(self, command_line, single_quotes_allowed=False):
         self.seq = _PushbackSequence(command_line)
         self.allowed_quote_chars = u'"'

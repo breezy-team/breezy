@@ -1,9 +1,9 @@
 from bzrlib import cmdline
 
-class TestParser(tests.TestCase):
+class TestSplitter(tests.TestCase):
 
     def assertAsTokens(self, expected, line, single_quotes_allowed=False):
-        s = cmdline.Parser(line, single_quotes_allowed=single_quotes_allowed)
+        s = cmdline.Splitter(line, single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, list(s))
 
     def test_simple(self):

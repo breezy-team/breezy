@@ -534,7 +534,7 @@ def command_line_to_argv(command_line, wildcard_expansion=True,
                                   default.
     :return: A list of unicode strings.
     """
-    s = cmdline.Parser(command_line, single_quotes_allowed=single_quotes_allowed)
+    s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
     # Now that we've split the content, expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
