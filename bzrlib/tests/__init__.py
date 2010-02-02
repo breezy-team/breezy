@@ -1393,6 +1393,11 @@ class TestCase(unittest.TestCase):
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
+            # Generally speaking, we don't want apport reporting on crashes in
+            # the test envirnoment unless we're specifically testing apport,
+            # so that it doesn't leak into the real system environment.  We
+            # use an env var so it propagates to subprocesses.
+            'APPORT_DISABLE': '1',
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
