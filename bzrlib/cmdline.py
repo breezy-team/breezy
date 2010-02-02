@@ -47,8 +47,7 @@ class _Whitespace(object):
                 return None
             else:
                 return self
-        elif (next_char == u'"'
-              or (context.single_quotes_allowed and next_char == u"'")):
+        elif next_char in context.allowed_quote_chars:
             context.quoted = True
             return _Quotes(next_char, self)
         elif next_char == u'\\':
@@ -83,23 +82,27 @@ class _Backslash(object):
         if next_char == u'\\':
             self.count += 1
             return self
-        elif next_char == u'"':
-            # 2N backslashes followed by '"' are N backslashes
+        elif next_char in context.allowed_quote_chars:
+            # 2N backslashes followed by a quote are N backslashes
             context.token.append(u'\\' * (self.count/2))
-            # 2N+1 backslashes follwed by '"' are N backslashes followed by '"'
-            # which should not be processed as the start or end of quoted arg
+            # 2N+1 backslashes follwed by a quote are N backslashes followed by
+            # the quote which should not be processed as the start or end of
+            # the quoted arg
             if self.count % 2 == 1:
-                context.token.append(next_char) # odd number of '\' escapes the '"'
+                # odd number of \ escapes the quote
+                context.token.append(next_char)
             else:
-                context.seq.pushback(next_char) # let exit_state handle next_char
+                # let exit_state handle next_char
+                context.seq.pushback(next_char)
             self.count = 0
             return self.exit_state
         else:
-            # N backslashes not followed by '"' are just N backslashes
+            # N backslashes not followed by a quote are just N backslashes
             if self.count > 0:
                 context.token.append(u'\\' * self.count)
                 self.count = 0
-            context.seq.pushback(next_char) # let exit_state handle next_char
+            # let exit_state handle next_char
+            context.seq.pushback(next_char)
             return self.exit_state
     
     def finish(self, context):
@@ -111,8 +114,7 @@ class _Word(object):
     def process(self, next_char, context):
         if _whitespace_match(next_char):
             return None
-        elif (next_char == u'"'
-              or (context.single_quotes_allowed and next_char == u"'")):
+        elif next_char in context.allowed_quote_chars:
             return _Quotes(next_char, self)
         elif next_char == u'\\':
             return _Backslash(self)
@@ -124,7 +126,9 @@ class _Word(object):
 class Parser(object):
     def __init__(self, command_line, single_quotes_allowed=False):
         self.seq = _PushbackSequence(command_line)
-        self.single_quotes_allowed = single_quotes_allowed
+        self.allowed_quote_chars = u'"'
+        if single_quotes_allowed:
+            self.allowed_quote_chars += u"'"
     
     def __iter__(self):
         return self
