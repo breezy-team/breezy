@@ -2295,6 +2295,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             already_merged = True
             if result > 0:
                 self.add_parent_tree_id(old_tip)
+                trace.note('Rerun update after fixing the conflicts.')
                 return result
 
         if last_rev != _mod_revision.ensure_null(revision):
