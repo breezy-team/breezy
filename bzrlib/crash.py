@@ -16,6 +16,22 @@
 
 
 """Handling and reporting crashes.
+
+A crash is an exception propagated up almost to the top level of Bazaar.
+
+If we have apport <https://launchpad.net/apport/>, we store a report of the
+crash using apport into it's /var/crash spool directory, from where the user
+can either manually send it to Launchpad.  In some cases (at least Ubuntu
+development releases), Apport may pop up a window asking if they want
+to send it.
+
+Without apport, we just write a crash report to stderr and the user can report
+this manually if the wish.
+
+We never send crash data across the network without user opt-in.
+
+In principle apport can run on any platform though as of Feb 2010 there seem
+to be some portability bugs.
 """
 
 # for interactive testing, try the 'bzr assert-fail' command 
