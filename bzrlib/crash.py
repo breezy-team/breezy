@@ -32,6 +32,9 @@ We never send crash data across the network without user opt-in.
 
 In principle apport can run on any platform though as of Feb 2010 there seem
 to be some portability bugs.
+
+To force this off in bzr turn set APPORT_DISBLE in the environment or 
+-Dno_apport.
 """
 
 # for interactive testing, try the 'bzr assert-fail' command 
@@ -58,12 +61,13 @@ from bzrlib import (
 
 
 def report_bug(exc_info, stderr):
-    if ('no_apport' in debug.debug_flags) or (
-        'APPORT_DISABLE' in os.environ):
+    if ('no_apport' in debug.debug_flags) or \
+        os.environ.get('APPORT_DISABLE', None):
         return report_bug_legacy(exc_info, stderr)
     try:
-        report_bug_to_apport(exc_info, stderr)
-        return
+        if report_bug_to_apport(exc_info, stderr):
+            # wrote a file; if None then report the old way
+            return
     except ImportError, e:
         trace.mutter("couldn't find apport bug-reporting library: %s" % e)
         pass
@@ -102,6 +106,8 @@ def report_bug_legacy(exc_info, err_file):
 
 def report_bug_to_apport(exc_info, stderr):
     """Report a bug to apport for optional automatic filing.
+
+    :returns: The name of the crash file, or None if we didn't write one.
     """
     # this function is based on apport_package_hook.py, but omitting some of the
     # Ubuntu-specific policy about what to report and when
@@ -112,12 +118,12 @@ def report_bug_to_apport(exc_info, stderr):
 
     crash_filename = _write_apport_report_to_file(exc_info)
 
-    trace.print_exception(exc_info, stderr)
     if crash_filename is None:
         stderr.write("\n"
             "apport is set to ignore crashes in this version of bzr.\n"
             )
     else:
+        trace.print_exception(exc_info, stderr)
         stderr.write("\n"
             "You can report this problem to Bazaar's developers by running\n"
             "    apport-bug %s\n"
