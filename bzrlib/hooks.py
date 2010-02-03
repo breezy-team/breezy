@@ -45,6 +45,8 @@ known_hooks.register_lazy(('bzrlib.info', 'hooks'),
     'bzrlib.info', 'InfoHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
     'LockHooks')
+known_hooks.register_lazy(('bzrlib.merge', 'Merger.hooks'), 'bzrlib.merge',
+    'MergeHooks')
 known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
     'MessageEditorHooks')
 known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),

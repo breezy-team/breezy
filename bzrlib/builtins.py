@@ -2191,13 +2191,10 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools. You may prefer qlog or glog from the QBzr and Bzr-Gtk packages
-      respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
-      http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
-
-      Web interfaces are often better at exploring history than command line
-      tools, particularly for branches on servers. You may prefer Loggerhead
-      or one of its alternatives. See http://bazaar-vcs.org/WebInterface.
+      line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
+      bzr-explorer shell, or the Loggerhead web interface.  See the Plugin
+      Guide <http://doc.bazaar.canonical.com/plugins/en/> and
+      <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
       You may find it useful to add the aliases below to ``bazaar.conf``::
 
@@ -2609,6 +2606,13 @@ class cmd_ignore(Command):
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
     it.
+    
+    Patterns prefixed with '!' are exceptions to ignore patterns and take
+    precedence over regular ignores.  Such exceptions are used to specify
+    files that should be versioned which would otherwise be ignored.
+    
+    Patterns prefixed with '!!' act as regular ignore patterns, but have
+    precedence over the '!' exception patterns.
 
     Note: ignore patterns containing shell wildcards must be quoted from
     the shell on Unix.
@@ -2618,9 +2622,13 @@ class cmd_ignore(Command):
 
             bzr ignore ./Makefile
 
-        Ignore class files in all directories::
+        Ignore .class files in all directories...::
 
             bzr ignore "*.class"
+
+        ...but do not ignore "special.class"::
+
+            bzr ignore "!special.class"
 
         Ignore .o files under the lib directory::
 
@@ -2633,6 +2641,13 @@ class cmd_ignore(Command):
         Ignore everything but the "debian" toplevel directory::
 
             bzr ignore "RE:(?!debian/).*"
+        
+        Ignore everything except the "local" toplevel directory,
+        but always ignore "*~" autosave files, even under local/::
+        
+            bzr ignore "*"
+            bzr ignore "!./local"
+            bzr ignore "!!*~"
     """
 
     _see_also = ['status', 'ignored', 'patterns']
@@ -3647,7 +3662,12 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.
+    --force is given. The --force option can also be used to create a
+    merge revision which has more than two parents.
+
+    If one would like to merge changes from the working tree of the other
+    branch without merging any committed revisions, the --uncommitted option
+    can be given.
 
     To select only some changes to merge, use "merge -i", which will prompt
     you to apply each diff hunk and file change, similar to "shelve".
@@ -3668,6 +3688,13 @@ class cmd_merge(Command):
         To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
+
+        To create a merge revision with three parents from two branches
+        feature1a and feature1b:
+
+            bzr merge ../feature1a
+            bzr merge ../feature1b --force
+            bzr commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
@@ -4083,22 +4110,23 @@ class cmd_revert(Command):
     created as above.  Directories containing unknown files will not be
     deleted.
 
-    The working tree contains a list of pending merged revisions, which will
-    be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files are specified, revert
-    leaves the pending merge list alone and reverts only the files.  Use "bzr
-    revert ." in the tree root to revert all files but keep the merge record,
-    and "bzr revert --forget-merges" to clear the pending merge list without
+    The working tree contains a list of revisions that have been merged but
+    not yet committed. These revisions will be included as additional parents
+    of the next commit.  Normally, using revert clears that list as well as
+    reverting the files.  If any files are specified, revert leaves the list
+    of uncommitted merges alone and reverts only the files.  Use ``bzr revert
+    .`` in the tree root to revert all files but keep the recorded merges,
+    and ``bzr revert --forget-merges`` to clear the pending merge list without
     reverting any files.
 
-    Using "bzr revert --forget-merges", it is possible to apply the changes
-    from an arbitrary merge as a single revision.  To do this, perform the
-    merge as desired.  Then doing revert with the "--forget-merges" option will
-    keep the content of the tree as it was, but it will clear the list of
-    pending merges.  The next commit will then contain all of the changes that
-    would have been in the merge, but without any mention of the other parent
-    revisions.  Because this technique forgets where these changes originated,
-    it may cause additional conflicts on later merges involving the source and
+    Using "bzr revert --forget-merges", it is possible to apply all of the
+    changes from a branch in a single revision.  To do this, perform the merge
+    as desired.  Then doing revert with the "--forget-merges" option will keep
+    the content of the tree as it was, but it will clear the list of pending
+    merges.  The next commit will then contain all of the changes that are
+    present in the other branch, but without any other parent revisions.
+    Because this technique forgets where these changes originated, it may
+    cause additional conflicts on later merges involving the same source and
     target branches.
     """
 
@@ -4377,10 +4405,10 @@ class cmd_plugins(Command):
     adding new commands, providing additional network transports and
     customizing log output.
 
-    See the Bazaar web site, http://bazaar-vcs.org, for further
-    information on plugins including where to find them and how to
-    install them. Instructions are also provided there on how to
-    write new plugins using the Python programming language.
+    See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>
+    for further information on plugins including where to find them and how to
+    install them. Instructions are also provided there on how to write new
+    plugins using the Python programming language.
     """
     takes_options = ['verbose']
 

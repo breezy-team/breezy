@@ -18,13 +18,12 @@
 
 from cStringIO import StringIO
 
-import bzrlib
-import bzrlib.errors as errors
+from  bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
 from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
-from bzrlib.ui import (
-    CannedInputUIFactory,
-    )
 
 
 class TestBreakLock(TestCaseWithBranch):
@@ -33,14 +32,6 @@ class TestBreakLock(TestCaseWithBranch):
         super(TestBreakLock, self).setUp()
         self.unused_branch = self.make_branch('branch')
         self.branch = self.unused_branch.bzrdir.open_branch()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
@@ -61,7 +52,7 @@ class TestBreakLock(TestCaseWithBranch):
         other_instance = self.branch.repository.bzrdir.open_repository()
         if not other_instance.get_physical_lock_status():
             raise TestNotApplicable("Repository does not lock persistently.")
-        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
+        ui.ui_factory = ui.CannedInputUIFactory([True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:
@@ -73,7 +64,7 @@ class TestBreakLock(TestCaseWithBranch):
     def test_locked(self):
         # break_lock when locked should unlock the branch and repo
         self.branch.lock_write()
-        bzrlib.ui.ui_factory = CannedInputUIFactory([True, True])
+        ui.ui_factory = ui.CannedInputUIFactory([True, True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:
@@ -92,7 +83,7 @@ class TestBreakLock(TestCaseWithBranch):
             # this branch does not support binding.
             return
         master.lock_write()
-        bzrlib.ui.ui_factory = CannedInputUIFactory([True, True])
+        ui.ui_factory = ui.CannedInputUIFactory([True, True])
         try:
             self.unused_branch.break_lock()
         except NotImplementedError:

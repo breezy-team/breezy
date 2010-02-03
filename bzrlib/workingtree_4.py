@@ -1755,7 +1755,11 @@ class DirStateRevisionTree(Tree):
             return None
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
-        return self._repository.get_revision(last_changed_revision).timestamp
+        try:
+            rev = self._repository.get_revision(last_changed_revision)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+        return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         entry = self._get_entry(file_id=file_id, path=path)

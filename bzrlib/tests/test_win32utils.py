@@ -266,12 +266,8 @@ class TestLocationsPywin32(TestLocationsCtypes):
         super(TestLocationsPywin32, self).setUp()
         # We perform the exact same tests after disabling the use of ctypes.
         # This causes the implementation to fall back to pywin32.
-        self.old_ctypes = win32utils.has_ctypes
-        win32utils.has_ctypes = False
-        self.addCleanup(self.restoreCtypes)
-
-    def restoreCtypes(self):
-        win32utils.has_ctypes = self.old_ctypes
+        self.overrideAttr(win32utils, 'has_ctypes', False)
+        # FIXME: this should be done by parametrization -- vila 100123
 
 
 class TestSetHidden(TestCaseInTempDir):

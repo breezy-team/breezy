@@ -18,14 +18,12 @@
 
 from cStringIO import StringIO
 
-import bzrlib
-import bzrlib.errors as errors
-from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
-from bzrlib.transport import get_transport
-from bzrlib.workingtree import WorkingTree
-from bzrlib.ui import (
-    CannedInputUIFactory,
+from bzrlib import (
+    errors,
+    ui,
     )
+from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
+from bzrlib.workingtree import WorkingTree
 
 
 class TestBreakLock(TestCaseWithRepository):
@@ -34,15 +32,7 @@ class TestBreakLock(TestCaseWithRepository):
         super(TestBreakLock, self).setUp()
         self.unused_repo = self.make_repository('.')
         self.repo = self.unused_repo.bzrdir.open_repository()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = CannedInputUIFactory([True])
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
+        ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_unlocked(self):
         # break lock when nothing is locked should just return
