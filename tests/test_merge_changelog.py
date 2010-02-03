@@ -19,6 +19,8 @@
 
 """Tests for the merge_changelog code."""
 
+from debian_bundle import changelog
+
 from bzrlib import (
     memorytree,
     merge,
@@ -167,6 +169,33 @@ class TestMergeChangelog(tests.TestCase):
             this_lines=v_111_2b, other_lines=v_111_2c,
             base_lines=[],
             conflicted=True)
+
+    def test_not_valid_changelog(self):
+        invalid_changelog = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+  * Awesome bug fixes.
+
+ -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+
+"""
+        # There are supposed to be 2 spaces after the email, yeah strict is
+        # *strict*
+        self.assertRaises(changelog.ChangelogParseError,
+                          changelog.Changelog, invalid_changelog, strict=True)
+        # If strict parsing fails, don't try to do special merging
+        self.assertEqual(('not_applicable', None),
+            merge_changelog.merge_changelog(invalid_changelog, v_111_2,
+                                            v_111_2))
+        self.assertEqual(('not_applicable', None),
+            merge_changelog.merge_changelog(v_111_2, invalid_changelog,
+                                            v_111_2))
+        # Sort of a shame to fail to parse if only BASE is invalid, but we'll
+        # stick with always-strict for now
+        self.assertEqual(('not_applicable', None),
+            merge_changelog.merge_changelog(v_111_2, v_111_2, invalid_changelog))
+
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):

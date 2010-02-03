@@ -31,7 +31,8 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
     default_files = ['debian/changelog']
 
     def merge_text(self, params):
-        return merge_changelog(params.this_lines, params.other_lines)
+        return merge_changelog(params.this_lines, params.other_lines,
+                               params.base_lines)
 
 
 # Regular expression for top of debian/changelog
@@ -41,9 +42,12 @@ CL_RE = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)((\s+[-0-9a-z]+)+)\;',
 def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
 
-    left_cl = read_changelog(this_lines)
-    right_cl = read_changelog(other_lines)
-    base_cl = read_changelog(base_lines)
+    try:
+        left_cl = read_changelog(this_lines)
+        right_cl = read_changelog(other_lines)
+        base_cl = read_changelog(base_lines)
+    except changelog.ChangelogParseError:
+        return ('not_applicable', None)
 
     content = []
     def step(iterator):
@@ -70,8 +74,6 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     #       the output. For now, we just assume that if a version is present in
     #       any of this or other, then we want it in the output.
     conflict_status = 'success'
-
-    def conflict_text(left_content, right_content, base_content):
 
     while left_version is not None or right_version is not None:
         if (left_version is None or
@@ -135,6 +137,4 @@ def read_changelog(lines):
     if not content:
         # We get a warning if we try to parse an empty changelog file
         return changelog.Changelog()
-    # TODO: import_dsc uses strict=False, it would be nice to try strict=True
-    #       as the default
-    return changelog.Changelog(content, strict=False)
+    return changelog.Changelog(content, strict=True)
