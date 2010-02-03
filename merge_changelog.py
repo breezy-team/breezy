@@ -37,11 +37,12 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
 CL_RE = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)((\s+[-0-9a-z]+)+)\;',
                    re.IGNORECASE)
 
-def merge_changelog(left_changelog_lines, right_changelog_lines):
+def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
 
-    left_cl = read_changelog(left_changelog_lines)
-    right_cl = read_changelog(right_changelog_lines)
+    left_cl = read_changelog(this_lines)
+    right_cl = read_changelog(other_lines)
+    base_cl = read_changelog(base_lines)
 
     content = []
     def step(iterator):
@@ -49,8 +50,11 @@ def merge_changelog(left_changelog_lines, right_changelog_lines):
             return iterator.next()
         except StopIteration:
             return None
-    left_blocks = iter(left_cl._blocks)
-    right_blocks = iter(right_cl._blocks)
+    left_blocks = sorted(left_cl._blocks, key=lambda x:x.version, reverse=True)
+    left_blocks = iter(left_blocks)
+    right_blocks = sorted(right_cl._blocks, key=lambda x:x.version, reverse=True)
+    right_blocks = iter(right_blocks)
+    base_blocks = dict((b.version, b) for b in base_cl._blocks)
     left_block = step(left_blocks)
     right_block = step(right_blocks)
 
