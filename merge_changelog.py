@@ -50,45 +50,58 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             return iterator.next()
         except StopIteration:
             return None
-    left_blocks = sorted(left_cl._blocks, key=lambda x:x.version, reverse=True)
-    left_blocks = iter(left_blocks)
-    right_blocks = sorted(right_cl._blocks, key=lambda x:x.version, reverse=True)
-    right_blocks = iter(right_blocks)
-    base_blocks = dict((b.version, b) for b in base_cl._blocks)
-    left_block = step(left_blocks)
-    right_block = step(right_blocks)
+    left_blocks = dict((b.version, b) for b in left_cl._blocks)
+    right_blocks = dict((b.version, b) for b in right_cl._blocks)
+    # Unfortunately, while version objects implement __eq__ they *don't*
+    # implement __hash__, which means we can't do dict lookups properly, so
+    # instead, we fall back on the version string instead of the object.
+    base_blocks = dict((b.version.full_version, b) for b in base_cl._blocks)
+    left_order = iter(sorted(left_blocks.keys(), reverse=True))
+    right_order = iter(sorted(right_blocks.keys(), reverse=True))
+    left_version = step(left_order)
+    right_version = step(right_order)
 
-    # TODO: This is not a 3-way merge, but a 2-way merge
-    #       The resolution is currently 'if left and right have texts that have
-    #       the same "version" string, use left', aka "prefer-mine".
-    #       We could introduce BASE, and cause conflicts, or appropriately
-    #       resolve, etc.
-    #       Note also that this code is only invoked when there is a
-    #       left-and-right change, so merging a pure-right change will take all
-    #       changes.
-    while not (left_block is None and right_block is None):
-        if left_block is None:
-            next_block = right_block
-            right_block = step(right_blocks)
-        elif right_block is None:
-            next_block = left_block
-            left_block = step(left_blocks)
-        elif left_block.version == right_block.version:
-            # Same version, step both
-            # TODO: Conflict if left != right
-            next_block = left_block
-            left_block = step(left_blocks)
-            right_block = step(right_blocks)
-        elif left_block.version > right_block.version:
-            # left comes first
-            next_block = left_block
-            left_block = step(left_blocks)
+    # TODO: Do we want to support the ability to delete a section? We could do
+    #       a first-pass algorithm that checks the versions in base versus the
+    #       versions in this and other, to determine what versions should be in
+    #       the output. For now, we just assume that if a version is present in
+    #       any of this or other, then we want it in the output.
+
+    while left_version is not None or right_version is not None:
+        if (left_version is None or
+            (right_version is not None and right_version > left_version)):
+            next_content = str(right_blocks[right_version])
+            right_version = step(right_order)
+        elif (right_version is None or
+            (left_version is not None and left_version > right_version)):
+            next_content = str(left_blocks[left_version])
+            left_version = step(left_order)
         else:
-            # right block must come first
-            assert right_block.version > left_block.version
-            next_block = right_block
-            right_block = step(right_blocks)
-        content.append(str(next_block))
+            assert left_version == right_version
+            # Same version, step both
+            # TODO: Conflict if left_version != right
+            left_content = str(left_blocks[left_version])
+            right_content = str(right_blocks[right_version])
+            if left_content == right_content:
+                # Identical content
+                next_content = left_content
+            elif left_version.full_version in base_blocks:
+                # Sides disagree, compare with base
+                base_content = str(base_blocks[left_version.full_version])
+                if left_content == base_content:
+                    next_content = right_content
+                elif right_content == base_content:
+                    next_content = left_content
+                else:
+                    # !!! CONFLICT !!!
+                    next_content = left_content
+            else: # Both introduced new version which doesn't match
+                # !!! CONFLICT !!!
+                next_content = left_content
+            next_block = left_blocks[left_version]
+            left_version = step(left_order)
+            right_version = step(right_order)
+        content.append(next_content)
 
     return content
 

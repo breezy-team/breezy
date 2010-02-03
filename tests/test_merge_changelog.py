@@ -95,6 +95,26 @@ class TestMergeChangelog(tests.TestCase):
         self.assertMergeChangelog(expected_lines, this_lines, other_lines)
         self.assertMergeChangelog(expected_lines, other_lines, this_lines)
 
+    def test_this_shorter(self):
+        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+            this_lines=v_111_2,
+            other_lines=v_112_1 + v_001_1,
+            base_lines=[])
+        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+            this_lines=v_001_1,
+            other_lines=v_112_1 + v_111_2,
+            base_lines=[])
+
+    def test_other_shorter(self):
+        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+            this_lines=v_112_1 + v_001_1,
+            other_lines=v_111_2,
+            base_lines=[])
+        self.assertMergeChangelog(v_112_1 + v_111_2 + v_001_1,
+            this_lines=v_112_1 + v_111_2,
+            other_lines=v_001_1,
+            base_lines=[])
+
     def test_unsorted(self):
         # Passing in an improperly sorted text should result in a properly
         # sorted one
@@ -103,13 +123,15 @@ class TestMergeChangelog(tests.TestCase):
                                   other_lines = [],
                                   base_lines = [])
 
-    def DONT_test_3way_merge(self):
-        self.assertMergeChangelog(expected_lines=v_111_2a,
-                                  this_lines=v_111_2a, other_lines=v_111_2b,
+    def test_3way_merge(self):
+        # Check that if one of THIS or OTHER matches BASE, then we select the
+        # other content
+        self.assertMergeChangelog(expected_lines=v_111_2,
+                                  this_lines=v_111_2, other_lines=v_111_2b,
                                   base_lines=v_111_2b)
         self.assertMergeChangelog(expected_lines=v_111_2b,
-                                  this_lines=v_111_2a, other_lines=v_111_2b,
-                                  base_lines=v_111_2a)
+                                  this_lines=v_111_2, other_lines=v_111_2b,
+                                  base_lines=v_111_2)
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
