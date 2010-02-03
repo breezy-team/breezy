@@ -182,9 +182,9 @@ def _write_apport_report_to_file(exc_info):
     # TODO: strip that out and attach the rest
     #
     #attach_file_if_exists(report,
-    #	os.path.join(dot_bzr, 'bazaar.conf', 'BzrConfig')
+    #   os.path.join(dot_bzr, 'bazaar.conf', 'BzrConfig')
     #attach_file_if_exists(report,
-    #	os.path.join(dot_bzr, 'locations.conf', 'BzrLocations')
+    #   os.path.join(dot_bzr, 'locations.conf', 'BzrLocations')
     
     # strip username, hostname, etc
     pr.anonymize()
