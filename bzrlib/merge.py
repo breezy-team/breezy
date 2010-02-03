@@ -99,9 +99,14 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
     This is a base class for concrete custom file merging logic. Concrete
     classes should implement ``merge_text``.
 
+    See ``bzrlib.plugins.news_merge.news_merge`` for an example concrete class.
+    
     :ivar affected_files: The configured file paths to merge.
+
     :cvar name_prefix: The prefix to use when looking up configuration
-        details.
+        details. <name_prefix>_merge_files describes the files targeted by the
+        hook for example.
+        
     :cvar default_files: The default file paths to merge when no configuration
         is present.
     """
@@ -118,6 +123,11 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
             raise ValueError("name_prefix must be set.")
 
     def filename_matches_config(self, params):
+        """Check whether the file should call the merge hook.
+
+        <name_prefix>_merge_files configuration variable is a list of files
+        that should use the hook.
+        """
         affected_files = self.affected_files
         if affected_files is None:
             config = self.merger.this_tree.branch.get_config()
@@ -150,7 +160,7 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
             # option.
             not self.filename_matches_config(params)):
             return 'not_applicable', None
-        return self.merge_text(self, params)
+        return self.merge_text(params)
 
     def merge_text(self, params):
         """Merge the byte contents of a single file.
