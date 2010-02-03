@@ -126,6 +126,11 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
+
+_unitialized_attr = object()
+"""A sentinel needed to act as a default value in a method signature."""
+
+
 # Subunit result codes, defined here to prevent a hard dependency on subunit.
 SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
@@ -236,6 +241,9 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write(
                 '%d non-main threads were left active in the end.\n'
                 % (TestCase._active_threads - 1))
+
+    def getDescription(self, test):
+        return test.id()
 
     def _extractBenchmarkTime(self, testCase, details=None):
         """Add a benchmark time for the current test case."""
@@ -847,12 +855,12 @@ class TestCase(testtools.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
+        # Start with a copy of the current debug flags we can safely modify.
+        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
         if 'disable_lock_checks' not in selftest_debug_flags:
             debug.debug_flags.add('strict_locks')
-        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -879,11 +887,7 @@ class TestCase(testtools.TestCase):
     def _silenceUI(self):
         """Turn off UI for duration of test"""
         # by default the UI is off; tests can turn it on if they want it.
-        saved = ui.ui_factory
-        def _restore():
-            ui.ui_factory = saved
-        ui.ui_factory = ui.SilentUIFactory()
-        self.addCleanup(_restore)
+        self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -918,7 +922,7 @@ class TestCase(testtools.TestCase):
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
-            
+
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -1476,6 +1480,25 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
+    def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
+        """Overrides an object attribute restoring it after the test.
+
+        :param obj: The object that will be mutated.
+
+        :param attr_name: The attribute name we want to preserve/override in
+            the object.
+
+        :param new: The optional value we want to set the attribute to.
+
+        :returns: The actual attr value.
+        """
+        value = getattr(obj, attr_name)
+        # The actual value is captured by the call below
+        self.addCleanup(setattr, obj, attr_name, value)
+        if new is not _unitialized_attr:
+            setattr(obj, attr_name, new)
+        return value
+
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
@@ -1526,10 +1549,6 @@ class TestCase(testtools.TestCase):
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restore_debug_flags(self):
-        debug.debug_flags.clear()
-        debug.debug_flags.update(self._preserved_debug_flags)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
@@ -2034,11 +2053,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.overrideAttr(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a StringIOWrapper instance, that will encode Unicode
@@ -2058,9 +2073,7 @@ class TestCase(testtools.TestCase):
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
+        self.addCleanup(request_handlers.register, verb, orig_method)
 
 
 class CapturedCall(object):
@@ -2373,10 +2386,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
-        _currentdir = os.getcwdu()
-        def _leaveDirectory():
-            os.chdir(_currentdir)
-        self.addCleanup(_leaveDirectory)
+        self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
@@ -3749,6 +3759,7 @@ def _test_suite_modules_to_doctest():
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
+        'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',

@@ -276,7 +276,7 @@ would refer to ``/home/remote/myproject/trunk``.
 
 _basic_help = \
 """Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch
@@ -520,11 +520,19 @@ history. All branches have a repository associated (which is where the
 branch history is stored), but multiple branches may share the same
 repository (a shared repository). Branches can be copied and merged.
 
+In addition, one branch may be bound to another one.  Binding to another
+branch indicates that commits which happen in this branch must also 
+happen in the other branch.  Bazaar ensures consistency by not allowing 
+commits when the two branches are out of date.  In order for a commit 
+to succeed, it may be necessary to update the current branch using 
+``bzr update``.
+
 Related commands::
 
   init    Change a directory into a versioned branch.
   branch  Create a new branch that is a copy of an existing branch.
   merge   Perform a three-way merge.
+  bind    Bind a branch to another one.
 """
 
 

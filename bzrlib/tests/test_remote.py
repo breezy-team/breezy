@@ -134,6 +134,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertStartsWith(str(b), 'RemoteBranch(')
 
+    def test_remote_bzrdir_repr(self):
+        b = BzrDir.open_from_transport(self.transport)
+        self.assertStartsWith(str(b), 'RemoteBzrDir(')
+
     def test_remote_branch_format_supports_stacking(self):
         t = self.transport
         self.make_branch('unstackable', format='pack-0.92')
@@ -2004,11 +2008,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertLength(1, self.hpss_calls)
 
     def disableExtraResults(self):
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-        self.addCleanup(reset_values)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                          'no_extra_results', True)
 
     def test_null_cached_missing_and_stop_key(self):
         self.setup_smart_server_with_call_log()

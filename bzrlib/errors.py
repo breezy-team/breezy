@@ -3114,3 +3114,13 @@ class NoRoundtrippingSupport(BzrError):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
+
+
+class FileTimestampUnavailable(BzrError):
+
+    _fmt = "The filestamp for %(path)s is not available."
+
+    internal_error = True
+
+    def __init__(self, path):
+        self.path = path
