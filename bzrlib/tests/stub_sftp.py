@@ -20,51 +20,54 @@ Adapted from the one in paramiko's unit tests.
 """
 
 import os
-from paramiko import ServerInterface, SFTPServerInterface, SFTPServer, SFTPAttributes, \
-    SFTPHandle, SFTP_OK, AUTH_SUCCESSFUL, OPEN_SUCCEEDED
+import paramiko
 import sys
 
-from bzrlib.osutils import pathjoin
-from bzrlib.trace import mutter
+from bzrlib import (
+    osutils,
+    trace,
+    )
 
 
-class StubServer (ServerInterface):
+class StubServer (paramiko.ServerInterface):
 
     def __init__(self, test_case):
-        ServerInterface.__init__(self)
+        paramiko.ServerInterface.__init__(self)
         self._test_case = test_case
 
     def check_auth_password(self, username, password):
         # all are allowed
         self._test_case.log('sftpserver - authorizing: %s' % (username,))
-        return AUTH_SUCCESSFUL
+        return paramiko.AUTH_SUCCESSFUL
 
     def check_channel_request(self, kind, chanid):
-        self._test_case.log('sftpserver - channel request: %s, %s' % (kind, chanid))
-        return OPEN_SUCCEEDED
+        self._test_case.log(
+            'sftpserver - channel request: %s, %s' % (kind, chanid))
+        return paramiko.OPEN_SUCCEEDED
 
 
-class StubSFTPHandle (SFTPHandle):
+class StubSFTPHandle (paramiko.SFTPHandle):
     def stat(self):
         try:
-            return SFTPAttributes.from_stat(os.fstat(self.readfile.fileno()))
+            return paramiko.SFTPAttributes.from_stat(
+                os.fstat(self.readfile.fileno()))
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
     def chattr(self, attr):
         # python doesn't have equivalents to fchown or fchmod, so we have to
         # use the stored filename
-        mutter('Changing permissions on %s to %s', self.filename, attr)
+        trace.mutter('Changing permissions on %s to %s', self.filename, attr)
         try:
-            SFTPServer.set_file_attr(self.filename, attr)
+            paramiko.SFTPServer.set_file_attr(self.filename, attr)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
 
-class StubSFTPServer (SFTPServerInterface):
+class StubSFTPServer (paramiko.SFTPServerInterface):
 
     def __init__(self, server, root, home=None):
-        SFTPServerInterface.__init__(self, server)
+        paramiko.SFTPServerInterface.__init__(self, server)
         # All paths are actually relative to 'root'.
         # this is like implementing chroot().
         self.root = root
@@ -113,10 +116,10 @@ class StubSFTPServer (SFTPServerInterface):
 
     def chattr(self, path, attr):
         try:
-            SFTPServer.set_file_attr(path, attr)
+            paramiko.SFTPServer.set_file_attr(path, attr)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
-        return SFTP_OK
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
 
     def list_folder(self, path):
         path = self._realpath(path)
@@ -130,26 +133,27 @@ class StubSFTPServer (SFTPServerInterface):
             else:
                 flist = os.listdir(path)
             for fname in flist:
-                attr = SFTPAttributes.from_stat(os.stat(pathjoin(path, fname)))
+                attr = paramiko.SFTPAttributes.from_stat(
+                    os.stat(osutils.pathjoin(path, fname)))
                 attr.filename = fname
                 out.append(attr)
             return out
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
     def stat(self, path):
         path = self._realpath(path)
         try:
-            return SFTPAttributes.from_stat(os.stat(path))
+            return paramiko.SFTPAttributes.from_stat(os.stat(path))
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
     def lstat(self, path):
         path = self._realpath(path)
         try:
-            return SFTPAttributes.from_stat(os.lstat(path))
+            return paramiko.SFTPAttributes.from_stat(os.lstat(path))
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
     def open(self, path, flags, attr):
         path = self._realpath(path)
@@ -162,11 +166,11 @@ class StubSFTPServer (SFTPServerInterface):
                 # an odd default mode for files
                 fd = os.open(path, flags, 0666)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
 
         if (flags & os.O_CREAT) and (attr is not None):
             attr._flags &= ~attr.FLAG_PERMISSIONS
-            SFTPServer.set_file_attr(path, attr)
+            paramiko.SFTPServer.set_file_attr(path, attr)
         if flags & os.O_WRONLY:
             fstr = 'wb'
         elif flags & os.O_RDWR:
@@ -177,7 +181,7 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             f = os.fdopen(fd, fstr)
         except (IOError, OSError), e:
-            return SFTPServer.convert_errno(e.errno)
+            return paramiko.SFTPServer.convert_errno(e.errno)
         fobj = StubSFTPHandle()
         fobj.filename = path
         fobj.readfile = f
@@ -189,8 +193,8 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             os.remove(path)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
-        return SFTP_OK
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
 
     def rename(self, oldpath, newpath):
         oldpath = self._realpath(oldpath)
@@ -198,8 +202,8 @@ class StubSFTPServer (SFTPServerInterface):
         try:
             os.rename(oldpath, newpath)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
-        return SFTP_OK
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
 
     def mkdir(self, path, attr):
         path = self._realpath(path)
@@ -212,18 +216,18 @@ class StubSFTPServer (SFTPServerInterface):
                 os.mkdir(path)
             if attr is not None:
                 attr._flags &= ~attr.FLAG_PERMISSIONS
-                SFTPServer.set_file_attr(path, attr)
+                paramiko.SFTPServer.set_file_attr(path, attr)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
-        return SFTP_OK
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
 
     def rmdir(self, path):
         path = self._realpath(path)
         try:
             os.rmdir(path)
         except OSError, e:
-            return SFTPServer.convert_errno(e.errno)
-        return SFTP_OK
+            return paramiko.SFTPServer.convert_errno(e.errno)
+        return paramiko.SFTP_OK
 
     # removed: chattr, symlink, readlink
     # (nothing in bzr's sftp transport uses those)
