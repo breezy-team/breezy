@@ -708,3 +708,8 @@ class TestErrorFormatting(TestCase):
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
+
+    def test_file_timestamp_unavailable(self):            
+        e = errors.FileTimestampUnavailable("/path/foo")
+        self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))

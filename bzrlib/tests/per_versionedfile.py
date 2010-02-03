@@ -1470,7 +1470,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             transport.mkdir('.')
         files = self.factory(transport)
         if self.cleanup is not None:
-            self.addCleanup(lambda:self.cleanup(files))
+            self.addCleanup(self.cleanup, files)
         return files
 
     def get_simple_key(self, suffix):

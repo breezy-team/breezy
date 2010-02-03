@@ -749,6 +749,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._password = password
         self._port = port
         self._username = username
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
         # SmartClientStreamMedium stores the repr of this object in its
         # _DebugCounter so we have to store all the values used in our repr
         # method before calling the super init.
@@ -758,17 +761,18 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        # for the benefit of progress making a short description of this
-        # transport
-        self._scheme = 'bzr+ssh'
 
     def __repr__(self):
-        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+        if self._port is None:
+            maybe_port = ''
+        else:
+            maybe_port = ':%s' % self._port
+        return "%s(%s://%s@%s%s/)" % (
             self.__class__.__name__,
-            self._connected,
+            self._scheme,
             self._username,
             self._host,
-            self._port)
+            maybe_port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""

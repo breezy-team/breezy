@@ -404,11 +404,7 @@ class TestKnitToPackFetch(TestCaseWithTransport):
         source.inventories = versionedfile.RecordingVersionedFilesDecorator(
                         source.inventories)
         # XXX: This won't work in general, but for the dirstate format it does.
-        old_fetch_uses_deltas_setting = target._format._fetch_uses_deltas
-        def restore():
-            target._format._fetch_uses_deltas = old_fetch_uses_deltas_setting
-        self.addCleanup(restore)
-        target._format._fetch_uses_deltas = False
+        self.overrideAttr(target._format, '_fetch_uses_deltas', False)
         target.fetch(source, revision_id='rev-one')
         self.assertEqual(('get_record_stream', [('file-id', 'rev-one')],
                           target._format._fetch_order, True),

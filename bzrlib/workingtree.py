@@ -1745,13 +1745,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         r"""Check whether the filename matches an ignore pattern.
 
         Patterns containing '/' or '\' need to match the whole path;
-        others match against only the last component.
+        others match against only the last component.  Patterns starting
+        with '!' are ignore exceptions.  Exceptions take precedence
+        over regular patterns and cause the filename to not be ignored.
 
         If the file is ignored, returns the pattern which caused it to
         be ignored, otherwise None.  So this can simply be used as a
         boolean if desired."""
         if getattr(self, '_ignoreglobster', None) is None:
-            self._ignoreglobster = globbing.Globster(self.get_ignore_list())
+            self._ignoreglobster = globbing.ExceptionGlobster(self.get_ignore_list())
         return self._ignoreglobster.match(filename)
 
     def kind(self, file_id):
@@ -1905,7 +1907,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # revision_id is set. We must check for this full string, because a
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
-            xml = self.branch.repository.get_inventory_xml(new_revision)
+            xml = self.branch.repository._get_inventory_xml(new_revision)
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
