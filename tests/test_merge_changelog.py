@@ -1,5 +1,5 @@
 #    Copyright (C) 2010 Canonical Ltd
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -37,14 +37,13 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
   * New upstream release.
   * Awesome bug fixes.
 
- -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+ -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
 """.splitlines(True)
 
-                
-        entries = merge_changelog.read_changelog(lines)
-        self.assertEqual(1, len(entries))
+        cl = merge_changelog.read_changelog(lines)
+        self.assertEqual(1, len(cl._blocks))
 
-    
+
 class TestMergeChangelog(tests.TestCase):
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines):
@@ -58,7 +57,7 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
   * New upstream release.
   * Awesome bug fixes.
 
- -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+ -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
 
 """.splitlines(True)
 
@@ -68,7 +67,7 @@ psuedo-prog (1.1.2-1) unstable; urgency=low
   * New upstream release.
   * No bug fixes :(
 
- -- Barry Foo <barry@example.com> Thu, 27 Jan 2010 10:45:44 +0000
+ -- Barry Foo <barry@example.com>  Thu, 27 Jan 2010 10:45:44 +0000
 
 """.splitlines(True)
 
@@ -78,7 +77,7 @@ psuedo-prog (0.0.1-1) unstable; urgency=low
   * New project released!!!!
   * No bugs evar
 
- -- Barry Foo <barry@example.com> Thu, 27 Jan 2010 10:00:44 +0000
+ -- Barry Foo <barry@example.com>  Thu, 27 Jan 2010 10:00:44 +0000
 
 """.splitlines(True)
 
