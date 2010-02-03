@@ -19,6 +19,18 @@ Compatibility Breaks
 New Features
 ************
 
+* If the Apport crash-reporting tool is available, bzr crashes are now
+  stored into the ``/var/crash`` apport spool directory, and the user is
+  invited to report them to the developers from there, either
+  automatically or by running ``apport-bug``.  No information is sent
+  without specific permission from the user.  (Martin Pool, #515052)
+
+Testing
+*******
+
+* Stop sending apport crash files to ``.cache`` in the directory from
+  which ``bzr selftest`` was run.  (Martin Pool, #422350)
+
 bzr 2.1.0 (not released yet)
 ############################
 
