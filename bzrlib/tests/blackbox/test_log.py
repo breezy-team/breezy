@@ -159,10 +159,10 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.assertLogRevnos(['-c1'], ['1'])
 
 
-class TestBug474807(TestLogWithLogCatcher):
+class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(TestBug474807, self).setUp()
+        super(TestLogMergedLinearAncestry, self).setUp()
         # FIXME: Using a MemoryTree would be even better here (but until we
         # stop calling run_bzr, there is no point) --vila 100118.
         builder = branchbuilder.BranchBuilder(self.get_transport())
@@ -203,9 +203,9 @@ class TestBug474807(TestLogWithLogCatcher):
                              ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
 
-class TestBug476293(TestLogWithLogCatcher):
+class Test_GenerateAllRevisions(TestLogWithLogCatcher):
 
-    def make_tagged_branch(self, path='.', format=None):
+    def make_branch_with_many_merges(self, path='.', format=None):
         builder = branchbuilder.BranchBuilder(self.get_transport())
         builder.start_series()
         # The graph below may look a bit complicated (and it may be but I've
@@ -223,11 +223,10 @@ class TestBug476293(TestLogWithLogCatcher):
         builder.build_snapshot('4', ['3', '2.1.3'], [])
         builder.build_snapshot('5', ['4', '2.1.2'], [])
         builder.finish_series()
-        tags = builder.get_branch().tags
         return builder
 
     def test_not_an_ancestor(self):
-        builder = self.make_tagged_branch()
+        builder = self.make_branch_with_many_merges()
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -237,7 +236,7 @@ class TestBug476293(TestLogWithLogCatcher):
                           delayed_graph_generation=True)
 
     def test_wrong_order(self):
-        builder = self.make_tagged_branch()
+        builder = self.make_branch_with_many_merges()
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)

@@ -537,7 +537,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                             delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
-    # returning initial (non-merge) revisions while we can. 
+    # returning initial (non-merge) revisions while we can.
 
     # The above is only true for old formats (<= 0.92), for newer formats, a
     # couple of seconds only should be needed to load the whole graph and the
