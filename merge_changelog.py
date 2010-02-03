@@ -20,6 +20,7 @@ import re
 
 from bzrlib import (
     merge,
+    merge3,
     )
 
 from debian_bundle import changelog
@@ -30,7 +31,7 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
     default_files = ['debian/changelog']
 
     def merge_text(self, params):
-        return 'success', merge_changelog(params.this_lines, params.other_lines)
+        return merge_changelog(params.this_lines, params.other_lines)
 
 
 # Regular expression for top of debian/changelog
@@ -66,6 +67,19 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     #       versions in this and other, to determine what versions should be in
     #       the output. For now, we just assume that if a version is present in
     #       any of this or other, then we want it in the output.
+    conflict_status = 'success'
+
+    def conflict_text(left_content, right_content, base_content):
+        # TODO: We could use merge3.Merge3 to try a line-based textual merge on
+        #       the content. However, for now I'm just going to conflict on the
+        #       whole region
+        # Conflict names taken from merge.py
+        return ('<<<<<<< TREE\n'
+                + left_content
+                + '=======\n'
+                + right_content
+                + '>>>>>>> MERGE-SOURCE\n'
+               )
 
     while left_version is not None or right_version is not None:
         if (left_version is None or
@@ -93,17 +107,18 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
                 elif right_content == base_content:
                     next_content = left_content
                 else:
-                    # !!! CONFLICT !!!
-                    next_content = left_content
+                    next_content = conflict_text(left_content, right_content,
+                                                 base_content)
+                    conflict_status = 'conflicted'
             else: # Both introduced new version which doesn't match
-                # !!! CONFLICT !!!
-                next_content = left_content
+                conflict_status = 'conflicted'
+                next_content = conflict_text(left_content, right_content, '')
             next_block = left_blocks[left_version]
             left_version = step(left_order)
             right_version = step(right_order)
         content.append(next_content)
 
-    return content
+    return conflict_status, content
 
 
 def read_changelog(lines):

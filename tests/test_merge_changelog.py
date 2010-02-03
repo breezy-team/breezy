@@ -51,6 +51,17 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
 """.splitlines(True)
 
 
+v_111_2c = """\
+psuedo-prog (1.1.1-2) unstable; urgency=low
+
+  * New upstream release.
+  * Yet another content for 1.1.1-2
+
+ -- Joe Foo <joe@example.com>  Thu, 28 Jan 2010 10:45:44 +0000
+
+""".splitlines(True)
+
+
 v_112_1 = """\
 psuedo-prog (1.1.2-1) unstable; urgency=low
 
@@ -83,9 +94,13 @@ class TestReadChangelog(tests.TestCase):
 class TestMergeChangelog(tests.TestCase):
 
     def assertMergeChangelog(self, expected_lines, this_lines, other_lines,
-                             base_lines=[]):
-        merged_lines = merge_changelog.merge_changelog(this_lines, other_lines,
-                                                       base_lines)
+                             base_lines=[], conflicted=False):
+        status, merged_lines = merge_changelog.merge_changelog(
+                                    this_lines, other_lines, base_lines)
+        if conflicted:
+            self.assertEqual('conflicted', status)
+        else:
+            self.assertEqual('success', status)
         self.assertEqualDiff(''.join(expected_lines), ''.join(merged_lines))
 
     def test_merge_by_version(self):
@@ -132,6 +147,26 @@ class TestMergeChangelog(tests.TestCase):
         self.assertMergeChangelog(expected_lines=v_111_2b,
                                   this_lines=v_111_2, other_lines=v_111_2b,
                                   base_lines=v_111_2)
+
+    def test_3way_conflicted(self):
+        self.assertMergeChangelog(
+            expected_lines=['<<<<<<< TREE\n']
+                           + v_111_2b
+                           + ['=======\n']
+                           + v_111_2c
+                           + ['>>>>>>> MERGE-SOURCE\n'],
+            this_lines=v_111_2b, other_lines=v_111_2c,
+            base_lines=v_111_2,
+            conflicted=True)
+        self.assertMergeChangelog(
+            expected_lines=['<<<<<<< TREE\n']
+                           + v_111_2b
+                           + ['=======\n']
+                           + v_111_2c
+                           + ['>>>>>>> MERGE-SOURCE\n'],
+            this_lines=v_111_2b, other_lines=v_111_2c,
+            base_lines=[],
+            conflicted=True)
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
