@@ -19,6 +19,11 @@ Compatibility Breaks
 New Features
 ************
 
+* Tree-shape conflicts can be resolved by providing ``--take-this`` and
+  ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
+  as resolved is still accessible via the ``--done`` default action.
+  (Vincent Ladeuil)
+
 bzr 2.1.0 (not released yet)
 ############################
 
@@ -154,11 +159,6 @@ New Features
   warning). The new option can be set in any of the following locations:
   ``bazaar.conf``, ``locations.conf`` and/or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
-
-* Tree-shape conflicts can be resolved by providing ``--take-this`` and
-  ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
-  as resolved is still accessible via the ``--done`` default action.
-  (Vincent Ladeuil)
 
 Bug Fixes
 *********
