@@ -56,6 +56,8 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     # Unfortunately, while version objects implement __eq__ they *don't*
     # implement __hash__, which means we can't do dict lookups properly, so
     # instead, we fall back on the version string instead of the object.
+    # Make sure never to try to use right_version in left_blocks because of
+    # this.
     base_blocks = dict((b.version.full_version, b) for b in base_cl._blocks)
     left_order = iter(sorted(left_blocks.keys(), reverse=True))
     right_order = iter(sorted(right_blocks.keys(), reverse=True))
@@ -70,16 +72,6 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     conflict_status = 'success'
 
     def conflict_text(left_content, right_content, base_content):
-        # TODO: We could use merge3.Merge3 to try a line-based textual merge on
-        #       the content. However, for now I'm just going to conflict on the
-        #       whole region
-        # Conflict names taken from merge.py
-        return ('<<<<<<< TREE\n'
-                + left_content
-                + '=======\n'
-                + right_content
-                + '>>>>>>> MERGE-SOURCE\n'
-               )
 
     while left_version is not None or right_version is not None:
         if (left_version is None or
@@ -94,25 +86,36 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
             assert left_version == right_version
             # Same version, step both
             # TODO: Conflict if left_version != right
+            # Note: See above comment why we can't use
+            #       right_blocks[left_version] even though they *should* be
+            #       equivalent
             left_content = str(left_blocks[left_version])
             right_content = str(right_blocks[right_version])
             if left_content == right_content:
                 # Identical content
                 next_content = left_content
-            elif left_version.full_version in base_blocks:
+            else:
                 # Sides disagree, compare with base
-                base_content = str(base_blocks[left_version.full_version])
+                if left_version.full_version in base_blocks:
+                    base_content = str(base_blocks[left_version.full_version])
+                else:
+                    base_content = ''
                 if left_content == base_content:
                     next_content = right_content
                 elif right_content == base_content:
                     next_content = left_content
                 else:
-                    next_content = conflict_text(left_content, right_content,
-                                                 base_content)
+                    # TODO: We could use merge3.Merge3 to try a line-based
+                    #       textual merge on the content. However, for now I'm
+                    #       just going to conflict on the whole region
+                    # Conflict names taken from merge.py
+                    next_content = ('<<<<<<< TREE\n'
+                                    + left_content
+                                    + '=======\n'
+                                    + right_content
+                                    + '>>>>>>> MERGE-SOURCE\n'
+                                   )
                     conflict_status = 'conflicted'
-            else: # Both introduced new version which doesn't match
-                conflict_status = 'conflicted'
-                next_content = conflict_text(left_content, right_content, '')
             next_block = left_blocks[left_version]
             left_version = step(left_order)
             right_version = step(right_order)
