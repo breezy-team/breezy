@@ -31,6 +31,9 @@ Bug Fixes
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
 
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
+
 * Set the mtime of files exported to a directory by ``bzr export`` all to
   the same value to avoid confusing ``make`` and other date-based build
   systems. (Robert Collins, #515631)
