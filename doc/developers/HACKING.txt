@@ -689,7 +689,7 @@ Factories
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
-but they shouldn't be *named* like classes:
+but they shouldn't be *named* like classes::
 
 > I think that things named FooBar should create instances of FooBar when
 > called. Its plain confusing for them to do otherwise. When we have
@@ -722,6 +722,8 @@ dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
 class will return an ``InterObject`` instance providing the best match for
 those parameters, and this instance then has methods for operations
 between the objects.
+
+::
 
   inter = InterRepository.get(source_repo, target_repo)
   inter.fetch(revision_id)
