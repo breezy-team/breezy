@@ -4135,21 +4135,28 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, module, name, this_name, dep_version):
+    def __init__(self, dep_version, module, name,
+                 replacement_name, replacement_module=None):
         super(_CompatabilityThunkFeature, self).__init__()
         self._module = module
+        if replacement_module is None:
+            replacement_module = module
+        self._replacement_module = replacement_module
         self._name = name
-        self._this_name = this_name
+        self._replacement_name = replacement_name
         self._dep_version = dep_version
         self._feature = None
 
     def _ensure(self):
         if self._feature is None:
-            msg = (self._dep_version % self._this_name) + (
-                   ' Use %s.%s instead.' % (self._module, self._name))
-            symbol_versioning.warn(msg, DeprecationWarning)
-            mod = __import__(self._module, {}, {}, [self._name])
-            self._feature = getattr(mod, self._name)
+            depr_msg = self._dep_version % ('%s.%s'
+                                            % (self._module, self._name))
+            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+                                               self._replacement_name)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            mod = __import__(self._replacement_module, {}, {},
+                             [self._replacement_name])
+            self._feature = getattr(mod, self._replacement_name)
 
     def _probe(self):
         self._ensure()
@@ -4181,7 +4188,7 @@ class ModuleAvailableFeature(Feature):
         if self.available(): # Make sure the probe has been done
             return self._module
         return None
-    
+
     def feature_name(self):
         return self.module_name
 

@@ -2400,9 +2400,11 @@ class TestUnavailableFeature(tests.TestCase):
 
 
 simple_thunk_feature = tests._CompatabilityThunkFeature(
-    'bzrlib.tests', 'UnicodeFilename',
-    'bzrlib.tests.test_selftest.simple_thunk_feature',
-    deprecated_in((2,1,0)))
+    deprecated_in((2, 1, 0)),
+    'bzrlib.tests.test_selftest',
+    'simple_thunk_feature','UnicodeFilename',
+    replacement_module='bzrlib.tests'
+    )
 
 class Test_CompatibilityFeature(tests.TestCase):
 
@@ -2413,7 +2415,7 @@ class Test_CompatibilityFeature(tests.TestCase):
             simple_thunk_feature.available)
         self.assertEqual(tests.UnicodeFilename.available(), res)
 
-        
+
 class TestModuleAvailableFeature(tests.TestCase):
 
     def test_available_module(self):
