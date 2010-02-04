@@ -521,10 +521,10 @@ class TestBranchOptions(TestCaseWithTransport):
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
-        self.check_aro_is(False, 'not-a-bool')
+        self.check_aro_is(True, 'not-a-bool')
         self.assertEqual(
             'Value "not-a-bool" for append_revisions_only is not a boolean,'
-            ' defaulting to False',
+            ' defaulting to True',
             warnings[0])
 
 

@@ -2690,8 +2690,9 @@ class BzrBranch8(BzrBranch5):
 
     def _get_append_revisions_only(self):
         # if no option is found, then default to False.
-        # since append_revisions_only can have negative consequences
-        # be very strict in interpreting the option value
+        # Since append_revisions_only can have negative consequences
+        # be very strict in interpreting the option value and default
+        # to True
         name = 'append_revisions_only'
         value = self.get_config().get_user_option(name)
         if value is None:
@@ -2700,8 +2701,8 @@ class BzrBranch8(BzrBranch5):
         if append is not None:
             return append
         trace.warning('Value "%s" for append_revisions_only is not a boolean,'
-                      ' defaulting to False', value)
-        return False
+                      ' defaulting to True', value)
+        return True
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
