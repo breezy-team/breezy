@@ -26,13 +26,13 @@ When Bazaar generates a conflict, it adds information into the working tree to
 present the conflicting versions, and it's up to you to find the correct
 resolution.
 
-Whatever the conflict is, resolving it is roughly done in two steps:
+Whatever the conflict is, resolving it is roughly done in two steps::
 
-- modify the working tree content so that the conflicted item is now in the
-  state you want to keep,
+ * modify the working tree content so that the conflicted item is now in the
+   state you want to keep,
 
-- inform Bazaar that the conflict is now solved and ask to cleanup any
-  remaining generated information (``bzr resolve <item>``).
+ * inform Bazaar that the conflict is now solved and ask to cleanup any
+   remaining generated information (``bzr resolve <item>``).
 
 For most conflict types, there are some obvious ways to modify the working
 tree and put it into the desired state. For some types of conflicts, Bazaar
@@ -46,12 +46,12 @@ resolve the conflict is outlined.
 
 Various actions are available depending on the kind of conflict, for some of
 these actions, Bazaar can provide some help. In the end you should at least
-inform Bazaar that you're done with the conflict with:
+inform Bazaar that you're done with the conflict with::
 
   ``bzr resolve FILE --action=done'
 
 Note that this is the default action when a single file is involved so you can
-simply use:
+simply use::
 
    ``bzr resolve FILE``
 
@@ -60,7 +60,7 @@ See ``bzr help resolve`` for more details.
 Text conflicts
 --------------
 
-Typical message:
+Typical message::
 
   Text conflict in FILE
 
@@ -77,7 +77,7 @@ could reconcile, and any un-reconciled conflicts are surrounded by
 
 Say the initial text is "The project leader released it.", and THIS modifies it
 to "Martin Pool released it.", while OTHER modifies it to "The project leader
-released Bazaar."  A conflict would look like this:
+released Bazaar."  A conflict would look like this::
 
   <<<<<<< TREE
   Martin Pool released it.
@@ -107,7 +107,7 @@ working tree.
 Content conflicts
 -----------------
 
-Typical message:
+Typical message::
 
   Contents conflict in FILE
 
@@ -126,9 +126,9 @@ or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,
-- ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,
+ * ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
 ``.OTHER`` files if they are still present in the working tree.
@@ -138,7 +138,7 @@ Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 Tag conflicts
 -------------
 
-Typical message:
+Typical message::
 
   Conflicting tags:
       version-0.1
@@ -162,7 +162,7 @@ all tags as well.)
 Duplicate paths
 ---------------
 
-Typical message:
+Typical message::
 
   Conflict adding file FILE.  Moved existing file to FILE.moved.
 
@@ -172,11 +172,11 @@ already been used.  The existing file will be renamed to "FILE.moved".
 To resolve that kind of conflict, you should rebuild FILE from either version
 or a combination of both.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved FILE``,
-- ``--action=take-other`` will issue ``bzr rm FILE.moved``,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved FILE``,
+ *  ``--action=take-other`` will issue ``bzr rm FILE.moved``,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Note that you must get rid of FILE.moved before using ``--action=done``.
 
@@ -185,7 +185,7 @@ Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 Unversioned parent
 ------------------
 
-Typical message:
+Typical message::
 
     Conflict because FILE is not versioned, but has versioned children.
 
@@ -200,7 +200,7 @@ FILE" to mark the conflict as resolved.
 Missing parent
 --------------
 
-Typical message:
+Typical message::
 
   Conflict adding files to FILE.  Created directory.
 
@@ -213,19 +213,20 @@ Resolving this issue depends very much on the particular scenario.
 To resolve that kind of conflict, you should either remove or rename the
 children or the directory or a combination of both.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will issue ``bzr rm directory`` including the children,
-- ``--action=take-other`` will acknowledge Bazaar choice to keep the children
-  and restoring the directory,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will issue ``bzr rm directory``
+   including the children,
+ * ``--action=take-other`` will acknowledge Bazaar choice to keep
+   the children and restoring the directory,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Deleting parent
 ---------------
 
-Typical message:
+Typical message::
 
   Conflict: can't delete DIR because it is not empty.  Not deleting.
 
@@ -236,19 +237,19 @@ Resolving this issue depends very much on the particular scenario.
 To resolve that kind of conflict, you should either remove or rename the
 children or the directory or a combination of both.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
-- ``--action=take-other`` will issue ``bzr rm directory`` including the 
-  children,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
+ * ``--action=take-other`` will issue ``bzr rm directory`` including the 
+   children,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Path conflict
 -------------
 
-Typical message:
+Typical message::
 
   Path conflict: PATH1 / PATH2
 
@@ -258,19 +259,19 @@ directory of a file.  Bazaar will use the path elements from the source.
 To resolve that kind of conflict, you just have to decide what name should be
 retained for the file involved.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
-  issuing ``bzr mv PATH2 PATH1``,
-- ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
+   issuing ``bzr mv PATH2 PATH1``,
+ * ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Parent loop
 -----------
 
-Typical message:
+Typical message::
 
   Conflict moving FILE into DIRECTORY.  Cancelled move.
 
@@ -293,20 +294,20 @@ In this situation, Bazaar will cancel the move, and leave ``white`` in
 ``black``.  To resolve that kind of conflict, you just have to decide what
 name should be retained for the directories involved.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
-  in ``black``,
-- ``--action=take-other`` will revert Bazaar choice and move ``black`` in
-  ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
+   in ``black``,
+ * ``--action=take-other`` will revert Bazaar choice and move ``black`` in
+   ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
 Non-directory parent
 --------------------
 
-Typical message:
+Typical message::
 
   Conflict: foo.new is not a directory, but has files in it.
   Created directory.
@@ -328,13 +329,13 @@ has changed the directory into a file or symlink.  For example:
 To resolve that kind of conflict, you have to decide what name should be
 retained for the file, directory or symlink involved.
 
-``bzr resolve`` recognizes the following actions:
+``bzr resolve`` recognizes the following actions::
 
-- ``--action=take-this`` will issue ``bzr rm --force foo.new`` and 
-  ``bzr add foo``,
-- ``--action=take-other`` will issue ``bzr rm --force foo`` and 
-  ``bzr mv foo.new foo``,
-- ``--action=done`` will just mark the conflict as resolved.
+ * ``--action=take-this`` will issue ``bzr rm --force foo.new`` and 
+   ``bzr add foo``,
+ * ``--action=take-other`` will issue ``bzr rm --force foo`` and 
+   ``bzr mv foo.new foo``,
+ * ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
