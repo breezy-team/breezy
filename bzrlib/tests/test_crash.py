@@ -33,18 +33,6 @@ from bzrlib import (
 from bzrlib.tests import features
 
 
-class TestApportDeprecation(tests.TestCaseInTempDir):
-
-    _test_needs_features = [features.apport]
-
-    def test_deprecation(self):
-        res = self.callDeprecated(
-            ['bzrlib.tests.features.ApportFeature was deprecated'
-             ' in version 2.2.0. Use bzrlib.tests.features.apport instead.'],
-            features.ApportFeature.available)
-        self.assertEqual(res, features.ApportFeature.available())
-
-
 class TestApportReporting(tests.TestCaseInTempDir):
 
     _test_needs_features = [features.apport]

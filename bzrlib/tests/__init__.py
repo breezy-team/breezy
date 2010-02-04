@@ -4154,6 +4154,8 @@ class _CompatabilityThunkFeature(Feature):
             use_msg = ' Use %s.%s instead.' % (self._replacement_module,
                                                self._replacement_name)
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            # Import the new feature and use it as a replacement for the
+            # deprecated one.
             mod = __import__(self._replacement_module, {}, {},
                              [self._replacement_name])
             self._feature = getattr(mod, self._replacement_name)
