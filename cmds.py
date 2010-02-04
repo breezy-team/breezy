@@ -479,9 +479,13 @@ class cmd_merge_upstream(Command):
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
                            short_name='d', type=unicode)
+    last_version_opt = Option('last-version',
+                           help='The previous version that was merged..',
+                           type=str)
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt, directory_opt, 'revision', 'merge-type']
+            distribution_opt, directory_opt, last_version_opt, 'revision',
+            'merge-type']
 
     def _update_changelog(self, tree, version, distribution_name, changelog,
             package):
@@ -502,7 +506,7 @@ class cmd_merge_upstream(Command):
 
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None,
-            merge_type=None):
+            merge_type=None, last_version=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import upstream_branch_version
@@ -530,7 +534,10 @@ class cmd_merge_upstream(Command):
             changelog = None
             try:
                 changelog = find_changelog(tree, False, max_blocks=2)[0]
-                current_version = changelog.version
+                if last_version is None:
+                    current_version = changelog.version
+                else:
+                    current_version = Version(last_version)
                 if package is None:
                     package = changelog.package
                 if distribution is None:
