@@ -377,19 +377,6 @@ KnownFailure
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
 
-ModuleAvailableFeature
-        A helper for handling running tests based on whether a python
-        module is available. This can handle 3rd-party dependencies (is
-        ``paramiko`` available?) as well as stdlib (``termios``) or
-        extension modules (``bzrlib._groupcompress_pyx``). You create a
-        new feature instance with::
-
-            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
-
-            ...
-            def test_something(self):
-                self.requireFeature(MyModuleFeature)
-                something = MyModuleFeature.module
 
 
 We plan to support three modes for running the test suite to control the
@@ -437,13 +424,20 @@ method::
 
     self.requireFeature(StraceFeature)
 
-Features already defined in bzrlib.tests include:
+The old naming style for features is CamelCase, but because they're
+actually instances not classses they're now given instance-style names
+like ``apport``.
 
- - SymlinkFeature,
- - HardlinkFeature,
- - OsFifoFeature,
- - UnicodeFilenameFeature,
- - FTPServerFeature, and
+Features already defined in ``bzrlib.tests`` and ``bzrlib.tests.features``
+include:
+
+ - apport
+ - paramiko
+ - SymlinkFeature
+ - HardlinkFeature
+ - OsFifoFeature
+ - UnicodeFilenameFeature
+ - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
 
 
@@ -463,6 +457,21 @@ are defined by subclassing ``bzrlib.tests.Feature`` and overriding the
             return 'symlinks'
 
     SymlinkFeature = _SymlinkFeature()
+
+A helper for handling running tests based on whether a python
+module is available. This can handle 3rd-party dependencies (is
+``paramiko`` available?) as well as stdlib (``termios``) or
+extension modules (``bzrlib._groupcompress_pyx``). You create a
+new feature instance with::
+
+    # in bzrlib/tests/features.py
+    apport = tests.ModuleAvailableFeature('apport')
+
+
+    # then in bzrlib/tests/test_apport.py
+    class TestApportReporting(TestCaseInTempDir):
+
+        _test_needs_features = [features.apport]
 
 
 Testing exceptions and errors
