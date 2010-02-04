@@ -49,6 +49,9 @@ Bug Fixes
 * Fix ``log`` to better check ancestors even if merged revisions are involved.
   (Vincent Ladeuil, #476293)
 
+* Give a better error message when doing ``bzr bind`` in an already bound
+  branch.  (Neil Martinsen-Burrell, #513063)
+
 * Set the mtime of files exported to a directory by ``bzr export`` all to
   the same value to avoid confusing ``make`` and other date-based build
   systems. (Robert Collins, #515631)
