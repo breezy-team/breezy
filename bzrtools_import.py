@@ -19,7 +19,7 @@ from bzrlib.osutils import (pathjoin, isdir, file_iterator, basename,
 from bzrlib.trace import warning
 from bzrlib.transform import TreeTransform, resolve_conflicts, cook_conflicts
 from bzrlib.workingtree import WorkingTree
-from bzrlib.plugins.bzrtools.bzrtools import open_from_url
+from bzrlib.plugins.builddeb.bzrtools_bzrtools import open_from_url
 from bzrlib.plugins.builddeb.errors import UnknownType
 
 class ZipFileWrapper(object):
