@@ -33,6 +33,7 @@ from bzrlib import (
         revision as _mod_revision,
         rio,
         symbol_versioning,
+        trace,
         transport,
         tsort,
         ui,
@@ -2698,7 +2699,9 @@ class BzrBranch8(BzrBranch5):
         append = ui.bool_from_string(value)
         if append is not None:
             return append
-        raise errors.BadOptionValue(name, value)
+        trace.warning('Value "%s" for append_revisions_only is not a boolean,'
+                      ' defaulting to False', value)
+        return False
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
