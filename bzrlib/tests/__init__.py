@@ -4195,8 +4195,9 @@ class ModuleAvailableFeature(Feature):
 
 # This is kept here for compatibility, it is recommended to use
 # 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
-    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
+ParamikoFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
 
 
 def probe_unicode_in_user_encoding():
@@ -4364,8 +4365,9 @@ CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
-    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
+SubUnitFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient
