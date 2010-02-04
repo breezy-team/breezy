@@ -14,6 +14,9 @@ bzr 2.1.0 (not released yet)
 Bug Fixes
 *********
 
+* Don't require testtools to use sftp.
+  (Vincent Ladeuil, #516183)
+
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
 
