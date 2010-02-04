@@ -28,9 +28,6 @@ New Features
 Testing
 *******
 
-* Don't use Apport for errors while loading or running tests.
-  (Martin Pool, #417881)
-
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
