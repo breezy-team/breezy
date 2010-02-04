@@ -25,31 +25,24 @@ import os
 from bzrlib import (
     config,
     crash,
-    tests,
     osutils,
+    symbol_versioning,
+    tests,
     )
 
-from bzrlib.tests import (
-    features,
-    TestCaseInTempDir,
-    )
-from bzrlib.tests.features import ApportFeature
+from bzrlib.tests import features
 
 
-class TestApportReporting(TestCaseInTempDir):
+class TestApportReporting(tests.TestCaseInTempDir):
 
     _test_needs_features = [features.apport]
-
-    def setUp(self):
-        TestCaseInTempDir.setUp(self)
-        self.requireFeature(ApportFeature)
 
     def test_apport_report(self):
         crash_dir = osutils.joinpath((self.test_base_dir, 'crash'))
         os.mkdir(crash_dir)
         os.environ['APPORT_CRASH_DIR'] = crash_dir
         self.assertEquals(crash_dir, config.crash_dir())
-    
+
         stderr = StringIO()
 
         try:
