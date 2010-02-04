@@ -22,17 +22,18 @@ from cStringIO import StringIO
 
 from bzrlib import (
     bzrdir,
-    errors
+    errors,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import script
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
-class TestLegacyFormats(TestCaseWithTransport):
+class TestLegacyFormats(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
@@ -61,7 +62,7 @@ class TestLegacyFormats(TestCaseWithTransport):
                          'upgrade your branch at %s/.\n' % cwd, err)
 
 
-class TestBoundBranches(TestCaseWithTransport):
+class TestBoundBranches(tests.TestCaseWithTransport):
 
     def create_branches(self):
         base_tree = self.make_branch_and_tree('base')
@@ -422,7 +423,6 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(4, '../base')
 
 
-from bzrlib.tests import script
 class TestBind(script.TestCaseWithTransportAndScript):
 
     def test_bind_when_bound(self):
