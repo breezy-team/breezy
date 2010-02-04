@@ -417,7 +417,9 @@ class TextProgressView(object):
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = self._bytes_since_update / (now - self._transport_update_time)
+            rate = (self._bytes_since_update
+                    / (now - self._transport_update_time))
+            # using base-10 units (see HACKING.txt).
             msg = ("%6dkB %5dkB/s" %
                     (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
@@ -435,6 +437,7 @@ class TextProgressView(object):
                 transfer_time = 0.001
             bps = self._total_byte_count / transfer_time
 
+        # using base-10 units (see HACKING.txt).
         msg = ('Transferred: %.0fkB'
                ' (%.1fkB/s r:%.0fkB w:%.0fkB'
                % (self._total_byte_count / 1000.,

@@ -170,7 +170,7 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
             def __setattr__(self, name, value):
                 return setattr(self._sio, name, value)
-                
+
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self._captureVar('TERM', None)
@@ -181,7 +181,8 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
-        # Displaying the result should write to the progress stream
+        # Displaying the result should write to the progress stream using
+        # base-10 units (see HACKING.txt).
         self.assertContainsRe(self.stderr.getvalue(),
             r'Transferred: 7kB'
             r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
