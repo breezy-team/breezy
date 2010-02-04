@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -534,16 +534,30 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
-    delayed_graph_generation):
+                            delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
+
+    # The above is only true for old formats (<= 0.92), for newer formats, a
+    # couple of seconds only should be needed to load the whole graph and the
+    # other graph operations needed are even faster than that -- vila 100201
     initial_revisions = []
     if delayed_graph_generation:
         try:
-            for rev_id, revno, depth in \
-                _linear_view_revisions(branch, start_rev_id, end_rev_id):
+            for rev_id, revno, depth in  _linear_view_revisions(
+                branch, start_rev_id, end_rev_id):
                 if _has_merges(branch, rev_id):
+                    # The end_rev_id can be nested down somewhere. We need an
+                    # explicit ancestry check. There is an ambiguity here as we
+                    # may not raise _StartNotLinearAncestor for a revision that
+                    # is an ancestor but not a *linear* one. But since we have
+                    # loaded the graph to do the check (or calculate a dotted
+                    # revno), we may as well accept to show the log... 
+                    # -- vila 100201
+                    graph = branch.repository.get_graph()
+                    if not graph.is_ancestor(start_rev_id, end_rev_id):
+                        raise _StartNotLinearAncestor()
                     end_rev_id = rev_id
                     break
                 else:

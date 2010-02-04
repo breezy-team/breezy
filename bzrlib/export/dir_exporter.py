@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,12 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory.
-"""
+"""Export a bzrlib.tree.Tree to a new or empty directory."""
 
 import errno
 import os
 import StringIO
+import time
 
 from bzrlib import errors, osutils
 from bzrlib.export import _export_iter_entries
@@ -33,14 +33,11 @@ from bzrlib.trace import mutter
 def dir_exporter(tree, dest, root, subdir, filtered=False):
     """Export this tree to a new directory.
 
-    `dest` should not exist, and will be created holding the
-    contents of this tree.
-
-    TODO: To handle subdirectories we need to create the
-           directories first.
+    `dest` should either not exist or should be empty. If it does not exist it
+    will be created holding the contents of this tree.
 
     :note: If the export fails, the destination directory will be
-           left in a half-assed state.
+           left in an incompletely exported state: export is not transactional.
     """
     mutter('export version %r', tree)
     try:
@@ -79,6 +76,7 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
     # The data returned here can be in any order, but we've already created all
     # the directories
     flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
+    now = time.time()
     for (relpath, executable), chunks in tree.iter_files_bytes(to_fetch):
         if filtered:
             filters = tree._content_filter_stack(relpath)
@@ -94,3 +92,4 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
             out.writelines(chunks)
         finally:
             out.close()
+        os.utime(fullpath, (now, now))

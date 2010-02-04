@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1540,6 +1540,11 @@ class TestCase(testtools.TestCase):
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
+            # Generally speaking, we don't want apport reporting on crashes in
+            # the test envirnoment unless we're specifically testing apport,
+            # so that it doesn't leak into the real system environment.  We
+            # use an env var so it propagates to subprocesses.
+            'APPORT_DISABLE': '1',
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -4130,21 +4135,30 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, module, name, this_name, dep_version):
+    def __init__(self, dep_version, module, name,
+                 replacement_name, replacement_module=None):
         super(_CompatabilityThunkFeature, self).__init__()
         self._module = module
+        if replacement_module is None:
+            replacement_module = module
+        self._replacement_module = replacement_module
         self._name = name
-        self._this_name = this_name
+        self._replacement_name = replacement_name
         self._dep_version = dep_version
         self._feature = None
 
     def _ensure(self):
         if self._feature is None:
-            msg = (self._dep_version % self._this_name) + (
-                   ' Use %s.%s instead.' % (self._module, self._name))
-            symbol_versioning.warn(msg, DeprecationWarning)
-            mod = __import__(self._module, {}, {}, [self._name])
-            self._feature = getattr(mod, self._name)
+            depr_msg = self._dep_version % ('%s.%s'
+                                            % (self._module, self._name))
+            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+                                               self._replacement_name)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            # Import the new feature and use it as a replacement for the
+            # deprecated one.
+            mod = __import__(self._replacement_module, {}, {},
+                             [self._replacement_name])
+            self._feature = getattr(mod, self._replacement_name)
 
     def _probe(self):
         self._ensure()
@@ -4176,15 +4190,16 @@ class ModuleAvailableFeature(Feature):
         if self.available(): # Make sure the probe has been done
             return self._module
         return None
-    
+
     def feature_name(self):
         return self.module_name
 
 
 # This is kept here for compatibility, it is recommended to use
 # 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
-    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
+ParamikoFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
 
 
 def probe_unicode_in_user_encoding():
@@ -4352,8 +4367,9 @@ CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
-    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
+SubUnitFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

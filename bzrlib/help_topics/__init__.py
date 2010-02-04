@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -276,7 +276,7 @@ would refer to ``/home/remote/myproject/trunk``.
 
 _basic_help = \
 """Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ class XMLRPCTransport(xmlrpclib.Transport):
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
-    See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
+    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we can call.
     """
 
     LAUNCHPAD_DOMAINS = {
