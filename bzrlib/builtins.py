@@ -3524,13 +3524,6 @@ class cmd_selftest(Command):
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
-       
-        # Whatever you normally want, for the purposes of running selftest you
-        # probably actually want to see the exception, not to turn it into an
-        # apport failure.  This is specifically turned off again for tests of
-        # apport.  We turn it off here so that eg a SyntaxError loading the
-        # tests is caught.
-        os.environ['APPORT_DISABLE'] = '1'
 
         if cache_dir is not None:
             tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
