@@ -3444,8 +3444,8 @@ class cmd_selftest(Command):
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return SFTPAbsoluteServer
+            from bzrlib.tests import stub_sftp
+            return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
             from bzrlib.transport.memory import MemoryServer
             return MemoryServer
