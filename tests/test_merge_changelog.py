@@ -19,6 +19,8 @@
 
 """Tests for the merge_changelog code."""
 
+import warnings
+
 from debian_bundle import changelog
 
 from bzrlib import (
@@ -177,13 +179,13 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
   * New upstream release.
   * Awesome bug fixes.
 
- -- Joe Foo <joe@example.com> Thu, 28 Jan 2010 10:45:44 +0000
+ -- Thu, 28 Jan 2010 10:45:44 +0000
 
-"""
-        # There are supposed to be 2 spaces after the email, yeah strict is
-        # *strict*
+""".splitlines(True)
+        # Missing the author and we don't have allow_missing_author set
+        cl = changelog.Changelog()
         self.assertRaises(changelog.ChangelogParseError,
-                          changelog.Changelog, invalid_changelog, strict=True)
+                          cl.parse_changelog, ''.join(invalid_changelog), strict=True)
         # If strict parsing fails, don't try to do special merging
         self.assertEqual(('not_applicable', None),
             merge_changelog.merge_changelog(invalid_changelog, v_111_2,
@@ -191,11 +193,19 @@ psuedo-prog (1.1.1-2) unstable; urgency=low
         self.assertEqual(('not_applicable', None),
             merge_changelog.merge_changelog(v_111_2, invalid_changelog,
                                             v_111_2))
-        # Sort of a shame to fail to parse if only BASE is invalid, but we'll
-        # stick with always-strict for now
-        self.assertEqual(('not_applicable', None),
-            merge_changelog.merge_changelog(v_111_2, v_111_2, invalid_changelog))
-
+        # We are non-strict about parsing BASE, because its contents are not
+        # included in the output.
+        # This triggers a warning, but we don't want to clutter the test run
+        cur_filters = warnings.filters[:]
+        warnings.simplefilter('ignore', UserWarning)
+        try:
+            self.assertMergeChangelog(v_112_1 + v_111_2,
+                                      this_lines=v_111_2,
+                                      other_lines=v_112_1,
+                                      base_lines=invalid_changelog,
+                                      )
+        finally:
+            warnings.filters = cur_filters[:]
 
 
 class TestChangelogHook(tests.TestCaseWithMemoryTransport):
@@ -231,6 +241,7 @@ class TestChangelogHook(tests.TestCaseWithMemoryTransport):
     def test_changelog_merge_hook_successful(self):
         params, merger = self.make_params()
         params.other_lines = ['']
+        params.base_lines = ['']
         file_merger = builddeb.changelog_merge_hook_factory(merger)
         result, new_content = file_merger.merge_text(params)
         self.assertEqual('success', result)

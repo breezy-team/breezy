@@ -45,7 +45,8 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     try:
         left_cl = read_changelog(this_lines)
         right_cl = read_changelog(other_lines)
-        base_cl = read_changelog(base_lines)
+        # BASE lines don't end up in the output, so we allow strict=False
+        base_cl = read_changelog(base_lines, strict=False)
     except changelog.ChangelogParseError:
         return ('not_applicable', None)
 
@@ -62,6 +63,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     # instead, we fall back on the version string instead of the object.
     # Make sure never to try to use right_version in left_blocks because of
     # this.
+    # We lazily parse the base data, in case we never need it
     base_blocks = dict((b.version.full_version, b) for b in base_cl._blocks)
     left_order = iter(sorted(left_blocks.keys(), reverse=True))
     right_order = iter(sorted(right_blocks.keys(), reverse=True))
@@ -98,10 +100,8 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
                 next_content = left_content
             else:
                 # Sides disagree, compare with base
-                if left_version.full_version in base_blocks:
-                    base_content = str(base_blocks[left_version.full_version])
-                else:
-                    base_content = ''
+                base_content = str(base_blocks.get(left_version.full_version,
+                                                   ''))
                 if left_content == base_content:
                     next_content = right_content
                 elif right_content == base_content:
@@ -126,15 +126,19 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
     return conflict_status, content
 
 
-def read_changelog(lines):
+def read_changelog(lines, strict=True):
     """Return a parsed changelog file."""
     # Note: There appears to be a bug in Changelog if you pass it an iterable
     #       of lines (like a file obj, or a list of lines). Specifically, it
     #       does not strip trailing newlines, and it adds ones back in, so you
     #       get doubled blank lines... :(
     #       So we just ''.join() the lines and don't worry about it
+    # Note: There is also a bug that the Changelog constructor suppresses parse
+    #       errors, so we want to always call parse_changelog separately
     content = ''.join(lines)
-    if not content:
-        # We get a warning if we try to parse an empty changelog file
-        return changelog.Changelog()
-    return changelog.Changelog(content, strict=True)
+    cl = changelog.Changelog()
+    if content:
+        # We get a warning if we try to parse an empty changelog file, which in
+        # strict mode is an error, so only parse when we have content
+        cl.parse_changelog(content, strict=strict)
+    return cl
