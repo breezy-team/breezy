@@ -111,6 +111,9 @@ Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
   This can provide useful logging to help debug test failures when used
   with e.g. ``bzr -Dhpss selftest -E=allow_debug``
 
+  Note that this will probably cause some tests to fail, because they
+  don't expect to run with any debug flags on.
+
 
 Writing Tests
 =============
