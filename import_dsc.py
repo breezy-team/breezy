@@ -1567,7 +1567,8 @@ class DistributionBranch(object):
     _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
     def merge_upstream(self, tarball_filename, version, previous_version,
-            upstream_branch=None, upstream_revision=None, merge_type=None):
+            upstream_branch=None, upstream_revision=None, merge_type=None,
+            force=False):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
@@ -1602,7 +1603,7 @@ class DistributionBranch(object):
                         upstream_revision = upstream_branch.last_revision()
                     graph = self.branch.repository.get_graph(
                             other_repository=upstream_branch.repository)
-                    if graph.is_ancestor(upstream_revision,
+                    if not force and graph.is_ancestor(upstream_revision,
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)

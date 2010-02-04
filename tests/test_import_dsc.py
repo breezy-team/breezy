@@ -20,8 +20,8 @@
 #
 
 import os
-import os.path
 import shutil
+import tarfile
 
 from debian_bundle.changelog import Version
 from debian_bundle import deb822
@@ -38,7 +38,10 @@ from bzrlib.plugins.builddeb.import_dsc import (
         ThreeDotZeroNativeSourceExtractor,
         ThreeDotZeroQuiltSourceExtractor,
         )
-from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+from bzrlib.plugins.builddeb.tests import (
+        BuilddebTestCase,
+        SourcePackageBuilder,
+        )
 
 
 class _PristineTarFeature(tests.Feature):
@@ -61,7 +64,7 @@ def write_to_file(filename, contents):
     f.close()
 
 
-class DistributionBranchTests(tests.TestCaseWithTransport):
+class DistributionBranchTests(BuilddebTestCase):
 
     def setUp(self):
         super(DistributionBranchTests, self).setUp()
@@ -1386,6 +1389,115 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         self.assertEqual(up_rh1[-1], up_revtree.get_parent_ids()[1])
         self.assertEqual(up_rh2[-1],
                 self.tree2.branch.tags.lookup_tag("upstream-1.2"))
+
+    def test_merge_upstream_initial(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a'])
+        tree.add(['a'])
+        orig_upstream_rev = tree.commit("one")
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        self.build_tree(['work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['debian/', 'debian/changelog'])
+        orig_debian_rev = tree.commit("two")
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"))
+        self.assertEqual(0,  conflicts)
+
+    def test_merge_upstream_initial_with_branch(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a'])
+        tree.add(['a'])
+        orig_upstream_rev = tree.commit("one")
+        upstream_tree = self.make_branch_and_tree('upstream')
+        upstream_tree.pull(tree.branch)
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        self.build_tree(['work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['debian/', 'debian/changelog'])
+        orig_debian_rev = tree.commit("two")
+        self.build_tree(['upstream/a'])
+        upstream_rev = upstream_tree.commit("three")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        upstream_tree.lock_read()
+        self.addCleanup(upstream_tree.unlock)
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"), upstream_branch=upstream_tree.branch,
+                upstream_revision=upstream_rev)
+        self.assertEqual(0,  conflicts)
+
+    def test_merge_upstream_initial_with_removed_debian(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a', 'work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['a', 'debian/', 'debian/changelog'])
+        orig_upstream_rev = tree.commit("one")
+        upstream_tree = self.make_branch_and_tree('upstream')
+        upstream_tree.pull(tree.branch)
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        cl.add_change('  * something else')
+        self.write_changelog(cl, 'work/debian/changelog')
+        orig_debian_rev = tree.commit("two")
+        self.build_tree(['upstream/a'])
+        shutil.rmtree('upstream/debian')
+        upstream_rev = upstream_tree.commit("three")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        upstream_tree.lock_read()
+        self.addCleanup(upstream_tree.unlock)
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"), upstream_branch=upstream_tree.branch,
+                upstream_revision=upstream_rev)
+        self.assertEqual(0,  conflicts)
 
     def test_import_symlink(self):
         version = Version("1.0-1")
