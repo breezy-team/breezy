@@ -39,6 +39,9 @@ bzr 2.1.0 (not released yet)
 
 Bug Fixes
 *********
+* Network transfer amounts and rates are now displayed in SI units according
+  to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
+  (Gordon Tyler, #514399)
 
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
