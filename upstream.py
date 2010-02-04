@@ -28,7 +28,7 @@ from debian_bundle.changelog import Version
 
 from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.trace import info
+from bzrlib.trace import note
 
 from bzrlib.plugins.builddeb.errors import (
     MissingUpstreamTarball,
@@ -86,7 +86,7 @@ class PristineTarSource(UpstreamSource):
         revid = db.revid_of_upstream_version_from_branch(version)
         if not db.has_pristine_tar_delta(revid):
             raise PackageVersionNotPresent(package, version, self)
-        info("Using pristine-tar to reconstruct the needed tarball.")
+        note("Using pristine-tar to reconstruct the needed tarball.")
         try:
             db.reconstruct_pristine_tar(revid, package, version, target_filename)
         except PristineTarError:
@@ -112,14 +112,14 @@ class AptSource(UpstreamSource):
             raise PackageVersionNotPresent(package, upstream_version, self)
 
         sources.Restart()
-        info("Using apt to look for the upstream tarball.")
+        note("Using apt to look for the upstream tarball.")
         while sources.Lookup(package):
             if upstream_version \
                 == Version(sources.Version).upstream_version:
                 if self._run_apt_source(package, sources.Version, target_dir):
                     return
                 break
-        info("apt could not find the needed tarball.")
+        note("apt could not find the needed tarball.")
         raise PackageVersionNotPresent(package, upstream_version, self)
 
     def _get_command(self, package, version_str):
@@ -160,7 +160,7 @@ class UpstreamBranchSource(UpstreamSource):
         self.upstream_branch.lock_read()
         try:
             revid = self._get_revision_id(version)
-            info("Exporting upstream branch revision %s to create the tarball",
+            note("Exporting upstream branch revision %s to create the tarball",
                  revid)
             target_filename = self._tarball_path(package, version, target_dir)
             tarball_base = "%s-%s" % (package, version)
@@ -179,16 +179,16 @@ class GetOrigSourceSource(UpstreamSource):
 
     def _get_orig_source(self, source_dir, desired_tarball_name,
                         target_dir):
-        info("Trying to use get-orig-source to retrieve needed tarball.")
+        note("Trying to use get-orig-source to retrieve needed tarball.")
         command = ["make", "-f", "debian/rules", "get-orig-source"]
         proc = subprocess.Popen(command, cwd=source_dir)
         ret = proc.wait()
         if ret != 0:
-            info("Trying to run get-orig-source rule failed")
+            note("Trying to run get-orig-source rule failed")
             return False
         fetched_tarball = os.path.join(source_dir, desired_tarball_name)
         if not os.path.exists(fetched_tarball):
-            info("get-orig-source did not create %s", desired_tarball_name)
+            note("get-orig-source did not create %s", desired_tarball_name)
             return False
         repack_tarball(fetched_tarball, desired_tarball_name, 
                        target_dir=target_dir)
@@ -216,7 +216,7 @@ class GetOrigSourceSource(UpstreamSource):
                 return
             finally:
                 shutil.rmtree(tmpdir)
-        info("No debian/rules file to try and use for a get-orig-source rule")
+        note("No debian/rules file to try and use for a get-orig-source rule")
         raise PackageVersionNotPresent(package, version, self)
 
 
@@ -228,14 +228,14 @@ class UScanSource(UpstreamSource):
         self.larstiq = larstiq
 
     def _uscan(self, package, upstream_version, watch_file, target_dir):
-        info("Using uscan to look for the upstream tarball.")
+        note("Using uscan to look for the upstream tarball.")
         r = os.system("uscan --upstream-version %s --force-download --rename "
                       "--package %s --watchfile %s --check-dirname-level 0 " 
                       "--download --repack --destdir %s --download-version %s" %
                       (upstream_version, package, watch_file, target_dir,
                        upstream_version))
         if r != 0:
-            info("uscan could not find the needed tarball.")
+            note("uscan could not find the needed tarball.")
             return False
         return True
 
@@ -246,7 +246,7 @@ class UScanSource(UpstreamSource):
             watchfile = 'debian/watch'
         watch_id = self.tree.path2id(watchfile)
         if watch_id is None:
-            info("No watch file to use to retrieve upstream tarball.")
+            note("No watch file to use to retrieve upstream tarball.")
             return None
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
@@ -293,7 +293,7 @@ class SelfSplitSource(UpstreamSource):
             shutil.rmtree(tmpdir)
 
     def get_specific_version(self, package, version, target_dir):
-        info("Using the current branch without the 'debian' directory "
+        note("Using the current branch without the 'debian' directory "
                 "to create the tarball")
         self._split(package, version, 
                     self._tarball_path(package, version, target_dir))
@@ -403,9 +403,9 @@ class UpstreamProvider(object):
         :param target_dir: The directory to place the tarball in.
         :return: The path to the tarball.
         """
-        info("Looking for a way to retrieve the upstream tarball")
+        note("Looking for a way to retrieve the upstream tarball")
         if self.already_exists_in_target(target_dir):
-            info("Upstream tarball already exists in build directory, "
+            note("Upstream tarball already exists in build directory, "
                     "using that")
             return os.path.join(target_dir, self._tarball_name())
         if not self.already_exists_in_store():
@@ -417,7 +417,7 @@ class UpstreamProvider(object):
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_name())
         else:
-             info("Using the upstream tarball that is present in "
+             note("Using the upstream tarball that is present in "
                      "%s" % self.store_dir)
         assert self.provide_from_store_dir(target_dir)
         return os.path.join(target_dir, self._tarball_name())
