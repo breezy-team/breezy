@@ -493,24 +493,33 @@ class TestHooks(TestCase):
 
 class TestBranchOptions(TestCaseWithTransport):
 
-    def test_append_revisions_only(self):
-        """Ensure that BzrOptionValue raised on invalid settings"""
-        branch = self.make_branch('a')
-        config = branch.get_config()
-        self.assertEquals(None, config.get_user_option('append_revisions_only'))
-        self.assertFalse(branch._get_append_revisions_only())
-        config.set_user_option('append_revisions_only', 'False')
-        self.assertFalse(branch._get_append_revisions_only())
-        config.set_user_option('append_revisions_only', 'false')
-        self.assertFalse(branch._get_append_revisions_only())
-        config.set_user_option('append_revisions_only', 'True')
-        self.assertTrue(branch._get_append_revisions_only())
-        config.set_user_option('append_revisions_only', 'true')
-        self.assertTrue(branch._get_append_revisions_only())
+    def setUp(self):
+        super(TestBranchOptions, self).setUp()
+        self.branch = self.make_branch('.')
+        self.config = self.branch.get_config()
 
-        config.set_user_option('append_revisions_only', 'invalid')
+    def check_aro_is(self, expected_value, value=None):
+        if value is not None:
+            self.config.set_user_option('append_revisions_only', value)
+        self.assertEqual(expected_value,
+                         self.branch._get_append_revisions_only())
+
+    def test_valid_append_revisions_only(self):
+        """Ensure that BzrOptionValue raised on invalid settings"""
+        self.assertEquals(None,
+                          self.config.get_user_option('append_revisions_only'))
+        self.check_aro_is(False)
+        self.check_aro_is(False, 'False')
+        self.check_aro_is(False, 'false')
+        self.check_aro_is(True, 'True')
+        self.check_aro_is(True, 'true')
+
+    def test_invalid_append_revisions_only(self):
+        """Ensure that BzrOptionValue raised on invalid settings"""
+        self.config.set_user_option('append_revisions_only', 'invalid')
         self.assertRaises(errors.BadOptionValue,
-                          branch._get_append_revisions_only)
+                          self.branch._get_append_revisions_only)
+
 
 class TestPullResult(TestCase):
 
