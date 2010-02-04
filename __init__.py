@@ -21,6 +21,9 @@ This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.
 """
 
+from meta import *
+from meta import __version__
+
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option
 

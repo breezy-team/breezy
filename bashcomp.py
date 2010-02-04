@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Copyright (C) 2009, 2010  Martin von Gagern
 #
