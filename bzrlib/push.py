@@ -110,6 +110,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
+            # This shouldn't occur, but if it does the NoSuchFile error will be
+            # more informative than an UnboundLocalError for br_to.
+            raise
         except errors.TooManyRedirections:
             raise errors.BzrCommandError("Too many redirections trying "
                                          "to make %s." % location)
