@@ -80,4 +80,4 @@ with bzr.
 ----------------------------------------
 
 https://launchpad.net/bzr-bash-completion
-http://bazaar-vcs.org/
+http://bazaar.canonical.com/
