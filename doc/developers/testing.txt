@@ -39,6 +39,17 @@ on your project to a product *without* a test suite like Bazaar has?
 Running the Test Suite
 ======================
 
+To test all of Bazaar, just run::
+
+  bzr selftest 
+
+This should always pass, whether run from a source tree or an installed
+copy of Bazaar.  Please investigate and/or report any failures.
+
+
+Running particular tests
+------------------------
+
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example,
 to run just the blackbox tests, run::
@@ -86,6 +97,13 @@ This option can be combined with all the other selftest options including
 --load-list. The later is rarely used but allows to run a subset of a list of
 failing tests for example.
 
+Disabling plugins
+-----------------
+
+To test only the bzr core, ignoring any plugins you may have installed,
+use::
+
+  ./bzr --no-plugins selftest 
 
 Disabling crash reporting
 -------------------------
