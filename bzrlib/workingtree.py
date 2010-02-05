@@ -111,6 +111,9 @@ from bzrlib.symbol_versioning import (
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+# TODO: Modifying the conflict objects or their type is currently nearly
+# impossible as there is no clear relationship between the working tree format
+# and the conflict list file format.
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
