@@ -43,17 +43,12 @@ head="""\
 # Generated using the bzr-bash-completion plugin version %(version)s.
 # See https://launchpad.net/bzr-bash-completion for details.
 
-if shopt -q extglob; then
-	_tmp_unset_extglob=""
-else
-	_tmp_unset_extglob="shopt -u extglob"
-fi
-shopt -s extglob progcomp
+shopt -s progcomp
 """
 fun="""\
 %(function_name)s ()
 {
-	local cur cmds cmdIdx cmd cmdOpts opt helpCmds i globalOpts
+	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
@@ -81,14 +76,8 @@ fun="""\
 		return 0
 	fi
 
-	# if not typing an option, or if the previous option required a
-	# parameter, then fallback on ordinary filename expansion
-	helpCmds='help|--help|h|\?'
-	if [[ $cmd != @($helpCmds) ]] && [[ $cur != -* ]] ; then
-		return 0
-	fi
-
 	cmdOpts=
+	fixedWords=
 	case $cmd in
 %(cases)s\
 	*)
@@ -96,15 +85,20 @@ fun="""\
 		;;
 	esac
 
-	COMPREPLY=( $( compgen -W "$cmdOpts $globalOpts" -- $cur ) )
+	# if not typing an option, and if we don't know all the
+	# possible non-option arguments for the current command,
+	# then fallback on ordinary filename expansion
+	if [[ -z $fixedWords ]] && [[ $cur != -* ]] ; then
+		return 0
+	fi
+
+	COMPREPLY=( $( compgen -W "$cmdOpts $globalOpts $fixedWords" -- $cur ) )
 
 	return 0
 }
 """
 tail="""\
 complete -F %(function_name)s -o default bzr
-$_tmp_unset_extglob
-unset _tmp_unset_extglob
 """
 
 def wrap_container(list, parser):
@@ -163,6 +157,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
         switches = []
+        fixedWords = []
         for optname in sorted(cmd.options()):
             opt = opts[optname]
             optswitches = []
@@ -172,9 +167,11 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             opt.add_option(parser, opt.short_name())
             switches.extend(optswitches)
         if 'help' == cmdname or 'help' in cmd.aliases:
-            switches.extend(sorted(help_topics.topic_registry.keys()))
-            switches.extend(all_cmds)
+            fixedWords.extend(sorted(help_topics.topic_registry.keys()))
+            fixedWords.extend(all_cmds)
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
+        if fixedWords:
+            cases += "\t\tfixedWords='" + " ".join(fixedWords) + "'\n"
         cases += "\t\t;;\n"
     if function_only:
         template = fun
