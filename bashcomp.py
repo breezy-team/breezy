@@ -53,15 +53,30 @@ shopt -s extglob progcomp
 fun="""\
 %(function_name)s ()
 {
-	local cur cmds cmdOpts opt helpCmds optBase i globalOpts
+	local cur cmds cmdIdx cmd cmdOpts opt helpCmds i globalOpts
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	cmds='%(cmds)s'
-        globalOpts='%(global_options)s'
+	globalOpts='%(global_options)s'
 
-	if [[ $COMP_CWORD -eq 1 ]] ; then
+	# do ordinary expansion if we are anywhere after a -- argument
+	for ((i = 1; i < COMP_CWORD; ++i)); do
+		[[ ${COMP_WORDS[i]} == "--" ]] && return 0
+	done
+
+	# find the command; it's the first word not starting in -
+	cmd=
+	for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
+		if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
+			cmd=${COMP_WORDS[cmdIdx]}
+			break
+		fi
+	done
+
+	# complete command name if we are not already past the command
+	if [[ $COMP_CWORD -le cmdIdx ]] ; then
 		COMPREPLY=( $( compgen -W "$cmds $globalOpts" -- $cur ) )
 		return 0
 	fi
@@ -69,13 +84,12 @@ fun="""\
 	# if not typing an option, or if the previous option required a
 	# parameter, then fallback on ordinary filename expansion
 	helpCmds='help|--help|h|\?'
-	if [[ ${COMP_WORDS[1]} != @($helpCmds) ]] && \
-	   [[ "$cur" != -* ]] ; then
+	if [[ $cmd != @($helpCmds) ]] && [[ $cur != -* ]] ; then
 		return 0
 	fi
 
 	cmdOpts=
-	case ${COMP_WORDS[1]} in
+	case $cmd in
 %(cases)s\
 	*)
 		cmdOpts='--help -h'
