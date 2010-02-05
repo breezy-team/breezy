@@ -46,17 +46,10 @@ from bzrlib.branch import (
     )
 from bzrlib.bzrdir import (BzrDirMetaFormat1, BzrDirMeta1,
                            BzrDir, BzrDirFormat)
-from bzrlib.errors import (NotBranchError,
-                           UnknownFormatError,
-                           UnknownHook,
-                           UnsupportedFormatError,
-                           )
-
-from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
 
 
-class TestDefaultFormat(TestCase):
+class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
         # update this if you change the default branch format
@@ -85,7 +78,7 @@ class TestDefaultFormat(TestCase):
         self.assertEqual(old_format, BranchFormat.get_default_format())
 
 
-class TestBranchFormat5(TestCaseWithTransport):
+class TestBranchFormat5(tests.TestCaseWithTransport):
     """Tests specific to branch format 5"""
 
     def test_branch_format_5_uses_lockdir(self):
@@ -156,7 +149,7 @@ class SampleBranchFormat(BranchFormat):
         return "opened branch."
 
 
-class TestBzrBranchFormat(TestCaseWithTransport):
+class TestBzrBranchFormat(tests.TestCaseWithTransport):
     """Tests for the BzrBranchFormat facility."""
 
     def test_find_format(self):
@@ -174,14 +167,14 @@ class TestBzrBranchFormat(TestCaseWithTransport):
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        self.assertRaises(NotBranchError,
+        self.assertRaises(errors.NotBranchError,
                           BranchFormat.find_format,
                           dir)
 
     def test_find_format_unknown_format(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleBranchFormat().initialize(dir)
-        self.assertRaises(UnknownFormatError,
+        self.assertRaises(errors.UnknownFormatError,
                           BranchFormat.find_format,
                           dir)
 
@@ -194,10 +187,13 @@ class TestBzrBranchFormat(TestCaseWithTransport):
         # register a format for it.
         BranchFormat.register_format(format)
         # which branch.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, Branch.open, self.get_url())
+        self.assertRaises(errors.UnsupportedFormatError,
+                          Branch.open, self.get_url())
         self.make_branch_and_tree('foo')
         # but open_downlevel will work
-        self.assertEqual(format.open(dir), bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
+        self.assertEqual(
+            format.open(dir),
+            bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
         BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
@@ -309,7 +305,7 @@ class TestBranch67(object):
                          'locations.conf')
 
 
-class TestBranch6(TestBranch67, TestCaseWithTransport):
+class TestBranch6(TestBranch67, tests.TestCaseWithTransport):
 
     def get_class(self):
         return _mod_branch.BzrBranch6
@@ -330,7 +326,7 @@ class TestBranch6(TestBranch67, TestCaseWithTransport):
         self.assertRaises(errors.UnstackableBranchFormat, branch.get_stacked_on_url)
 
 
-class TestBranch7(TestBranch67, TestCaseWithTransport):
+class TestBranch7(TestBranch67, tests.TestCaseWithTransport):
 
     def get_class(self):
         return _mod_branch.BzrBranch7
@@ -380,13 +376,14 @@ class TestBranch7(TestBranch67, TestCaseWithTransport):
         self.assertTrue(branch.repository.has_revision(revid))
 
 
-class BzrBranch8(TestCaseWithTransport):
+class BzrBranch8(tests.TestCaseWithTransport):
 
     def make_branch(self, location, format=None):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('1.9')
             format.set_branch_format(_mod_branch.BzrBranchFormat8())
-        return TestCaseWithTransport.make_branch(self, location, format=format)
+        return tests.TestCaseWithTransport.make_branch(
+            self, location, format=format)
 
     def create_branch_with_reference(self):
         branch = self.make_branch('branch')
@@ -441,7 +438,7 @@ class BzrBranch8(TestCaseWithTransport):
         self.assertEqual(('path3', 'location3'),
                          branch.get_reference_info('file-id'))
 
-class TestBranchReference(TestCaseWithTransport):
+class TestBranchReference(tests.TestCaseWithTransport):
     """Tests for the branch reference facility."""
 
     def test_create_open_reference(self):
@@ -470,7 +467,7 @@ class TestBranchReference(TestCaseWithTransport):
             _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
 
 
-class TestHooks(TestCase):
+class TestHooks(tests.TestCase):
 
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
@@ -491,7 +488,7 @@ class TestHooks(TestCase):
             BranchHooks)
 
 
-class TestPullResult(TestCase):
+class TestPullResult(tests.TestCase):
 
     def test_pull_result_to_int(self):
         # to support old code, the pull result can be used as an int
@@ -547,11 +544,11 @@ class _ErrorFromUnlock(Exception):
     """Helper for TestRunWithWriteLockedTarget."""
 
 
-class TestRunWithWriteLockedTarget(TestCase):
+class TestRunWithWriteLockedTarget(tests.TestCase):
     """Tests for _run_with_write_locked_target."""
 
     def setUp(self):
-        TestCase.setUp(self)
+        tests.TestCase.setUp(self)
         self._calls = []
 
     def func_that_returns_ok(self):
