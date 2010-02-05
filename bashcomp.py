@@ -157,7 +157,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
         switches = []
-        fixedWords = []
+        fixedWords = None
         for optname in sorted(cmd.options()):
             opt = opts[optname]
             optswitches = []
@@ -167,11 +167,14 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             opt.add_option(parser, opt.short_name())
             switches.extend(optswitches)
         if 'help' == cmdname or 'help' in cmd.aliases:
-            fixedWords.extend(sorted(help_topics.topic_registry.keys()))
-            fixedWords.extend(all_cmds)
+            fixedWords = " ".join(sorted(help_topics.topic_registry.keys()))
+            fixedWords = '"$cmds %s"' % fixedWords
+
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
         if fixedWords:
-            cases += "\t\tfixedWords='" + " ".join(fixedWords) + "'\n"
+            if isinstance(fixedWords, list):
+                fixedWords = "'" + join(fixedWords) + "'";
+            cases += "\t\tfixedWords=" + fixedWords + "\n"
         cases += "\t\t;;\n"
     if function_only:
         template = fun
