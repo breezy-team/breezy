@@ -32,6 +32,15 @@ Bug Fixes
 * The new ``merge_file_content`` should now be ok with tests to avoid
   regressions.
   (Vincent Ladeuil, #515597)
+  
+Internals
+*********
+
+* Use ``bzrlib.cleanup`` rather than less robust ``try``/``finally``
+  blocks in several places in ``bzrlib.merge``.  This avoids masking prior
+  errors when errors like ``ImmortalPendingDeletion`` occur during cleanup
+  in ``do_merge``.
+  (Andrew Bennetts, #517275)
 
 bzr 2.1.0rc2
 ############
