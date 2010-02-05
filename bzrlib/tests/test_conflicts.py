@@ -174,6 +174,9 @@ class TestConflictStanzas(tests.TestCase):
                 self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
 
 
+# FIXME: The shell-like tests should be converted to real whitebox tests... or
+# moved to a blackbox module -- vila 20100205
+
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
 
