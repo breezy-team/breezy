@@ -200,7 +200,7 @@ if have_fcntl:
 
             self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
-            # at thisi point unlock() will be called, because self.f is set.
+            # at this point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
             _fcntl_WriteLock._open_locks.add(self.filename)
             try:
