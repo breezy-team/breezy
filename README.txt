@@ -47,7 +47,11 @@ To check out the current code from launchpad, use the following commands::
 
   mkdir -p ~/.bazaar/plugins
   cd ~/.bazaar/plugins
-  bzr co lp:bzr-bash-completion bash_completion
+  bzr checkout lp:bzr-bash-completion bash_completion
+
+To update such an installation, execute this command::
+
+  bzr update ~/.bazaar/plugins/bash_completion
 
 Installing using easy_install
 -----------------------------
@@ -56,6 +60,37 @@ The following command should install the latest release of the plugin
 on your system::
 
   easy_install bzr-bash-completion
+
+To use this method, you need to have `Easy Install`_ installed and
+also have write access to the required directories. So maybe you
+should execute this command as root or through sudo_. Or you want to
+`install to a different location`_.
+
+.. _Easy Install: http://peak.telecommunity.com/DevCenter/EasyInstall
+.. _sudo: http://linux.die.net/man/8/sudo
+.. _install to a different location:
+   http://peak.telecommunity.com/DevCenter/EasyInstall#non-root-installation
+
+Installing from tarball
+-----------------------
+
+If you have grabbed a source code tarball, or want to install from a
+bzr checkout in a different place than your bazaar plugins directory,
+then you should use the ``setup.py`` script shipped with the code::
+
+  ./setup.py install
+
+If you want to install the plugin only for your own user account, you
+might wish to pass the option ``--user`` or ``--home=$HOME`` to that
+command. For further information please read the manuals of distutils_
+as well as setuptools_ or distribute_, whatever is available on your
+system, or have a look at the command line help::
+
+  ./setup.py install --help
+
+.. _distutils: http://docs.python.org/install/index.html
+.. _setuptools: http://peak.telecommunity.com/DevCenter/setuptools
+.. _distribute: http://packages.python.org/distribute/setuptools.html
 
 -----
 Using
@@ -125,10 +160,11 @@ with bzr.
 References
 ----------
 
-Plugin homepage
-  https://launchpad.net/bzr-bash-completion
+Plugin homepages
+  | https://launchpad.net/bzr-bash-completion
+  | http://pypi.python.org/pypi/bzr-bash-completion
 Bazaar homepage
-  http://bazaar.canonical.com/
+  | http://bazaar.canonical.com/
 
 
 

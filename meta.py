@@ -17,9 +17,12 @@
 
 # http://doc.bazaar.canonical.com/developers/plugin-api.html#metadata-protocol
 # describes these variables, which have to be imported into setup.py.
-# Have a look at bzrlib._format_version_tuple for info about version 5-tuples.
 bzr_plugin_name = 'bash_completion'
 bzr_commands = [ 'bash-completion' ]
+
+# Have a look at bzrlib._format_version_tuple for info about version 5-tuples,
+# and at http://packages.python.org/distribute/setuptools.html#specifying-your-project-s-version
+# for information about how python versions do compare with setuptools
 bzr_plugin_version = (1, 0, 0, 'dev', 0)
 
 # http://doc.bazaar.canonical.com/developers/plugin-api.html#plugin-version

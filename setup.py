@@ -21,18 +21,20 @@ from distutils.core import setup
 from meta import *
 from meta import __version__
 
-# see http://docs.python.org/distutils/setupscript.html#meta-data
-# and http://docs.python.org/distutils/apiref.html
-# for a list of meta data to be included here.
 if __name__ == "__main__":
 
     readme=file('README.txt').read()
-    readme=readme[:readme.index('\n.. cut long_description here')]
+    readme=readme[readme.index('\n===') :
+                  readme.index('\n.. cut long_description here')]
 
+    # see http://docs.python.org/distutils/setupscript.html#meta-data
+    # and http://docs.python.org/distutils/apiref.html
+    # for a list of meta data to be included here.
     setup(
         name="bzr-bash-completion",
         version=__version__,
         description="Generate bash command line completion function for bzr",
+        keywords='bash bazaar bzr complete completion plugin shell vcs',
         long_description=readme,
         author="Martin von Gagern",
         author_email="Martin.vGagern@gmx.net",
