@@ -2697,11 +2697,12 @@ class BzrBranch8(BzrBranch5):
         value = self.get_config().get_user_option(name)
         if value is None:
             return False
-        append = ui.bool_from_string(value)
-        if append is not None:
-            return append
-        trace.warning('Value "%s" for append_revisions_only is not a boolean,'
-                      ' defaulting to True', value)
+        if value == 'True':
+            return True
+        if value == 'False':
+            return False
+        trace.warning('Value "%s" for append_revisions_only is neither True'
+                      ' nor False, defaulting to True', value)
         return True
 
     @needs_write_lock

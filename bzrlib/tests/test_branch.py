@@ -510,21 +510,33 @@ class TestBranchOptions(TestCaseWithTransport):
                           self.config.get_user_option('append_revisions_only'))
         self.check_aro_is(False)
         self.check_aro_is(False, 'False')
-        self.check_aro_is(False, 'false')
         self.check_aro_is(True, 'True')
-        self.check_aro_is(True, 'true')
 
     def test_invalid_append_revisions_only(self):
-        """Ensure that BzrOptionValue raised on invalid settings"""
+        """Ensure warning is noted on invalid settings"""
         self.config.set_user_option('append_revisions_only', 'invalid')
         warnings = []
         def warning(*args):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
+        self.check_aro_is(True, 'false')
+        self.assertEqual(
+            'Value "false" for append_revisions_only is neither True'
+            ' nor False, defaulting to True',
+            warnings[0])
+
+        warnings = []
+        self.check_aro_is(True, 'true')
+        self.assertEqual(
+            'Value "true" for append_revisions_only is neither True'
+            ' nor False, defaulting to True',
+            warnings[0])
+
+        warnings = []
         self.check_aro_is(True, 'not-a-bool')
         self.assertEqual(
-            'Value "not-a-bool" for append_revisions_only is not a boolean,'
-            ' defaulting to True',
+            'Value "not-a-bool" for append_revisions_only is neither True'
+            ' nor False, defaulting to True',
             warnings[0])
 
 

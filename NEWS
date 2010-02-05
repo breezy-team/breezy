@@ -23,9 +23,10 @@ Bug Fixes
 Improvements
 ************
 
-* The 'append_revisions_only' option value is now case-insensitive.
-  When unset, the option defaults to False for backward compatibility.
-  If the value cannot be interpreted as a boolean, a warning is emitted
+* The interpretation of 'append_revisions_only' has been made more
+  strict, allowing for only 'True' and 'False'.  When unset, the
+  option defaults to False for backward compatibility.  If the value
+  cannot be interpreted as a boolean, a warning is emitted
   and, erring on the side of caution, the option defaults to True.
   (Brian de Alwis)
 
