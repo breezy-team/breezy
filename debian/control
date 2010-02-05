@@ -12,7 +12,7 @@ Dm-Upload-Allowed: yes
 
 Package: bzr
 Architecture: any
-Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree, python-configobj, ${misc:Depends}
 Recommends: bzrtools, python-paramiko, ca-certificates
 Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1), bzr-doc
 XB-Python-Version: ${python:Versions}

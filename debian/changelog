@@ -3,8 +3,9 @@ bzr (2.1.0~rc2-1) experimental; urgency=low
   * New upstream release.
   * Switch to dpkg-source 3.0 (quilt) format.
   * Bump standards version to 3.8.4.
+  * Remove embedded copy of python-configobj. Closes: #555336
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 05 Feb 2010 13:22:18 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 05 Feb 2010 13:34:35 +0100
 
 bzr (2.0.4-1) unstable; urgency=low
 
