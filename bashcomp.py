@@ -25,6 +25,7 @@ from bzrlib import (
     option,
     plugin,
 )
+import re
 
 head="""\
 # Programmable completion for the Bazaar-NG bzr command under bash. Source
@@ -52,15 +53,16 @@ shopt -s extglob progcomp
 fun="""\
 %(function_name)s ()
 {
-	local cur cmds cmdOpts opt helpCmds optBase i
+	local cur cmds cmdOpts opt helpCmds optBase i globalOpts
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	cmds='%(cmds)s'
+        globalOpts='%(global_options)s'
 
 	if [[ $COMP_CWORD -eq 1 ]] ; then
-		COMPREPLY=( $( compgen -W "$cmds" -- $cur ) )
+		COMPREPLY=( $( compgen -W "$cmds $globalOpts" -- $cur ) )
 		return 0
 	fi
 
@@ -80,7 +82,7 @@ fun="""\
 		;;
 	esac
 
-	COMPREPLY=( $( compgen -W "$cmdOpts" -- $cur ) )
+	COMPREPLY=( $( compgen -W "$cmdOpts $globalOpts" -- $cur ) )
 
 	return 0
 }
@@ -108,6 +110,15 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
     cmds = []
     cases = ""
     reqarg = {}
+
+    re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
+    help_text = help_topics.topic_registry.get_detail('global-options')
+    global_options = set()
+    for long, short in re_switch.findall(help_text):
+        global_options.add(long)
+        if short:
+            global_options.add(short)
+    global_options = " ".join(sorted(global_options))
 
     user_aliases = {} # dict from cmd name to set of user-defined alias names
     for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
@@ -158,7 +169,8 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
     out.write(template % {"cmds": " ".join(cmds),
                           "cases": cases,
                           "function_name": function_name,
-                          "version": __version__
+                          "version": __version__,
+                          "global_options": global_options,
                           })
 
 if __name__ == '__main__':
