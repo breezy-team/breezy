@@ -3562,7 +3562,7 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 # appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
 test_prefix_alias_registry.register('bzrlib', 'bzrlib')
 
-# Obvious higest levels prefixes, feel free to add your own via a plugin
+# Obvious highest levels prefixes, feel free to add your own via a plugin
 test_prefix_alias_registry.register('bd', 'bzrlib.doc')
 test_prefix_alias_registry.register('bu', 'bzrlib.utils')
 test_prefix_alias_registry.register('bt', 'bzrlib.tests')
