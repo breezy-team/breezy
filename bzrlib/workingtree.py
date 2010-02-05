@@ -2267,10 +2267,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
-            update_dash_r = False
             revision = self.branch.last_revision()
         else:
-            update_dash_r = True
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
         
