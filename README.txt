@@ -23,8 +23,8 @@ you want.
 ----------------------------------------
 2. Using as a plugin
 
-This is the preferred method of generating initializing the
-completion, as it will ensure proper bzr initialization.
+This is the preferred method of generating the completion function, as
+it will ensure proper bzr initialization.
 
   eval "`bzr bash-completion`"
 
