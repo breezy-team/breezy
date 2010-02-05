@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from meta import __version__
 from bzrlib import (
     commands,
     config,
@@ -37,6 +38,9 @@ head="""\
 # Based originally on the svn bash completition script.
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
+
+# Generated using the bzr-bash-completion plugin version %(version)s.
+# See https://launchpad.net/bzr-bash-completion for details.
 
 if shopt -q extglob; then
 	_tmp_unset_extglob=""
@@ -154,6 +158,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
     out.write(template % {"cmds": " ".join(cmds),
                           "cases": cases,
                           "function_name": function_name,
+                          "version": __version__
                           })
 
 if __name__ == '__main__':
