@@ -52,6 +52,7 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
+from bzrlib.transport.fakevfat import FakeVFATServer
 from bzrlib.upgrade import upgrade
 from bzrlib.workingtree import WorkingTree
 
@@ -76,11 +77,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertSubset([getattr(repo._format, attribute)], allowed_values)
 
     def test_attribute__fetch_order(self):
-        """Test the the _fetch_order attribute."""
+        """Test the _fetch_order attribute."""
         self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
-        """Test the the _fetch_uses_deltas attribute."""
+        """Test the _fetch_uses_deltas attribute."""
         self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_fast_deltas(self):
@@ -88,7 +89,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertFormatAttribute('fast_deltas', (True, False))
 
     def test_attribute__fetch_reconcile(self):
-        """Test the the _fetch_reconcile attribute."""
+        """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
 
     def test_attribute_format_pack_compresses(self):
@@ -603,11 +604,11 @@ class TestRepository(TestCaseWithRepository):
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            return # local conversion to/from RemoteObjects is irrelevant.
         if self.repository_format.get_format_description() \
             == "Repository format 4":
             raise TestSkipped('Cannot convert format-4 to itself')
-        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
-            return # local conversion to/from RemoteObjects is irrelevant.
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
@@ -825,9 +826,8 @@ class TestRepository(TestCaseWithRepository):
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
         smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
+        self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
         remote_bzrdir = bzrdir.BzrDir.open_from_transport(remote_transport)
         remote_repo = remote_bzrdir.open_repository()
         return remote_repo
@@ -898,14 +898,6 @@ class TestRepository(TestCaseWithRepository):
                 "Cannot lock_read old formats like AllInOne over HPSS.")
         local_repo = local_bzrdir.open_repository()
         self.assertEqual(remote_backing_repo._format, local_repo._format)
-
-    # XXX: this helper probably belongs on TestCaseWithTransport
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        smart_server.setUp(self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
-        self.addCleanup(smart_server.tearDown)
-        return remote_transport
 
     def test_clone_to_hpss(self):
         pre_metadir_formats = [RepositoryFormat5(), RepositoryFormat6()]
@@ -1304,6 +1296,7 @@ class TestEscaping(TestCaseWithTransport):
         from bzrlib.remote import RemoteRepositoryFormat
         if isinstance(self.repository_format, RemoteRepositoryFormat):
             return
+        self.transport_server = FakeVFATServer
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         # this makes a default format repository always, which is wrong:
@@ -1315,7 +1308,7 @@ class TestEscaping(TestCaseWithTransport):
         wt.add(['foo'], [FOO_ID])
         wt.commit('this is my new commit', rev_id=REV_ID)
         # now access over vfat; should be safe
-        branch = bzrdir.BzrDir.open('vfat+' + self.get_url('repo')).open_branch()
+        branch = bzrdir.BzrDir.open(self.get_url('repo')).open_branch()
         revtree = branch.repository.revision_tree(REV_ID)
         revtree.lock_read()
         self.addCleanup(revtree.unlock)

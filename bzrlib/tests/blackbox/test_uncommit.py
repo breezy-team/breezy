@@ -233,14 +233,14 @@ class TestUncommit(TestCaseWithTransport):
         tree3.commit('unchanged', rev_id='c3')
 
         wt.merge_from_branch(tree2.branch)
-        wt.merge_from_branch(tree3.branch)
+        wt.merge_from_branch(tree3.branch, force=True)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
 
         wt.merge_from_branch(tree3.branch)
-        wt.merge_from_branch(tree2.branch)
+        wt.merge_from_branch(tree2.branch, force=True)
         wt.commit('merge b4, c4', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())

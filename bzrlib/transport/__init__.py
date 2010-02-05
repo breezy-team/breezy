@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -90,8 +90,10 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is no handler registered for it.
+    # Add chroot and pathfilter directly, because there is no handler
+    # registered for it.
     modules.add('bzrlib.transport.chroot')
+    modules.add('bzrlib.transport.pathfilter')
     result = list(modules)
     result.sort()
     return result
@@ -106,7 +108,7 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multple protcol ( like the ftp
+    a) a single provider can support multiple protocols ( like the ftp
     provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
     protocol which is supported by both the urllib and pycurl provider )
@@ -1664,16 +1666,16 @@ class Server(object):
     The Server interface provides a server for a given transport. We use
     these servers as loopback testing tools. For any given transport the
     Servers it provides must either allow writing, or serve the contents
-    of os.getcwdu() at the time setUp is called.
+    of os.getcwdu() at the time start_server is called.
 
     Note that these are real servers - they must implement all the things
     that we want bzr transports to take advantage of.
     """
 
-    def setUp(self):
+    def start_server(self):
         """Setup the server to service requests."""
 
-    def tearDown(self):
+    def stop_server(self):
         """Remove the server and cleanup any resources it owns."""
 
     def get_url(self):
@@ -1683,7 +1685,7 @@ class Server(object):
         a database like svn, or a memory only transport, it should return
         a connection to a newly established resource for this Server.
         Otherwise it should return a url that will provide access to the path
-        that was os.getcwdu() when setUp() was called.
+        that was os.getcwdu() when start_server() was called.
 
         Subsequent calls will return the same resource.
         """

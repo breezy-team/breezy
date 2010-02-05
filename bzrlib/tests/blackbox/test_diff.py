@@ -21,11 +21,10 @@
 import os
 import re
 
-import bzrlib
-from bzrlib import workingtree
-from bzrlib.branch import Branch
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import (
+    tests,
+    workingtree,
+    )
 
 
 def subst_dates(string):
@@ -34,7 +33,7 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-class DiffBase(ExternalBase):
+class DiffBase(tests.TestCaseWithTransport):
     """Base class with common setup method"""
 
     def make_example_branch(self):
@@ -355,6 +354,7 @@ class TestExternalDiff(DiffBase):
 
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
+        self.disable_missing_extensions_warning()
         # We have to use run_bzr_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).
@@ -366,7 +366,7 @@ class TestExternalDiff(DiffBase):
                                            universal_newlines=True,
                                            retcode=None)
         if 'Diff is not installed on this machine' in err:
-            raise TestSkipped("No external 'diff' is available")
+            raise tests.TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()

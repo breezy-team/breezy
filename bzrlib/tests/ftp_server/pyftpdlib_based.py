@@ -50,14 +50,15 @@ class BzrConformingFS(ftpserver.AbstractedFS):
 
     def listdir(self, path):
         """List the content of a directory."""
-        # FIXME: need tests with unicode paths
         return [osutils.safe_utf8(s) for s in os.listdir(path)]
 
     def fs2ftp(self, fspath):
-        p = ftpserver.AbstractedFS.fs2ftp(self, fspath)
-        # FIXME: need tests with unicode paths
+        p = ftpserver.AbstractedFS.fs2ftp(self, osutils.safe_unicode(fspath))
         return osutils.safe_utf8(p)
 
+    def ftp2fs(self, ftppath):
+        p = osutils.safe_unicode(ftppath)
+        return ftpserver.AbstractedFS.ftp2fs(self, p)
 
 class BzrConformingFTPHandler(ftpserver.FTPHandler):
 
@@ -84,7 +85,7 @@ class BzrConformingFTPHandler(ftpserver.FTPHandler):
         line = self.fs.fs2ftp(path)
         if self.fs.isfile(self.fs.realpath(path)):
             why = "Not a directory: %s" % line
-            self.log('FAIL SIZE "%s". %s.' % (line, why))
+            self.log('FAIL NLST "%s". %s.' % (line, why))
             self.respond("550 %s."  %why)
         else:
             ftpserver.FTPHandler.ftp_NLST(self, path)
@@ -156,7 +157,7 @@ class FTPTestServer(transport.Server):
         """This is used by ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self, vfs_server=None):
+    def start_server(self, vfs_server=None):
         from bzrlib.transport.local import LocalURLServer
         if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
             raise AssertionError(
@@ -180,15 +181,14 @@ class FTPTestServer(transport.Server):
         self._port = self._ftp_server.socket.getsockname()[1]
         self._ftpd_starting = threading.Lock()
         self._ftpd_starting.acquire() # So it can be released by the server
-        self._ftpd_thread = threading.Thread(
-                target=self._run_server,)
+        self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
+        """See bzrlib.transport.Server.stop_server."""
         # Tell the server to stop, but also close the server socket for tests
         # that start the server but never initiate a connection. Closing the
         # socket should be done first though, to avoid further connections.
@@ -197,12 +197,16 @@ class FTPTestServer(transport.Server):
         self._ftpd_thread.join()
 
     def _run_server(self):
-        """Run the server until tearDown is called, shut it down properly then.
+        """Run the server until stop_server is called, shut it down properly then.
         """
         self._ftpd_running = True
         self._ftpd_starting.release()
         while self._ftpd_running:
-            self._ftp_server.serve_forever(timeout=0.1, count=1)
+            try:
+                self._ftp_server.serve_forever(timeout=0.1, count=1)
+            except select.error, e:
+                if e.args[0] != errno.EBADF:
+                    raise
         self._ftp_server.close_all(ignore_all=True)
 
     def add_user(self, user, password):

@@ -46,8 +46,8 @@ class Convert(object):
             branch = self.bzrdir.open_branch()
             if branch.bzrdir.root_transport.base != \
                 self.bzrdir.root_transport.base:
-                self.pb.note("This is a checkout. The branch (%s) needs to be "
-                             "upgraded separately.",
+                ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
+                             "upgraded separately." %
                              branch.bzrdir.root_transport.base)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
@@ -72,12 +72,13 @@ class Convert(object):
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
         self.bzrdir.check_conversion_target(format)
-        self.pb.note('starting upgrade of %s', self.transport.base)
+        ui.ui_factory.note('starting upgrade of %s' % self.transport.base)
+
         self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(format):
             converter = self.bzrdir._format.get_converter(format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
-        self.pb.note("finished")
+        ui.ui_factory.note("finished")
 
 
 def upgrade(url, format=None):

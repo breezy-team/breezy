@@ -1,5 +1,5 @@
-Conflicts Types
-===============
+Conflict Types
+==============
 
 Some operations, like merge, revert and pull, modify the contents of your
 working tree.  These modifications are programmatically generated, and so they
@@ -78,6 +78,29 @@ To resolve this, use "bzr mv" to rename the file back to its normal name, and
 combine the changes manually.  When you are satisfied, run "bzr resolve
 FILE".  Bazaar cannot auto-detect when conflicts of this kind have been
 resolved.
+
+Tag conflicts
+-------------
+
+Typical message::
+
+  Conflicting tags:
+      version-0.1
+
+When pulling from or pushing to another branch, Bazaar informs you about tags
+that conflict between the two branches; that is the same tag points to two
+different revisions.  You need not resolve these conflicts, but subsequent
+uses of pull or push will result in the same message.
+
+To resolve the conflict, you must apply the correct tags to either the target
+branch or the source branch as appropriate.  Use "bzr tags --show-ids -d
+SOURCE_URL" to see the tags in the source branch.  If you want to make the
+target branch's tags match the source branch, then in the target branch do 
+``bzr tag --force -r revid:REVISION_ID CONFLICTING_TAG`` for each of the
+CONFLICTING_TAGs, where REVISION_ID comes from the list of tags in the source
+branch.  You need not call "bzr resolve" after doing this.  To resolve in favor of the target branch, you need to similarly use ``tag --force`` in the source
+branch.  (Note that pulling or pushing using --overwrite will overwrite all
+tags as well.)
 
 Duplicate paths
 ---------------
@@ -181,7 +204,7 @@ Typical message::
   Conflict: FILE.new is not a directory, but has files in it.
   Created directory.
 
-This happens when one side has added files to a directory, and the othe side
+This happens when one side has added files to a directory, and the other side
 has changed the directory into a file or symlink.  For example::
 
   $ bzr init

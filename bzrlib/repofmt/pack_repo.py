@@ -54,7 +54,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-from bzrlib.decorators import needs_write_lock
+from bzrlib.decorators import needs_write_lock, only_raises
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
@@ -73,6 +73,7 @@ from bzrlib.repository import (
     )
 from bzrlib.trace import (
     mutter,
+    note,
     warning,
     )
 
@@ -1116,7 +1117,7 @@ class Packer(object):
             iterator is a tuple with:
             index, readv_vector, node_vector. readv_vector is a list ready to
             hand to the transport readv method, and node_vector is a list of
-            (key, eol_flag, references) for the the node retrieved by the
+            (key, eol_flag, references) for the node retrieved by the
             matching readv_vector.
         """
         # group by pack so we do one readv per pack
@@ -1422,6 +1423,9 @@ class RepositoryPackCollection(object):
         # resumed packs
         self._resumed_packs = []
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.repo)
+
     def add_pack_to_memory(self, pack):
         """Make a Pack object available to the repository to satisfy queries.
 
@@ -1541,10 +1545,11 @@ class RepositoryPackCollection(object):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        result = self._save_pack_names(clear_obsolete_packs=True)
-        # Move the old packs out of the way now they are no longer referenced.
-        for revision_count, packs in pack_operations:
-            self._obsolete_packs(packs)
+        to_be_obsoleted = []
+        for _, packs in pack_operations:
+            to_be_obsoleted.extend(packs)
+        result = self._save_pack_names(clear_obsolete_packs=True,
+                                       obsolete_packs=to_be_obsoleted)
         return result
 
     def _flush_new_pack(self):
@@ -1784,8 +1789,13 @@ class RepositoryPackCollection(object):
         :param return: None.
         """
         for pack in packs:
-            pack.pack_transport.rename(pack.file_name(),
-                '../obsolete_packs/' + pack.file_name())
+            try:
+                pack.pack_transport.rename(pack.file_name(),
+                    '../obsolete_packs/' + pack.file_name())
+            except (errors.PathError, errors.TransportError), e:
+                # TODO: Should these be warnings or mutters?
+                mutter("couldn't rename obsolete pack, skipping it:\n%s"
+                       % (e,))
             # TODO: Probably needs to know all possible indices for this pack
             # - or maybe list the directory and move all indices matching this
             # name whether we recognize it or not?
@@ -1793,8 +1803,12 @@ class RepositoryPackCollection(object):
             if self.chk_index is not None:
                 suffixes.append('.cix')
             for suffix in suffixes:
-                self._index_transport.rename(pack.name + suffix,
-                    '../obsolete_packs/' + pack.name + suffix)
+                try:
+                    self._index_transport.rename(pack.name + suffix,
+                        '../obsolete_packs/' + pack.name + suffix)
+                except (errors.PathError, errors.TransportError), e:
+                    mutter("couldn't rename obsolete index, skipping it:\n%s"
+                           % (e,))
 
     def pack_distribution(self, total_revisions):
         """Generate a list of the number of revisions to put in each pack.
@@ -1872,6 +1886,7 @@ class RepositoryPackCollection(object):
         disk_nodes = set()
         for index, key, value in self._iter_disk_pack_index():
             disk_nodes.add((key, value))
+        orig_disk_nodes = set(disk_nodes)
 
         # do a two-way diff against our original content
         current_nodes = set()
@@ -1890,7 +1905,7 @@ class RepositoryPackCollection(object):
         disk_nodes.difference_update(deleted_nodes)
         disk_nodes.update(new_nodes)
 
-        return disk_nodes, deleted_nodes, new_nodes
+        return disk_nodes, deleted_nodes, new_nodes, orig_disk_nodes
 
     def _syncronize_pack_names_from_disk_nodes(self, disk_nodes):
         """Given the correct set of pack files, update our saved info.
@@ -1936,7 +1951,7 @@ class RepositoryPackCollection(object):
                 added.append(name)
         return removed, added, modified
 
-    def _save_pack_names(self, clear_obsolete_packs=False):
+    def _save_pack_names(self, clear_obsolete_packs=False, obsolete_packs=None):
         """Save the list of packs.
 
         This will take out the mutex around the pack names list for the
@@ -1946,12 +1961,16 @@ class RepositoryPackCollection(object):
 
         :param clear_obsolete_packs: If True, clear out the contents of the
             obsolete_packs directory.
+        :param obsolete_packs: Packs that are obsolete once the new pack-names
+            file has been written.
         :return: A list of the names saved that were not previously on disk.
         """
+        already_obsolete = []
         self.lock_names()
         try:
             builder = self._index_builder_class()
-            disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+            (disk_nodes, deleted_nodes, new_nodes,
+             orig_disk_nodes) = self._diff_pack_names()
             # TODO: handle same-name, index-size-changes here -
             # e.g. use the value from disk, not ours, *unless* we're the one
             # changing it.
@@ -1959,14 +1978,25 @@ class RepositoryPackCollection(object):
                 builder.add_node(key, value)
             self.transport.put_file('pack-names', builder.finish(),
                 mode=self.repo.bzrdir._get_file_mode())
-            # move the baseline forward
             self._packs_at_load = disk_nodes
             if clear_obsolete_packs:
-                self._clear_obsolete_packs()
+                to_preserve = None
+                if obsolete_packs:
+                    to_preserve = set([o.name for o in obsolete_packs])
+                already_obsolete = self._clear_obsolete_packs(to_preserve)
         finally:
             self._unlock_names()
         # synchronise the memory packs list with what we just wrote:
         self._syncronize_pack_names_from_disk_nodes(disk_nodes)
+        if obsolete_packs:
+            # TODO: We could add one more condition here. "if o.name not in
+            #       orig_disk_nodes and o != the new_pack we haven't written to
+            #       disk yet. However, the new pack object is not easily
+            #       accessible here (it would have to be passed through the
+            #       autopacking code, etc.)
+            obsolete_packs = [o for o in obsolete_packs
+                              if o.name not in already_obsolete]
+            self._obsolete_packs(obsolete_packs)
         return [new_node[0][0] for new_node in new_nodes]
 
     def reload_pack_names(self):
@@ -1987,13 +2017,12 @@ class RepositoryPackCollection(object):
         if first_read:
             return True
         # out the new value.
-        disk_nodes, deleted_nodes, new_nodes = self._diff_pack_names()
+        (disk_nodes, deleted_nodes, new_nodes,
+         orig_disk_nodes) = self._diff_pack_names()
         # _packs_at_load is meant to be the explicit list of names in
         # 'pack-names' at then start. As such, it should not contain any
         # pending names that haven't been written out yet.
-        pack_names_nodes = disk_nodes.difference(new_nodes)
-        pack_names_nodes.update(deleted_nodes)
-        self._packs_at_load = pack_names_nodes
+        self._packs_at_load = orig_disk_nodes
         (removed, added,
          modified) = self._syncronize_pack_names_from_disk_nodes(disk_nodes)
         if removed or added or modified:
@@ -2008,15 +2037,28 @@ class RepositoryPackCollection(object):
             raise
         raise errors.RetryAutopack(self.repo, False, sys.exc_info())
 
-    def _clear_obsolete_packs(self):
+    def _clear_obsolete_packs(self, preserve=None):
         """Delete everything from the obsolete-packs directory.
+
+        :return: A list of pack identifiers (the filename without '.pack') that
+            were found in obsolete_packs.
         """
+        found = []
         obsolete_pack_transport = self.transport.clone('obsolete_packs')
+        if preserve is None:
+            preserve = set()
         for filename in obsolete_pack_transport.list_dir('.'):
+            name, ext = osutils.splitext(filename)
+            if ext == '.pack':
+                found.append(name)
+            if name in preserve:
+                continue
             try:
                 obsolete_pack_transport.delete(filename)
             except (errors.PathError, errors.TransportError), e:
-                warning("couldn't delete obsolete pack, skipping it:\n%s" % (e,))
+                warning("couldn't delete obsolete pack, skipping it:\n%s"
+                        % (e,))
+        return found
 
     def _start_write_group(self):
         # Do not permit preparation for writing if we're not in a 'write lock'.
@@ -2238,16 +2280,10 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         # This class isn't deprecated, but one sub-format is
         if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            from bzrlib import repository
-            if repository._deprecation_warning_done:
-                return
-            repository._deprecation_warning_done = True
-            warning("Format %s for %s is deprecated - please use"
-                    " 'bzr upgrade --1.6.1-rich-root'"
-                    % (self._format, self.bzrdir.transport.base))
+            super(KnitPackRepository, self)._warn_if_deprecated(branch)
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
@@ -2311,6 +2347,9 @@ class KnitPackRepository(KnitRepository):
         if self._write_lock_count == 1:
             self._transaction = transactions.WriteTransaction()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'w':
+                note('%r was write locked again', self)
+            self._prev_lock = 'w'
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -2323,6 +2362,9 @@ class KnitPackRepository(KnitRepository):
         else:
             self.control_files.lock_read()
         if not locked:
+            if 'relock' in debug.debug_flags and self._prev_lock == 'r':
+                note('%r was read locked again', self)
+            self._prev_lock = 'r'
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -2356,6 +2398,7 @@ class KnitPackRepository(KnitRepository):
         packer = ReconcilePacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()

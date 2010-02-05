@@ -37,16 +37,17 @@ def load_tests(standard_tests, module, loader):
         ('python-nocache', {'module': _known_graph_py, 'do_cache': False}),
     ]
     suite = loader.suiteClass()
-    if CompiledKnownGraphFeature.available():
-        from bzrlib import _known_graph_pyx
-        scenarios.append(('C', {'module': _known_graph_pyx, 'do_cache': True}))
-        caching_scenarios.append(('C-nocache',
-                          {'module': _known_graph_pyx, 'do_cache': False}))
+    if compiled_known_graph_feature.available():
+        scenarios.append(('C', {'module': compiled_known_graph_feature.module,
+                                'do_cache': True}))
+        caching_scenarios.append(
+            ('C-nocache', {'module': compiled_known_graph_feature.module,
+                           'do_cache': False}))
     else:
         # the compiled module isn't available, so we add a failing test
         class FailWithoutFeature(tests.TestCase):
             def test_fail(self):
-                self.requireFeature(CompiledKnownGraphFeature)
+                self.requireFeature(compiled_known_graph_feature)
         suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
     # TestKnownGraphHeads needs to be permutated with and without caching.
     # All other TestKnownGraph tests only need to be tested across module
@@ -58,19 +59,8 @@ def load_tests(standard_tests, module, loader):
     return suite
 
 
-class _CompiledKnownGraphFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._known_graph_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._known_graph_pyx'
-
-CompiledKnownGraphFeature = _CompiledKnownGraphFeature()
+compiled_known_graph_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._known_graph_pyx')
 
 
 #  a
@@ -99,12 +89,27 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
     def test_children_ancestry1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
-        self.assertEqual(['rev1'], graph._nodes[NULL_REVISION].child_keys)
+        self.assertEqual(['rev1'], graph.get_child_keys(NULL_REVISION))
         self.assertEqual(['rev2a', 'rev2b'],
-                         sorted(graph._nodes['rev1'].child_keys))
-        self.assertEqual(['rev3'], sorted(graph._nodes['rev2a'].child_keys))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev3'].child_keys))
-        self.assertEqual(['rev4'], sorted(graph._nodes['rev2b'].child_keys))
+                         sorted(graph.get_child_keys('rev1')))
+        self.assertEqual(['rev3'], graph.get_child_keys('rev2a'))
+        self.assertEqual(['rev4'], graph.get_child_keys('rev3'))
+        self.assertEqual(['rev4'], graph.get_child_keys('rev2b'))
+        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
+
+    def test_parent_ancestry1(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertEqual([NULL_REVISION], graph.get_parent_keys('rev1'))
+        self.assertEqual(['rev1'], graph.get_parent_keys('rev2a'))
+        self.assertEqual(['rev1'], graph.get_parent_keys('rev2b'))
+        self.assertEqual(['rev2a'], graph.get_parent_keys('rev3'))
+        self.assertEqual(['rev2b', 'rev3'],
+                         sorted(graph.get_parent_keys('rev4')))
+        self.assertRaises(KeyError, graph.get_child_keys, 'not_in_graph')
+    
+    def test_parent_with_ghost(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        self.assertEqual(None, graph.get_parent_keys('g'))
 
     def test_gdfo_ancestry_1(self):
         graph = self.make_known_graph(test_graph.ancestry_1)
@@ -138,6 +143,73 @@ class TestKnownGraph(TestCaseWithKnownGraph):
         self.assertGDFO(graph, 'd', 4)
         self.assertGDFO(graph, 'a', 5)
         self.assertGDFO(graph, 'c', 5)
+
+    def test_add_existing_node(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        # Add a node that already exists with identical content
+        # This is a 'no-op'
+        self.assertGDFO(graph, 'rev4', 5)
+        graph.add_node('rev4', ['rev3', 'rev2b'])
+        self.assertGDFO(graph, 'rev4', 5)
+        # This also works if we use a tuple rather than a list
+        graph.add_node('rev4', ('rev3', 'rev2b'))
+
+    def test_add_existing_node_mismatched_parents(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertRaises(ValueError, graph.add_node, 'rev4',
+                          ['rev2b', 'rev3'])
+
+    def test_add_node_with_ghost_parent(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', ['rev2b', 'revGhost'])
+        self.assertGDFO(graph, 'rev5', 4)
+        self.assertGDFO(graph, 'revGhost', 1)
+
+    def test_add_new_root(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', [])
+        self.assertGDFO(graph, 'rev5', 1)
+
+    def test_add_with_all_ghost_parents(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        graph.add_node('rev5', ['ghost'])
+        self.assertGDFO(graph, 'rev5', 2)
+        self.assertGDFO(graph, 'ghost', 1)
+
+    def test_gdfo_after_add_node(self):
+        graph = self.make_known_graph(test_graph.ancestry_1)
+        self.assertEqual([], graph.get_child_keys('rev4'))
+        graph.add_node('rev5', ['rev4'])
+        self.assertEqual(['rev4'], graph.get_parent_keys('rev5'))
+        self.assertEqual(['rev5'], graph.get_child_keys('rev4'))
+        self.assertEqual([], graph.get_child_keys('rev5'))
+        self.assertGDFO(graph, 'rev5', 6)
+        graph.add_node('rev6', ['rev2b'])
+        graph.add_node('rev7', ['rev6'])
+        graph.add_node('rev8', ['rev7', 'rev5'])
+        self.assertGDFO(graph, 'rev5', 6)
+        self.assertGDFO(graph, 'rev6', 4)
+        self.assertGDFO(graph, 'rev7', 5)
+        self.assertGDFO(graph, 'rev8', 7)
+
+    def test_fill_in_ghost(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        # Add in a couple nodes and then fill in the 'ghost' so that it should
+        # cause renumbering of children nodes
+        graph.add_node('x', [])
+        graph.add_node('y', ['x'])
+        graph.add_node('z', ['y'])
+        graph.add_node('g', ['z'])
+        self.assertGDFO(graph, 'f', 2)
+        self.assertGDFO(graph, 'e', 3)
+        self.assertGDFO(graph, 'x', 1)
+        self.assertGDFO(graph, 'y', 2)
+        self.assertGDFO(graph, 'z', 3)
+        self.assertGDFO(graph, 'g', 4)
+        self.assertGDFO(graph, 'b', 4)
+        self.assertGDFO(graph, 'd', 5)
+        self.assertGDFO(graph, 'a', 5)
+        self.assertGDFO(graph, 'c', 6)
 
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
@@ -244,6 +316,14 @@ class TestKnownGraphHeads(TestCaseWithKnownGraph):
         self.assertEqual(set(['c']), graph.heads(['c', 'b', 'd', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'e', 'g']))
         self.assertEqual(set(['a', 'c']), graph.heads(['a', 'c', 'f']))
+
+    def test_filling_in_ghosts_resets_head_cache(self):
+        graph = self.make_known_graph(test_graph.with_ghost)
+        self.assertEqual(set(['e', 'g']), graph.heads(['e', 'g']))
+        # 'g' is filled in, and decends from 'e', so the heads result is now
+        # different
+        graph.add_node('g', ['e'])
+        self.assertEqual(set(['g']), graph.heads(['e', 'g']))
 
 
 class TestKnownGraphTopoSort(TestCaseWithKnownGraph):

@@ -1,0 +1,7 @@
+A plugin for merging bzr's NEWS file.
+
+This plugin is activated via configuration variables, see 'bzr help news_merge'.
+
+This hook can resolve conflicts where both sides add entries at the same place.
+If it encounters a more difficult conflict it gives up and bzr will fallback to
+the default merge algorithm.

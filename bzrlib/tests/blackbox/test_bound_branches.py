@@ -64,14 +64,13 @@ class TestLegacyFormats(TestCaseWithTransport):
 class TestBoundBranches(TestCaseWithTransport):
 
     def create_branches(self):
-        self.build_tree(['base/', 'base/a', 'base/b'])
-
-        branch = self.init_meta_branch('base')
-        base_tree = branch.bzrdir.open_workingtree()
+        base_tree = self.make_branch_and_tree('base')
         base_tree.lock_write()
+        self.build_tree(['base/a', 'base/b'])
         base_tree.add(['a', 'b'])
         base_tree.commit('init')
         base_tree.unlock()
+        branch = base_tree.branch
 
         child_tree = branch.create_checkout('child')
 
@@ -86,12 +85,11 @@ class TestBoundBranches(TestCaseWithTransport):
             val, len(BzrDir.open(loc).open_branch().revision_history()))
 
     def test_simple_binding(self):
-        self.build_tree(['base/', 'base/a', 'base/b'])
-
-        branch = self.init_meta_branch('base')
-        tree = branch.bzrdir.open_workingtree()
+        tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b'])
         tree.add('a', 'b')
         tree.commit(message='init')
+        branch = tree.branch
 
         tree.bzrdir.sprout('child')
 
@@ -130,10 +128,6 @@ class TestBoundBranches(TestCaseWithTransport):
         os.chdir('branch2')
         error = self.run_bzr('bind', retcode=3)[1]
         self.assertContainsRe(error, 'old locations')
-
-    def init_meta_branch(self, path):
-        format = bzrdir.format_registry.make_bzrdir('default')
-        return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):
         child_tree = self.create_branches()[1]

@@ -67,7 +67,7 @@ class TestSendMixin(object):
 
     def get_MD(self, args, cmd=None, wd='branch'):
         out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
-        return merge_directive.MergeDirective.from_lines(out.readlines())
+        return merge_directive.MergeDirective.from_lines(out)
 
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
         md = self.get_MD(args, cmd=cmd, wd=wd)
@@ -280,10 +280,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = tests.MemoryServer
+        location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -324,8 +322,7 @@ class TestSendStrictMixin(TestSendMixin):
         out, err = self.run_send(args)
         self.assertEquals(
             'Bundling %d revision(s).\n' % len(revs), err)
-        md = merge_directive.MergeDirective.from_lines(
-                StringIO(out).readlines())
+        md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
@@ -425,7 +422,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-    def test_push_strict_command_line_override_config(self):
+    def test_send_strict_command_line_override_config(self):
         self.set_config_send_strict('false')
         self.assertSendSucceeds([])
         self.assertSendFails(['--strict'])

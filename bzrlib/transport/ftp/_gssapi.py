@@ -25,7 +25,7 @@ from bzrlib import (
     config,
     errors,
     )
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 from bzrlib.transport.ftp import FtpTransport
 from bzrlib.transport import register_transport_proto, register_transport
 
@@ -81,7 +81,7 @@ class GSSAPIFtp(ftplib.FTP):
                         if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
-            info("Authenticated as %s" % kerberos.authGSSClientUserName(
+            trace.note("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
 
             # Monkey patch ftplib
@@ -97,52 +97,22 @@ class GSSAPIFtpTransport(FtpTransport):
 
     """
 
-    def _create_connection(self, credentials=None):
-        """Create a new connection with the provided credentials.
+    connection_class = GSSAPIFtp
 
-        :param credentials: The credentials needed to establish the connection.
+    def _login(self, connection, auth, user, password):
+        """Login with GSSAPI Authentication.
 
-        :return: The created connection and its associated credentials.
-
-        The credentials are a tuple with the username and password. The
-        password is used if GSSAPI Authentication is not available.
+        The password is used if GSSAPI Authentication is not available.
 
         The username and password can both be None, in which case the
         credentials specified in the URL or provided by the
         AuthenticationConfig() are used.
         """
-        if credentials is None:
-            user, password = self._user, self._password
-        else:
-            user, password = credentials
-
-        auth = config.AuthenticationConfig()
-        if user is None:
-            user = auth.get_user('ftp', self._host, port=self._port,
-                                 default=getpass.getuser())
-        mutter("Constructing FTP instance against %r" %
-               ((self._host, self._port, user, '********',
-                self.is_active),))
         try:
-            connection = GSSAPIFtp()
-            connection.connect(host=self._host, port=self._port)
-            try:
-                connection.gssapi_login(user=user)
-            except ftplib.error_perm, e:
-                if user and user != 'anonymous' and \
-                        password is None: # '' is a valid password
-                    password = auth.get_password('ftp', self._host, user,
-                                                 port=self._port)
-                connection.login(user=user, passwd=password)
-            connection.set_pasv(not self.is_active)
-        except socket.error, e:
-            raise errors.SocketConnectionError(self._host, self._port,
-                                               msg='Unable to connect to',
-                                               orig_error= e)
+            connection.gssapi_login(user=user)
         except ftplib.error_perm, e:
-            raise errors.TransportError(msg="Error setting up connection:"
-                                        " %s" % str(e), orig_error=e)
-        return connection, (user, password)
+            super(GSSAPIFtpTransport, self)._login(connection, auth,
+                                                   user, password)
 
 
 def get_test_permutations():

@@ -139,7 +139,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertRaises(TestPreventLocking, b.unlock)
+            self.assertLogsError(TestPreventLocking, b.unlock)
             if self.combined_control:
                 self.assertTrue(b.is_locked())
             else:
@@ -183,7 +183,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertRaises(TestPreventLocking, b.unlock)
+            self.assertLogsError(TestPreventLocking, b.unlock)
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
 

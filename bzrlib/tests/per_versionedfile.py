@@ -1581,6 +1581,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # All texts should be output.
         self.assertEqual(set(keys), seen)
 
+    def test_clear_cache(self):
+        files = self.get_versionedfiles()
+        files.clear_cache()
+
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
         files = self.get_versionedfiles()

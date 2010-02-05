@@ -30,13 +30,11 @@ Here's a simple example of how you can use bzr-svn to hack on a
 GNOME project like **beagle**. Firstly, setup a local shared repository
 for storing your branches in and checkout the trunk::
 
-  bzr init-repo --default-rich-root beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
 
-Note that using the ``default-rich-root`` option to ``init-repo`` is
-important as bzr-svn requires some extra metadata not yet supported in Bazaar's
-default repository format. Next, create a feature branch and hack away::
+Next, create a feature branch and hack away::
 
   bzr branch beagle-trunk beagle-feature1
   cd beagle-feature1
@@ -71,7 +69,7 @@ repository-to-repository conversion. Here's an example of how to use it::
 
 Here's the recipe from above updated to use a central Bazaar mirror::
 
-  bzr init-repo --default-rich-root beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
   bzr branch beagle-trunk beagle-feature1

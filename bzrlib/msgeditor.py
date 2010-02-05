@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,16 +63,14 @@ def _run_editor(filename):
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
-            # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, errno.EACCES):
-                if candidate_source is not None:
-                    # We tried this editor because some user configuration (an
-                    # environment variable or config file) said to try it.  Let
-                    # the user know their configuration is broken.
-                    trace.warning(
-                        'Could not start editor "%s" (specified by %s): %s\n'
-                        % (candidate, candidate_source, str(e)))
-                continue
+            if candidate_source is not None:
+                # We tried this editor because some user configuration (an
+                # environment variable or config file) said to try it.  Let
+                # the user know their configuration is broken.
+                trace.warning(
+                    'Could not start editor "%s" (specified by %s): %s\n'
+                    % (candidate, candidate_source, str(e)))
+            continue
             raise
         if x == 0:
             return True

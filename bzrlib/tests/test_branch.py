@@ -504,6 +504,23 @@ class TestPullResult(TestCase):
         a = "%d revisions pulled" % r
         self.assertEqual(a, "10 revisions pulled")
 
+    def test_report_changed(self):
+        r = PullResult()
+        r.old_revid = "old-revid"
+        r.old_revno = 10
+        r.new_revid = "new-revid"
+        r.new_revno = 20
+        f = StringIO()
+        r.report(f)
+        self.assertEqual("Now on revision 20.\n", f.getvalue())
+
+    def test_report_unchanged(self):
+        r = PullResult()
+        r.old_revid = "same-revid"
+        r.new_revid = "same-revid"
+        f = StringIO()
+        r.report(f)
+        self.assertEqual("No revisions to pull.\n", f.getvalue())
 
 
 class _StubLockable(object):

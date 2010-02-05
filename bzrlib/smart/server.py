@@ -17,6 +17,7 @@
 """Server for smart-server protocol."""
 
 import errno
+import os.path
 import socket
 import sys
 import threading
@@ -30,6 +31,14 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
+from bzrlib.transport import (
+    chroot,
+    get_transport,
+    pathfilter,
+    )
+from bzrlib import (
+    urlutils,
+    )
 """)
 
 
@@ -134,8 +143,7 @@ class SmartTCPServer(object):
                 # dont log when CTRL-C'd.
                 raise
             except Exception, e:
-                trace.error("Unhandled smart server error.")
-                trace.log_exception_quietly()
+                trace.report_exception(sys.exc_info(), sys.stderr)
                 raise
         finally:
             self._stopped.set()
@@ -243,7 +251,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport(backing_transport_server.get_url())
 
-    def setUp(self, backing_transport_server=None,
+    def start_server(self, backing_transport_server=None,
               client_path_extra='/extra/'):
         """Set up server for testing.
 
@@ -265,15 +273,15 @@ class SmartTCPServer_for_testing(SmartTCPServer):
             backing_transport_server = LocalURLServer()
         self.chroot_server = ChrootServer(
             self.get_backing_transport(backing_transport_server))
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
         self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread(self.thread_name_suffix)
 
-    def tearDown(self):
+    def stop_server(self):
         self.stop_background_thread()
-        self.chroot_server.tearDown()
+        self.chroot_server.stop_server()
 
     def get_url(self):
         url = super(SmartTCPServer_for_testing, self).get_url()
@@ -313,34 +321,132 @@ class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_o
         return transport.get_transport(url)
 
 
-def serve_bzr(transport, host=None, port=None, inet=False):
-    from bzrlib import lockdir, ui
-    from bzrlib.transport import get_transport
-    from bzrlib.transport.chroot import ChrootServer
-    chroot_server = ChrootServer(transport)
-    chroot_server.setUp()
-    transport = get_transport(chroot_server.get_url())
-    if inet:
-        smart_server = medium.SmartServerPipeStreamMedium(
-            sys.stdin, sys.stdout, transport)
-    else:
-        if host is None:
-            host = medium.BZR_DEFAULT_INTERFACE
-        if port is None:
-            port = medium.BZR_DEFAULT_PORT
-        smart_server = SmartTCPServer(transport, host=host, port=port)
-        trace.note('listening on port: %s' % smart_server.port)
-    # For the duration of this server, no UI output is permitted. note
-    # that this may cause problems with blackbox tests. This should be
-    # changed with care though, as we dont want to use bandwidth sending
-    # progress over stderr to smart server clients!
-    old_factory = ui.ui_factory
-    old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+def _local_path_for_transport(transport):
+    """Return a local path for transport, if reasonably possible.
+    
+    This function works even if transport's url has a "readonly+" prefix,
+    unlike local_path_from_url.
+    
+    This essentially recovers the --directory argument the user passed to "bzr
+    serve" from the transport passed to serve_bzr.
+    """
     try:
+        base_url = transport.external_url()
+    except (errors.InProcessTransport, NotImplementedError):
+        return None
+    else:
+        # Strip readonly prefix
+        if base_url.startswith('readonly+'):
+            base_url = base_url[len('readonly+'):]
+        try:
+            return urlutils.local_path_from_url(base_url)
+        except errors.InvalidURL:
+            return None
+
+
+class BzrServerFactory(object):
+    """Helper class for serve_bzr."""
+
+    def __init__(self, userdir_expander=None, get_base_path=None):
+        self.cleanups = []
+        self.base_path = None
+        self.backing_transport = None
+        if userdir_expander is None:
+            userdir_expander = os.path.expanduser
+        self.userdir_expander = userdir_expander
+        if get_base_path is None:
+            get_base_path = _local_path_for_transport
+        self.get_base_path = get_base_path
+
+    def _expand_userdirs(self, path):
+        """Translate /~/ or /~user/ to e.g. /home/foo, using
+        self.userdir_expander (os.path.expanduser by default).
+
+        If the translated path would fall outside base_path, or the path does
+        not start with ~, then no translation is applied.
+
+        If the path is inside, it is adjusted to be relative to the base path.
+
+        e.g. if base_path is /home, and the expanded path is /home/joe, then
+        the translated path is joe.
+        """
+        result = path
+        if path.startswith('~'):
+            expanded = self.userdir_expander(path)
+            if not expanded.endswith('/'):
+                expanded += '/'
+            if expanded.startswith(self.base_path):
+                result = expanded[len(self.base_path):]
+        return result
+
+    def _make_expand_userdirs_filter(self, transport):
+        return pathfilter.PathFilteringServer(transport, self._expand_userdirs)
+
+    def _make_backing_transport(self, transport):
+        """Chroot transport, and decorate with userdir expander."""
+        self.base_path = self.get_base_path(transport)
+        chroot_server = chroot.ChrootServer(transport)
+        chroot_server.start_server()
+        self.cleanups.append(chroot_server.stop_server)
+        transport = get_transport(chroot_server.get_url())
+        if self.base_path is not None:
+            # Decorate the server's backing transport with a filter that can
+            # expand homedirs.
+            expand_userdirs = self._make_expand_userdirs_filter(transport)
+            expand_userdirs.start_server()
+            self.cleanups.append(expand_userdirs.stop_server)
+            transport = get_transport(expand_userdirs.get_url())
+        self.transport = transport
+
+    def _make_smart_server(self, host, port, inet):
+        if inet:
+            smart_server = medium.SmartServerPipeStreamMedium(
+                sys.stdin, sys.stdout, self.transport)
+        else:
+            if host is None:
+                host = medium.BZR_DEFAULT_INTERFACE
+            if port is None:
+                port = medium.BZR_DEFAULT_PORT
+            smart_server = SmartTCPServer(self.transport, host=host, port=port)
+            trace.note('listening on port: %s' % smart_server.port)
+        self.smart_server = smart_server
+
+    def _change_globals(self):
+        from bzrlib import lockdir, ui
+        # For the duration of this server, no UI output is permitted. note
+        # that this may cause problems with blackbox tests. This should be
+        # changed with care though, as we dont want to use bandwidth sending
+        # progress over stderr to smart server clients!
+        old_factory = ui.ui_factory
+        old_lockdir_timeout = lockdir._DEFAULT_TIMEOUT_SECONDS
+        def restore_default_ui_factory_and_lockdir_timeout():
+            ui.ui_factory = old_factory
+            lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        self.cleanups.append(restore_default_ui_factory_and_lockdir_timeout)
         ui.ui_factory = ui.SilentUIFactory()
         lockdir._DEFAULT_TIMEOUT_SECONDS = 0
-        smart_server.serve()
+
+    def set_up(self, transport, host, port, inet):
+        self._make_backing_transport(transport)
+        self._make_smart_server(host, port, inet)
+        self._change_globals()
+
+    def tear_down(self):
+        for cleanup in reversed(self.cleanups):
+            cleanup()
+
+
+def serve_bzr(transport, host=None, port=None, inet=False):
+    """This is the default implementation of 'bzr serve'.
+    
+    It creates a TCP or pipe smart server on 'transport, and runs it.  The
+    transport will be decorated with a chroot and pathfilter (using
+    os.path.expanduser).
+    """
+    bzr_server = BzrServerFactory()
+    try:
+        bzr_server.set_up(transport, host, port, inet)
+        bzr_server.smart_server.serve()
     finally:
-        ui.ui_factory = old_factory
-        lockdir._DEFAULT_TIMEOUT_SECONDS = old_lockdir_timeout
+        bzr_server.tear_down()
 

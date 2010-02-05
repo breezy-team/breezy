@@ -28,21 +28,17 @@ import re
 from bzrlib import (
     add,
     bzrdir,
-    hooks,
-    symbol_versioning,
-    )
-from bzrlib.osutils import dirname
-from bzrlib.revisiontree import RevisionTree
-from bzrlib.trace import mutter, warning
-""")
-
-from bzrlib import (
     errors,
+    hooks,
     osutils,
+    revisiontree,
+    symbol_versioning,
+    trace,
     tree,
     )
+""")
+
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.osutils import splitpath
 
 
 def needs_tree_write_lock(unbound):
@@ -130,7 +126,7 @@ class MutableTree(tree.Tree):
             # generic constraint checks:
             if self.is_control_filename(f):
                 raise errors.ForbiddenControlFileError(filename=f)
-            fp = splitpath(f)
+            fp = osutils.splitpath(f)
         # fill out file kinds for all files [not needed when we stop
         # caring about the instantaneous file kind within a uncommmitted tree
         #
@@ -237,12 +233,20 @@ class MutableTree(tree.Tree):
         raise NotImplementedError(self._gather_kinds)
 
     @needs_read_lock
-    def has_changes(self, from_tree):
-        """Quickly check that the tree contains at least one change.
+    def has_changes(self, _from_tree=None):
+        """Quickly check that the tree contains at least one commitable change.
+
+        :param _from_tree: tree to compare against to find changes (default to
+            the basis tree and is intended to be used by tests).
 
         :return: True if a change is found. False otherwise
         """
-        changes = self.iter_changes(from_tree)
+        # Check pending merges
+        if len(self.get_parent_ids()) > 1:
+            return True
+        if _from_tree is None:
+            _from_tree = self.basis_tree()
+        changes = self.iter_changes(_from_tree)
         try:
             change = changes.next()
             # Exclude root (talk about black magic... --vila 20090629)
@@ -390,8 +394,8 @@ class MutableTree(tree.Tree):
         # perform the canonicalization in bulk.
         for filepath in osutils.canonical_relpaths(self.basedir, file_list):
             rf = _FastPath(filepath)
-            # validate user parameters. Our recursive code avoids adding new files
-            # that need such validation
+            # validate user parameters. Our recursive code avoids adding new
+            # files that need such validation
             if self.is_control_filename(rf.raw_path):
                 raise errors.ForbiddenControlFileError(filename=rf.raw_path)
 
@@ -403,10 +407,10 @@ class MutableTree(tree.Tree):
             else:
                 if not InventoryEntry.versionable_kind(kind):
                     raise errors.BadFileKindError(filename=abspath, kind=kind)
-            # ensure the named path is added, so that ignore rules in the later directory
-            # walk dont skip it.
-            # we dont have a parent ie known yet.: use the relatively slower inventory
-            # probing method
+            # ensure the named path is added, so that ignore rules in the later
+            # directory walk dont skip it.
+            # we dont have a parent ie known yet.: use the relatively slower
+            # inventory probing method
             versioned = inv.has_filename(rf.raw_path)
             if versioned:
                 continue
@@ -443,10 +447,11 @@ class MutableTree(tree.Tree):
             kind = osutils.file_kind(abspath)
 
             if not InventoryEntry.versionable_kind(kind):
-                warning("skipping %s (can't add file of kind '%s')", abspath, kind)
+                trace.warning("skipping %s (can't add file of kind '%s')",
+                              abspath, kind)
                 continue
             if illegalpath_re.search(directory.raw_path):
-                warning("skipping %r (contains \\n or \\r)" % abspath)
+                trace.warning("skipping %r (contains \\n or \\r)" % abspath)
                 continue
 
             if parent_ie is not None:
@@ -475,14 +480,15 @@ class MutableTree(tree.Tree):
                 pass
                 # mutter("%r is already versioned", abspath)
             elif sub_tree:
-                # XXX: This is wrong; people *might* reasonably be trying to add
-                # subtrees as subtrees.  This should probably only be done in formats
-                # which can represent subtrees, and even then perhaps only when
-                # the user asked to add subtrees.  At the moment you can add them
-                # specially through 'join --reference', which is perhaps
-                # reasonable: adding a new reference is a special operation and
-                # can have a special behaviour.  mbp 20070306
-                mutter("%r is a nested bzr tree", abspath)
+                # XXX: This is wrong; people *might* reasonably be trying to
+                # add subtrees as subtrees.  This should probably only be done
+                # in formats which can represent subtrees, and even then
+                # perhaps only when the user asked to add subtrees.  At the
+                # moment you can add them specially through 'join --reference',
+                # which is perhaps reasonable: adding a new reference is a
+                # special operation and can have a special behaviour.  mbp
+                # 20070306
+                trace.mutter("%r is a nested bzr tree", abspath)
             else:
                 _add_one(self, inv, parent_ie, directory, kind, action)
                 added.append(directory.raw_path)
@@ -495,7 +501,7 @@ class MutableTree(tree.Tree):
                     # without the parent ie, use the relatively slower inventory
                     # probing method
                     this_id = inv.path2id(
-                            self._fix_case_of_inventory_path(directory.raw_path))
+                        self._fix_case_of_inventory_path(directory.raw_path))
                     if this_id is None:
                         this_ie = None
                     else:
@@ -510,7 +516,7 @@ class MutableTree(tree.Tree):
                     # faster - its impossible for a non root dir to have a
                     # control file.
                     if self.is_control_filename(subp):
-                        mutter("skip control directory %r", subp)
+                        trace.mutter("skip control directory %r", subp)
                     elif subf in this_ie.children:
                         # recurse into this already versioned subdir.
                         dirs_to_add.append((_FastPath(subp, subf), this_ie))
@@ -572,7 +578,8 @@ class MutableTree(tree.Tree):
         inventory = basis.inventory._get_mutable_inventory()
         basis.unlock()
         inventory.apply_delta(delta)
-        rev_tree = RevisionTree(self.branch.repository, inventory, new_revid)
+        rev_tree = revisiontree.RevisionTree(self.branch.repository,
+                                             inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 
 
@@ -661,8 +668,8 @@ def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
         # there are a limited number of dirs we can be nested under, it should
         # generally find it very fast and not recurse after that.
         added = _add_one_and_parent(tree, inv, None,
-            _FastPath(dirname(path.raw_path)), 'directory', action)
-        parent_id = inv.path2id(dirname(path.raw_path))
+            _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
+        parent_id = inv.path2id(osutils.dirname(path.raw_path))
         parent_ie = inv[parent_id]
     _add_one(tree, inv, parent_ie, path, kind, action)
     return added + [path.raw_path]

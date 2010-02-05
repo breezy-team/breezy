@@ -58,12 +58,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         """Hand the request off to a smart server instance."""
         backing = get_transport(self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
-        chroot_server.setUp()
+        chroot_server.start_server()
         try:
             t = get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
-            chroot_server.tearDown()
+            chroot_server.stop_server()
 
     def do_POST_inner(self, chrooted_transport):
         self.send_response(200)
@@ -133,8 +133,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         """Get the server instance for the secondary transport."""
         if self.__secondary_server is None:
             self.__secondary_server = self.create_transport_secondary_server()
-            self.__secondary_server.setUp()
-            self.addCleanup(self.__secondary_server.tearDown)
+            self.start_server(self.__secondary_server)
         return self.__secondary_server
 
 

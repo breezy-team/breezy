@@ -154,7 +154,7 @@ class HttpTransportBase(ConnectedTransport):
                                  None, None, self._host, self._port, path)
 
     def _create_auth(self):
-        """Returns a dict returning the credentials provided at build time."""
+        """Returns a dict containing the credentials provided at build time."""
         auth = dict(host=self._host, port=self._port,
                     user=self._user, password=self._password,
                     protocol=self._unqualified_scheme,

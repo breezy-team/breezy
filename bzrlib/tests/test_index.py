@@ -173,6 +173,11 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
             "key\x00\x00\t\x00data\n"
             "\n", contents)
 
+    def test_clear_cache(self):
+        builder = GraphIndexBuilder(reference_lists=2)
+        # This is a no-op, but the api should exist
+        builder.clear_cache()
+
     def test_node_references_are_byte_offsets(self):
         builder = GraphIndexBuilder(reference_lists=1)
         builder.add_node(('reference', ), 'data', ([], ))
@@ -230,7 +235,7 @@ class TestGraphIndexBuilder(TestCaseWithMemoryTransport):
         builder.add_node(('2-key', ), '', (references, ))
         stream = builder.finish()
         contents = stream.read()
-        self.assertEqual(
+        self.assertEqualDiff(
             "Bazaar Graph Index 1\nnode_ref_lists=1\nkey_elements=1\nlen=1\n"
             "0\x00a\x00\x00\n"
             "1\x00a\x00\x00\n"
@@ -382,6 +387,12 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans = get_transport('trace+' + self.get_url())
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
+
+    def test_clear_cache(self):
+        index = self.make_index()
+        # For now, we just want to make sure the api is available. As this is
+        # old code, we don't really worry if it *does* anything.
+        index.clear_cache()
 
     def test_open_bad_index_no_error(self):
         trans = self.get_transport()
@@ -1070,6 +1081,30 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
         index.insert_index(0, index1)
         self.assertEqual([(index1, ('key', ), '')], list(index.iter_all_entries()))
+
+    def test_clear_cache(self):
+        log = []
+
+        class ClearCacheProxy(object):
+
+            def __init__(self, index):
+                self._index = index
+
+            def __getattr__(self, name):
+                return getattr(self._index)
+
+            def clear_cache(self):
+                log.append(self._index)
+                return self._index.clear_cache()
+
+        index = CombinedGraphIndex([])
+        index1 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(0, ClearCacheProxy(index1))
+        index2 = self.make_index('name', 0, nodes=[(('key', ), '', ())])
+        index.insert_index(1, ClearCacheProxy(index2))
+        # CombinedGraphIndex should call 'clear_cache()' on all children
+        index.clear_cache()
+        self.assertEqual(sorted([index1, index2]), sorted(log))
 
     def test_iter_all_entries_empty(self):
         index = CombinedGraphIndex([])

@@ -52,12 +52,16 @@ from bzrlib import (
 from bzrlib import plugins as _mod_plugins
 """)
 
-from bzrlib.symbol_versioning import deprecated_function
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
 
+@deprecated_function(deprecated_in((2, 0, 0)))
 def get_default_plugin_path():
     """Get the DEFAULT_PLUGIN_PATH"""
     global DEFAULT_PLUGIN_PATH
@@ -91,13 +95,15 @@ def set_plugins_path(path=None):
     return path
 
 
-def get_standard_plugins_path():
-    """Determine a plugin path suitable for general use."""
-    path = os.environ.get('BZR_PLUGIN_PATH',
-                          get_default_plugin_path()).split(os.pathsep)
-    # Get rid of trailing slashes, since Python can't handle them when
-    # it tries to import modules.
-    path = map(_strip_trailing_sep, path)
+def _append_new_path(paths, new_path):
+    """Append a new path if it set and not already known."""
+    if new_path is not None and new_path not in paths:
+        paths.append(new_path)
+    return paths
+
+
+def get_core_plugin_path():
+    core_path = None
     bzr_exe = bool(getattr(sys, 'frozen', None))
     if bzr_exe:    # expand path for bzr.exe
         # We need to use relative path to system-wide plugin
@@ -110,25 +116,83 @@ def get_standard_plugins_path():
         # then plugins directory is
         # C:\Program Files\Bazaar\plugins
         # so relative path is ../../../plugins
-        path.append(osutils.abspath(osutils.pathjoin(
-            osutils.dirname(__file__), '../../../plugins')))
-    if not bzr_exe:     # don't look inside library.zip
+        core_path = osutils.abspath(osutils.pathjoin(
+                osutils.dirname(__file__), '../../../plugins'))
+    else:     # don't look inside library.zip
         # search the plugin path before the bzrlib installed dir
-        path.append(os.path.dirname(_mod_plugins.__file__))
-    # search the arch independent path if we can determine that and
-    # the plugin is found nowhere else
-    if sys.platform != 'win32':
-        try:
-            from distutils.sysconfig import get_python_lib
-        except ImportError:
-            # If distutuils is not available, we just won't add that path
-            pass
-        else:
-            archless_path = osutils.pathjoin(get_python_lib(), 'bzrlib',
-                    'plugins')
-            if archless_path not in path:
-                path.append(archless_path)
-    return path
+        core_path = os.path.dirname(_mod_plugins.__file__)
+    return core_path
+
+
+def get_site_plugin_path():
+    """Returns the path for the site installed plugins."""
+    if sys.platform == 'win32':
+        # We don't have (yet) a good answer for windows since that is certainly
+        # related to the way we build the installers. -- vila20090821
+        return None
+    site_path = None
+    try:
+        from distutils.sysconfig import get_python_lib
+    except ImportError:
+        # If distutuils is not available, we just don't know where they are
+        pass
+    else:
+        site_path = osutils.pathjoin(get_python_lib(), 'bzrlib', 'plugins')
+    return site_path
+
+
+def get_user_plugin_path():
+    return osutils.pathjoin(config.config_dir(), 'plugins')
+
+
+def get_standard_plugins_path():
+    """Determine a plugin path suitable for general use."""
+    # Ad-Hoc default: core is not overriden by site but user can overrides both
+    # The rationale is that:
+    # - 'site' comes last, because these plugins should always be available and
+    #   are supposed to be in sync with the bzr installed on site.
+    # - 'core' comes before 'site' so that running bzr from sources or a user
+    #   installed version overrides the site version.
+    # - 'user' comes first, because... user is always right.
+    # - the above rules clearly defines which plugin version will be loaded if
+    #   several exist. Yet, it is sometimes desirable to disable some directory
+    #   so that a set of plugins is disabled as once. This can be done via
+    #   -site, -core, -user.
+
+    env_paths = os.environ.get('BZR_PLUGIN_PATH', '+user').split(os.pathsep)
+    defaults = ['+core', '+site']
+
+    # The predefined references
+    refs = dict(core=get_core_plugin_path(),
+                site=get_site_plugin_path(),
+                user=get_user_plugin_path())
+
+    # Unset paths that should be removed
+    for k,v in refs.iteritems():
+        removed = '-%s' % k
+        # defaults can never mention removing paths as that will make it
+        # impossible for the user to revoke these removals.
+        if removed in env_paths:
+            env_paths.remove(removed)
+            refs[k] = None
+
+    # Expand references
+    paths = []
+    for p in env_paths + defaults:
+        if p.startswith('+'):
+            # Resolve reference if they are known
+            try:
+                p = refs[p[1:]]
+            except KeyError:
+                # Leave them untouched otherwise, user may have paths starting
+                # with '+'...
+                pass
+        _append_new_path(paths, p)
+
+    # Get rid of trailing slashes, since Python can't handle them when
+    # it tries to import modules.
+    paths = map(_strip_trailing_sep, paths)
+    return paths
 
 
 def load_plugins(path=None):

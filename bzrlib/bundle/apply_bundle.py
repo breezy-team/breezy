@@ -56,7 +56,8 @@ def merge_bundle(reader, tree, check_clean, merge_type,
                         change_reporter=change_reporter)
         merger.pp = pp
         merger.pp.next_phase()
-        merger.check_basis(check_clean, require_commits=False)
+        if check_clean and tree.has_changes():
+            raise errors.UncommittedChanges(self)
         merger.other_rev_id = reader.target
         merger.other_tree = merger.revision_tree(reader.target)
         merger.other_basis = reader.target

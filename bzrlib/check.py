@@ -55,7 +55,7 @@ from bzrlib.errors import BzrCheckError
 from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
-from bzrlib.trace import log_error, note
+from bzrlib.trace import note
 import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
@@ -201,7 +201,7 @@ class Check(object):
                 len(self.unreferenced_versions))
         if verbose and len(self.unreferenced_versions):
                 for file_id, revision_id in self.unreferenced_versions:
-                    log_error('unreferenced version: {%s} in %s', revision_id,
+                    note('unreferenced version: {%s} in %s', revision_id,
                         file_id)
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
@@ -445,9 +445,9 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                     if do_branch:
                         scan_branch(branch, needed_refs, to_unlock)
             if do_branch and not branches:
-                log_error("No branch found at specified location.")
+                note("No branch found at specified location.")
             if do_tree and base_tree is None and not saw_tree:
-                log_error("No working tree found at specified location.")
+                note("No working tree found at specified location.")
             if do_repo or do_branch or do_tree:
                 if do_repo:
                     note("Checking repository at '%s'."
@@ -457,11 +457,11 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                 result.report_results(verbose)
         else:
             if do_tree:
-                log_error("No working tree found at specified location.")
+                note("No working tree found at specified location.")
             if do_branch:
-                log_error("No branch found at specified location.")
+                note("No branch found at specified location.")
             if do_repo:
-                log_error("No repository found at specified location.")
+                note("No repository found at specified location.")
     finally:
         for thing in to_unlock:
             thing.unlock()

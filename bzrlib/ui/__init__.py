@@ -22,18 +22,18 @@ messages or progress to the user, and with gathering different types of input.
 Several levels are supported, and you can also register new factories such as
 for a GUI.
 
-UIFactory
+bzrlib.ui.UIFactory
     Semi-abstract base class
 
-SilentUIFactory
+bzrlib.ui.SilentUIFactory
     Produces no output and cannot take any input; useful for programs using
     bzrlib in batch mode or for programs such as loggerhead.
 
-CannedInputUIFactory
+bzrlib.ui.CannedInputUIFactory
     For use in testing; the input values to be returned are provided 
     at construction.
 
-TextUIFactory
+bzrlib.ui.text.TextUIFactory
     Standard text command-line interface, with stdin, stdout, stderr.
     May make more or less advanced use of them, eg in drawing progress bars,
     depending on the detected capabilities of the terminal.
@@ -109,6 +109,15 @@ class UIFactory(object):
 
     def __init__(self):
         self._task_stack = []
+        self._quiet = False
+
+    def be_quiet(self, state):
+        """Tell the UI to be more quiet, or not.
+
+        Typically this suppresses progress bars; the application may also look
+        at ui_factory.is_quiet().
+        """
+        self._quiet = state
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -124,6 +133,37 @@ class UIFactory(object):
                  transported as is.
         """
         raise NotImplementedError(self.get_password)
+
+    def is_quiet(self):
+        return self._quiet
+
+    def make_output_stream(self, encoding=None, encoding_type=None):
+        """Get a stream for sending out bulk text data.
+
+        This is used for commands that produce bulk text, such as log or diff
+        output, as opposed to user interaction.  This should work even for
+        non-interactive user interfaces.  Typically this goes to a decorated
+        version of stdout, but in a GUI it might be appropriate to send it to a 
+        window displaying the text.
+     
+        :param encoding: Unicode encoding for output; default is the 
+            terminal encoding, which may be different from the user encoding.
+            (See get_terminal_encoding.)
+
+        :param encoding_type: How to handle encoding errors:
+            replace/strict/escape/exact.  Default is replace.
+        """
+        # XXX: is the caller supposed to close the resulting object?
+        if encoding is None:
+            encoding = osutils.get_terminal_encoding()
+        if encoding_type is None:
+            encoding_type = 'replace'
+        out_stream = self._make_output_stream_explicit(encoding, encoding_type)
+        return out_stream
+
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        raise NotImplementedError("%s doesn't support make_output_stream"
+            % (self.__class__.__name__))
 
     def nested_progress_bar(self):
         """Return a nested progress bar.
@@ -179,6 +219,16 @@ class UIFactory(object):
         """
         raise NotImplementedError(self.get_boolean)
 
+    def get_integer(self, prompt):
+        """Get an integer from the user.
+
+        :param prompt: a message to prompt the user with. Could be a multi-line
+            prompt but without a terminating \n.
+
+        :return: A signed integer.
+        """
+        raise NotImplementedError(self.get_integer)
+
     def make_progress_view(self):
         """Construct a new ProgressView object for this UI.
 
@@ -208,6 +258,35 @@ class UIFactory(object):
         """
         pass
 
+    def log_transport_activity(self, display=False):
+        """Write out whatever transport activity has been measured.
+
+        Implementations are allowed to do nothing, but it is useful if they can
+        write a line to the log file.
+
+        :param display: If False, only log to disk, if True also try to display
+            a message to the user.
+        :return: None
+        """
+        # Default implementation just does nothing
+        pass
+
+    def show_error(self, msg):
+        """Show an error message (not an exception) to the user.
+        
+        The message should not have an error prefix or trailing newline.  That
+        will be added by the factory if appropriate.
+        """
+        raise NotImplementedError(self.show_error)
+
+    def show_message(self, msg):
+        """Show a message to the user."""
+        raise NotImplementedError(self.show_message)
+
+    def show_warning(self, msg):
+        """Show a warning to the user."""
+        raise NotImplementedError(self.show_warning)
+
     def warn_cross_format_fetch(self, from_format, to_format):
         """Warn about a potentially slow cross-format transfer"""
         # See <https://launchpad.net/bugs/456077> asking for a warning here
@@ -215,95 +294,6 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance.\n" %
             (from_format, to_format))
-
-
-class CLIUIFactory(UIFactory):
-    """Deprecated in favor of TextUIFactory."""
-
-    @deprecated_method(deprecated_in((1, 18, 0)))
-    def __init__(self, stdin=None, stdout=None, stderr=None):
-        UIFactory.__init__(self)
-        self.stdin = stdin or sys.stdin
-        self.stdout = stdout or sys.stdout
-        self.stderr = stderr or sys.stderr
-
-    _accepted_boolean_strings = dict(y=True, n=False, yes=True, no=False)
-
-    def get_boolean(self, prompt):
-        while True:
-            self.prompt(prompt + "? [y/n]: ")
-            line = self.stdin.readline()
-            line = line.rstrip('\n')
-            val = bool_from_string(line, self._accepted_boolean_strings)
-            if val is not None:
-                return val
-
-    def get_non_echoed_password(self):
-        isatty = getattr(self.stdin, 'isatty', None)
-        if isatty is not None and isatty():
-            # getpass() ensure the password is not echoed and other
-            # cross-platform niceties
-            password = getpass.getpass('')
-        else:
-            # echo doesn't make sense without a terminal
-            password = self.stdin.readline()
-            if not password:
-                password = None
-            elif password[-1] == '\n':
-                password = password[:-1]
-        return password
-
-    def get_password(self, prompt='', **kwargs):
-        """Prompt the user for a password.
-
-        :param prompt: The prompt to present the user
-        :param kwargs: Arguments which will be expanded into the prompt.
-                       This lets front ends display different things if
-                       they so choose.
-        :return: The password string, return None if the user
-                 canceled the request.
-        """
-        prompt += ': '
-        self.prompt(prompt, **kwargs)
-        # There's currently no way to say 'i decline to enter a password'
-        # as opposed to 'my password is empty' -- does it matter?
-        return self.get_non_echoed_password()
-
-    def get_username(self, prompt, **kwargs):
-        """Prompt the user for a username.
-
-        :param prompt: The prompt to present the user
-        :param kwargs: Arguments which will be expanded into the prompt.
-                       This lets front ends display different things if
-                       they so choose.
-        :return: The username string, return None if the user
-                 canceled the request.
-        """
-        prompt += ': '
-        self.prompt(prompt, **kwargs)
-        username = self.stdin.readline()
-        if not username:
-            username = None
-        elif username[-1] == '\n':
-            username = username[:-1]
-        return username
-
-    def prompt(self, prompt, **kwargs):
-        """Emit prompt on the CLI.
-        
-        :param kwargs: Dictionary of arguments to insert into the prompt,
-            to allow UIs to reformat the prompt.
-        """
-        if kwargs:
-            # See <https://launchpad.net/bugs/365891>
-            prompt = prompt % kwargs
-        prompt = prompt.encode(osutils.get_terminal_encoding(), 'replace')
-        self.clear_term()
-        self.stderr.write(prompt)
-
-    def note(self, msg):
-        """Write an already-formatted message."""
-        self.stdout.write(msg + '\n')
 
 
 class SilentUIFactory(UIFactory):
@@ -325,6 +315,18 @@ class SilentUIFactory(UIFactory):
     def get_username(self, prompt, **kwargs):
         return None
 
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        return NullOutputStream(encoding)
+
+    def show_error(self, msg):
+        pass
+
+    def show_message(self, msg):
+        pass
+
+    def show_warning(self, msg):
+        pass
+
 
 class CannedInputUIFactory(SilentUIFactory):
     """A silent UI that return canned input."""
@@ -338,23 +340,19 @@ class CannedInputUIFactory(SilentUIFactory):
     def get_boolean(self, prompt):
         return self.responses.pop(0)
 
+    def get_integer(self, prompt):
+        return self.responses.pop(0)
+
     def get_password(self, prompt='', **kwargs):
         return self.responses.pop(0)
 
     def get_username(self, prompt, **kwargs):
         return self.responses.pop(0)
-    
+
     def assert_all_input_consumed(self):
         if self.responses:
             raise AssertionError("expected all input in %r to be consumed"
                 % (self,))
-
-
-@deprecated_function(deprecated_in((1, 18, 0)))
-def clear_decorator(func, *args, **kwargs):
-    """Decorator that clears the term"""
-    ui_factory.clear_term()
-    func(*args, **kwargs)
 
 
 ui_factory = SilentUIFactory()
@@ -381,4 +379,23 @@ class NullProgressView(object):
         pass
 
     def show_transport_activity(self, transport, direction, byte_count):
+        pass
+
+    def log_transport_activity(self, display=False):
+        pass
+
+
+class NullOutputStream(object):
+    """Acts like a file, but discard all output."""
+
+    def __init__(self, encoding):
+        self.encoding = encoding
+
+    def write(self, data):
+        pass
+
+    def writelines(self, data):
+        pass
+
+    def close(self):
         pass

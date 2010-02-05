@@ -499,6 +499,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def test_shelve_skips_added_root(self):
         """Skip adds of the root when iterating through shelvable changes."""
         tree = self.make_branch_and_tree('tree')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([], list(creator.iter_shelvable()))
@@ -524,6 +526,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.seek(0)
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             unshelver.make_merger().do_merge()
+            self.addCleanup(unshelver.finalize)
             self.assertFileEqual('bar', 'tree/foo')
         finally:
             shelf_file.close()
@@ -547,6 +550,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
 
@@ -575,6 +579,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual('baz', 'tree/foo/bar')
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFalse('foo-id' in tree)
         self.assertFalse('bar-id' in tree)
@@ -720,6 +725,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_id = shelf_manager.shelve_changes(creator)
         self.failIfExists('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
 

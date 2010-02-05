@@ -917,7 +917,7 @@ class SocketListener(threading.Thread):
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
-        self.port = self._socket.getsockname()[1]
+        self.host, self.port = self._socket.getsockname()[:2]
         self._stop_event = threading.Event()
 
     def stop(self):
@@ -1045,7 +1045,8 @@ class SFTPServer(Server):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+        return 'sftp://foo:bar@%s:%d/%s' % (self._listener.host,
+                                            self._listener.port, path)
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""
@@ -1077,7 +1078,7 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
         if not (backing_server is None or
@@ -1102,8 +1103,7 @@ class SFTPServer(Server):
         self._listener.setDaemon(True)
         self._listener.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._listener.stop()
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
@@ -1202,9 +1202,9 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     It does this by serving from a deeply-nested directory that doesn't exist.
     """
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
-        super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
+        super(SFTPSiblingAbsoluteServer, self).start_server(backing_server)
 
 
 def get_test_permutations():

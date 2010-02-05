@@ -79,7 +79,7 @@ def transport_test_permutations():
             permutations = get_transport_test_permutations(
                 reduce(getattr, (module).split('.')[1:], __import__(module)))
             for (klass, server_factory) in permutations:
-                scenario = (server_factory.__name__,
+                scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
                     {"transport_class":klass,
                      "transport_server":server_factory})
                 result.append(scenario)
@@ -1496,6 +1496,10 @@ class TransportTests(TestTransportImplementation):
                  u'\u0410', # Russian A
                  u'\u65e5', # Kanji person
                 ]
+
+        no_unicode_support = getattr(self._server, 'no_unicode_support', False)
+        if no_unicode_support:
+            raise tests.KnownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')

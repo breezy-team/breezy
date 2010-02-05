@@ -265,9 +265,7 @@ class Reconfigure(object):
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
-        if self._destroy_tree:
-            # XXX: What about pending merges ? -- vila 20090629
-            if self.tree.has_changes(self.tree.basis_tree()):
+        if self._destroy_tree and self.tree.has_changes():
                 raise errors.UncommittedChanges(self.tree)
         if self._create_reference and self.local_branch is not None:
             reference_branch = branch.Branch.open(self._select_bind_location())

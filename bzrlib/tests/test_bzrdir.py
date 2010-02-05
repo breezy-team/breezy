@@ -145,7 +145,7 @@ class TestFormatRegistry(TestCase):
         new = topics.get_detail('current-formats')
         rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'bzr help formats')
+        self.assertContainsRe(new, 'formats-help')
         self.assertContainsRe(new,
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental,
@@ -1152,7 +1152,9 @@ class TestHTTPRedirections_urllib(TestHTTPRedirections,
     _transport = HttpTransport_urllib
 
     def _qualified_url(self, host, port):
-        return 'http+urllib://%s:%s' % (host, port)
+        result = 'http+urllib://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 
@@ -1162,7 +1164,9 @@ class TestHTTPRedirections_pycurl(TestWithTransport_pycurl,
     """Tests redirections for pycurl implementation"""
 
     def _qualified_url(self, host, port):
-        return 'http+pycurl://%s:%s' % (host, port)
+        result = 'http+pycurl://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestHTTPRedirections_nosmart(TestHTTPRedirections,
@@ -1172,7 +1176,9 @@ class TestHTTPRedirections_nosmart(TestHTTPRedirections,
     _transport = NoSmartTransportDecorator
 
     def _qualified_url(self, host, port):
-        return 'nosmart+http://%s:%s' % (host, port)
+        result = 'nosmart+http://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestHTTPRedirections_readonly(TestHTTPRedirections,
@@ -1182,7 +1188,9 @@ class TestHTTPRedirections_readonly(TestHTTPRedirections,
     _transport = ReadonlyTransportDecorator
 
     def _qualified_url(self, host, port):
-        return 'readonly+http://%s:%s' % (host, port)
+        result = 'readonly+http://%s:%s' % (host, port)
+        self.permit_url(result)
+        return result
 
 
 class TestDotBzrHidden(TestCaseWithTransport):

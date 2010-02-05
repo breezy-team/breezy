@@ -394,8 +394,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         # Create a smart server that publishes whatever the backing VFS server
         # does.
         self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.start_server(self.smart_server, self.get_server())
         # Make two empty branches, 'empty' and 'target'.
         self.empty_branch = self.make_branch('empty')
         self.make_branch('target')
@@ -414,8 +413,8 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         target = Branch.open_from_transport(transport)
         self.empty_branch.push(target)
         self.assertEqual(
-            ['BzrDir.open',
-             'BzrDir.open_branchV2',
+            ['BzrDir.open_2.1',
+             'BzrDir.open_branchV3',
              'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',

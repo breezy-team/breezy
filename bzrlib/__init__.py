@@ -31,14 +31,8 @@ if getattr(sys, '_bzr_lazy_regex', False):
     import bzrlib.lazy_regex
     bzrlib.lazy_regex.install_lazy_compile()
 
-from bzrlib.osutils import get_user_encoding
-
 
 IGNORE_FILENAME = ".bzrignore"
-
-
-# XXX: Deprecated as of bzr-1.17 use osutils.get_user_encoding() directly
-user_encoding = get_user_encoding()
 
 
 __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
@@ -50,10 +44,11 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 0, 4, 'final', 0)
+version_info = (2, 1, 0, 'candidate', 2)
 
 # API compatibility version: bzrlib is currently API compatible with 1.15.
-api_minimum_version = (1, 17, 0)
+api_minimum_version = (2, 1, 0)
+
 
 def _format_version_tuple(version_info):
     """Turn a version number 2, 3 or 5-tuple into a short string.

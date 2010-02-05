@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -1084,6 +1085,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        self._creation_mtime = None
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1158,6 +1160,17 @@ class DiskTreeTransform(TreeTransformBase):
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            for descendant in self._limbo_descendants(trans_id):
+                desc_path = self._limbo_files[descendant]
+                desc_path = new_path + desc_path[len(old_path):]
+                self._limbo_files[descendant] = desc_path
+
+    def _limbo_descendants(self, trans_id):
+        """Return the set of trans_ids whose limbo paths descend from this."""
+        descendants = set(self._limbo_children.get(trans_id, []))
+        for descendant in list(descendants):
+            descendants.update(self._limbo_descendants(descendant))
+        return descendants
 
     def create_file(self, contents, trans_id, mode_id=None):
         """Schedule creation of a new file.
@@ -1185,6 +1198,7 @@ class DiskTreeTransform(TreeTransformBase):
             f.writelines(contents)
         finally:
             f.close()
+        self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _read_file_chunks(self, trans_id):
@@ -1196,6 +1210,15 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
+
+    def _set_mtime(self, path):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
@@ -1965,7 +1988,7 @@ class _PreviewTree(tree.Tree):
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime"""
         if not self._content_change(file_id):
-            return self._transform._tree.get_file_mtime(file_id, path)
+            return self._transform._tree.get_file_mtime(file_id)
         return self._stat_limbo_file(file_id).st_mtime
 
     def _file_size(self, entry, stat_value):
@@ -2025,7 +2048,7 @@ class _PreviewTree(tree.Tree):
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
                 if not supports_executable():
-                    executable = None
+                    executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
             else:
@@ -2033,8 +2056,7 @@ class _PreviewTree(tree.Tree):
                 executable = None
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
+        executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
@@ -2353,8 +2375,12 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
-                         in iter if not (c or e[0] != e[1]))
+        unchanged = [(f, p[1]) for (f, p, c, v, d, n, k, e)
+                     in iter if not (c or e[0] != e[1])]
+        if accelerator_tree.supports_content_filtering():
+            unchanged = [(f, p) for (f, p) in unchanged
+                         if not accelerator_tree.iter_search_rules([p]).next()]
+        unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
         for file_id, (trans_id, tree_path) in desired_files:

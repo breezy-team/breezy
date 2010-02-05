@@ -31,7 +31,11 @@ from bzrlib import (
     workingtree
     )
 from bzrlib.repofmt import knitrepo
-from bzrlib.tests import http_server
+from bzrlib.tests import (
+    blackbox,
+    http_server,
+    test_foreign,
+    )
 from bzrlib.transport import memory
 
 
@@ -244,6 +248,22 @@ class TestPush(tests.TestCaseWithTransport):
         t = self.make_branch_and_tree('from')
         rev_id = t.commit(allow_pointless=True, message='first commit')
         t.branch.tags.set_tag('new-tag', rev_id)
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
+    def test_push_smart_incremental_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id1 = t.commit(allow_pointless=True, message='first commit')
+        rev_id2 = t.commit(allow_pointless=True, message='second commit')
+        self.run_bzr(
+            ['push', self.get_url('to-one'), '-r1'], working_dir='from')
         self.reset_smart_call_log()
         self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
         # This figure represent the amount of work to perform this use case. It
@@ -564,7 +584,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
 
-    def setUp(self):
+    def start_server(self):
         self._dirs = {'/': None}
         self._files = {}
         self._locks = {}
@@ -578,7 +598,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         result._locks = self._locks
         return result
 
-    def tearDown(self):
+    def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
 
 
@@ -587,9 +607,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -692,6 +710,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
+        # Apply the changes defined in load_tests: one of _uncommitted_changes,
+        # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
 
     def _uncommitted_changes(self):
@@ -752,3 +772,26 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])
+
+
+class TestPushForeign(blackbox.ExternalBase):
+
+    def setUp(self):
+        super(TestPushForeign, self).setUp()
+        test_foreign.register_dummy_foreign_for_test(self)
+
+    def make_dummy_builder(self, relpath):
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
+            [('add', ('', 'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', 'fooid', 'file', 'bar'))])
+        return builder
+
+    def test_no_roundtripping(self):
+        target_branch = self.make_dummy_builder('dp').get_branch()
+        source_tree = self.make_branch_and_tree("dc")
+        output, error = self.run_bzr("push -d dc dp", retcode=3)
+        self.assertEquals("", output)
+        self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use dpush instead.\n")

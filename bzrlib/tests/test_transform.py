@@ -15,18 +15,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 from StringIO import StringIO
 import sys
+import time
 
 from bzrlib import (
     bencode,
     errors,
+    filters,
     generate_ids,
     osutils,
     progress,
     revision as _mod_revision,
-    symbol_versioning,
+    rules,
     tests,
     urlutils,
     )
@@ -135,6 +136,29 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
+
+    def test_create_files_same_timestamp(self):
+        transform, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        # Roll back the clock, so that we know everything is being set to the
+        # exact time
+        transform._creation_mtime = creation_mtime = time.time() - 20.0
+        transform.create_file('content-one',
+                              transform.create_path('one', root))
+        time.sleep(1) # *ugly*
+        transform.create_file('content-two',
+                              transform.create_path('two', root))
+        transform.apply()
+        fo, st1 = self.wt.get_file_with_stat(None, path='one', filtered=False)
+        fo.close()
+        fo, st2 = self.wt.get_file_with_stat(None, path='two', filtered=False)
+        fo.close()
+        # We only guarantee 2s resolution
+        self.assertTrue(abs(creation_mtime - st1.st_mtime) < 2.0,
+            "%s != %s within 2 seconds" % (creation_mtime, st1.st_mtime))
+        # But if we have more than that, all files should get the same result
+        self.assertEqual(st1.st_mtime, st2.st_mtime)
 
     def test_change_root_id(self):
         transform, root = self.get_transform()
@@ -398,6 +422,18 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         second = transform.new_file('FiLe', dir, 'content')
         self.assertContainsRe(transform._limbo_name(first), 'new-1/file')
         self.assertNotContainsRe(transform._limbo_name(second), 'new-1/FiLe')
+
+    def test_adjust_path_updates_child_limbo_names(self):
+        tree = self.make_branch_and_tree('tree')
+        transform = TreeTransform(tree)
+        self.addCleanup(transform.finalize)
+        foo_id = transform.new_directory('foo', transform.root)
+        bar_id = transform.new_directory('bar', foo_id)
+        baz_id = transform.new_directory('baz', bar_id)
+        qux_id = transform.new_directory('qux', baz_id)
+        transform.adjust_path('quxx', foo_id, bar_id)
+        self.assertStartsWith(transform._limbo_name(qux_id),
+                              transform._limbo_name(bar_id))
 
     def test_add_del(self):
         start, root = self.get_transform()
@@ -1886,6 +1922,49 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertEqual([], list(target.iter_changes(revision_tree)))
         self.assertTrue(source.is_executable('file1-id'))
 
+    def install_rot13_content_filter(self, pattern):
+        original_registry = filters._reset_registry()
+        def restore_registry():
+            filters._reset_registry(original_registry)
+        self.addCleanup(restore_registry)
+        def rot13(chunks, context=None):
+            return [''.join(chunks).encode('rot13')]
+        rot13filter = filters.ContentFilter(rot13, rot13)
+        filters.register_filter_stack_map('rot13', {'yes': [rot13filter]}.get)
+        os.mkdir(self.test_home_dir + '/.bazaar')
+        rules_filename = self.test_home_dir + '/.bazaar/rules'
+        f = open(rules_filename, 'wb')
+        f.write('[name %s]\nrot13=yes\n' % (pattern,))
+        f.close()
+        def uninstall_rules():
+            os.remove(rules_filename)
+            rules.reset_rules()
+        self.addCleanup(uninstall_rules)
+        rules.reset_rules()
+
+    def test_build_tree_content_filtered_files_are_not_hardlinked(self):
+        """build_tree will not hardlink files that have content filtering rules
+        applied to them (but will still hardlink other files from the same tree
+        if it can).
+        """
+        self.requireFeature(HardlinkFeature)
+        self.install_rot13_content_filter('file1')
+        source = self.create_ab_tree()
+        target = self.make_branch_and_tree('target')
+        revision_tree = source.basis_tree()
+        revision_tree.lock_read()
+        self.addCleanup(revision_tree.unlock)
+        build_tree(revision_tree, target, source, hardlink=True)
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        self.assertEqual([], list(target.iter_changes(revision_tree)))
+        source_stat = os.stat('source/file1')
+        target_stat = os.stat('target/file1')
+        self.assertNotEqual(source_stat, target_stat)
+        source_stat = os.stat('source/file2')
+        target_stat = os.stat('target/file2')
+        self.assertEqualStat(source_stat, target_stat)
+
     def test_case_insensitive_build_tree_inventory(self):
         if (tests.CaseInsensitiveFilesystemFeature.available()
             or tests.CaseInsCasePresFilenameFeature.available()):
@@ -1946,6 +2025,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         tt.new_directory('', ROOT_PARENT, 'TREE_ROOT')
         rev = tt.commit(branch, 'my message')
         self.assertEqual([], branch.basis_tree().get_parent_ids())
@@ -1957,6 +2037,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch.lock_write()
         self.addCleanup(branch.unlock)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         e = self.assertRaises(ValueError, tt.commit, branch,
                           'my message', ['rev1b-id'])
         self.assertEqual('Cannot supply merge parents for first commit.',
@@ -1967,14 +2048,16 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         branch, tt = self.get_branch_and_transform()
         tt.new_file('file', tt.root, 'contents', 'file-id')
         trans_id = tt.new_directory('dir', tt.root, 'dir-id')
-        tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
+        if SymlinkFeature.available():
+            tt.new_symlink('symlink', trans_id, 'target', 'symlink-id')
         rev = tt.commit(branch, 'message')
         tree = branch.basis_tree()
         self.assertEqual('file', tree.id2path('file-id'))
         self.assertEqual('contents', tree.get_file_text('file-id'))
         self.assertEqual('dir', tree.id2path('dir-id'))
-        self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
-        self.assertEqual('target', tree.get_symlink_target('symlink-id'))
+        if SymlinkFeature.available():
+            self.assertEqual('dir/symlink', tree.id2path('symlink-id'))
+            self.assertEqual('target', tree.get_symlink_target('symlink-id'))
 
     def test_add_unversioned(self):
         branch, tt = self.get_branch_and_transform()
@@ -1987,6 +2070,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt.new_file('file', tt.root, 'contents', 'file-id')
         tt.commit(branch, 'message', strict=True)
         tt = TransformPreview(branch.basis_tree())
+        self.addCleanup(tt.finalize)
         trans_id = tt.trans_id_file_id('file-id')
         tt.delete_contents(trans_id)
         tt.create_file('contents', trans_id)
@@ -2304,6 +2388,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(os.stat(limbo_path).st_mtime,
                          preview_tree.get_file_mtime('file-id'))
 
+    def test_get_file_mtime_renamed(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        work_tree.add('file', 'file-id')
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        file_trans_id = preview.trans_id_tree_file_id('file-id')
+        preview.adjust_path('renamed', preview.root, file_trans_id)
+        preview_tree = preview.get_preview_tree()
+        preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
+        work_mtime = work_tree.get_file_mtime('file-id', 'file')
+
     def test_get_file(self):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'contents', 'file-id')
@@ -2457,8 +2553,6 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         self.assertEqual(('missing', None, None, None), summary)
 
     def test_file_content_summary_executable(self):
-        if not osutils.supports_executable():
-            raise tests.TestNotApplicable()
         preview = self.get_empty_preview()
         path_id = preview.new_file('path', preview.root, 'contents', 'path-id')
         preview.set_executability(True, path_id)
@@ -2492,10 +2586,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         # size must be known
         self.assertEqual(len('contents'), summary[1])
         # not executable
-        if osutils.supports_executable():
-            self.assertEqual(False, summary[2])
-        else:
-            self.assertEqual(None, summary[2])
+        self.assertEqual(False, summary[2])
         # will not have hash (not cheap to determine)
         self.assertIs(None, summary[3])
 
@@ -2760,6 +2851,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         branch = self.make_branch('any')
         tree = branch.repository.revision_tree(_mod_revision.NULL_REVISION)
         tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
         foo_id = tt.new_directory('', ROOT_PARENT)
         bar_id = tt.new_file(u'\u1234bar', foo_id, 'contents')
         limbo_path = tt._limbo_name(bar_id)

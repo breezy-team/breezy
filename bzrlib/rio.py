@@ -32,6 +32,7 @@
 
 import re
 
+from bzrlib import osutils
 from bzrlib.iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
@@ -377,7 +378,8 @@ try:
         _read_stanza_unicode,
         _valid_tag,
         )
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._rio_py import (
        _read_stanza_utf8,
        _read_stanza_unicode,

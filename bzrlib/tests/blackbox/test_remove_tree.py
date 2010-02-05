@@ -122,3 +122,30 @@ class TestRemoveTree(ExternalBase):
         self.run_bzr('remove-tree branch1 --force')
         self.failIfExists('branch1/foo')
         self.failUnlessExists('branch1/bar')
+
+    def test_remove_tree_pending_merges(self):
+        self.run_bzr(['branch', 'branch1', 'branch2'])
+        self.build_tree(['branch1/bar'])
+        self.tree.add('bar')
+        self.tree.commit('2')
+        self.failUnlessExists('branch1/bar')
+        self.run_bzr(['merge', '../branch1'], working_dir='branch2')
+        self.failUnlessExists('branch2/bar')
+        self.run_bzr(['revert', '.'], working_dir='branch2')
+        self.failIfExists('branch2/bar')
+        output = self.run_bzr_error(["Working tree .* has uncommitted changes"],
+                                    'remove-tree branch2', retcode=3)
+
+    def test_remove_tree_pending_merges_force(self):
+        self.run_bzr(['branch', 'branch1', 'branch2'])
+        self.build_tree(['branch1/bar'])
+        self.tree.add('bar')
+        self.tree.commit('2')
+        self.failUnlessExists('branch1/bar')
+        self.run_bzr(['merge', '../branch1'], working_dir='branch2')
+        self.failUnlessExists('branch2/bar')
+        self.run_bzr(['revert', '.'], working_dir='branch2')
+        self.failIfExists('branch2/bar')
+        self.run_bzr('remove-tree branch2 --force')
+        self.failIfExists('branch2/foo')
+        self.failIfExists('branch2/bar')

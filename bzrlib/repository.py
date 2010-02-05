@@ -24,8 +24,10 @@ from bzrlib import (
     bzrdir,
     check,
     chk_map,
+    config,
     debug,
     errors,
+    fetch as _mod_fetch,
     fifo_cache,
     generate_ids,
     gpg,
@@ -50,7 +52,7 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
     Inventory,
@@ -58,6 +60,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
+from bzrlib.lock import _RelockDebugMixin
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -206,7 +209,10 @@ class CommitBuilder(object):
             # an inventory delta was accumulated without creating a new
             # inventory.
             basis_id = self.basis_delta_revision
-            self.inv_sha1 = self.repository.add_inventory_by_delta(
+            # We ignore the 'inventory' returned by add_inventory_by_delta
+            # because self.new_inventory is used to hint to the rest of the
+            # system what code path was taken
+            self.inv_sha1, _ = self.repository.add_inventory_by_delta(
                 basis_id, self._basis_delta, self._new_revision_id,
                 self.parents)
         else:
@@ -857,7 +863,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(object):
+class Repository(_RelockDebugMixin):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1300,16 +1306,14 @@ class Repository(object):
         self._reconcile_does_inventory_gc = True
         self._reconcile_fixes_text_parents = False
         self._reconcile_backsup_inventory = True
-        # not right yet - should be more semantically clear ?
-        #
-        # TODO: make sure to construct the right store classes, etc, depending
-        # on whether escaping is required.
-        self._warn_if_deprecated()
         self._write_group = None
         # Additional places to query for data.
         self._fallback_repositories = []
         # An InventoryEntry cache, used during deserialization
         self._inventory_entry_cache = fifo_cache.FIFOCache(10*1024)
+        # Is it safe to return inventory entries directly from the entry cache,
+        # rather copying them?
+        self._safe_to_return_from_cache = False
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1382,6 +1386,8 @@ class Repository(object):
         locked = self.is_locked()
         result = self.control_files.lock_write(token=token)
         if not locked:
+            self._warn_if_deprecated()
+            self._note_lock('w')
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1392,6 +1398,8 @@ class Repository(object):
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
+            self._warn_if_deprecated()
+            self._note_lock('r')
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -1721,6 +1729,7 @@ class Repository(object):
         self.start_write_group()
         return result
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if (self.control_files._lock_count == 1 and
             self.control_files._lock_mode == 'w'):
@@ -2330,7 +2339,7 @@ class Repository(object):
         num_file_ids = len(file_ids)
         for file_id, altered_versions in file_ids.iteritems():
             if pb is not None:
-                pb.update("fetch texts", count, num_file_ids)
+                pb.update("Fetch texts", count, num_file_ids)
             count += 1
             yield ("file", file_id, altered_versions)
 
@@ -2424,7 +2433,8 @@ class Repository(object):
         :param xml: A serialised inventory.
         """
         result = self._serializer.read_inventory_from_string(xml, revision_id,
-                    entry_cache=self._inventory_entry_cache)
+                    entry_cache=self._inventory_entry_cache,
+                    return_from_cache=self._safe_to_return_from_cache)
         if result.revision_id != revision_id:
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
@@ -2662,8 +2672,8 @@ class Repository(object):
         for ((revision_id,), parent_keys) in \
                 self.revisions.get_parent_map(query_keys).iteritems():
             if parent_keys:
-                result[revision_id] = tuple(parent_revid
-                    for (parent_revid,) in parent_keys)
+                result[revision_id] = tuple([parent_revid
+                    for (parent_revid,) in parent_keys])
             else:
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
@@ -2771,13 +2781,22 @@ class Repository(object):
         result.check(callback_refs)
         return result
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         global _deprecation_warning_done
         if _deprecation_warning_done:
             return
-        _deprecation_warning_done = True
-        warning("Format %s for %s is deprecated - please use 'bzr upgrade' to get better performance"
-                % (self._format, self.bzrdir.transport.base))
+        try:
+            if branch is None:
+                conf = config.GlobalConfig()
+            else:
+                conf = branch.get_config()
+            if conf.suppress_warning('format_deprecation'):
+                return
+            warning("Format %s for %s is deprecated -"
+                    " please use 'bzr upgrade' to get better performance"
+                    % (self._format, self.bzrdir.transport.base))
+        finally:
+            _deprecation_warning_done = True
 
     def supports_rich_root(self):
         return self._format.rich_root_data
@@ -3087,7 +3106,7 @@ class RepositoryFormat(object):
         """
         try:
             transport = a_bzrdir.get_repository_transport(None)
-            format_string = transport.get("format").read()
+            format_string = transport.get_bytes("format")
             return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoRepositoryPresent(a_bzrdir)
@@ -3406,8 +3425,7 @@ class InterRepository(InterObject):
                    provided a default one will be created.
         :return: None.
         """
-        from bzrlib.fetch import RepoFetcher
-        f = RepoFetcher(to_repository=self.target,
+        f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
@@ -3586,7 +3604,7 @@ class InterWeaveRepo(InterSameDataRepository):
                 self.target.texts.insert_record_stream(
                     self.source.texts.get_record_stream(
                         self.source.texts.keys(), 'topological', False))
-                pb.update('copying inventory', 0, 1)
+                pb.update('Copying inventory', 0, 1)
                 self.target.inventories.insert_record_stream(
                     self.source.inventories.get_record_stream(
                         self.source.inventories.keys(), 'topological', False))
@@ -3813,13 +3831,15 @@ class InterDifferingSerializer(InterRepository):
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
 
-    def _fetch_batch(self, revision_ids, basis_id, cache):
+    def _fetch_batch(self, revision_ids, basis_id, cache, a_graph=None):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
         :param basis_id: The revision_id of a tree that must be in cache, used
             as a basis for delta when no other base is available
         :param cache: A cache of RevisionTrees that we can use.
+        :param a_graph: A Graph object to determine the heads() of the
+            rich-root data stream.
         :return: The revision_id of the last converted tree. The RevisionTree
             for it will be in cache
         """
@@ -3832,6 +3852,7 @@ class InterDifferingSerializer(InterRepository):
         pending_revisions = []
         parent_map = self.source.get_parent_map(revision_ids)
         self._fetch_parent_invs_for_stacking(parent_map, cache)
+        self.source._safe_to_return_from_cache = True
         for tree in self.source.revision_trees(revision_ids):
             # Find a inventory delta for this revision.
             # Find text entries that need to be copied, too.
@@ -3885,14 +3906,14 @@ class InterDifferingSerializer(InterRepository):
             pending_revisions.append(revision)
             cache[current_revision_id] = tree
             basis_id = current_revision_id
+        self.source._safe_to_return_from_cache = False
         # Copy file texts
         from_texts = self.source.texts
         to_texts = self.target.texts
         if root_keys_to_create:
-            from bzrlib.fetch import _new_root_data_stream
-            root_stream = _new_root_data_stream(
+            root_stream = _mod_fetch._new_root_data_stream(
                 root_keys_to_create, self._revision_id_to_root_id, parent_map,
-                self.source)
+                self.source, graph=a_graph)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
@@ -3955,14 +3976,22 @@ class InterDifferingSerializer(InterRepository):
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
         hints = []
+        if self._converting_to_rich_root and len(revision_ids) > 100:
+            a_graph = _mod_fetch._get_rich_root_heads_graph(self.source,
+                                                            revision_ids)
+        else:
+            a_graph = None
+
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
             try:
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id = self._fetch_batch(batch, basis_id, cache)
+                basis_id = self._fetch_batch(batch, basis_id, cache,
+                                             a_graph=a_graph)
             except:
+                self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
                 raise
             else:
@@ -4085,13 +4114,13 @@ class CopyConverter(object):
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            self.step('Copying content into repository.')
+            self.step('Copying content')
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        self.step('Deleting old repository content.')
+        self.step('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
-        self.pb.note('repository converted')
+        ui.ui_factory.note('repository converted')
 
     def step(self, message):
         """Update the pb by a step."""
@@ -4324,6 +4353,13 @@ class StreamSink(object):
                 ):
                 if versioned_file is None:
                     continue
+                # TODO: key is often going to be a StaticTuple object
+                #       I don't believe we can define a method by which
+                #       (prefix,) + StaticTuple will work, though we could
+                #       define a StaticTuple.sq_concat that would allow you to
+                #       pass in either a tuple or a StaticTuple as the second
+                #       object, so instead we could have:
+                #       StaticTuple(prefix) + key here...
                 missing_keys.update((prefix,) + key for key in
                     versioned_file.get_missing_compression_parent_keys())
         except NotImplementedError:
@@ -4441,8 +4477,7 @@ class StreamSource(object):
         fetching the inventory weave.
         """
         if self._rich_root_upgrade():
-            import bzrlib.fetch
-            return bzrlib.fetch.Inter1and2Helper(
+            return _mod_fetch.Inter1and2Helper(
                 self.from_repository).generate_root_texts(revs)
         else:
             return []

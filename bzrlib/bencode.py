@@ -16,7 +16,10 @@
 
 """Wrapper around the bencode pyrex and python implementation"""
 
+from bzrlib import osutils
+
 try:
     from bzrlib._bencode_pyx import bdecode, bdecode_as_tuple, bencode, Bencached
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib.util._bencode_py import bdecode, bdecode_as_tuple, bencode, Bencached

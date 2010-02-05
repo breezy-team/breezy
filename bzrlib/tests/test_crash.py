@@ -18,20 +18,17 @@
 from StringIO import StringIO
 import sys
 
-
-from bzrlib.crash import (
-    report_bug,
-    _write_apport_report_to_file,
+from bzrlib import (
+    crash,
+    tests,
     )
-from bzrlib.tests import TestCase
-from bzrlib.tests.features import ApportFeature
+
+from bzrlib.tests import features
 
 
-class TestApportReporting(TestCase):
+class TestApportReporting(tests.TestCase):
 
-    def setUp(self):
-        TestCase.setUp(self)
-        self.requireFeature(ApportFeature)
+    _test_needs_features = [features.apport]
 
     def test_apport_report_contents(self):
         try:
@@ -39,19 +36,13 @@ class TestApportReporting(TestCase):
         except AssertionError, e:
             pass
         outf = StringIO()
-        _write_apport_report_to_file(sys.exc_info(),
-            outf)
+        crash._write_apport_report_to_file(sys.exc_info(), outf)
         report = outf.getvalue()
 
-        self.assertContainsRe(report,
-            '(?m)^BzrVersion:')
+        self.assertContainsRe(report, '(?m)^BzrVersion:')
         # should be in the traceback
-        self.assertContainsRe(report,
-            'my error')
-        self.assertContainsRe(report,
-            'AssertionError')
-        self.assertContainsRe(report,
-            'test_apport_report_contents')
+        self.assertContainsRe(report, 'my error')
+        self.assertContainsRe(report, 'AssertionError')
+        self.assertContainsRe(report, 'test_apport_report_contents')
         # should also be in there
-        self.assertContainsRe(report,
-            '(?m)^CommandLine:.*selftest')
+        self.assertContainsRe(report, '(?m)^CommandLine:')

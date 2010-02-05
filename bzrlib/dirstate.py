@@ -1339,14 +1339,14 @@ class DirState(object):
                     minikind = child[1][0][0]
                     fingerprint = child[1][0][4]
                     executable = child[1][0][3]
-                    old_child_path = osutils.pathjoin(child[0][0],
-                                                      child[0][1])
+                    old_child_path = osutils.pathjoin(child_dirname,
+                                                      child_basename)
                     removals[child[0][2]] = old_child_path
                     child_suffix = child_dirname[len(old_path):]
                     new_child_dirname = (new_path + child_suffix)
                     key = (new_child_dirname, child_basename, child[0][2])
-                    new_child_path = os.path.join(new_child_dirname,
-                                                  child_basename)
+                    new_child_path = osutils.pathjoin(new_child_dirname,
+                                                      child_basename)
                     insertions[child[0][2]] = (key, minikind, executable,
                                                fingerprint, new_child_path)
         self._check_delta_ids_absent(new_ids, delta, 0)
@@ -3978,7 +3978,8 @@ try:
         ProcessEntryC as _process_entry,
         update_entry as update_entry,
         )
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._dirstate_helpers_py import (
         _read_dirblocks,
         bisect_dirblock,
