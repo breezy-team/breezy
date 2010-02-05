@@ -90,7 +90,7 @@ system, or have a look at the command line help::
 
 .. _distutils: http://docs.python.org/install/index.html
 .. _setuptools: http://peak.telecommunity.com/DevCenter/setuptools#what-your-users-should-know
-.. _distribute: http://packages.python.org/distribute/setuptools.html
+.. _distribute: http://packages.python.org/distribute/setuptools.html#what-your-users-should-know
 
 -----
 Using
