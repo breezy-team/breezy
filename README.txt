@@ -89,7 +89,7 @@ system, or have a look at the command line help::
   ./setup.py install --help
 
 .. _distutils: http://docs.python.org/install/index.html
-.. _setuptools: http://peak.telecommunity.com/DevCenter/setuptools
+.. _setuptools: http://peak.telecommunity.com/DevCenter/setuptools#what-your-users-should-know
 .. _distribute: http://packages.python.org/distribute/setuptools.html
 
 -----
