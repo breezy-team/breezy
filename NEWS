@@ -20,6 +20,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
 Improvements
 ************
 
