@@ -1886,7 +1886,7 @@ def recv_all(socket, bytes):
     """
     b = ''
     while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+        new = socket.recv(bytes - len(b))
         if new == '':
             break # eof
         b += new
@@ -1907,7 +1907,7 @@ def send_all(socket, bytes, report_activity=None):
         block = bytes[pos:pos+chunk_size]
         if report_activity is not None:
             report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+        socket.sendall(block)
 
 
 def dereference_path(path):
@@ -1982,17 +1982,6 @@ def file_kind(f, _lstat=os.lstat):
             raise errors.NoSuchFile(f)
         raise
 
-
-def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
-    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
-    while True:
-        try:
-            return f(*a, **kw)
-        except (IOError, OSError), e:
-            if e.errno == errno.EINTR:
-                continue
-            raise
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
