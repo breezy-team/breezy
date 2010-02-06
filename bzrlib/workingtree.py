@@ -2271,16 +2271,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
+                
+        old_tip = old_tip or _mod_revision.NULL_REVISION
         
-        already_merged = None
-        if (old_tip is not None and not _mod_revision.is_null(old_tip)
-            and old_tip != revision):
-            # the branch we are bound to is out of date
-            # (and it may be in need of a merge)
-            # we first merge with the old tip of the branch
-            # in the next step we will merge in the new commits
-
-            base_tree = self.basis_tree()
+        if not _mod_revision.is_null(old_tip):
+            # the branch we are bound to was updated
+            # merge those changes in first
+            base_tree  = self.basis_tree()
             other_tree = self.branch.repository.revision_tree(old_tip)
             result = merge.merge_inner(
                                   self.branch,
@@ -2288,9 +2285,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                   base_tree,
                                   this_tree=self,
                                   change_reporter=change_reporter)
-            already_merged = True
             if result > 0:
-                self.add_parent_tree_id(old_tip)
+                self.add_parent_tree((old_tip, other_tree))
                 trace.note('Rerun update after fixing the conflicts.')
                 return result
 
@@ -2307,7 +2303,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                if not already_merged:
+                if _mod_revision.is_null(old_tip):
                     base_tree = basis
                 else:
                     graph = self.branch.repository.get_graph()
@@ -2335,10 +2331,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
+            if not _mod_revision.is_null(old_tip):
+                parent_trees.append(
+                    (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
-        if already_merged:
-            self.add_parent_tree_id(old_tip)
         return result
 
     def _write_hashcache_if_dirty(self):
