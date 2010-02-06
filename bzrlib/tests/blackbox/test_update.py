@@ -319,7 +319,8 @@ $ bzr update -r revid:m2
         master.commit('one', rev_id='m1')
 
         checkout = master.branch.create_checkout('checkout')
-        lightweight = checkout.branch.create_checkout('lightweight',lightweight=True)
+        lightweight = checkout.branch.create_checkout('lightweight',
+                                                      lightweight=True)
         
         # time to create a mess
         # add a commit to the master
@@ -333,18 +334,30 @@ $ bzr update -r revid:m2
         self.build_tree_contents([('checkout/file', 'checkout local changes')])
 
         # lightweight 
-        self.build_tree_contents([('lightweight/file', 'lightweight local changes')])
+        self.build_tree_contents([('lightweight/file',
+                                   'lightweight local changes')])
 
         # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        self.assertFileEqual('<<<<<<< TREE\nlightweight local changes=======\ncheckout>>>>>>> MERGE-SOURCE\n', 'lightweight/file')
+        self.assertFileEqual('<<<<<<< TREE\n'
+                             'lightweight local changes'
+                             '=======\n'
+                             'checkout'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             'lightweight/file')
         
         # resolve it
-        self.build_tree_contents([('lightweight/file', 'lightweight+checkout')])
+        self.build_tree_contents([('lightweight/file',
+                                   'lightweight+checkout')])
         self.run_bzr('resolved lightweight/file')
 
         # check we get the second conflict
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        self.assertFileEqual('<<<<<<< TREE\nlightweight+checkout=======\nmaster>>>>>>> MERGE-SOURCE\n', 'lightweight/file')
+        self.assertFileEqual('<<<<<<< TREE\n'
+                             'lightweight+checkout'
+                             '=======\n'
+                             'master'
+                             '>>>>>>> MERGE-SOURCE\n',
+                             'lightweight/file')

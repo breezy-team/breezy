@@ -2278,7 +2278,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # the branch we are bound to is out of date
             # (and it may be in need of a merge)
             # we first merge with the old tip of the branch
-            # in the next step we will merge in the commits that will cause it to be not out of date anymore
+            # in the next step we will merge in the new commits
             graph = self.branch.repository.get_graph()
             base_rev_id = graph.find_unique_lca(revision, old_tip)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
