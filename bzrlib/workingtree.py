@@ -2279,11 +2279,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # (and it may be in need of a merge)
             # we first merge with the old tip of the branch
             # in the next step we will merge in the new commits
-            graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(revision, old_tip)
-            base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+            base_tree = self.basis_tree()
             other_tree = self.branch.repository.revision_tree(old_tip)
-            
             result = merge.merge_inner(
                                   self.branch,
                                   other_tree,
