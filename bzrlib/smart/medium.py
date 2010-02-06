@@ -293,7 +293,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
-        osutils.until_no_eintr(self.socket.close)
+        self.socket.close()
         self.finished = True
 
     def _write_out(self, bytes):
@@ -334,27 +334,27 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             bytes_to_read = protocol.next_read_size()
             if bytes_to_read == 0:
                 # Finished serving this request.
-                osutils.until_no_eintr(self._out.flush)
+                self._out.flush()
                 return
             bytes = self.read_bytes(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
-                osutils.until_no_eintr(self._out.flush)
+                self._out.flush()
                 return
             protocol.accept_bytes(bytes)
 
     def _read_bytes(self, desired_count):
-        return osutils.until_no_eintr(self._in.read, desired_count)
+        return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
-        osutils.until_no_eintr(self._out.close)
+        self._out.close()
         self.finished = True
 
     def _write_out(self, bytes):
-        osutils.until_no_eintr(self._out.write, bytes)
+        self._out.write(bytes)
 
 
 class SmartClientMediumRequest(object):
@@ -720,16 +720,16 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
-        osutils.until_no_eintr(self._writeable_pipe.write, bytes)
+        self._writeable_pipe.write(bytes)
         self._report_activity(len(bytes), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
-        osutils.until_no_eintr(self._writeable_pipe.flush)
+        self._writeable_pipe.flush()
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        bytes = osutils.until_no_eintr(self._readable_pipe.read, count)
+        bytes = self._readable_pipe.read(count)
         self._report_activity(len(bytes), 'read')
         return bytes
 
@@ -777,15 +777,15 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.until_no_eintr(self._write_to.write, bytes)
+        self._write_to.write(bytes)
         self._report_activity(len(bytes), 'write')
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
         if not self._connected:
             return
-        osutils.until_no_eintr(self._read_from.close)
-        osutils.until_no_eintr(self._write_to.close)
+        self._read_from.close()
+        self._write_to.close()
         self._ssh_connection.close()
         self._connected = False
 
@@ -814,7 +814,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if not self._connected:
             raise errors.MediumNotConnected(self)
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = osutils.until_no_eintr(self._read_from.read, bytes_to_read)
+        bytes = self._read_from.read(bytes_to_read)
         self._report_activity(len(bytes), 'read')
         return bytes
 
@@ -844,7 +844,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.disconnect()."""
         if not self._connected:
             return
-        osutils.until_no_eintr(self._socket.close)
+        self._socket.close()
         self._socket = None
         self._connected = False
 
