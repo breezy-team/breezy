@@ -2274,7 +2274,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 
         old_tip = old_tip or _mod_revision.NULL_REVISION
         
-        if not _mod_revision.is_null(old_tip):
+        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
             # the branch we are bound to was updated
             # merge those changes in first
             base_tree  = self.basis_tree()
@@ -2291,34 +2291,33 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 return result
 
         if last_rev != _mod_revision.ensure_null(revision):
-            # when we get here we have already merged with the new commits
-            # on the branch we are bound to (or there weren't any)
-            # we can merge up to the specified revision
+            # the working tree is up to date with the branch
+            # we can merge the specified revision from master
+            to_tree = self.branch.repository.revision_tree(revision)
+            to_root_id = to_tree.get_root_id()
+
             basis = self.basis_tree()
             basis.lock_read()
             try:
-                to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
                 if (basis.inventory.root is None
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                if _mod_revision.is_null(old_tip):
-                    base_tree = basis
-                else:
-                    graph = self.branch.repository.get_graph()
-                    base_rev_id = graph.find_unique_lca(revision, last_rev)
-                    base_tree = self.branch.repository.revision_tree(base_rev_id)
-
-                result = merge.merge_inner(
-                                      self.branch,
-                                      to_tree,
-                                      base_tree,
-                                      this_tree=self,
-                                      change_reporter=change_reporter)
-                self.set_last_revision(revision)
             finally:
                 basis.unlock()
+
+            # determine the branch point
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(), last_rev)
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+            result = merge.merge_inner(
+                                  self.branch,
+                                  to_tree,
+                                  base_tree,
+                                  this_tree=self,
+                                  change_reporter=change_reporter)
+            self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
             parent_trees = [(revision, to_tree)]
