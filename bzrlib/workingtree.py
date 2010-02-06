@@ -2284,7 +2284,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             base_tree = self.branch.repository.revision_tree(base_rev_id)
             other_tree = self.branch.repository.revision_tree(old_tip)
             
-            result += merge.merge_inner(
+            result = merge.merge_inner(
                                   self.branch,
                                   other_tree,
                                   base_tree,
@@ -2316,7 +2316,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     base_rev_id = graph.find_unique_lca(revision, last_rev)
                     base_tree = self.branch.repository.revision_tree(base_rev_id)
 
-                result += merge.merge_inner(
+                result = merge.merge_inner(
                                       self.branch,
                                       to_tree,
                                       base_tree,
