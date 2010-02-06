@@ -221,7 +221,7 @@ class TestUncommit(TestCaseWithTransport):
         script.run_script(self, """
 $ cd tree
 $ bzr uncommit --force 
-    2 Martin Pool\t2010-02-05
+    2 ...
       second commit
 ...
 The above revision(s) will be removed.
