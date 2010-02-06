@@ -310,9 +310,9 @@ $ bzr update -r revid:m2
 2>Updated to revision 2 of branch .../master
 ''')
 
-    def _prepare_checkout(self):
-        """Helper function to create a checkout with both local commits
-        and uncommitted changes."""
+    def test_update_checkout_prevent_double_merge(self):
+        """"Launchpad bug 113809 in bzr "update performs two merges"
+        https://launchpad.net/bugs/113809"""
         master = self.make_branch_and_tree('master')
         self.build_tree_contents([('master/file', 'initial contents')])
         master.add(['file'])
@@ -335,26 +335,16 @@ $ bzr update -r revid:m2
         # lightweight 
         self.build_tree_contents([('lightweight/file', 'lightweight local changes')])
 
-    def test_update_checkout_prevent_double_merge(self):
-        """"Launchpad bug 113809 in bzr "update performs two merges"
-        https://launchpad.net/bugs/113809"""
-
-        self._prepare_checkout()
-
+        # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        a_file = file('lightweight/file', 'rt')
-        text = a_file.read()
-        a_file.close()
-        self.assertEqual(text, '<<<<<<< TREE\nlightweight local changes=======\ncheckout>>>>>>> MERGE-SOURCE\n')
+        self.assertFileEqual('<<<<<<< TREE\nlightweight local changes=======\ncheckout>>>>>>> MERGE-SOURCE\n', 'lightweight/file')
         
         # resolve it
         self.build_tree_contents([('lightweight/file', 'lightweight+checkout')])
         self.run_bzr('resolved lightweight/file')
 
+        # check we get the second conflict
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        a_file = file('lightweight/file', 'rt')
-        text = a_file.read()
-        a_file.close()
-        self.assertEqual(text, '<<<<<<< TREE\nlightweight+checkout=======\nmaster>>>>>>> MERGE-SOURCE\n')
+        self.assertFileEqual('<<<<<<< TREE\nlightweight+checkout=======\nmaster>>>>>>> MERGE-SOURCE\n', 'lightweight/file')
