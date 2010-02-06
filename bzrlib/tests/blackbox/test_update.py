@@ -361,3 +361,80 @@ $ bzr update -r revid:m2
                              'master'
                              '>>>>>>> MERGE-SOURCE\n',
                              'lightweight/file')
+
+    def test_update_remove_commit(self):
+        """Update should remove revisions when the branch has removed some commits
+            1
+            |\
+          B-2 3
+            | |
+            4 5-M
+            |
+            W
+
+        What you want is to revert 4, as in this graph the final result should
+        be equivalent to:
+
+           1
+           |\
+           3 2
+           | |\
+        MB-5 | 4
+           |/
+           W
+
+        And the changes in 4 have been removed from the WT.
+        """
+        
+        # building the picture
+        M = self.make_branch_and_tree('M')
+        self.build_tree_contents([('M/file1', '1')])
+        M.add(['file1'])
+        M.commit('one', rev_id='c1')
+
+        B = M.branch.create_checkout('B')
+        self.build_tree_contents([('B/file2', '2')])
+        B.add(['file2'])
+        B.commit('two', rev_id='c2', local=True)
+        self.build_tree_contents([('B/file4', '4')])
+        B.add(['file4'])
+        B.commit('four', rev_id='c4', local=True)
+        
+        W = B.branch.create_checkout('W', lightweight=True)
+        # move B back to 2
+        B.pull(B.branch, local=True, stop_revision='c2', overwrite=True)
+
+        self.build_tree_contents([('M/file3', '3')])
+        M.add(['file3'])
+        M.commit('three', rev_id='c3')
+        self.build_tree_contents([('M/file5', '5')])
+        M.add(['file5'])
+        M.commit('five', rev_id='c5')
+        
+        # now check if everything is as we expect it to be (test the test)
+        # M has 1,3,5
+        self.failUnlessExists('M/file1')
+        self.failIfExists(    'M/file2')
+        self.failUnlessExists('M/file3')
+        self.failIfExists(    'M/file4')
+        self.failUnlessExists('M/file5')
+        # B has 1,2
+        self.failUnlessExists('B/file1')
+        self.failUnlessExists('B/file2')
+        self.failIfExists(    'B/file3')
+        self.failIfExists(    'B/file4')
+        self.failIfExists(    'B/file5')
+        # W has 1,2,4
+        self.failUnlessExists('W/file1')
+        self.failUnlessExists('W/file2')
+        self.failIfExists(    'W/file3')
+        self.failUnlessExists('W/file4')
+        self.failIfExists(    'W/file5')
+
+        out, err = self.run_bzr('update W', retcode=0)
+        self.assertEqual('', out)
+        self.failUnlessExists('W/file1')
+        self.failUnlessExists('W/file2')
+        self.failUnlessExists('W/file3')
+        self.failIfExists('W/file4')
+        self.failUnlessExists('W/file5')
