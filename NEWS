@@ -687,6 +687,8 @@ Bug Fixes
 
 * Fix for shell completion and short options.  (Benoît PIERRE)
 
+* Fix ``bzr --profile-imports`` with Python 2.6.  (Martin Pool)
+
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
 
