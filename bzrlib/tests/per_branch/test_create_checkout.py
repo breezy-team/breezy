@@ -19,11 +19,10 @@
 from bzrlib import (
     branch,
     )
-from bzrlib.remote import RemoteBranch
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
-class TestCreateCheckout(TestCaseWithBranch):
+class TestCreateCheckout(per_branch.TestCaseWithBranch):
 
     def test_checkout_format(self):
         """Make sure the new checkout uses the desired branch format."""
