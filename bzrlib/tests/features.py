@@ -20,8 +20,6 @@ from bzrlib.symbol_versioning import deprecated_in
 
 
 apport = tests.ModuleAvailableFeature('apport')
-ApportFeature = tests._CompatabilityThunkFeature('bzrlib.tests.features',
-    'ApportFeature', 'bzrlib.tests.features.apport', deprecated_in((2,1,0)))
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')

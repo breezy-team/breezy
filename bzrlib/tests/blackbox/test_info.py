@@ -25,22 +25,20 @@ from bzrlib import (
     errors,
     info,
     osutils,
+    tests,
     upgrade,
     urlutils,
     )
-from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped, MemoryServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.transport import memory
 
-
-class TestInfo(ExternalBase):
+class TestInfo(tests.TestCaseWithTransport):
 
     def setUp(self):
-        ExternalBase.setUp(self)
-        self._repo_strings = "2a or development-subtree"
+        super(TestInfo, self).setUp()
+        self._repo_strings = "2a"
 
     def test_info_non_existing(self):
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
@@ -127,7 +125,7 @@ Repository:
         self.assertEqual('', err)
         tree1.commit('commit one')
         rev = branch1.repository.get_revision(branch1.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
         branch2 = branch1.bzrdir.sprout('branch').open_branch()
@@ -315,7 +313,7 @@ Repository:
         tree1.add('b')
         tree1.commit('commit two')
         rev = branch1.repository.get_revision(branch1.revision_history()[-1])
-        datestring_last = format_date(rev.timestamp, rev.timezone)
+        datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
         out, err = self.run_bzr('info -v branch')
@@ -569,7 +567,7 @@ Repository:
         tree2.add('a')
         tree2.commit('commit one')
         rev = repo.get_revision(branch2.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
@@ -688,7 +686,7 @@ Repository:
 
         # Out of date lightweight checkout
         rev = repo.get_revision(branch1.revision_history()[-1])
-        datestring_last = format_date(rev.timestamp, rev.timezone)
+        datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
@@ -844,7 +842,7 @@ Repository:
         tree1.add('a')
         tree1.commit('commit one')
         rev = repo.get_revision(branch1.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
 """Repository tree (format: knit)

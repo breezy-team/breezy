@@ -41,8 +41,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
         self.tracker_type = TestGetBugURL.TransientTracker
         self.tracker_type.log = []
         bugtracker.tracker_registry.register('transient', self.tracker_type)
-        self.addCleanup(lambda:
-                        bugtracker.tracker_registry.remove('transient'))
+        self.addCleanup(bugtracker.tracker_registry.remove, 'transient')
 
     def test_get_bug_url_for_transient_tracker(self):
         branch = self.make_branch('some_branch')
@@ -194,7 +193,7 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         """If asked for a valid tag, return a tracker instance that can map bug
         IDs to <base_url>/<bug_area> + <bug_id>."""
         bugtracker.tracker_registry.register('some', self.tracker)
-        self.addCleanup(lambda: bugtracker.tracker_registry.remove('some'))
+        self.addCleanup(bugtracker.tracker_registry.remove, 'some')
 
         branch = self.make_branch('some_branch')
         config = branch.get_config()

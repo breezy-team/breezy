@@ -37,7 +37,7 @@ META_INFO = {
     'version':      bzrlib.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
-    'url':          'http://www.bazaar-vcs.org/',
+    'url':          'http://www.bazaar.canonical.com/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
     'download_url': 'https://launchpad.net/bzr/+download',

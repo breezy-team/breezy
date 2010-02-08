@@ -64,14 +64,8 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
 
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate"""

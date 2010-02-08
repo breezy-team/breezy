@@ -27,15 +27,14 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.add import (
-    AddAction,
-    AddFromBaseAction,
+from bzrlib.tests import (
+    features,
+    test_smart_add,
+    per_workingtree,
     )
-from bzrlib.tests.test_smart_add import AddCustomIDAction
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-class TestSmartAddTree(TestCaseWithWorkingTree):
+class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
     def test_single_file(self):
         tree = self.make_branch_and_tree('tree')
@@ -205,7 +204,8 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     def test_custom_ids(self):
         sio = StringIO()
-        action = AddCustomIDAction(to_file=sio, should_print=True)
+        action = test_smart_add.AddCustomIDAction(to_file=sio,
+                                                  should_print=True)
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])
 
         wt = self.make_branch_and_tree('.')
@@ -226,60 +226,43 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
                          ], [(path, ie.file_id) for path, ie
                                 in wt.inventory.iter_entries()])
 
-    def make_unicode_containing_tree(self):
-        try:
-            self.build_tree([u'a\u030a'])
-        except UnicodeError:
-            raise tests.TestSkipped('Filesystem cannot create unicode filenames')
+
+class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
+
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
+    def setUp(self):
+        super(TestSmartAddTreeUnicode, self).setUp()
+        self.build_tree([u'a\u030a'])
         self.wt = self.make_branch_and_tree('.')
+        self.overrideAttr(osutils, 'normalized_filename')
 
     def test_accessible_explicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        try:
-            self.wt.smart_add([u'a\u030a'])
-            self.wt.lock_read()
-            self.addCleanup(self.wt.unlock)
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in
-                        self.wt.inventory.iter_entries()])
-        finally:
-            osutils.normalized_filename = orig
+        self.wt.smart_add([u'a\u030a'])
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
+        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                         [(path, ie.kind) for path,ie in
+                          self.wt.inventory.iter_entries()])
 
     def test_accessible_implicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        try:
-            self.wt.smart_add([])
-            self.wt.lock_read()
-            self.addCleanup(self.wt.unlock)
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in
-                        self.wt.inventory.iter_entries()])
-        finally:
-            osutils.normalized_filename = orig
+        self.wt.smart_add([])
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
+        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                         [(path, ie.kind) for path,ie in
+                          self.wt.inventory.iter_entries()])
 
     def test_inaccessible_explicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            self.assertRaises(errors.InvalidNormalization,
-                    self.wt.smart_add, [u'a\u030a'])
-        finally:
-            osutils.normalized_filename = orig
+        self.assertRaises(errors.InvalidNormalization,
+                          self.wt.smart_add, [u'a\u030a'])
 
     def test_inaccessible_implicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            # TODO: jam 20060701 In the future, this should probably
-            #       just ignore files that don't fit the normalization
-            #       rules, rather than exploding
-            self.assertRaises(errors.InvalidNormalization,
-                    self.wt.smart_add, [])
-        finally:
-            osutils.normalized_filename = orig
+        # TODO: jam 20060701 In the future, this should probably
+        #       just ignore files that don't fit the normalization
+        #       rules, rather than exploding
+        self.assertRaises(errors.InvalidNormalization, self.wt.smart_add, [])
