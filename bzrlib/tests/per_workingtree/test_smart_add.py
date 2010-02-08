@@ -27,15 +27,13 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.add import (
-    AddAction,
-    AddFromBaseAction,
+from bzrlib.tests import (
+    test_smart_add,
+    per_workingtree,
     )
-from bzrlib.tests.test_smart_add import AddCustomIDAction
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-class TestSmartAddTree(TestCaseWithWorkingTree):
+class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
     def test_single_file(self):
         tree = self.make_branch_and_tree('tree')
@@ -205,7 +203,8 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     def test_custom_ids(self):
         sio = StringIO()
-        action = AddCustomIDAction(to_file=sio, should_print=True)
+        action = test_smart_add.AddCustomIDAction(to_file=sio,
+                                                  should_print=True)
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])
 
         wt = self.make_branch_and_tree('.')
