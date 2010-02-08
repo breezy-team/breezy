@@ -21,9 +21,11 @@ class LaunchpadSubmitterHooks(Hooks):
                 'get_prerequisite',
                 "Return the prerequisite branch for proposing as merge.",
                 (2, 1), None),
+        )
+        self.create_hook(
             HookPoint(
                 'merge_proposal_body',
-                "Return the prerequisite branch for proposing as merge.",
+                "Return an initial body for the merge proposal message.",
                 (2, 1), None),
         )
 
@@ -82,7 +84,7 @@ class Submitter(object):
         try:
             self.target_branch.bzr.lock_read()
             try:
-                body = self.try_get_body()
+                body = self.get_initial_body()
             finally:
                 self.target_branch.bzr.unlock()
         finally:
@@ -91,14 +93,7 @@ class Submitter(object):
                                                         start_message=body)
         return initial_comment.strip().encode('utf-8')
 
-    def try_get_body(self):
-        try:
-            from bzrlib.plugins.lpreview_body.body_callback import (
-                get_body,
-                modified_files,
-            )
-        except ImportError:
-            return ''
+    def get_initial_body(self):
         def list_modified_files():
             lca_tree = self.source_branch.find_lca_tree(
                 self.target_branch)
@@ -115,7 +110,7 @@ class Submitter(object):
                 'modified_files_callback': list_modified_files,
                 'old_body': body,
             })
-        return get_body(self.tree, target_loc, list_modified_files, '')
+        return body
 
     def check_submission(self):
         """Check that the submission is sensible."""
@@ -168,6 +163,13 @@ class Submitter(object):
                 print line
         else:
             webbrowser.open(canonical_url(mp))
+
+
+def modified_files(old_tree, new_tree):
+    for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
+        old_tree):
+        if c and k == 'file':
+            yield str(path)
 
 
 def canonical_url(object):
