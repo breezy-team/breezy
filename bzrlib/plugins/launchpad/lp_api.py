@@ -129,7 +129,7 @@ class LaunchpadBranch(object):
         self.bzr_url = bzr_url
         self._bzr = bzr_branch
         self._push_bzr = None
-        self._check_update = False
+        self._check_update = check_update
         self.lp = lp_branch
 
     @property

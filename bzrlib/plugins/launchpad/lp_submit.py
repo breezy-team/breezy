@@ -143,6 +143,8 @@ class Submitter(object):
             prereq = None
         else:
             prereq = prerequisite_branch.lp
+            prerequisite_branch.update_lp()
+        self.source_branch.update_lp()
         reviewers = []
         review_types = []
         for reviewer, review_type in self.reviews:
