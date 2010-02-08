@@ -1,13 +1,8 @@
 import webbrowser
 
 from bzrlib import (
-    branch,
-    config,
     errors,
     msgeditor,
-    osutils,
-    trace,
-    transport,
 )
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.plugins.launchpad import lp_api
@@ -17,14 +12,6 @@ class NoLaunchpadLib(errors.BzrCommandError):
 
     _fmt = "LaunchpadLib must be installed for this operation."
 
-
-try:
-    from launchpadlib import (
-        credentials,
-        launchpad,
-    )
-except ImportError:
-    raise NoLaunchpadLib()
 
 from lazr.restfulclient import errors as restful_errors
 

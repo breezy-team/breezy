@@ -29,6 +29,8 @@ from bzrlib import (
     config,
     errors,
     osutils,
+    trace,
+    transport,
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
