@@ -1,4 +1,4 @@
-import errno, re, webbrowser
+import webbrowser
 
 from bzrlib import (
     branch,
@@ -52,6 +52,16 @@ class Submitter(object):
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
                  staging=False):
+        """Constructor.
+
+        :param tree: The working tree for the source branch.
+        :param source_branch: The branch to propose for merging.
+        :param target_branch: The branch to merge into.
+        :param message: The commit message to use.  (May be None.)
+        :param reviews: A list of tuples of reviewer, review type.
+        :param staging: If True, propose the merge against staging instead of
+            production.
+        """
         self.tree = tree
         if staging:
             lp_instance = 'staging'
@@ -78,6 +88,7 @@ class Submitter(object):
                             reviews]
 
     def get_comment(self, prerequisite_branch):
+        """Determine the initial comment for the merge proposal."""
         info = ["Source: %s\n" % self.source_branch.lp.bzr_identity]
         info.append("Target: %s\n" % self.target_branch.lp.bzr_identity)
         if prerequisite_branch is not None:
@@ -125,6 +136,7 @@ class Submitter(object):
         return get_body(self.tree, target_loc, list_modified_files, '')
 
     def check_submission(self):
+        """Check that the submission is sensible."""
         if self.source_branch.lp.self_link == self.target_branch.lp.self_link:
             raise errors.BzrCommandError(
                 'Source and target branches must be different.')
@@ -148,6 +160,7 @@ class Submitter(object):
         return prerequisite_branch
 
     def submit(self):
+        """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
         if prerequisite_branch is None:
             prereq = None
@@ -175,8 +188,7 @@ class Submitter(object):
             webbrowser.open(canonical_url(mp))
 
 
-
-
 def canonical_url(object):
+    """Return the canonical URL for a branch."""
     url = object.self_link.replace('https://api.', 'https://code.')
     return url.replace('/beta/', '/')

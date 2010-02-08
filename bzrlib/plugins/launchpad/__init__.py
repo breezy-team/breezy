@@ -35,7 +35,6 @@ from bzrlib import (
 from bzrlib import bzrdir
 from bzrlib.commands import (
         Command,
-        Option,
         register_command,
 )
 from bzrlib.directory_service import directories
@@ -48,6 +47,7 @@ from bzrlib.errors import (
     )
 from bzrlib.help_topics import topic_registry
 from bzrlib.option import (
+        Option,
         ListOption,
 )
 
