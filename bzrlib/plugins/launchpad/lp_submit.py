@@ -8,11 +8,6 @@ from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.plugins.launchpad import lp_api
 from bzrlib.plugins.launchpad import lp_registration
 
-class NoLaunchpadLib(errors.BzrCommandError):
-
-    _fmt = "LaunchpadLib must be installed for this operation."
-
-
 from lazr.restfulclient import errors as restful_errors
 
 
