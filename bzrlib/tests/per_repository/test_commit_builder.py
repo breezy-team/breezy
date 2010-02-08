@@ -16,24 +16,21 @@
 
 """Tests for repository commit builder."""
 
-from copy import copy
-import errno
 import os
-import sys
 
 from bzrlib import (
     errors,
+    graph,
     inventory,
     osutils,
     repository,
     revision as _mod_revision,
     tests,
     )
-from bzrlib.graph import Graph
-from bzrlib.tests.per_repository import test_repository
+from bzrlib.tests import per_repository
 
 
-class TestCommitBuilder(test_repository.TestCaseWithRepository):
+class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
@@ -924,8 +921,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        graph = dict(Graph(tree.branch.repository.texts).iter_ancestry([tip]))
-        self.assertEqual(expected_graph, graph)
+        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):
         # altering a file changes the last modified.
