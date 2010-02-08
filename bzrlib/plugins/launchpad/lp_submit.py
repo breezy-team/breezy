@@ -38,7 +38,12 @@ class LaunchpadSubmitterHooks(Hooks):
             HookPoint(
                 'get_prerequisite',
                 "Return the prerequisite branch for proposing as merge.",
-                (2, 1), None))
+                (2, 1), None),
+            HookPoint(
+                'merge_proposal_body',
+                "Return the prerequisite branch for proposing as merge.",
+                (2, 1), None),
+        )
 
 
 class Submitter(object):
@@ -109,6 +114,14 @@ class Submitter(object):
             return list(files)
         target_loc = ('bzr+ssh://bazaar.launchpad.net/%s' %
                        self.target_branch.lp.unique_name)
+        body = None
+        for hook in self.hooks['merge_proposal_body']:
+            body = hook({
+                'tree': self.tree,
+                'target_branch': target_loc,
+                'modified_files_callback': list_modified_files,
+                'old_body': body,
+            })
         return get_body(self.tree, target_loc, list_modified_files, '')
 
     def check_submission(self):
