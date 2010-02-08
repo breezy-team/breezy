@@ -228,6 +228,7 @@ class LaunchpadBranch(object):
         return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
 
     def update_lp(self):
+        """Update the Launchpad copy of this branch."""
         if not self._check_update:
             return
         self.bzr.lock_read()

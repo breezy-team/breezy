@@ -94,6 +94,10 @@ class Submitter(object):
         return initial_comment.strip().encode('utf-8')
 
     def get_initial_body(self):
+        """Get a body for the proposal for the user to modify.
+
+        :return: a str or None.
+        """
         def list_modified_files():
             lca_tree = self.source_branch.find_lca_tree(
                 self.target_branch)
@@ -168,6 +172,7 @@ class Submitter(object):
 
 
 def modified_files(old_tree, new_tree):
+    """Return a list of paths in the new tree with modified contents."""
     for f, (op, path), c, v, p, n, (ok, k), e in new_tree.iter_changes(
         old_tree):
         if c and k == 'file':
