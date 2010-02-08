@@ -36,6 +36,9 @@ Bug Fixes
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
+* ``bzr add`` will not add conflict related files unless explicitly required.
+  (Vincent Ladeuil, #322767)
+
 Testing
 *******
 
