@@ -35,6 +35,7 @@ from bzrlib.tests import (
     blackbox,
     http_server,
     test_foreign,
+    test_server,
     )
 from bzrlib.transport import memory
 
@@ -582,7 +583,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
         return transport.get_transport(target)
 
 
-class RedirectingMemoryServer(memory.MemoryServer):
+class RedirectingMemoryServer(test_server.MemoryServer):
 
     def start_server(self):
         self._dirs = {'/': None}
