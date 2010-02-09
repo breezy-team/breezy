@@ -103,11 +103,11 @@ from bzrlib.symbol_versioning import (
 import bzrlib.trace
 from bzrlib.transport import get_transport, pathfilter
 import bzrlib.transport
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
-from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
-from bzrlib.tests import TestUtil
+from bzrlib.tests import (
+    test_server,
+    TestUtil,
+    )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
@@ -124,7 +124,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 # shown frame is the test code, not our assertXYZ.
 __unittest = 1
 
-default_transport = LocalURLServer
+default_transport = test_server.LocalURLServer
 
 
 _unitialized_attr = object()
@@ -2175,7 +2175,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server = test_serevr.ReadonlyServer()
             else:
                 # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
@@ -2204,7 +2204,7 @@ class TestCaseWithMemoryTransport(TestCase):
         is no means to override it.
         """
         if self.__vfs_server is None:
-            self.__vfs_server = MemoryServer()
+            self.__vfs_server = test_server.MemoryServer()
             self.start_server(self.__vfs_server)
         return self.__vfs_server
 
@@ -2619,7 +2619,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
@@ -2685,7 +2685,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == test_server.MemoryServer:
             self.transport_readonly_server = HttpServer
 
 

@@ -53,7 +53,7 @@ class TestServer(transport.Server):
         raise NotImplementedError
 
 
-class LocalURLServer(Server):
+class LocalURLServer(TestServer):
     """A pretend server for local transports, using file:// urls.
 
     Of course no actual server is required to access the local filesystem, so
@@ -68,7 +68,7 @@ class LocalURLServer(Server):
         return urlutils.local_path_to_url('')
 
 
-class MemoryServer(Server):
+class MemoryServer(TestServer):
     """Server for the MemoryTransport for testing with."""
 
     def start_server(self):
@@ -95,7 +95,7 @@ class MemoryServer(Server):
         return self._scheme
 
 
-class DecoratorServer(Server):
+class DecoratorServer(TestServer):
     """Server for the TransportDecorator for testing with.
 
     To use this when subclassing TransportDecorator, override override the
