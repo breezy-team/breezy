@@ -53,6 +53,21 @@ class TestServer(transport.Server):
         raise NotImplementedError
 
 
+class LocalURLServer(Server):
+    """A pretend server for local transports, using file:// urls.
+
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
+    """
+
+    def start_server(self):
+        pass
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return urlutils.local_path_to_url('')
+
+
 class DecoratorServer(Server):
     """Server for the TransportDecorator for testing with.
 
@@ -70,7 +85,6 @@ class DecoratorServer(Server):
             self._made_server = False
             self._server = server
         else:
-            from bzrlib.transport.local import LocalURLServer
             self._made_server = True
             self._server = LocalURLServer()
             self._server.start_server()
