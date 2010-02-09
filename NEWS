@@ -54,6 +54,9 @@ Bug Fixes
   to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
   (Gordon Tyler, #514399)
 
+* Don't require testtools to use sftp.
+  (Vincent Ladeuil, #516183)
+
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
 
