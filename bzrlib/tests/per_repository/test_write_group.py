@@ -29,8 +29,10 @@ from bzrlib import (
     tests,
     versionedfile,
     )
-from bzrlib.transport import local, memory
-from bzrlib.tests import per_repository
+from bzrlib.tests import (
+    per_repository,
+    test_server,
+    )
 
 
 class TestWriteGroup(per_repository.TestCaseWithRepository):
@@ -114,9 +116,9 @@ class TestWriteGroup(per_repository.TestCaseWithRepository):
         repo.unlock()
 
     def test_abort_write_group_does_not_raise_when_suppressed(self):
-        if self.transport_server is local.LocalURLServer:
+        if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo')
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
