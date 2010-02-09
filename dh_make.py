@@ -19,6 +19,7 @@ from bzrlib import errors as bzr_errors
 from bzrlib.plugins.builddeb import (
     default_orig_dir,
     import_dsc,
+    upstream,
     util,
     )
 
@@ -65,6 +66,9 @@ def _get_tarball(tree, tarball, package_name, version):
     tarball_filename = os.path.join(orig_dir, dest_name)
     trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir)
+    provider = upstream.UpstreamProvider(package_name, "%s-1" % version,
+            orig_dir, [])
+    provider.provide(os.path.join(tree.basedir, ".."))
     m = md5.md5()
     m.update(open(tarball_filename).read())
     md5sum = m.hexdigest()

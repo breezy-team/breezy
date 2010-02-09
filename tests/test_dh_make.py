@@ -37,6 +37,7 @@ class dh_makeTests(BuilddebTestCase):
         self.failUnlessExists('a')
         self.failUnlessExists('b')
         self.assertEqual(open('package-0.1/a').read(), open('a').read())
+        self.failUnlessExists('../package_0.1.orig.tar.gz')
 
     def test_import_upstream_no_existing(self):
         self.build_tree(['package-0.1/', 'package-0.1/a', 'package-0.1/b'])
@@ -54,3 +55,4 @@ class dh_makeTests(BuilddebTestCase):
         self.failUnlessExists('package/b')
         self.assertEqual(open('package-0.1/a').read(),
                open('package/a').read())
+        self.failUnlessExists('package_0.1.orig.tar.gz')
