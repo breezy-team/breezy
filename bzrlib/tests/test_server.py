@@ -196,3 +196,11 @@ class TraceServer(DecoratorServer):
         return TransportTraceDecorator
 
 
+class UnlistableServer(DecoratorServer):
+    """Server for the UnlistableTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import unlistable
+        return unlistable.UnlistableTransportDecorator
+
+
