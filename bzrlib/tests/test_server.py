@@ -16,6 +16,7 @@
 
 from bzrlib import (
     transport,
+    urlutils,
     )
 
 
