@@ -114,6 +114,7 @@ def load_tests(standard_tests, module, loader):
             'test_builder',
             'test_commit_message',
             'test_config',
+            'test_dh_make',
             'test_hooks',
             'test_import_dsc',
             'test_merge_changelog',

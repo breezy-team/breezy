@@ -22,6 +22,10 @@
 #
 
 import commands
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
 import shutil
 import subprocess
@@ -36,10 +40,11 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
-from bzrlib.errors import (BzrCommandError,
-                           NotBranchError,
-                           FileExists,
-                           )
+from bzrlib.errors import (
+    BzrCommandError,
+    NotBranchError,
+    FileExists,
+    )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note, warning
@@ -49,14 +54,11 @@ from bzrlib.plugins.builddeb import (
     default_build_dir,
     default_orig_dir,
     default_result_dir,
-    default_conf,
-    local_conf,
-    global_conf,
+    dh_make,
     )
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
                      )
-from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import BuildFailedError
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
@@ -77,6 +79,7 @@ from bzrlib.plugins.builddeb.upstream import (
         get_upstream_sources,
         )
 from bzrlib.plugins.builddeb.util import (
+        debuild_config,
         dget_changes,
         find_changelog,
         find_last_distribution,
@@ -113,32 +116,6 @@ export_upstream_revision_opt = Option('export-upstream-revision',
 no_user_conf_opt = Option('no-user-config',
     help="Stop builddeb from reading the user's config file. Used mainly "
     "for tests.")
-
-
-def debuild_config(tree, working_tree, no_user_config):
-    """Obtain the Debuild configuration object.
-
-    :param tree: A Tree object, can be a WorkingTree or RevisionTree.
-    :param working_tree: Whether the tree is a working tree.
-    :param no_user_config: Whether to skip the user configuration
-    """
-    config_files = []
-    user_config = None
-    if (working_tree and tree.has_filename(local_conf)):
-        if tree.path2id(local_conf) is None:
-            config_files.append((tree.get_file_byname(local_conf), True,
-                        "local.conf"))
-        else:
-            warning('Not using configuration from %s as it is versioned.')
-    if not no_user_config:
-        config_files.append((global_conf, True))
-        user_config = global_conf
-    if tree.path2id(default_conf):
-        config_files.append((tree.get_file(tree.path2id(default_conf)), False,
-                    "default.conf"))
-    config = DebBuildConfig(config_files, tree=tree)
-    config.set_user_config(user_config)
-    return config
 
 
 class cmd_builddeb(Command):
@@ -931,3 +908,11 @@ class cmd_merge_package(Command):
         else:
             note('The merge resulted in no conflicts. You may commit the '
             'changes by running "bzr commit".')
+
+
+class cmd_dh_make(Command):
+
+    takes_args = ['tarball', 'package_name', 'version']
+
+    def run(self, tarball, package_name, version):
+        tree = dh_make.import_upstream(tarball, package_name, version)
