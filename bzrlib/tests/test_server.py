@@ -164,6 +164,14 @@ class FakeVFATServer(DecoratorServer):
         return FakeVFATTransportDecorator
 
 
+class LogDecoratorServer(DecoratorServer):
+    """Server for testing."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import log
+        return log.TransportLogDecorator
+
+
 class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 

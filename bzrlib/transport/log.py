@@ -26,18 +26,10 @@ import time
 import types
 
 from bzrlib.trace import mutter
-from bzrlib.transport.decorator import (
-    TransportDecorator,
-    )
-from bzrlib.transport.trace import (
-    DecoratorServer,
-    TransportTraceDecorator,
-    )
+from bzrlib.transport import decorator
 
 
-
-
-class TransportLogDecorator(TransportDecorator):
+class TransportLogDecorator(decorator.TransportDecorator):
     """Decorator for Transports that logs interesting operations to .bzr.log.
 
     In general we want to log things that usually take a network round trip
@@ -156,13 +148,7 @@ class TransportLogDecorator(TransportDecorator):
         return t
 
 
-class LogDecoratorServer(DecoratorServer):
-    """Server for testing."""
-
-    def get_decorator_class(self):
-        return TransportLogDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(TransportLogDecorator, LogDecoratorServer)]
+    from bzrlib.tests import test_server
+    return [(TransportLogDecorator, test_server.LogDecoratorServer)]
