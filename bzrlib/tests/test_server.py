@@ -137,6 +137,14 @@ class DecoratorServer(TestServer):
         return self.get_url_prefix() + self._server.get_url()
 
 
+class BrokenRenameServer(DecoratorServer):
+    """Server for the BrokenRenameTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import brokenrename
+        return brokenrename.BrokenRenameTransportDecorator
+
+
 class FakeNFSServer(DecoratorServer):
     """Server for the FakeNFSTransportDecorator for testing with."""
 
