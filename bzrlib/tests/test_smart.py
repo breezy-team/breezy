@@ -48,6 +48,7 @@ from bzrlib.smart import (
     server,
     vfs,
     )
+from bzrlib.tests import test_server
 from bzrlib.transport import (
     chroot,
     local,
@@ -106,7 +107,7 @@ class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
         self.transport_server = self.make_transport_server
 
     def make_transport_server(self):
-        return server.SmartTCPServer_for_testing('-' + self.id())
+        return test_server.SmartTCPServer_for_testing('-' + self.id())
 
     def get_smart_medium(self):
         """Get a smart medium to use in tests."""
