@@ -12,8 +12,9 @@ class dh_makeTests(BuilddebTestCase):
         self.failIfExists("foo")
         self.assertEqual(tree.branch.base, new_tree.branch.base)
 
-    # Can't test creating a new tree as bzr's test suite puts us
-    # inside a tree
+    def test__get_tree_no_existing_branch(self):
+        new_tree = dh_make._get_tree("foo")
+        self.failUnlessExists("foo")
 
     def test_import_upstream(self):
         tree = self.make_branch_and_tree('.')
@@ -36,3 +37,20 @@ class dh_makeTests(BuilddebTestCase):
         self.failUnlessExists('a')
         self.failUnlessExists('b')
         self.assertEqual(open('package-0.1/a').read(), open('a').read())
+
+    def test_import_upstream_no_existing(self):
+        self.build_tree(['package-0.1/', 'package-0.1/a', 'package-0.1/b'])
+        tf = tarfile.open('package-0.1.tar.gz', 'w:gz')
+        try:
+            tf.add('package-0.1')
+        finally:
+            tf.close()
+        tree = dh_make.import_upstream('package-0.1', 'package', '0.1')
+        self.failUnlessExists("package")
+        rev_tree = tree.branch.repository.revision_tree(
+                tree.branch.last_revision())
+        # Has the original revision as a parent
+        self.failUnlessExists('package/a')
+        self.failUnlessExists('package/b')
+        self.assertEqual(open('package-0.1/a').read(),
+               open('package/a').read())

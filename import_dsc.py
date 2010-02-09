@@ -1687,7 +1687,6 @@ class DistributionBranch(object):
             finally:
                 tree.unlock()
             command = ["pristine-tar", "gendelta", tarball_path, "-"]
-            note(" ".join(command))
             try:
                 proc = Popen(command, stdout=PIPE, cwd=dest,
                         preexec_fn=subprocess_setup)

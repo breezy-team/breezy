@@ -38,12 +38,13 @@ from info import (
     )
 
 commands = {
-        "builddeb": ["bd"],
-        "merge_upstream": ["mu"],
-        "import_dsc": [],
         "bd_do": [],
+        "builddeb": ["bd"],
+        "dh_make": ["dh_make"],
+        "import_dsc": [],
         "mark_uploaded": [],
         "merge_package": [],
+        "merge_upstream": ["mu"],
         }
 
 for command, aliases in commands.iteritems():

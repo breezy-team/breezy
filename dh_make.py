@@ -4,9 +4,13 @@ except ImportError:
     import md5
 import os
 import shutil
+import sys
+import subprocess
 
 from bzrlib import (
     bzrdir,
+    revision as mod_revision,
+    trace,
     transport,
     workingtree,
     )
@@ -21,7 +25,7 @@ from bzrlib.plugins.builddeb import (
 
 def _get_tree(package_name):
     try:
-        tree = workingtree.WorkingTree.open_containing(".")[0]
+        tree = workingtree.WorkingTree.open(".")
     except bzr_errors.NotBranchError:
         if os.path.exists(package_name):
             raise bzr_errors.BzrCommandError("Either run the command from an "
@@ -59,6 +63,7 @@ def _get_tarball(tree, tarball, package_name, version):
         os.makedirs(orig_dir)
     dest_name = util.tarball_name(package_name, version)
     tarball_filename = os.path.join(orig_dir, dest_name)
+    trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir)
     m = md5.md5()
     m.update(open(tarball_filename).read())
@@ -68,7 +73,10 @@ def _get_tarball(tree, tarball, package_name, version):
 
 def import_upstream(tarball, package_name, version):
     tree = _get_tree(package_name)
-    parents = [tree.branch.last_revision()]
+    if tree.branch.last_revision() != mod_revision.NULL_REVISION:
+        parents = [tree.branch.last_revision()]
+    else:
+        parents = []
     tarball_filename, md5sum = _get_tarball(tree, tarball,
             package_name, version)
     db = import_dsc.DistributionBranch(tree.branch, tree.branch, tree=tree,
@@ -82,3 +90,21 @@ def import_upstream(tarball, package_name, version):
     finally:
         shutil.rmtree(tarball_dir)
     return tree
+
+
+def run_dh_make(tree, package_name, version):
+    if not tree.has_filename("debian"):
+        tree.mkdir("debian")
+    # FIXME: give a nice error on 'debian is not a directory'
+    if tree.path2id("debian") is None:
+        tree.add("debian")
+    command = ["dh_make", "--addmissing", "--packagename",
+                "%s_%s" % (package_name, version)]
+    proc = subprocess.Popen(command, cwd=tree.basedir,
+            preexec_fn=util.subprocess_setup, stdin=sys.stdin)
+    retcode = proc.wait()
+    if retcode != 0:
+        raise bzr_errors.BzrCommandError("dh_make failed.")
+    for fn in os.listdir(tree.abspath("debian")):
+        if not fn.endswith(".ex") and not fn.endswith(".EX"):
+            tree.add(os.path.join("debian", fn))
