@@ -137,3 +137,11 @@ class DecoratorServer(Server):
         return self.get_url_prefix() + self._server.get_url()
 
 
+class ReadonlyServer(DecoratorServer):
+    """Server for the ReadonlyTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import readonly
+        return readonly.ReadonlyTransportDecorator
+
+
