@@ -161,7 +161,7 @@ class FakeVFATServer(DecoratorServer):
 
     def get_decorator_class(self):
         from bzrlib.transport import fakevfat
-        return FakeVFATTransportDecorator
+        return fakevfat.FakeVFATTransportDecorator
 
 
 class LogDecoratorServer(DecoratorServer):
@@ -177,7 +177,7 @@ class NoSmartTransportServer(DecoratorServer):
 
     def get_decorator_class(self):
         from bzrlib.transport import nosmart
-        return NoSmartTransportDecorator
+        return nosmart.NoSmartTransportDecorator
 
 
 class ReadonlyServer(DecoratorServer):
@@ -193,7 +193,7 @@ class TraceServer(DecoratorServer):
 
     def get_decorator_class(self):
         from bzrlib.transport import trace
-        return TransportTraceDecorator
+        return trace.TransportTraceDecorator
 
 
 class UnlistableServer(DecoratorServer):
