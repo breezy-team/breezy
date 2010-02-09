@@ -43,7 +43,7 @@ class TransportTraceDecorator(decorator.TransportDecorator):
 
         _decorated is a private parameter for cloning.
         """
-        TransportDecorator.__init__(self, url, _decorated)
+        super(TransportTraceDecorator, self).__init__(url, _decorated)
         if _from_transport is None:
             # newly created
             self._activity = []
