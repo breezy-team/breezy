@@ -136,6 +136,8 @@ def regenerate_default_revid(repository, revid):
     :param repository: Repository in which the revision is present.
     :param revid: Revision id of the revision that is being rebased.
     :return: new revision id."""
+    if revid == NULL_REVISION:
+        return NULL_REVISION
     rev = repository.get_revision(revid)
     return gen_revision_id(rev.committer, rev.timestamp)
 
