@@ -23,8 +23,7 @@ from bzrlib import (
     revision,
     tests,
     )
-from bzrlib.smart import server
-
+from bzrlib.tests import test_server
 
 class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
     """Base TestCase for testing pre/post_change_branch_tip hooks."""
@@ -151,8 +150,8 @@ class TestOpen(tests.TestCaseWithMemoryTransport):
         b = self.make_branch('.')
         if isinstance(b, remote.RemoteBranch):
             # RemoteBranch creation:
-            if (self.transport_readonly_server ==
-                server.ReadonlySmartTCPServer_for_testing_v2_only):
+            if (self.transport_readonly_server
+                == test_server.ReadonlySmartTCPServer_for_testing_v2_only):
                 # Older servers:
                 self.assertEqual(3, len(self.hook_calls))
                 # creates the branch via the VFS (for older servers)
