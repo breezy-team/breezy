@@ -36,6 +36,10 @@ Bug Fixes
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
+* Network transfer amounts and rates are now displayed in SI units according
+  to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
+  (Gordon Tyler, #514399)
+
 Testing
 *******
 
@@ -50,9 +54,6 @@ bzr 2.1.0 (not released yet)
 
 Bug Fixes
 *********
-* Network transfer amounts and rates are now displayed in SI units according
-  to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
-  (Gordon Tyler, #514399)
 
 * Don't require testtools to use sftp.
   (Vincent Ladeuil, #516183)
