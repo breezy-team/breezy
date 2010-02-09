@@ -2176,7 +2176,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                self.__readonly_server = test_serevr.ReadonlyServer()
+                self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
@@ -2401,7 +2401,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
