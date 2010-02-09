@@ -29,7 +29,8 @@ from bzrlib import (
     upgrade,
     urlutils,
     )
-from bzrlib.transport import memory
+from bzrlib.tests import test_server
+
 
 class TestInfo(tests.TestCaseWithTransport):
 
@@ -38,7 +39,7 @@ class TestInfo(tests.TestCaseWithTransport):
         self._repo_strings = "2a"
 
     def test_info_non_existing(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
