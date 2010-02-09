@@ -702,10 +702,6 @@ class UnavailableFeature(Exception):
     """
 
 
-class CommandFailed(Exception):
-    pass
-
-
 class StringIOWrapper(object):
     """A wrapper around cStringIO which just adds an encoding attribute.
 

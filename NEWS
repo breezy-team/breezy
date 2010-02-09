@@ -36,6 +36,12 @@ Bug Fixes
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
+API Changes
+***********
+
+* Remove unused ``CommandFailed`` exception.
+  (Martin Pool)
+
 Testing
 *******
 
