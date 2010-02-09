@@ -186,23 +186,6 @@ def plugin_command_names():
     return plugin_cmds.keys()
 
 
-@deprecated_function(deprecated_in((1, 17, 0)))
-def get_all_cmds(plugins_override=False):
-    """Return canonical name and class for most commands.
-    
-    NB: This does not return all commands since the introduction of
-    command hooks, and returning the class is not sufficient to 
-    get correctly setup commands, which is why it is deprecated.
-
-    Use 'all_command_names' + 'get_cmd_object' instead.
-    """
-    d = _builtin_commands()
-    if plugins_override:
-        d.update(plugin_cmds.iteritems())
-    for k, v in d.iteritems():
-        yield k,v
-
-
 def get_cmd_object(cmd_name, plugins_override=True):
     """Return the command object for a command.
 
