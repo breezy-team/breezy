@@ -19,6 +19,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.transport import (
+    chroot,
     pathfilter,
     )
 from bzrlib.smart import server
@@ -212,7 +213,8 @@ class UnlistableServer(DecoratorServer):
 class TestingPathFilteringServer(pathfilter.PathFilteringServer):
 
     def __init__(self):
-        """TestingChrootServer is not usable until start_server is called."""
+        """TestingPathFilteringServer is not usable until start_server
+        is called."""
 
     def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
@@ -224,6 +226,28 @@ class TestingPathFilteringServer(pathfilter.PathFilteringServer):
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
         super(TestingPathFilteringServer, self).start_server()
+
+    def get_bogus_url(self):
+        raise NotImplementedError
+
+
+class TestingChrootServer(chroot.ChrootServer):
+
+    def __init__(self):
+        """TestingChrootServer is not usable until start_server is called."""
+        super(TestingChrootServer, self).__init__(None)
+
+    def start_server(self, backing_server=None):
+        """Setup the Chroot on backing_server."""
+        if backing_server is not None:
+            self.backing_transport = transport.get_transport(
+                backing_server.get_url())
+        else:
+            self.backing_transport = transport.get_transport('.')
+        super(TestingChrootServer, self).start_server()
+
+    def get_bogus_url(self):
+        raise NotImplementedError
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):
