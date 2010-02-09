@@ -1044,7 +1044,8 @@ class TestCase(testtools.TestCase):
         if t.base.endswith('/work/'):
             # we have safety net/test root/work
             t = t.clone('../..')
-        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+        elif isinstance(transport_server,
+                        test_server.SmartTCPServer_for_testing):
             # The smart server adds a path similar to work, which is traversed
             # up from by the client. But the server is chrooted - the actual
             # backing transport is not escaped from, and VFS requests to the
