@@ -27,7 +27,10 @@ from bzrlib import (
     )
 from bzrlib.repofmt import pack_repo
 from bzrlib.trace import note, mutter
-import bzrlib.util.configobj.configobj as configobj
+try:
+    import bzrlib.util.configobj.configobj as configobj
+except ImportError:
+    import configobj
 from bzrlib.plugins.fastimport import (
     branch_updater,
     bzr_commit_handler,
