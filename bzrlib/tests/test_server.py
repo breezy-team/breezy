@@ -153,6 +153,17 @@ class FakeNFSServer(DecoratorServer):
         return fakenfs.FakeNFSTransportDecorator
 
 
+class FakeVFATServer(DecoratorServer):
+    """A server that suggests connections through FakeVFATTransportDecorator
+
+    For use in testing.
+    """
+
+    def get_decorator_class(self):
+        from bzrlib.transport import fakevfat
+        return FakeVFATTransportDecorator
+
+
 class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 
