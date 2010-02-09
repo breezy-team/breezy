@@ -45,7 +45,6 @@ from bzrlib.repofmt import (
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
-    server,
     )
 from bzrlib.tests import (
     TestCase,
@@ -54,10 +53,9 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.transport import (
-    fakenfs,
-    memory,
     get_transport,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -240,7 +238,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_commit_write_group_returns_new_pack_names(self):
         # This test doesn't need real disk.
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         format = self.get_format()
         repo = self.make_repository('foo', format=format)
         repo.lock_write()
@@ -277,7 +275,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
-        server = fakenfs.FakeNFSServer()
+        server = test_server.FakeNFSServer()
         self.start_server(server)
         transport = get_transport(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(transport)
@@ -709,7 +707,7 @@ class TestPackRepository(TestCaseWithTransport):
 
         Also requires that the exception is logged.
         """
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -726,7 +724,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.leave_lock_in_place()
 
     def test_abort_write_group_does_raise_when_not_suppressed(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -739,7 +737,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.leave_lock_in_place()
 
     def test_suspend_write_group(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -759,7 +757,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_chk_bytes(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
@@ -783,7 +781,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_resume_write_group_then_abort(self):
         # Create a repo, start a write group, insert some data, suspend.
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -804,7 +802,7 @@ class TestPackRepository(TestCaseWithTransport):
             [], same_repo._pack_collection._pack_transport.list_dir(''))
 
     def test_commit_resumed_write_group(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -832,7 +830,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual([expected_pack_name], pack_names)
 
     def test_resume_malformed_token(self):
-        self.vfs_transport_factory = memory.MemoryServer
+        self.vfs_transport_factory = test_server.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
@@ -1068,7 +1066,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         super(TestSmartServerAutopack, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         client._SmartClient.hooks.install_named_hook(
