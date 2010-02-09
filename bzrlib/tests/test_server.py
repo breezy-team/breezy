@@ -137,6 +137,14 @@ class DecoratorServer(TestServer):
         return self.get_url_prefix() + self._server.get_url()
 
 
+class FakeNFSServer(DecoratorServer):
+    """Server for the FakeNFSTransportDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import fakenfs
+        return fakenfs.FakeNFSTransportDecorator
+
+
 class ReadonlyServer(DecoratorServer):
     """Server for the ReadonlyTransportDecorator for testing with."""
 
