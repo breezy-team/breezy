@@ -20,10 +20,10 @@ This does not change the transport behaviour at all, merely records every call
 and then delegates it.
 """
 
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class TransportTraceDecorator(TransportDecorator):
+class TransportTraceDecorator(decorator.TransportDecorator):
     """A tracing decorator for Transports.
 
     Calls that potentially perform IO are logged to self._activity. The
@@ -169,13 +169,7 @@ class TransportTraceDecorator(TransportDecorator):
         self._activity.append(operation_tuple)
 
 
-class TraceServer(DecoratorServer):
-    """Server for the TransportTraceDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return TransportTraceDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(TransportTraceDecorator, TraceServer)]
+    from bzrlib.tests import test_server
+    return [(TransportTraceDecorator, test_server.TraceServer)]

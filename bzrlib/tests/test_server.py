@@ -172,3 +172,11 @@ class ReadonlyServer(DecoratorServer):
         return readonly.ReadonlyTransportDecorator
 
 
+class TraceServer(DecoratorServer):
+    """Server for the TransportTraceDecorator for testing with."""
+
+    def get_decorator_class(self):
+        from bzrlib.transport import trace
+        return TransportTraceDecorator
+
+
