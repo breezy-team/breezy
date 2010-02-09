@@ -114,10 +114,11 @@ class MergeBuilder(object):
                 tt.cancel_versioning(trans_id)
                 tt.set_executability(None, trans_id)
 
-    def add_dir(self, file_id, parent, name):
-        for tt in self.list_transforms():
-            parent_id = tt.trans_id_file_id(parent)
-            tt.new_directory(name, parent_id, file_id)
+    def add_dir(self, file_id, parent, name, this=True, base=True, other=True):
+        for option, tt in self.selected_transforms(this, base, other):
+            if option is True:
+                parent_id = tt.trans_id_file_id(parent)
+                tt.new_directory(name, parent_id, file_id)
 
     def change_name(self, id, base=None, this=None, other=None):
         for val, tt in ((base, self.base_tt), (this, self.this_tt),

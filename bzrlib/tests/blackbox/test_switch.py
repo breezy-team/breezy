@@ -27,6 +27,15 @@ from bzrlib.directory_service import directories
 
 class TestSwitch(ExternalBase):
 
+    def _create_sample_tree(self):
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1', 'branch-1/file-2'])
+        tree.add('file-1')
+        tree.commit('rev1')
+        tree.add('file-2')
+        tree.commit('rev2')
+        return tree
+
     def test_switch_up_to_date_light_checkout(self):
         self.make_branch_and_tree('branch')
         self.run_bzr('branch branch branch2')
@@ -135,6 +144,26 @@ class TestSwitch(ExternalBase):
         self.assertEqual(branchb_id, checkout.last_revision())
         self.assertEqual(tree2.branch.base, checkout.branch.get_bound_location())
 
+    def test_switch_revision(self):
+        tree = self._create_sample_tree()
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+
+    def test_switch_only_revision(self):
+        tree = self._create_sample_tree()
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        self.failUnlessExists('checkout/file-1')
+        self.failUnlessExists('checkout/file-2')
+        self.run_bzr(['switch', '-r1'], working_dir='checkout')
+        self.failUnlessExists('checkout/file-1')
+        self.failIfExists('checkout/file-2')
+        # Check that we don't accept a range
+        self.run_bzr_error(
+            ['bzr switch --revision takes exactly one revision identifier'],
+            ['switch', '-r0..2'], working_dir='checkout')
+
     def prepare_lightweight_switch(self):
         branch = self.make_branch('branch')
         branch.create_checkout('tree', lightweight=True)
@@ -196,4 +225,3 @@ class TestSwitch(ExternalBase):
         self.run_bzr('switch -b foo:branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         self.assertEndsWith(tree.branch.base, 'foo-branch2/')
-

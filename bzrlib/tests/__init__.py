@@ -126,6 +126,11 @@ __unittest = 1
 
 default_transport = LocalURLServer
 
+
+_unitialized_attr = object()
+"""A sentinel needed to act as a default value in a method signature."""
+
+
 # Subunit result codes, defined here to prevent a hard dependency on subunit.
 SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
@@ -236,6 +241,9 @@ class ExtendedTestResult(unittest._TextTestResult):
             self.stream.write(
                 '%d non-main threads were left active in the end.\n'
                 % (TestCase._active_threads - 1))
+
+    def getDescription(self, test):
+        return test.id()
 
     def _extractBenchmarkTime(self, testCase, details=None):
         """Add a benchmark time for the current test case."""
@@ -847,12 +855,12 @@ class TestCase(testtools.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
+        # Start with a copy of the current debug flags we can safely modify.
+        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
         if 'disable_lock_checks' not in selftest_debug_flags:
             debug.debug_flags.add('strict_locks')
-        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -879,11 +887,7 @@ class TestCase(testtools.TestCase):
     def _silenceUI(self):
         """Turn off UI for duration of test"""
         # by default the UI is off; tests can turn it on if they want it.
-        saved = ui.ui_factory
-        def _restore():
-            ui.ui_factory = saved
-        ui.ui_factory = ui.SilentUIFactory()
-        self.addCleanup(_restore)
+        self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -918,7 +922,7 @@ class TestCase(testtools.TestCase):
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
-            
+
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -1476,6 +1480,25 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
+    def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
+        """Overrides an object attribute restoring it after the test.
+
+        :param obj: The object that will be mutated.
+
+        :param attr_name: The attribute name we want to preserve/override in
+            the object.
+
+        :param new: The optional value we want to set the attribute to.
+
+        :returns: The actual attr value.
+        """
+        value = getattr(obj, attr_name)
+        # The actual value is captured by the call below
+        self.addCleanup(setattr, obj, attr_name, value)
+        if new is not _unitialized_attr:
+            setattr(obj, attr_name, new)
+        return value
+
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
@@ -1517,6 +1540,11 @@ class TestCase(testtools.TestCase):
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
+            # Generally speaking, we don't want apport reporting on crashes in
+            # the test envirnoment unless we're specifically testing apport,
+            # so that it doesn't leak into the real system environment.  We
+            # use an env var so it propagates to subprocesses.
+            'APPORT_DISABLE': '1',
         }
         self.__old_env = {}
         self.addCleanup(self._restoreEnvironment)
@@ -1526,10 +1554,6 @@ class TestCase(testtools.TestCase):
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restore_debug_flags(self):
-        debug.debug_flags.clear()
-        debug.debug_flags.update(self._preserved_debug_flags)
 
     def _restoreEnvironment(self):
         for name, value in self.__old_env.iteritems():
@@ -2034,11 +2058,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.overrideAttr(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a StringIOWrapper instance, that will encode Unicode
@@ -2058,9 +2078,7 @@ class TestCase(testtools.TestCase):
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
+        self.addCleanup(request_handlers.register, verb, orig_method)
 
 
 class CapturedCall(object):
@@ -2373,10 +2391,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
-        _currentdir = os.getcwdu()
-        def _leaveDirectory():
-            os.chdir(_currentdir)
-        self.addCleanup(_leaveDirectory)
+        self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
@@ -3547,7 +3562,7 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 # appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
 test_prefix_alias_registry.register('bzrlib', 'bzrlib')
 
-# Obvious higest levels prefixes, feel free to add your own via a plugin
+# Obvious highest levels prefixes, feel free to add your own via a plugin
 test_prefix_alias_registry.register('bd', 'bzrlib.doc')
 test_prefix_alias_registry.register('bu', 'bzrlib.utils')
 test_prefix_alias_registry.register('bt', 'bzrlib.tests')
@@ -3749,6 +3764,7 @@ def _test_suite_modules_to_doctest():
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
+        'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
@@ -4119,21 +4135,30 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, module, name, this_name, dep_version):
+    def __init__(self, dep_version, module, name,
+                 replacement_name, replacement_module=None):
         super(_CompatabilityThunkFeature, self).__init__()
         self._module = module
+        if replacement_module is None:
+            replacement_module = module
+        self._replacement_module = replacement_module
         self._name = name
-        self._this_name = this_name
+        self._replacement_name = replacement_name
         self._dep_version = dep_version
         self._feature = None
 
     def _ensure(self):
         if self._feature is None:
-            msg = (self._dep_version % self._this_name) + (
-                   ' Use %s.%s instead.' % (self._module, self._name))
-            symbol_versioning.warn(msg, DeprecationWarning)
-            mod = __import__(self._module, {}, {}, [self._name])
-            self._feature = getattr(mod, self._name)
+            depr_msg = self._dep_version % ('%s.%s'
+                                            % (self._module, self._name))
+            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+                                               self._replacement_name)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            # Import the new feature and use it as a replacement for the
+            # deprecated one.
+            mod = __import__(self._replacement_module, {}, {},
+                             [self._replacement_name])
+            self._feature = getattr(mod, self._replacement_name)
 
     def _probe(self):
         self._ensure()
@@ -4165,15 +4190,16 @@ class ModuleAvailableFeature(Feature):
         if self.available(): # Make sure the probe has been done
             return self._module
         return None
-    
+
     def feature_name(self):
         return self.module_name
 
 
 # This is kept here for compatibility, it is recommended to use
 # 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
-    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
+ParamikoFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
 
 
 def probe_unicode_in_user_encoding():
@@ -4341,8 +4367,9 @@ CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
-    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
+SubUnitFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

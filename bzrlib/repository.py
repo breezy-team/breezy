@@ -1240,7 +1240,7 @@ class Repository(_RelockDebugMixin):
         """Check a single text from this repository."""
         if kind == 'inventories':
             rev_id = record.key[0]
-            inv = self.deserialise_inventory(rev_id,
+            inv = self._deserialise_inventory(rev_id,
                 record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
@@ -2384,7 +2384,7 @@ class Repository(_RelockDebugMixin):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self.deserialise_inventory(revision_id, text)
+            yield self._deserialise_inventory(revision_id, text)
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -2422,7 +2422,7 @@ class Repository(_RelockDebugMixin):
                         next_key = None
                         break
 
-    def deserialise_inventory(self, revision_id, xml):
+    def _deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object.
 
         :param revision_id: The expected revision id of the inventory.
@@ -2436,7 +2436,7 @@ class Repository(_RelockDebugMixin):
                 result.revision_id, revision_id))
         return result
 
-    def serialise_inventory(self, inv):
+    def _serialise_inventory(self, inv):
         return self._serializer.write_inventory_to_string(inv)
 
     def _serialise_inventory_to_lines(self, inv):
@@ -2446,20 +2446,14 @@ class Repository(_RelockDebugMixin):
         return self._serializer.format_num
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
+    def _get_inventory_xml(self, revision_id):
+        """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
         try:
             text, revision_id = texts.next()
         except StopIteration:
             raise errors.HistoryMissing(self, 'inventory', revision_id)
         return text
-
-    @needs_read_lock
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry
-        """
-        return self.get_revision(revision_id).inventory_sha1
 
     def get_rev_id_for_revno(self, revno, known_pair):
         """Return the revision id of a revno, given a later (revno, revid)
@@ -4008,11 +4002,8 @@ class InterDifferingSerializer(InterRepository):
         #
         # nb this is only active for local-local fetches; other things using
         # streaming.
-        trace.warning("Fetching between repositories with different formats\n"
-            "from %s to %s.\n"
-            "This may take some time. Upgrade the branches to the same format \n"
-            "for better results.\n"
-            % (self.source._format, self.target._format))
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4307,6 +4298,8 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
+                ui.ui_factory.warn_cross_format_fetch(src_format,
+                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4617,8 +4610,10 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or it has a
-        # different serializer.  The StreamSink code expects to be able to
+        # The two formats are sufficiently different that there is no fast
+        # path, so we need to send just inventorydeltas, which any
+        # sufficiently modern client can insert into any repository.
+        # The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,6 +109,15 @@ class UIFactory(object):
 
     def __init__(self):
         self._task_stack = []
+        self._quiet = False
+
+    def be_quiet(self, state):
+        """Tell the UI to be more quiet, or not.
+
+        Typically this suppresses progress bars; the application may also look
+        at ui_factory.is_quiet().
+        """
+        self._quiet = state
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -124,6 +133,9 @@ class UIFactory(object):
                  transported as is.
         """
         raise NotImplementedError(self.get_password)
+
+    def is_quiet(self):
+        return self._quiet
 
     def make_output_stream(self, encoding=None, encoding_type=None):
         """Get a stream for sending out bulk text data.
@@ -263,7 +275,7 @@ class UIFactory(object):
         """Show an error message (not an exception) to the user.
         
         The message should not have an error prefix or trailing newline.  That
-        will be added by the factory if appropriate. 
+        will be added by the factory if appropriate.
         """
         raise NotImplementedError(self.show_error)
 
@@ -275,6 +287,13 @@ class UIFactory(object):
         """Show a warning to the user."""
         raise NotImplementedError(self.show_warning)
 
+    def warn_cross_format_fetch(self, from_format, to_format):
+        """Warn about a potentially slow cross-format transfer"""
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        trace.warning("Doing on-the-fly conversion from %s to %s.\n"
+            "This may take some time. Upgrade the repositories to the "
+            "same format for better performance.\n" %
+            (from_format, to_format))
 
 
 class SilentUIFactory(UIFactory):
@@ -295,6 +314,9 @@ class SilentUIFactory(UIFactory):
 
     def get_username(self, prompt, **kwargs):
         return None
+
+    def _make_output_stream_explicit(self, encoding, encoding_type):
+        return NullOutputStream(encoding)
 
     def show_error(self, msg):
         pass
@@ -360,4 +382,20 @@ class NullProgressView(object):
         pass
 
     def log_transport_activity(self, display=False):
+        pass
+
+
+class NullOutputStream(object):
+    """Acts like a file, but discard all output."""
+
+    def __init__(self, encoding):
+        self.encoding = encoding
+
+    def write(self, data):
+        pass
+
+    def writelines(self, data):
+        pass
+
+    def close(self):
         pass

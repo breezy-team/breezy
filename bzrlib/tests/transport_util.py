@@ -100,12 +100,9 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
     def setUp(self):
         register_urlparse_netloc_protocol(_hooked_scheme)
         register_transport(_hooked_scheme, ConnectionHookedTransport)
-
-        def unregister():
-            unregister_transport(_hooked_scheme, ConnectionHookedTransport)
-            _unregister_urlparse_netloc_protocol(_hooked_scheme)
-
-        self.addCleanup(unregister)
+        self.addCleanup(unregister_transport, _hooked_scheme,
+                        ConnectionHookedTransport)
+        self.addCleanup(_unregister_urlparse_netloc_protocol, _hooked_scheme)
         super(TestCaseWithConnectionHookedTransport, self).setUp()
         self.reset_connections()
         # Add the 'hooked' url to the permitted url list.
@@ -128,13 +125,10 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
+        self.overrideAttr(InstrumentedTransport, 'hooks', TransportHooks())
+        # We preserved the hooks class attribute. Now we install our hook.
         ConnectionHookedTransport.hooks.install_named_hook(
             '_set_connection', self._collect_connection, None)
-        # uninstall our hooks when we are finished
-        self.addCleanup(self.reset_hooks)
-
-    def reset_hooks(self):
-        InstrumentedTransport.hooks = TransportHooks()
 
     def reset_connections(self):
         self.connections = []

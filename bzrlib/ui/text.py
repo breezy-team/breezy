@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,6 +61,12 @@ class TextUIFactory(UIFactory):
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
         
+    def be_quiet(self, state):
+        if state and not self._quiet:
+            self.clear_term()
+        UIFactory.be_quiet(self, state)
+        self._progress_view = self.make_progress_view()
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -146,9 +152,13 @@ class TextUIFactory(UIFactory):
     def make_progress_view(self):
         """Construct and return a new ProgressView subclass for this UI.
         """
-        # if the user specifically requests either text or no progress bars,
-        # always do that.  otherwise, guess based on $TERM and tty presence.
-        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+        # with --quiet, never any progress view
+        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # user specifically requests either text or no progress bars, always
+        # do that.  otherwise, guess based on $TERM and tty presence.
+        if self.is_quiet():
+            return NullProgressView()
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'text':
             return TextProgressView(self.stderr)
         elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
             return NullProgressView()
@@ -411,9 +421,11 @@ class TextProgressView(object):
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dKB %5dKB/s" %
-                    (self._total_byte_count>>10, int(rate)>>10,))
+            rate = (self._bytes_since_update
+                    / (now - self._transport_update_time))
+            # using base-10 units (see HACKING.txt).
+            msg = ("%6dkB %5dkB/s" %
+                    (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
@@ -429,16 +441,17 @@ class TextProgressView(object):
                 transfer_time = 0.001
             bps = self._total_byte_count / transfer_time
 
-        msg = ('Transferred: %.0fKiB'
-               ' (%.1fK/s r:%.0fK w:%.0fK'
-               % (self._total_byte_count / 1024.,
-                  bps / 1024.,
-                  self._bytes_by_direction['read'] / 1024.,
-                  self._bytes_by_direction['write'] / 1024.,
+        # using base-10 units (see HACKING.txt).
+        msg = ('Transferred: %.0fkB'
+               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
+               % (self._total_byte_count / 1000.,
+                  bps / 1000.,
+                  self._bytes_by_direction['read'] / 1000.,
+                  self._bytes_by_direction['write'] / 1000.,
                  ))
         if self._bytes_by_direction['unknown'] > 0:
-            msg += ' u:%.0fK)' % (
-                self._bytes_by_direction['unknown'] / 1024.
+            msg += ' u:%.0fkB)' % (
+                self._bytes_by_direction['unknown'] / 1000.
                 )
         else:
             msg += ')'

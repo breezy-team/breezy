@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,6 +56,12 @@ class UIFactoryTestMixin(object):
     the concrete subclasses should be.
     """
 
+    def test_be_quiet(self):
+        self.factory.be_quiet(True)
+        self.assertEquals(True, self.factory.is_quiet())
+        self.factory.be_quiet(False)
+        self.assertEquals(False, self.factory.is_quiet())
+
     def test_note(self):
         self.factory.note("a note to the user")
         self._check_note("a note to the user")
@@ -76,12 +82,9 @@ class UIFactoryTestMixin(object):
         self._check_show_warning(msg)
 
     def test_make_output_stream(self):
-        # at the moment this is only implemented on text uis; i'm not sure
-        # what it should do elsewhere
-        try:
-            output_stream = self.factory.make_output_stream()
-        except NotImplementedError, e:
-            raise tests.TestSkipped(str(e))
+        # All UIs must now be able to at least accept output, even if they
+        # just discard it.
+        output_stream = self.factory.make_output_stream()
         output_stream.write('hello!')
 
     def test_transport_activity(self):
@@ -134,7 +137,7 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_noarg(self):
         self.assertEqual('', self.stdout.getvalue())
-        self.assertContainsRe(self.stderr.getvalue(), r'\d+KB\s+\dKB/s |')
+        self.assertContainsRe(self.stderr.getvalue(), r'\d+kB\s+\dkB/s |')
         self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
 
     def _check_log_transport_activity_display(self):
@@ -167,7 +170,7 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
             def __setattr__(self, name, value):
                 return setattr(self._sio, name, value)
-                
+
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
         self._captureVar('TERM', None)
@@ -178,10 +181,11 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
-        # Displaying the result should write to the progress stream
+        # Displaying the result should write to the progress stream using
+        # base-10 units (see HACKING.txt).
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 7KiB'
-            r' \(\d+\.\dK/s r:2K w:1K u:4K\)')
+            r'Transferred: 7kB'
+            r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
 
     def _check_log_transport_activity_display_no_bytes(self):
         self.assertEqual('', self.stdout.getvalue())
