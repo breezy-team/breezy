@@ -78,15 +78,21 @@ def get_test_permutations():
     return []
 
 
+def split_git_url(url):
+    (scheme, _, loc, _, _) = urlparse.urlsplit(url)
+    hostport, escaped_path = urllib.splithost(loc)
+    path = urllib.unquote(escaped_path)
+    (username, hostport) = urllib.splituser(hostport)
+    (host, port) = urllib.splitnport(hostport, None)
+    return (host, port, username, path)
+
+
 class GitSmartTransport(Transport):
 
     def __init__(self, url, _client=None):
         Transport.__init__(self, url)
-        (scheme, _, loc, _, _) = urlparse.urlsplit(url)
-        hostport, escaped_path = urllib.splithost(loc)
-        self._path = urllib.unquote(escaped_path)
-        (self._username, hostport) = urllib.splituser(hostport)
-        (self._host, self._port) = urllib.splitnport(hostport, None)
+        (self._host, self._port, self._username, self._path) = \
+            split_git_url(url)
         if 'transport' in debug.debug_flags:
             trace.mutter('host: %r, user: %r, port: %r, path: %r',
                          self._host, self._username, self._port, self._path)
