@@ -16,6 +16,7 @@
 
 from bzrlib import (
     config,
+    debug,
     tag,
     trace,
     ui,
@@ -27,9 +28,6 @@ from bzrlib.errors import (
     NoSuchFile,
     NoSuchRevision,
     NotLocalUrl,
-    )
-from bzrlib.trace import (
-    info,
     )
 from bzrlib.transport import (
     Transport,
@@ -89,6 +87,9 @@ class GitSmartTransport(Transport):
         self._path = urllib.unquote(escaped_path)
         (self._username, hostport) = urllib.splituser(hostport)
         (self._host, self._port) = urllib.splitnport(hostport, None)
+        if 'transport' in debug.debug_flags:
+            trace.mutter('host: %r, user: %r, port: %r, path: %r',
+                         self._host, self._username, self._port, self._path)
         self._client = _client
 
     def external_url(self):
@@ -106,7 +107,7 @@ class GitSmartTransport(Transport):
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
-                info("git: %s" % text)
+                trace.info("git: %s" % text)
         client = self._get_client(thin_packs=False)
         try:
             return client.fetch_pack(self._get_path(), determine_wants,
