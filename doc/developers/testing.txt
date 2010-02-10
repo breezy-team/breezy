@@ -368,10 +368,58 @@ this::
         ''')
 
 
+Import tariff tests
+-------------------
 
-.. Effort tests
-.. ~~~~~~~~~~~~
+`bzrlib.tests.test_import_tariff` has some tests that measure how many
+Python modules are loaded to run some representative commands.
 
+We want to avoid loading code unnecessarily, for reasons including:
+
+* Python modules are interpreted when they're loaded, either to define
+  classes or modules or perhaps to initialize some structures.
+
+* With a cold cache we may incur blocking real disk IO for each module.
+
+* Some modules depend on many others.
+
+* Some optional modules such as `testtools` are meant to be soft
+  dependencies and only needed for particular cases.  If they're loaded in
+  other cases then bzr may break for people who don't have those modules.
+  
+`test_import_tarrif` allows us to check that removal of imports doesn't
+regress.
+
+This is done by running the command in a subprocess with
+``--profile-imports``.  Starting a whole Python interpreter is pretty
+slow, so we don't want exhaustive testing here, but just enough to guard
+against distinct fixed problems.
+
+Assertions about precisely what is loaded tend to be brittle so we instead
+make assertions that particular things aren't loaded.
+
+Unless selftest is run with ``--no-plugins``, modules will be loaded in
+the usual way and checks made on what they cause to be loaded.  This is
+probably worth checking into, because many bzr users have at least some
+plugins installed (and they're included in binary installers).
+
+In theory, plugins might have a good reason to load almost anything:
+someone might write a plugin that opens a network connection or pops up a
+gui window every time you run 'bzr status'.  However, it's more likely
+that the code to do these things is just being loaded accidentally.  We
+might eventually need to have a way to make exceptions for particular
+plugins.
+
+Some things to check:
+
+* non-GUI commands shouldn't load GUI libraries
+
+* operations on bzr native formats sholudn't load foreign branch libraries
+
+* network code shouldn't be loaded for purely local operations
+
+* particularly expensive Python built-in modules shouldn't be loaded
+  unless there is a good reason
 
 
 Skipping tests

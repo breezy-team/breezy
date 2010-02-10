@@ -43,6 +43,11 @@ Bug Fixes
 Testing
 *******
 
+* New `bzrlib.tests.test_import_tariff` can make assertions about what
+  Python modules are loaded, to guard against startup time or library
+  dependency regressions.
+  (Martin Pool)
+
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
