@@ -240,6 +240,8 @@ class SqliteGitShaMap(GitShaMap):
         """Add a new entry to the database.
         """
         assert isinstance(type_data, tuple)
+        if sha is None:
+            return
         assert isinstance(sha, str), "type was %r" % sha
         if type == "commit":
             self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (sha, type_data[0], type_data[1]))

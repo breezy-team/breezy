@@ -217,7 +217,10 @@ class BzrGitMapping(foreign.VcsMapping):
         commit = Commit()
         commit.tree = tree_sha
         for p in rev.parent_ids:
-            git_p = parent_lookup(p)
+            try:
+                git_p = parent_lookup(p)
+            except KeyError:
+                git_p = None
             if git_p is not None:
                 assert len(git_p) == 40, "unexpected length for %r" % git_p
                 commit.parents.append(git_p)
