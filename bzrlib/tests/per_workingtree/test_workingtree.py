@@ -950,7 +950,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             os.link = real_os_link
 
 
-
 class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
 
     def make_diverged_master_branch(self):
@@ -1036,7 +1035,7 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         self.assertEqual(0, wt.update(old_tip='2')) # Force an out-of-date tip
         # We are in sync with the master
         self.assertEqual(tip, wt.branch.last_revision())
-        # We have the right parents ready to be merged
+        # We have the right parents ready to be committed
         self.assertEqual(['5', '2'], wt.get_parent_ids())
 
 
