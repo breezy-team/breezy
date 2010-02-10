@@ -1,3 +1,20 @@
+# Copyright (C) 2009, 2010 Canonical Ltd
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+
 import webbrowser
 
 from bzrlib import (
@@ -5,8 +22,10 @@ from bzrlib import (
     msgeditor,
 )
 from bzrlib.hooks import HookPoint, Hooks
-from bzrlib.plugins.launchpad import lp_api
-from bzrlib.plugins.launchpad import lp_registration
+from bzrlib.plugins.launchpad import (
+    lp_api,
+    lp_registration,
+)
 
 from lazr.restfulclient import errors as restful_errors
 
@@ -163,10 +182,12 @@ class Submitter(object):
                 commit_message=self.commit_message, reviewers=reviewers,
                 review_types=review_types)
         except restful_errors.HTTPError, e:
+            error_lines = []
             for line in e.content.splitlines():
                 if line.startswith('Traceback (most recent call last):'):
                     break
-                print line
+                error_lines.append(line)
+            raise Exception(error_lines)
         else:
             webbrowser.open(canonical_url(mp))
 

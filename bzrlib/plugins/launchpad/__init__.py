@@ -1,4 +1,4 @@
-# Copyright (C) 2006 - 2008 Canonical Ltd
+# Copyright (C) 2006 - 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -285,8 +285,26 @@ class cmd_launchpad_mirror(Command):
 register_command(cmd_launchpad_mirror)
 
 
-class cmd_lp_submit(Command):
-    """Submit the specified branch to Launchpad for merging."""
+class cmd_lp_propose_merge(Command):
+    """Propose merging a branch on Launchpad.
+
+    This will open your usual editor to provide the initial comment.  When it
+    has submitted the proposal, it will open it in your default web browser.
+
+    The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH
+    is not supplied, the remembered submit branch will be used.  If no submit
+    branch is remembered, the development focus will be used.
+
+    By default, the SUBMIT_BRANCH's review team will be requested to review
+    the merge proposal.  This can be overriden by specifying --review (-R).
+    The parameter the launchpad account name of the desired reviewer.  This
+    may optionally be followed by '=' and the review type.  For example:
+
+      bzr lp-propose-merge --review jrandom --review review-team=qa
+
+    This will propose a merge,  request "jrandom" to perform a review of
+    unspecified type, and request "review-team" to perform a "qa" review.
+    """
 
     takes_options = [Option('staging',
                             help='Propose the merge on staging.'),
@@ -296,6 +314,8 @@ class cmd_lp_submit(Command):
                             help='Requested reviewer and optional type.')]
 
     takes_args = ['submit_branch?']
+
+    aliases = ['lp-submit', 'lp-propose']
 
     def run(self, submit_branch=None, review=None, staging=False,
             message=None):
@@ -323,7 +343,7 @@ class cmd_lp_submit(Command):
         submitter.submit()
 
 
-register_command(cmd_lp_submit)
+register_command(cmd_lp_propose_merge)
 
 
 def _register_directory():
