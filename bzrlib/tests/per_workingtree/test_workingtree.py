@@ -23,6 +23,7 @@ import sys
 
 from bzrlib import (
     branch,
+    branchbuilder,
     bzrdir,
     errors,
     osutils,
@@ -947,6 +948,89 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 pass
         finally:
             os.link = real_os_link
+
+
+
+class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
+
+    def make_diverged_master_branch(self):
+        """
+        B: wt.branch.last_revision()
+        M: wt.branch.get_master_branch().last_revision()
+        W: wt.last_revision()
+
+
+            1
+            |\
+          B-2 3
+            | |
+            4 5-M
+            |
+            W
+         """
+        builder = branchbuilder.BranchBuilder(
+            self.get_transport(),
+            format=self.workingtree_format._matchingbzrdir)
+        builder.start_series()
+        # mainline
+        builder.build_snapshot(
+            '1', None,
+            [('add', ('', 'root-id', 'directory', '')),
+             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))])
+        # branch
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot(
+            '4', ['2'],
+            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))])
+        # master
+        builder.build_snapshot('3', ['1'], [])
+        builder.build_snapshot(
+            '5', ['3'],
+            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))])
+        builder.finish_series()
+        return builder, builder._branch.last_revision()
+
+    def make_wt_branch_and_master(self, builder, wt, br, master):
+        wpath, wrevid = wt
+        bpath, brevid = br
+        mpath, mrevid = master
+        final_branch = builder.get_branch()
+        # The master branch
+        mb = final_branch.bzrdir.sprout(mpath, mrevid).open_branch()
+        # The branch
+        b = final_branch.bzrdir.sprout(bpath, brevid).open_branch()
+        # The working tree
+        wt = self.make_branch_and_tree(wpath)
+        wt.pull(final_branch, stop_revision=wrevid)
+        try:
+            wt.branch.bind(mb)
+        except errors.UpgradeRequired:
+            raise TestSkipped("Can't bind %s" % wt.branch._format.__class__)
+        return wt, b, mb
+
+    def test_update_remove_commit(self):
+        """Update should remove revisions when the branch has removed
+        some commits.
+
+        We want to revert 4, so that strating with the
+        make_diverged_master_branch() graph the final result should be
+        equivalent to:
+
+           1
+           |\
+           3 2
+           | |\
+        MB-5 | 4
+           |/
+           W
+
+        And the changes in 4 have been removed from the WT.
+        """
+        builder, tip = self.make_diverged_master_branch()
+        wt, b, master = self.make_wt_branch_and_master(
+            builder, ('W', '4'), ('B', '2'), ('M', tip))
+        # No conflicts should occur
+        self.assertEqual(0, wt.update(old_tip='2'))
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):
