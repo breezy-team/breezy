@@ -33,6 +33,9 @@ New Features
 Bug Fixes
 *********
 
+* Added docstring for ``Tree.iter_changes``
+  (John Arbash Meinel, #304182)
+
 * Allow exporting a single file using ``bzr export``.
   (Michal Junák, #511987)
 
