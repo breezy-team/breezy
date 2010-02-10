@@ -3075,6 +3075,8 @@ class RepositoryFormat(object):
     pack_compresses = False
     # Does the repository inventory storage understand references to trees?
     supports_tree_reference = None
+    # Is the format experimental ?
+    experimental = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3414,6 +3416,7 @@ class InterRepository(InterObject):
         :param pb: ignored.
         :return: None.
         """
+        ui.ui_factory.warn_experimental_format_fetch(self)
         f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -4004,6 +4007,7 @@ class InterDifferingSerializer(InterRepository):
         # streaming.
         ui.ui_factory.warn_cross_format_fetch(self.source._format,
             self.target._format)
+        ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True

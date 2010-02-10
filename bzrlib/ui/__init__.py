@@ -295,6 +295,14 @@ class UIFactory(object):
             "same format for better performance.\n" %
             (from_format, to_format))
 
+    def warn_experimental_format_fetch(self, inter):
+        """Warn about fetching into experimental repository formats."""
+        if inter.target._format.experimental:
+            trace.warning("Fetching into experimental format %s.\n"
+                "This format may be unreliable or change in the future "
+                "without an upgrade path.\n" % (inter.target._format,))
+
+
 
 class SilentUIFactory(UIFactory):
     """A UI Factory which never prints anything.

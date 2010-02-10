@@ -83,6 +83,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
 
+    def test_attribute_format_experimental(self):
+        self.assertFormatAttribute('experimental', (True, False))
+
     def test_attribute_format_pack_compresses(self):
         self.assertFormatAttribute('pack_compresses', (True, False))
 
