@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,17 +16,15 @@
 
 """Tests for branch break-lock behaviour."""
 
-from cStringIO import StringIO
-
 from  bzrlib import (
     errors,
     ui,
+    tests,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestNotApplicable
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
-class TestBreakLock(TestCaseWithBranch):
+class TestBreakLock(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(TestBreakLock, self).setUp()
@@ -46,12 +44,14 @@ class TestBreakLock(TestCaseWithBranch):
         token = self.branch.repository.lock_write()
         if token is None:
             self.branch.repository.unlock()
-            raise TestNotApplicable('Repository does not use physical locks.')
+            raise tests.TestNotApplicable(
+                'Repository does not use physical locks.')
         self.branch.repository.leave_lock_in_place()
         self.branch.repository.unlock()
         other_instance = self.branch.repository.bzrdir.open_repository()
         if not other_instance.get_physical_lock_status():
-            raise TestNotApplicable("Repository does not lock persistently.")
+            raise tests.TestNotApplicable(
+                'Repository does not lock persistently.')
         ui.ui_factory = ui.CannedInputUIFactory([True])
         try:
             self.unused_branch.break_lock()

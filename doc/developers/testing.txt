@@ -39,6 +39,24 @@ on your project to a product *without* a test suite like Bazaar has?
 Running the Test Suite
 ======================
 
+As of Bazaar 2.1, you must have the testtools_ library installed to run
+the bzr test suite.
+
+.. _testtools: https://launchpad.net/testtools/
+
+To test all of Bazaar, just run::
+
+  bzr selftest 
+
+With ``--verbose`` bzr will print the name of every test as it is run.
+
+This should always pass, whether run from a source tree or an installed
+copy of Bazaar.  Please investigate and/or report any failures.
+
+
+Running particular tests
+------------------------
+
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example,
 to run just the blackbox tests, run::
@@ -86,6 +104,27 @@ This option can be combined with all the other selftest options including
 --load-list. The later is rarely used but allows to run a subset of a list of
 failing tests for example.
 
+Disabling plugins
+-----------------
+
+To test only the bzr core, ignoring any plugins you may have installed,
+use::
+
+  ./bzr --no-plugins selftest 
+
+Disabling crash reporting
+-------------------------
+
+By default Bazaar uses apport_ to report program crashes.  In developing
+Bazaar it's normal and expected to have it crash from time to time, at
+least because a test failed if for no other reason.
+
+Therefore you should probably add ``debug_flags = no_apport`` to your
+``bazaar.conf`` file (in ``~/.bazaar/`` on Unix), so that failures just
+print a traceback rather than writing a crash file.
+
+.. _apport: https://launchpad.net/apport/
+
 
 Test suite debug flags
 ----------------------
@@ -97,9 +136,26 @@ Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
   This can provide useful logging to help debug test failures when used
   with e.g. ``bzr -Dhpss selftest -E=allow_debug``
 
+  Note that this will probably cause some tests to fail, because they
+  don't expect to run with any debug flags on.
+
+
+Using subunit
+-------------
+
+Bazaar can optionally produce output in the machine-readable subunit_
+format, so that test output can be post-processed by various tools.
+
+.. _subunit: https://launchpad.net/subunit/
+
+
 
 Writing Tests
 =============
+
+Normally you should add or update a test for all bug fixes or new features
+in Bazaar.
+
 
 Where should I put a new test?
 ------------------------------
@@ -377,19 +433,6 @@ KnownFailure
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
 
-ModuleAvailableFeature
-        A helper for handling running tests based on whether a python
-        module is available. This can handle 3rd-party dependencies (is
-        ``paramiko`` available?) as well as stdlib (``termios``) or
-        extension modules (``bzrlib._groupcompress_pyx``). You create a
-        new feature instance with::
-
-            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
-
-            ...
-            def test_something(self):
-                self.requireFeature(MyModuleFeature)
-                something = MyModuleFeature.module
 
 
 We plan to support three modes for running the test suite to control the
@@ -437,13 +480,20 @@ method::
 
     self.requireFeature(StraceFeature)
 
-Features already defined in bzrlib.tests include:
+The old naming style for features is CamelCase, but because they're
+actually instances not classses they're now given instance-style names
+like ``apport``.
 
- - SymlinkFeature,
- - HardlinkFeature,
- - OsFifoFeature,
- - UnicodeFilenameFeature,
- - FTPServerFeature, and
+Features already defined in ``bzrlib.tests`` and ``bzrlib.tests.features``
+include:
+
+ - apport
+ - paramiko
+ - SymlinkFeature
+ - HardlinkFeature
+ - OsFifoFeature
+ - UnicodeFilenameFeature
+ - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
 
 
@@ -463,6 +513,21 @@ are defined by subclassing ``bzrlib.tests.Feature`` and overriding the
             return 'symlinks'
 
     SymlinkFeature = _SymlinkFeature()
+
+A helper for handling running tests based on whether a python
+module is available. This can handle 3rd-party dependencies (is
+``paramiko`` available?) as well as stdlib (``termios``) or
+extension modules (``bzrlib._groupcompress_pyx``). You create a
+new feature instance with::
+
+    # in bzrlib/tests/features.py
+    apport = tests.ModuleAvailableFeature('apport')
+
+
+    # then in bzrlib/tests/test_apport.py
+    class TestApportReporting(TestCaseInTempDir):
+
+        _test_needs_features = [features.apport]
 
 
 Testing exceptions and errors

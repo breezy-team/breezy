@@ -1,4 +1,4 @@
-# Copyright (C) 2006 by Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 by Canonical Ltd
 # Written by John Arbash Meinel <john@arbash-meinel.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,9 +17,15 @@
 
 """A custom importer and regex compiler which logs time spent."""
 
-import sre
 import sys
 import time
+
+
+if sys.version_info < (2, 5, 0):
+    import sre
+    re = sre
+else:
+    import re
 
 
 _parent_stack = []
@@ -96,8 +102,9 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals, locals, fromlist):
+def timed_import(name, globals, locals, fromlist, level=None):
     """Wrap around standard importer to log import time"""
+    # level is only passed by python2.6
 
     scope_name = globals.get('__name__', None)
     if scope_name is None:
@@ -145,7 +152,8 @@ def timed_import(name, globals, locals, fromlist):
     return mod
 
 
-_real_compile = sre._compile
+_real_compile = re._compile
+
 
 def timed_compile(*args, **kwargs):
     """Log how long it takes to compile a regex"""
@@ -177,11 +185,11 @@ def timed_compile(*args, **kwargs):
 def install():
     """Install the hooks for measuring import and regex compile time."""
     __builtins__['__import__'] = timed_import
-    sre._compile = timed_compile
+    re._compile = timed_compile
 
 
 def uninstall():
     """Remove the import and regex compile timing hooks."""
     __builtins__['__import__'] = _real_import
-    sre._compile = _real_compile
+    re._compile = _real_compile
 

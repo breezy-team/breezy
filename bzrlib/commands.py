@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -184,23 +184,6 @@ def builtin_command_names():
 def plugin_command_names():
     """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
-
-
-@deprecated_function(deprecated_in((1, 17, 0)))
-def get_all_cmds(plugins_override=False):
-    """Return canonical name and class for most commands.
-    
-    NB: This does not return all commands since the introduction of
-    command hooks, and returning the class is not sufficient to 
-    get correctly setup commands, which is why it is deprecated.
-
-    Use 'all_command_names' + 'get_cmd_object' instead.
-    """
-    d = _builtin_commands()
-    if plugins_override:
-        d.update(plugin_cmds.iteritems())
-    for k, v in d.iteritems():
-        yield k,v
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
@@ -624,10 +607,6 @@ class Command(object):
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
-        if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10",
-                 DeprecationWarning, stacklevel=2)
-            argv = []
         args, opts = parse_args(self, argv, alias_argv)
 
         # Process the standard options
