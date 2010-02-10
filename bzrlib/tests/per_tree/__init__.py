@@ -80,10 +80,10 @@ def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
     tt = TransformPreview(basis)
     testcase.addCleanup(tt.finalize)
-    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+    pp = None
+    transform._prepare_revert_transform(basis, tree, tt, None, False, None,
                                         basis, {})
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())

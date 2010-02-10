@@ -2165,14 +2165,10 @@ class Repository(_RelockDebugMixin):
         """
         selected_keys = set((revid,) for revid in revision_ids)
         w = _inv_weave or self.inventories
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            return self._find_file_ids_from_xml_inventory_lines(
-                w.iter_lines_added_or_present_in_keys(
-                    selected_keys, pb=pb),
-                selected_keys)
-        finally:
-            pb.finished()
+        return self._find_file_ids_from_xml_inventory_lines(
+            w.iter_lines_added_or_present_in_keys(
+                selected_keys, pb=None),
+            selected_keys)
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -3415,15 +3411,14 @@ class InterRepository(InterObject):
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :param pb: optional progress bar to use for progress reports. If not
-                   provided a default one will be created.
+        :param pb: ignored.
         :return: None.
         """
         f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
-                               pb=pb, find_ghosts=find_ghosts)
+                               find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -4089,37 +4084,33 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        self.pb = pb
+        pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 4
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()
         self.repo_dir = repo.bzrdir
-        self.step('Moving repository to repository.backup')
+        pb.update('Moving repository to repository.backup')
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')
         repo._format.check_conversion_target(self.target_format)
         self.source_repo = repo._format.open(self.repo_dir,
             _found=True,
             _override_transport=backup_transport)
-        self.step('Creating new repository')
+        pb.update('Creating new repository')
         converted = self.target_format.initialize(self.repo_dir,
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            self.step('Copying content')
+            pb.update('Copying content')
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        self.step('Deleting old repository content')
+        pb.update('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
         ui.ui_factory.note('repository converted')
-
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update(message, self.count, self.total)
+        pb.finished()
 
 
 _unescape_map = {

@@ -101,7 +101,7 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.progress import ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
@@ -912,43 +912,36 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.last_revision().
         """
         from bzrlib.merge import Merger, Merge3Merger
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            merger = Merger(self.branch, this_tree=self, pb=pb)
-            merger.pp = ProgressPhase("Merge phase", 5, pb)
-            merger.pp.next_phase()
-            # check that there are no local alterations
-            if not force and self.has_changes():
-                raise errors.UncommittedChanges(self)
-            if to_revision is None:
-                to_revision = _mod_revision.ensure_null(branch.last_revision())
-            merger.other_rev_id = to_revision
-            if _mod_revision.is_null(merger.other_rev_id):
-                raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
-            merger.other_basis = merger.other_rev_id
-            merger.other_tree = self.branch.repository.revision_tree(
-                merger.other_rev_id)
-            merger.other_branch = branch
-            merger.pp.next_phase()
-            if from_revision is None:
-                merger.find_base()
-            else:
-                merger.set_base_revision(from_revision, branch)
-            if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
-            merger.backup_files = False
-            if merge_type is None:
-                merger.merge_type = Merge3Merger
-            else:
-                merger.merge_type = merge_type
-            merger.set_interesting_files(None)
-            merger.show_base = False
-            merger.reprocess = False
-            conflicts = merger.do_merge()
-            merger.set_pending()
-        finally:
-            pb.finished()
+        merger = Merger(self.branch, this_tree=self)
+        # check that there are no local alterations
+        if not force and self.has_changes():
+            raise errors.UncommittedChanges(self)
+        if to_revision is None:
+            to_revision = _mod_revision.ensure_null(branch.last_revision())
+        merger.other_rev_id = to_revision
+        if _mod_revision.is_null(merger.other_rev_id):
+            raise errors.NoCommits(branch)
+        self.branch.fetch(branch, last_revision=merger.other_rev_id)
+        merger.other_basis = merger.other_rev_id
+        merger.other_tree = self.branch.repository.revision_tree(
+            merger.other_rev_id)
+        merger.other_branch = branch
+        if from_revision is None:
+            merger.find_base()
+        else:
+            merger.set_base_revision(from_revision, branch)
+        if merger.base_rev_id == merger.other_rev_id:
+            raise errors.PointlessMerge
+        merger.backup_files = False
+        if merge_type is None:
+            merger.merge_type = Merge3Merger
+        else:
+            merger.merge_type = merge_type
+        merger.set_interesting_files(None)
+        merger.show_base = False
+        merger.reprocess = False
+        conflicts = merger.do_merge()
+        merger.set_pending()
         return conflicts
 
     @needs_read_lock
@@ -1605,11 +1598,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False):
-        top_pb = ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
-            pp = ProgressPhase("Pull phase", 2, top_pb)
-            pp.next_phase()
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
@@ -1617,9 +1607,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                      local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
-                pp.next_phase()
                 repository = self.branch.repository
-                pb = ui.ui_factory.nested_progress_bar()
                 basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
@@ -1628,14 +1616,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
-                                pb=pb,
+                                pb=None,
                                 change_reporter=change_reporter)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 finally:
-                    pb.finished()
                     basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
@@ -1654,7 +1641,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return count
         finally:
             source.unlock()
-            top_pb.finished()
 
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
@@ -2069,7 +2055,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
-               pb=DummyProgress(), report_changes=False):
+               pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
         if filenames == []:
             filenames = None
