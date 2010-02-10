@@ -77,6 +77,10 @@ Bug Fixes
   the same value to avoid confusing ``make`` and other date-based build
   systems. (Robert Collins, #515631)
 
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
 Improvements
 ************
 

@@ -2250,7 +2250,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # We MUST save it even if an error occurs, because otherwise the users
         # local work is unreferenced and will appear to have been lost.
         #
-        result = 0
+        nb_conflicts = 0
         try:
             last_rev = self.get_parent_ids()[0]
         except IndexError:
@@ -2260,26 +2260,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
+
+        old_tip = old_tip or _mod_revision.NULL_REVISION
+
+        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+            # the branch we are bound to was updated
+            # merge those changes in first
+            base_tree  = self.basis_tree()
+            other_tree = self.branch.repository.revision_tree(old_tip)
+            nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                             base_tree, this_tree=self,
+                                             change_reporter=change_reporter)
+            if nb_conflicts:
+                self.add_parent_tree((old_tip, other_tree))
+                trace.note('Rerun update after fixing the conflicts.')
+                return nb_conflicts
+
         if last_rev != _mod_revision.ensure_null(revision):
-            # merge tree state up to specified revision.
+            # the working tree is up to date with the branch
+            # we can merge the specified revision from master
+            to_tree = self.branch.repository.revision_tree(revision)
+            to_root_id = to_tree.get_root_id()
+
             basis = self.basis_tree()
             basis.lock_read()
             try:
-                to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
                 if (basis.inventory.root is None
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                result += merge.merge_inner(
-                                      self.branch,
-                                      to_tree,
-                                      basis,
-                                      this_tree=self,
-                                      change_reporter=change_reporter)
-                self.set_last_revision(revision)
             finally:
                 basis.unlock()
+
+            # determine the branch point
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                last_rev)
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+            nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                             this_tree=self,
+                                             change_reporter=change_reporter)
+            self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
             parent_trees = [(revision, to_tree)]
@@ -2292,42 +2314,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
+            if not _mod_revision.is_null(old_tip):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
-        else:
-            # the working tree had the same last-revision as the master
-            # branch did. We may still have pivot local work from the local
-            # branch into old_tip:
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
-                self.add_parent_tree_id(old_tip)
-        if (old_tip is not None and not _mod_revision.is_null(old_tip)
-            and old_tip != last_rev):
-            # our last revision was not the prior branch last revision
-            # and we have converted that last revision to a pending merge.
-            # base is somewhere between the branch tip now
-            # and the now pending merge
-
-            # Since we just modified the working tree and inventory, flush out
-            # the current state, before we modify it again.
-            # TODO: jam 20070214 WorkingTree3 doesn't require this, dirstate
-            #       requires it only because TreeTransform directly munges the
-            #       inventory and calls tree._write_inventory(). Ultimately we
-            #       should be able to remove this extra flush.
-            self.flush()
-            graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(revision, old_tip)
-            base_tree = self.branch.repository.revision_tree(base_rev_id)
-            other_tree = self.branch.repository.revision_tree(old_tip)
-            result += merge.merge_inner(
-                                  self.branch,
-                                  other_tree,
-                                  base_tree,
-                                  this_tree=self,
-                                  change_reporter=change_reporter)
-        return result
+        return nb_conflicts
 
     def _write_hashcache_if_dirty(self):
         """Write out the hashcache if it is dirty."""
