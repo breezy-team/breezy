@@ -314,56 +314,68 @@ $ bzr update -r revid:m2
         """"Launchpad bug 113809 in bzr "update performs two merges"
         https://launchpad.net/bugs/113809"""
         master = self.make_branch_and_tree('master')
-        self.build_tree_contents([('master/file', 'initial contents')])
+        self.build_tree_contents([('master/file', 'initial contents\n')])
         master.add(['file'])
         master.commit('one', rev_id='m1')
 
         checkout = master.branch.create_checkout('checkout')
         lightweight = checkout.branch.create_checkout('lightweight',
                                                       lightweight=True)
-        
+
         # time to create a mess
         # add a commit to the master
-        self.build_tree_contents([('master/file', 'master')])
+        self.build_tree_contents([('master/file', 'master\n')])
         master.commit('two', rev_id='m2')
-        self.build_tree_contents([('master/file', 'master local changes')])
+        self.build_tree_contents([('master/file', 'master local changes\n')])
 
         # local commit on the checkout
-        self.build_tree_contents([('checkout/file', 'checkout')])
+        self.build_tree_contents([('checkout/file', 'checkout\n')])
         checkout.commit('tree', rev_id='c2', local=True)
-        self.build_tree_contents([('checkout/file', 'checkout local changes')])
+        self.build_tree_contents([('checkout/file',
+                                   'checkout local changes\n')])
 
         # lightweight 
         self.build_tree_contents([('lightweight/file',
-                                   'lightweight local changes')])
+                                   'lightweight local changes\n')])
 
         # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        self.assertFileEqual('<<<<<<< TREE\n'
-                             'lightweight local changes'
-                             '=======\n'
-                             'checkout'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertFileEqual('''\
+<<<<<<< TREE
+lightweight local changes
+=======
+checkout
+>>>>>>> MERGE-SOURCE
+''',
                              'lightweight/file')
-        
+
         # resolve it
         self.build_tree_contents([('lightweight/file',
-                                   'lightweight+checkout')])
-        self.run_bzr('resolved lightweight/file')
+                                   'lightweight+checkout\n')])
+        self.run_bzr('resolve lightweight/file')
 
         # check we get the second conflict
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
-        self.assertFileEqual('<<<<<<< TREE\n'
-                             'lightweight+checkout'
-                             '=======\n'
-                             'master'
-                             '>>>>>>> MERGE-SOURCE\n',
+        self.assertFileEqual('''\
+<<<<<<< TREE
+lightweight+checkout
+=======
+master
+>>>>>>> MERGE-SOURCE
+''',
                              'lightweight/file')
 
     def test_update_remove_commit(self):
-        """Update should remove revisions when the branch has removed some commits
+        """Update should remove revisions when the branch has removed
+        some commits.
+
+        B: wt.branch.last_revision()
+        M: wt.branch.get_master_branch().last_revision()
+        W: wt.last_revision()
+
+
             1
             |\
           B-2 3
@@ -385,7 +397,7 @@ $ bzr update -r revid:m2
 
         And the changes in 4 have been removed from the WT.
         """
-        
+
         # building the picture
         M = self.make_branch_and_tree('M')
         self.build_tree_contents([('M/file1', '1')])
@@ -399,7 +411,7 @@ $ bzr update -r revid:m2
         self.build_tree_contents([('B/file4', '4')])
         B.add(['file4'])
         B.commit('four', rev_id='c4', local=True)
-        
+
         W = B.branch.create_checkout('W', lightweight=True)
         # move B back to 2
         B.pull(B.branch, local=True, stop_revision='c2', overwrite=True)
@@ -410,7 +422,7 @@ $ bzr update -r revid:m2
         self.build_tree_contents([('M/file5', '5')])
         M.add(['file5'])
         M.commit('five', rev_id='c5')
-        
+
         # now check if everything is as we expect it to be (test the test)
         # M has 1,3,5
         self.failUnlessExists('M/file1')

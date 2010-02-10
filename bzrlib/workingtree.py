@@ -2261,7 +2261,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # We MUST save it even if an error occurs, because otherwise the users
         # local work is unreferenced and will appear to have been lost.
         #
-        result = 0
+        nb_conflicts = 0
         try:
             last_rev = self.get_parent_ids()[0]
         except IndexError:
@@ -2271,24 +2271,21 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         else:
             if revision not in self.branch.revision_history():
                 raise errors.NoSuchRevision(self.branch, revision)
-                
+
         old_tip = old_tip or _mod_revision.NULL_REVISION
-        
+
         if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
             # the branch we are bound to was updated
             # merge those changes in first
             base_tree  = self.basis_tree()
             other_tree = self.branch.repository.revision_tree(old_tip)
-            result = merge.merge_inner(
-                                  self.branch,
-                                  other_tree,
-                                  base_tree,
-                                  this_tree=self,
-                                  change_reporter=change_reporter)
-            if result > 0:
+            nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                             base_tree, this_tree=self,
+                                             change_reporter=change_reporter)
+            if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
                 trace.note('Rerun update after fixing the conflicts.')
-                return result
+                return nb_conflicts
 
         if last_rev != _mod_revision.ensure_null(revision):
             # the working tree is up to date with the branch
@@ -2308,15 +2305,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
             # determine the branch point
             graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(self.branch.last_revision(), last_rev)
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                last_rev)
             base_tree = self.branch.repository.revision_tree(base_rev_id)
 
-            result = merge.merge_inner(
-                                  self.branch,
-                                  to_tree,
-                                  base_tree,
-                                  this_tree=self,
-                                  change_reporter=change_reporter)
+            nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                             this_tree=self,
+                                             change_reporter=change_reporter)
             self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
@@ -2335,7 +2330,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
-        return result
+        return nb_conflicts
 
     def _write_hashcache_if_dirty(self):
         """Write out the hashcache if it is dirty."""
