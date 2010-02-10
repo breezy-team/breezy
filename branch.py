@@ -104,6 +104,17 @@ class LocalGitTagDict(tag.BasicTags):
             ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
         return ret
 
+    def _set_tag_dict(self, to_dict):
+        extra = set(self.repository._git.get_refs().keys())
+        for k, revid in to_dict.iteritems():
+            name = "refs/tags/%s" % k
+            if name in extra:
+                extra.remove(name)
+            self.set_tag(k, revid)
+        for name in extra:
+            if name.startswith("refs/tags/"):
+                del self.repository._git[name]
+        
     def set_tag(self, name, revid):
         self.repository._git.refs["refs/tags/%s" % name], _ = \
             self.branch.mapping.revision_id_bzr_to_foreign(revid)

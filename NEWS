@@ -13,6 +13,9 @@
   * When unpacking URLs, strip leftmost slash to match gits 
     behaviour. (#445156, Jelmer Vernooij)
 
+  * Support merging tags to a local Git repository.
+    (#4445230, Jelmer Vernooij)
+
 0.4.3	2010-01-19
 
  BUG FIXES
