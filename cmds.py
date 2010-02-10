@@ -582,17 +582,25 @@ class cmd_merge_upstream(Command):
             orig_dir = os.path.join(tree.basedir, orig_dir)
             if not os.path.exists(orig_dir):
                 os.makedirs(orig_dir)
-            dest_name = tarball_name(package, version.upstream_version)
-            tarball_filename = os.path.join(orig_dir, dest_name)
-
             if upstream_branch and no_tarball:
-                upstream = UpstreamBranchSource(upstream_branch, 
+                # TODO: a way to use bz2 on export
+                dest_name = tarball_name(package, version.upstream_version)
+                tarball_filename = os.path.join(orig_dir, dest_name)
+                upstream = UpstreamBranchSource(upstream_branch,
                         upstream_revision)
-                upstream.get_specific_version(package, version.upstream_version,
-                        orig_dir)
+                tarball_filename = upstream.get_specific_version(package,
+                        version.upstream_version, orig_dir)
             else:
+                format = None
+                if (location.endswith(".tar.bz2")
+                        or location.endswith(".tbz2")):
+                    format = "bz2"
+                dest_name = tarball_name(package, version.upstream_version,
+                        format=format)
+                tarball_filename = os.path.join(orig_dir, dest_name)
                 try:
-                    repack_tarball(location, dest_name, target_dir=orig_dir)
+                    repack_tarball(location, dest_name, target_dir=orig_dir,
+                            force_gz=False)
                 except FileExists:
                     raise BzrCommandError("The target file %s already exists, and is either "
                                           "different to the new upstream tarball, or they "

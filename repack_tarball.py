@@ -124,14 +124,16 @@ class ZipTgzRepacker(TgzRepacker):
             zip.close()
 
 
-def get_repacker_class(source_filename):
+def get_repacker_class(source_filename, force_gz=True):
     """Return the appropriate repacker based on the file extension."""
     if (source_filename.endswith(".tar.gz")
             or source_filename.endswith(".tgz")):
         return TgzTgzRepacker
     if (source_filename.endswith(".tar.bz2")
             or source_filename.endswith(".tbz2")):
-        return Tbz2TgzRepacker
+        if force_gz:
+            return Tbz2TgzRepacker
+        return TgzTgzRepacker
     if source_filename.endswith(".tar"):
         return TarTgzRepacker
     if source_filename.endswith(".zip"):
@@ -169,8 +171,8 @@ def _repack_directory(target_transport, new_name, source_name):
         target_f.close()
 
 
-def _repack_other(target_transport, new_name, source_name):
-    repacker_cls = get_repacker_class(source_name)
+def _repack_other(target_transport, new_name, source_name, force_gz=True):
+    repacker_cls = get_repacker_class(source_name, force_gz=force_gz)
     if repacker_cls is None:
         raise UnsupportedRepackFormat(source_name)
     target_transport.ensure_base()
@@ -186,7 +188,7 @@ def _repack_other(target_transport, new_name, source_name):
         target_f.close()
 
 
-def repack_tarball(source_name, new_name, target_dir=None):
+def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
     """Repack the file/dir named to a .tar.gz with the chosen name.
 
     This function takes a named file of either .tar.gz, .tar .tgz .tar.bz2 
@@ -207,6 +209,7 @@ def repack_tarball(source_name, new_name, target_dir=None):
     :keyword target_dir: the directory to consider new_name relative to, and
                          will be created if non-existant.
     :type target_dir: string
+    :param force_gz: whether to repack other .tar files to .tar.gz.
     :return: None
     :throws NoSuchFile: if source_name doesn't exist.
     :throws FileExists: if the target filename (after considering target_dir)
@@ -229,4 +232,5 @@ def repack_tarball(source_name, new_name, target_dir=None):
     if os.path.isdir(source_name):
         _repack_directory(target_transport, new_name, source_name)
     else:
-        _repack_other(target_transport, new_name, source_name)
+        _repack_other(target_transport, new_name, source_name,
+                force_gz=force_gz)

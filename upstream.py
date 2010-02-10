@@ -192,7 +192,7 @@ class GetOrigSourceSource(UpstreamSource):
             fetched_tarball = os.path.join(source_dir, desired_tarball_name)
             if os.path.exists(fetched_tarball):
                 repack_tarball(fetched_tarball, desired_tarball_name,
-                               target_dir=target_dir)
+                               target_dir=target_dir, force_gz=False)
                 return True
         info("get-orig-source did not create %s", desired_tarball_name)
         return False
@@ -418,7 +418,7 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                self.source.get_specific_version(self.package, 
+                self.source.get_specific_version(self.package,
                     self.version.upstream_version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_name())
@@ -446,7 +446,8 @@ class UpstreamProvider(object):
     def provide_from_store_dir(self, target_dir):
         path = self.already_exists_in_store()
         if path is not None:
-            repack_tarball(path, os.path.basename(path), target_dir=target_dir)
+            repack_tarball(path, os.path.basename(path),
+                    target_dir=target_dir, force_gz=False)
         return path
 
     def _tarball_names(self):
