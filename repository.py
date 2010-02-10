@@ -17,7 +17,6 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
-import bzrlib
 from bzrlib import (
     errors,
     graph,
