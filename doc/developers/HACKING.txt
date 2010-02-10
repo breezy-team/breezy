@@ -131,7 +131,9 @@ your changes off to the Bazaar developers for review and merging.
 Using a meaningful name for your branch will help you and the reviewer(s)
 better track the submission. Use a very succint description of your submission
 and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
-for example).
+for example). Alternatively, you can suffix with the bug number
+(lp:~jameinel/bzr/export-file-511987).
+
 
 Why make a local copy of bzr.dev?
 ---------------------------------
