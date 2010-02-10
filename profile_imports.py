@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 by Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 by Canonical Ltd
 # Written by John Arbash Meinel <john@arbash-meinel.com>
 #
 # This program is free software; you can redistribute it and/or modify

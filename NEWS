@@ -33,6 +33,9 @@ New Features
 Bug Fixes
 *********
 
+* Allow exporting a single file using ``bzr export``.
+  (Michal Junák, #511987)
+
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
@@ -11893,4 +11896,4 @@ Testing
 
 
 ..
-   vim: tw=74 ft=rst ff=unix
+   vim: tw=74 ft=rst ff=unix encoding=utf-8

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
