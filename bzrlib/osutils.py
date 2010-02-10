@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -172,6 +172,8 @@ _kind_marker_map = {
     _directory_kind: "/",
     "symlink": "@",
     'tree-reference': '+',
+    "socket": "=",
+    "fifo": "|",
 }
 
 
