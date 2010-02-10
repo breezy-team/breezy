@@ -989,23 +989,27 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         builder.finish_series()
         return builder, builder._branch.last_revision()
 
-    def make_wt_branch_and_master(self, builder, wt, br, master):
-        wpath, wrevid = wt
-        bpath, brevid = br
-        mpath, mrevid = master
+    def make_checkout_and_master(self, builder, wt_path, master_path, wt_revid,
+                                 master_revid=None, branch_revid=None):
+        """Build a lightweight checkout and its master branch."""
+        if master_revid is None:
+            master_revid = wt_revid
+        if branch_revid is None:
+            branch_revid = master_revid
         final_branch = builder.get_branch()
         # The master branch
-        mb = final_branch.bzrdir.sprout(mpath, mrevid).open_branch()
-        # The branch
-        b = final_branch.bzrdir.sprout(bpath, brevid).open_branch()
-        # The working tree
-        wt = self.make_branch_and_tree(wpath)
-        wt.pull(final_branch, stop_revision=wrevid)
+        master = final_branch.bzrdir.sprout(master_path,
+                                            master_revid).open_branch()
+        # The checkout
+        wt = self.make_branch_and_tree(wt_path)
+        wt.pull(final_branch, stop_revision=wt_revid)
+        wt.branch.pull(final_branch, stop_revision=branch_revid, overwrite=True)
         try:
-            wt.branch.bind(mb)
+            wt.branch.bind(master)
         except errors.UpgradeRequired:
-            raise TestSkipped("Can't bind %s" % wt.branch._format.__class__)
-        return wt, b, mb
+            raise TestNotApplicable(
+                "Can't bind %s" % wt.branch._format.__class__)
+        return wt, master
 
     def test_update_remove_commit(self):
         """Update should remove revisions when the branch has removed
@@ -1026,17 +1030,30 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         And the changes in 4 have been removed from the WT.
         """
         builder, tip = self.make_diverged_master_branch()
-        wt, b, master = self.make_wt_branch_and_master(
-            builder, ('W', '4'), ('B', '2'), ('M', tip))
+        wt, master = self.make_checkout_and_master(
+            builder, 'checkout', 'master', '4',
+            master_revid=tip, branch_revid='2')
         # First update the branch
         old_tip = wt.branch.update()
-        self.assertEqual('4', old_tip)
+        self.assertEqual('2', old_tip)
         # No conflicts should occur
-        self.assertEqual(0, wt.update(old_tip='2')) # Force an out-of-date tip
+        self.assertEqual(0, wt.update(old_tip=old_tip))
         # We are in sync with the master
         self.assertEqual(tip, wt.branch.last_revision())
         # We have the right parents ready to be committed
         self.assertEqual(['5', '2'], wt.get_parent_ids())
+
+    def test_update_revision(self):
+        builder, tip = self.make_diverged_master_branch()
+        wt, master = self.make_checkout_and_master(
+            builder, 'checkout', 'master', '4',
+            master_revid=tip, branch_revid='2')
+        self.assertEqual(0, wt.update(revision='1'))
+        self.assertEqual('1', wt.last_revision())
+        self.assertEqual(tip, wt.branch.last_revision())
+        self.failUnlessExists('checkout/file1')
+        self.failIfExists('checkout/file4')
+        self.failIfExists('checkout/file5')
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):
