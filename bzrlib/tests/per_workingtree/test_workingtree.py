@@ -1029,8 +1029,15 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         builder, tip = self.make_diverged_master_branch()
         wt, b, master = self.make_wt_branch_and_master(
             builder, ('W', '4'), ('B', '2'), ('M', tip))
+        # First update the branch
+        old_tip = wt.branch.update()
+        self.assertEqual('4', old_tip)
         # No conflicts should occur
-        self.assertEqual(0, wt.update(old_tip='2'))
+        self.assertEqual(0, wt.update(old_tip='2')) # Force an out-of-date tip
+        # We are in sync with the master
+        self.assertEqual(tip, wt.branch.last_revision())
+        # We have the right parents ready to be merged
+        self.assertEqual(['5', '2'], wt.get_parent_ids())
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):
