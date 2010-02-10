@@ -462,11 +462,12 @@ class cmd_merge_upstream(Command):
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
+    v3_opt = Option('v3', help='Use dpkg-source format v3.')
 
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
-            force_opt, 'revision', 'merge-type']
+            force_opt, v3_opt, 'revision', 'merge-type']
 
     def _update_changelog(self, tree, version, distribution_name, changelog,
             package):
@@ -487,7 +488,7 @@ class cmd_merge_upstream(Command):
 
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None,
-            merge_type=None, last_version=None, force=None):
+            merge_type=None, last_version=None, force=None, v3=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import upstream_branch_version
@@ -592,15 +593,16 @@ class cmd_merge_upstream(Command):
                         version.upstream_version, orig_dir)
             else:
                 format = None
-                if (location.endswith(".tar.bz2")
-                        or location.endswith(".tbz2")):
-                    format = "bz2"
+                if v3:
+                    if (location.endswith(".tar.bz2")
+                            or location.endswith(".tbz2")):
+                        format = "bz2"
                 dest_name = tarball_name(package, version.upstream_version,
                         format=format)
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir,
-                            force_gz=False)
+                            force_gz=not v3)
                 except FileExists:
                     raise BzrCommandError("The target file %s already exists, and is either "
                                           "different to the new upstream tarball, or they "
@@ -927,7 +929,7 @@ class cmd_dh_make(Command):
 
     The basic use case is satisfied by
 
-        bzr dh-make http://project.org/project-0.1.tar.gz project 0.1
+        bzr dh-make project 0.1 http://project.org/project-0.1.tar.gz
 
     which will import the tarball with the correct tags etc. and then
     run dh_make for you in order to start the packaging.
@@ -945,19 +947,20 @@ class cmd_dh_make(Command):
 
     aliases = ['dh_make']
 
-    takes_args = ['tarball', 'package_name', 'version']
+    takes_args = ['package_name', 'version', 'tarball']
 
     bzr_only_opt = Option('bzr-only', help="Don't run dh_make.")
+    v3_opt = Option('v3', help="Use dpkg-source format v3.")
 
-    takes_options = [bzr_only_opt]
+    takes_options = [bzr_only_opt, v3_opt]
 
-    def run(self, tarball, package_name, version, bzr_only=None):
+    def run(self, package_name, version, tarball, bzr_only=None, v3=None):
         tree = dh_make.import_upstream(tarball, package_name,
-                version.encode("utf-8"))
+                version.encode("utf-8"), use_v3=v3)
         if not bzr_only:
             tree.lock_write()
             try:
-                dh_make.run_dh_make(tree, package_name, version)
+                dh_make.run_dh_make(tree, package_name, version, use_v3=v3)
             finally:
                 tree.unlock()
         note('Package prepared in %s'
