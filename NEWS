@@ -37,7 +37,7 @@ Bug Fixes
   (Vincent Ladeuil, #516934)
 
 * ``bzr add`` will not add conflict related files unless explicitly required.
-  (Vincent Ladeuil, #322767)
+  (Vincent Ladeuil, #322767, #414589)
 
 Testing
 *******

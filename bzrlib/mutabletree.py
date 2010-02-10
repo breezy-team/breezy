@@ -389,14 +389,14 @@ class MutableTree(tree.Tree):
         ignored = {}
         dirs_to_add = []
         user_dirs = set()
-        conflicts_related = []
+        conflicts_related = set()
         # Not all mutable trees can have conflicts
         if getattr(self, 'conflicts', None) is not None:
             # Collect all related files without checking whether they exist or
             # are versioned. It's cheaper to do that once for all conflicts
             # than trying to find the relevant conflict for each added file.
             for c in self.conflicts():
-                conflicts_related.extend(c.associated_filenames())
+                conflicts_related.update(c.associated_filenames())
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
