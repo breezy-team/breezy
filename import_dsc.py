@@ -1135,7 +1135,10 @@ class DistributionBranch(object):
             delta = self.make_pristine_tar_delta(self.upstream_tree,
                     upstream_tarball)
             uuencoded = standard_b64encode(delta)
-            revprops["deb-pristine-delta"] = uuencoded
+            if upstream_tarball.endswith(".tar.bz2"):
+                revprops["deb-pristine-delta-bz2"] = uuencoded
+            else:
+                revprops["deb-pristine-delta"] = uuencoded
         if author is not None:
             revprops['authors'] = author
         timezone=None
@@ -1642,11 +1645,29 @@ class DistributionBranch(object):
 
     def has_pristine_tar_delta(self, revid):
         rev = self.branch.repository.get_revision(revid)
-        return 'deb-pristine-delta' in rev.properties
+        return ('deb-pristine-delta' in rev.properties
+                or 'deb-pristine-delta-bz2' in rev.properties)
+
+    def pristine_tar_format(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        if 'deb-pristine-delta' in rev.properties:
+            return 'gz'
+        elif 'deb-properties-delta-bz2' in rev.properties:
+            return 'bz2'
+        assert self.has_pristine_tar_delta(revid)
+        raise AssertionError("Not handled new delta type in "
+                "pristine_tar_format")
 
     def pristine_tar_delta(self, revid):
         rev = self.branch.repository.get_revision(revid)
-        uuencoded = rev.properties['deb-pristine-delta']
+        if 'deb-pristine-delta' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta']
+        elif 'deb-pristine-delta-bz2' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta-bz2']
+        else:
+            assert self.has_pristine_tar_delta(revid)
+            raise AssertionError("Not handled new delta type in "
+                    "pristine_tar_delta")
         delta = standard_b64decode(uuencoded)
         return delta
 
@@ -1799,18 +1820,20 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
         for part in self.dsc['files']:
-            if part['name'].endswith(".orig.tar.gz"):
-                assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+            if (part['name'].endswith(".orig.tar.gz")
+                    or part['name'].endswith(".orig.tar.bz2")):
+                assert self.unextracted_upstream is None, "Two .orig.tar.(gz|bz2)?"
                 self.unextracted_upstream = os.path.abspath(
                         os.path.join(osutils.dirname(self.dsc_path),
                             part['name']))
                 self.unextracted_upstream_md5 = part['md5sum']
-            elif part['name'].endswith(".debian.tar.gz"):
+            elif (part['name'].endswith(".debian.tar.gz")
+                    or part['name'].endswith(".orig.tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
         assert self.unextracted_upstream is not None, \
-            "Can't handle non gz tarballs yet"
+            "Can't handle non gz|bz2 tarballs yet"
         assert self.unextracted_debian_md5 is not None, \
-            "Can't handle non gz tarballs yet"
+            "Can't handle non gz|bz2 tarballs yet"
 
 
 SOURCE_EXTRACTORS = {}
