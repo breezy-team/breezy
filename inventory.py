@@ -50,7 +50,8 @@ class GitInventoryEntry(inventory.InventoryEntry):
         self.path = path
         self.revision = self._inventory.revision_id
         self.executable = executable
-        self.file_id = self._inventory.mapping.generate_file_id(path.encode('utf-8'))
+        self.file_id = self._inventory.mapping.generate_file_id(
+            path.encode('utf-8'))
 
     @property
     def object(self):
@@ -183,7 +184,8 @@ class GitInventoryDirectory(GitInventoryEntry):
                           'file': GitInventoryFile,
                           'symlink': GitInventoryLink,
                           'tree-reference': GitInventoryTreeReference}[mode_kind(mode)]
-            self._children[basename] = kind_class(self._inventory, self.file_id, hexsha, child_path, basename, executable)
+            self._children[basename] = kind_class(self._inventory,
+                self.file_id, hexsha, child_path, basename, executable)
 
     def copy(self):
         other = inventory.InventoryDirectory(self.file_id, self.name,
@@ -258,14 +260,18 @@ class GitIndexInventory(inventory.Inventory):
         self.mapping = mapping
         self.index = index
         self._contents_read = False
+        self.store = store
         self.root = self.add_path("", 'directory',
             self.mapping.generate_file_id(""), None)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         self._read_contents()
-        return super(GitIndexInventory, self).iter_entries_by_dir(specific_file_ids=specific_file_ids, yield_parents=yield_parents)
+        return super(GitIndexInventory, self).iter_entries_by_dir(
+            specific_file_ids=specific_file_ids, yield_parents=yield_parents)
 
     def has_id(self, file_id):
+        if type(file_id) != str:
+            raise AssertionError
         try:
             self.id2path(file_id)
             return True
@@ -279,6 +285,8 @@ class GitIndexInventory(inventory.Inventory):
         return super(GitIndexInventory, self).has_filename(path)
 
     def id2path(self, file_id):
+        if type(file_id) != str:
+            raise AssertionError
         path = self.mapping.parse_file_id(file_id)
         if path in self.index:
             return path
@@ -315,6 +323,8 @@ class GitIndexInventory(inventory.Inventory):
                     file_id = self.mapping.generate_file_id(path)
                 else:
                     file_id = old_ie.file_id
+                if type(file_id) != str:
+                    raise AssertionError
                 kind = mode_kind(mode)
                 if old_ie is not None and old_ie.hexsha == sha:
                     # Hasn't changed since basis inv
@@ -323,7 +333,7 @@ class GitIndexInventory(inventory.Inventory):
                 else:
                     ie = self.add_path(path, kind, file_id,
                         self.add_parents(path))
-                    data = store[sha].data
+                    data = self.store[sha].data
                     if kind == "symlink":
                         ie.symlink_target = data
                     else:
@@ -346,5 +356,7 @@ class GitIndexInventory(inventory.Inventory):
             if ie.file_id in self.basis_inv:
                 ie.revision = self.basis_inv[ie.file_id].revision
             file_id = ie.file_id
+        if type(file_id) != str:
+            raise AssertionError
         return file_id
 
