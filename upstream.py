@@ -66,8 +66,9 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_specific_version)
 
-    def _tarball_path(self, package, version, target_dir):
-        return os.path.join(target_dir, tarball_name(package, version))
+    def _tarball_path(self, package, version, target_dir, format=None):
+        return os.path.join(target_dir, tarball_name(package, version,
+                    format=format))
 
 
 class PristineTarSource(UpstreamSource):
@@ -78,8 +79,6 @@ class PristineTarSource(UpstreamSource):
         self.tree = tree
 
     def get_specific_version(self, package, version, target_dir):
-        target_filename = self._tarball_path(package, version,
-                                             target_dir)
         db = DistributionBranch(self.branch, None, tree=self.tree)
         if not db.has_upstream_version_in_packaging_branch(version):
             raise PackageVersionNotPresent(package, version, self)
@@ -87,6 +86,9 @@ class PristineTarSource(UpstreamSource):
         if not db.has_pristine_tar_delta(revid):
             raise PackageVersionNotPresent(package, version, self)
         info("Using pristine-tar to reconstruct the needed tarball.")
+        format = db.pristine_tar_format(revid)
+        target_filename = self._tarball_path(package, version,
+                                             target_dir, format=format)
         try:
             db.reconstruct_pristine_tar(revid, package, version, target_filename)
         except PristineTarError:
@@ -177,7 +179,7 @@ class GetOrigSourceSource(UpstreamSource):
         self.tree = tree
         self.larstiq = larstiq
 
-    def _get_orig_source(self, source_dir, desired_tarball_name,
+    def _get_orig_source(self, source_dir, desired_tarball_names,
                         target_dir):
         info("Trying to use get-orig-source to retrieve needed tarball.")
         command = ["make", "-f", "debian/rules", "get-orig-source"]
@@ -186,13 +188,14 @@ class GetOrigSourceSource(UpstreamSource):
         if ret != 0:
             info("Trying to run get-orig-source rule failed")
             return False
-        fetched_tarball = os.path.join(source_dir, desired_tarball_name)
-        if not os.path.exists(fetched_tarball):
-            info("get-orig-source did not create %s", desired_tarball_name)
-            return False
-        repack_tarball(fetched_tarball, desired_tarball_name, 
-                       target_dir=target_dir)
-        return True
+        for desired_tarball_name in desired_tarball_names:
+            fetched_tarball = os.path.join(source_dir, desired_tarball_name)
+            if os.path.exists(fetched_tarball):
+                repack_tarball(fetched_tarball, desired_tarball_name,
+                               target_dir=target_dir)
+                return True
+        info("get-orig-source did not create %s", desired_tarball_name)
+        return False
 
     def get_specific_version(self, package, version, target_dir):
         if self.larstiq:
@@ -201,7 +204,9 @@ class GetOrigSourceSource(UpstreamSource):
             rules_name = 'debian/rules'
         rules_id = self.tree.path2id(rules_name)
         if rules_id is not None:
-            desired_tarball_name = tarball_name(package, version)
+            desired_tarball_names = [tarball_name(package, version),
+                    tarball_name(package, version, 'bz2'),
+                    tarball_name(package, version, 'lzma')]
             tmpdir = tempfile.mkdtemp(prefix="builddeb-get-orig-source-")
             try:
                 base_export_dir = os.path.join(tmpdir, "export")
@@ -211,7 +216,7 @@ class GetOrigSourceSource(UpstreamSource):
                     export_dir = os.path.join(export_dir, "debian")
                 export(self.tree, export_dir, format="dir")
                 if not self._get_orig_source(base_export_dir,
-                        desired_tarball_name, target_dir):
+                        desired_tarball_names, target_dir):
                     raise PackageVersionNotPresent(package, version, self)
                 return
             finally:
@@ -262,7 +267,7 @@ class UScanSource(UpstreamSource):
         if tempfilename is None:
             raise PackageVersionNotPresent(package, version, self)
         try:
-            if not self._uscan(package, version, tempfilename, 
+            if not self._uscan(package, version, tempfilename,
                     target_dir):
                 raise PackageVersionNotPresent(package, version, self)
         finally:
@@ -404,11 +409,12 @@ class UpstreamProvider(object):
         :return: The path to the tarball.
         """
         info("Looking for a way to retrieve the upstream tarball")
-        if self.already_exists_in_target(target_dir):
+        in_target = self.already_exists_in_target(target_dir)
+        if in_target is not None:
             info("Upstream tarball already exists in build directory, "
                     "using that")
-            return os.path.join(target_dir, self._tarball_name())
-        if not self.already_exists_in_store():
+            return in_target
+        if self.already_exists_in_store() is not None:
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
@@ -419,25 +425,34 @@ class UpstreamProvider(object):
         else:
              info("Using the upstream tarball that is present in "
                      "%s" % self.store_dir)
-        assert self.provide_from_store_dir(target_dir)
-        return os.path.join(target_dir, self._tarball_name())
+        path = self.provide_from_store_dir(target_dir)
+        assert path is not None
+        return path
 
     def already_exists_in_target(self, target_dir):
-        return os.path.exists(os.path.join(target_dir, self._tarball_name()))
+        for tarball_name in self._tarball_names():
+            path = os.path.join(target_dir, tarball_name)
+            if os.path.exists(path):
+                return path
+        return None
 
     def already_exists_in_store(self):
-        return os.path.exists(os.path.join(self.store_dir,
-                    self._tarball_name()))
+        for tarball_name in self._tarball_names():
+            path = os.path.join(self.store_dir, tarball_name)
+            if os.path.exists(path):
+                return path
+        return None
 
     def provide_from_store_dir(self, target_dir):
-        if self.already_exists_in_store():
-            repack_tarball(os.path.join(self.store_dir, self._tarball_name()),
-                    self._tarball_name(), target_dir=target_dir)
-            return True
-        return False
+        path = self.already_exists_in_store()
+        if path is not None:
+            repack_tarball(path, os.path.basename(path), target_dir=target_dir)
+        return path
 
-    def _tarball_name(self):
-        return tarball_name(self.package, self.version.upstream_version)
+    def _tarball_names(self):
+        return [tarball_name(self.package, self.version.upstream_version),
+                tarball_name(self.package, self.version.upstream_version, format='bz2'),
+                tarball_name(self.package, self.version.upstream_version, format='lzma')]
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

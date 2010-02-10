@@ -162,14 +162,18 @@ def strip_changelog_message(changes):
         return changes
 
 
-def tarball_name(package, version):
+def tarball_name(package, version, format=None):
     """Return the name of the .orig.tar.gz for the given package and version.
 
     :param package: the name of the source package.
     :param version: the upstream version of the package.
+    :param format: the format for the tarball. If None then 'gz' will be
+         used. You probably want on of 'gz', 'bz2', or 'lzma'.
     :return: a string that is the name of the upstream tarball to use.
     """
-    return "%s_%s.orig.tar.gz" % (package, str(version))
+    if format is None:
+        format = 'gz'
+    return "%s_%s.orig.tar.%s" % (package, str(version), format)
 
 
 def get_snapshot_revision(upstream_version):
