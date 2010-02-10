@@ -5914,5 +5914,3 @@ from bzrlib.bundle.commands import (
     )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, \
-        cmd_weave_plan_merge, cmd_weave_merge_text
