@@ -392,7 +392,7 @@ class TestMerge(TestCaseWithTransport):
         other_tree.commit('rev2', rev_id='rev2b')
         this_tree.lock_write()
         self.addCleanup(this_tree.unlock)
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress,
+        merger = _mod_merge.Merger.from_revision_ids(None,
             this_tree, 'rev2b', other_branch=other_tree.branch)
         merger.merge_type = _mod_merge.Merge3Merger
         tree_merger = merger.make_merger()
