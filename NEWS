@@ -40,6 +40,14 @@ Bug Fixes
   to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
   (Gordon Tyler, #514399)
 
+API Changes
+***********
+
+* New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
+  run when starting up; it sets up several things that previously needed
+  to be done separately.
+  (Martin Pool, #507710)
+
 Testing
 *******
 
