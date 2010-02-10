@@ -10,6 +10,9 @@
 
   * Support executable symlinks. (#512871, INADA Naoki, Jelmer Vernooij)
 
+  * When unpacking URLs, strip leftmost slash to match gits 
+    behaviour. (#445156, Jelmer Vernooij)
+
 0.4.3	2010-01-19
 
  BUG FIXES

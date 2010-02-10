@@ -79,9 +79,16 @@ def get_test_permutations():
 
 
 def split_git_url(url):
+    """Split a Git URL.
+
+    :param url: Git URL
+    :return: Tuple with host, port, username, path.
+    """
     (scheme, _, loc, _, _) = urlparse.urlsplit(url)
     hostport, escaped_path = urllib.splithost(loc)
     path = urllib.unquote(escaped_path)
+    if len(path) > 0 and path[0] == "/":
+        path = path[1:]
     (username, hostport) = urllib.splituser(hostport)
     (host, port) = urllib.splitnport(hostport, None)
     return (host, port, username, path)
