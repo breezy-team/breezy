@@ -1338,8 +1338,11 @@ class DistributionBranch(object):
 
     def _do_import_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_md5, upstream_tarball=None,
-            timestamp=None, author=None, file_ids_from=None):
-        pull_branch = self.branch_to_pull_version_from(version, md5)
+            timestamp=None, author=None, file_ids_from=None,
+            pull_debian=True):
+        pull_branch = None
+        if pull_debian:
+            pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
                         upstream_md5)
@@ -1419,8 +1422,10 @@ class DistributionBranch(object):
 
 
     def _import_native_package(self, version, versions, debian_part, md5,
-            timestamp=None, file_ids_from=None):
-        pull_branch = self.branch_to_pull_version_from(version, md5)
+            timestamp=None, file_ids_from=None, pull_debian=True):
+        pull_branch = None
+        if pull_debian:
+            pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
@@ -1439,7 +1444,7 @@ class DistributionBranch(object):
         return versions
 
     def import_package(self, dsc_filename, use_time_from_changelog=True,
-            file_ids_from=None):
+            file_ids_from=None, pull_debian=True):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1482,12 +1487,14 @@ class DistributionBranch(object):
                         extractor.unextracted_upstream_md5,
                         upstream_tarball=extractor.unextracted_upstream,
                         timestamp=timestamp, author=author,
-                        file_ids_from=file_ids_from)
+                        file_ids_from=file_ids_from,
+                        pull_debian=pull_debian)
             else:
                 self._import_native_package(version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
-                        timestamp=timestamp, file_ids_from=file_ids_from)
+                        timestamp=timestamp, file_ids_from=file_ids_from,
+                        pull_debian=pull_debian)
         finally:
             extractor.cleanup()
 
