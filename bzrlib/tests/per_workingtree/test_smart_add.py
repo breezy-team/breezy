@@ -269,7 +269,14 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_explicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        self.wt.smart_add([u'a\u030a'])
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [u'a\u030a'])
+        else:
+            self.wt.smart_add([u'a\u030a'])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
@@ -278,12 +285,19 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_implicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        self.wt.smart_add([])
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [])
+        else:
+            self.wt.smart_add([])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                         [(path, ie.kind) for path,ie in
-                          self.wt.inventory.iter_entries()])
+                         [(path, ie.kind) for path,ie
+                          in self.wt.inventory.iter_entries()])
 
     def test_inaccessible_explicit(self):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
