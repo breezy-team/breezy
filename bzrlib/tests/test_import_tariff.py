@@ -81,5 +81,9 @@ class TestImportTariffs(TestCaseWithTransport):
     def test_simple_local(self):
         # 'st' in a working tree shouldn't need many modules
         self.make_branch_and_tree('.')
-        self.run_command_check_imports(['st'],
-            ['smtplib'])
+        self.run_command_check_imports(['st'], [
+            'bzrlib.remote',
+            'bzrlib.smart',
+            'smtplib',
+            'tarfile',
+            ])

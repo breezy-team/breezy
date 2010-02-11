@@ -29,7 +29,6 @@ from bzrlib import (
     knit,
     osutils,
     pack,
-    remote,
     revision as _mod_revision,
     trace,
     ui,
