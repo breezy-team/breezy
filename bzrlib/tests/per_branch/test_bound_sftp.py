@@ -26,13 +26,14 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_server
+from bzrlib.transport import memory
 
 
 class BoundSFTPBranch(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
 

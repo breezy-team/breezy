@@ -35,9 +35,9 @@ from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
     http_server,
     per_branch,
-    test_server,
     )
 from bzrlib.tests.http_server import HttpServer
+from bzrlib.transport import memory
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
@@ -512,7 +512,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.vfs_transport_factory == test_server.MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):

@@ -300,8 +300,37 @@ class _MemoryLock(object):
         self.transport = None
 
 
+class MemoryServer(transport.Server):
+    """Server for the MemoryTransport for testing with."""
+
+    def start_server(self):
+        self._dirs = {'/':None}
+        self._files = {}
+        self._locks = {}
+        self._scheme = "memory+%s:///" % id(self)
+        def memory_factory(url):
+            from bzrlib.transport import memory
+            result = memory.MemoryTransport(url)
+            result._dirs = self._dirs
+            result._files = self._files
+            result._locks = self._locks
+            return result
+        self._memory_factory = memory_factory
+        transport.register_transport(self._scheme, self._memory_factory)
+
+    def stop_server(self):
+        # unregister this server
+        transport.unregister_transport(self._scheme, self._memory_factory)
+
+    def get_url(self):
+        """See bzrlib.transport.Server.get_url."""
+        return self._scheme
+
+    def get_bogus_url(self):
+        raise NotImplementedError
+
+
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests import test_server
-    return [(MemoryTransport, test_server.MemoryServer),
+    return [(MemoryTransport, MemoryServer),
             ]

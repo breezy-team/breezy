@@ -54,6 +54,7 @@ from bzrlib.tests import (
     )
 from bzrlib.transport import (
     get_transport,
+    memory,
     )
 from bzrlib.tests import test_server
 from bzrlib.tests.per_repository import TestCaseWithRepository
@@ -238,7 +239,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_commit_write_group_returns_new_pack_names(self):
         # This test doesn't need real disk.
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         format = self.get_format()
         repo = self.make_repository('foo', format=format)
         repo.lock_write()
@@ -707,7 +708,7 @@ class TestPackRepository(TestCaseWithTransport):
 
         Also requires that the exception is logged.
         """
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -724,7 +725,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.leave_lock_in_place()
 
     def test_abort_write_group_does_raise_when_not_suppressed(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -737,7 +738,7 @@ class TestPackRepository(TestCaseWithTransport):
             repo.leave_lock_in_place()
 
     def test_suspend_write_group(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -757,7 +758,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(wg_tokens[0], md5.hexdigest())
 
     def test_resume_chk_bytes(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
@@ -781,7 +782,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_resume_write_group_then_abort(self):
         # Create a repo, start a write group, insert some data, suspend.
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -802,7 +803,7 @@ class TestPackRepository(TestCaseWithTransport):
             [], same_repo._pack_collection._pack_transport.list_dir(''))
 
     def test_commit_resumed_write_group(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()
         self.addCleanup(repo.unlock)
@@ -830,7 +831,7 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual([expected_pack_name], pack_names)
 
     def test_resume_malformed_token(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
         token = repo.lock_write()

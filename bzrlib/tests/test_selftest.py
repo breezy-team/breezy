@@ -624,7 +624,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_get_readonly_url_none(self):
         from bzrlib.transport import get_transport
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -677,7 +677,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
@@ -1469,7 +1469,7 @@ class TestTestCase(tests.TestCase):
         # permitted.
         # Manually set one up (TestCase doesn't and shouldn't provide magic
         # machinery)
-        transport_server = test_server.MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
@@ -1557,7 +1557,7 @@ class TestTestCase(tests.TestCase):
             result.calls)
 
     def test_start_server_registers_url(self):
-        transport_server = test_server.MemoryServer()
+        transport_server = memory.MemoryServer()
         # A little strict, but unlikely to be changed soon.
         self.assertEqual([], self._bzr_selftest_roots)
         self.start_server(transport_server)
@@ -1950,7 +1950,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
-        self.check_transport_set(test_server.MemoryServer)
+        self.check_transport_set(memory.MemoryServer)
 
 
 class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
@@ -2621,7 +2621,7 @@ class TestBlackboxSupport(tests.TestCase):
         # Running bzr in blackbox mode, normal/expected/user errors should be
         # caught in the regular way and turned into an error message plus exit
         # code.
-        transport_server = test_server.MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()

@@ -31,6 +31,7 @@ from bzrlib.tests import (
     test_server,
     TestCaseWithTransport,
     )
+from bzrlib.transport import memory
 
 
 def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
@@ -92,14 +93,14 @@ def load_tests(standard_tests, module, loader):
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(
-        test_server.MemoryServer,
+        memory.MemoryServer,
         test_server.SmartTCPServer_for_testing,
         test_server.ReadonlySmartTCPServer_for_testing,
         [(RemoteBzrDirFormat())],
         name_suffix='-default'))
     # And once with < 1.6 - the 'v2' protocol.
     scenarios.extend(make_scenarios(
-        test_server.MemoryServer,
+        memory.MemoryServer,
         test_server.SmartTCPServer_for_testing_v2_only,
         test_server.ReadonlySmartTCPServer_for_testing_v2_only,
         [(RemoteBzrDirFormat())],

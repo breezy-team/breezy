@@ -23,9 +23,8 @@ from bzrlib import (
 from bzrlib.tests import (
     features,
     stub_sftp,
-    test_server,
     )
-
+from bzrlib.transport import memory
 
 class SelfTestPatch:
 
@@ -84,8 +83,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # Test that we can pass a transport to the selftest core - memory
         # version.
         params = self.get_params_passed_to_core('selftest --transport=memory')
-        self.assertEqual(test_server.MemoryServer,
-            params[1]["transport"])
+        self.assertEqual(memory.MemoryServer, params[1]["transport"])
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')

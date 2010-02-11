@@ -251,7 +251,7 @@ class TestCoalesceOffsets(tests.TestCase):
 class TestMemoryServer(tests.TestCase):
 
     def test_create_server(self):
-        server = test_server.MemoryServer()
+        server = memory.MemoryServer()
         server.start_server()
         url = server.get_url()
         self.assertTrue(url in transport.transport_list_registry)

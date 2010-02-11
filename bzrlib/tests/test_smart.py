@@ -51,6 +51,7 @@ from bzrlib.smart import (
 from bzrlib.tests import test_server
 from bzrlib.transport import (
     chroot,
+    memory,
     )
 
 
@@ -79,7 +80,7 @@ def load_tests(standard_tests, module, loader):
 class TestCaseWithChrootedTransport(tests.TestCaseWithTransport):
 
     def setUp(self):
-        self.vfs_transport_factory = test_server.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         tests.TestCaseWithTransport.setUp(self)
         self._chroot_server = None
 

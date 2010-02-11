@@ -40,10 +40,7 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests import (
-    test_server,
-    test_smart,
-    )
+from bzrlib.tests import test_smart
 from bzrlib.transport import (
         http,
         local,
@@ -1002,7 +999,7 @@ class SmartTCPTests(tests.TestCase):
         # tests wanting a server. The latter should be updated to use
         # self.vfs_transport_factory etc.
         if not backing_transport:
-            mem_server = test_server.MemoryServer()
+            mem_server = memory.MemoryServer()
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())

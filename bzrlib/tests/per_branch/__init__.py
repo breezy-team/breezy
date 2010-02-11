@@ -34,6 +34,7 @@ from bzrlib.branch import (BranchFormat,
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.tests import test_server
 from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.transport import memory
 
 
 def make_scenarios(transport_server, transport_readonly_server,
@@ -145,7 +146,7 @@ def branch_scenarios():
         test_server.SmartTCPServer_for_testing,
         test_server.ReadonlySmartTCPServer_for_testing,
         [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        test_server.MemoryServer,
+        memory.MemoryServer,
         name_suffix='-default'))
     # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
     # server.
@@ -153,7 +154,7 @@ def branch_scenarios():
         test_server.SmartTCPServer_for_testing_v2_only,
         test_server.ReadonlySmartTCPServer_for_testing_v2_only,
         [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        test_server.MemoryServer,
+        memory.MemoryServer,
         name_suffix='-v2'))
     return scenarios
 

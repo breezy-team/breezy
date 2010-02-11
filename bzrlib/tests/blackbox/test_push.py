@@ -583,7 +583,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
         return transport.get_transport(target)
 
 
-class RedirectingMemoryServer(test_server.MemoryServer):
+class RedirectingMemoryServer(memory.MemoryServer):
 
     def start_server(self):
         self._dirs = {'/': None}

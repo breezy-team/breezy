@@ -101,7 +101,11 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport, pathfilter
+from bzrlib.transport import (
+    get_transport,
+    memory,
+    pathfilter,
+    )
 import bzrlib.transport
 from bzrlib.trace import mutter, note
 from bzrlib.tests import (
@@ -2205,7 +2209,7 @@ class TestCaseWithMemoryTransport(TestCase):
         is no means to override it.
         """
         if self.__vfs_server is None:
-            self.__vfs_server = test_server.MemoryServer()
+            self.__vfs_server = memory.MemoryServer()
             self.start_server(self.__vfs_server)
         return self.__vfs_server
 
@@ -2686,7 +2690,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.vfs_transport_factory == test_server.MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
 

@@ -39,6 +39,7 @@ from bzrlib.tests import (
     test_server,
     )
 from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.transport import memory
 
 
 def formats_to_scenarios(formats, transport_server, transport_readonly_server,
@@ -87,12 +88,12 @@ def all_repository_format_scenarios():
         [('-default', RemoteRepositoryFormat())],
         test_server.SmartTCPServer_for_testing,
         test_server.ReadonlySmartTCPServer_for_testing,
-        test_server.MemoryServer))
+        memory.MemoryServer))
     format_scenarios.extend(formats_to_scenarios(
         [('-v2', RemoteRepositoryFormat())],
         test_server.SmartTCPServer_for_testing_v2_only,
         test_server.ReadonlySmartTCPServer_for_testing_v2_only,
-        test_server.MemoryServer))
+        memory.MemoryServer))
     return format_scenarios
 
 

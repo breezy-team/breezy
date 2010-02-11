@@ -16,6 +16,11 @@ Compatibility Breaks
 
 * ``Repository.get_inventory_sha1()`` has been removed. (Jelmer Vernooij)
 
+* All test servers have been moved out of the bzrlib.transport hierarchy to
+  bzrlib.tests.test_server *except* for MemoryServer, ChrootServer and
+  PathFilteringServer.
+  (Vincent Ladeuil)
+
 New Features
 ************
 

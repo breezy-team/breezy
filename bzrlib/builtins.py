@@ -54,6 +54,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -3445,7 +3446,7 @@ class cmd_selftest(Command):
             return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
             from bzrlib.tests import test_server
-            return test_server.MemoryServer
+            return memory.MemoryServer
         if typestring == "fakenfs":
             from bzrlib.tests import test_server
             return test_server.FakeNFSServer
