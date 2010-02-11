@@ -18,7 +18,9 @@ Compatibility Breaks
 
 * All test servers have been moved out of the bzrlib.transport hierarchy to
   bzrlib.tests.test_server *except* for MemoryServer, ChrootServer and
-  PathFilteringServer.
+  PathFilteringServer. ``bzrlib`` users may encounter test failures that can
+  be fixed by updating the related imports from ``bzrlib.transport.xxx`` to
+  ``bzrlib.tests.test_server``.
   (Vincent Ladeuil)
 
 New Features
