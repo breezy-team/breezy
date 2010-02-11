@@ -189,6 +189,7 @@ equate_lines(struct hashtable *result,
     while (hsize < bsize + 1)
         hsize *= 2;
 
+    /* can't be 0 */
     hashtable = (struct bucket *) guarded_malloc(sizeof(struct bucket) * hsize);
     if (hashtable == NULL) {
         PyErr_NoMemory();
@@ -626,11 +627,11 @@ py_unique_lcs(PyObject *self, PyObject *args)
     if (!equate_lines(&hashtable, a, b, asize, bsize))
         goto error;
 
-    matches = (struct matching_line *)guarded_malloc(sizeof(struct matching_line) * bsize);
-    if (matches == NULL)
-        goto error;
-
     if (bsize > 0) {
+        matches = (struct matching_line *)guarded_malloc(sizeof(struct matching_line) * bsize);
+        if (matches == NULL)
+            goto error;
+
         backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
         if (backpointers == NULL)
             goto error;
@@ -700,16 +701,19 @@ py_recurse_matches(PyObject *self, PyObject *args)
         goto error;
 
     matches.count = 0;
-    matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * bsize);
-    if (matches.matches == NULL)
-        goto error;
 
     if (bsize > 0) {
+        matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * bsize);
+        if (matches.matches == NULL)
+            goto error;
+
         backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
         if (backpointers == NULL)
             goto error;
-    } else
+    } else {
+        matches.matches = NULL;
         backpointers = NULL;
+    }
 
     res = recurse_matches(&matches, &hashtable, backpointers,
                           a, b, alo, blo, ahi, bhi, maxrecursion);
@@ -827,9 +831,13 @@ PatienceSequenceMatcher_get_matching_blocks(PatienceSequenceMatcher* self)
     struct matching_blocks matches;
 
     matches.count = 0;
-    matches.matches = (struct matching_block *)guarded_malloc(sizeof(struct matching_block) * self->bsize);
-    if (matches.matches == NULL)
-        return PyErr_NoMemory();
+    if (self->bsize > 0) {
+        matches.matches = (struct matching_block *)
+            guarded_malloc(sizeof(struct matching_block) * self->bsize);
+        if (matches.matches == NULL)
+            return PyErr_NoMemory();
+    } else
+        matches.matches = NULL;
 
     res = recurse_matches(&matches, &self->hashtable, self->backpointers,
                           self->a, self->b, 0, 0,
