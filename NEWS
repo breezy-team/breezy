@@ -42,6 +42,9 @@ Bug Fixes
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
