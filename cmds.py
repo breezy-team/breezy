@@ -22,6 +22,10 @@
 #
 
 import commands
+try:
+    import hashlib as md5
+except ImportError:
+    import md5
 import os
 import shutil
 import subprocess
@@ -36,10 +40,11 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.commands import Command
-from bzrlib.errors import (BzrCommandError,
-                           NotBranchError,
-                           FileExists,
-                           )
+from bzrlib.errors import (
+    BzrCommandError,
+    NotBranchError,
+    FileExists,
+    )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note, warning
@@ -49,15 +54,11 @@ from bzrlib.plugins.builddeb import (
     default_build_dir,
     default_orig_dir,
     default_result_dir,
-    default_conf,
-    local_conf,
-    global_conf,
-    test_suite,
+    dh_make,
     )
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
                      )
-from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import BuildFailedError
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
@@ -78,6 +79,7 @@ from bzrlib.plugins.builddeb.upstream import (
         get_upstream_sources,
         )
 from bzrlib.plugins.builddeb.util import (
+        debuild_config,
         dget_changes,
         find_changelog,
         find_last_distribution,
@@ -114,32 +116,6 @@ export_upstream_revision_opt = Option('export-upstream-revision',
 no_user_conf_opt = Option('no-user-config',
     help="Stop builddeb from reading the user's config file. Used mainly "
     "for tests.")
-
-
-def debuild_config(tree, working_tree, no_user_config):
-    """Obtain the Debuild configuration object.
-
-    :param tree: A Tree object, can be a WorkingTree or RevisionTree.
-    :param working_tree: Whether the tree is a working tree.
-    :param no_user_config: Whether to skip the user configuration
-    """
-    config_files = []
-    user_config = None
-    if (working_tree and tree.has_filename(local_conf)):
-        if tree.path2id(local_conf) is None:
-            config_files.append((tree.get_file_byname(local_conf), True,
-                        "local.conf"))
-        else:
-            warning('Not using configuration from %s as it is versioned.')
-    if not no_user_config:
-        config_files.append((global_conf, True))
-        user_config = global_conf
-    if tree.path2id(default_conf):
-        config_files.append((tree.get_file(tree.path2id(default_conf)), False,
-                    "default.conf"))
-    config = DebBuildConfig(config_files, tree=tree)
-    config.set_user_config(user_config)
-    return config
 
 
 class cmd_builddeb(Command):
@@ -214,8 +190,6 @@ class cmd_builddeb(Command):
         if location is None:
             location = "."
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
-        if is_local:
-            os.chdir(location)
         tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
         return tree, branch, is_local
 
@@ -270,26 +244,26 @@ class cmd_builddeb(Command):
             builder += " " + " ".join(build_options)
         return builder
 
-    def _get_dirs(self, config, is_local, result_dir, result, build_dir, orig_dir):
-        if result_dir is None:
-            result_dir = result
-        if result_dir is None:
-            if is_local:
-                result_dir = config.result_dir
-            else:
-                result_dir = config.user_result_dir
-        if result_dir is not None:
-            result_dir = os.path.realpath(result_dir)
-        if build_dir is None:
-            if is_local:
-                build_dir = config.build_dir or default_build_dir
-            else:
-                build_dir = config.user_build_dir or 'build-area'
-        if orig_dir is None:
-            if is_local:
-                orig_dir = config.orig_dir or default_orig_dir
-            else:
-                orig_dir = config.user_orig_dir or 'build-area'
+    def _get_dirs(self, config, branch, is_local, result_dir, build_dir, orig_dir):
+        def _get_dir(supplied, if_local, if_not):
+            if supplied is None:
+                if is_local:
+                    supplied = if_local
+                else:
+                    supplied = if_not
+            if supplied is not None:
+                if is_local:
+                    supplied = os.path.join(
+                            urlutils.local_path_from_url(branch.base),
+                            supplied)
+                    supplied = os.path.realpath(supplied)
+            return supplied
+
+        result_dir = _get_dir(result_dir, config.result_dir, config.user_result_dir)
+        build_dir = _get_dir(build_dir, config.build_dir or default_build_dir,
+                config.user_build_dir or 'build-area')
+        orig_dir = _get_dir(orig_dir, config.orig_dir or default_orig_dir,
+                config.user_orig_dir or 'build-area')
         return result_dir, build_dir, orig_dir
 
     def _branch_and_build_options(self, branch_or_build_options_list,
@@ -376,8 +350,8 @@ class cmd_builddeb(Command):
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
             (changelog, larstiq) = find_changelog(tree, merge)
-            result_dir, build_dir, orig_dir = self._get_dirs(config, is_local,
-                    result_dir, result, build_dir, orig_dir)
+            result_dir, build_dir, orig_dir = self._get_dirs(config, branch,
+                    is_local, result_dir or result, build_dir, orig_dir)
 
             upstream_branch, upstream_revision = \
                     self._get_upstream_branch(merge, export_upstream,
@@ -434,7 +408,13 @@ class cmd_builddeb(Command):
                         raise BzrCommandError("Could not find the .changes "
                                 "file from the build: %s" % changes_path)
                 else:
-                    target_dir = result_dir or default_result_dir
+                    if is_local:
+                        target_dir = result_dir or default_result_dir
+                        target_dir = os.path.join(
+                                urlutils.local_path_from_url(branch.base),
+                                target_dir)
+                    else:
+                        target_dir = "."
                     if not os.path.exists(target_dir):
                         os.makedirs(target_dir)
                     dget_changes(changes_path, target_dir)
@@ -476,9 +456,17 @@ class cmd_merge_upstream(Command):
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
                            short_name='d', type=unicode)
+    last_version_opt = Option('last-version',
+                              help='The previous version that was merged..',
+                              type=str)
+    force_opt = Option('force',
+                       help=('Force a merge even if the upstream branch '
+                             'has not changed.'))
+
 
     takes_options = [package_opt, no_user_conf_opt, version_opt,
-            distribution_opt, directory_opt, 'revision', 'merge-type']
+            distribution_opt, directory_opt, last_version_opt,
+            force_opt, 'revision', 'merge-type']
 
     def _update_changelog(self, tree, version, distribution_name, changelog,
             package):
@@ -487,7 +475,7 @@ class cmd_merge_upstream(Command):
             entry_description = "New upstream snapshot."
         else:
             entry_description = "New upstream release."
-        proc = subprocess.Popen(["/usr/bin/dch", "-v",
+        proc = subprocess.Popen(["dch", "-v",
                 str(package_version(version, distribution_name)),
                 "-D", "UNRELEASED", "--release-heuristic", "changelog",
                 entry_description], cwd=tree.basedir)
@@ -499,7 +487,7 @@ class cmd_merge_upstream(Command):
 
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None,
-            merge_type=None):
+            merge_type=None, last_version=None, force=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import upstream_branch_version
@@ -527,7 +515,10 @@ class cmd_merge_upstream(Command):
             changelog = None
             try:
                 changelog = find_changelog(tree, False, max_blocks=2)[0]
-                current_version = changelog.version
+                if last_version is None:
+                    current_version = changelog.version
+                else:
+                    current_version = Version(last_version)
                 if package is None:
                     package = changelog.package
                 if distribution is None:
@@ -614,7 +605,7 @@ class cmd_merge_upstream(Command):
             conflicts = db.merge_upstream(tarball_filename, version,
                     current_version, upstream_branch=upstream_branch,
                     upstream_revision=upstream_revision,
-                    merge_type=merge_type)
+                    merge_type=merge_type, force=force)
 
             self._update_changelog(tree, version, distribution_name, changelog,
                     package)
@@ -919,13 +910,48 @@ class cmd_merge_package(Command):
             'changes by running "bzr commit".')
 
 
-class cmd_test_builddeb(Command):
-    """Run the builddeb test suite"""
+class cmd_dh_make(Command):
+    """Helps you create a new package.
 
-    hidden = True
+    This code wraps dh_make to do the Bazaar setup for you, ensuring that
+    your branches have all the necessary information and are correctly
+    linked to the upstream branches where necessary.
 
-    def run(self):
-        from bzrlib.tests import selftest
-        passed = selftest(test_suite_factory=test_suite)
-        # invert for shell exit code rules
-        return not passed
+    The basic use case is satisfied by
+
+        bzr dh-make http://project.org/project-0.1.tar.gz project 0.1
+
+    which will import the tarball with the correct tags etc. and then
+    run dh_make for you in order to start the packaging.
+
+    If there upstream is available in bzr then run the command from the
+    root of a branch of that corresponding to the 0.1 release.
+
+    If there is no upstream available in bzr then run the command from
+    outside a branch and it will create a branch for you in a directory
+    named the same as the package name you specify as the second argument.
+
+    If you do not wish to use dh_make, but just take advantage of the
+    Bazaar specific parts then use the --bzr-only option.
+    """
+
+    aliases = ['dh_make']
+
+    takes_args = ['tarball', 'package_name', 'version']
+
+    bzr_only_opt = Option('bzr-only', help="Don't run dh_make.")
+
+    takes_options = [bzr_only_opt]
+
+    def run(self, tarball, package_name, version, bzr_only=None):
+        tree = dh_make.import_upstream(tarball, package_name,
+                version.encode("utf-8"))
+        if not bzr_only:
+            tree.lock_write()
+            try:
+                dh_make.run_dh_make(tree, package_name, version)
+            finally:
+                tree.unlock()
+        note('Package prepared in %s'
+                % urlutils.unescape_for_display(tree.basedir,
+                    self.outf.encoding))

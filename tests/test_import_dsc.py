@@ -20,21 +20,28 @@
 #
 
 import os
-import os.path
 import shutil
+import tarfile
 
 from debian_bundle.changelog import Version
+from debian_bundle import deb822
 
 from bzrlib import (
-  errors,
   tests,
   )
 
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
         DistributionBranchSet,
+        SourceExtractor,
+        SOURCE_EXTRACTORS,
+        ThreeDotZeroNativeSourceExtractor,
+        ThreeDotZeroQuiltSourceExtractor,
         )
-from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
+from bzrlib.plugins.builddeb.tests import (
+        BuilddebTestCase,
+        SourcePackageBuilder,
+        )
 
 
 class _PristineTarFeature(tests.Feature):
@@ -57,7 +64,7 @@ def write_to_file(filename, contents):
     f.close()
 
 
-class DistributionBranchTests(tests.TestCaseWithTransport):
+class DistributionBranchTests(BuilddebTestCase):
 
     def setUp(self):
         super(DistributionBranchTests, self).setUp()
@@ -710,33 +717,6 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         self.assertEqual(self.up_tree2.branch.last_revision(), up_revid)
         self.assertEqual(self.db2.revid_of_upstream_version(version),
                 up_revid)
-
-    def test_extract_dsc(self):
-        version = Version("0.1-1")
-        name = "package"
-        builder = SourcePackageBuilder(name, version)
-        builder.add_upstream_file("README", "Hi\n")
-        builder.add_upstream_file("BUGS")
-        builder.add_default_control()
-        builder.build()
-        tempdir = self.db1.extract_dsc(builder.dsc_name())
-        self.assertTrue(os.path.exists(tempdir))
-        try:
-            unpacked_dir = os.path.join(tempdir,
-                            name+"-"+str(version.upstream_version))
-            orig_dir = unpacked_dir + ".orig"
-            self.assertTrue(os.path.exists(unpacked_dir))
-            self.assertTrue(os.path.exists(orig_dir))
-            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
-                            "README")))
-            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
-                            "debian", "control")))
-            self.assertTrue(os.path.exists(os.path.join(orig_dir,
-                            "README")))
-            self.assertFalse(os.path.exists(os.path.join(orig_dir,
-                            "debian", "control")))
-        finally:
-            shutil.rmtree(tempdir)
 
     def check_changes(self, changes, added=[], removed=[], modified=[],
                       renamed=[]):
@@ -1410,6 +1390,115 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         self.assertEqual(up_rh2[-1],
                 self.tree2.branch.tags.lookup_tag("upstream-1.2"))
 
+    def test_merge_upstream_initial(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a'])
+        tree.add(['a'])
+        orig_upstream_rev = tree.commit("one")
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        self.build_tree(['work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['debian/', 'debian/changelog'])
+        orig_debian_rev = tree.commit("two")
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"))
+        self.assertEqual(0,  conflicts)
+
+    def test_merge_upstream_initial_with_branch(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a'])
+        tree.add(['a'])
+        orig_upstream_rev = tree.commit("one")
+        upstream_tree = self.make_branch_and_tree('upstream')
+        upstream_tree.pull(tree.branch)
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        self.build_tree(['work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['debian/', 'debian/changelog'])
+        orig_debian_rev = tree.commit("two")
+        self.build_tree(['upstream/a'])
+        upstream_rev = upstream_tree.commit("three")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        upstream_tree.lock_read()
+        self.addCleanup(upstream_tree.unlock)
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"), upstream_branch=upstream_tree.branch,
+                upstream_revision=upstream_rev)
+        self.assertEqual(0,  conflicts)
+
+    def test_merge_upstream_initial_with_removed_debian(self):
+        """Verify we can go from normal branches to merge-upstream."""
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a', 'work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['a', 'debian/', 'debian/changelog'])
+        orig_upstream_rev = tree.commit("one")
+        upstream_tree = self.make_branch_and_tree('upstream')
+        upstream_tree.pull(tree.branch)
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        cl.add_change('  * something else')
+        self.write_changelog(cl, 'work/debian/changelog')
+        orig_debian_rev = tree.commit("two")
+        self.build_tree(['upstream/a'])
+        shutil.rmtree('upstream/debian')
+        upstream_rev = upstream_tree.commit("three")
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        upstream_tree.lock_read()
+        self.addCleanup(upstream_tree.unlock)
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
+                Version("0.1"), upstream_branch=upstream_tree.branch,
+                upstream_revision=upstream_rev)
+        self.assertEqual(0,  conflicts)
+
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)
@@ -1419,3 +1508,116 @@ class DistributionBranchTests(tests.TestCaseWithTransport):
         builder.add_upstream_symlink("a", "b")
         builder.build()
         self.db1.import_package(builder.dsc_name())
+
+
+class SourceExtractorTests(tests.TestCaseInTempDir):
+
+    def test_extract_format1(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertTrue(os.path.exists(orig_dir))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(os.path.join(orig_dir,
+                            "README")))
+            self.assertFalse(os.path.exists(os.path.join(orig_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format1_native(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, native=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(SourceExtractor, SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = SourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertEqual(None, orig_dir)
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format3_native(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, native=True,
+                version3=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(ThreeDotZeroNativeSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = ThreeDotZeroNativeSourceExtractor(builder.dsc_name(),
+                dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertEqual(None, orig_dir)
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format3_quilt(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, version3=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertTrue(os.path.exists(orig_dir))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(os.path.join(orig_dir,
+                            "README")))
+            self.assertFalse(os.path.exists(os.path.join(orig_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+        finally:
+            extractor.cleanup()

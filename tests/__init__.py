@@ -32,8 +32,6 @@ from debian_bundle.changelog import Version, Changelog
 
 from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.tests import blackbox
-
 
 def make_new_upstream_dir(source, dest):
     os.rename(source, dest)
@@ -109,15 +107,17 @@ class RepackTarballAdaptor(object):
         return result
 
 
-def test_suite():
-    loader = TestUtil.TestLoader()
-    suite = TestSuite()
+def load_tests(standard_tests, module, loader):
+    suite = loader.suiteClass()
     testmod_names = [
+            'blackbox',
             'test_builder',
             'test_commit_message',
             'test_config',
+            'test_dh_make',
             'test_hooks',
             'test_import_dsc',
+            'test_merge_changelog',
             'test_merge_package',
             'test_merge_upstream',
             'test_repack_tarball_extra',
@@ -149,14 +149,8 @@ def test_suite():
                               old_tarball='../package-0.2.tar')),
                  ]
     suite = multiply_tests(repack_tarball_tests, scenarios, suite)
-    packages_to_test = [
-             blackbox,
-             ]
-
-    for package in packages_to_test:
-        suite.addTest(package.test_suite())
-
     return suite
+
 
 class BuilddebTestCase(TestCaseWithTransport):
 
@@ -239,12 +233,13 @@ class SourcePackageBuilder(object):
     >>> builder.dsc_name()
     """
 
-    def __init__(self, name, version, native=False):
+    def __init__(self, name, version, native=False, version3=False):
         self.upstream_files = {}
         self.upstream_symlinks = {}
         self.debian_files = {}
         self.name = name
         self.native = native
+        self.version3 = version3
         self._cl = Changelog()
         self.new_version(version)
 
@@ -337,26 +332,43 @@ class SourcePackageBuilder(object):
 
     def build(self):
         basedir = self._make_base()
-        if not self.native:
-            orig_basedir = basedir + ".orig"
-            shutil.copytree(basedir, orig_basedir, symlinks=True)
-            cmd = "dpkg-source -sa -b %s" % (basedir)
-            if os.path.exists("%s_%s.orig.tar.gz"
-                    % (self.name, self._cl.version.upstream_version)):
-                cmd = "dpkg-source -ss -b %s" % (basedir)
+        if not self.version3:
+            if not self.native:
+                orig_basedir = basedir + ".orig"
+                shutil.copytree(basedir, orig_basedir, symlinks=True)
+                cmd = ["dpkg-source", "-sa", "-b", basedir]
+                if os.path.exists("%s_%s.orig.tar.gz"
+                        % (self.name, self._cl.version.upstream_version)):
+                    cmd = ["dpkg-source", "-ss", "-b", basedir]
+            else:
+                cmd = ["dpkg-source", "-sn", "-b", basedir]
         else:
-            cmd = "dpkg-source -sn -b %s" % (basedir)
+            if not self.native:
+                tar_path = "%s_%s.orig.tar.gz" % (self.name,
+                        self._cl.version.upstream_version)
+                if os.path.exists(tar_path):
+                    os.unlink(tar_path)
+                tar = tarfile.open(tar_path, 'w:gz')
+                try:
+                    tar.add(basedir)
+                finally:
+                    tar.close()
+                cmd = ["dpkg-source", "--format=3.0 (quilt)", "-b",
+                        basedir]
+            else:
+                cmd = ["dpkg-source", "--format=3.0 (native)", "-b",
+                        basedir]
         self._make_files(self.debian_files, basedir)
         self._make_files({"debian/changelog": str(self._cl)}, basedir)
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
         ret = proc.wait()
-        assert ret == 0, "dpkg-source failed, output:\n%s\n%s" % \
-                (proc.stdout.read(), proc.stderr.read())
+        assert ret == 0, "dpkg-source failed, output:\n%s" % \
+                (proc.stdout.read(),)
         cmd = "dpkg-genchanges -S > ../%s" % self.changes_name()
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, cwd=basedir)
+                stderr=subprocess.STDOUT, cwd=basedir)
         ret = proc.wait()
-        assert ret == 0, "dpkg-genchanges failed, output:\n%s\n%s" % \
-                (proc.stdout.read(), proc.stderr.read())
+        assert ret == 0, "dpkg-genchanges failed, output:\n%s" % \
+                (proc.stdout.read(),)
         shutil.rmtree(basedir)

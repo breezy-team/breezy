@@ -38,10 +38,17 @@ from bzrlib import (
         errors,
         urlutils,
         )
+from bzrlib.trace import warning
 from bzrlib.transport import (
     do_catching_redirections,
     get_transport,
     )
+from bzrlib.plugins.builddeb import (
+    default_conf,
+    local_conf,
+    global_conf,
+    )
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
@@ -463,3 +470,29 @@ def subprocess_setup():
     # non-Python subprocesses expect.
     # Many, many thanks to Colin Watson
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+
+def debuild_config(tree, working_tree, no_user_config):
+    """Obtain the Debuild configuration object.
+
+    :param tree: A Tree object, can be a WorkingTree or RevisionTree.
+    :param working_tree: Whether the tree is a working tree.
+    :param no_user_config: Whether to skip the user configuration
+    """
+    config_files = []
+    user_config = None
+    if (working_tree and tree.has_filename(local_conf)):
+        if tree.path2id(local_conf) is None:
+            config_files.append((tree.get_file_byname(local_conf), True,
+                        "local.conf"))
+        else:
+            warning('Not using configuration from %s as it is versioned.')
+    if not no_user_config:
+        config_files.append((global_conf, True))
+        user_config = global_conf
+    if tree.path2id(default_conf):
+        config_files.append((tree.get_file(tree.path2id(default_conf)), False,
+                    "default.conf"))
+    config = DebBuildConfig(config_files, tree=tree)
+    config.set_user_config(user_config)
+    return config

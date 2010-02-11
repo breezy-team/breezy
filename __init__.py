@@ -25,7 +25,11 @@
 
 import os
 
-from bzrlib import msgeditor
+import bzrlib
+from bzrlib import (
+    merge,
+    msgeditor,
+    )
 from bzrlib.commands import plugin_cmds
 from bzrlib.directory_service import directories
 
@@ -34,13 +38,13 @@ from info import (
     )
 
 commands = {
-        "test_builddeb": [],
-        "builddeb": ["bd"],
-        "merge_upstream": ["mu"],
-        "import_dsc": [],
         "bd_do": [],
+        "builddeb": ["bd"],
+        "dh_make": ["dh_make"],
+        "import_dsc": [],
         "mark_uploaded": [],
         "merge_package": [],
+        "merge_upstream": ["mu"],
         }
 
 for command, aliases in commands.iteritems():
@@ -111,26 +115,28 @@ msgeditor.hooks.install_named_hook("commit_message_template",
         "the commit message")
 
 
+if getattr(merge, 'ConfigurableFileMerger', None) is None:
+    raise ImportError(
+        'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
+else:
+    def changelog_merge_hook_factory(merger):
+        from bzrlib.plugins.builddeb import merge_changelog
+        return merge_changelog.ChangeLogFileMerge(merger)
+
+    merge.Merger.hooks.install_named_hook(
+        'merge_file_content', changelog_merge_hook_factory,
+        'Debian Changelog file merge')
+
+
 try:
     from bzrlib.revisionspec import revspec_registry
-    revspec_registry.register_lazy("package:", "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
+    revspec_registry.register_lazy("package:",
+        "bzrlib.plugins.builddeb.revspec", "RevisionSpec_package")
 except ImportError:
     from bzrlib.revisionspec import SPEC_TYPES
     from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
     SPEC_TYPES.append(RevisionSpec_package)
 
 
-def test_suite():
-    from unittest import TestSuite
-    from bzrlib.plugins.builddeb import tests
-    result = TestSuite()
-    result.addTest(tests.test_suite())
-    return result
-
-
-if __name__ == '__main__':
-    print ("This is a Bazaar plugin. Copy this directory to ~/.bazaar/plugins "
-            "to use it.\n")
-    import unittest
-    runner = unittest.TextTestRunner()
-    runner.run(test_suite())
+def load_tests(standard_tests, module, loader):
+    return loader.loadTestsFromModuleNames(['bzrlib.plugins.builddeb.tests'])

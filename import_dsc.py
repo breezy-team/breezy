@@ -29,6 +29,7 @@ from base64 import (
         standard_b64decode,
         standard_b64encode,
         )
+import errno
 try:
     import hashlib as md5
 except ImportError:
@@ -36,7 +37,7 @@ except ImportError:
 import os
 import shutil
 import stat
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 import tempfile
 
 from debian_bundle import deb822
@@ -855,7 +856,8 @@ class DistributionBranch(object):
 
     def import_upstream(self, upstream_part, version, md5, upstream_parents,
             upstream_tarball=None, upstream_branch=None,
-            upstream_revision=None, timestamp=None, author=None):
+            upstream_revision=None, timestamp=None, author=None,
+            file_ids_from=None):
         """Import an upstream part on to the upstream branch.
 
         This imports the upstream part of the code and places it on to
@@ -900,6 +902,8 @@ class DistributionBranch(object):
             upstream_trees.insert(0,
                     self.upstream_branch.repository.revision_tree(
                         upstream_revision))
+        if file_ids_from is not None:
+            upstream_trees = file_ids_from + upstream_trees
         import_dir(self.upstream_tree, upstream_part,
                 file_ids_from=upstream_trees + [self.tree])
         self.upstream_tree.set_parent_ids(upstream_parents)
@@ -969,7 +973,7 @@ class DistributionBranch(object):
                                 '.bzr-builddeb/default.conf'])
 
     def import_debian(self, debian_part, version, parents, md5,
-            native=False, timestamp=None):
+            native=False, timestamp=None, file_ids_from=None):
         """Import the debian part of a source package.
 
         :param debian_part: the path of a directory containing the unpacked
@@ -1009,6 +1013,8 @@ class DistributionBranch(object):
         debian_trees = [get_last_revision_tree(o.branch)
             for o in other_branches]
         parent_trees = []
+        if file_ids_from is not None:
+            parent_trees = file_ids_from[:]
         for parent in parents:
             parent_trees.append(self.branch.repository.revision_tree(
                         parent))
@@ -1051,51 +1057,6 @@ class DistributionBranch(object):
         self.tree.commit(message, revprops=revprops, timestamp=timestamp,
                 timezone=timezone)
         self.tag_version(version)
-
-    def _get_dsc_part(self, dsc, end):
-        """Get the path and md5 of a file ending with end in dsc."""
-        files = dsc['files']
-        for file_info in files:
-            name = file_info['name']
-            if name.endswith(end):
-                filename = name
-                md5 = file_info['md5sum']
-                return (filename, md5)
-        return (None, None)
-
-    def get_upstream_part(self, dsc):
-        """Gets the information about the upstream part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .orig.tar.gz, the latter being the md5
-            reported for it. If there is no upstream part both will
-            be None.
-        """
-        return self._get_dsc_part(dsc, ".orig.tar.gz")
-
-    def get_diff_part(self, dsc):
-        """Gets the information about the diff part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .diff.gz, the latter being the md5
-            reported for it. If there is no diff part both will be
-            None.
-        """
-        return self._get_dsc_part(dsc, ".diff.gz")
-
-    def get_native_part(self, dsc):
-        """Gets the information about the native part from the dsc.
-
-        :param dsc: a deb822.Dsc object to take the information from.
-        :return: a tuple (path, md5), both strings, the former being
-            the path to the .tar.gz, the latter being the md5 reported
-            for it. If there is not native part both will be None.
-        """
-        (path, md5) = self._get_dsc_part(dsc, ".tar.gz")
-        assert not path.endswith(".orig.tar.gz")
-        return (path, md5)
 
     def upstream_parents(self, versions, version):
         """Get the parents for importing a new upstream.
@@ -1149,21 +1110,9 @@ class DistributionBranch(object):
         cl.parse_changelog(open(cl_filename).read(), strict=False)
         return cl
 
-    def extract_dsc(self, dsc_filename):
-        """Extract a dsc file in to a temporary directory."""
-        tempdir = tempfile.mkdtemp()
-        dsc_filename = os.path.abspath(dsc_filename)
-        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
-                cwd=tempdir, stdout=PIPE, stderr=PIPE,
-                preexec_fn=subprocess_setup)
-        (stdout, stderr) = proc.communicate()
-        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s\n%s" % \
-                    (stdout, stderr)
-        return tempdir
-
     def _do_import_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_md5, upstream_tarball=None,
-            timestamp=None, author=None):
+            timestamp=None, author=None, file_ids_from=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
@@ -1193,7 +1142,8 @@ class DistributionBranch(object):
                             version.upstream_version,
                             upstream_md5, upstream_parents,
                             upstream_tarball=upstream_tarball,
-                            timestamp=timestamp, author=author)
+                            timestamp=timestamp, author=author,
+                            file_ids_from=file_ids_from)
                     self._fetch_upstream_to_branch(new_revid)
             else:
                 mutter("We already have the needed upstream part")
@@ -1201,7 +1151,7 @@ class DistributionBranch(object):
                     force_upstream_parent=imported_upstream)
             # Now we have the list of parents we need to import the .diff.gz
             self.import_debian(debian_part, version, parents, md5,
-                    timestamp=timestamp)
+                    timestamp=timestamp, file_ids_from=file_ids_from)
 
     def get_native_parents(self, version, versions):
         last_contained_version = self.last_contained_version(versions)
@@ -1243,14 +1193,15 @@ class DistributionBranch(object):
 
 
     def _import_native_package(self, version, versions, debian_part, md5,
-            timestamp=None):
+            timestamp=None, file_ids_from=None):
         pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
             parents = self.get_native_parents(version, versions)
             self.import_debian(debian_part, version, parents, md5,
-                    native=True, timestamp=timestamp)
+                    native=True, timestamp=timestamp,
+                    file_ids_from=file_ids_from)
 
     def _get_safe_versions_from_changelog(self, cl):
         versions = []
@@ -1261,7 +1212,8 @@ class DistributionBranch(object):
                 break
         return versions
 
-    def import_package(self, dsc_filename, use_time_from_changelog=True):
+    def import_package(self, dsc_filename, use_time_from_changelog=True,
+            file_ids_from=None):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1272,29 +1224,15 @@ class DistributionBranch(object):
         base_path = osutils.dirname(dsc_filename)
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
-        name = dsc['Source']
-        upstream_tarball = None
-        for part in dsc['files']:
-            if part['name'].endswith(".orig.tar.gz"):
-                assert upstream_tarball is None, "Two .orig.tar.gz?"
-                upstream_tarball = os.path.abspath(
-                        os.path.join(base_path, part['name']))
-        tempdir = self.extract_dsc(dsc_filename)
+        format = dsc['Format'].strip()
+        extractor_cls = SOURCE_EXTRACTORS.get(format)
+        if extractor_cls is None:
+            raise AssertionError("Don't know how to import source format %s yet"
+                    % format)
+        extractor = extractor_cls(dsc_filename, dsc)
         try:
-            # TODO: make more robust against strange .dsc files.
-            upstream_part = os.path.join(tempdir,
-                    "%s-%s.orig" % (name, str(version.upstream_version)))
-            debian_part = os.path.join(tempdir,
-                    "%s-%s" % (name, str(version.upstream_version)))
-            native = False
-            if not os.path.exists(upstream_part):
-                mutter("It's a native package")
-                native = True
-                (_, md5) = self.get_native_part(dsc)
-            else:
-                (_, upstream_md5) = self.get_upstream_part(dsc)
-                (_, md5) = self.get_diff_part(dsc)
-            cl = self.get_changelog_from_source(debian_part)
+            extractor.extract()
+            cl = self.get_changelog_from_source(extractor.extracted_debianised)
             timestamp = None
             author = None
             if use_time_from_changelog and len(cl._blocks) > 0:
@@ -1310,16 +1248,22 @@ class DistributionBranch(object):
             #TODO: check that the versions list is correctly ordered,
             # as some methods assume that, and it's not clear what
             # should happen if it isn't.
-            if not native:
-                self._do_import_package(version, versions, debian_part, md5,
-                        upstream_part, upstream_md5,
-                        upstream_tarball=upstream_tarball,
-                        timestamp=timestamp, author=author)
+            if extractor.extracted_upstream is not None:
+                self._do_import_package(version, versions,
+                        extractor.extracted_debianised,
+                        extractor.unextracted_debian_md5,
+                        extractor.extracted_upstream,
+                        extractor.unextracted_upstream_md5,
+                        upstream_tarball=extractor.unextracted_upstream,
+                        timestamp=timestamp, author=author,
+                        file_ids_from=file_ids_from)
             else:
-                self._import_native_package(version, versions, debian_part,
-                        md5, timestamp=timestamp)
+                self._import_native_package(version, versions,
+                        extractor.extracted_debianised,
+                        extractor.unextracted_debian_md5,
+                        timestamp=timestamp, file_ids_from=file_ids_from)
         finally:
-            shutil.rmtree(tempdir)
+            extractor.cleanup()
 
     def extract_upstream_tree(self, upstream_tip, basedir):
         # Extract that to a tempdir so we can get a working
@@ -1367,7 +1311,7 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            proc = Popen(["/usr/bin/tar", "xzf", tarball_filename, "-C",
+            proc = Popen(["tar", "xzf", tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
                     preexec_fn=subprocess_setup)
             proc.communicate()
@@ -1400,7 +1344,8 @@ class DistributionBranch(object):
     _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
     def merge_upstream(self, tarball_filename, version, previous_version,
-            upstream_branch=None, upstream_revision=None, merge_type=None):
+            upstream_branch=None, upstream_revision=None, merge_type=None,
+            force=False):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
@@ -1435,7 +1380,7 @@ class DistributionBranch(object):
                         upstream_revision = upstream_branch.last_revision()
                     graph = self.branch.repository.get_graph(
                             other_repository=upstream_branch.repository)
-                    if graph.is_ancestor(upstream_revision,
+                    if not force and graph.is_ancestor(upstream_revision,
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
@@ -1485,18 +1430,22 @@ class DistributionBranch(object):
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
         """Reconstruct a pristine-tar tarball from a bzr revision."""
-        if not os.path.exists("/usr/bin/pristine-tar"):
-            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tree = self.branch.repository.revision_tree(revid)
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
             export(tree, dest, format='dir')
             delta = self.pristine_tar_delta(revid)
-            command = ["/usr/bin/pristine-tar", "gentar", "-",
+            command = ["pristine-tar", "gentar", "-",
                        os.path.abspath(dest_filename)]
-            proc = Popen(command, stdin=PIPE, cwd=dest,
-                    preexec_fn=subprocess_setup)
+            try:
+                proc = Popen(command, stdin=PIPE, cwd=dest,
+                        preexec_fn=subprocess_setup)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise PristineTarError("pristine-tar is not installed")
+                else:
+                    raise
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
                 raise PristineTarError("Generating tar from delta failed: %s" % stderr)
@@ -1504,8 +1453,6 @@ class DistributionBranch(object):
             shutil.rmtree(tmpdir)
 
     def make_pristine_tar_delta(self, tree, tarball_path):
-        if not os.path.exists("/usr/bin/pristine-tar"):
-            raise PristineTarError("/usr/bin/pristine-tar is not available")
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
@@ -1516,13 +1463,134 @@ class DistributionBranch(object):
                 export(tree, dest, format='dir')
             finally:
                 tree.unlock()
-            command = ["/usr/bin/pristine-tar", "gendelta", tarball_path, "-"]
-            note(" ".join(command))
-            proc = Popen(command, stdout=PIPE, cwd=dest,
-                    preexec_fn=subprocess_setup)
+            command = ["pristine-tar", "gendelta", tarball_path, "-"]
+            try:
+                proc = Popen(command, stdout=PIPE, cwd=dest,
+                        preexec_fn=subprocess_setup)
+            except OSError, e:
+                if e.errno == errno.ENOENT:
+                    raise PristineTarError("pristine-tar is not installed")
+                else:
+                    raise
             (stdout, stderr) = proc.communicate()
             if proc.returncode != 0:
                 raise PristineTarError("Generating delta from tar failed: %s" % stderr)
             return stdout
         finally:
             shutil.rmtree(tmpdir)
+
+
+class SourceExtractor(object):
+    """A class to extract a source package to its constituent parts"""
+
+    def __init__(self, dsc_path, dsc):
+        self.dsc_path = dsc_path
+        self.dsc = dsc
+        self.extracted_upstream = None
+        self.extracted_debianised = None
+        self.unextracted_upstream = None
+        self.unextracted_debian_md5 = None
+        self.unextracted_upstream_md5 = None
+
+    def extract(self):
+        """Extract the package to a new temporary directory."""
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_upstream = os.path.join(self.tempdir,
+                "%s-%s.orig" % (name, str(version.upstream_version)))
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        if not os.path.exists(self.extracted_upstream):
+            mutter("It's a native package")
+            self.extracted_upstream = None
+        for part in self.dsc['files']:
+            if self.extracted_upstream is None:
+                if part['name'].endswith(".tar.gz"):
+                    self.unextracted_debian_md5 = part['md5sum']
+            else:
+                if part['name'].endswith(".orig.tar.gz"):
+                    assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+                    self.unextracted_upstream = os.path.abspath(
+                            os.path.join(osutils.dirname(self.dsc_path),
+                                part['name']))
+                    self.unextracted_upstream_md5 = part['md5sum']
+                elif part['name'].endswith(".diff.gz"):
+                    self.unextracted_debian_md5 = part['md5sum']
+
+    def cleanup(self):
+        if os.path.exists(self.tempdir):
+            shutil.rmtree(self.tempdir)
+
+
+class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
+
+    def extract(self):
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        self.extracted_upstream = None
+        for part in self.dsc['files']:
+            if part['name'].endswith(".tar.gz"):
+                self.unextracted_debian_md5 = part['md5sum']
+
+
+class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
+
+    def extract(self):
+        self.tempdir = tempfile.mkdtemp()
+        dsc_filename = os.path.abspath(self.dsc_path)
+        proc = Popen("dpkg-source --skip-debianization -x %s"
+                % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        name = self.dsc['Source']
+        version = Version(self.dsc['Version'])
+        self.extracted_debianised = os.path.join(self.tempdir,
+                "%s-%s" % (name, str(version.upstream_version)))
+        self.extracted_upstream = self.extracted_debianised + ".orig"
+        os.rename(self.extracted_debianised, self.extracted_upstream)
+        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
+                preexec_fn=subprocess_setup)
+        (stdout, _) = proc.communicate()
+        assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
+                    (stdout,)
+        for part in self.dsc['files']:
+            if part['name'].endswith(".orig.tar.gz"):
+                assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+                self.unextracted_upstream = os.path.abspath(
+                        os.path.join(osutils.dirname(self.dsc_path),
+                            part['name']))
+                self.unextracted_upstream_md5 = part['md5sum']
+            elif part['name'].endswith(".debian.tar.gz"):
+                self.unextracted_debian_md5 = part['md5sum']
+        assert self.unextracted_upstream is not None, \
+            "Can't handle non gz tarballs yet"
+        assert self.unextracted_debian_md5 is not None, \
+            "Can't handle non gz tarballs yet"
+
+
+SOURCE_EXTRACTORS = {}
+SOURCE_EXTRACTORS["1.0"] = SourceExtractor
+SOURCE_EXTRACTORS["3.0 (native)"] = ThreeDotZeroNativeSourceExtractor
+SOURCE_EXTRACTORS["3.0 (quilt)"] = ThreeDotZeroQuiltSourceExtractor
