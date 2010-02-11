@@ -50,7 +50,7 @@
  * causing <https://bugs.edge.launchpad.net/bzr/+bug/511267> and
  * <https://bugs.edge.launchpad.net/bzr/+bug/331095>.  On glibc it passes, but
  * let's make it fail to aid testing. */
-#define guarded_malloc(x) { (x) ? malloc(x) : (abort(), (void *) 0)}
+#define guarded_malloc(x) ( (x) ? malloc(x) : NULL )
 
 enum {
     OP_EQUAL = 0,
