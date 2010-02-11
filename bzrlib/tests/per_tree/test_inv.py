@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -163,3 +163,12 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree = self._make_canonical_test_tree()
         self.assertEqual('dir/None',
                          work_tree.get_canonical_inventory_path('Dir/None'))
+
+    def test_canonical_tree_name_mismatch(self):
+        # see <https://bugs.edge.launchpad.net/bzr/+bug/368931>
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['test/', 'test/file', 'Test'])
+        work_tree.add(['test/', 'test/file', 'Test'])
+        self.assertEqual(['test', 'test/file', 'Test', 'test/foo', 'Test/foo'],
+            work_tree.get_canonical_inventory_paths(
+                ['test', 'test/file', 'Test', 'test/foo', 'Test/foo']))
