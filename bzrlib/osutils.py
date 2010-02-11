@@ -172,8 +172,6 @@ _kind_marker_map = {
     _directory_kind: "/",
     "symlink": "@",
     'tree-reference': '+',
-    "socket": "=",
-    "fifo": "|",
 }
 
 
@@ -181,7 +179,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)
