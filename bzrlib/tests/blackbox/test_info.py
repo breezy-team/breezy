@@ -31,6 +31,7 @@ from bzrlib import (
     )
 from bzrlib.transport import memory
 
+
 class TestInfo(tests.TestCaseWithTransport):
 
     def setUp(self):

@@ -38,8 +38,10 @@ from bzrlib.smart import (
     server,
     repository as _mod_smart_repo,
     )
-from bzrlib.tests import per_branch
-from bzrlib.transport import local
+from bzrlib.tests import (
+    per_branch,
+    test_server,
+    )
 
 
 class TestPush(per_branch.TestCaseWithBranch):
@@ -149,7 +151,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            if self.vfs_transport_factory is local.LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(
@@ -391,7 +393,7 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(self.smart_server, self.get_server())
         # Make two empty branches, 'empty' and 'target'.
         self.empty_branch = self.make_branch('empty')
