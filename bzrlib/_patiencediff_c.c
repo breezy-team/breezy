@@ -630,9 +630,11 @@ py_unique_lcs(PyObject *self, PyObject *args)
     if (matches == NULL)
         goto error;
 
-    backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
-    if (backpointers == NULL)
-        goto error;
+    if (bsize > 0) {
+        backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
+        if (backpointers == NULL)
+            goto error;
+    }
 
     nmatches = unique_lcs(matches, &hashtable, backpointers, a, b, 0, 0, asize, bsize);
 
@@ -702,9 +704,12 @@ py_recurse_matches(PyObject *self, PyObject *args)
     if (matches.matches == NULL)
         goto error;
 
-    backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
-    if (backpointers == NULL)
-        goto error;
+    if (bsize > 0) {
+        backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * bsize * 4);
+        if (backpointers == NULL)
+            goto error;
+    } else
+        backpointers = NULL;
 
     res = recurse_matches(&matches, &hashtable, backpointers,
                           a, b, alo, blo, ahi, bhi, maxrecursion);
@@ -771,11 +776,15 @@ PatienceSequenceMatcher_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             return NULL;
         }
 
-        self->backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * self->bsize * 4);
-        if (self->backpointers == NULL) {
-            Py_DECREF(self);
-            PyErr_NoMemory();
-            return NULL;
+        if (self->bsize > 0) {
+            self->backpointers = (Py_ssize_t *)guarded_malloc(sizeof(Py_ssize_t) * self->bsize * 4);
+            if (self->backpointers == NULL) {
+                Py_DECREF(self);
+                PyErr_NoMemory();
+                return NULL;
+            }
+        } else {
+            self->backpointers = NULL;
         }
 
     }
