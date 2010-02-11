@@ -116,3 +116,52 @@ version_string = __version__
 def test_suite():
     import tests
     return tests.test_suite()
+
+
+def initialize(
+    setup_ui=True,
+    stdin=None, stdout=None, stderr=None):
+    """Set up everything needed for normal use of bzrlib.
+
+    Most applications that embed bzrlib, including bzr itself, should call
+    this function to initialize various subsystems.  
+
+    More options may be added in future so callers should use named arguments.
+
+    :param setup_ui: If true (default) use a terminal UI; otherwise 
+        something else must be put into `bzrlib.ui.ui_factory`.
+    :param stdin, stdout, stderr: If provided, use these for terminal IO;
+        otherwise use the files in `sys`.
+    """
+    # TODO: mention this in a guide to embedding bzrlib
+    #
+    # NB: This function tweaks so much global state it's hard to test it in
+    # isolation within the same interpreter.  It's not reached on normal
+    # in-process run_bzr calls.  If it's broken, we expect that
+    # TestRunBzrSubprocess may fail.
+    
+    import atexit
+    import bzrlib.trace
+
+    bzrlib.trace.enable_default_logging()
+    atexit.register(bzrlib.trace._flush_stdout_stderr)
+    atexit.register(bzrlib.trace._flush_trace)
+
+    import bzrlib.ui
+    if stdin is None:
+        stdin = sys.stdin
+    if stdout is None:
+        stdout = sys.stdout
+    if stderr is None:
+        stderr = sys.stderr
+
+    if setup_ui:
+        bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+            stdin, stdout, stderr)
+
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib.symbol_versioning import suppress_deprecation_warnings
+        suppress_deprecation_warnings(override=True)
+
+    import bzrlib.osutils
+    atexit.register(osutils.report_extension_load_failures)
