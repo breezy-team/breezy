@@ -48,9 +48,9 @@ from bzrlib.smart import (
     server,
     vfs,
     )
+from bzrlib.tests import test_server
 from bzrlib.transport import (
     chroot,
-    local,
     memory,
     )
 
@@ -106,7 +106,7 @@ class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
         self.transport_server = self.make_transport_server
 
     def make_transport_server(self):
-        return server.SmartTCPServer_for_testing('-' + self.id())
+        return test_server.SmartTCPServer_for_testing('-' + self.id())
 
     def get_smart_medium(self):
         """Get a smart medium to use in tests."""
@@ -489,7 +489,7 @@ class TestSmartServerRequestOpenBzrDir_2_1(tests.TestCaseWithMemoryTransport):
 class TestSmartServerRequestOpenBzrDir_2_1_disk(TestCaseWithChrootedTransport):
 
     def test_present_with_workingtree(self):
-        self.vfs_transport_factory = local.LocalURLServer
+        self.vfs_transport_factory = test_server.LocalURLServer
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBzrDir_2_1(backing)
         bd = self.make_bzrdir('.')
@@ -520,7 +520,7 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
-        self.vfs_transport_factory = local.LocalURLServer
+        self.vfs_transport_factory = test_server.LocalURLServer
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranch(backing)
         branch = self.make_branch('branch')
@@ -561,7 +561,7 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
-        self.vfs_transport_factory = local.LocalURLServer
+        self.vfs_transport_factory = test_server.LocalURLServer
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranchV2(backing)
         branch = self.make_branch('branch')
@@ -624,7 +624,7 @@ class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
 
     def test_branch_reference(self):
         """When there is a branch reference, the reference URL is returned."""
-        self.vfs_transport_factory = local.LocalURLServer
+        self.vfs_transport_factory = test_server.LocalURLServer
         backing = self.get_transport()
         request = smart_dir.SmartServerRequestOpenBranchV3(backing)
         branch = self.make_branch('branch')

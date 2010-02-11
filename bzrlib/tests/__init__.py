@@ -101,13 +101,17 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport, pathfilter
+from bzrlib.transport import (
+    get_transport,
+    memory,
+    pathfilter,
+    )
 import bzrlib.transport
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
-from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
-from bzrlib.tests import TestUtil
+from bzrlib.tests import (
+    test_server,
+    TestUtil,
+    )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
@@ -124,7 +128,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 # shown frame is the test code, not our assertXYZ.
 __unittest = 1
 
-default_transport = LocalURLServer
+default_transport = test_server.LocalURLServer
 
 
 _unitialized_attr = object()
@@ -1040,7 +1044,8 @@ class TestCase(testtools.TestCase):
         if t.base.endswith('/work/'):
             # we have safety net/test root/work
             t = t.clone('../..')
-        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+        elif isinstance(transport_server,
+                        test_server.SmartTCPServer_for_testing):
             # The smart server adds a path similar to work, which is traversed
             # up from by the client. But the server is chrooted - the actual
             # backing transport is not escaped from, and VFS requests to the
@@ -2175,7 +2180,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
@@ -2204,7 +2209,7 @@ class TestCaseWithMemoryTransport(TestCase):
         is no means to override it.
         """
         if self.__vfs_server is None:
-            self.__vfs_server = MemoryServer()
+            self.__vfs_server = memory.MemoryServer()
             self.start_server(self.__vfs_server)
         return self.__vfs_server
 
@@ -2367,7 +2372,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
         return remote_transport
@@ -2400,7 +2405,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
@@ -2619,7 +2624,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
@@ -2685,7 +2690,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
 

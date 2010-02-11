@@ -33,10 +33,10 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.transport import (
-    local,
-    Server,
     ssh,
     )
+from bzrlib.tests import test_server
+
 
 class StubServer (paramiko.ServerInterface):
 
@@ -382,7 +382,7 @@ class SocketDelay(object):
         return bytes_sent
 
 
-class SFTPServer(Server):
+class SFTPServer(test_server.TestServer):
     """Common code for SFTP server facilities."""
 
     def __init__(self, server_interface=StubServer):
@@ -436,7 +436,7 @@ class SFTPServer(Server):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
         if not (backing_server is None or
-                isinstance(backing_server, local.LocalURLServer)):
+                isinstance(backing_server, test_server.LocalURLServer)):
             raise AssertionError(
                 "backing_server should not be %r, because this can only serve the "
                 "local current working directory." % (backing_server,))

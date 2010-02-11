@@ -54,6 +54,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -3444,11 +3445,11 @@ class cmd_selftest(Command):
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
-            from bzrlib.transport.memory import MemoryServer
-            return MemoryServer
+            from bzrlib.tests import test_server
+            return memory.MemoryServer
         if typestring == "fakenfs":
-            from bzrlib.transport.fakenfs import FakeNFSServer
-            return FakeNFSServer
+            from bzrlib.tests import test_server
+            return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
         raise errors.BzrCommandError(msg)
