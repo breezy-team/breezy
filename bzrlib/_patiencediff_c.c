@@ -1258,3 +1258,7 @@ init_patiencediff_c(void)
     PyModule_AddObject(m, "PatienceSequenceMatcher_c",
                        (PyObject *)&PatienceSequenceMatcherType);
 }
+
+
+/* vim: sw=4 et 
+ */
