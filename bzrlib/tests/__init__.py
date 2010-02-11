@@ -1201,6 +1201,10 @@ class TestCase(testtools.TestCase):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
+    def assertContainsString(self, haystack, needle):
+        if haystack.find(needle) == -1:
+            self.fail("string %r not found in '''%s'''" % (needle, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
@@ -1542,17 +1546,17 @@ class TestCase(testtools.TestCase):
             # use an env var so it propagates to subprocesses.
             'APPORT_DISABLE': '1',
         }
-        self.__old_env = {}
+        self._old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
-        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
+        self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
-        for name, value in self.__old_env.iteritems():
+        for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
@@ -3658,6 +3662,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',
+        'bzrlib.tests.test_import_tariff',
         'bzrlib.tests.test_info',
         'bzrlib.tests.test_inv',
         'bzrlib.tests.test_inventory_delta',
