@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3777,18 +3777,18 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, pb)
+                   mergeable, None)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
                     ' --revision at the same time.')
-            merger = self.get_merger_from_uncommitted(tree, location, pb)
+            merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
         if merger is None:
             merger, allow_pending = self._get_merger_from_branch(tree,
-                location, revision, remember, possible_transports, pb)
+                location, revision, remember, possible_transports, None)
 
         merger.merge_type = merge_type
         merger.reprocess = reprocess
@@ -4065,11 +4065,9 @@ class cmd_remerge(Command):
         # list, we imply that the working tree text has seen and rejected
         # all the changes from the other tree, when in fact those changes
         # have not yet been seen.
-        pb = ui.ui_factory.nested_progress_bar()
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(pb,
-                                                         tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -4077,7 +4075,6 @@ class cmd_remerge(Command):
             conflicts = merger.do_merge()
         finally:
             tree.set_parent_ids(parents)
-            pb.finished()
         if conflicts > 0:
             return 1
         else:
@@ -4152,12 +4149,8 @@ class cmd_revert(Command):
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tree.revert(file_list, rev_tree, not no_backup, pb,
-                report_changes=True)
-        finally:
-            pb.finished()
+        tree.revert(file_list, rev_tree, not no_backup, None,
+            report_changes=True)
 
 
 class cmd_assert_fail(Command):

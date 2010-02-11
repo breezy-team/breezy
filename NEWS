@@ -33,11 +33,17 @@ New Features
 Bug Fixes
 *********
 
+* Added docstring for ``Tree.iter_changes``
+  (John Arbash Meinel, #304182)
+
+* Allow exporting a single file using ``bzr export``.
+  (Michal Junák, #511987)
+
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
 * Network transfer amounts and rates are now displayed in SI units according
-  to the Ubuntu Units Policy, https://wiki.ubuntu.com/UnitsPolicy.
+  to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
 
 API Changes
@@ -47,6 +53,9 @@ API Changes
   run when starting up; it sets up several things that previously needed
   to be done separately.
   (Martin Pool, #507710)
+
+* Remove unused ``CommandFailed`` exception.
+  (Martin Pool)
 
 Testing
 *******
@@ -79,8 +88,15 @@ Bug Fixes
   the same value to avoid confusing ``make`` and other date-based build
   systems. (Robert Collins, #515631)
 
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
 Improvements
 ************
+
+* Fetching into experimental formats will now print a warning. (Jelmer
+  Vernooij)
 
 Documentation
 *************
@@ -11888,4 +11904,4 @@ Testing
 
 
 ..
-   vim: tw=74 ft=rst ff=unix
+   vim: tw=74 ft=rst ff=unix encoding=utf-8

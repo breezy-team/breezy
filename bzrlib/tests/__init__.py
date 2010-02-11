@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -485,13 +485,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
+        self.ui.note('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
+        self.ui.note('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -700,10 +700,6 @@ class UnavailableFeature(Exception):
 
     The feature should be used to construct the exception.
     """
-
-
-class CommandFailed(Exception):
-    pass
 
 
 class StringIOWrapper(object):

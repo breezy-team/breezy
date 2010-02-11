@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2010 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,6 +63,16 @@ class TestExport(tests.TestCaseWithTransport):
         self.build_tree(['target/', 'target/foo'])
         self.assertRaises(errors.BzrError, export.export, wt, 'target', format="dir")
 
+    def test_dir_export_existing_single_file(self):
+        self.build_tree(['dir1/', 'dir1/dir2/', 'dir1/first', 'dir1/dir2/second'])
+        wtree = self.make_branch_and_tree('dir1')
+        wtree.add(['dir2', 'first', 'dir2/second'])
+        wtree.commit('1')
+        export.export(wtree, 'target1', format='dir', subdir='first')
+        self.failUnlessExists('target1/first')
+        export.export(wtree, 'target2', format='dir', subdir='dir2/second')
+        self.failUnlessExists('target2/second')
+        
     def test_dir_export_files_same_timestamp(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
