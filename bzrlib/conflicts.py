@@ -412,8 +412,17 @@ class Conflict(object):
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
 
+    def associated_filenames(self):
+        """The names of the files generated to help resolve the conflict."""
+        raise NotImplementedError(self.associated_filenames)
+
     def cleanup(self, tree):
-        raise NotImplementedError(self.cleanup)
+        for fname in self.associated_filenames():
+            try:
+                osutils.delete_any(tree.abspath(fname))
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
 
     def action_done(self, tree):
         """Mark the conflict as solved once it has been handled."""
@@ -446,9 +455,9 @@ class PathConflict(Conflict):
             s.add('conflict_path', self.conflict_path)
         return s
 
-    def cleanup(self, tree):
+    def associated_filenames(self):
         # No additional files have been generated here
-        pass
+        return []
 
     def action_take_this(self, tree):
         tree.rename_one(self.conflict_path, self.path)
@@ -467,13 +476,8 @@ class ContentsConflict(PathConflict):
 
     format = 'Contents conflict in %(path)s'
 
-    def cleanup(self, tree):
-        for suffix in ('.BASE', '.OTHER'):
-            try:
-                osutils.delete_any(tree.abspath(self.path + suffix))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
 
     # FIXME: I smell something weird here and it seems we should be able to be
     # more coherent with some other conflict ? bzr *did* a choice there but
@@ -501,13 +505,8 @@ class TextConflict(PathConflict):
 
     format = 'Text conflict in %(path)s'
 
-    def cleanup(self, tree):
-        for suffix in CONFLICT_SUFFIXES:
-            try:
-                osutils.delete_any(tree.abspath(self.path+suffix))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
 
 
 class HandledConflict(Conflict):
@@ -529,9 +528,9 @@ class HandledConflict(Conflict):
         s.add('action', self.action)
         return s
 
-    def cleanup(self, tree):
-        """Nothing to cleanup."""
-        pass
+    def associated_filenames(self):
+        # Nothing has been generated here
+        return []
 
 
 class HandledPathConflict(HandledConflict):
