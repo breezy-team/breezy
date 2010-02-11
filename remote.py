@@ -87,7 +87,7 @@ def split_git_url(url):
     (scheme, _, loc, _, _) = urlparse.urlsplit(url)
     hostport, escaped_path = urllib.splithost(loc)
     path = urllib.unquote(escaped_path)
-    if len(path) > 0 and path[0] == "/":
+    if path.startswith("/~"):
         path = path[1:]
     (username, hostport) = urllib.splituser(hostport)
     (host, port) = urllib.splitnport(hostport, None)

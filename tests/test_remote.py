@@ -25,21 +25,25 @@ from bzrlib.plugins.git.remote import (
 class SplitUrlTests(TestCase):
 
     def test_simple(self):
-        self.assertEquals(("foo", None, None, "bar"),
+        self.assertEquals(("foo", None, None, "/bar"),
             split_git_url("git://foo/bar"))
 
     def test_port(self):
-        self.assertEquals(("foo", 343, None, "bar"),
+        self.assertEquals(("foo", 343, None, "/bar"),
             split_git_url("git://foo:343/bar"))
 
     def test_username(self):
-        self.assertEquals(("foo", None, "la", "bar"),
+        self.assertEquals(("foo", None, "la", "/bar"),
             split_git_url("git://la@foo/bar"))
 
     def test_nopath(self):
-        self.assertEquals(("foo", None, None, ""),
+        self.assertEquals(("foo", None, None, "/"),
             split_git_url("git://foo/"))
 
     def test_slashpath(self):
-        self.assertEquals(("foo", None, None, "/bar"),
+        self.assertEquals(("foo", None, None, "//bar"),
             split_git_url("git://foo//bar"))
+
+    def test_homedir(self):
+        self.assertEquals(("foo", None, None, "~bar"),
+            split_git_url("git://foo/~bar"))
