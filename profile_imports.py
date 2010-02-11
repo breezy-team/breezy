@@ -102,24 +102,32 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals, locals, fromlist, level=None):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
     """Wrap around standard importer to log import time"""
+    # normally there are 4, but if this is called as __import__ eg by
+    # /usr/lib/python2.6/email/__init__.py then there may be only one
+    # parameter
     # level is only passed by python2.6
 
-    scope_name = globals.get('__name__', None)
-    if scope_name is None:
-        scope_name = globals.get('__file__', None)
-    if scope_name is None:
-        scope_name = globals.keys()
+    if globals is None:
+        # can't determine the scope name afaics; we could peek up the stack to
+        # see where this is being called from, but it should be a rare case.
+        scope_name = None
     else:
-        # Trim out paths before bzrlib
-        loc = scope_name.find('bzrlib')
-        if loc != -1:
-            scope_name = scope_name[loc:]
-        # For stdlib, trim out early paths
-        loc = scope_name.find('python2.4')
-        if loc != -1:
-            scope_name = scope_name[loc:]
+        scope_name = globals.get('__name__', None)
+        if scope_name is None:
+            scope_name = globals.get('__file__', None)
+        if scope_name is None:
+            scope_name = globals.keys()
+        else:
+            # Trim out paths before bzrlib
+            loc = scope_name.find('bzrlib')
+            if loc != -1:
+                scope_name = scope_name[loc:]
+            # For stdlib, trim out early paths
+            loc = scope_name.find('python2.4')
+            if loc != -1:
+                scope_name = scope_name[loc:]
 
     # Figure out the frame that is doing the importing
     frame = sys._getframe(1)
