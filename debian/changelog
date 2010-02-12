@@ -1,6 +1,5 @@
-bzr-builddeb (2.3) UNRELEASED; urgency=low
+bzr-builddeb (2.3) experimental; urgency=low
 
-  * Upload to lucid.
   * Some support for v3 source formats (Closes: #562991)
     - Those that look quite a lot like v1 are supported well.
     - .tar.bz2 tarballs are supported for import, building, merge-upstream,
