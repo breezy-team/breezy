@@ -37,14 +37,9 @@ from dulwich.repo import (
     BaseRepo,
     DictRefsContainer,
     OBJECTDIR,
-    BASE_DIRECTORIES,
     read_info_refs,
     )
-import errno
 
-from bzrlib import (
-    urlutils,
-    )
 from bzrlib.errors import (
     NoSuchFile,
     )
@@ -85,48 +80,12 @@ class TransportRepo(BaseRepo):
         except NoSuchFile:
             return None
 
-    def put_named_file(self, path, contents):
-        self._controltransport.put_bytes(path.lstrip('/'), contents)
-
     def open_index(self):
         """Open the index for this repository."""
-        from dulwich.index import Index
-        try:
-            return Index(self._controltransport.local_abspath('index'))
-        except NoSuchFile:
-            raise NoIndexPresent()
-        except (IOError, OSError), e:
-            if e.errno == errno.ENOENT:
-                raise NoIndexPresent()
-            raise
+        raise NoIndexPresent()
 
     def __repr__(self):
         return "<TransportRepo for %r>" % self.transport
-
-    @classmethod
-    def init(cls, transport, mkdir=True):
-        transport.mkdir('.git')
-        controltransport = transport.clone('.git')
-        cls.init_bare(controltransport)
-        return cls(controltransport)
-
-    @classmethod
-    def init_bare(cls, transport, mkdir=True):
-        for d in BASE_DIRECTORIES:
-            transport.mkdir(urlutils.join(*d))
-        ret = cls(transport)
-        ret.refs.set_ref("HEAD", "refs/heads/master")
-        ret.put_named_file('description', "Unnamed repository")
-        ret.put_named_file('config', """[core]
-    repositoryformatversion = 0
-    filemode = true
-    bare = false
-    logallrefupdates = true
-""")
-        ret.put_named_file('info/excludes', '')
-        return ret
-
-    create = init_bare
 
 
 class TransportObjectStore(PackBasedObjectStore):
@@ -142,23 +101,17 @@ class TransportObjectStore(PackBasedObjectStore):
         self.pack_transport = self.transport.clone(PACKDIR)
 
     def _load_packs(self):
-        return []
-        pack_files = []
-        for name in self.pack_transport.list_dir('.'):
-            # TODO: verify that idx exists first
-            if name.startswith("pack-") and name.endswith(".pack"):
-                # TODO: if stat fails, just use None - after all
-                # the st_mtime is just used for sorting
-                st = self.pack_transport.stat(name)
-                pack_files.append((st.st_mtime, st.st_size, name))
-        pack_files.sort(reverse=True)
         suffix_len = len(".pack")
         ret = []
-        for _, size, f in pack_files:
-            pd = PackData.from_file(self.pack_transport.get(f), size)
-            idxname = f.replace(".pack", ".idx")
-            idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
-            ret.append(Pack.from_objects(pd, idx))
+        for line in self.transport.get('info/packs').readlines():
+            (kind, name) = line.rstrip("\n").split(" ", 1)
+            if kind != "P":
+                continue
+            if name.startswith("pack-") and name.endswith(".pack"):
+                pd = PackData.from_file(self.pack_transport.get(name))
+                idxname = name.replace(".pack", ".idx")
+                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
+                ret.append(Pack.from_objects(pd, idx))
         return ret
 
     def _iter_loose_objects(self):
@@ -196,11 +149,4 @@ class TransportObjectStore(PackBasedObjectStore):
         :return: Fileobject to write to and a commit function to 
             call when the pack is finished.
         """
-        fd, path = tempfile.mkstemp(dir=self.pack_dir, suffix=".pack")
-        f = os.fdopen(fd, 'wb')
-        def commit():
-            os.fsync(fd)
-            f.close()
-            if os.path.getsize(path) > 0:
-                self.move_in_pack(path)
-        return f, commit
+        raise NotImplementedError(self.add_pack)
