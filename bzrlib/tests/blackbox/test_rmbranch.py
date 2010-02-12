@@ -19,9 +19,10 @@
 
 from bzrlib import (
     bzrdir,
-    errors,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests.blackbox import (
+    ExternalBase,
+    )
 
 
 class TestRemoveBranch(ExternalBase):

@@ -19,7 +19,7 @@ Compatibility Breaks
 New Features
 ************
 
-* Added ``bzr rmbranch`` command that can remove a local or remote 
+* Added ``bzr remove-branch`` command that can remove a local or remote 
   branch. (Jelmer Vernooij, #276295)
 
 Bug Fixes

@@ -5715,12 +5715,14 @@ class cmd_hooks(Command):
                     self.outf.write("    <no hooks installed>\n")
 
 
-class cmd_rmbranch(Command):
+class cmd_remove_branch(Command):
     """Remove a branch.
 
     """
 
     takes_args = ["location?"]
+
+    aliases = ["rmbranch"]
 
     def run(self, location=None):
         if location is None:
