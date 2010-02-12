@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ Densely packed upper nodes.
 """
 
 import heapq
+import threading
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -59,11 +60,31 @@ from bzrlib.static_tuple import StaticTuple
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
 # out, it takes 3.1MB to cache the layer.
 _PAGE_CACHE_SIZE = 4*1024*1024
-# We are caching bytes so len(value) is perfectly accurate
-_page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+# Per thread caches for 2 reasons:
+# - in the server we may be serving very different content, so we get less
+#   cache thrashing.
+# - we avoid locking on every cache lookup.
+_thread_caches = threading.local()
+# The page cache.
+_thread_caches.page_cache = None
+
+def _get_cache():
+    """Get the per-thread page cache.
+
+    We need a function to do this because in a new thread the _thread_caches
+    threading.local object does not have the cache initialized yet.
+    """
+    page_cache = getattr(_thread_caches, 'page_cache', None)
+    if page_cache is None:
+        # We are caching bytes so len(value) is perfectly accurate
+        page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+        _thread_caches.page_cache = page_cache
+    return page_cache
+
 
 def clear_cache():
-    _page_cache.clear()
+    _get_cache().clear()
+
 
 # If a ChildNode falls below this many bytes, we check for a remap
 _INTERESTING_NEW_SIZE = 50
@@ -161,11 +182,11 @@ class CHKMap(object):
 
     def _read_bytes(self, key):
         try:
-            return _page_cache[key]
+            return _get_cache()[key]
         except KeyError:
             stream = self._store.get_record_stream([key], 'unordered', True)
             bytes = stream.next().get_bytes_as('fulltext')
-            _page_cache[key] = bytes
+            _get_cache()[key] = bytes
             return bytes
 
     def _dump_tree(self, include_keys=False):
@@ -901,7 +922,7 @@ class LeafNode(Node):
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             raise AssertionError('Invalid _current_size')
-        _page_cache.add(self._key, bytes)
+        _get_cache().add(self._key, bytes)
         return [self._key]
 
     def refs(self):
@@ -1143,7 +1164,7 @@ class InternalNode(Node):
             found_keys = set()
             for key in keys:
                 try:
-                    bytes = _page_cache[key]
+                    bytes = _get_cache()[key]
                 except KeyError:
                     continue
                 else:
@@ -1174,7 +1195,7 @@ class InternalNode(Node):
                     prefix, node_key_filter = keys[record.key]
                     node_and_filters.append((node, node_key_filter))
                     self._items[prefix] = node
-                    _page_cache.add(record.key, bytes)
+                    _get_cache().add(record.key, bytes)
                 for info in node_and_filters:
                     yield info
 
@@ -1300,7 +1321,7 @@ class InternalNode(Node):
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
         self._key = StaticTuple("sha1:" + sha1,).intern()
-        _page_cache.add(self._key, ''.join(lines))
+        _get_cache().add(self._key, ''.join(lines))
         yield self._key
 
     def _search_key(self, key):
@@ -1489,11 +1510,11 @@ class CHKMapDifference(object):
         self._state = None
 
     def _read_nodes_from_store(self, keys):
-        # We chose not to use _page_cache, because we think in terms of records
-        # to be yielded. Also, we expect to touch each page only 1 time during
-        # this code. (We may want to evaluate saving the raw bytes into the
-        # page cache, which would allow a working tree update after the fetch
-        # to not have to read the bytes again.)
+        # We chose not to use _get_cache(), because we think in
+        # terms of records to be yielded. Also, we expect to touch each page
+        # only 1 time during this code. (We may want to evaluate saving the
+        # raw bytes into the page cache, which would allow a working tree
+        # update after the fetch to not have to read the bytes again.)
         as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:

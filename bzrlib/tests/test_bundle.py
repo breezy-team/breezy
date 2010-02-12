@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1039,7 +1039,7 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo.get_inventory_xml('rev2')
+        inv_text = repo._get_inventory_xml('rev2')
         self.assertNotContainsRe(inv_text, 'format="5"')
         self.assertContainsRe(inv_text, 'format="7"')
 
@@ -1066,7 +1066,7 @@ class BundleTester(object):
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
         recorded_inv_sha1 = repo.get_revision('rev2').inventory_sha1
-        xml = repo.get_inventory_xml('rev2')
+        xml = repo._get_inventory_xml('rev2')
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):

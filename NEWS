@@ -14,19 +14,111 @@ bzr 2.2.0b1 (not released yet)
 Compatibility Breaks
 ********************
 
+* Deleted very old hidden commands ``versionedfile-list``,
+  ``weave-plan-merge``, ``weave-merge-text``.
+  (Martin Pool)
+
 * ``Repository.get_inventory_sha1()`` has been removed. (Jelmer Vernooij)
+
+* All test servers have been moved out of the bzrlib.transport hierarchy to
+  bzrlib.tests.test_server *except* for MemoryServer, ChrootServer and
+  PathFilteringServer. ``bzrlib`` users may encounter test failures that can
+  be fixed by updating the related imports from ``bzrlib.transport.xxx`` to
+  ``bzrlib.tests.test_server``.
+  (Vincent Ladeuil)
 
 New Features
 ************
 
+* If the Apport crash-reporting tool is available, bzr crashes are now
+  stored into the ``/var/crash`` apport spool directory, and the user is
+  invited to report them to the developers from there, either
+  automatically or by running ``apport-bug``.  No information is sent
+  without specific permission from the user.  (Martin Pool, #515052)
+
+* Tree-shape conflicts can be resolved by providing ``--take-this`` and
+  ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
+  as resolved is still accessible via the ``--done`` default action.
+  (Vincent Ladeuil)
+
 Bug Fixes
 *********
+
+* Added docstring for ``Tree.iter_changes``
+  (John Arbash Meinel, #304182)
+
+* Allow exporting a single file using ``bzr export``.
+  (Michal Junák, #511987)
+
+* Avoid infinite recursion when probing for apport.
+  (Vincent Ladeuil, #516934)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* ``bzr add`` will not add conflict related files unless explicitly required.
+  (Vincent Ladeuil, #322767, #414589)
+
+* Network transfer amounts and rates are now displayed in SI units according
+  to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
+  (Gordon Tyler, #514399)
+
+API Changes
+***********
+
+* New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
+  run when starting up; it sets up several things that previously needed
+  to be done separately.
+  (Martin Pool, #507710)
+
+* Remove unused ``CommandFailed`` exception.
+  (Martin Pool)
+
+Testing
+*******
+
+* New `bzrlib.tests.test_import_tariff` can make assertions about what
+  Python modules are loaded, to guard against startup time or library
+  dependency regressions.
+  (Martin Pool)
+
+* Stop sending apport crash files to ``.cache`` in the directory from
+  which ``bzr selftest`` was run.  (Martin Pool, #422350)
+
+bzr 2.1.0 (not released yet)
+############################
+
+:Codename: 
+:2.1.0: 
+
+Bug Fixes
+*********
+
+* Don't require testtools to use sftp.
+  (Vincent Ladeuil, #516183)
 
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
 
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
+
+* Give a better error message when doing ``bzr bind`` in an already bound
+  branch.  (Neil Martinsen-Burrell, #513063)
+
+* Set the mtime of files exported to a directory by ``bzr export`` all to
+  the same value to avoid confusing ``make`` and other date-based build
+  systems. (Robert Collins, #515631)
+
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
 Improvements
 ************
+
+* Fetching into experimental formats will now print a warning. (Jelmer
+  Vernooij)
 
 Documentation
 *************
@@ -34,12 +126,34 @@ Documentation
 API Changes
 ***********
 
+* ``Repository.deserialise_inventory`` has been renamed to 
+  ``Repository._deserialise_inventory`` to indicate it is private.
+  (Jelmer Vernooij)
+
+* ``Repository.get_inventory_xml`` has been renamed to 
+  ``Repository._get_inventory_xml`` to indicate it is private. 
+  (Jelmer Vernooij)
+
+* ``Repository.serialise_inventory`` has been renamed to 
+  ``Repository._serialise_inventory`` to indicate it is private.
+
 Internals
 *********
 
 Testing
 *******
+* Using the ``bzrlib.chk_map`` module from within multiple threads at the
+  same time was broken due to race conditions with a module level page
+  cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
+  ``bzrlib.chk_map`` in the backtrace, and can be triggered without using
+  the same high level objects such as ``bzrlib.repository.Repository``
+  from different threads. chk_map now uses a thread local cache which may
+  increase memory pressure on processes using threads.
+  (Robert Collins, John Arbash Meinel, #514090)
 
+* The new ``merge_file_content`` should now be ok with tests to avoid
+  regressions.
+  (Vincent Ladeuil, #515597)
 
 bzr 2.1.0rc2
 ############
@@ -622,6 +736,8 @@ Bug Fixes
 *********
 
 * Fix for shell completion and short options.  (Benoît PIERRE)
+
+* Fix ``bzr --profile-imports`` with Python 2.6.  (Martin Pool)
 
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
@@ -11810,4 +11926,4 @@ Testing
 
 
 ..
-   vim: tw=74 ft=rst ff=unix
+   vim: tw=74 ft=rst ff=unix encoding=utf-8

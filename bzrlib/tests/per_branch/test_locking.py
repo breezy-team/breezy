@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,18 +16,21 @@
 
 """Test locks across all branch implemenations"""
 
-from bzrlib import errors
-from bzrlib.branch import BzrBranchFormat4
-from bzrlib.bzrdir import RemoteBzrDirFormat
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib import (
+    branch as _mod_branch,
+    errors,
+    tests,
+    )
+from bzrlib.tests import (
+    lock_helpers,
+    per_branch,
+    )
 
 
-class TestBranchLocking(TestCaseWithBranch):
+class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        TestCaseWithBranch.setUp(self)
+        super(TestBranchLocking, self).setUp()
         self.reduceLockdirTimeout()
 
     def get_instrumented_branch(self):
@@ -37,8 +40,8 @@ class TestBranchLocking(TestCaseWithBranch):
         # not there. But assuming it has them lets us test the exact
         # lock/unlock order.
         self.locks = []
-        b = LockWrapper(self.locks, self.get_branch(), 'b')
-        b.repository = LockWrapper(self.locks, b.repository, 'r')
+        b = lock_helpers.LockWrapper(self.locks, self.get_branch(), 'b')
+        b.repository = lock_helpers.LockWrapper(self.locks, b.repository, 'r')
         bcf = b.control_files
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
@@ -47,16 +50,18 @@ class TestBranchLocking(TestCaseWithBranch):
             # Look out for branch types that reuse their control files
             self.combined_control = bcf is rcf
         try:
-            b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
+            b.control_files = lock_helpers.LockWrapper(
+                self.locks, b.control_files, 'bc')
         except AttributeError:
             # RemoteBranch seems to trigger this.
-            raise TestSkipped("Could not instrument branch control files.")
+            raise tests.TestSkipped(
+                'Could not instrument branch control files.')
         if self.combined_control:
             # instrument the repository control files too to ensure its worked
             # with correctly. When they are not shared, we trust the repository
             # API and only instrument the repository itself.
-            b.repository.control_files = \
-                LockWrapper(self.locks, b.repository.control_files, 'rc')
+            b.repository.control_files = lock_helpers.LockWrapper(
+                self.locks, b.repository.control_files, 'rc')
         return b
 
     def test_01_lock_read(self):
@@ -139,7 +144,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertLogsError(TestPreventLocking, b.unlock)
+            self.assertLogsError(lock_helpers.TestPreventLocking, b.unlock)
             if self.combined_control:
                 self.assertTrue(b.is_locked())
             else:
@@ -183,7 +188,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertLogsError(TestPreventLocking, b.unlock)
+            self.assertLogsError(lock_helpers.TestPreventLocking, b.unlock)
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
 
@@ -216,7 +221,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.repository.disable_lock_read()
 
-        self.assertRaises(TestPreventLocking, b.lock_read)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_read)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -229,7 +234,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.repository.disable_lock_write()
 
-        self.assertRaises(TestPreventLocking, b.lock_write)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -242,7 +247,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_read()
 
-        self.assertRaises(TestPreventLocking, b.lock_read)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_read)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -266,7 +271,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_write()
 
-        self.assertRaises(TestPreventLocking, b.lock_write)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
         if self.combined_control:
@@ -493,7 +498,7 @@ class TestBranchLocking(TestCaseWithBranch):
         branch.unlock()
 
     def test_lock_write_locks_repo_too(self):
-        if isinstance(self.branch_format, BzrBranchFormat4):
+        if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
             # Branch format 4 is combined with the repository, so this test
             # doesn't apply.
             return

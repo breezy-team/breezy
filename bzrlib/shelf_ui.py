@@ -471,18 +471,14 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                task = ui.ui_factory.nested_progress_bar()
-                try:
-                    merger = unshelver.make_merger(task)
-                    merger.change_reporter = change_reporter
-                    if self.apply_changes:
-                        merger.do_merge()
-                    elif self.show_diff:
-                        self.write_diff(merger)
-                    else:
-                        self.show_changes(merger)
-                finally:
-                    task.finished()
+                merger = unshelver.make_merger(None)
+                merger.change_reporter = change_reporter
+                if self.apply_changes:
+                    merger.do_merge()
+                elif self.show_diff:
+                    self.write_diff(merger)
+                else:
+                    self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
                 trace.note('Deleted changes with id "%d".' % self.shelf_id)

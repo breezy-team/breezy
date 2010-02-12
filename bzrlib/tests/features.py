@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,6 @@ from bzrlib.symbol_versioning import deprecated_in
 
 
 apport = tests.ModuleAvailableFeature('apport')
-ApportFeature = tests._CompatabilityThunkFeature('bzrlib.tests.features',
-    'ApportFeature', 'bzrlib.tests.features.apport', deprecated_in((2,1,0)))
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')

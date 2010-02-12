@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,13 +101,17 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport, pathfilter
+from bzrlib.transport import (
+    get_transport,
+    memory,
+    pathfilter,
+    )
 import bzrlib.transport
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
-from bzrlib.transport.readonly import ReadonlyServer
 from bzrlib.trace import mutter, note
-from bzrlib.tests import TestUtil
+from bzrlib.tests import (
+    test_server,
+    TestUtil,
+    )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
@@ -124,7 +128,7 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 # shown frame is the test code, not our assertXYZ.
 __unittest = 1
 
-default_transport = LocalURLServer
+default_transport = test_server.LocalURLServer
 
 
 _unitialized_attr = object()
@@ -485,13 +489,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
+        self.ui.note('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
+        self.ui.note('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -700,10 +704,6 @@ class UnavailableFeature(Exception):
 
     The feature should be used to construct the exception.
     """
-
-
-class CommandFailed(Exception):
-    pass
 
 
 class StringIOWrapper(object):
@@ -1044,7 +1044,8 @@ class TestCase(testtools.TestCase):
         if t.base.endswith('/work/'):
             # we have safety net/test root/work
             t = t.clone('../..')
-        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+        elif isinstance(transport_server,
+                        test_server.SmartTCPServer_for_testing):
             # The smart server adds a path similar to work, which is traversed
             # up from by the client. But the server is chrooted - the actual
             # backing transport is not escaped from, and VFS requests to the
@@ -1204,6 +1205,10 @@ class TestCase(testtools.TestCase):
         if re.search(needle_re, haystack, flags):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
+
+    def assertContainsString(self, haystack, needle):
+        if haystack.find(needle) == -1:
+            self.fail("string %r not found in '''%s'''" % (needle, haystack))
 
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
@@ -1540,18 +1545,23 @@ class TestCase(testtools.TestCase):
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
+            # Generally speaking, we don't want apport reporting on crashes in
+            # the test envirnoment unless we're specifically testing apport,
+            # so that it doesn't leak into the real system environment.  We
+            # use an env var so it propagates to subprocesses.
+            'APPORT_DISABLE': '1',
         }
-        self.__old_env = {}
+        self._old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
-        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
+        self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
-        for name, value in self.__old_env.iteritems():
+        for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
@@ -2170,7 +2180,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
@@ -2199,7 +2209,7 @@ class TestCaseWithMemoryTransport(TestCase):
         is no means to override it.
         """
         if self.__vfs_server is None:
-            self.__vfs_server = MemoryServer()
+            self.__vfs_server = memory.MemoryServer()
             self.start_server(self.__vfs_server)
         return self.__vfs_server
 
@@ -2362,7 +2372,7 @@ class TestCaseWithMemoryTransport(TestCase):
         return made_control.create_repository(shared=shared)
 
     def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
         remote_transport = get_transport(smart_server.get_url()).clone(path)
         return remote_transport
@@ -2395,7 +2405,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
@@ -2614,7 +2624,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
@@ -2680,7 +2690,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
 
@@ -3557,7 +3567,7 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 # appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
 test_prefix_alias_registry.register('bzrlib', 'bzrlib')
 
-# Obvious higest levels prefixes, feel free to add your own via a plugin
+# Obvious highest levels prefixes, feel free to add your own via a plugin
 test_prefix_alias_registry.register('bd', 'bzrlib.doc')
 test_prefix_alias_registry.register('bu', 'bzrlib.utils')
 test_prefix_alias_registry.register('bt', 'bzrlib.tests')
@@ -3657,6 +3667,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',
+        'bzrlib.tests.test_import_tariff',
         'bzrlib.tests.test_info',
         'bzrlib.tests.test_inv',
         'bzrlib.tests.test_inventory_delta',
@@ -4130,21 +4141,30 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, module, name, this_name, dep_version):
+    def __init__(self, dep_version, module, name,
+                 replacement_name, replacement_module=None):
         super(_CompatabilityThunkFeature, self).__init__()
         self._module = module
+        if replacement_module is None:
+            replacement_module = module
+        self._replacement_module = replacement_module
         self._name = name
-        self._this_name = this_name
+        self._replacement_name = replacement_name
         self._dep_version = dep_version
         self._feature = None
 
     def _ensure(self):
         if self._feature is None:
-            msg = (self._dep_version % self._this_name) + (
-                   ' Use %s.%s instead.' % (self._module, self._name))
-            symbol_versioning.warn(msg, DeprecationWarning)
-            mod = __import__(self._module, {}, {}, [self._name])
-            self._feature = getattr(mod, self._name)
+            depr_msg = self._dep_version % ('%s.%s'
+                                            % (self._module, self._name))
+            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+                                               self._replacement_name)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            # Import the new feature and use it as a replacement for the
+            # deprecated one.
+            mod = __import__(self._replacement_module, {}, {},
+                             [self._replacement_name])
+            self._feature = getattr(mod, self._replacement_name)
 
     def _probe(self):
         self._ensure()
@@ -4176,15 +4196,16 @@ class ModuleAvailableFeature(Feature):
         if self.available(): # Make sure the probe has been done
             return self._module
         return None
-    
+
     def feature_name(self):
         return self.module_name
 
 
 # This is kept here for compatibility, it is recommended to use
 # 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
-    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
+ParamikoFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
 
 
 def probe_unicode_in_user_encoding():
@@ -4352,8 +4373,9 @@ CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
-    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
+SubUnitFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

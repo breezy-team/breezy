@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -361,7 +361,7 @@ class RegistryOption(Option):
 
         name, help, value_switches and enum_switch are passed to the
         RegistryOption constructor.  Any other keyword arguments are treated
-        as values for the option, and they value is treated as the help.
+        as values for the option, and their value is treated as the help.
         """
         reg = _mod_registry.Registry()
         for name, switch_help in kwargs.iteritems():

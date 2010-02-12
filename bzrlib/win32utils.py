@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -136,7 +136,8 @@ def debug_memory_win32api(message='', short=True):
                 'WorkingSetSize': mem_struct.WorkingSetSize,
                 'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
                 'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage':
+                    mem_struct.QuotaPeakNonPagedPoolUsage,
                 'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
                 'PagefileUsage': mem_struct.PagefileUsage,
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
@@ -153,19 +154,21 @@ def debug_memory_win32api(message='', short=True):
                    ' or win32process')
         return
     if short:
-        trace.note('WorkingSize %7dKB'
-                   '\tPeakWorking %7dKB\t%s',
+        # using base-2 units (see HACKING.txt).
+        trace.note('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s',
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KiB',
+               info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -188,7 +191,8 @@ def get_console_size(defaultx=80, defaulty=25):
 
     if res:
         (bufx, bufy, curx, cury, wattr,
-        left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+        left, top, right, bottom, maxx, maxy) = struct.unpack(
+            "hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -411,7 +415,8 @@ def get_host_name_unicode():
 
 
 def _ensure_with_dir(path):
-    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+    if (not os.path.split(path)[0] or path.startswith(u'*')
+        or path.startswith(u'?')):
         return u'./' + path, True
     else:
         return path, False

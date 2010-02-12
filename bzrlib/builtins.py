@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -3441,14 +3442,14 @@ class cmd_selftest(Command):
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return SFTPAbsoluteServer
+            from bzrlib.tests import stub_sftp
+            return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
-            from bzrlib.transport.memory import MemoryServer
-            return MemoryServer
+            from bzrlib.tests import test_server
+            return memory.MemoryServer
         if typestring == "fakenfs":
-            from bzrlib.transport.fakenfs import FakeNFSServer
-            return FakeNFSServer
+            from bzrlib.tests import test_server
+            return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
         raise errors.BzrCommandError(msg)
@@ -3777,18 +3778,18 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, pb)
+                   mergeable, None)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
                     ' --revision at the same time.')
-            merger = self.get_merger_from_uncommitted(tree, location, pb)
+            merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
         if merger is None:
             merger, allow_pending = self._get_merger_from_branch(tree,
-                location, revision, remember, possible_transports, pb)
+                location, revision, remember, possible_transports, None)
 
         merger.merge_type = merge_type
         merger.reprocess = reprocess
@@ -4065,11 +4066,9 @@ class cmd_remerge(Command):
         # list, we imply that the working tree text has seen and rejected
         # all the changes from the other tree, when in fact those changes
         # have not yet been seen.
-        pb = ui.ui_factory.nested_progress_bar()
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(pb,
-                                                         tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -4077,7 +4076,6 @@ class cmd_remerge(Command):
             conflicts = merger.do_merge()
         finally:
             tree.set_parent_ids(parents)
-            pb.finished()
         if conflicts > 0:
             return 1
         else:
@@ -4152,12 +4150,8 @@ class cmd_revert(Command):
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tree.revert(file_list, rev_tree, not no_backup, pb,
-                report_changes=True)
-        finally:
-            pb.finished()
+        tree.revert(file_list, rev_tree, not no_backup, None,
+            report_changes=True)
 
 
 class cmd_assert_fail(Command):
@@ -4612,8 +4606,11 @@ class cmd_bind(Command):
                     'This format does not remember old locations.')
             else:
                 if location is None:
-                    raise errors.BzrCommandError('No location supplied and no '
-                        'previous location known')
+                    if b.get_bound_location() is not None:
+                        raise errors.BzrCommandError('Branch is already bound')
+                    else:
+                        raise errors.BzrCommandError('No location supplied '
+                            'and no previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -4716,11 +4713,12 @@ class cmd_uncommit(Command):
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):
-            self.outf.write('No revisions to uncommit.\n')
+            ui.ui_factory.note('No revisions to uncommit.')
             return 1
 
+        log_collector = ui.ui_factory.make_output_stream()
         lf = log_formatter('short',
-                           to_file=self.outf,
+                           to_file=log_collector,
                            show_timezone='original')
 
         show_log(b,
@@ -4731,23 +4729,21 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            print 'Dry-run, pretending to remove the above revisions.'
-            if not force:
-                val = raw_input('Press <enter> to continue')
+            ui.ui_factory.note('Dry-run, pretending to remove the above revisions.')
         else:
-            print 'The above revision(s) will be removed.'
-            if not force:
-                val = raw_input('Are you sure [y/N]? ')
-                if val.lower() not in ('y', 'yes'):
-                    print 'Canceled'
-                    return 0
+            ui.ui_factory.note('The above revision(s) will be removed.')
+
+        if not force:
+            if not ui.ui_factory.get_boolean('Are you sure [y/N]? '):
+                ui.ui_factory.note('Canceled')
+                return 0
 
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
-        note('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s', last_rev_id)
+        ui.ui_factory.note('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s' % last_rev_id)
 
 
 class cmd_break_lock(Command):
@@ -5912,5 +5908,3 @@ from bzrlib.bundle.commands import (
     )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, \
-        cmd_weave_plan_merge, cmd_weave_merge_text

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -176,7 +176,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         repo = tree.branch.repository
         repo.get_revision = self.fail
         repo.get_inventory = self.fail
-        repo.get_inventory_xml = self.fail
+        repo._get_inventory_xml = self.fail
         # try to set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree)])
 
@@ -215,7 +215,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # cache the parents of a parent tree at this point.
         #repo.get_revision = self.fail
         repo.get_inventory = self.fail
-        repo.get_inventory_xml = self.fail
+        repo._get_inventory_xml = self.fail
         # set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
         # read the first tree

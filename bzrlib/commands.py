@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,6 @@ from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
-    suppress_deprecation_warnings,
     )
 
 
@@ -185,23 +184,6 @@ def builtin_command_names():
 def plugin_command_names():
     """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
-
-
-@deprecated_function(deprecated_in((1, 17, 0)))
-def get_all_cmds(plugins_override=False):
-    """Return canonical name and class for most commands.
-    
-    NB: This does not return all commands since the introduction of
-    command hooks, and returning the class is not sufficient to 
-    get correctly setup commands, which is why it is deprecated.
-
-    Use 'all_command_names' + 'get_cmd_object' instead.
-    """
-    d = _builtin_commands()
-    if plugins_override:
-        d.update(plugin_cmds.iteritems())
-    for k, v in d.iteritems():
-        yield k,v
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
@@ -625,10 +607,6 @@ class Command(object):
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
-        if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10",
-                 DeprecationWarning, stacklevel=2)
-            argv = []
         args, opts = parse_args(self, argv, alias_argv)
 
         # Process the standard options
@@ -1095,25 +1073,12 @@ def install_bzr_command_hooks():
         "bzr plugin-provider-db check")
 
 
-def main(argv=None):
-    """Main entry point of command-line interface.
 
-    :param argv: list of unicode command-line arguments similar to sys.argv.
-        argv[0] is script name usually, it will be ignored.
-        Don't pass here sys.argv because this list contains plain strings
-        and not unicode; pass None instead.
-
-    :return: exit code of bzr command.
-    """
-    import bzrlib.ui
-    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-        sys.stdin, sys.stdout, sys.stderr)
-
-    # Is this a final release version? If so, we should suppress warnings
-    if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=True)
+def _specified_or_unicode_argv(argv):
+    # For internal or testing use, argv can be passed.  Otherwise, get it from
+    # the process arguments in a unicode-safe way.
     if argv is None:
-        argv = osutils.get_unicode_argv()
+        return osutils.get_unicode_argv()
     else:
         new_argv = []
         try:
@@ -1125,12 +1090,26 @@ def main(argv=None):
                     new_argv.append(a.decode('ascii'))
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
-        argv = new_argv
+        return new_argv
+
+
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    Typically `bzrlib.initialize` should be called first.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
+    argv = _specified_or_unicode_argv(argv)
     ret = run_bzr_catch_errors(argv)
     bzrlib.ui.ui_factory.log_transport_activity(
         display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
-    osutils.report_extension_load_failures()
     return ret
 
 
@@ -1140,6 +1119,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
@@ -1150,6 +1130,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
@@ -1205,7 +1186,3 @@ class ProvidersRegistry(registry.Registry):
             yield provider
 
 command_providers_registry = ProvidersRegistry()
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))
