@@ -19,6 +19,12 @@ Bug Fixes
   ``UnboundLocalError``.
   (Andrew Bennetts, #423563)
 
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
+
 bzr 2.0.4
 #########
 
