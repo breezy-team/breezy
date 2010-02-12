@@ -4063,11 +4063,9 @@ CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 class _CaseSensitiveFilesystemFeature(Feature):
 
     def _probe(self):
-        from bzrlib import tests
-
-        if tests.CaseInsCasePresFilenameFeature.available():
+        if CaseInsCasePresFilenameFeature.available():
             return False
-        elif tests.CaseInsensitiveFilesystemFeature.available():
+        elif CaseInsensitiveFilesystemFeature.available():
             return False
         else:
             return True
