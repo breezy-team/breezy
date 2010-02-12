@@ -51,8 +51,12 @@ class RevisionSpec_git(RevisionSpec):
         from bzrlib.plugins.git.errors import (
             GitSmartRemoteNotSupported,
             )
+        from bzrlib.plugins.git.mapping import (
+            default_mapping,
+            )
 
-        bzr_revid = branch.mapping.revision_id_foreign_to_bzr(sha1)
+        bzr_revid = getattr(branch.repository, "lookup_foreign_revision_id",
+                              default_mapping.revision_id_foreign_to_bzr)(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
                 history = self._history(branch, bzr_revid)
