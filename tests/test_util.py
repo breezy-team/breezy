@@ -228,6 +228,10 @@ class TarballNameTests(TestCase):
                 "package_0.1.orig.tar.gz")
         self.assertEqual(tarball_name("package", Version("0.1")),
                 "package_0.1.orig.tar.gz")
+        self.assertEqual(tarball_name("package", Version("0.1"),
+                    format='bz2'), "package_0.1.orig.tar.bz2")
+        self.assertEqual(tarball_name("package", Version("0.1"),
+                    format='lzma'), "package_0.1.orig.tar.lzma")
 
 
 class GetRevisionSnapshotTests(TestCase):
