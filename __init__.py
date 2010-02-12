@@ -37,6 +37,20 @@ from info import (
     bzr_plugin_version as version_info,
     )
 
+
+if getattr(merge, 'ConfigurableFileMerger', None) is None:
+    raise ImportError(
+        'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
+else:
+    def changelog_merge_hook_factory(merger):
+        from bzrlib.plugins.builddeb import merge_changelog
+        return merge_changelog.ChangeLogFileMerge(merger)
+
+    merge.Merger.hooks.install_named_hook(
+        'merge_file_content', changelog_merge_hook_factory,
+        'Debian Changelog file merge')
+
+
 commands = {
         "bd_do": [],
         "builddeb": ["bd"],
@@ -113,19 +127,6 @@ msgeditor.hooks.install_named_hook("commit_message_template",
         debian_changelog_commit_message,
         "Use changes documented in debian/changelog to suggest "
         "the commit message")
-
-
-if getattr(merge, 'ConfigurableFileMerger', None) is None:
-    raise ImportError(
-        'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
-else:
-    def changelog_merge_hook_factory(merger):
-        from bzrlib.plugins.builddeb import merge_changelog
-        return merge_changelog.ChangeLogFileMerge(merger)
-
-    merge.Merger.hooks.install_named_hook(
-        'merge_file_content', changelog_merge_hook_factory,
-        'Debian Changelog file merge')
 
 
 try:
